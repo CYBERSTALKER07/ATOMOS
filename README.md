@@ -1,25 +1,35 @@
-# ATOMOS
+<p align="center">
+  <img src="productionlogo.jpg" alt="ATOMOS" width="180" />
+</p>
 
-![Platform](https://img.shields.io/badge/Platform-Enterprise%20Logistics-191622?style=for-the-badge)
-![Architecture](https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-2F5BFF?style=for-the-badge)
-![Dispatch](https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-00C96B?style=for-the-badge)
-![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
-![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
+<h1 align="center">ATOMOS</h1>
 
-![ATOMOS](pegasus/assets/image.png)
+<p align="center">
+  <strong>Enterprise Logistics Operating System</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-000000?style=flat-square&labelColor=000000&color=222222" alt="Architecture" />
+  <img src="https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-000000?style=flat-square&labelColor=000000&color=222222" alt="Dispatch" />
+  <img src="https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-000000?style=flat-square&labelColor=000000&color=222222" alt="Runtime" />
+  <img src="https://img.shields.io/badge/Consistency-Transactional%20Outbox%20%2B%20Version%20Gates-000000?style=flat-square&labelColor=000000&color=222222" alt="Consistency" />
+</p>
+
+---
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
 The platform is built for high-consequence physical operations where route sequencing, payment integrity, geofence rules, and telemetry accuracy must remain coherent under high concurrency.
 
-Audience variants:
+**Document variants:**
 
-1. Engineering master document: this file.
-2. Investor and partner narrative: [README-investors.md](README-investors.md).
+1. Engineering master document — this file.
+2. Investor and partner narrative — [README-investors.md](README-investors.md).
+
+---
 
 ## Table of Contents
 
-- [Audience Variants](#audience-variants)
 - [Executive Summary](#executive-summary)
 - [Architecture Overview](#architecture-overview)
 - [Maglev Load Balancing Coverage](#maglev-load-balancing-coverage)
@@ -38,18 +48,13 @@ Audience variants:
 - [Engineering Doctrine](#engineering-doctrine)
 - [Documentation and Diagram Assets](#documentation-and-diagram-assets)
 
-## Audience Variants
-
-1. Engineering master reference: [README.md](README.md).
-2. External investor and partner variant: [README-investors.md](README-investors.md).
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
+---
 
 ## Executive Summary
 
 ATOMOS applies a control-plane architecture to real-world logistics execution.
 
-Core system qualities:
+**Core system qualities:**
 
 1. Automation-first operations with policy-bounded human override.
 2. Atomic state and event consistency using transactional outbox.
@@ -57,7 +62,7 @@ Core system qualities:
 4. Real-time execution visibility through role-scoped websocket hubs.
 5. Cross-surface product coherence across web, desktop, Android, and iOS clients.
 
-Business-critical invariants:
+**Business-critical invariants:**
 
 1. Order lifecycle integrity: `PENDING -> LOADED -> IN_TRANSIT -> ARRIVED -> COMPLETED`.
 2. Financial correctness: double-entry compatible event-driven payment progression.
@@ -65,16 +70,14 @@ Business-critical invariants:
 4. Role safety: scope is resolved from claims, never trusted from request bodies.
 5. Replay safety: version gates and idempotency guard against duplicate side effects.
 
+---
+
 ## Architecture Overview
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![ATOMOS Enterprise Architecture](pegasus/docs/assets/architecture-overview.svg)
 
 ### Logical Architecture
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#0F1117","primaryTextColor":"#E8ECF6","primaryBorderColor":"#475569","secondaryColor":"#141923","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#475569","tertiaryColor":"#1A2230","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#475569","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#0F1117","nodeBorder":"#475569","clusterBkg":"#0F1117","clusterBorder":"#475569","titleColor":"#E8ECF6","edgeLabelBackground":"#0F1117","actorBkg":"#0F1117","actorBorder":"#475569","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#0F1117","labelBoxBorderColor":"#475569","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#1F2633","activationBorderColor":"#475569","sequenceNumberColor":"#000000","stateBkg":"#0F1117","stateBorder":"#475569","stateTextColor":"#E8ECF6","noteBkgColor":"#0F1117","noteTextColor":"#E8ECF6","noteBorderColor":"#475569"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:rgba(148,163,184,0.45) !important;stroke-width:1.2px !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(10,12,16,0.86) !important;opacity:1 !important;} .cluster > rect{fill:rgba(10,12,16,0.78) !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#111111","primaryTextColor":"#FFFFFF","primaryBorderColor":"#333333","secondaryColor":"#111111","secondaryTextColor":"#FFFFFF","secondaryBorderColor":"#333333","tertiaryColor":"#111111","tertiaryTextColor":"#FFFFFF","tertiaryBorderColor":"#333333","lineColor":"#666666","textColor":"#FFFFFF","mainBkg":"#111111","nodeBorder":"#333333","clusterBkg":"#0A0A0A","clusterBorder":"#222222","titleColor":"#FFFFFF","edgeLabelBackground":"#111111","actorBkg":"#111111","actorBorder":"#333333","actorTextColor":"#FFFFFF","actorLineColor":"#666666","signalColor":"#666666","signalTextColor":"#FFFFFF","labelBoxBkgColor":"#111111","labelBoxBorderColor":"#333333","labelTextColor":"#FFFFFF","loopTextColor":"#FFFFFF","activationBkgColor":"#1A1A1A","activationBorderColor":"#333333","sequenceNumberColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#FFFFFF !important;color:#FFFFFF !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:#333333 !important;stroke-width:1px !important;rx:12px !important;ry:12px !important;} .edgeLabel rect{fill:#111111 !important;opacity:1 !important;} .cluster > rect{fill:#0A0A0A !important;stroke:#222222 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#666666 !important;}"}}%%
 flowchart LR
    subgraph Clients[Execution Surfaces]
       SP[Supplier Portals]
@@ -126,11 +129,9 @@ flowchart LR
 4. Partition-key ordering by aggregate identifier for deterministic consumers.
 5. Degraded-mode tolerance where local user experience continues when possible.
 
+---
+
 ## Maglev Load Balancing Coverage
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![Maglev Load Balancer Coverage](pegasus/docs/assets/maglev-load-balancers.svg)
 
 Implemented Maglev or Maglev-derived load balancer paths:
 
@@ -138,23 +139,25 @@ Implemented Maglev or Maglev-derived load balancer paths:
 2. Backend Spanner read routing with a Maglev-derived pre-built lookup table pattern.
 3. Internal optimizer gRPC xDS path (mesh-balanced), gated by `OPTIMIZER_GRPC_ADDR`.
 
-Current activation status:
+**Current activation status:**
 
 1. Edge ring-hash is configured in infrastructure.
 2. Spanner read-router runtime currently boots in single-region mode (`NewSingleRegion`) unless multiregion activation is wired.
 3. xDS optimizer path is active only when env-gated in deployment.
 
-Implementation map:
+**Implementation map:**
 
-1. Edge ring-hash infrastructure: `pegasus/infra/terraform/networking.tf`.
-2. Maglev-derived read-router engine: `pegasus/apps/backend-go/bootstrap/spannerrouter/router.go`.
-3. Current single-region boot mode: `pegasus/apps/backend-go/bootstrap/new.go`.
-4. xDS gRPC load-balanced client path: `pegasus/apps/backend-go/internal/rpc/optimizergrpc/client.go`.
-5. xDS gRPC optimizer server endpoint: `pegasus/apps/ai-worker/grpc_server.go`.
+| Component | Path |
+|-----------|------|
+| Edge ring-hash infrastructure | `pegasus/infra/terraform/networking.tf` |
+| Maglev-derived read-router engine | `pegasus/apps/backend-go/bootstrap/spannerrouter/router.go` |
+| Current single-region boot mode | `pegasus/apps/backend-go/bootstrap/new.go` |
+| xDS gRPC load-balanced client path | `pegasus/apps/backend-go/internal/rpc/optimizergrpc/client.go` |
+| xDS gRPC optimizer server endpoint | `pegasus/apps/ai-worker/grpc_server.go` |
 
-Operational note:
+**Operational note:** Warehouse sibling reroute is operational load balancing logic, not Maglev ring-hash.
 
-1. Warehouse sibling reroute is operational load balancing logic, not Maglev ring-hash.
+---
 
 ## Exceptional Capabilities
 
@@ -169,16 +172,14 @@ Operational note:
 | Scale resilience | Priority guard, rate limiting, circuit breakers | Better tail behavior under burst load |
 | Cross-role coherence | Shared contracts, role-specific clients, synchronized rollout protocol | Reduced product fragmentation |
 
+---
+
 ## Auto-Dispatch Deep Dive
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![Auto Dispatch Pipeline](pegasus/docs/assets/autodispatch-pipeline.svg)
 
 ### Dispatch Pipeline
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#E1E1E6","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#111111","primaryTextColor":"#FFFFFF","primaryBorderColor":"#333333","secondaryColor":"#111111","secondaryTextColor":"#FFFFFF","secondaryBorderColor":"#333333","tertiaryColor":"#111111","tertiaryTextColor":"#FFFFFF","tertiaryBorderColor":"#333333","lineColor":"#666666","textColor":"#FFFFFF","mainBkg":"#111111","nodeBorder":"#333333","clusterBkg":"#0A0A0A","clusterBorder":"#222222","titleColor":"#FFFFFF","edgeLabelBackground":"#111111"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#FFFFFF !important;color:#FFFFFF !important;} .edgeLabel rect{fill:#111111 !important;opacity:1 !important;}"}}%%
 flowchart LR
    A[Demand and inventory signals] --> B[Eligibility filter\nstatus payment lock]
    B --> C[H3 geo batching]
@@ -208,18 +209,20 @@ flowchart LR
 
 ### Why This Is Different
 
-1. **Manual dispatch is the default warehouse UX** — truck + order selection, not a single “auto” button.
+1. **Manual dispatch is the default warehouse UX** — truck + order selection, not a single "auto" button.
 2. Smart assignment is assistive math (H3 + bin-pack + TSP); ai-worker is optional, not required.
 3. Manual selection is supported with capacity warnings and full auditability.
 4. Dispatch decisions are evented and traceable end-to-end.
 5. Route progress is measured against actual execution, not static plan assumptions.
+
+---
 
 ## State Machines and Lifecycle Contracts
 
 ### Order Lifecycle
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#171923","primaryTextColor":"#E8ECF6","primaryBorderColor":"#000000","secondaryColor":"#1F2430","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#000000","tertiaryColor":"#222A35","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#000000","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#171923","nodeBorder":"#000000","clusterBkg":"#171923","clusterBorder":"#000000","titleColor":"#E8ECF6","edgeLabelBackground":"#171923","actorBkg":"#171923","actorBorder":"#000000","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#171923","labelBoxBorderColor":"#000000","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#242B38","activationBorderColor":"#000000","sequenceNumberColor":"#000000","stateBkg":"#171923","stateBorder":"#000000","stateTextColor":"#E8ECF6","noteBkgColor":"#171923","noteTextColor":"#E8ECF6","noteBorderColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:none !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(255,255,255,0.12) !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:none !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#111111","primaryTextColor":"#FFFFFF","primaryBorderColor":"#000000","secondaryColor":"#111111","secondaryTextColor":"#FFFFFF","secondaryBorderColor":"#000000","tertiaryColor":"#111111","tertiaryTextColor":"#FFFFFF","tertiaryBorderColor":"#000000","lineColor":"#666666","textColor":"#FFFFFF","mainBkg":"#111111","nodeBorder":"#333333","clusterBkg":"#111111","clusterBorder":"#000000","titleColor":"#FFFFFF","edgeLabelBackground":"#111111","stateBkg":"#111111","stateBorder":"#333333","stateTextColor":"#FFFFFF","noteBkgColor":"#111111","noteTextColor":"#FFFFFF","noteBorderColor":"#333333"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#FFFFFF !important;color:#FFFFFF !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:#333333 !important;rx:12px !important;ry:12px !important;} .edgeLabel rect{fill:#111111 !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#666666 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:#333333 !important;}"}}%%
 stateDiagram-v2
    [*] --> PENDING
    PENDING --> LOADED
@@ -231,14 +234,14 @@ stateDiagram-v2
    IN_TRANSIT --> EXCEPTION: delivery incident
    EXCEPTION --> IN_TRANSIT: resolved and resumed
 
-   classDef omniState fill:#171923,stroke:none,color:#E8ECF6,stroke-width:0px
+   classDef omniState fill:#111111,stroke:#333333,color:#FFFFFF,stroke-width:1px
    class PENDING,LOADED,IN_TRANSIT,ARRIVED,COMPLETED,CANCELLED,EXCEPTION omniState
 ```
 
 ### Delivery Sequence and Control Points
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#171923","primaryTextColor":"#E8ECF6","primaryBorderColor":"#000000","secondaryColor":"#1F2430","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#000000","tertiaryColor":"#222A35","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#000000","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#171923","nodeBorder":"#000000","clusterBkg":"#171923","clusterBorder":"#000000","titleColor":"#E8ECF6","edgeLabelBackground":"#171923","actorBkg":"#171923","actorBorder":"#000000","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#171923","labelBoxBorderColor":"#000000","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#242B38","activationBorderColor":"#000000","sequenceNumberColor":"#000000","stateBkg":"#171923","stateBorder":"#000000","stateTextColor":"#E8ECF6","noteBkgColor":"#171923","noteTextColor":"#E8ECF6","noteBorderColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:none !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(255,255,255,0.12) !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:none !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#111111","primaryTextColor":"#FFFFFF","primaryBorderColor":"#333333","secondaryColor":"#111111","secondaryTextColor":"#FFFFFF","secondaryBorderColor":"#333333","tertiaryColor":"#111111","tertiaryTextColor":"#FFFFFF","tertiaryBorderColor":"#333333","lineColor":"#666666","textColor":"#FFFFFF","mainBkg":"#111111","nodeBorder":"#333333","clusterBkg":"#111111","clusterBorder":"#333333","titleColor":"#FFFFFF","edgeLabelBackground":"#111111","actorBkg":"#111111","actorBorder":"#333333","actorTextColor":"#FFFFFF","actorLineColor":"#666666","signalColor":"#666666","signalTextColor":"#FFFFFF","labelBoxBkgColor":"#111111","labelBoxBorderColor":"#333333","labelTextColor":"#FFFFFF","loopTextColor":"#FFFFFF","activationBkgColor":"#1A1A1A","activationBorderColor":"#333333","sequenceNumberColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#FFFFFF !important;color:#FFFFFF !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:#333333 !important;rx:12px !important;ry:12px !important;} .edgeLabel rect{fill:#111111 !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#666666 !important;}"}}%%
 sequenceDiagram
    participant Portal as Supplier Portal
    participant API as Backend API
@@ -259,11 +262,9 @@ sequenceDiagram
    Telemetry-->>Portal: Live operational state
 ```
 
+---
+
 ## Reliability Control Plane
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![Reliability Control Plane](pegasus/docs/assets/reliability-control-plane.svg)
 
 ### Reliability Invariants
 
@@ -276,6 +277,8 @@ sequenceDiagram
 | Upstream failure isolation | External outages do not collapse core flows | Circuit breaker + bounded retry |
 | Load shedding discipline | Critical paths remain alive under spikes | Priority guard + token bucket limits |
 
+---
+
 ## Security and Role Integrity
 
 Security posture is zero-trust at the handler boundary and policy-strict inside domain flows.
@@ -287,40 +290,33 @@ Security posture is zero-trust at the handler boundary and policy-strict inside 
 5. Websocket subscriptions are auth-bound and room-scoped.
 6. Structured logs carry trace_id for end-to-end forensic stitching.
 
-Role naming note:
+**Role naming note:** The Supplier Portal is implemented in code with ADMIN JWT naming compatibility. Product user identity remains SUPPLIER for operational semantics.
 
-1. The Supplier Portal is implemented in code with ADMIN JWT naming compatibility.
-2. Product user identity remains SUPPLIER for operational semantics.
+---
 
 ## Role to Surface Matrix
 
 | Role | Surface | Stack | Path |
 |---|---|---|---|
-| SUPPLIER | Admin Portal (web + desktop shell) | Next.js 15 + React 19 + Tailwind v4 | pegasus/apps/admin-portal |
-| DRIVER | Android | Kotlin + Jetpack Compose | pegasus/apps/driver-app-android |
-| DRIVER | iOS | SwiftUI | pegasus/apps/driverappios |
-| RETAILER | Android | Kotlin + Jetpack Compose | pegasus/apps/retailer-app-android |
-| RETAILER | iOS | SwiftUI | pegasus/apps/retailer-app-ios |
-| RETAILER | Desktop | Next.js + Tauri shell | pegasus/apps/retailer-app-desktop |
-| PAYLOAD | Terminal | Expo + React Native | pegasus/apps/payload-terminal |
-| PAYLOAD | iOS tablet | SwiftUI | pegasus/apps/payload-app-ios |
-| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | pegasus/apps/payload-app-android |
-| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | pegasus/apps/factory-portal |
-| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | pegasus/apps/factory-app-android |
-| FACTORY_ADMIN | iOS | SwiftUI | pegasus/apps/factory-app-ios |
-| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | pegasus/apps/warehouse-portal |
-| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | pegasus/apps/warehouse-app-android |
-| WAREHOUSE_ADMIN | iOS | SwiftUI | pegasus/apps/warehouse-app-ios |
+| SUPPLIER | Admin Portal (web + desktop shell) | Next.js 15 + React 19 + Tailwind v4 | `pegasus/apps/admin-portal` |
+| DRIVER | Android | Kotlin + Jetpack Compose | `pegasus/apps/driver-app-android` |
+| DRIVER | iOS | SwiftUI | `pegasus/apps/driverappios` |
+| RETAILER | Android | Kotlin + Jetpack Compose | `pegasus/apps/retailer-app-android` |
+| RETAILER | iOS | SwiftUI | `pegasus/apps/retailer-app-ios` |
+| RETAILER | Desktop | Next.js + Tauri shell | `pegasus/apps/retailer-app-desktop` |
+| PAYLOAD | Terminal | Expo + React Native | `pegasus/apps/payload-terminal` |
+| PAYLOAD | iOS tablet | SwiftUI | `pegasus/apps/payload-app-ios` |
+| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | `pegasus/apps/payload-app-android` |
+| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasus/apps/factory-portal` |
+| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | `pegasus/apps/factory-app-android` |
+| FACTORY_ADMIN | iOS | SwiftUI | `pegasus/apps/factory-app-ios` |
+| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasus/apps/warehouse-portal` |
+| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | `pegasus/apps/warehouse-app-android` |
+| WAREHOUSE_ADMIN | iOS | SwiftUI | `pegasus/apps/warehouse-app-ios` |
+
+---
 
 ## Technology Stack and Platforms
-
-![ATOMOS Technology Stack Image](pegasus/assets/image.png)
-
-![Tech Stack Matrix](pegasus/docs/assets/techstack-glass-matrix.svg)
-
-![Tech Stack Compact](pegasus/docs/assets/techstack-glass-compact.svg)
-
-### ATOMOS Bento Grid (Text)
 
 <table>
    <tr>
@@ -337,59 +333,47 @@ Role naming note:
    </tr>
 </table>
 
+---
+
 ## Repository Topology
 
 ```text
 V.O.I.D/
-|- README.md
-|- pegasus/
-|  |- apps/
-|  |  |- backend-go/
-|  |  |- ai-worker/
-|  |  |- admin-portal/
-|  |  |- factory-portal/
-|  |  |- warehouse-portal/
-|  |  |- retailer-app-desktop/
-|  |  |- driver-app-android/
-|  |  |- driverappios/
-|  |  |- retailer-app-android/
-|  |  |- retailer-app-ios/
-|  |  |- payload-terminal/
-|  |  |- payload-app-ios/
-|  |  |- payload-app-android/
-|  |  |- factory-app-android/
-|  |  |- factory-app-ios/
-|  |  |- warehouse-app-android/
-|  |  |- warehouse-app-ios/
-|  |- packages/
-|  |  |- api-client/
-|  |  |- config/
-|  |  |- optimizer-contract/
-|  |  |- types/
-|  |  |- ui-kit/
-|  |  |- validation/
-|  |- docs/
-|  |  |- assets/
-|  |  |  |- architecture-overview.svg
-|  |  |  |- autodispatch-pipeline.svg
-|  |  |  |- reliability-control-plane.svg
-|  |  |  |- maglev-load-balancers.svg
-|  |  |  |- omni-hero-banner.svg
-|  |  |  |- omni-section-divider.svg
-|  |  |  |- omni-code-surface.svg
-|  |  |  |- glass-hero-variant-a.svg
-|  |  |  |- glass-hero-variant-b.svg
-|  |  |  |- techstack-glass-matrix.svg
-|  |  |  |- techstack-glass-compact.svg
-|  |- infra/
-|  |- tests/
+├── README.md
+├── pegasus/
+│   ├── apps/
+│   │   ├── backend-go/
+│   │   ├── ai-worker/
+│   │   ├── admin-portal/
+│   │   ├── factory-portal/
+│   │   ├── warehouse-portal/
+│   │   ├── retailer-app-desktop/
+│   │   ├── driver-app-android/
+│   │   ├── driverappios/
+│   │   ├── retailer-app-android/
+│   │   ├── retailer-app-ios/
+│   │   ├── payload-terminal/
+│   │   ├── payload-app-ios/
+│   │   ├── payload-app-android/
+│   │   ├── factory-app-android/
+│   │   ├── factory-app-ios/
+│   │   ├── warehouse-app-android/
+│   │   └── warehouse-app-ios/
+│   ├── packages/
+│   │   ├── api-client/
+│   │   ├── config/
+│   │   ├── optimizer-contract/
+│   │   ├── types/
+│   │   ├── ui-kit/
+│   │   └── validation/
+│   ├── docs/
+│   ├── infra/
+│   └── tests/
 ```
 
+---
+
 ## Quick Start
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![Glass Code Surface](pegasus/docs/assets/omni-code-surface.svg)
 
 ### Prerequisites
 
@@ -422,11 +406,9 @@ go build ./...
 go run .
 ```
 
+---
+
 ## Run and Build Commands
-
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
-
-![Glass Code Surface](pegasus/docs/assets/omni-code-surface.svg)
 
 ### Core Environment
 
@@ -466,9 +448,9 @@ npm run desktop:warehouse:dev
 npm run desktop:retailer:dev
 ```
 
-## Testing and Quality Gates
+---
 
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
+## Testing and Quality Gates
 
 ### Backend
 
@@ -500,9 +482,9 @@ npm run versionscan:scan
 npm run versionscan:enforce
 ```
 
-## Observability and Operations
+---
 
-![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
+## Observability and Operations
 
 Operational telemetry is designed for incident triage, execution debugging, and audit reconstruction.
 
@@ -520,41 +502,37 @@ Operational telemetry is designed for incident triage, execution debugging, and 
 4. Verify websocket room broadcast and client acknowledgment.
 5. Compare expected and actual state in operational surface.
 
+---
+
 ## Engineering Doctrine
 
 This repository follows a systems doctrine focused on correctness under load and cross-surface coherence.
 
 1. Domain packages own business logic. Route packages remain thin.
-2. main.go is lifecycle orchestration, not business implementation.
-3. Mutation handlers follow strict shape: auth gate -> validate -> transaction -> outbox -> invalidate cache -> structured response.
+2. `main.go` is lifecycle orchestration, not business implementation.
+3. Mutation handlers follow strict shape: auth gate → validate → transaction → outbox → invalidate cache → structured response.
 4. Any role feature must ship coherently across all client surfaces for that role.
 5. Additive contract evolution is required to protect older client versions.
 
+---
+
 ## Documentation and Diagram Assets
 
-Primary docs:
+**Primary docs:**
 
-1. pegasus/docs/BARCODE_SCANNING.md
-2. pegasus/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md
-3. pegasus/docs/MAGLEV_READ_ROUTER_ROLLOUT.md
-4. pegasus/E2E_TEST_PROTOCOL.md
-
-Architecture graphics in this README:
-
-1. pegasus/docs/assets/architecture-overview.svg
-2. pegasus/docs/assets/autodispatch-pipeline.svg
-3. pegasus/docs/assets/reliability-control-plane.svg
-4. pegasus/docs/assets/maglev-load-balancers.svg
-5. pegasus/docs/assets/omni-hero-banner.svg
-6. pegasus/docs/assets/omni-section-divider.svg
-7. pegasus/docs/assets/omni-code-surface.svg
-8. pegasus/docs/assets/glass-hero-variant-a.svg
-9. pegasus/docs/assets/glass-hero-variant-b.svg
-10. pegasus/docs/assets/techstack-glass-matrix.svg
-11. pegasus/docs/assets/techstack-glass-compact.svg
-12. pegasus/docs/assets/techstack-visual-composite.svg
-13. pegasus/assets/image.png
+| Document | Path |
+|----------|------|
+| Barcode Scanning | `pegasus/docs/BARCODE_SCANNING.md` |
+| Cloud Run to GKE Cutover Runbook | `pegasus/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md` |
+| Maglev Read Router Rollout | `pegasus/docs/MAGLEV_READ_ROUTER_ROLLOUT.md` |
+| E2E Test Protocol | `pegasus/E2E_TEST_PROTOCOL.md` |
 
 ---
 
-ATOMOS is designed as an execution-grade logistics system, not a demo dashboard. The architecture choices in this repository prioritize deterministic operations, high-scale resilience, and role-accurate workflows from first principles.
+<p align="center">
+  <img src="productionlogo.jpg" alt="ATOMOS" width="64" />
+</p>
+
+<p align="center">
+  <sub>ATOMOS is designed as an execution-grade logistics system, not a demo dashboard. The architecture choices in this repository prioritize deterministic operations, high-scale resilience, and role-accurate workflows from first principles.</sub>
+</p>
