@@ -105,6 +105,10 @@ var (
 	ErrFiscalNotFailed           = errors.New("fiscal_not_failed")
 	ErrForceCompleteForbidden    = errors.New("force_complete_forbidden")
 	ErrForceReasonRequired       = errors.New("force_reason_required")
+	ErrForceReasonInvalid        = errors.New("force_reason_invalid")
+	ErrFiscalAlreadySucceeded    = errors.New("fiscal_already_succeeded")
+	ErrCashAmountRequired        = errors.New("cash_amount_required")
+	ErrCashAmountNegative        = errors.New("cash_amount_negative")
 )
 
 // LineItem is one line on an order.
@@ -219,6 +223,10 @@ type Repository interface {
 	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error
 	UpdateOrder(ctx context.Context, o Order, proofs []DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
+	// GetFiscalAttempt loads one OrderFiscalReceipts row (ADR-009 worker idempotency).
+	GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error)
+	// CountFiscalAttemptsByStatus counts attempts for retry-budget decisions.
+	CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error)
 	ListRetailerOrders(ctx context.Context, retailerID string, limit int) ([]Order, error)
 	ListWarehouseOrdersByDeliveryWindow(ctx context.Context, warehouseID string, from, to time.Time, limit int) ([]Order, error)
 	ListDueAutoConfirmOrders(ctx context.Context, before time.Time, limit int) ([]Order, error)
@@ -617,24 +625,31 @@ type CompleteOrderRequest struct {
 }
 
 // CollectCashRequest is the wire shape for POST /v1/order/collect-cash.
+// amount_received_minor is the cash actually taken (Tiyin). Fiscal uses this amount.
+// When omitted, expected order total is used (compat); shortfall/overage still computed when provided.
 type CollectCashRequest struct {
-	OrderID         string     `json:"order_id"`
-	Latitude        float64    `json:"latitude"`
-	Longitude       float64    `json:"longitude"`
-	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
+	OrderID              string     `json:"order_id"`
+	Latitude             float64    `json:"latitude"`
+	Longitude            float64    `json:"longitude"`
+	AmountReceivedMinor  *int64     `json:"amount_received_minor,omitempty"`
+	Note                 string     `json:"note,omitempty"`
+	ClientTimestamp      *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // CollectCashResponse matches the driver mobile cash-collection contract.
 // ADR-009: State is FISCALIZING after capture (not COMPLETED until fiscal SUCCESS).
 type CollectCashResponse struct {
-	OrderID       string  `json:"order_id"`
-	State         Status  `json:"state"`
-	Amount        int64   `json:"amount"`
-	Currency      string  `json:"currency"`
-	DistanceM     float64 `json:"distance_m"`
-	Message       string  `json:"message"`
-	AttemptID     string  `json:"attempt_id,omitempty"`
-	FiscalStatus  string  `json:"fiscal_status,omitempty"`
+	OrderID             string  `json:"order_id"`
+	State               Status  `json:"state"`
+	Amount              int64   `json:"amount"` // expected order total
+	AmountReceivedMinor int64   `json:"amount_received_minor,omitempty"`
+	ShortfallMinor      int64   `json:"shortfall_minor,omitempty"`
+	OverageMinor        int64   `json:"overage_minor,omitempty"`
+	Currency            string  `json:"currency"`
+	DistanceM           float64 `json:"distance_m"`
+	Message             string  `json:"message"`
+	AttemptID           string  `json:"attempt_id,omitempty"`
+	FiscalStatus        string  `json:"fiscal_status,omitempty"`
 }
 
 // DriverOrderLineItem is a driver-mobile compatible line-item snapshot.
@@ -1587,7 +1602,7 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 			return err
 		},
 		PrepareOrder: func(o *Order, _ Status) {
-			row := s.newFiscalPendingRow(*o, "CARD", s.newID())
+			row := s.newFiscalPendingRow(*o, "CARD", s.newID(), o.TotalMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -1652,10 +1667,11 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 }
 
 // CollectCash geofence-confirms cash collection, captures payment, and starts fiscal hard-gate (ADR-009).
-// Order becomes FISCALIZING; COMPLETED only after fiscal SUCCESS (or audited force-complete).
+// Fiscal amount = amount_received_minor when provided (P0 T3); shortfall/overage emitted as audit events.
 func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req CollectCashRequest) (CollectCashResponse, error) {
 	var distanceM float64
 	var attemptID string
+	var receivedMinor, shortfallMinor, overageMinor int64
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
 		NextStatus:      StatusFiscalizing,
@@ -1670,6 +1686,20 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
 			}
+			if req.AmountReceivedMinor != nil {
+				if *req.AmountReceivedMinor < 0 {
+					return ErrCashAmountNegative
+				}
+				receivedMinor = *req.AmountReceivedMinor
+			} else {
+				// Compat: default to expected total when driver omits received amount.
+				receivedMinor = orderRecord.TotalMinor
+			}
+			if orderRecord.TotalMinor > receivedMinor {
+				shortfallMinor = orderRecord.TotalMinor - receivedMinor
+			} else if receivedMinor > orderRecord.TotalMinor {
+				overageMinor = receivedMinor - orderRecord.TotalMinor
+			}
 			computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err != nil {
 				return err
@@ -1678,7 +1708,10 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			return nil
 		},
 		PrepareOrder: func(o *Order, _ Status) {
-			row := s.newFiscalPendingRow(*o, "CASH", s.newID())
+			if receivedMinor == 0 && req.AmountReceivedMinor == nil {
+				receivedMinor = o.TotalMinor
+			}
+			row := s.newFiscalPendingRow(*o, "CASH", s.newID(), receivedMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -1711,6 +1744,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 					return err
 				}
 			}
+			if err := emitCashVariance(ctx, txn, orderRecord, claims.Subject, orderRecord.TotalMinor, receivedMinor, req.Note); err != nil {
+				return err
+			}
 			row := orderRecord.PendingFiscalReceipts[0]
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CASH")
 		},
@@ -1721,26 +1757,37 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	if result.NoChange {
 		distanceM = 0
 		return CollectCashResponse{
-			OrderID:      result.Order.OrderID,
-			State:        result.Order.Status,
-			Amount:       result.Order.TotalMinor,
-			Currency:     result.Order.Currency,
-			DistanceM:    distanceM,
-			Message:      "Cash collection already fiscalizing.",
-			AttemptID:    result.Order.LatestFiscalAttemptID,
-			FiscalStatus: result.Order.FiscalStatus,
+			OrderID:             result.Order.OrderID,
+			State:               result.Order.Status,
+			Amount:              result.Order.TotalMinor,
+			AmountReceivedMinor: receivedMinor,
+			Currency:            result.Order.Currency,
+			DistanceM:           distanceM,
+			Message:             "Cash collection already fiscalizing.",
+			AttemptID:           result.Order.LatestFiscalAttemptID,
+			FiscalStatus:        result.Order.FiscalStatus,
 		}, nil
 	}
 
+	msg := "Cash collected. Waiting for fiscal receipt."
+	if shortfallMinor > 0 {
+		msg = fmt.Sprintf("Cash collected with shortfall %d. Fiscalizing received amount.", shortfallMinor)
+	} else if overageMinor > 0 {
+		msg = fmt.Sprintf("Cash collected with overage %d. Fiscalizing received amount.", overageMinor)
+	}
+
 	return CollectCashResponse{
-		OrderID:      result.Order.OrderID,
-		State:        result.Order.Status,
-		Amount:       result.Order.TotalMinor,
-		Currency:     result.Order.Currency,
-		DistanceM:    distanceM,
-		Message:      "Cash collected. Waiting for fiscal receipt.",
-		AttemptID:    attemptID,
-		FiscalStatus: FiscalStatusPending,
+		OrderID:             result.Order.OrderID,
+		State:               result.Order.Status,
+		Amount:              result.Order.TotalMinor,
+		AmountReceivedMinor: receivedMinor,
+		ShortfallMinor:      shortfallMinor,
+		OverageMinor:        overageMinor,
+		Currency:            result.Order.Currency,
+		DistanceM:           distanceM,
+		Message:             msg,
+		AttemptID:           attemptID,
+		FiscalStatus:        FiscalStatusPending,
 	}, nil
 }
 
@@ -2501,6 +2548,12 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "force_complete_forbidden"})
 	case errors.Is(err, ErrForceReasonRequired):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "force_reason_required"})
+	case errors.Is(err, ErrForceReasonInvalid):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "force_reason_invalid"})
+	case errors.Is(err, ErrFiscalAlreadySucceeded):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "fiscal_already_succeeded"})
+	case errors.Is(err, ErrCashAmountNegative):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cash_amount_negative"})
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}

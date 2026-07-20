@@ -181,8 +181,13 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    func collectCash(orderId: String, latitude: Double, longitude: Double) async throws -> CollectCashResponse {
-        let body = CollectCashRequest(orderId: orderId, latitude: latitude, longitude: longitude)
+    func collectCash(orderId: String, latitude: Double, longitude: Double, amountReceivedMinor: Int64? = nil) async throws -> CollectCashResponse {
+        let body = CollectCashRequest(
+            orderId: orderId,
+            latitude: latitude,
+            longitude: longitude,
+            amountReceivedMinor: amountReceivedMinor
+        )
         return try await post(
             "v1/order/collect-cash",
             body: body,

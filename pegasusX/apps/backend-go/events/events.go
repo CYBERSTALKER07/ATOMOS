@@ -104,6 +104,9 @@ const (
 	EventFiscalReceiptFailed    = "FISCAL_RECEIPT_FAILED"
 	// @Sync(OrderForceCompletedEvent)
 	EventOrderForceCompleted = "ORDER_FORCE_COMPLETED"
+	// @Sync(CashVarianceEvent) cash collect shortfall / overage (integer Tiyin)
+	EventCashShortfall = "CASH_SHORTFALL"
+	EventCashOverage   = "CASH_OVERAGE"
 
 	// @Sync(ManifestEvent)
 	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"

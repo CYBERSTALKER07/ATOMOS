@@ -222,7 +222,10 @@ struct CashCollectionView: View {
         errorMessage = nil
         Task {
             do {
-                let resp = try await FleetServiceLive.shared.collectCash(orderId: orderId)
+                let resp = try await FleetServiceLive.shared.collectCash(
+                    orderId: orderId,
+                    amountReceivedMinor: Int64(amount)
+                )
                 Haptics.success()
                 let st = resp.state.uppercased()
                 if st == "COMPLETED" {

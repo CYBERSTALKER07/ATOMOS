@@ -24,7 +24,7 @@ protocol FleetServiceProtocol {
     func completeOrder(orderId: String) async throws
 
     /// POST /v1/order/collect-cash — cash capture → FISCALIZING (ADR-009)
-    func collectCash(orderId: String) async throws -> CollectCashResponse
+    func collectCash(orderId: String, amountReceivedMinor: Int64?) async throws -> CollectCashResponse
 
     /// POST /v1/order/{id}/fiscal/retry
     func retryFiscal(orderId: String) async throws -> CollectCashResponse

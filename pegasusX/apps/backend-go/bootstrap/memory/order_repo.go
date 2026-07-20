@@ -92,6 +92,43 @@ func (r *inMemoryOrderRepo) GetOrder(_ context.Context, orderID string) (order.O
 	return o, ok, nil
 }
 
+func (r *inMemoryOrderRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (order.FiscalReceiptRow, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	o, ok := r.byID[orderID]
+	if !ok {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	for _, fr := range o.PendingFiscalReceipts {
+		if fr.AttemptID == attemptID {
+			return fr, true, nil
+		}
+	}
+	if o.FiscalReceiptUpdate != nil && o.FiscalReceiptUpdate.AttemptID == attemptID {
+		return *o.FiscalReceiptUpdate, true, nil
+	}
+	return order.FiscalReceiptRow{}, false, nil
+}
+
+func (r *inMemoryOrderRepo) CountFiscalAttemptsByStatus(_ context.Context, orderID, status string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	o, ok := r.byID[orderID]
+	if !ok {
+		return 0, nil
+	}
+	var n int64
+	for _, fr := range o.PendingFiscalReceipts {
+		if fr.Status == status {
+			n++
+		}
+	}
+	if o.FiscalReceiptUpdate != nil && o.FiscalReceiptUpdate.Status == status {
+		n++
+	}
+	return n, nil
+}
+
 func (r *inMemoryOrderRepo) ListRetailerOrders(_ context.Context, retailerID string, limit int) ([]order.Order, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

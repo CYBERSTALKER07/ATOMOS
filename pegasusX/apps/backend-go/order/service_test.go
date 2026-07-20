@@ -41,6 +41,8 @@ type testRepo struct {
 	conditionReports    []ConditionReport
 	createConditionErr  error
 	listConditionErr    error
+	// fiscalAttempts mirrors OrderFiscalReceipts for worker idempotency tests.
+	fiscalAttempts map[string]FiscalReceiptRow
 }
 
 func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -90,6 +92,17 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	r.captured = o
 	r.order = o
 	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
+	if r.fiscalAttempts == nil {
+		r.fiscalAttempts = make(map[string]FiscalReceiptRow)
+	}
+	for _, fr := range o.PendingFiscalReceipts {
+		key := fr.OrderID + ":" + fr.AttemptID
+		r.fiscalAttempts[key] = fr
+	}
+	if o.FiscalReceiptUpdate != nil {
+		u := *o.FiscalReceiptUpdate
+		r.fiscalAttempts[u.OrderID+":"+u.AttemptID] = u
+	}
 	if emit != nil {
 		buf := &testTxnBuffer{}
 		if err := emit(buf); err != nil {
@@ -125,6 +138,47 @@ func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 		return Order{}, false, nil
 	}
 	return r.order, true, nil
+}
+
+func (r *testRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error) {
+	if r.fiscalAttempts != nil {
+		if fr, ok := r.fiscalAttempts[orderID+":"+attemptID]; ok {
+			return fr, true, nil
+		}
+	}
+	if r.captured.FiscalReceiptUpdate != nil {
+		u := *r.captured.FiscalReceiptUpdate
+		if u.OrderID == orderID && u.AttemptID == attemptID {
+			return u, true, nil
+		}
+	}
+	for _, fr := range r.captured.PendingFiscalReceipts {
+		if fr.OrderID == orderID && fr.AttemptID == attemptID {
+			return fr, true, nil
+		}
+	}
+	return FiscalReceiptRow{}, false, nil
+}
+
+func (r *testRepo) CountFiscalAttemptsByStatus(_ context.Context, orderID, status string) (int64, error) {
+	var n int64
+	if r.fiscalAttempts != nil {
+		for _, fr := range r.fiscalAttempts {
+			if fr.OrderID == orderID && fr.Status == status {
+				n++
+			}
+		}
+		return n, nil
+	}
+	if r.captured.FiscalReceiptUpdate != nil && r.captured.FiscalReceiptUpdate.Status == status {
+		n++
+	}
+	for _, fr := range r.captured.PendingFiscalReceipts {
+		if fr.Status == status {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (r *testRepo) CreateConditionReport(_ context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error {

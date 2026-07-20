@@ -215,7 +215,10 @@ data class CompleteOrderRequest(
 data class CollectCashRequest(
     @SerialName("order_id") val orderId: String,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    /** Cash actually taken (Tiyin). Fiscal hard-gate uses this amount (ADR-009 Phase 3). */
+    @SerialName("amount_received_minor") val amountReceivedMinor: Long? = null,
+    val note: String? = null,
 )
 
 @Serializable
@@ -223,6 +226,9 @@ data class CollectCashResponse(
     @SerialName("order_id") val orderId: String,
     val state: String = "",
     @SerialName("amount") val amount: Long = 0,
+    @SerialName("amount_received_minor") val amountReceivedMinor: Long = 0,
+    @SerialName("shortfall_minor") val shortfallMinor: Long = 0,
+    @SerialName("overage_minor") val overageMinor: Long = 0,
     @SerialName("distance_m") val distanceM: Double = 0.0,
     val message: String = "",
     @SerialName("attempt_id") val attemptId: String = "",

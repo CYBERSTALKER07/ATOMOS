@@ -579,3 +579,19 @@ type OrderForceCompletedEvent struct {
 	ActorID    string `json:"actor_id"`
 	TraceID    string `json:"trace_id,omitempty"`
 }
+
+// CashVarianceEvent records cash shortfall or overage at collection (integer Tiyin).
+type CashVarianceEvent struct {
+	BaseEvent
+	OrderID             string `json:"order_id"`
+	SupplierID          string `json:"supplier_id"`
+	RetailerID          string `json:"retailer_id,omitempty"`
+	DriverID            string `json:"driver_id,omitempty"`
+	ExpectedMinor       int64  `json:"expected_minor"`
+	ReceivedMinor       int64  `json:"received_minor"`
+	ShortfallMinor      int64  `json:"shortfall_minor,omitempty"`
+	OverageMinor        int64  `json:"overage_minor,omitempty"`
+	Currency            string `json:"currency"`
+	Note                string `json:"note,omitempty"`
+	TraceID             string `json:"trace_id,omitempty"`
+}

@@ -28,6 +28,12 @@ func (s *consumerRepoStub) GetOrder(_ context.Context, orderID string) (Order, b
 	o, ok := s.orders[orderID]
 	return o, ok, nil
 }
+func (s *consumerRepoStub) GetFiscalAttempt(context.Context, string, string) (FiscalReceiptRow, bool, error) {
+	return FiscalReceiptRow{}, false, nil
+}
+func (s *consumerRepoStub) CountFiscalAttemptsByStatus(context.Context, string, string) (int64, error) {
+	return 0, nil
+}
 func (s *consumerRepoStub) ListRetailerOrders(context.Context, string, int) ([]Order, error) {
 	return nil, nil
 }

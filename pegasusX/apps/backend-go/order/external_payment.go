@@ -23,8 +23,12 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		if orderRecord.Status == StatusCancelled {
 			return s.flagPaymentAfterCancel(ctx, orderRecord, gateway)
 		}
-		if orderRecord.Status == StatusFiscalizing || orderRecord.Status == StatusCompleted {
-			s.log.InfoContext(ctx, "external payment settlement already past capture", "order_id", orderID, "status", orderRecord.Status)
+		// P0 T7: late webhooks against terminal / post-capture states are no-ops.
+		if isTerminalMoneyStatus(orderRecord.Status) ||
+			orderRecord.Status == StatusFiscalizing ||
+			orderRecord.Status == StatusFiscalFailed {
+			s.log.InfoContext(ctx, "external payment settlement ignored (terminal or fiscal path)",
+				"order_id", orderID, "status", orderRecord.Status, "gateway", gateway)
 			return nil
 		}
 		s.log.InfoContext(ctx, "skipping external payment settlement, order not awaiting payment", "order_id", orderID, "status", orderRecord.Status)
@@ -36,7 +40,7 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 	if method == "" {
 		method = "CARD"
 	}
-	row := s.newFiscalPendingRow(orderRecord, method, "")
+	row := s.newFiscalPendingRow(orderRecord, method, "", orderRecord.TotalMinor)
 	orderRecord.Status = StatusFiscalizing
 	// Version must stay at the value read from Spanner: UpdateOrder compares it
 	// against the stored row for optimistic concurrency and increments it itself.

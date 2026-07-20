@@ -82,7 +82,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
 		EventMissingItemsReported, EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
-		EventOrderForceCompleted:
+		EventOrderForceCompleted, EventCashShortfall, EventCashOverage:
 		return TopicOrders
 	case EventWarehouseDispatchLockChanged, EventManifestDraftCreated,
 		EventManifestLoadingStarted, EventManifestOrderInjected, EventManifestOrderException,

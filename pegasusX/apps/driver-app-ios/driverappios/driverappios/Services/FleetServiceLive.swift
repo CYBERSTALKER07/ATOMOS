@@ -80,12 +80,13 @@ final class FleetServiceLive: FleetServiceProtocol {
 
     /// Collect cash from retailer with geofence validation.
     /// Sends driver GPS coords; backend rejects if > 500m from retailer.
-    func collectCash(orderId: String) async throws -> CollectCashResponse {
+    func collectCash(orderId: String, amountReceivedMinor: Int64? = nil) async throws -> CollectCashResponse {
         let location = await currentLocation()
         return try await api.collectCash(
             orderId: orderId,
             latitude: location.latitude,
-            longitude: location.longitude
+            longitude: location.longitude,
+            amountReceivedMinor: amountReceivedMinor
         )
     }
 

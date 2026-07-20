@@ -186,7 +186,9 @@ class CashCollectionViewModel @Inject constructor(
                     request = CollectCashRequest(
                         orderId = orderId,
                         latitude = location.latitude,
-                        longitude = location.longitude
+                        longitude = location.longitude,
+                        // P0: fiscal uses cash actually taken; UI amount is expected total until shortfall entry ships.
+                        amountReceivedMinor = amount,
                     ),
                     idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
                 )
