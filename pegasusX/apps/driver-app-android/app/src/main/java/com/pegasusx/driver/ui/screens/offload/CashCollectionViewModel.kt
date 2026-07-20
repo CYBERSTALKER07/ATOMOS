@@ -35,6 +35,9 @@ enum class CashFiscalPhase {
 data class CashCollectionUiState(
     val orderId: String = "",
     val amount: Long = 0,
+    /** Cash actually taken (Tiyin). Editable; defaults to order total. */
+    val amountReceivedMinor: Long = 0,
+    val amountReceivedInput: String = "",
     val cashReceived: Boolean = false,
     val showConfirmDialog: Boolean = false,
     val isCompleting: Boolean = false,
@@ -43,10 +46,14 @@ data class CashCollectionUiState(
     val attemptId: String = "",
     val fiscalStatus: String = "",
     val splitPaymentRecorded: Boolean = false,
+    val shortfallMinor: Long = 0,
+    val overageMinor: Long = 0,
     val error: String? = null,
     val distanceM: Double? = null,
     val locationAvailable: Boolean = true
-)
+) {
+    val varianceMinor: Long get() = amountReceivedMinor - amount
+}
 
 @HiltViewModel
 class CashCollectionViewModel @Inject constructor(
@@ -59,8 +66,29 @@ class CashCollectionViewModel @Inject constructor(
     private val orderId: String = savedStateHandle["orderId"] ?: ""
     private val amount: Long = savedStateHandle.get<Long>("amount") ?: 0L
 
-    private val _state = MutableStateFlow(CashCollectionUiState(orderId = orderId, amount = amount))
+    private val _state = MutableStateFlow(
+        CashCollectionUiState(
+            orderId = orderId,
+            amount = amount,
+            amountReceivedMinor = amount,
+            amountReceivedInput = if (amount > 0) amount.toString() else "",
+        )
+    )
     val state: StateFlow<CashCollectionUiState> = _state.asStateFlow()
+
+    fun onAmountReceivedChanged(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(15)
+        val parsed = digits.toLongOrNull() ?: 0L
+        _state.update {
+            it.copy(
+                amountReceivedInput = digits,
+                amountReceivedMinor = parsed,
+                shortfallMinor = if (it.amount > parsed) it.amount - parsed else 0L,
+                overageMinor = if (parsed > it.amount) parsed - it.amount else 0L,
+                error = null,
+            )
+        }
+    }
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
 
@@ -182,13 +210,24 @@ class CashCollectionViewModel @Inject constructor(
                     return@launch
                 }
 
+                val received = _state.value.amountReceivedMinor
+                if (received < 0L) {
+                    _state.update {
+                        it.copy(isCompleting = false, error = "Amount received cannot be negative.")
+                    }
+                    return@launch
+                }
                 val resp = api.collectCash(
                     request = CollectCashRequest(
                         orderId = orderId,
                         latitude = location.latitude,
                         longitude = location.longitude,
-                        // P0: fiscal uses cash actually taken; UI amount is expected total until shortfall entry ships.
-                        amountReceivedMinor = amount,
+                        amountReceivedMinor = received,
+                        note = when {
+                            received < amount -> "shortfall"
+                            received > amount -> "overage"
+                            else -> null
+                        },
                     ),
                     idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
                 )
@@ -204,6 +243,8 @@ class CashCollectionViewModel @Inject constructor(
                         phase = nextPhase,
                         distanceM = resp.distanceM,
                         attemptId = resp.attemptId,
+                        shortfallMinor = resp.shortfallMinor,
+                        overageMinor = resp.overageMinor,
                         fiscalStatus = resp.fiscalStatus.ifBlank {
                             if (nextPhase == CashFiscalPhase.FISCALIZING) "PENDING" else resp.state
                         },

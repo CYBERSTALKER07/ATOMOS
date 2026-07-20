@@ -8,12 +8,7 @@
   <strong>Enterprise Logistics Operating System</strong>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-000000?style=flat-square&labelColor=000000&color=222222" alt="Architecture" />
-  <img src="https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-000000?style=flat-square&labelColor=000000&color=222222" alt="Dispatch" />
-  <img src="https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-000000?style=flat-square&labelColor=000000&color=222222" alt="Runtime" />
-  <img src="https://img.shields.io/badge/Consistency-Transactional%20Outbox%20%2B%20Version%20Gates-000000?style=flat-square&labelColor=000000&color=222222" alt="Consistency" />
-</p>
+
 
 ---
 

@@ -25,6 +25,7 @@ import com.pegasusx.driver.data.model.ManifestGateResponse
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
 // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+import com.pegasusx.driver.data.model.OpenFiscalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.PulseResponse
@@ -201,6 +202,10 @@ interface DriverApi {
     // Return complete — RETURNING → AVAILABLE after arriving at warehouse
     @GET("v1/driver/return-goods")
     suspend fun getReturnGoods(): ReturnGoodsResponse
+
+    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end. */
+    @GET("v1/driver/open-fiscal")
+    suspend fun getOpenFiscal(): OpenFiscalResponse
 
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(

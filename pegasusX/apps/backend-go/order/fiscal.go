@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -120,32 +121,40 @@ type FiscalCreateResult struct {
 	RawPayload      []byte
 }
 
-// FakeFiscalProvider succeeds unless OrderID contains "fiscal-fail" (SSMR hook).
-type FakeFiscalProvider struct{}
-
-func (FakeFiscalProvider) CreateReceipt(_ context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
-	if strings.Contains(strings.ToLower(req.OrderID), "fiscal-fail") {
-		return FiscalCreateResult{}, fmt.Errorf("fake_ofd_rejected: order_id=%s", req.OrderID)
-	}
-	id := "FAKE-RCPT-" + req.AttemptID
-	if len(id) > 64 {
-		id = id[:64]
-	}
-	return FiscalCreateResult{
-		FiscalReceiptID: id,
-		FiscalQR:        "https://fake.ofd.local/qr/" + req.AttemptID,
-		RawPayload:      []byte(`{"provider":"FAKE","ok":true}`),
-	}, nil
-}
-
 func defaultFiscalProvider() FiscalProvider {
-	// Real MY_SOLIQ adapter ships behind FISCAL_PROVIDER env later.
-	return FakeFiscalProvider{}
+	return ProviderFromEnv()
 }
 
 func (s *Service) fiscalProvider() FiscalProvider {
-	// Future: s.ofd != nil → return s.ofd
+	if s != nil && s.ofd != nil {
+		return s.ofd
+	}
 	return defaultFiscalProvider()
+}
+
+// SetFiscalProvider injects an OFD adapter (tests / bootstrap).
+func (s *Service) SetFiscalProvider(p FiscalProvider) {
+	if s == nil {
+		return
+	}
+	s.ofd = p
+}
+
+// ProviderName returns the active provider label for attempt rows.
+func (s *Service) ProviderName() string {
+	p := s.fiscalProvider()
+	switch p.(type) {
+	case *MySoliqProvider:
+		return FiscalProviderMySoliq
+	case FakeFiscalProvider:
+		return FiscalProviderFake
+	default:
+		// hardFailProvider and unknown → report configured intent
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("FISCAL_PROVIDER")), FiscalProviderMySoliq) {
+			return FiscalProviderMySoliq
+		}
+		return FiscalProviderFake
+	}
 }
 
 // newFiscalPendingRow builds a PENDING supplier-leg attempt for capture txn.
@@ -172,12 +181,16 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 	if amountMinor == 0 {
 		amountMinor = orderRecord.TotalMinor
 	}
+	provider := FiscalProviderFake
+	if s != nil {
+		provider = s.ProviderName()
+	}
 	return FiscalReceiptRow{
 		OrderID:       orderRecord.OrderID,
 		AttemptID:     attemptID,
 		SupplierID:    orderRecord.SupplierID,
 		RetailerID:    orderRecord.RetailerID,
-		Provider:      FiscalProviderFake,
+		Provider:      provider,
 		Status:        FiscalAttemptPending,
 		AmountMinor:   amountMinor,
 		Currency:      currency,
@@ -382,7 +395,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		AttemptID:     attemptID,
 		SupplierID:    orderRecord.SupplierID,
 		RetailerID:    orderRecord.RetailerID,
-		Provider:      FiscalProviderFake,
+		Provider:      s.ProviderName(),
 		AmountMinor:   amountMinor,
 		Currency:      req.Currency,
 		PaymentMethod: req.PaymentMethod,
@@ -625,7 +638,7 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 		AttemptID:     attemptID,
 		SupplierID:    orderRecord.SupplierID,
 		RetailerID:    orderRecord.RetailerID,
-		Provider:      FiscalProviderFake,
+		Provider:      s.ProviderName(),
 		Status:        FiscalAttemptForceSkipped,
 		AmountMinor:   orderRecord.TotalMinor,
 		Currency:      orderRecord.Currency,

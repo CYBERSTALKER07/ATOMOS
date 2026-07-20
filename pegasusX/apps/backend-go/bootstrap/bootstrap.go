@@ -784,6 +784,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			}, true, nil
 		}
 	}
+	var driverOpenFiscal driver.OpenFiscalLookup
+	if spannerClient != nil {
+		driverOpenFiscal = func(ctx context.Context, driverID string) (driver.OpenFiscalSnapshot, error) {
+			snap, err := order.CountOpenFiscalForDriver(ctx, spannerClient, driverID)
+			if err != nil {
+				return driver.OpenFiscalSnapshot{}, err
+			}
+			return driver.OpenFiscalSnapshot{
+				Count:    snap.Count,
+				OrderIDs: snap.OrderIDs,
+				Frozen:   snap.Frozen,
+			}, nil
+		}
+	}
+	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
+	orderSvc.SetFiscalProvider(order.ProviderFromEnv())
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:               driverRepo,
 		Cache:              cacheClient,
@@ -795,6 +811,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		RouteGeometry:      driverRouteGeometry,
 		Depart:             driverDepart,
 		ReturnComplete:     driverReturnComplete,
+		OpenFiscal:         driverOpenFiscal,
 		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
 			tokens := make(map[string]string, len(orderIDs))
 			for _, orderID := range orderIDs {

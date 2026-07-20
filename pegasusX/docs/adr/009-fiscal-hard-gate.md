@@ -20,7 +20,7 @@
 | 1 | Credit delivery fiscal | **Only when money is received** | `DELIVERED_ON_CREDIT` does **not** fiscalize at the door. Fiscal starts on settlement capture (cash/card clear). |
 | 2 | OFD aggregation | **Both: per-supplier receipt + order total** | Today: 1 order = 1 retailer = 1 supplier → one supplier receipt **is** the order total. Model receipts **per `SupplierId`**; order-level `FiscalStatus` / amount is the rollup (sum of successful supplier legs). Future multi-supplier: N supplier OFD docs + one order total view — no rework of PK. |
 | 3 | Force-complete actors | **`ADMIN` + `WAREHOUSE_ADMIN`** | `reason_code` + actor audit required. Driver never force-completes. |
-| 4 | OFD provider | **Fake for now** | Interface + fake provider for SSMR/local. Real `my.soliq.uz` / OFD adapter later behind `FISCAL_PROVIDER` flag. |
+| 4 | OFD provider | **Fake default; MY_SOLIQ optional** | `FISCAL_PROVIDER=FAKE` (SSMR). `FISCAL_PROVIDER=MY_SOLIQ` + `FISCAL_MY_SOLIQ_BASE_URL` / `API_KEY` / `TIN` for sandbox/production HTTP adapter (`order/fiscal_provider.go`). |
 
 ### Non-decisions (explicit)
 

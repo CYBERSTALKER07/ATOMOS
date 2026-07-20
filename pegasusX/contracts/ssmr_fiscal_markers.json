@@ -1,0 +1,11 @@
+{
+  "description": "ADR-009 fiscal hard-gate — dedicated SSMR markers (make test-ssmr-fiscal).",
+  "required": [
+    "PX_E2E_FISCAL_CASH_OK",
+    "PX_E2E_FISCAL_FAIL_RETRY_OK",
+    "PX_E2E_FISCAL_FORCE_OK",
+    "PX_E2E_FISCAL_SHORTFALL_OK",
+    "PX_E2E_FISCAL_SHIFT_FREEZE_OK",
+    "PX_E2E_FISCAL_ALL_OK"
+  ]
+}

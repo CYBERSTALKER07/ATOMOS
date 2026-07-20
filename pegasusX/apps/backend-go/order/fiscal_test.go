@@ -17,12 +17,36 @@ func TestFakeFiscalProviderFailHook(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected fake fail for fiscal-fail order id")
 	}
-	res, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "ord-ok", AttemptID: "a2"})
+	_, err = p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "ord-ok", AttemptID: "a3", AmountMinor: FiscalFakeFailAmountMinor})
+	if err == nil {
+		t.Fatal("expected fake fail for amount_minor=13 SSMR hook")
+	}
+	res, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "ord-ok", AttemptID: "a2", AmountMinor: 1500})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if res.FiscalReceiptID == "" || res.FiscalQR == "" {
 		t.Fatalf("expected receipt id and qr, got %+v", res)
+	}
+}
+
+func TestProviderFromEnvDefaultsFake(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "")
+	p := ProviderFromEnv()
+	if _, ok := p.(FakeFiscalProvider); !ok {
+		t.Fatalf("want FakeFiscalProvider, got %T", p)
+	}
+}
+
+func TestMySoliqProviderRequiresEnv(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "MY_SOLIQ")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "")
+	p := ProviderFromEnv()
+	_, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "o", AttemptID: "a", AmountMinor: 100})
+	if err == nil {
+		t.Fatal("misconfigured MY_SOLIQ must hard-fail CreateReceipt")
 	}
 }
 

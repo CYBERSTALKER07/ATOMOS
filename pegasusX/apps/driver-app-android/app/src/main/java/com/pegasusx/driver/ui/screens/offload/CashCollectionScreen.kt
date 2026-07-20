@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -196,14 +199,48 @@ fun CashCollectionScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = state.amount.formattedAmount(),
+                    text = "Expected ${state.amount.formattedAmount()}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = lab.fgTertiary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = state.amountReceivedMinor.formattedAmount(),
                     fontSize = 38.sp,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.amountReceivedInput,
+                    onValueChange = { viewModel.onAmountReceivedChanged(it) },
+                    label = { Text("Amount received (tiyin)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isCompleting,
+                )
+                if (state.shortfallMinor > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Shortfall ${state.shortfallMinor.formattedAmount()} — fiscal uses received amount",
+                        fontSize = 13.sp,
+                        color = StatusRed,
+                        textAlign = TextAlign.Center,
+                    )
+                } else if (state.overageMinor > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Overage ${state.overageMinor.formattedAmount()} recorded",
+                        fontSize = 13.sp,
+                        color = lab.fgTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Collect the amount above from the retailer before completing delivery.",
+                    text = "Enter cash actually taken. Fiscal receipt uses this amount (not order total if different).",
                     fontSize = 14.sp,
                     color = lab.fgTertiary,
                     textAlign = TextAlign.Center
@@ -273,9 +310,15 @@ fun CashCollectionScreen(
             onDismissRequest = { viewModel.dismissConfirmDialog() },
             title = { Text("Confirm cash collection?") },
             text = {
+                val varianceNote = when {
+                    state.shortfallMinor > 0 -> " Shortfall ${state.shortfallMinor.formattedAmount()} will be recorded."
+                    state.overageMinor > 0 -> " Overage ${state.overageMinor.formattedAmount()} will be recorded."
+                    else -> ""
+                }
                 Text(
-                    "You received ${state.amount.formattedAmount()} from the retailer. " +
-                        "Payment will be captured and a fiscal receipt requested."
+                    "You received ${state.amountReceivedMinor.formattedAmount()} from the retailer " +
+                        "(expected ${state.amount.formattedAmount()}).$varianceNote " +
+                        "Payment will be captured and a fiscal receipt requested for the received amount."
                 )
             },
             confirmButton = {

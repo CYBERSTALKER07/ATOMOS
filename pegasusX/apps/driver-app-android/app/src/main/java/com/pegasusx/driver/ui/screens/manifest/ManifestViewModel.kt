@@ -72,6 +72,9 @@ data class ManifestUiState(
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
     val pendingCollections: List<PendingCollection> = emptyList(),
+    /** Phase 6: open fiscal soft-freezes cash bag / return-complete. */
+    val openFiscalCount: Long = 0,
+    val cashBagFrozen: Boolean = false,
     val routeGeometry: List<RouteCoordinate> = emptyList(),
     val routeSteps: List<RouteStep> = emptyList(),
     val navigationCue: NavigationCue? = null,
@@ -360,18 +363,63 @@ class ManifestViewModel @Inject constructor(
         }
     }
 
+    fun refreshOpenFiscal() {
+        viewModelScope.launch {
+            try {
+                val snap = api.getOpenFiscal()
+                _state.update {
+                    it.copy(
+                        openFiscalCount = snap.openFiscalCount,
+                        cashBagFrozen = snap.cashBagFrozen || snap.openFiscalCount > 0,
+                    )
+                }
+            } catch (_: Exception) {
+                // non-fatal — return-complete still enforces server-side
+            }
+        }
+    }
+
     fun returnComplete() {
         val truckId = TokenHolder.vehicleId ?: return
         viewModelScope.launch {
             try {
+                // Soft-freeze: surface open fiscal before hitting the server.
+                try {
+                    val snap = api.getOpenFiscal()
+                    if (snap.cashBagFrozen || snap.openFiscalCount > 0) {
+                        _state.update {
+                            it.copy(
+                                openFiscalCount = snap.openFiscalCount,
+                                cashBagFrozen = true,
+                                error = "Cash bag frozen: ${snap.openFiscalCount} order(s) still fiscalizing. Retry fiscal or call supervisor.",
+                            )
+                        }
+                        return@launch
+                    }
+                } catch (_: Exception) { /* proceed; server is source of truth */ }
+
                 api.returnComplete(
                     ReturnCompleteRequest(truckId = truckId),
                     DriverIdempotencyKeys.returnComplete(truckId),
                 )
-                _state.value = _state.value.copy(truckStatus = "AVAILABLE", isReturning = false)
+                _state.value = _state.value.copy(
+                    truckStatus = "AVAILABLE",
+                    isReturning = false,
+                    cashBagFrozen = false,
+                    openFiscalCount = 0,
+                )
                 loadManifest(silent = true)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
+                val msg = e.message.orEmpty()
+                val frozen = msg.contains("open_fiscal_block", ignoreCase = true)
+                _state.value = _state.value.copy(
+                    error = if (frozen) {
+                        "Cash bag frozen: clear fiscalizing orders before ending shift."
+                    } else {
+                        e.message
+                    },
+                    cashBagFrozen = frozen || _state.value.cashBagFrozen,
+                )
             }
         }
     }

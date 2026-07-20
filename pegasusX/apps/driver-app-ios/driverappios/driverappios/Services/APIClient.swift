@@ -331,6 +331,22 @@ final class APIClient: @unchecked Sendable {
         return try await get("v1/fleet/manifest")
     }
 
+    struct OpenFiscalResponse: Decodable {
+        let openFiscalCount: Int64
+        let orderIds: [String]?
+        let cashBagFrozen: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case openFiscalCount = "open_fiscal_count"
+            case orderIds = "order_ids"
+            case cashBagFrozen = "cash_bag_frozen"
+        }
+    }
+
+    func getOpenFiscal() async throws -> OpenFiscalResponse {
+        try await get("v1/driver/open-fiscal")
+    }
+
     func returnComplete(truckId: String) async throws -> [String: String] {
         let body = ReturnCompleteRequest(truckId: truckId)
         return try await post(

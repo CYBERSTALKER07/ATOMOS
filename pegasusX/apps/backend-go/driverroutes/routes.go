@@ -65,6 +65,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/driver/ops/rescue/request", d.Service.HandleRescueRequest)
 		rr.Post("/v1/driver/ops/rescue/respond", d.Service.HandleRescueRespond)
 		rr.Get("/v1/driver/pending-collections", d.Service.HandlePendingCollections)
+		rr.Get("/v1/driver/open-fiscal", d.Service.HandleOpenFiscal)
 		rr.Get("/v1/driver/manifest-gate", d.Service.HandleManifestGate)
 		rr.Get("/v1/driver/manifest", d.Service.HandleManifest)
 		rr.Get("/v1/fleet/manifest", d.Service.HandleManifest)

@@ -224,6 +224,7 @@ func completeLifecycleDelivery(
 		"order_id":  orderID,
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
+		// amount_received omitted → backend defaults to order total (compat)
 	})
 	collectReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
 	if err != nil {
@@ -237,9 +238,14 @@ func completeLifecycleDelivery(
 		return fmt.Errorf("collect cash request: %w", err)
 	}
 	defer collectResp.Body.Close()
+	body, _ := io.ReadAll(collectResp.Body)
 	if collectResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(collectResp.Body)
 		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
 	}
+	// ADR-009: collect enters FISCALIZING; wait for worker SUCCESS → COMPLETED.
+	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); err != nil {
+		return fmt.Errorf("wait fiscal COMPLETED: %w", err)
+	}
+	fmt.Println("PX_E2E_FISCAL_CASH_OK")
 	return nil
 }

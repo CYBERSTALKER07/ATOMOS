@@ -243,6 +243,13 @@ data class DepartRequest(
 )
 
 @Serializable
+data class OpenFiscalResponse(
+    @SerialName("open_fiscal_count") val openFiscalCount: Long = 0,
+    @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    @SerialName("cash_bag_frozen") val cashBagFrozen: Boolean = false,
+)
+
+@Serializable
 data class ReturnCompleteRequest(
     @SerialName("truck_id") val truckId: String
 )

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -100,6 +101,7 @@ type Service struct {
 	earnings       EarningsLookup
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
+	openFiscal     OpenFiscalLookup
 	routeGeometry  RouteGeometryLookup
 	profileLookup  DriverProfileLookup
 	availReader    AvailabilityReader
@@ -138,6 +140,7 @@ type ServiceConfig struct {
 	Earnings                     EarningsLookup
 	Depart                       DepartFn
 	ReturnComplete               ReturnCompleteFn
+	OpenFiscal                   OpenFiscalLookup
 	RouteGeometry                RouteGeometryLookup
 	ProfileLookup                DriverProfileLookup
 	AvailabilityReader           AvailabilityReader
@@ -195,6 +198,19 @@ type ReturnCompleteResult struct {
 // the driver as off-shift atomically. ok=false means no DISPATCHED manifest
 // found (idempotent no-op for double-tap return).
 type ReturnCompleteFn func(ctx context.Context, driverID string) (ReturnCompleteResult, bool, error)
+
+// OpenFiscalSnapshot is the Phase 6 soft-freeze signal (cash bag / shift-end).
+type OpenFiscalSnapshot struct {
+	Count    int64    `json:"open_fiscal_count"`
+	OrderIDs []string `json:"order_ids,omitempty"`
+	Frozen   bool     `json:"cash_bag_frozen"`
+}
+
+// OpenFiscalLookup counts orders still in FISCALIZING / FISCAL_FAILED for a driver.
+type OpenFiscalLookup func(ctx context.Context, driverID string) (OpenFiscalSnapshot, error)
+
+// ErrOpenFiscalBlock is returned when shift-end is blocked by open fiscal attempts.
+var ErrOpenFiscalBlock = errors.New("open_fiscal_block")
 
 // DailyEarning is one day of driver delivery volume.
 type DailyEarning struct {
@@ -270,6 +286,7 @@ func NewService(c ServiceConfig) *Service {
 		earnings:           c.Earnings,
 		depart:             c.Depart,
 		returnComplete:     c.ReturnComplete,
+		openFiscal:         c.OpenFiscal,
 		routeGeometry:      c.RouteGeometry,
 		profileLookup:      c.ProfileLookup,
 		availReader:        c.AvailabilityReader,

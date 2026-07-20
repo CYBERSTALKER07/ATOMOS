@@ -309,6 +309,7 @@ type Service struct {
 	gatewayPolicy      GatewayPolicyReader
 	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
 	previewRateLimiter RateLimiter
+	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
 }
 
 // ServiceConfig is the constructor input.
