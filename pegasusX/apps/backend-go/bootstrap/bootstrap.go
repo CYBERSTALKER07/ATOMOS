@@ -68,11 +68,13 @@ type Config struct {
 	SpannerInstance     string
 	SpannerDatabase     string
 
-	RedisAddr       string
-	RedisPassword   string
-	RedisPoolSize   int
-	RedisMaxRetries int
-	RedisTLSEnabled bool
+	RedisAddr         string
+	RedisPassword     string
+	RedisPoolSize     int
+	RedisMaxRetries   int
+	RedisTLSEnabled   bool
+	RedisCACertPEM    string // Memorystore server CA PEM (optional)
+	RedisTLSInsecure  bool   // skip TLS verify (staging only; prefer RedisCACertPEM)
 
 	KafkaBrokers            string
 	KafkaTopicMain          string
@@ -207,6 +209,8 @@ func LoadConfig() (*Config, error) {
 		RedisPoolSize:                   envInt("REDIS_POOL_SIZE", 50),
 		RedisMaxRetries:                 envInt("REDIS_MAX_RETRIES", 3),
 		RedisTLSEnabled:                 envBool("REDIS_TLS_ENABLED", false),
+		RedisCACertPEM:                  envOr("REDIS_CA_CERT", ""),
+		RedisTLSInsecure:                envBool("REDIS_TLS_INSECURE", false),
 		KafkaBrokers:                    envOr("KAFKA_BROKERS", "localhost:9092"),
 		KafkaTopicMain:                  envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
 		KafkaTopicMainDLQ:               envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
@@ -299,6 +303,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PoolSize:        cfg.RedisPoolSize,
 		MaxRetries:      cfg.RedisMaxRetries,
 		TLSEnabled:      cfg.RedisTLSEnabled,
+		CACertPEM:       cfg.RedisCACertPEM,
+		TLSInsecure:     cfg.RedisTLSInsecure,
 		MinIdleConns:    10,
 		MaxIdleTime:     5 * time.Minute,
 		DialTimeout:     5 * time.Second,

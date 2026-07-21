@@ -34,7 +34,9 @@ configMapGenerator:
       - SPANNER_PROJECT=pegasus-503013
       - SPANNER_INSTANCE=pegasusx-staging-spanner
       - SPANNER_DATABASE=pegasusx-staging-db
+      - REDIS_ADDR=10.175.232.20:6378
       - REDIS_TLS_ENABLED=true
+      - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
       - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
       - KAFKA_SASL_USERNAME=staging-backend@pegasus-503013.iam.gserviceaccount.com
       - KAFKA_TOPIC_MAIN=staging.events.orders

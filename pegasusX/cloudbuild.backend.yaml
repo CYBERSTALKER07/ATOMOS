@@ -1,0 +1,24 @@
+# Cloud Build: backend-go → Artifact Registry
+# Usage:
+#   gcloud builds submit --config=cloudbuild.backend.yaml \
+#     --substitutions=_TAG=staging-abc123 \
+#     --project=pegasus-503013 .
+substitutions:
+  _TAG: staging
+  _REGION: asia-south1
+  _REPO: pegasusx-staging-images
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/backend-go:${_TAG}
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --platform=linux/amd64
+      - -f
+      - apps/backend-go/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/backend-go:${_TAG}
+      - .
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s
