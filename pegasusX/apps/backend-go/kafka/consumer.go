@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka/workerpool"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/segmentio/kafka-go"
@@ -53,6 +54,8 @@ type ConsumerDeps struct {
 	Handler     EventHandler
 	DLQWriter   DLQWriter
 	MaxAttempts int
+	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH for Managed Kafka.
+	Auth kafkautil.ClientAuth
 }
 
 type Consumer struct {
@@ -71,12 +74,19 @@ func NewConsumer(deps ConsumerDeps) *Consumer {
 	if deps.MaxAttempts <= 0 {
 		deps.MaxAttempts = 3
 	}
+	dialer, err := kafkautil.Dialer(deps.Auth)
+	if err != nil {
+		// Fall back to plaintext dialer so local tests still construct; Start will fail on auth errors.
+		dialer = &kafka.Dialer{Timeout: 15 * time.Second, DualStack: true}
+		slog.Error("kafka consumer dialer", "err", err)
+	}
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        deps.Brokers,
 		GroupID:        deps.GroupID,
 		Topic:          deps.Topic,
 		MaxBytes:       10e6,
 		CommitInterval: time.Second,
+		Dialer:         dialer,
 	})
 	return &Consumer{
 		reader: reader,

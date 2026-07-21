@@ -32,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
@@ -76,6 +77,8 @@ type Config struct {
 	KafkaBrokers            string
 	KafkaTopicMain          string
 	KafkaTopicMainDLQ       string
+	KafkaAuthMode           string // empty | GCP_MANAGED_OAUTH
+	KafkaSASLUsername       string // service account email for GCP Managed Kafka
 	WebSocketAllowedOrigins []string
 
 	JWTSecret string
@@ -207,6 +210,9 @@ func LoadConfig() (*Config, error) {
 		KafkaBrokers:                    envOr("KAFKA_BROKERS", "localhost:9092"),
 		KafkaTopicMain:                  envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
 		KafkaTopicMainDLQ:               envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
+		// GCP_MANAGED_OAUTH = Managed Service for Apache Kafka (SASL_SSL + access token).
+		KafkaAuthMode:                   envOr("KAFKA_AUTH_MODE", ""),
+		KafkaSASLUsername:               envOr("KAFKA_SASL_USERNAME", ""),
 		WebSocketAllowedOrigins:         splitAndTrimCSV(envOr("WS_ALLOWED_ORIGINS", "")),
 		JWTSecret:                       envOr("JWT_SECRET", "dev-only-change-me"),
 		JWTIssuer:                       envOr("JWT_ISSUER", "pegasusx-dev"),
@@ -384,7 +390,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 	}
 	kafkaEnabled := false
-	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{}); err != nil {
+	kafkaAuth := kafkautil.ClientAuth{Mode: cfg.KafkaAuthMode, Username: cfg.KafkaSASLUsername}
+	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{
+		Auth: kafkaAuth,
+	}); err != nil {
 		if cfg.RequireInfraAdapters {
 			return nil, fmt.Errorf("kafka publisher init failed (REQUIRE_INFRA_ADAPTERS): %w", err)
 		}
@@ -1002,7 +1011,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var orderEventConsumer *kafka.Consumer
 	var warehouseEventConsumer *kafka.Consumer
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
-		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ)
+		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
 		if err != nil {
 			if cfg.RequireInfraAdapters {
 				return nil, fmt.Errorf("init notification dlq writer: %w", err)
@@ -1042,6 +1051,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topics:    dispatcherTopics,
 				Handler:   dispatcher.HandleEvent,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
 			orderHandler := kafka.WithEventDedup(kafkaEventDedup, orderConsumerGroup, order.NewEventConsumer(orderSvc, log).HandleEvent)
 			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouseConsumerGroup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
@@ -1051,6 +1061,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topic:     events.OrderConsumerTopic(),
 				Handler:   orderHandler,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
 			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
@@ -1058,6 +1069,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topic:     events.DispatchConsumerTopic(),
 				Handler:   warehouseHandler,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {

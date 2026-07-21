@@ -4,7 +4,8 @@
 **Purpose:** Single source of truth for what is **already applied**, what to **apply next**, and what **not** to touch.  
 **Repo path:** `pegasusX/` under V.O.I.D monorepo.  
 
-**Full E2E step list:** [`CLOUD_E2E_WIRING_STEPS.md`](./CLOUD_E2E_WIRING_STEPS.md)
+**Full E2E step list:** [`CLOUD_E2E_WIRING_STEPS.md`](./CLOUD_E2E_WIRING_STEPS.md)  
+**Implementation plan (waves + deps):** [`CLOUD_E2E_IMPLEMENTATION_PLAN.md`](./CLOUD_E2E_IMPLEMENTATION_PLAN.md)
 
 ---
 

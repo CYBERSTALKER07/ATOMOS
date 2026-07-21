@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -14,6 +15,8 @@ import (
 type KafkaPublisherConfig struct {
 	BatchTimeout time.Duration
 	MaxAttempts  int
+	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH = Managed Kafka SASL_SSL.
+	Auth kafkautil.ClientAuth
 }
 
 func (c *KafkaPublisherConfig) applyDefaults() {
@@ -33,18 +36,15 @@ type KafkaPublisher struct {
 // NewKafkaPublisherFromCSV builds a Kafka publisher from a comma-separated
 // broker list.
 func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*KafkaPublisher, error) {
-	parts := strings.Split(brokersCSV, ",")
-	brokers := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			brokers = append(brokers, trimmed)
-		}
-	}
+	brokers := kafkautil.SplitBrokers(brokersCSV)
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka publisher: at least one broker required")
 	}
 	cfg.applyDefaults()
+	transport, err := kafkautil.Transport(cfg.Auth)
+	if err != nil {
+		return nil, fmt.Errorf("kafka publisher: transport: %w", err)
+	}
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(brokers...),
 		RequiredAcks: kafka.RequireAll,
@@ -52,6 +52,7 @@ func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*Kaf
 		MaxAttempts:  cfg.MaxAttempts,
 		Balancer:     &kafka.Hash{},
 		Async:        false,
+		Transport:    transport,
 	}
 	return &KafkaPublisher{writer: writer}, nil
 }
