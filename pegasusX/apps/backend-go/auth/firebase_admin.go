@@ -29,21 +29,28 @@ func initFirebaseAdminClient(ctx context.Context) (*firebaseAuth.Client, error) 
 
 	emulatorHost := strings.TrimSpace(os.Getenv("FIREBASE_AUTH_EMULATOR_HOST"))
 	credPath := strings.TrimSpace(os.Getenv("FIREBASE_CREDENTIALS_PATH"))
+	projectID := strings.TrimSpace(os.Getenv("FIREBASE_PROJECT_ID"))
+	if projectID == "" {
+		projectID = strings.TrimSpace(os.Getenv("GCLOUD_PROJECT"))
+	}
 
 	var app *firebase.App
 	var err error
 	switch {
 	case emulatorHost != "":
-		projectID := strings.TrimSpace(os.Getenv("GCLOUD_PROJECT"))
-		if projectID == "" {
-			projectID = strings.TrimSpace(os.Getenv("FIREBASE_PROJECT_ID"))
-		}
 		if projectID == "" {
 			projectID = "demo-pegasus"
 		}
 		app, err = firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID})
-	case credPath != "":
-		app, err = firebase.NewApp(ctx, nil, option.WithCredentialsFile(credPath))
+	case credPath != "" && !isStubFirebaseCreds(credPath):
+		if projectID != "" {
+			app, err = firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID}, option.WithCredentialsFile(credPath))
+		} else {
+			app, err = firebase.NewApp(ctx, nil, option.WithCredentialsFile(credPath))
+		}
+	case projectID != "":
+		// Workload Identity / ADC (preferred when org policy blocks SA keys).
+		app, err = firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID})
 	default:
 		return nil, nil
 	}
@@ -55,8 +62,17 @@ func initFirebaseAdminClient(ctx context.Context) (*firebaseAuth.Client, error) 
 		return nil, fmt.Errorf("firebase admin auth: %w", err)
 	}
 	firebaseAdminClient = client
-	slog.Info("firebase admin auth client initialized")
+	slog.Info("firebase admin auth client initialized", "project_id", projectID)
 	return firebaseAdminClient, nil
+}
+
+func isStubFirebaseCreds(path string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return true
+	}
+	s := strings.TrimSpace(string(b))
+	return s == "" || s == "{}" || s == "null"
 }
 
 // MintCustomToken generates a Firebase custom token when Admin Auth is configured.

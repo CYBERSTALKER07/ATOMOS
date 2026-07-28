@@ -1,0 +1,43 @@
+# GCE Ingress for SSMR API.
+# Static IP: reserve with
+#   gcloud compute addresses create pegasusx-ssmr-api-ip --global --project=pegasus-503013
+# DNS (after IP is assigned):
+#   api-ssmr.pegasusx.app.  A  <ADDRESS>
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pegasusx-ssmr-api
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: ssmr
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "pegasusx-ssmr-api-ip"
+    networking.gke.io/v1beta1.FrontendConfig: "pegasusx-ssmr-frontend"
+    # Google-managed cert → Active only after DNS A record points here.
+    networking.gke.io/managed-certificates: "pegasusx-ssmr-api-cert"
+spec:
+  # Self-signed secret (apply-time) serves HTTPS immediately; ManagedCertificate
+  # replaces it once DNS validates.
+  tls:
+    - hosts:
+        - api-ssmr.pegasusx.app
+      secretName: pegasusx-ssmr-api-tls
+  rules:
+    - host: api-ssmr.pegasusx.app
+      http:
+        paths:
+          - path: /v1/ws
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-go-ws
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-go
+                port:
+                  number: 80

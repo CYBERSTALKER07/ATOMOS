@@ -1,6 +1,6 @@
-# Cloud Build: backend-go → Artifact Registry
+# Cloud Build: ai-worker → Artifact Registry
 # Usage:
-#   gcloud builds submit --config=cloudbuild.backend.yaml \
+#   gcloud builds submit --config=cloudbuild.ai-worker.yaml \
 #     --substitutions=_TAG=ssmr-abc123,_REPO=pegasusx-ssmr-images \
 #     --project=pegasus-503013 .
 substitutions:
@@ -8,16 +8,16 @@ substitutions:
   _REGION: asia-south1
   _REPO: pegasusx-ssmr-images
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/backend-go:${_TAG}
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ai-worker:${_TAG}
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
       - --platform=linux/amd64
       - -f
-      - apps/backend-go/Dockerfile
+      - apps/ai-worker/Dockerfile
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/backend-go:${_TAG}
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ai-worker:${_TAG}
       - .
 options:
   logging: CLOUD_LOGGING_ONLY

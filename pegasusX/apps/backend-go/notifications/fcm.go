@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -20,14 +22,15 @@ type FCMClient struct {
 	log           *slog.Logger
 }
 
-// InitFCM boots Firebase Admin using a service account JSON path.
-func InitFCM(credentialsFilePath string, spannerClient *spanner.Client, log *slog.Logger) (*FCMClient, error) {
+// InitFCM boots Firebase Admin Messaging.
+// Prefer a service-account JSON path when present and non-empty; otherwise use
+// Application Default Credentials (Workload Identity on GKE) with projectID.
+func InitFCM(credentialsFilePath, projectID string, spannerClient *spanner.Client, log *slog.Logger) (*FCMClient, error) {
 	if log == nil {
 		log = slog.Default()
 	}
 	ctx := context.Background()
-	opt := option.WithCredentialsFile(credentialsFilePath)
-	app, err := firebase.NewApp(ctx, nil, opt)
+	app, err := newFirebaseApp(ctx, credentialsFilePath, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("fcm boot: %w", err)
 	}
@@ -35,8 +38,41 @@ func InitFCM(credentialsFilePath string, spannerClient *spanner.Client, log *slo
 	if err != nil {
 		return nil, fmt.Errorf("fcm messaging client: %w", err)
 	}
-	log.Info("FCM client online")
+	log.Info("FCM client online", "project_id", strings.TrimSpace(projectID), "mode", firebaseCredMode(credentialsFilePath))
 	return &FCMClient{client: client, spannerClient: spannerClient, log: log}, nil
+}
+
+func newFirebaseApp(ctx context.Context, credentialsFilePath, projectID string) (*firebase.App, error) {
+	path := strings.TrimSpace(credentialsFilePath)
+	pid := strings.TrimSpace(projectID)
+	if path != "" && !isStubCredentialsFile(path) {
+		if pid != "" {
+			return firebase.NewApp(ctx, &firebase.Config{ProjectID: pid}, option.WithCredentialsFile(path))
+		}
+		return firebase.NewApp(ctx, nil, option.WithCredentialsFile(path))
+	}
+	// ADC / Workload Identity path (org policies often block SA user keys).
+	if pid == "" {
+		return nil, fmt.Errorf("project ID is required when credentials file is empty (set FIREBASE_PROJECT_ID)")
+	}
+	return firebase.NewApp(ctx, &firebase.Config{ProjectID: pid})
+}
+
+func isStubCredentialsFile(path string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return true
+	}
+	s := strings.TrimSpace(string(b))
+	return s == "" || s == "{}" || s == "null"
+}
+
+func firebaseCredMode(credentialsFilePath string) string {
+	path := strings.TrimSpace(credentialsFilePath)
+	if path != "" && !isStubCredentialsFile(path) {
+		return "credentials_file"
+	}
+	return "adc"
 }
 
 // NewNoOpFCMClient returns a degraded client that skips push delivery.

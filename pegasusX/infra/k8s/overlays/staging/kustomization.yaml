@@ -48,7 +48,9 @@ configMapGenerator:
       - KAFKA_TOPIC_FREEZE_LOCKS=staging.events.freeze-locks
       - KAFKA_TOPIC_INVENTORY_IMPORT=staging.events.inventory-import
       - KAFKA_TOPIC_DUAL_WRITE=false
-      - KAFKA_TOPIC_CONSUME_DOMAIN=true
+      # Must stay false unless dual-write is true; otherwise order mutator
+      # listens on empty domain topics and fiscal stays PENDING forever.
+      - KAFKA_TOPIC_CONSUME_DOMAIN=false
       - FIREBASE_AUTH_ENABLED=false
       - OPTIMIZER_BASE_URL=http://optimizer-core:8082
 
