@@ -3,7 +3,7 @@
 **Updated:** 2026-07-28  
 **Program plan:** session plan.md (WS0–WS7)
 
-## Shipped this session (software)
+## Shipped this session (software — no external APIs)
 
 | Item | Status |
 |------|--------|
@@ -16,10 +16,12 @@
 | **CAS status transitions** OPEN→UNDER_REVIEW→RESOLVED | Done |
 | **Supplier portal claims queue** `/exceptions/claims` | Done (UI) |
 | Session amount cap on chargeback | Done |
+| **Retailer iOS file claim UI** on COMPLETED orders | Done (photo via HTTPS URL until GCS upload) |
+| **Warehouse portal claims** read-only `/claims` | Done |
 
 ## Still open for true 10/10
 
-### Vendor / Boss (WS0)
+### Vendor / Boss (WS0) — needs APIs/creds (not done here)
 - [ ] DNS A + ManagedCert Active  
 - [ ] Global Pay merchant password + refund action confirmation  
 - [ ] Webhook SUCCESS E2E  
@@ -27,13 +29,13 @@
 - [ ] Kafka RF≥3 (multi-broker)  
 - [ ] Soliq/OFD when legally required  
 
-### Software remaining
-- [ ] Retailer claims UI (iOS/Android/desktop) + photo upload GCS  
-- [ ] Driver camera → upload photo_url  
+### Software remaining (no vendor, still product work)
+- [ ] Retailer Android/desktop claims UI  
+- [ ] In-app camera → GCS signed upload (not URL paste)  
+- [ ] Driver camera → photo_url  
 - [ ] Credit collections desk UI  
-- [ ] Warehouse reverse-logistics queue linked to claims  
-- [ ] Multi-tenant IDOR battery (automated)  
-- [ ] Refund remaining-after-prior-chargebacks ledger sum  
+- [ ] Warehouse reverse-logistics auto-ticket from Kafka  
+- [ ] Full multi-tenant IDOR battery  
 - [ ] Full PX_E2E claims marker in smokecheck  
 
 ## How to use new supplier queue

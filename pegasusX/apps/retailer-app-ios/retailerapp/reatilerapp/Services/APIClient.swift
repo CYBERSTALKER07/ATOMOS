@@ -175,6 +175,37 @@ final class APIClient {
         return try await post(path: "/v1/retailer/card/confirm", body: CardConfirmRequest(cardToken: cardToken, otpCode: otpCode))
     }
     
+    // MARK: - Logistics claims (post-delivery)
+
+    func listOrderClaims(orderId: String) async throws -> [RetailerClaim] {
+        let response: RetailerClaimsListResponse = try await get(path: "/v1/orders/\(orderId)/claims")
+        return response.claims
+    }
+
+    func fileOrderClaim(
+        orderId: String,
+        claimType: String,
+        description: String,
+        lines: [FileClaimLineBody],
+        photoURL: String?
+    ) async throws -> RetailerClaim {
+        var evidences: [FileClaimEvidenceBody] = []
+        if let photoURL, !photoURL.isEmpty {
+            evidences.append(FileClaimEvidenceBody(
+                evidenceType: "PHOTO",
+                uri: photoURL,
+                mimeType: "image/jpeg"
+            ))
+        }
+        let body = FileClaimRequestBody(
+            claimType: claimType,
+            description: description,
+            lineItems: lines,
+            evidences: evidences
+        )
+        return try await post(path: "/v1/orders/\(orderId)/claims", body: body)
+    }
+
     func deactivateCard(tokenId: String) async throws {
         let _: APIResponse<String> = try await post(path: "/v1/retailer/card/deactivate", body: CardIdRequest(tokenId: tokenId))
     }

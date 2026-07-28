@@ -316,6 +316,7 @@ struct OrderDetailSheet: View {
     @State private var showCancelConfirm = false
     @State private var isCancelling = false
     @State private var cancelError = false
+    @State private var showFileClaim = false
     private let api = APIClient.shared
 
     var body: some View {
@@ -436,6 +437,25 @@ struct OrderDetailSheet: View {
                     OrderStatusHistorySection(orderId: order.id)
                         .slideIn(delay: 0.18)
 
+                    // Post-delivery claims (COMPLETED within claim window — server enforces 48h)
+                    if order.status == .completed || order.status == .deliveredOnCredit {
+                        Button { showFileClaim = true } label: {
+                            HStack(spacing: AppTheme.spacingSM) {
+                                Image(systemName: "exclamationmark.bubble")
+                                Text("Report damage or missing items")
+                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppTheme.spacingMD)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+                                    .stroke(AppTheme.separator.opacity(0.5), lineWidth: 1)
+                            )
+                        }
+                        .slideIn(delay: 0.22)
+                    }
+
                     // Cancel action — permitted for cancellable states
                     if order.status.canCancel {
                         Button { showCancelConfirm = true } label: {
@@ -494,6 +514,9 @@ struct OrderDetailSheet: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text("Could not cancel the order. Please try again.")
+            }
+            .sheet(isPresented: $showFileClaim) {
+                FileClaimView(order: order)
             }
         }
     }
