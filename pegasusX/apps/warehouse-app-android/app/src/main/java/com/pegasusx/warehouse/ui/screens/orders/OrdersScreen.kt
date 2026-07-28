@@ -21,10 +21,8 @@ import com.pegasusx.warehouse.data.model.RecommendReassignResponse
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasusx.warehouse.ui.components.OrderOpsCard
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
-import com.pegasusx.warehouse.util.orderActionFlags
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.Instant
@@ -481,77 +479,21 @@ fun OrdersScreen(
             }
         },
     ) { innerPadding ->
-        when {
-            loading && (if (hubTab == 0) orders.isEmpty() else preorders.isEmpty()) ->
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            error != null && (if (hubTab == 0) orders.isEmpty() else preorders.isEmpty()) ->
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(PegasusSpacing.lg))
-                        Button(onClick = { load() }) { Text("Retry") }
-                    }
-                }
-            hubTab == 0 && orders.isEmpty() ->
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text("No orders", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            hubTab == 1 && preorders.isEmpty() ->
-                Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text("No scheduled pre-orders", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            hubTab == 0 -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(orders, key = { it.orderId }) { order ->
-                    val flags = orderActionFlags(order.state)
-                    OrderOpsCard(
-                        retailerName = order.retailerName,
-                        orderId = order.orderId,
-                        state = order.state,
-                        amountLabel = "${fmt.format(order.totalUzs)} UZS",
-                        enabled = actingId != order.orderId,
-                        canDelay = flags.canDelay,
-                        canReject = flags.canReject,
-                        canReassign = flags.canReassign,
-                        onOpenDetail = { onOrderClick(order.orderId) },
-                        onDelay = { proposeActiveTarget = order.orderId; reasonInput = "" },
-                        onReject = { rejectTarget = order.orderId; reasonInput = "" },
-                        onReassign = { openReassignDialog(order.orderId) },
-                    )
-                }
-            }
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(preorders, key = { it.orderId }) { row ->
-                    OrderOpsCard(
-                        retailerName = row.orderId.take(12),
-                        orderId = row.orderId,
-                        state = row.status,
-                        amountLabel = row.requestedDeliveryDate?.take(10) ?: "Pre-order",
-                        meta = row.proposedDeliveryDate?.let { "Proposed: $it" },
-                        badge = "Pre-order",
-                        delayLabel = "Propose delivery",
-                        rejectLabel = "Reject",
-                        canDelay = true,
-                        canReject = true,
-                        onOpenDetail = { onOrderClick(row.orderId) },
-                        onDelay = { proposeTarget = row; reasonInput = "" },
-                        onReject = { rejectPreorderTarget = row; reasonInput = "" },
-                    )
-                }
-            }
-        }
+        OrdersList(
+            hubTab = hubTab,
+            loading = loading,
+            error = error,
+            orders = orders,
+            preorders = preorders,
+            actingId = actingId,
+            onRetry = { load() },
+            onOrderClick = onOrderClick,
+            onProposeActive = { proposeActiveTarget = it; reasonInput = "" },
+            onRejectActive = { rejectTarget = it; reasonInput = "" },
+            onReassignActive = { openReassignDialog(it) },
+            onProposePreorder = { proposeTarget = it; reasonInput = "" },
+            onRejectPreorder = { rejectPreorderTarget = it; reasonInput = "" },
+            modifier = Modifier.padding(innerPadding),
+        )
     }
 }

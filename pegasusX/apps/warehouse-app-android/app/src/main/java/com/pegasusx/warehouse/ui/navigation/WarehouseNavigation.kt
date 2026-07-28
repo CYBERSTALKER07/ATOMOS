@@ -572,7 +572,7 @@ fun WarehouseNavigation(
     }
 
     if (showShell) {
-        Column(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
             policyBanner()
             Row(Modifier.weight(1f)) {
             if (useDrawer) {

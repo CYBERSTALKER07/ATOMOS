@@ -12,30 +12,16 @@ import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconc
 import { useWarehouseWsRefresh } from '@/lib/use-warehouse-ws-refresh';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import EmptyState from '@/components/EmptyState';
 import { ListToolbar } from '@/components/ListToolbar';
 import { PageChrome } from '@/components/PageChrome';
-import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
+import { OrderActionDialog, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
-
-type OrdersTab = 'active' | 'preorders';
-
-interface OrderRow {
-  order_id: string;
-  retailer_name: string;
-  state: string;
-  total_uzs: number;
-  created_at: string;
-}
+import { OrdersList, type OrderRow, type OrdersTab } from './components/OrdersList';
 
 function isoDeliveryDate(dateInput: string): string {
   const dateOnly = dateInput.slice(0, 10);
   return `${dateOnly}T12:00:00+05:00`;
-}
-
-function showsReviewBadge(row: RetailerOrderLifecycleResponse): boolean {
-  return String(row.confirmation_status) === 'PENDING_WAREHOUSE' || row.preorder_badge === 'REVIEW_DELIVERY';
 }
 
 export default function OrdersPage() {
@@ -133,14 +119,23 @@ export default function OrdersPage() {
     reset();
   }, [filter, tab, reset]);
 
-  const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
-
   const setTab = (nextTab: OrdersTab) => {
     router.replace(nextTab === 'preorders' ? '/orders?tab=preorders' : '/orders');
   };
 
   const openDetail = (orderId: string) => {
     router.push(`/orders/${orderId}${tab === 'preorders' ? '?from=preorders' : ''}`);
+  };
+
+  const handleProposeDate = (orderId: string, isPreorder: boolean, currentDate?: string) => {
+    setDialog({ orderId, kind: 'propose' });
+    setReason('');
+    setProposedDate(currentDate ? currentDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
+  };
+
+  const handleReject = (orderId: string, isPreorder: boolean) => {
+    setDialog({ orderId, kind: isPreorder ? 'preorder-reject' : 'reject' });
+    setReason('');
   };
 
   const closeDialog = () => {
@@ -305,92 +300,26 @@ export default function OrdersPage() {
           </button>
         </div>
 
-        {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="md-skeleton h-28 rounded-xl" />
-            ))}
-          </div>
-        ) : (tab === 'preorders' ? preorders : orders).length === 0 ? (
-          <EmptyState
-            variant={filter ? 'no-results' : 'no-data'}
-            headline={tab === 'preorders' ? 'No pre-orders' : 'No orders found'}
-            body={
-              tab === 'preorders'
-                ? 'Scheduled manual pre-orders will appear here.'
-                : filter
-                  ? `No orders found with state "${filter}".`
-                  : 'There are no orders recorded in this warehouse yet.'
-            }
-          />
-        ) : (
-          <>
-            <ListToolbar
-              page={page}
-              pageCount={pageCount}
-              totalLabel={`${tab === 'preorders' ? preorders.length : orders.length} ${tab === 'preorders' ? 'pre-orders' : 'orders'}`}
-              onPrev={prev}
-              onNext={next}
-              onExport={exportCsv}
-            />
-            <div className="wh-ops-grid mt-4">
-              {tab === 'active'
-                ? activePageItems.map((order, index) => (
-                    <OrderOpsCard
-                      key={order.order_id}
-                      orderId={order.order_id}
-                      retailerName={order.retailer_name}
-                      state={order.state}
-                      amountLabel={`${fmt(order.total_uzs)} UZS`}
-                      meta={order.created_at ? new Date(order.created_at).toLocaleString() : undefined}
-                      index={index}
-                      disabled={actingId === order.order_id}
-                      detailOpenMode="single"
-                      onOpenDetail={() => openDetail(order.order_id)}
-                      onProposeDate={() => {
-                        setDialog({ orderId: order.order_id, kind: 'propose' });
-                        setReason('');
-                        setProposedDate(new Date().toISOString().slice(0, 10));
-                      }}
-                      onReject={() => {
-                        setDialog({ orderId: order.order_id, kind: 'reject' });
-                        setReason('');
-                      }}
-                    />
-                  ))
-                : preorderPageItems.map((row, index) => (
-                    <OrderOpsCard
-                      key={row.order_id}
-                      orderId={row.order_id}
-                      retailerName={row.order_source || 'Manual pre-order'}
-                      state={row.status}
-                      amountLabel={`${fmt(Math.round((row.total_minor ?? 0) / 100))} ${row.currency || 'UZS'}`}
-                      meta={row.requested_delivery_date
-                        ? `Requested ${new Date(row.requested_delivery_date).toLocaleDateString()}`
-                        : undefined}
-                      badge={showsReviewBadge(row) ? 'Review delivery' : row.preorder_badge}
-                      index={index}
-                      disabled={actingId === row.order_id}
-                      detailOpenMode="single"
-                      onOpenDetail={() => openDetail(row.order_id)}
-                      onProposeDate={() => {
-                        setDialog({ orderId: row.order_id, kind: 'propose' });
-                        setReason('');
-                        setProposedDate((row.requested_delivery_date ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10));
-                      }}
-                      onReject={() => {
-                        setDialog({ orderId: row.order_id, kind: 'preorder-reject' });
-                        setReason('');
-                      }}
-                      proposeDateLabel="Propose date"
-                      rejectLabel="Reject pre-order"
-                      canProposeDateOverride
-                      canRejectOverride
-                    />
-                  ))}
-            </div>
-          </>
-        )}
+        <ListToolbar
+          page={page}
+          pageCount={pageCount}
+          totalLabel={`${tab === 'preorders' ? preorders.length : orders.length} ${tab === 'preorders' ? 'pre-orders' : 'orders'}`}
+          onPrev={prev}
+          onNext={next}
+          onExport={exportCsv}
+        />
+        
+        <OrdersList
+          tab={tab}
+          loading={loading}
+          filter={filter}
+          activeItems={activePageItems}
+          preorderItems={preorderPageItems}
+          actingId={actingId}
+          onOpenDetail={openDetail}
+          onProposeDate={handleProposeDate}
+          onReject={handleReject}
+        />
       </PageChrome>
 
       {dialog && dialogCopy ? (
