@@ -58,7 +58,7 @@ export default function WarehouseClaimsPage() {
   return (
     <PageChrome
       title="Claims (reverse logistics)"
-      description="Open post-delivery claims. Use order id at dock when goods return; approve/reject is supplier HQ."
+      description="Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ."
       loading={loading}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -77,7 +77,7 @@ export default function WarehouseClaimsPage() {
           Refresh
         </button>
         <Link href="/returns" className="text-sm underline">
-          Returns inbound
+          Returns inbound (claim tickets)
         </Link>
         <Link href="/exceptions" className="text-sm underline">
           Exception triage

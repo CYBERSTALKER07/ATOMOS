@@ -243,6 +243,93 @@ func TestListSupplierClaims_Scoped(t *testing.T) {
 	}
 }
 
+type fakeRL struct {
+	calls int
+	last  ReverseLogisticsInput
+}
+
+func (f *fakeRL) OpenFromClaim(_ context.Context, in ReverseLogisticsInput) error {
+	f.calls++
+	f.last = in
+	return nil
+}
+
+func TestFileRetailerClaim_OpensReverseLogisticsForDamage(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	rl := &fakeRL{}
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		RL:     rl,
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "x1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeDamaged,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1, Reason: "DAMAGED"}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg", MimeType: "image/jpeg"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rl.calls != 1 {
+		t.Fatalf("rl calls=%d want 1", rl.calls)
+	}
+	if rl.last.ClaimID != c.ClaimID || rl.last.OrderID != "ord-1" {
+		t.Fatalf("rl input %+v", rl.last)
+	}
+}
+
+func TestFileRetailerClaim_WrongRetailerForbidden(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "x1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-OTHER", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != ErrForbidden {
+		t.Fatalf("got %v want forbidden", err)
+	}
+}
+
+func TestFileRetailerClaim_DamageRequiresPhoto(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "x1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeDamaged,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1, Reason: "DAMAGED"}},
+	})
+	if err != ErrEvidenceRequired {
+		t.Fatalf("got %v want evidence required", err)
+	}
+}
+
 func TestListOrderClaims_RetailerOwnership(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	repo := NewMemoryRepository()

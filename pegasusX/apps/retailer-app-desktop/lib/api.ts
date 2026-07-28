@@ -142,3 +142,123 @@ export async function setDefaultCard(tokenId: string): Promise<Response> {
     body: JSON.stringify({ token_id: tokenId }),
   });
 }
+
+// ── Logistics claims (post-delivery, 48h window) ──
+
+export type FileClaimLine = {
+  sku: string;
+  quantity: number;
+  reason: string;
+};
+
+export type FileClaimEvidence = {
+  evidence_type: string;
+  uri: string;
+  mime_type: string;
+};
+
+export type RetailerClaim = {
+  claim_id: string;
+  order_id: string;
+  claim_type: string;
+  status: string;
+  description?: string;
+  amount_minor?: number;
+  currency?: string;
+  created_at?: string;
+};
+
+export async function listOrderClaims(orderId: string): Promise<Response> {
+  return apiFetch(`/v1/orders/${encodeURIComponent(orderId)}/claims`, {
+    method: 'GET',
+  });
+}
+
+export async function fileOrderClaim(
+  orderId: string,
+  body: {
+    claim_type: string;
+    description: string;
+    line_items: FileClaimLine[];
+    evidences: FileClaimEvidence[];
+  },
+  idempotencyKey: string,
+): Promise<Response> {
+  return apiFetch(`/v1/orders/${encodeURIComponent(orderId)}/claims`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getMediaUploadTicket(
+  purpose: string,
+  orderId?: string,
+  ext = 'jpg',
+): Promise<Response> {
+  const params = new URLSearchParams({ purpose, ext });
+  if (orderId) params.set('order_id', orderId);
+  return apiFetch(`/v1/media/upload-ticket?${params.toString()}`, {
+    method: 'GET',
+  });
+}
+
+/** Upload JPEG via signed GCS PUT; returns public URL for claim evidence. */
+export async function uploadClaimPhoto(
+  file: File,
+  orderId: string,
+): Promise<string> {
+  const ticketRes = await getMediaUploadTicket('claim_evidence', orderId, 'jpg');
+  if (!ticketRes.ok) {
+    const err = await ticketRes.json().catch(() => null);
+    throw new Error(err?.error || `upload ticket failed (${ticketRes.status})`);
+  }
+  const ticket = (await ticketRes.json()) as {
+    upload_url?: string;
+    public_url?: string;
+    image_url?: string;
+    content_type?: string;
+  };
+  const uploadUrl = ticket.upload_url;
+  const publicUrl = ticket.public_url || ticket.image_url;
+  if (!uploadUrl || !publicUrl) {
+    throw new Error('upload ticket missing urls');
+  }
+  const blob = await compressImageToJpeg(file, 0.82);
+  const putRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': ticket.content_type || 'image/jpeg' },
+    body: blob,
+  });
+  if (!putRes.ok) {
+    throw new Error(`gcs upload failed (${putRes.status})`);
+  }
+  return publicUrl;
+}
+
+export function claimTypeNeedsPhoto(claimType: string): boolean {
+  return ['DAMAGED', 'CONCEALED_DAMAGE', 'TAMPER', 'TEMPERATURE'].includes(
+    claimType.toUpperCase(),
+  );
+}
+
+async function compressImageToJpeg(file: File, quality: number): Promise<Blob> {
+  if (typeof createImageBitmap === 'undefined') {
+    return file;
+  }
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    return file;
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', quality),
+  );
+  return blob ?? file;
+}

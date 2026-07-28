@@ -23,7 +23,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -49,6 +49,11 @@ func main() {
 			timeout = 2 * time.Minute
 		}
 	case "fiscal":
+		timeout = e2eTimeout()
+		if timeout < 4*time.Minute {
+			timeout = 4 * time.Minute
+		}
+	case "claims":
 		timeout = e2eTimeout()
 		if timeout < 4*time.Minute {
 			timeout = 4 * time.Minute
@@ -82,6 +87,8 @@ func main() {
 		checkErr = runShopClosedSmokeCheck(ctx, cfg)
 	case "manifest-seal":
 		checkErr = runManifestSealSmokeCheck(ctx, cfg)
+	case "claims":
+		checkErr = runClaimsE2E(ctx, cfg)
 	case "loadtokens":
 		checkErr = runLoadTokens(ctx, cfg)
 	case "planning-baseline-seed":

@@ -779,6 +779,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Log:          log,
 		Idem:         idemStore,
 	})
+	// Claim / OS&D → warehouse inbound tickets (deduped with amend-created returns).
+	claimsSvc.SetReverseLogistics(&returnsClaimsBridge{svc: returnsSvc})
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
 	var driverProfileLookup driver.DriverProfileLookup

@@ -18,6 +18,29 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+// parsePhysicalStatusFilter accepts a single status, comma list, or OPEN alias.
+func parsePhysicalStatusFilter(raw string) []string {
+	raw = strings.ToUpper(strings.TrimSpace(raw))
+	if raw == "" || raw == "OPEN" {
+		return []string{PhysicalPending, PhysicalArrived, PhysicalReceiving, PhysicalOnTruck}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	seen := map[string]bool{}
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return []string{PhysicalArrived}
+	}
+	return out
+}
+
 // InboundReturnRow is the gate queue read model.
 type InboundReturnRow struct {
 	ReturnID              string `json:"return_id"`
@@ -64,14 +87,19 @@ func (s *Service) HandleInboundList(w http.ResponseWriter, r *http.Request) {
 	driverID := strings.TrimSpace(r.URL.Query().Get("driver_id"))
 	statusFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("physical_status")))
 	if statusFilter == "" {
-		statusFilter = PhysicalArrived
+		// Dock default: arrived + claim tickets + still-receiving + pending expected.
+		statusFilter = "OPEN"
 	}
+	statusList := parsePhysicalStatusFilter(statusFilter)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	if statusFilter == PhysicalArrived {
-		_ = s.MarkArrivedForWarehouse(ctx, warehouseID)
+	for _, st := range statusList {
+		if st == PhysicalArrived {
+			_ = s.MarkArrivedForWarehouse(ctx, warehouseID)
+			break
+		}
 	}
 
 	sql := `SELECT sr.ReturnId, sr.OrderId, sr.SkuId, COALESCE(p.Name, sr.SkuId),
@@ -85,12 +113,12 @@ func (s *Service) HandleInboundList(w http.ResponseWriter, r *http.Request) {
 	        LEFT JOIN Products p ON p.ProductId = sr.SkuId AND p.SupplierId = o.SupplierId
 	        LEFT JOIN Drivers d ON d.DriverId = sr.DriverId
 	        WHERE sr.WarehouseId = @warehouse_id
-	          AND sr.PhysicalStatus = @physical_status
+	          AND sr.PhysicalStatus IN UNNEST(@physical_statuses)
 	          AND sr.Status = @fin_pending`
 	params := map[string]any{
-		"warehouse_id":    warehouseID,
-		"physical_status": statusFilter,
-		"fin_pending":     FinancialPending,
+		"warehouse_id":       warehouseID,
+		"physical_statuses":  statusList,
+		"fin_pending":        FinancialPending,
 	}
 	if manifestID != "" {
 		sql += " AND sr.ManifestId = @manifest_id"

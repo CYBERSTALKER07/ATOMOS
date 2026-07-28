@@ -6,6 +6,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 )
 
 // orderClaimsLookup adapts order.Service to claims.OrderLookup without cycles.
@@ -91,5 +92,43 @@ func (b *driverClaimsBridge) OnDriverException(ctx context.Context, o order.Orde
 		UpdatedAt:          o.UpdatedAt,
 	}
 	_, err := b.svc.CreateFromDriverException(ctx, snap, driverID, claimType, lines, photos, note)
+	return err
+}
+
+// returnsClaimsBridge adapts returns.Service to claims.ReverseLogisticsOpener.
+type returnsClaimsBridge struct {
+	svc *returns.Service
+}
+
+func (b *returnsClaimsBridge) OpenFromClaim(ctx context.Context, in claims.ReverseLogisticsInput) error {
+	if b == nil || b.svc == nil {
+		return nil
+	}
+	lines := make([]returns.TicketLine, 0, len(in.Lines))
+	for _, li := range in.Lines {
+		reason := strings.TrimSpace(li.Reason)
+		if reason == "" {
+			// Fall back to claim source type when line reason empty.
+			reason = strings.TrimSpace(in.Source)
+			if strings.EqualFold(reason, "RETAILER_CLAIM") || strings.EqualFold(reason, "CLAIM") {
+				reason = "DAMAGED"
+			}
+		}
+		lines = append(lines, returns.TicketLine{
+			SKU:      strings.TrimSpace(li.SKU),
+			Quantity: li.Quantity,
+			Reason:   reason,
+		})
+	}
+	_, err := b.svc.OpenTickets(ctx, returns.OpenTicketsInput{
+		OrderID:     in.OrderID,
+		WarehouseID: in.WarehouseID,
+		SupplierID:  in.SupplierID,
+		DriverID:    in.DriverID,
+		ClaimID:     in.ClaimID,
+		Source:      in.Source,
+		Note:        in.Note,
+		Lines:       lines,
+	})
 	return err
 }

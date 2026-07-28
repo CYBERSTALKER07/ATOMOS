@@ -32,6 +32,7 @@ import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
+import { FileClaimPanel } from "../../../components/FileClaimPanel";
 import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder, acceptDeliveryProposal, rejectDeliveryProposal } from "../../../lib/api";
 import {
   retailerCancelKey,
@@ -439,6 +440,9 @@ function OrdersPageContent() {
     !!detail &&
     (cancellableStates.has(detail.state) ||
       requestCancelStates.has(detail.state));
+  const showFileClaim =
+    !!detail &&
+    (detail.state === "COMPLETED" || detail.state === "DELIVERED_ON_CREDIT");
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const message = actionError ?? ordersError?.message;
@@ -963,6 +967,12 @@ function OrdersPageContent() {
                       </>
                     )}
                   </button>
+                </div>
+              )}
+
+              {showFileClaim && (
+                <div className="mb-10">
+                  <FileClaimPanel order={detail} />
                 </div>
               )}
 

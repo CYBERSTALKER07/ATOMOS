@@ -18,9 +18,15 @@ type InboundRow = {
   reason: string;
   physical_status: string;
   driver_name?: string;
+  driver_notes?: string;
   suggested_disposition: string;
   barcode?: string;
 };
+
+function isClaimTicket(row: InboundRow): boolean {
+  const notes = (row.driver_notes || '').toLowerCase();
+  return notes.includes('claim_id=') || notes.includes('source=retailer_claim') || notes.includes('source=claim');
+}
 
 export default function ReturnsPage() {
   const [rows, setRows] = useState<InboundRow[]>([]);
@@ -33,7 +39,8 @@ export default function ReturnsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadInbound = useCallback(async () => {
-    const res = await apiFetch('/v1/returns/inbound?physical_status=ARRIVED&limit=100');
+    // OPEN = PENDING|ON_TRUCK|ARRIVED|RECEIVING — includes claim reverse-logistics tickets.
+    const res = await apiFetch('/v1/returns/inbound?physical_status=OPEN&limit=100');
     if (!res.ok) throw new Error('load_inbound_failed');
     const data = await res.json();
     setRows(data.data ?? []);
@@ -138,7 +145,7 @@ export default function ReturnsPage() {
       <PageChrome
         icon="returns"
         title="Inbound Returns"
-        description="Scan driver-returned goods at the warehouse gate — restock or write off."
+        description="Dock queue for truck returns and claim reverse-logistics tickets — restock or write off."
         actions={
           <button type="button" onClick={() => void load()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -182,7 +189,7 @@ export default function ReturnsPage() {
         ) : list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-[var(--muted)]">
             <Icon name="returns" size={48} className="mb-3 opacity-40" />
-            <p className="text-sm">{tab === 'inbound' ? 'No trucks awaiting receive' : 'No completed receives yet'}</p>
+            <p className="text-sm">{tab === 'inbound' ? 'No inbound returns or claim tickets' : 'No completed receives yet'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -206,9 +213,19 @@ export default function ReturnsPage() {
                         <input type="checkbox" checked={selected.has(item.return_id)} onChange={() => setSelected(prev => { const n = new Set(prev); if (n.has(item.return_id)) n.delete(item.return_id); else n.add(item.return_id); return n; })} />
                       </td>
                     )}
-                    <td className="py-2.5 px-3 font-medium">{item.product_name}</td>
+                    <td className="py-2.5 px-3 font-medium">
+                      <div>{item.product_name}</div>
+                      {tab === 'inbound' && isClaimTicket(item) ? (
+                        <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                          Claim ticket
+                        </span>
+                      ) : null}
+                      <div className="text-[10px] font-mono text-[var(--muted)] mt-0.5">
+                        order {item.order_id?.slice(-8) || '—'}
+                      </div>
+                    </td>
                     <td className="py-2.5 px-3 font-mono text-xs text-[var(--muted)]">{item.barcode || '—'}</td>
-                    <td className="py-2.5 px-3 text-[var(--muted)]">{item.driver_name || '—'}</td>
+                    <td className="py-2.5 px-3 text-[var(--muted)]">{item.driver_name || (isClaimTicket(item) ? 'store return' : '—')}</td>
                     <td className="py-2.5 px-3 text-right font-mono">{item.received_qty}/{item.expected_qty}</td>
                     <td className="py-2.5 px-3">{item.reason}</td>
                     <td className="py-2.5 px-3"><span className="status-chip">{item.physical_status}</span></td>

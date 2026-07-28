@@ -44,11 +44,30 @@ type OrderLookup interface {
 	GetOrder(ctx context.Context, orderID string) (OrderSnapshot, bool, error)
 }
 
+// ReverseLogisticsOpener creates warehouse inbound tickets for damaged goods.
+// Implemented by returns.Service via bootstrap (avoids claims↔returns import cycle).
+type ReverseLogisticsOpener interface {
+	OpenFromClaim(ctx context.Context, in ReverseLogisticsInput) error
+}
+
+// ReverseLogisticsInput is the claim → dock ticket payload.
+type ReverseLogisticsInput struct {
+	OrderID     string
+	WarehouseID string
+	SupplierID  string
+	DriverID    string
+	ClaimID     string
+	Source      string
+	Note        string
+	Lines       []ClaimLine
+}
+
 // Service is the claims domain application service.
 type Service struct {
 	repo     Repository
 	orders   OrderLookup
 	settler  ChargebackSettler
+	rl       ReverseLogisticsOpener
 	now      func() time.Time
 	newID    func() string
 	log      *slog.Logger
@@ -60,6 +79,7 @@ type Config struct {
 	Repo     Repository
 	Orders   OrderLookup
 	Settler  ChargebackSettler
+	RL       ReverseLogisticsOpener
 	Now      func() time.Time
 	NewID    func() string
 	Log      *slog.Logger
@@ -86,7 +106,24 @@ func NewService(cfg Config) *Service {
 	if window <= 0 {
 		window = claimWindowFromEnv()
 	}
-	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, now: now, newID: newID, log: log, window: window}
+	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, now: now, newID: newID, log: log, window: window}
+}
+
+// SetReverseLogistics wires the warehouse inbound ticket opener (optional).
+func (s *Service) SetReverseLogistics(op ReverseLogisticsOpener) {
+	if s != nil {
+		s.rl = op
+	}
+}
+
+func (s *Service) openReverseLogistics(ctx context.Context, in ReverseLogisticsInput) {
+	if s == nil || s.rl == nil {
+		return
+	}
+	if err := s.rl.OpenFromClaim(ctx, in); err != nil {
+		s.log.WarnContext(ctx, "reverse logistics ticket open failed",
+			"err", err, "claim_id", in.ClaimID, "order_id", in.OrderID)
+	}
 }
 
 // SetSettler wires payment chargeback settlement after construction.
@@ -364,6 +401,16 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	if err != nil {
 		return Claim{}, err
 	}
+	// Best-effort dock tickets for physical reverse logistics (damage types).
+	s.openReverseLogistics(ctx, ReverseLogisticsInput{
+		OrderID:     c.OrderID,
+		WarehouseID: o.WarehouseID,
+		SupplierID:  c.SupplierID,
+		ClaimID:     c.ClaimID,
+		Source:      "RETAILER_CLAIM",
+		Note:        string(c.ClaimType),
+		Lines:       pricedLines,
+	})
 	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
 	return c, nil
 }
@@ -455,7 +502,21 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
 	})
-	return c, err
+	if err != nil {
+		return Claim{}, err
+	}
+	// Dedupe with amend-created returns when present; fill gaps for damage lines.
+	s.openReverseLogistics(ctx, ReverseLogisticsInput{
+		OrderID:     c.OrderID,
+		WarehouseID: o.WarehouseID,
+		SupplierID:  c.SupplierID,
+		DriverID:    driverID,
+		ClaimID:     c.ClaimID,
+		Source:      "DRIVER_EXCEPTION",
+		Note:        strings.TrimSpace(note),
+		Lines:       pricedLines,
+	})
+	return c, nil
 }
 
 // ApproveClaim adjudicates an OPEN/UNDER_REVIEW claim, debits supplier ledger,

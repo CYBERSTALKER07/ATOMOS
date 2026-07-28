@@ -16,8 +16,14 @@
 | **CAS status transitions** OPEN→UNDER_REVIEW→RESOLVED | Done |
 | **Supplier portal claims queue** `/exceptions/claims` | Done (UI) |
 | Session amount cap on chargeback | Done |
-| **Retailer iOS file claim UI** on COMPLETED orders | Done (photo via HTTPS URL until GCS upload) |
+| **Retailer iOS file claim UI** on COMPLETED orders | Done (+ camera/GCS upload) |
+| **Retailer Android file claim UI** | Done (+ camera/GCS upload) |
+| **Retailer desktop file claim UI** | Done (`FileClaimPanel` + upload-ticket) |
+| **Driver iOS/Android OS&D photo** | Done (exception-report + photo_url) |
+| **GCS media upload ticket** live | Done |
 | **Warehouse portal claims** read-only `/claims` | Done |
+| **Claims IDOR unit battery** | Done (expanded service tests) |
+| **ssmr-smokecheck claims** | Done (`go run ./cmd/ssmr-smokecheck claims`) |
 
 ## Still open for true 10/10
 
@@ -30,13 +36,11 @@
 - [ ] Soliq/OFD when legally required  
 
 ### Software remaining (no vendor, still product work)
-- [ ] Retailer Android/desktop claims UI  
-- [ ] In-app camera → GCS signed upload (not URL paste)  
-- [ ] Driver camera → photo_url  
 - [ ] Credit collections desk UI  
-- [ ] Warehouse reverse-logistics auto-ticket from Kafka  
-- [ ] Full multi-tenant IDOR battery  
-- [ ] Full PX_E2E claims marker in smokecheck  
+- [x] Warehouse reverse-logistics auto-ticket (claim → SupplierReturns; dock OPEN filter)  
+- [ ] (Optional) Chargeback netting on supplier payout UI  
+- [ ] (Optional) Auto-approve under threshold / store-credit  
+
 
 ## How to use new supplier queue
 1. Log into supplier portal as ADMIN with `supplier_id`  
