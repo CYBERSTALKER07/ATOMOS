@@ -35,6 +35,28 @@ func (r *inMemoryCreditRepo) GetProfile(ctx context.Context, retailerID, supplie
 	return p, ok, nil
 }
 
+func (r *inMemoryCreditRepo) ListBySupplier(_ context.Context, supplierID, status string, limit int) ([]credit.Profile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit <= 0 {
+		limit = 50
+	}
+	out := make([]credit.Profile, 0, 8)
+	for _, p := range r.byKey {
+		if p.SupplierID != supplierID {
+			continue
+		}
+		if status != "" && string(p.Status) != status {
+			continue
+		}
+		out = append(out, p)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
 func (r *inMemoryCreditRepo) UpsertProfile(ctx context.Context, p credit.Profile, emit func(outbox.TxnBuffer) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

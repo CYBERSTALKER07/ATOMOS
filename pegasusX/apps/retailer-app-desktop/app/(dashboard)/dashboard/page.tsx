@@ -17,6 +17,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
+import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { motion } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -230,6 +231,10 @@ export default function DashboardPage() {
                 )}
               </motion.div>
             )}
+
+            <div className="mb-6 max-w-xl">
+              <CreditProfileCard />
+            </div>
 
             <BentoGrid className="mb-10">
               <BentoCard

@@ -36,7 +36,7 @@
 - [ ] Soliq/OFD when legally required  
 
 ### Software remaining (no vendor, still product work)
-- [ ] Credit collections desk UI  
+- [x] Credit collections desk UI (`GET /v1/supplier/credit-profiles` + portal + retailer card)  
 - [x] Warehouse reverse-logistics auto-ticket (claim → SupplierReturns; dock OPEN filter)  
 - [ ] (Optional) Chargeback netting on supplier payout UI  
 - [ ] (Optional) Auto-approve under threshold / store-credit  

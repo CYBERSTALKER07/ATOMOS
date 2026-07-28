@@ -73,6 +73,7 @@ const NAV: NavSection[] = [
       { href: "/reconciliation", icon: "reconcile", label: "Reconciliation" },
       { href: "/payments", icon: "payment", label: "Payments" },
       { href: "/earnings", icon: "pricing", label: "Earnings" },
+      { href: "/credit/collections", icon: "treasury", label: "Credit collections" },
       { href: "/chargebacks", icon: "warning", label: "Chargebacks" },
       { href: "/ledger", icon: "orders", label: "Ledger" },
     ],

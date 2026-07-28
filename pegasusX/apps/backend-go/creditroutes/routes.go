@@ -22,6 +22,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	mount := func(gr chi.Router) {
 		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/credit-profile", d.Service.HandleGetRetailerProfile)
+		// Collections desk — supplier-scoped list (limit / freeze / freeze via PATCH).
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-profiles", d.Service.HandleListSupplierProfiles)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Patch("/v1/supplier/retailer-credit-profile", d.Service.HandleUpsertSupplierProfile)
 	}
 

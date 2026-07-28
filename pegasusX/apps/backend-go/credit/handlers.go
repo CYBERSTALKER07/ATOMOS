@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -51,6 +52,60 @@ func (s *Service) HandleGetRetailerProfile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeJSON(w, http.StatusOK, profile)
+}
+
+// HandleListSupplierProfiles serves GET /v1/supplier/credit-profiles?status=&limit=.
+// Supplier-scoped collections desk list (IDOR: claims.SupplierID only).
+func (s *Service) HandleListSupplierProfiles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+	limit := 50
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	list, err := s.ListSupplierProfiles(r.Context(), supplierID, status, limit)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "list credit profiles failed", "err", err, "supplier_id", supplierID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+	// Enrich with desk-friendly flags without schema change.
+	type deskRow struct {
+		Profile
+		UtilizationBps int64 `json:"utilization_bps"` // balance/limit * 10000
+		NeedsAttention bool  `json:"needs_attention"`
+	}
+	rows := make([]deskRow, 0, len(list))
+	for _, p := range list {
+		row := deskRow{Profile: p}
+		if p.CreditLimitMinor > 0 {
+			row.UtilizationBps = (p.CurrentBalanceMinor * 10000) / p.CreditLimitMinor
+		}
+		row.NeedsAttention = p.Status == StatusFrozen || p.Status == StatusBlacklisted ||
+			p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0 ||
+			p.RiskTier == RiskTierHigh || p.RiskTier == RiskTierBlock
+		rows = append(rows, row)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"profiles":    rows,
+		"supplier_id": supplierID,
+		"count":       len(rows),
+	})
 }
 
 // HandleUpsertSupplierProfile serves PATCH /v1/supplier/retailer-credit-profile.
