@@ -10,21 +10,7 @@ import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
-type ProfileDraft = {
-  legal_name: string;
-  contact_name: string;
-  email: string;
-  phone: string;
-};
-
-function draftFromProfile(profile: SupplierProfile): ProfileDraft {
-  return {
-    legal_name: profile.legal_name ?? "",
-    contact_name: profile.contact_name ?? "",
-    email: profile.email ?? "",
-    phone: profile.phone ?? "",
-  };
-}
+import { SupplierIdentityCard, ContactDetailsForm, draftFromProfile, type ProfileDraft } from "@/components/profile";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<SupplierProfile | null>(null);
@@ -110,100 +96,19 @@ export default function ProfilePage() {
     >
       {profile && draft ? (
         <div className="space-y-6">
-          <dl className="md-card p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md-typescale-body-medium">
-            <ReadOnlyField label="Supplier ID" value={profile.supplier_id} />
-            <ReadOnlyField label="Country" value={profile.country} />
-            <ReadOnlyField label="Currency" value={profile.currency} />
-            <ReadOnlyField label="Registered" value={profile.is_registered ? "Yes" : "No"} />
-            <ReadOnlyField label="Configured" value={profile.is_configured ? "Yes" : "No"} />
-          </dl>
+          <SupplierIdentityCard profile={profile} />
 
-          <div className="md-card p-6 space-y-4">
-            <h2 className="md-typescale-title-medium font-semibold">Edit contact details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <EditableField
-                label="Legal name"
-                value={draft.legal_name}
-                onChange={(value) => setDraft((prev) => (prev ? { ...prev, legal_name: value } : prev))}
-              />
-              <EditableField
-                label="Contact name"
-                value={draft.contact_name}
-                onChange={(value) => setDraft((prev) => (prev ? { ...prev, contact_name: value } : prev))}
-              />
-              <EditableField
-                label="Email"
-                value={draft.email}
-                type="email"
-                onChange={(value) => setDraft((prev) => (prev ? { ...prev, email: value } : prev))}
-              />
-              <EditableField
-                label="Phone"
-                value={draft.phone}
-                onChange={(value) => setDraft((prev) => (prev ? { ...prev, phone: value } : prev))}
-              />
-            </div>
-
-            {saveError ? (
-              <p className="md-typescale-body-small" style={{ color: "var(--color-md-error)" }}>
-                {saveError}
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="md-btn md-btn-filled md-typescale-label-large px-6 py-2 disabled:opacity-50"
-                disabled={!dirty || saving}
-                onClick={() => void saveProfile()}
-              >
-                {saving ? "Saving…" : "Save profile"}
-              </button>
-              <button
-                type="button"
-                className="md-btn md-btn-outlined md-typescale-label-large px-6 py-2 disabled:opacity-50"
-                disabled={!dirty || saving}
-                onClick={() => setDraft(draftFromProfile(profile))}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
+          <ContactDetailsForm
+            draft={draft}
+            setDraft={setDraft}
+            saveError={saveError}
+            saving={saving}
+            dirty={dirty}
+            onSave={() => void saveProfile()}
+            onReset={() => setDraft(draftFromProfile(profile))}
+          />
         </div>
       ) : null}
     </PageChrome>
-  );
-}
-
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="md-typescale-label-medium text-[var(--color-md-outline)]">{label}</dt>
-      <dd className="mt-1">{value || "—"}</dd>
-    </div>
-  );
-}
-
-function EditableField({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <label className="block">
-      <div className="md-typescale-label-medium text-[var(--color-md-outline)]">{label}</div>
-      <input
-        type={type}
-        className="md-input-outlined mt-1 w-full px-3 py-2"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
   );
 }

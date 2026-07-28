@@ -196,110 +196,34 @@ fun OperationsScreen(
                 }
             }
 
-            SupplierSectionTitle("Operator broadcast")
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                SUPPLIER_BROADCAST_TEMPLATES.forEach { template ->
-                    FilterChip(
-                        selected = false,
-                        onClick = {
-                            val dateLabel = templateDate.trim().ifBlank { "the selected date" }
-                            title = template.title
-                            body = template.body.replace("{date}", dateLabel)
-                            if (broadcastRoles.contains(template.defaultRole)) {
-                                broadcastRole = template.defaultRole
-                            }
-                        },
-                        label = { Text(template.title, maxLines = 1) },
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = templateDate,
-                onValueChange = { templateDate = it },
-                label = { Text("Template date (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+            OperatorBroadcast(
+                title = title,
+                body = body,
+                broadcastRole = broadcastRole,
+                templateDate = templateDate,
+                broadcasting = broadcasting,
+                onTitleChange = { title = it },
+                onBodyChange = { body = it },
+                onBroadcastRoleChange = { broadcastRole = it },
+                onTemplateDateChange = { templateDate = it },
+                onBroadcast = { sendBroadcast() },
             )
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = body,
-                onValueChange = { body = it },
-                label = { Text("Message") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-            )
-            ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
-                OutlinedTextField(
-                    value = broadcastRole,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Target role") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
-                )
-                ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
-                    broadcastRoles.forEach { role ->
-                        DropdownMenuItem(
-                            text = { Text(role) },
-                            onClick = {
-                                broadcastRole = role
-                                roleExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
-            Button(onClick = { sendBroadcast() }, enabled = !broadcasting, modifier = Modifier.fillMaxWidth()) {
-                Text(if (broadcasting) "Sending…" else "Send broadcast")
-            }
 
-            HorizontalDivider()
-            SupplierSectionTitle("Replenishment")
-            Text(
-                "Opens a warehouse supply request against your primary active warehouse.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ReplenishmentAction(
+                replenishing = replenishing,
+                onOpenReplenishmentPolicies = onOpenReplenishmentPolicies,
+                onTriggerReplenishment = { triggerReplenishment() },
             )
-            OutlinedButton(onClick = onOpenReplenishmentPolicies, modifier = Modifier.fillMaxWidth()) {
-                Text("View replenishment policies")
-            }
-            Button(onClick = { triggerReplenishment() }, enabled = !replenishing, modifier = Modifier.fillMaxWidth()) {
-                Text(if (replenishing) "Triggering…" else "Trigger replenishment")
-            }
 
-            HorizontalDivider()
-            SupplierSectionTitle("Payment bypass")
-            OutlinedTextField(
-                value = orderId,
-                onValueChange = { orderId = it },
-                label = { Text("Order ID (AWAITING_PAYMENT)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+            PaymentBypass(
+                orderId = orderId,
+                bypassReason = bypassReason,
+                bypassToken = bypassToken,
+                bypassing = bypassing,
+                onOrderIdChange = { orderId = it },
+                onBypassReasonChange = { bypassReason = it },
+                onShowConfirmChange = { showBypassConfirm = it },
             )
-            OutlinedTextField(
-                value = bypassReason,
-                onValueChange = { bypassReason = it },
-                label = { Text("Reason (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedButton(
-                onClick = { showBypassConfirm = true },
-                enabled = !bypassing && orderId.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (bypassing) "Issuing…" else "Issue bypass token")
-            }
-            bypassToken?.let { token ->
-                Text("Driver token: $token", style = MaterialTheme.typography.bodyMedium)
-            }
         }
     }
 }

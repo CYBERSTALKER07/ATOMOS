@@ -5,8 +5,8 @@ import type { Route } from "next";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierExceptionRow } from "@pegasusx/types";
-import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { ExceptionsList } from "@/components/exceptions/ExceptionsList";
 
 const api = createSupplierApi();
 
@@ -33,21 +33,7 @@ export default function ExceptionsPage() {
       empty={!loading && exceptions.length === 0}
       emptyMessage="No open exceptions. Escalations appear here when operators raise them."
     >
-      <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
-        {exceptions.map((row) => (
-          <li key={row.order_id} className="p-4 md-typescale-body-medium">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="md-chip h-6 text-xs">{row.kind}</span>
-              <span className="font-mono text-[var(--color-md-primary)]">{row.order_id}</span>
-              <StatusBadge state={row.status} />
-            </div>
-            {row.note ? <p className="mt-2 text-[var(--color-md-outline)]">{row.note}</p> : null}
-            <p className="mt-1 text-sm text-[var(--color-md-outline)]">
-              Updated {new Date(row.updated_at).toLocaleString()}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <ExceptionsList exceptions={exceptions} />
       <div className="flex flex-wrap gap-4 md-typescale-body-medium">
         <Link href={"/exceptions/claims" as Route} className="text-[var(--color-md-primary)] underline">
           Claims / chargebacks

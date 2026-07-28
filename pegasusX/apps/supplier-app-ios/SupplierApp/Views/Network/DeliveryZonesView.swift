@@ -14,23 +14,7 @@ struct DeliveryZonesView: View {
             } else if warehouses.isEmpty {
                 SupplierEmptyView(title: "No coverage", message: "No warehouse coverage configured.")
             } else {
-                ResponsiveGridContentWrapper {
-                    Section("Warehouse coverage") {
-                        ForEach(warehouses) { node in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(node.name.isEmpty ? "Unnamed warehouse" : node.name).font(.body)
-                                Text(node.address.isEmpty ? "Coordinates on file" : node.address)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    Section {
-                        Text("H3 perimeter and warehouse coverage are configured via topology.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                DeliveryZonesList(warehouses: warehouses)
             }
         }
         .background(SupplierTheme.background)

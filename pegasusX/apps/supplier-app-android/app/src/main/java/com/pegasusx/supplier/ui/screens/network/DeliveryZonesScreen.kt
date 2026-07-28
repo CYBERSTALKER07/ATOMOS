@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.network
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -70,31 +68,10 @@ fun DeliveryZonesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 body = "No warehouse coverage configured.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(warehouses, key = { it.warehouseId }) { node ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(node.name.ifEmpty { "Unnamed warehouse" }, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "%.4f, %.4f".format(node.lat, node.lng),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        }
-                    }
-                }
-                item {
-                    Text(
-                        "H3 perimeter and warehouse coverage are configured via topology.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
-            }
+            else -> DeliveryZonesList(
+                warehouses = warehouses,
+                modifier = Modifier.padding(padding)
+            )
         }
     }
 }

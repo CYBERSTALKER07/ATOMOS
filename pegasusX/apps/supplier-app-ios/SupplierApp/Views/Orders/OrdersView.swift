@@ -37,28 +37,7 @@ struct OrdersView: View {
     private var phoneContent: some View {
         VStack(spacing: 0) {
             filterTabs
-            Group {
-                if vm.loading {
-                    SupplierLoadingView(
-                        title: "Loading orders",
-                        message: "Fetching your supplier order queue."
-                    )
-                } else if let error = vm.error {
-                    SupplierErrorView(message: error) { Task { await vm.load() } }
-                } else if vm.orders.isEmpty {
-                    SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
-                } else {
-                    List(vm.orders) { order in
-                        NavigationLink {
-                            OrderDetailPanel(order: order, vm: vm)
-                        } label: {
-                            OrderRow(order: order)
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                }
-            }
-            .refreshable { await vm.load(silent: true) }
+            OrdersList(vm: vm)
         }
     }
 
@@ -66,7 +45,7 @@ struct OrdersView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 filterTabs
-                ordersList
+                OrdersList(vm: vm)
             }
             .navigationTitle("Orders")
             .toolbar { ordersToolbar }
@@ -88,28 +67,6 @@ struct OrdersView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         .padding(.vertical, SupplierTheme.spacingSM)
-    }
-
-    private var ordersList: some View {
-        Group {
-            if vm.loading {
-                SupplierLoadingView(
-                    title: "Loading orders",
-                    message: "Fetching your supplier order queue."
-                )
-            } else if let error = vm.error {
-                SupplierErrorView(message: error) { Task { await vm.load() } }
-            } else if vm.orders.isEmpty {
-                SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
-            } else {
-                List(vm.orders, selection: $vm.selection) { order in
-                    OrderRow(order: order)
-                        .tag(order)
-                }
-                .listStyle(.sidebar)
-            }
-        }
-        .refreshable { await vm.load(silent: true) }
     }
 
     @ToolbarContentBuilder

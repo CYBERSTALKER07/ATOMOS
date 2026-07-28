@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.network
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -15,7 +13,6 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
-import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,64 +68,10 @@ fun SupplyLanesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 body = "No active warehouse lanes. Configure nodes on topology.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(lanes, key = { it.laneId }) { lane ->
-                    LaneCard(lane)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LaneCard(lane: SupplierSupplyLaneRow) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(lane.name.ifEmpty { lane.warehouseId }, style = MaterialTheme.typography.titleMedium)
-                Text("${lane.h3Cells} cells", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            }
-            LaneMetric("Active drivers", lane.drivers.toString())
-            LaneMetric("Orders today", lane.ordersToday.toString())
-            LaneMetric("Capacity limit", lane.capacity.toString())
-            val tint = when {
-                lane.utilizationPct > 85 -> MaterialTheme.colorScheme.error
-                lane.utilizationPct > 75 -> MaterialTheme.colorScheme.tertiary
-                else -> MaterialTheme.colorScheme.primary
-            }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Lane utilization", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                Text("%.0f%%".format(lane.utilizationPct), style = MaterialTheme.typography.bodySmall, color = tint)
-            }
-            LinearProgressIndicator(
-                progress = { (min(100.0, maxOf(0.0, lane.utilizationPct)) / 100.0).toFloat() },
-                modifier = Modifier.fillMaxWidth(),
-                color = tint,
+            else -> SupplyLanesList(
+                lanes = lanes,
+                modifier = Modifier.padding(padding)
             )
         }
-    }
-}
-
-@Composable
-private fun LaneMetric(label: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
-        Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }

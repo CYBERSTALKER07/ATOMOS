@@ -70,24 +70,7 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 body = "Operational exceptions will appear here.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            ) {
-                items(rows, key = { it.orderId + it.kind }) { row ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(row.orderId, style = MaterialTheme.typography.titleMedium)
-                            Text("${row.kind} · ${row.status}", style = MaterialTheme.typography.bodyMedium)
-                            row.note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                            row.manifestId?.let {
-                                Text("Manifest $it", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
+            else -> Box(Modifier.padding(padding)) { ExceptionsList(rows) }
         }
     }
 }

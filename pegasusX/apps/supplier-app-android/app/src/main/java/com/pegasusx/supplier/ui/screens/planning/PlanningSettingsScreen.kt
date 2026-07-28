@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -96,41 +95,22 @@ fun PlanningSettingsScreen(
                     )
                 }
                 item {
-                    if ((data?.builtinTemplates?.size ?: 0) > 0) {
-                        var expanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                            OutlinedTextField(
-                                value = templateId.ifBlank { "Custom" },
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Template") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            )
-                            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("Custom") },
-                                    onClick = { templateId = ""; expanded = false },
-                                )
-                                data?.builtinTemplates?.forEach { template ->
-                                    DropdownMenuItem(
-                                        text = { Text(template.name) },
-                                        onClick = { templateId = template.id; expanded = false },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name (optional)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = startDate, onValueChange = { startDate = it }, label = { Text("Start (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = endDate, onValueChange = { endDate = it }, label = { Text("End (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
-                    formError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                    Button(
-                        enabled = !saving,
-                        onClick = {
+                    CreateOverrideForm(
+                        data = data,
+                        templateId = templateId,
+                        name = name,
+                        startDate = startDate,
+                        endDate = endDate,
+                        formError = formError,
+                        saving = saving,
+                        onTemplateIdChange = { templateId = it },
+                        onNameChange = { name = it },
+                        onStartDateChange = { startDate = it },
+                        onEndDateChange = { endDate = it },
+                        onSubmit = {
                             if (startDate.isBlank() || endDate.isBlank()) {
                                 formError = "Start and end dates are required"
-                                return@Button
+                                return@CreateOverrideForm
                             }
                             scope.launch {
                                 saving = true
@@ -163,28 +143,12 @@ fun PlanningSettingsScreen(
                                 saving = false
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (saving) "Saving…" else "Create override")
-                    }
+                    )
                 }
                 item { SupplierSectionTitle("Active overrides") }
                 val overrides = data?.overrides.orEmpty()
-                if (overrides.isEmpty()) {
-                    item {
-                        Text(
-                            "No custom seasonal overrides yet.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    items(overrides, key = SeasonalOverrideRow::overrideId) { row ->
-                        SupplierOpsListCard(
-                            headline = row.name?.ifBlank { row.templateId } ?: row.templateId,
-                            supporting = "${row.startDate} → ${row.endDate} · ${if (row.isActive) "Active" else "Inactive"}",
-                        )
-                    }
+                item {
+                    SeasonalOverridesList(overrides = overrides)
                 }
             }
         }
