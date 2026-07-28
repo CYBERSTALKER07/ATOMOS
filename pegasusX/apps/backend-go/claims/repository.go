@@ -16,8 +16,12 @@ import (
 type Repository interface {
 	CreateClaim(ctx context.Context, c Claim, emit func(outbox.TxnBuffer) error) error
 	UpdateClaim(ctx context.Context, c Claim, emit func(outbox.TxnBuffer) error) error
+	// TransitionStatus CAS-updates Status only when current status is in fromStatuses.
+	// Returns ErrInvalidClaimState when no row matched.
+	TransitionStatus(ctx context.Context, claimID string, fromStatuses []Status, to Claim, emit func(outbox.TxnBuffer) error) error
 	GetClaim(ctx context.Context, claimID string) (Claim, bool, error)
 	ListByOrder(ctx context.Context, orderID string) ([]Claim, error)
+	ListBySupplier(ctx context.Context, supplierID string, status Status, limit int) ([]Claim, error)
 }
 
 // SpannerRepository is the production store.
@@ -157,6 +161,72 @@ func (r *SpannerRepository) UpdateClaim(ctx context.Context, c Claim, emit func(
 	return err
 }
 
+// TransitionStatus performs a status CAS then writes resolution fields + outbox.
+func (r *SpannerRepository) TransitionStatus(ctx context.Context, claimID string, fromStatuses []Status, to Claim, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("claims: nil spanner client")
+	}
+	claimID = strings.TrimSpace(claimID)
+	if claimID == "" || len(fromStatuses) == 0 {
+		return ErrInvalidClaimState
+	}
+	fromStrs := make([]string, 0, len(fromStatuses))
+	for _, st := range fromStatuses {
+		fromStrs = append(fromStrs, string(st))
+	}
+	lineJSON, err := json.Marshal(to.LineItems)
+	if err != nil {
+		return fmt.Errorf("marshal line items: %w", err)
+	}
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Claims", spanner.Key{claimID}, []string{"Status"})
+		if err != nil {
+			if err == spanner.ErrRowNotFound || strings.Contains(err.Error(), "not found") {
+				return ErrClaimNotFound
+			}
+			return err
+		}
+		var cur string
+		if err := row.Columns(&cur); err != nil {
+			return err
+		}
+		okFrom := false
+		for _, st := range fromStrs {
+			if cur == st {
+				okFrom = true
+				break
+			}
+		}
+		if !okFrom {
+			return fmt.Errorf("%w: status %s", ErrInvalidClaimState, cur)
+		}
+		update := map[string]any{
+			"ClaimId":        claimID,
+			"Status":         string(to.Status),
+			"AmountMinor":    to.AmountMinor,
+			"LineItemsJSON":  lineJSON,
+			"ResolutionNote": nullableStr(to.ResolutionNote),
+			"ResolvedBy":     nullableStr(to.ResolvedBy),
+			"UpdatedAt":      spanner.CommitTimestamp,
+		}
+		if to.ResolvedAt != nil {
+			update["ResolvedAt"] = to.ResolvedAt.UTC()
+		}
+		muts := []*spanner.Mutation{spanner.UpdateMap("Claims", update)}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			for _, ev := range buf.events {
+				muts = append(muts, outboxMutation(ev))
+			}
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
 // GetClaim loads one claim with evidences.
 func (r *SpannerRepository) GetClaim(ctx context.Context, claimID string) (Claim, bool, error) {
 	if r == nil || r.client == nil {
@@ -191,10 +261,7 @@ func (r *SpannerRepository) GetClaim(ctx context.Context, claimID string) (Claim
 
 // ListByOrder returns claims for an order newest first.
 func (r *SpannerRepository) ListByOrder(ctx context.Context, orderID string) ([]Claim, error) {
-	if r == nil || r.client == nil {
-		return nil, fmt.Errorf("claims: nil spanner client")
-	}
-	stmt := spanner.Statement{
+	return r.queryClaims(ctx, spanner.Statement{
 		SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
 			ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
 			ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
@@ -203,6 +270,45 @@ func (r *SpannerRepository) ListByOrder(ctx context.Context, orderID string) ([]
 			ORDER BY CreatedAt DESC
 			LIMIT 50`,
 		Params: map[string]any{"oid": strings.TrimSpace(orderID)},
+	})
+}
+
+// ListBySupplier returns claims for a supplier, optional status filter.
+func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID string, status Status, limit int) ([]Claim, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return nil, nil
+	}
+	if status != "" && status.Valid() {
+		return r.queryClaims(ctx, spanner.Statement{
+			SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
+				ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
+				ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
+				FROM Claims@{FORCE_INDEX=Idx_Claims_BySupplierStatus}
+				WHERE SupplierId = @sid AND Status = @st
+				ORDER BY CreatedAt DESC
+				LIMIT @lim`,
+			Params: map[string]any{"sid": supplierID, "st": string(status), "lim": int64(limit)},
+		})
+	}
+	return r.queryClaims(ctx, spanner.Statement{
+		SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
+			ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
+			ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
+			FROM Claims@{FORCE_INDEX=Idx_Claims_BySupplierStatus}
+			WHERE SupplierId = @sid
+			ORDER BY CreatedAt DESC
+			LIMIT @lim`,
+		Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
+	})
+}
+
+func (r *SpannerRepository) queryClaims(ctx context.Context, stmt spanner.Statement) ([]Claim, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("claims: nil spanner client")
 	}
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -380,4 +486,54 @@ func (m *MemoryRepository) UpdateClaim(_ context.Context, c Claim, emit func(out
 	}
 	m.byID[c.ClaimID] = c
 	return nil
+}
+
+// TransitionStatus CAS for memory repo.
+func (m *MemoryRepository) TransitionStatus(_ context.Context, claimID string, fromStatuses []Status, to Claim, emit func(outbox.TxnBuffer) error) error {
+	if m.byID == nil {
+		return ErrClaimNotFound
+	}
+	cur, ok := m.byID[strings.TrimSpace(claimID)]
+	if !ok {
+		return ErrClaimNotFound
+	}
+	okFrom := false
+	for _, st := range fromStatuses {
+		if cur.Status == st {
+			okFrom = true
+			break
+		}
+	}
+	if !okFrom {
+		return fmt.Errorf("%w: status %s", ErrInvalidClaimState, cur.Status)
+	}
+	if emit != nil {
+		buf := &spannerTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+	}
+	m.byID[to.ClaimID] = to
+	return nil
+}
+
+// ListBySupplier filters memory claims.
+func (m *MemoryRepository) ListBySupplier(_ context.Context, supplierID string, status Status, limit int) ([]Claim, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var out []Claim
+	for _, c := range m.byID {
+		if c.SupplierID != supplierID {
+			continue
+		}
+		if status != "" && c.Status != status {
+			continue
+		}
+		out = append(out, c)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
 }

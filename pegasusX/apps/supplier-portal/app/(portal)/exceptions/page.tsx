@@ -49,6 +49,9 @@ export default function ExceptionsPage() {
         ))}
       </ul>
       <div className="flex flex-wrap gap-4 md-typescale-body-medium">
+        <Link href={"/exceptions/claims" as Route} className="text-[var(--color-md-primary)] underline">
+          Claims / chargebacks
+        </Link>
         <Link href={"/exceptions/shop-closed" as Route} className="text-[var(--color-md-primary)] underline">
           Shop closed queue
         </Link>

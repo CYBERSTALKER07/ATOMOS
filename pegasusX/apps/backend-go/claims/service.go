@@ -120,10 +120,60 @@ func (s *Service) ListOrderClaims(ctx context.Context, actor auth.Claims, orderI
 		if strings.TrimSpace(o.RetailerID) != strings.TrimSpace(actor.Subject) {
 			return nil, ErrForbidden
 		}
-	} else if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+	} else if actor.Role == auth.RoleAdmin {
+		// Supplier portal admin: only claims for their supplier on this order.
+		if sid := strings.TrimSpace(actor.SupplierID); sid != "" {
+			list, err := s.repo.ListByOrder(ctx, orderID)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]Claim, 0, len(list))
+			for _, c := range list {
+				if c.SupplierID == sid {
+					out = append(out, c)
+				}
+			}
+			return out, nil
+		}
+	} else if actor.Role != auth.RoleWarehouseAdmin {
 		return nil, ErrForbidden
 	}
 	return s.repo.ListByOrder(ctx, orderID)
+}
+
+// ListSupplierClaims is the supplier HQ adjudication queue.
+func (s *Service) ListSupplierClaims(ctx context.Context, actor auth.Claims, status Status, limit int) ([]Claim, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("claims service unavailable")
+	}
+	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+		return nil, ErrForbidden
+	}
+	supplierID := strings.TrimSpace(actor.SupplierID)
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(ctx); ok {
+			supplierID = sid
+		}
+	}
+	if supplierID == "" {
+		return nil, ErrForbidden
+	}
+	return s.repo.ListBySupplier(ctx, supplierID, status, limit)
+}
+
+func actorMaySettleClaim(actor auth.Claims, c Claim) bool {
+	if actor.Role == auth.RoleWarehouseAdmin {
+		return true
+	}
+	if actor.Role != auth.RoleAdmin {
+		return false
+	}
+	// Supplier portal admin must own the claim's supplier.
+	sid := strings.TrimSpace(actor.SupplierID)
+	if sid == "" {
+		return true // legacy unscoped admin
+	}
+	return sid == strings.TrimSpace(c.SupplierID)
 }
 
 func claimWindowFromEnv() time.Duration {
@@ -417,16 +467,15 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	if s == nil || s.repo == nil {
 		return Claim{}, SettlementResult{}, fmt.Errorf("claims service unavailable")
 	}
-	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
-		// Supplier portal admins use RoleAdmin with supplier scope in this stack.
-		return Claim{}, SettlementResult{}, ErrForbidden
-	}
 	c, ok, err := s.repo.GetClaim(ctx, claimID)
 	if err != nil {
 		return Claim{}, SettlementResult{}, err
 	}
 	if !ok {
 		return Claim{}, SettlementResult{}, ErrClaimNotFound
+	}
+	if !actorMaySettleClaim(actor, c) {
+		return Claim{}, SettlementResult{}, ErrForbidden
 	}
 
 	// Idempotent replay: already settled.
@@ -459,12 +508,12 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	}
 
 	now := s.now().UTC()
-	// Mark under review before money movement so concurrent approves see busy state.
+	// CAS OPEN → UNDER_REVIEW so concurrent approves fail closed.
 	c.Status = StatusUnderReview
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
 	c.UpdatedAt = now
-	if err := s.repo.UpdateClaim(ctx, c, nil); err != nil {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, nil); err != nil {
 		return Claim{}, SettlementResult{}, err
 	}
 
@@ -493,12 +542,12 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		}
 	}
 
-	// Terminal resolved after money movement recorded.
+	// Terminal resolved after money movement recorded (CAS from UNDER_REVIEW).
 	c.Status = StatusResolved
 	c.ResolvedBy = actor.Subject
 	c.ResolvedAt = &now
 	c.UpdatedAt = now
-	if err := s.repo.UpdateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
 			"type":             events.EventClaimResolved,
 			"claim_id":         c.ClaimID,
@@ -547,15 +596,15 @@ func (s *Service) RejectClaim(ctx context.Context, actor auth.Claims, claimID st
 	if s == nil || s.repo == nil {
 		return Claim{}, fmt.Errorf("claims service unavailable")
 	}
-	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
-		return Claim{}, ErrForbidden
-	}
 	c, ok, err := s.repo.GetClaim(ctx, claimID)
 	if err != nil {
 		return Claim{}, err
 	}
 	if !ok {
 		return Claim{}, ErrClaimNotFound
+	}
+	if !actorMaySettleClaim(actor, c) {
+		return Claim{}, ErrForbidden
 	}
 	if c.Status != StatusOpen && c.Status != StatusUnderReview {
 		return Claim{}, fmt.Errorf("%w: status %s", ErrInvalidClaimState, c.Status)
@@ -566,7 +615,7 @@ func (s *Service) RejectClaim(ctx context.Context, actor auth.Claims, claimID st
 	c.ResolvedBy = actor.Subject
 	c.ResolvedAt = &now
 	c.UpdatedAt = now
-	err = s.repo.UpdateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+	err = s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
 			"type":            events.EventClaimResolved,
 			"claim_id":        c.ClaimID,

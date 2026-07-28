@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -96,6 +97,39 @@ func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
+}
+
+// HandleListSupplierClaims serves GET /v1/supplier/claims?status=&limit=.
+func (s *Service) HandleListSupplierClaims(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	actor, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	status := Status(strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("status"))))
+	if status != "" && !status.Valid() {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_status"})
+		return
+	}
+	limit := 50
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	list, err := s.ListSupplierClaims(r.Context(), actor, status, limit)
+	if err != nil {
+		writeClaimError(w, r, err)
+		return
+	}
+	if list == nil {
+		list = []Claim{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"claims": list})
 }
 
 // HandleListOrderClaims serves GET /v1/orders/{orderID}/claims.

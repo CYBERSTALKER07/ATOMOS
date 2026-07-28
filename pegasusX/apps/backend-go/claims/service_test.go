@@ -182,6 +182,67 @@ func TestApproveClaimSettlesChargeback(t *testing.T) {
 	}
 }
 
+func TestApproveClaim_SupplierScopeForbidden(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:    repo,
+		Orders:  fakeOrders{ok: true, o: completedOrder(now)},
+		Settler: &fakeSettler{},
+		Now:     func() time.Time { return now },
+		NewID:   func() string { return "x1" },
+		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = svc.ApproveClaim(context.Background(), auth.Claims{
+		Subject: "admin-other", Role: auth.RoleAdmin, SupplierID: "sup-OTHER",
+	}, c.ClaimID, ApproveClaimRequest{})
+	if err != ErrForbidden {
+		t.Fatalf("got %v want forbidden", err)
+	}
+}
+
+func TestListSupplierClaims_Scoped(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "x1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := svc.ListSupplierClaims(context.Background(), auth.Claims{
+		Subject: "admin", Role: auth.RoleAdmin, SupplierID: "sup-1",
+	}, StatusOpen, 20)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list: %v len=%d", err, len(list))
+	}
+	list, err = svc.ListSupplierClaims(context.Background(), auth.Claims{
+		Subject: "admin", Role: auth.RoleAdmin, SupplierID: "sup-OTHER",
+	}, StatusOpen, 20)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("other supplier: %v len=%d", err, len(list))
+	}
+}
+
 func TestListOrderClaims_RetailerOwnership(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	repo := NewMemoryRepository()

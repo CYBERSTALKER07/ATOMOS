@@ -60,6 +60,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/orders/{orderID}/claims", d.ClaimsService.HandleFileOrderClaim)
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/orders/{orderID}/claims", d.ClaimsService.HandleListOrderClaims)
 			// Adjudication → supplier chargeback + optional GP partial refund.
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/supplier/claims", d.ClaimsService.HandleListSupplierClaims)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/approve", d.ClaimsService.HandleApproveClaim)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/reject", d.ClaimsService.HandleRejectClaim)
 		}
