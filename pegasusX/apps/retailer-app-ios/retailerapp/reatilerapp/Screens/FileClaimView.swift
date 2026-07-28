@@ -1,4 +1,6 @@
+import PhotosUI
 import SwiftUI
+import UIKit
 
 /// Post-delivery claim for COMPLETED orders (concealed damage / missing within 48h window).
 struct FileClaimView: View {
@@ -10,6 +12,9 @@ struct FileClaimView: View {
     @State private var descriptionText = ""
     @State private var selected: [String: Int] = [:] // sku -> qty
     @State private var photoURL = ""
+    @State private var pickedItem: PhotosPickerItem?
+    @State private var previewImage: UIImage?
+    @State private var isUploadingPhoto = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var successClaimId: String?
@@ -48,15 +53,39 @@ struct FileClaimView: View {
                     }
                 }
 
+                Section("Photo proof") {
+                    PhotosPicker(selection: $pickedItem, matching: .images, photoLibrary: .shared()) {
+                        Label(
+                            previewImage == nil ? "Take or choose photo" : "Change photo",
+                            systemImage: "camera.fill"
+                        )
+                    }
+                    .onChange(of: pickedItem) { _, newItem in
+                        Task { await loadAndUpload(item: newItem) }
+                    }
+                    if isUploadingPhoto {
+                        ProgressView("Uploading…")
+                    }
+                    if let previewImage {
+                        Image(uiImage: previewImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 180)
+                            .clipShape(.rect(cornerRadius: 12))
+                    }
+                    if !photoURL.isEmpty {
+                        Text("Photo ready")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    Text("Required for damage / concealed damage / tamper / temperature claims.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Details") {
                     TextField("What happened?", text: $descriptionText, axis: .vertical)
                         .lineLimit(3...6)
-                    TextField("Photo URL (required for damage)", text: $photoURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Until in-app camera upload ships, paste a public HTTPS image URL.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
 
                 if let errorMessage {
@@ -94,7 +123,7 @@ struct FileClaimView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Submit") { Task { await submit() } }
-                        .disabled(isSubmitting || selectedQtyTotal == 0)
+                        .disabled(isSubmitting || isUploadingPhoto || selectedQtyTotal == 0)
                 }
             }
             .task { await loadExisting() }
@@ -116,8 +145,31 @@ struct FileClaimView: View {
         do {
             existing = try await api.listOrderClaims(orderId: order.id)
         } catch {
-            // Non-fatal: list may 404 if no claims table on old backend.
             existing = []
+        }
+    }
+
+    private func loadAndUpload(item: PhotosPickerItem?) async {
+        guard let item else { return }
+        errorMessage = nil
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                errorMessage = "Could not read photo."
+                return
+            }
+            previewImage = image
+            photoURL = try await MediaUploadService.uploadJPEG(
+                image: image,
+                purpose: "claim_evidence",
+                orderId: order.id,
+                api: api
+            )
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Photo upload failed: \(error)"
+            photoURL = ""
         }
     }
 
@@ -129,7 +181,7 @@ struct FileClaimView: View {
 
         let needsPhoto = ["DAMAGED", "CONCEALED_DAMAGE", "TAMPER", "TEMPERATURE"].contains(claimType)
         if needsPhoto && photoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errorMessage = "Photo URL required for this claim type."
+            errorMessage = "Photo required for this claim type."
             return
         }
 

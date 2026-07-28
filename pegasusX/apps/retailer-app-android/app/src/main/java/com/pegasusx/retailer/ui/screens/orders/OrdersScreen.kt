@@ -114,6 +114,7 @@ fun OrdersScreen(
     val scope = rememberCoroutineScope()
 
     var selectedOrder by remember { mutableStateOf<Order?>(null) }
+    var claimOrder by remember { mutableStateOf<Order?>(null) }
     var qrOrder by remember { mutableStateOf<Order?>(null) }
     var correctionForecast by remember { mutableStateOf<DemandForecast?>(null) }
     var correctionAmount by remember { mutableStateOf("") }
@@ -130,6 +131,17 @@ fun OrdersScreen(
                 viewModel.cancelOrder(order.id, order.status)
                 selectedOrder = null
             },
+            onFileClaim = {
+                claimOrder = order
+                selectedOrder = null
+            },
+        )
+    }
+
+    claimOrder?.let { order ->
+        com.pegasusx.retailer.ui.components.FileClaimHost(
+            order = order,
+            onDismiss = { claimOrder = null },
         )
     }
 

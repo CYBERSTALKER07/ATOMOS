@@ -3,7 +3,9 @@
 //  driverappios
 //
 
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct DeliveryCorrectionView: View {
 
@@ -16,6 +18,7 @@ struct DeliveryCorrectionView: View {
     @State private var vm = CorrectionViewModel()
     @State private var showConfirmAlert = false
     @State private var showStartTransitAlert = false
+    @State private var pickedPhoto: PhotosPickerItem?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -63,6 +66,17 @@ struct DeliveryCorrectionView: View {
         .background(LabTheme.bg)
         .task {
             await vm.loadLineItems(orderId: orderId)
+        }
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data) else {
+                    vm.submitError = "Could not read photo."
+                    return
+                }
+                await vm.uploadEvidence(image: image, orderId: orderId)
+            }
         }
         .alert("Start Transit?", isPresented: $showStartTransitAlert) {
             Button("Cancel", role: .cancel) { }
@@ -249,6 +263,35 @@ struct DeliveryCorrectionView: View {
 
     private var summaryBar: some View {
         VStack(spacing: 10) {
+            if vm.hasRejections && vm.needsPhotoProof {
+                PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                    Label(
+                        vm.evidencePhotoURL.isEmpty ? "Add damage photo" : "Photo ready — change",
+                        systemImage: "camera.fill"
+                    )
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LabTheme.fg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                }
+                if vm.isUploadingPhoto {
+                    ProgressView("Uploading…").tint(LabTheme.fg)
+                }
+                if let img = vm.previewImage {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 100)
+                        .clipShape(.rect(cornerRadius: 8))
+                }
+            }
+            if let err = vm.submitError {
+                Text(err)
+                    .font(.caption)
+                    .foregroundStyle(LabTheme.destructive)
+            }
+
             // Original total
             HStack {
                 Text("Original total")
@@ -305,7 +348,7 @@ struct DeliveryCorrectionView: View {
                     )
             }
             .buttonStyle(.pressable)
-            .disabled(!vm.hasRejections)
+            .disabled(!vm.hasRejections || vm.isUploadingPhoto || vm.isSubmitting)
         }
         .padding(LabTheme.s16)
         .background(.ultraThinMaterial)

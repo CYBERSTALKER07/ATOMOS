@@ -686,6 +686,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 	if session, ok, err := s.repo.GetSessionByOrderID(ctx, in.OrderID); err == nil && ok {
 		gateway = strings.ToUpper(strings.TrimSpace(session.Gateway))
 		sessionID = session.SessionID
+		// Cap chargeback/refund at session amount (cannot reverse more than was paid).
 		if session.AmountMinor > 0 && in.AmountMinor > session.AmountMinor {
 			in.AmountMinor = session.AmountMinor
 		}

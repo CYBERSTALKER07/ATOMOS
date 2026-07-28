@@ -299,12 +299,20 @@ interface DriverApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): Map<String, String>
 
-    // Edge 33: Report missing items after seal
+    // Edge 33: Report missing items after seal (exception-report alias; DAMAGED needs photo_url)
     @POST("v1/delivery/missing-items")
     suspend fun reportMissingItems(
         @Body body: MissingItemsPayload,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): MissingItemsResponse
+
+    /** Signed GCS PUT ticket for claim/exception evidence photos. */
+    @GET("v1/media/upload-ticket")
+    suspend fun getMediaUploadTicket(
+        @Query("purpose") purpose: String = "driver_exception",
+        @Query("ext") ext: String = "jpg",
+        @Query("order_id") orderId: String? = null,
+    ): MediaUploadTicket
 
     // ── LEO: Ghost Stop Prevention ──
 

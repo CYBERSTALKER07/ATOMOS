@@ -447,12 +447,27 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    /// Edge 33: Report missing items after seal
-    func reportMissingItems(orderId: String, missingItems: [MissingItemRequest]) async throws -> MissingItemsResponse {
-        struct Req: Encodable { let order_id: String; let missing_items: [MissingItemRequest] }
+    /// Edge 33: Report missing/damaged items (exception-report alias). DAMAGED needs photo_url.
+    func reportMissingItems(
+        orderId: String,
+        missingItems: [MissingItemRequest],
+        photoURL: String? = nil,
+        note: String? = nil
+    ) async throws -> MissingItemsResponse {
+        struct Req: Encodable {
+            let order_id: String
+            let missing_items: [MissingItemRequest]
+            let photo_url: String?
+            let note: String?
+        }
         return try await post(
             "v1/delivery/missing-items",
-            body: Req(order_id: orderId, missing_items: missingItems),
+            body: Req(
+                order_id: orderId,
+                missing_items: missingItems,
+                photo_url: photoURL,
+                note: note
+            ),
             headers: ["Idempotency-Key": DriverIdempotency.missingItems(orderId: orderId)]
         )
     }

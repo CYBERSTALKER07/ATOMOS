@@ -1,17 +1,19 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasusx.driver.data.model.AmendItemPayload
-import com.pegasusx.driver.data.model.AmendOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
+import com.pegasusx.driver.data.model.MissingItemRequest
+import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.MediaUploadService
 import com.pegasusx.driver.data.remote.reconcileDriverSession
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,11 +45,17 @@ data class OffloadReviewUiState(
     val error: String? = null,
     val offloadResult: ConfirmOffloadResponse? = null,
     val creditDeliveryRecorded: Boolean = false,
+    val evidencePhotoUrl: String = "",
+    val isUploadingPhoto: Boolean = false,
+    val photoPreviewUri: String? = null,
 ) {
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
     val hasExclusions: Boolean get() = audits.any { it.excluded }
     val hasRejections: Boolean get() = audits.any { it.rejected > 0 }
+    val needsPhotoProof: Boolean get() = audits.any {
+        it.rejected > 0 && (it.reason == RejectionReason.DAMAGED || it.reason == RejectionReason.WRONG_ITEM)
+    }
 }
 
 @HiltViewModel
@@ -55,6 +63,7 @@ class OffloadReviewViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val api: DriverApi,
     private val driverWebSocket: DriverWebSocket,
+    private val mediaUpload: MediaUploadService,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
@@ -161,11 +170,36 @@ class OffloadReviewViewModel @Inject constructor(
         }
     }
 
+    fun uploadEvidencePhoto(uri: Uri) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(isUploadingPhoto = true, error = null, photoPreviewUri = uri.toString())
+            }
+            try {
+                val publicUrl = mediaUpload.uploadJpegUri(
+                    uri = uri,
+                    purpose = "driver_exception",
+                    orderId = orderId,
+                )
+                _state.update {
+                    it.copy(isUploadingPhoto = false, evidencePhotoUrl = publicUrl)
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isUploadingPhoto = false,
+                        evidencePhotoUrl = "",
+                        error = e.message ?: "Photo upload failed",
+                    )
+                }
+            }
+        }
+    }
+
     fun confirmOffload() {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                // If items were excluded, amend first
                 val current = _state.value
                 if (current.hasRejections) {
                     val rejectedAudits = current.audits.filter { it.rejected > 0 }
@@ -181,29 +215,40 @@ class OffloadReviewViewModel @Inject constructor(
                         }
                         return@launch
                     }
-                    val amendPayload = AmendOrderRequest(
-                        orderId = orderId,
-                        items = rejectedAudits.map { audit ->
-                            AmendItemPayload(
-                                productId = audit.item.productId,
-                                acceptedQty = audit.accepted,
-                                rejectedQty = audit.rejected,
-                                reason = audit.reason.name,
-                                customReason = audit.customReason.takeIf { it.isNotBlank() },
+                    if (current.needsPhotoProof && current.evidencePhotoUrl.isBlank()) {
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                error = "Photo required for damaged or wrong-item rejections.",
                             )
                         }
-                    )
-                    val amendResp = api.amendOrder(
-                        amendPayload,
-                        DriverIdempotencyKeys.amendOrder(orderId, amendPayload.items),
-                    )
-                    if (!amendResp.success) {
-                        _state.update { it.copy(isSubmitting = false, error = amendResp.message) }
                         return@launch
                     }
+                    // Route OS&D through exception-report so claims + photo_url are enforced.
+                    val missingItems = rejectedAudits.map { audit ->
+                        val needsLinePhoto = audit.reason == RejectionReason.DAMAGED ||
+                            audit.reason == RejectionReason.WRONG_ITEM
+                        MissingItemRequest(
+                            skuId = audit.item.productId,
+                            missingQty = audit.rejected,
+                            reason = audit.reason.name,
+                            photoUrl = if (needsLinePhoto) current.evidencePhotoUrl else null,
+                        )
+                    }
+                    api.reportMissingItems(
+                        body = MissingItemsPayload(
+                            orderId = orderId,
+                            missingItems = missingItems,
+                            photoUrl = current.evidencePhotoUrl.takeIf { it.isNotBlank() },
+                            note = rejectedAudits
+                                .mapNotNull { it.customReason.takeIf { r -> r.isNotBlank() } }
+                                .joinToString("; ")
+                                .ifBlank { null },
+                        ),
+                        idempotencyKey = DriverIdempotencyKeys.missingItems(orderId),
+                    )
                 }
 
-                // Now confirm offload
                 val response = api.confirmOffload(
                     request = ConfirmOffloadRequest(orderId = orderId),
                     idempotencyKey = DriverIdempotencyKeys.offload(orderId),

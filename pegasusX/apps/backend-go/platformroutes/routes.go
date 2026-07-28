@@ -24,6 +24,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/v1/platform/client-policy", d.Handler.HandleClientPolicy)
 	r.Get("/v1/platform/client-config", d.Handler.HandleClientConfig)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/platform/client-policy", d.Handler.HandleUpsertPolicy)
+	// Evidence photo upload (claims / driver OS&D) — signed GCS PUT URL.
+	r.With(auth.RequireRole(
+		auth.RoleRetailer, auth.RoleDriver, auth.RolePayload,
+		auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse,
+	)).Get("/v1/media/upload-ticket", d.Handler.HandleMediaUploadTicket)
 	r.Post("/v1/user/device-token", d.Handler.HandleDeviceToken)
 	if d.GeocodeHandler != nil {
 		geolocation.RegisterRoutes(r, d.GeocodeHandler)

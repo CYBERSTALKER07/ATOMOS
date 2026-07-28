@@ -47,6 +47,7 @@ import com.pegasusx.retailer.ui.components.ShopClosedSheet
 import com.pegasusx.retailer.ui.components.PegasusBottomBar
 import com.pegasusx.retailer.ui.components.PegasusTab
 import com.pegasusx.retailer.ui.components.PegasusTopBar
+import com.pegasusx.retailer.ui.components.FileClaimHost
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.PaymentPhase
 import com.pegasusx.retailer.ui.components.QROverlay
@@ -101,6 +102,7 @@ fun RetailerNavigation(
     // Global detail/QR state (hoisted so overlays render above sheets)
     var globalDetailOrder by remember { mutableStateOf<Order?>(null) }
     var globalQROrder by remember { mutableStateOf<Order?>(null) }
+    var claimOrder by remember { mutableStateOf<Order?>(null) }
 
     // Payment sheet state
     var paymentPhase by remember { mutableStateOf(PaymentPhase.CHOOSE) }
@@ -548,6 +550,16 @@ fun RetailerNavigation(
                     globalDetailOrder = null
                 },
                 isCompact = isCompact,
+                onFileClaim = {
+                    claimOrder = order
+                    globalDetailOrder = null
+                },
+            )
+        }
+        claimOrder?.let { order ->
+            FileClaimHost(
+                order = order,
+                onDismiss = { claimOrder = null },
             )
         }
 

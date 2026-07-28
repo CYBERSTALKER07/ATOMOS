@@ -415,13 +415,17 @@ data class RouteReorderResponse(
 @Serializable
 data class MissingItemRequest(
     @SerialName("sku_id") val skuId: String,
-    @SerialName("missing_qty") val missingQty: Int
+    @SerialName("missing_qty") val missingQty: Int,
+    val reason: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
 )
 
 @Serializable
 data class MissingItemsPayload(
     @SerialName("order_id") val orderId: String,
-    @SerialName("missing_items") val missingItems: List<MissingItemRequest>
+    @SerialName("missing_items") val missingItems: List<MissingItemRequest>,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    val note: String? = null,
 )
 
 @Serializable

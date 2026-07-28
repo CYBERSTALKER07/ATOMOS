@@ -369,10 +369,21 @@ struct UpdateOrderDuringDeliveryResponse: Codable {
 struct MissingItemRequest: Codable {
     let skuId: String
     let missingQty: Int
+    let reason: String?
+    let photoURL: String?
 
     enum CodingKeys: String, CodingKey {
         case skuId = "sku_id"
         case missingQty = "missing_qty"
+        case reason
+        case photoURL = "photo_url"
+    }
+
+    init(skuId: String, missingQty: Int, reason: String? = nil, photoURL: String? = nil) {
+        self.skuId = skuId
+        self.missingQty = missingQty
+        self.reason = reason
+        self.photoURL = photoURL
     }
 }
 

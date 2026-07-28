@@ -61,6 +61,7 @@ fun OrderDetailSheet(
     onShowQR: () -> Unit,
     onCancel: (() -> Unit)? = null,
     isCompact: Boolean = true,
+    onFileClaim: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showCancelConfirm by remember { mutableStateOf(false) }
@@ -98,7 +99,13 @@ fun OrderDetailSheet(
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             dragHandle = null,
         ) {
-            OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelCash = { showCancelConfirm = true })
+            OrderDetailSheetContent(
+                order,
+                onDismiss,
+                onShowQR,
+                onCancelCash = { showCancelConfirm = true },
+                onFileClaim = onFileClaim,
+            )
         }
     } else {
         androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -107,7 +114,13 @@ fun OrderDetailSheet(
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
-                OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelCash = { showCancelConfirm = true })
+                OrderDetailSheetContent(
+                    order,
+                    onDismiss,
+                    onShowQR,
+                    onCancelCash = { showCancelConfirm = true },
+                    onFileClaim = onFileClaim,
+                )
             }
         }
     }
@@ -118,7 +131,8 @@ fun OrderDetailSheetContent(
     order: Order,
     onDismiss: () -> Unit,
     onShowQR: () -> Unit,
-    onCancelCash: () -> Unit
+    onCancelCash: () -> Unit,
+    onFileClaim: (() -> Unit)? = null,
 ) {
         LazyColumn(
             modifier = Modifier
@@ -349,6 +363,24 @@ fun OrderDetailSheetContent(
                                 textAlign = TextAlign.Center,
                             )
                         }
+                    }
+                }
+
+                // ── File claim (COMPLETED / credit deliveries, 48h window) ──
+                if (
+                    onFileClaim != null &&
+                    (order.status == OrderStatus.COMPLETED || order.status == OrderStatus.DELIVERED_ON_CREDIT)
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onFileClaim,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                    ) {
+                        Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
                     }
                 }
 

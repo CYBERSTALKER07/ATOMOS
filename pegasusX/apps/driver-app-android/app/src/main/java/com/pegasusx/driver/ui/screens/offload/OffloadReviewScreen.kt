@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.RemoveCircle
@@ -41,12 +44,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
@@ -68,6 +73,11 @@ fun OffloadReviewScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) viewModel.uploadEvidencePhoto(uri)
+    }
 
     // If offload confirmed, route to next screen
     state.offloadResult?.let { result ->
@@ -276,6 +286,72 @@ fun OffloadReviewScreen(
             }
         }
 
+        // Damage photo proof (required for DAMAGED / WRONG_ITEM)
+        if (state.hasRejections && state.needsPhotoProof) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "DAMAGE PHOTO",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = lab.fgTertiary,
+                    letterSpacing = 1.2.sp,
+                )
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { photoPicker.launch("image/*") },
+                    enabled = !state.isSubmitting && !state.isUploadingPhoto,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = lab.fg),
+                ) {
+                    if (state.isUploadingPhoto) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = lab.fg,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Uploading…", fontSize = 14.sp)
+                    } else {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (state.evidencePhotoUrl.isBlank()) {
+                                "Take or choose photo"
+                            } else {
+                                "Photo ready — change"
+                            },
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+                state.photoPreviewUri?.let { uri ->
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Damage proof",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Text(
+                    text = "Required for damaged or wrong-item rejections.",
+                    fontSize = 11.sp,
+                    color = lab.fgTertiary,
+                )
+            }
+        }
+
         // Error
         state.error?.let { error ->
             Text(
@@ -393,7 +469,7 @@ fun OffloadReviewScreen(
         ) {
             Button(
                 onClick = { viewModel.confirmOffload() },
-                enabled = !state.isSubmitting,
+                enabled = !state.isSubmitting && !state.isUploadingPhoto,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

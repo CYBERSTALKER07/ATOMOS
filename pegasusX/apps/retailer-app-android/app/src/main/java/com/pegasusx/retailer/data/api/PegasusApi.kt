@@ -14,7 +14,9 @@ import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
+import com.pegasusx.retailer.data.model.MediaUploadTicket
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderTimelineResponse
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
@@ -25,6 +27,8 @@ import com.pegasusx.retailer.data.model.ProcurementOrderResponse
 import com.pegasusx.retailer.data.model.RegisterRequest
 import com.pegasusx.retailer.data.model.ResolvedLocationResponse
 import com.pegasusx.retailer.data.model.RetailerAnalytics
+import com.pegasusx.retailer.data.model.RetailerClaim
+import com.pegasusx.retailer.data.model.RetailerClaimsListResponse
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasusx.retailer.data.model.Supplier
 import com.pegasusx.retailer.data.model.TrackingResponse
@@ -87,6 +91,24 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
+
+    // ── Claims (post-delivery, 48h window) ──
+    @GET("/v1/orders/{orderId}/claims")
+    suspend fun listOrderClaims(@Path("orderId") orderId: String): RetailerClaimsListResponse
+
+    @POST("/v1/orders/{orderId}/claims")
+    suspend fun fileOrderClaim(
+        @Path("orderId") orderId: String,
+        @Body body: FileClaimRequestBody,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): RetailerClaim
+
+    @GET("/v1/media/upload-ticket")
+    suspend fun getMediaUploadTicket(
+        @Query("purpose") purpose: String = "claim_evidence",
+        @Query("ext") ext: String = "jpg",
+        @Query("order_id") orderId: String? = null,
+    ): MediaUploadTicket
 
     // ── Catalog ──
     @GET("/v1/catalog/categories")
