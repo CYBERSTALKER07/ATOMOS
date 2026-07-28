@@ -96,8 +96,16 @@ export default function ChargebacksPage() {
       <PageChrome
         icon="warning"
         title="Chargebacks"
-        description="Record payment disputes and reversals against the durable finance ledger."
+        description="Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks."
       >
+        <div className="mb-6">
+          <a
+            href="/chargebacks/claims"
+            className="text-sm underline text-[var(--desk-accent)]"
+          >
+            View claim chargebacks ledger →
+          </a>
+        </div>
         {error && (
           <div className="mb-6 flex items-center gap-2 p-3 rounded-xl border bg-[var(--desk-warning)]/10 text-[var(--desk-warning)] border-[var(--desk-warning)]/30">
             <AlertTriangle size={16} />

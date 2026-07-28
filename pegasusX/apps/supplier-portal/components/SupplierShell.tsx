@@ -75,6 +75,7 @@ const NAV: NavSection[] = [
       { href: "/earnings", icon: "pricing", label: "Earnings" },
       { href: "/credit/collections", icon: "treasury", label: "Credit collections" },
       { href: "/chargebacks", icon: "warning", label: "Chargebacks" },
+      { href: "/chargebacks/claims", icon: "warning", label: "Claim chargebacks" },
       { href: "/ledger", icon: "orders", label: "Ledger" },
     ],
   },

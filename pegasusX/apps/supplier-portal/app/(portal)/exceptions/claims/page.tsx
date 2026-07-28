@@ -36,9 +36,28 @@ type Settlement = {
   gateway_refunded?: boolean;
 };
 
+const SETTLEMENT_MODES = [
+  {
+    value: "LEDGER_ONLY",
+    label: "Ledger only",
+    hint: "Debit supplier settlement only (safe default)",
+  },
+  {
+    value: "STORE_CREDIT",
+    label: "Store credit",
+    hint: "Ledger + reduce retailer credit balance due",
+  },
+  {
+    value: "GATEWAY_REFUND",
+    label: "Card refund (GP)",
+    hint: "Ledger + Global Pay partial refund when session is card",
+  },
+] as const;
+
 export default function ClaimsQueuePage() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [statusFilter, setStatusFilter] = useState("OPEN");
+  const [settlementMode, setSettlementMode] = useState<string>("LEDGER_ONLY");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -73,7 +92,11 @@ export default function ClaimsQueuePage() {
       const res = await supplierFetch(`/v1/claims/${encodeURIComponent(claimId)}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resolution_note: "approved_via_supplier_portal" }),
+        body: JSON.stringify({
+          resolution_note: "approved_via_supplier_portal",
+          settlement_mode: settlementMode,
+          skip_gateway_refund: settlementMode !== "GATEWAY_REFUND",
+        }),
       });
       if (!res.ok) {
         throw new Error(`approve_${res.status}`);
@@ -81,7 +104,7 @@ export default function ClaimsQueuePage() {
       const body = (await res.json()) as { settlement?: Settlement };
       if (body.settlement) {
         setLastSettlement(
-          `${body.settlement.mode} · ${body.settlement.amount_minor} · refund=${Boolean(body.settlement.gateway_refunded)}`,
+          `${body.settlement.mode} · ${body.settlement.amount_minor} · refund=${Boolean(body.settlement.gateway_refunded)} · id=${body.settlement.chargeback_id ?? "—"}`,
         );
       }
       await load();
@@ -114,7 +137,7 @@ export default function ClaimsQueuePage() {
   return (
     <PageChrome
       title="Claims queue"
-      description="Post-delivery damage, missing, and OS&D claims. Approve debits supplier settlement and may refund card orders."
+      description="Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve."
       icon="warning"
       loading={loading}
       error={error}
@@ -136,13 +159,36 @@ export default function ClaimsQueuePage() {
             <option value="">ALL</option>
           </select>
         </label>
+        <label className="md-typescale-label-large flex items-center gap-2">
+          Settlement
+          <select
+            className="md-btn md-btn-outlined px-3 py-1 max-w-[220px]"
+            value={settlementMode}
+            onChange={(e) => setSettlementMode(e.target.value)}
+          >
+            {SETTLEMENT_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button type="button" className="md-btn md-btn-outlined px-3 py-1" onClick={() => void load()}>
           Refresh
         </button>
         {lastSettlement ? (
-          <span className="md-typescale-body-small text-[var(--color-md-outline)]">Last settle: {lastSettlement}</span>
+          <span className="md-typescale-body-small text-[var(--color-md-outline)]">
+            Last settle: {lastSettlement}
+          </span>
         ) : null}
       </div>
+      <p className="mb-4 text-xs text-[var(--color-md-outline)]">
+        {SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.hint}
+        {" · "}
+        <Link href={"/chargebacks/claims" as Route} className="underline text-[var(--color-md-primary)]">
+          Claim chargebacks ledger
+        </Link>
+      </p>
 
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
         {claims.map((c) => (
@@ -195,7 +241,7 @@ export default function ClaimsQueuePage() {
                   disabled={busyId === c.claim_id}
                   onClick={() => void approve(c.claim_id)}
                 >
-                  Approve + chargeback
+                  Approve ({SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.label})
                 </button>
                 <button
                   type="button"
@@ -215,8 +261,11 @@ export default function ClaimsQueuePage() {
         <Link href={"/exceptions" as Route} className="text-[var(--color-md-primary)] underline">
           All exceptions
         </Link>
-        <Link href={"/reconciliation" as Route} className="text-[var(--color-md-primary)] underline">
-          Reconciliation
+        <Link href={"/credit/collections" as Route} className="text-[var(--color-md-primary)] underline">
+          Credit collections
+        </Link>
+        <Link href={"/chargebacks/claims" as Route} className="text-[var(--color-md-primary)] underline">
+          Claim chargebacks
         </Link>
       </div>
     </PageChrome>
