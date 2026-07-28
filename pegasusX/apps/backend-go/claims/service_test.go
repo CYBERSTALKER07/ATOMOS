@@ -254,6 +254,69 @@ func (f *fakeRL) OpenFromClaim(_ context.Context, in ReverseLogisticsInput) erro
 	return nil
 }
 
+func TestResolveSettlementFlags(t *testing.T) {
+	skip, store := resolveSettlementFlags(ApproveClaimRequest{SettlementMode: "STORE_CREDIT"})
+	if !skip || !store {
+		t.Fatalf("store credit flags skip=%v store=%v", skip, store)
+	}
+	skip, store = resolveSettlementFlags(ApproveClaimRequest{SettlementMode: "GATEWAY_REFUND"})
+	if skip || store {
+		t.Fatalf("gateway flags skip=%v store=%v", skip, store)
+	}
+	skip, store = resolveSettlementFlags(ApproveClaimRequest{SkipGatewayRefund: true})
+	if !skip || store {
+		t.Fatalf("legacy skip flags skip=%v store=%v", skip, store)
+	}
+}
+
+type fakeStoreCr struct {
+	calls int
+	amt   int64
+}
+
+func (f *fakeStoreCr) ClearBalance(_ context.Context, _, _ string, amountMinor int64, _ string) error {
+	f.calls++
+	f.amt = amountMinor
+	return nil
+}
+
+func TestApproveClaim_StoreCreditMode(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	settler := &fakeSettler{res: SettlementResult{ChargebackID: "chargeback_x1", AmountMinor: 100, Mode: "LEDGER_ONLY"}}
+	sc := &fakeStoreCr{}
+	svc := NewService(Config{
+		Repo:    repo,
+		Orders:  fakeOrders{ok: true, o: completedOrder(now)},
+		Settler: settler,
+		StoreCr: sc,
+		Now:     func() time.Time { return now },
+		NewID:   func() string { return "x1" },
+		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, settlement, err := svc.ApproveClaim(context.Background(), auth.Claims{
+		Subject: "admin", Role: auth.RoleAdmin, SupplierID: "sup-1",
+	}, c.ClaimID, ApproveClaimRequest{SettlementMode: "STORE_CREDIT"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sc.calls != 1 {
+		t.Fatalf("store credit calls=%d", sc.calls)
+	}
+	if settlement.Mode != "LEDGER_AND_STORE_CREDIT" {
+		t.Fatalf("mode=%s", settlement.Mode)
+	}
+}
+
 func TestFileRetailerClaim_OpensReverseLogisticsForDamage(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	repo := NewMemoryRepository()

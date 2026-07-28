@@ -62,12 +62,18 @@ type ReverseLogisticsInput struct {
 	Lines       []ClaimLine
 }
 
+// StoreCreditApplier reduces retailer credit balance due (store-credit settlement).
+type StoreCreditApplier interface {
+	ClearBalance(ctx context.Context, retailerID, supplierID string, amountMinor int64, orderID string) error
+}
+
 // Service is the claims domain application service.
 type Service struct {
 	repo     Repository
 	orders   OrderLookup
 	settler  ChargebackSettler
 	rl       ReverseLogisticsOpener
+	storeCr  StoreCreditApplier
 	now      func() time.Time
 	newID    func() string
 	log      *slog.Logger
@@ -80,6 +86,7 @@ type Config struct {
 	Orders   OrderLookup
 	Settler  ChargebackSettler
 	RL       ReverseLogisticsOpener
+	StoreCr  StoreCreditApplier
 	Now      func() time.Time
 	NewID    func() string
 	Log      *slog.Logger
@@ -106,13 +113,20 @@ func NewService(cfg Config) *Service {
 	if window <= 0 {
 		window = claimWindowFromEnv()
 	}
-	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, now: now, newID: newID, log: log, window: window}
+	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, storeCr: cfg.StoreCr, now: now, newID: newID, log: log, window: window}
 }
 
 // SetReverseLogistics wires the warehouse inbound ticket opener (optional).
 func (s *Service) SetReverseLogistics(op ReverseLogisticsOpener) {
 	if s != nil {
 		s.rl = op
+	}
+}
+
+// SetStoreCredit wires store-credit settlement (optional credit domain).
+func (s *Service) SetStoreCredit(sc StoreCreditApplier) {
+	if s != nil {
+		s.storeCr = sc
 	}
 }
 
@@ -223,6 +237,62 @@ func claimWindowFromEnv() time.Duration {
 		return DefaultPostDeliveryClaimWindow
 	}
 	return time.Duration(n) * time.Hour
+}
+
+// CLAIM_AUTO_APPROVE_MAX_MINOR: 0/empty = disabled. When set, OPEN claims with
+// AmountMinor ≤ threshold auto-settle as LEDGER_ONLY (skip GP) after create.
+func autoApproveMaxMinor() int64 {
+	raw := strings.TrimSpace(os.Getenv("CLAIM_AUTO_APPROVE_MAX_MINOR"))
+	if raw == "" {
+		return 0
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n <= 0 {
+		return 0
+	}
+	return n
+}
+
+func resolveSettlementFlags(req ApproveClaimRequest) (skipGateway bool, storeCredit bool) {
+	mode := strings.ToUpper(strings.TrimSpace(req.SettlementMode))
+	switch mode {
+	case "LEDGER_ONLY":
+		return true, false
+	case "STORE_CREDIT":
+		return true, true
+	case "GATEWAY_REFUND":
+		return false, false
+	default:
+		return req.SkipGatewayRefund, false
+	}
+}
+
+func (s *Service) maybeAutoApprove(ctx context.Context, c Claim) {
+	if s == nil {
+		return
+	}
+	max := autoApproveMaxMinor()
+	if max <= 0 || c.AmountMinor <= 0 || c.AmountMinor > max {
+		return
+	}
+	if c.Status != StatusOpen {
+		return
+	}
+	actor := auth.Claims{
+		Subject:    "system_auto_approve",
+		Role:       auth.RoleAdmin,
+		SupplierID: c.SupplierID,
+	}
+	_, _, err := s.ApproveClaim(ctx, actor, c.ClaimID, ApproveClaimRequest{
+		ResolutionNote:    "auto_approve_under_threshold",
+		SkipGatewayRefund: true,
+		SettlementMode:    "LEDGER_ONLY",
+	})
+	if err != nil {
+		s.log.WarnContext(ctx, "claim auto-approve failed", "err", err, "claim_id", c.ClaimID, "amount_minor", c.AmountMinor)
+		return
+	}
+	s.log.InfoContext(ctx, "claim auto-approved", "claim_id", c.ClaimID, "amount_minor", c.AmountMinor, "max_minor", max)
 }
 
 // FileRetailerClaim creates an OPEN claim for a completed order within the window.
@@ -411,7 +481,12 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		Note:        string(c.ClaimType),
 		Lines:       pricedLines,
 	})
+	s.maybeAutoApprove(ctx, c)
 	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
+	// Re-read if auto-approve mutated status.
+	if latest, ok, err := s.repo.GetClaim(ctx, c.ClaimID); err == nil && ok {
+		return latest, nil
+	}
 	return c, nil
 }
 
@@ -516,6 +591,10 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		Note:        strings.TrimSpace(note),
 		Lines:       pricedLines,
 	})
+	s.maybeAutoApprove(ctx, c)
+	if latest, ok, err := s.repo.GetClaim(ctx, c.ClaimID); err == nil && ok {
+		return latest, nil
+	}
 	return c, nil
 }
 
@@ -578,6 +657,7 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		return Claim{}, SettlementResult{}, err
 	}
 
+	skipGP, wantStoreCredit := resolveSettlementFlags(req)
 	var settlement SettlementResult
 	if s.settler != nil {
 		settlement, err = s.settler.SettleClaimChargeback(ctx, ClaimSettlement{
@@ -588,7 +668,7 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 			AmountMinor:       amount,
 			Currency:          c.Currency,
 			LineItems:         c.LineItems,
-			SkipGatewayRefund: req.SkipGatewayRefund,
+			SkipGatewayRefund: skipGP,
 		})
 		if err != nil {
 			// Leave UNDER_REVIEW for ops retry; do not flip to RESOLVED.
@@ -600,6 +680,16 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 			AmountMinor:  amount,
 			Currency:     c.Currency,
 			Mode:         "LEDGER_PENDING_SETTLER",
+		}
+	}
+	if wantStoreCredit && s.storeCr != nil {
+		if err := s.storeCr.ClearBalance(ctx, c.RetailerID, c.SupplierID, amount, c.OrderID); err != nil {
+			s.log.WarnContext(ctx, "store credit clear balance failed", "err", err, "claim_id", c.ClaimID)
+			if settlement.Mode == "LEDGER_ONLY" || settlement.Mode == "" {
+				settlement.Mode = "LEDGER_ONLY_STORE_CREDIT_FAILED"
+			}
+		} else {
+			settlement.Mode = "LEDGER_AND_STORE_CREDIT"
 		}
 	}
 

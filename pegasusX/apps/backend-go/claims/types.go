@@ -135,6 +135,8 @@ type ApproveClaimRequest struct {
 	AmountMinor int64 `json:"amount_minor,omitempty"`
 	// SkipGatewayRefund forces ledger-only settlement (cash orders / manual refund).
 	SkipGatewayRefund bool `json:"skip_gateway_refund,omitempty"`
+	// SettlementMode: LEDGER_ONLY | STORE_CREDIT | GATEWAY_REFUND (empty = legacy SkipGatewayRefund).
+	SettlementMode string `json:"settlement_mode,omitempty"`
 }
 
 // RejectClaimRequest is admin/supplier rejection body.
@@ -150,7 +152,7 @@ type SettlementResult struct {
 	Gateway         string `json:"gateway,omitempty"`
 	GatewayRefunded bool   `json:"gateway_refunded"`
 	ProviderRef     string `json:"provider_ref,omitempty"`
-	Mode            string `json:"mode"` // LEDGER_ONLY | LEDGER_AND_GATEWAY_REFUND | IDEMPOTENT_REPLAY
+	Mode            string `json:"mode"` // LEDGER_ONLY | LEDGER_AND_GATEWAY_REFUND | LEDGER_AND_STORE_CREDIT | IDEMPOTENT_REPLAY
 	Idempotent      bool   `json:"idempotent,omitempty"`
 }
 

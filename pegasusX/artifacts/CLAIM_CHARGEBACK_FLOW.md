@@ -103,7 +103,21 @@ Settlement `mode` values:
 | Env | Default | Meaning |
 |-----|---------|---------|
 | `CLAIM_WINDOW_HOURS` | `48` | Hours after COMPLETED to file |
+| `CLAIM_AUTO_APPROVE_MAX_MINOR` | `0` (off) | Auto LEDGER_ONLY settle when claim amount ≤ this |
 | `GLOBAL_PAY_REFUND_ACTION` | `RF` | Backoffice perform action for refund |
+
+### Approve `settlement_mode`
+
+| Mode | Behavior |
+|------|----------|
+| (empty) + `skip_gateway_refund` | Legacy |
+| `LEDGER_ONLY` | Supplier debit only |
+| `STORE_CREDIT` | Ledger debit + reduce retailer credit balance due |
+| `GATEWAY_REFUND` | Ledger + GP partial refund when session is Global Pay |
+
+### Query claim chargebacks
+
+`GET /v1/supplier/claim-chargebacks?order_id=&limit=` — supplier-scoped ledger rows from claims settlement.
 
 ## Not yet (future)
 

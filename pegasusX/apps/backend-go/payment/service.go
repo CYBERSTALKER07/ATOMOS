@@ -85,6 +85,8 @@ type ChargebackRecord struct {
 	AmountMinor  int64
 	Currency     string
 	CreatedAt    time.Time
+	// Source is optional ledger source tag (e.g. claims.settle_chargeback:clm_…).
+	Source string
 }
 
 // ReversalRecord tracks a chargeback-reversal mutation request.
@@ -713,6 +715,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 	}); err != nil {
 		return ClaimChargebackResult{}, err
 	}
+	claimTag := "claims.settle_chargeback:" + strings.TrimSpace(in.ClaimID)
 	rec := ChargebackRecord{
 		ChargebackID: chargebackID,
 		OrderID:      strings.TrimSpace(in.OrderID),
@@ -722,6 +725,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 		AmountMinor:  in.AmountMinor,
 		Currency:     currency,
 		CreatedAt:    now,
+		Source:       claimTag,
 	}
 	if err := s.repo.SaveChargeback(ctx, rec, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateSession, rec.ChargebackID, events.TopicMain, events.FinanceEvent{
@@ -734,7 +738,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 			ExecutionAction: string(ExecutionActionChargebackRecord),
 			AmountMinor:     rec.AmountMinor,
 			Currency:        rec.Currency,
-			Source:          "claims.settle_chargeback:" + strings.TrimSpace(in.ClaimID),
+			Source:          claimTag,
 		})
 	}); err != nil {
 		return ClaimChargebackResult{}, err
@@ -782,6 +786,61 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 func isGlobalPayGateway(g string) bool {
 	g = strings.ToUpper(strings.TrimSpace(g))
 	return g == "GLOBAL_PAY" || g == "GLOBALPAY" || g == "GP"
+}
+
+// HandleClaimChargebacks serves GET /v1/supplier/claim-chargebacks?limit=&order_id=.
+// Lists ledger CHARGEBACK_RECORDED rows originating from claims settlement for the admin's supplier.
+func (s *Service) HandleClaimChargebacks(w http.ResponseWriter, r *http.Request) {
+	const endpoint = "/v1/supplier/claim-chargebacks"
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", endpoint, false, "")
+		return
+	}
+	if s.repo == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "ledger_repository_unavailable", "Ledger repository is unavailable", endpoint, false, "")
+		return
+	}
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	if !ok {
+		return
+	}
+	limit, err := parseBoundedIntQuery(strings.TrimSpace(r.URL.Query().Get("limit")), 50, 1, 200)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_limit", "limit must be between 1 and 200", endpoint, false, "")
+		return
+	}
+	// Pull a wider page then filter to claim-originated chargebacks.
+	items, err := s.repo.ListLedgerEntries(r.Context(), LedgerQuery{
+		SupplierID: supplierID,
+		OrderID:    strings.TrimSpace(r.URL.Query().Get("order_id")),
+		EntryType:  "CHARGEBACK_RECORDED",
+		Limit:      limit * 3,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "ledger_query_failed", err.Error(), endpoint, false, "")
+		return
+	}
+	out := make([]LedgerEntryRecord, 0, len(items))
+	for _, it := range items {
+		src := strings.ToLower(it.Source)
+		ref := strings.ToLower(it.ReferenceID)
+		if strings.Contains(src, "claims.settle") ||
+			strings.HasPrefix(ref, "chargeback_clm_") ||
+			strings.Contains(ref, "clm_") {
+			out = append(out, it)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items":       out,
+		"count":       len(out),
+		"limit":       limit,
+		"supplier_id": supplierID,
+	})
 }
 
 // HandleLedger serves GET /v1/payment/ledger.

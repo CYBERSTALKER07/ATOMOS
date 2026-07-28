@@ -932,6 +932,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	orderSvc.SetPaymentCapturer(paymentSvc)
 	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
 	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
+	claimsSvc.SetStoreCredit(creditSvc)
 	var warehouseRepo warehouse.Repository
 	if spannerClient != nil {
 		warehouseRepo = warehouse.NewSpannerRepository(spannerClient)
