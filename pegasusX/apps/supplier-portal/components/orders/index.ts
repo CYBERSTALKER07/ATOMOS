@@ -4,3 +4,4 @@ export { OrderKebabMenu } from './OrderKebabMenu';
 export { OrderActionDialog } from './OrderActionDialog';
 export { OrderStateChip } from './OrderStateChip';
 export * from './ReDispatchDialog';
+export * from './ProposeDelayDialog';

@@ -1,9 +1,6 @@
 package com.pegasusx.supplier.ui.screens.network
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -11,16 +8,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.AddressLocationField
-import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,19 +87,8 @@ fun WarehousesScreen(
                     onAction = { showAdd = true },
                 )
             }
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(warehouses, key = { it.warehouseId }) { warehouse ->
-                    val locationLabel = warehouse.address.ifBlank { "Coordinates on file" }
-                    SupplierOpsListCard(
-                        headline = warehouse.name.ifBlank { warehouse.warehouseId },
-                        supporting = "Radius ${warehouse.coverageRadiusKm} km · $locationLabel",
-                        status = if (warehouse.isActive) "ACTIVE" else "INACTIVE",
-                    )
-                }
+            else -> Box(modifier = Modifier.padding(padding)) {
+                WarehouseList(warehouses = warehouses)
             }
         }
     }
@@ -128,46 +109,4 @@ fun WarehousesScreen(
             },
         )
     }
-}
-
-@Composable
-private fun AddWarehouseDialog(
-    geocodeApi: GeocodeApi,
-    onDismiss: () -> Unit,
-    onSave: (String, AddressLocationValue, Double) -> Unit,
-) {
-    val (defaultLat, defaultLng) = defaultWarehouseCoordinates()
-    var name by remember { mutableStateOf("") }
-    var location by remember {
-        mutableStateOf(AddressLocationValue(lat = defaultLat, lng = defaultLng))
-    }
-    var radius by remember { mutableStateOf("50") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add warehouse") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
-                AddressLocationField(
-                    geocodeApi = geocodeApi,
-                    value = location,
-                    onValueChange = { location = it },
-                    label = "Warehouse address",
-                )
-                OutlinedTextField(value = radius, onValueChange = { radius = it }, label = { Text("Coverage km") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank() && location.address.isNotBlank() && location.lat != 0.0 && location.lng != 0.0) {
-                        onSave(name, location, radius.toDoubleOrNull() ?: 50.0)
-                    }
-                },
-                enabled = name.isNotBlank() && location.address.isNotBlank(),
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }

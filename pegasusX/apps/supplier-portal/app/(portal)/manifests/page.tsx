@@ -7,8 +7,8 @@ import type { SupplierManifestRow } from "@pegasusx/types";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
-import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { ManifestsTable } from "@/components/manifests";
 
 const api = createSupplierApi();
 
@@ -59,35 +59,7 @@ export default function ManifestsPage() {
           )
         }
       />
-      <div className="md-card overflow-hidden">
-        <table className="desk-table w-full">
-          <thead>
-            <tr className="border-b border-[var(--color-md-outline-variant)] text-[var(--color-md-outline)]">
-              <th className="md-typescale-label-medium p-4 font-medium">Manifest</th>
-              <th className="md-typescale-label-medium p-4 font-medium">Status</th>
-              <th className="md-typescale-label-medium p-4 font-medium text-right">Orders</th>
-              <th className="md-typescale-label-medium p-4 font-medium">Driver</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagination.pageItems.map((manifest) => (
-              <tr
-                key={manifest.manifest_id}
-                className="border-b border-[var(--color-md-outline-variant)] last:border-0"
-              >
-                <td className="p-4 md-typescale-body-medium font-mono">
-                  <Link href={`/manifests/${manifest.manifest_id}`} className="text-[var(--color-md-primary)] underline">
-                    {manifest.manifest_id}
-                  </Link>
-                </td>
-                <td className="p-4 md-typescale-body-medium"><StatusBadge state={manifest.status} /></td>
-                <td className="p-4 md-typescale-body-medium text-right">{manifest.orders_count}</td>
-                <td className="p-4 md-typescale-body-medium">{manifest.driver_name}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ManifestsTable items={pagination.pageItems} />
       <p className="md-typescale-body-medium text-[var(--color-md-outline)] flex flex-wrap gap-4">
         <Link href="/dispatch" className="text-[var(--color-md-primary)] underline">
           Open dispatch queue

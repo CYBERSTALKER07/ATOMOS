@@ -1,8 +1,7 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -15,10 +14,8 @@ import com.pegasusx.supplier.data.model.SupplierManifestRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,29 +100,11 @@ fun ManifestsScreen(
                 body = "Loading manifests will appear here.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(rows, key = { it.manifestId }) { row ->
-                    val state = row.state.ifBlank { row.status }
-                    SupplierOpsListCard(
-                        headline = row.manifestId.take(12),
-                        supporting = buildString {
-                            append("${row.ordersCount} orders")
-                            if (row.stopCount > 0) append(" · ${row.stopCount} stops")
-                            val driver = row.driverName.ifBlank { row.driverId.orEmpty() }
-                            if (driver.isNotBlank()) append(" · $driver")
-                            row.vehiclePlate?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
-                        },
-                        status = state,
-                        onClick = { onOpenManifest(row.manifestId) },
-                    )
-                }
-            }
+            else -> ManifestsList(
+                rows = rows,
+                modifier = Modifier.padding(padding),
+                onOpenManifest = onOpenManifest
+            )
         }
     }
 }
