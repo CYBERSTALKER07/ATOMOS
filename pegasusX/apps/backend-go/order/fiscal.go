@@ -26,10 +26,12 @@ const (
 	FiscalStatusFailed       = "FAILED"
 	FiscalStatusForceSkipped = "FORCE_SKIPPED"
 
-	FiscalProviderFake    = "FAKE"
-	FiscalProviderMySoliq = "MY_SOLIQ"
+	FiscalProviderFake      = "FAKE"
+	FiscalProviderPegasus   = "PEGASUS"    // platform commercial receipt (default product path)
+	FiscalProviderGlobalPay = "GLOBAL_PAY" // payment-provider receipt (optional secondary)
+	FiscalProviderMySoliq   = "MY_SOLIQ"   // tax OFD — deferred until Soliq sandbox creds
 
-	// FiscalOFDTimeout is the hard timeout per OFD call (P0 T8/T9).
+	// FiscalOFDTimeout is the hard timeout per external receipt call (P0 T8/T9).
 	FiscalOFDTimeout = 8 * time.Second
 	// FiscalMaxFailedAttempts before order stays in FISCAL_FAILED requiring retry/force.
 	FiscalMaxFailedAttempts = 3
@@ -143,17 +145,33 @@ func (s *Service) SetFiscalProvider(p FiscalProvider) {
 // ProviderName returns the active provider label for attempt rows.
 func (s *Service) ProviderName() string {
 	p := s.fiscalProvider()
-	switch p.(type) {
+	switch v := p.(type) {
 	case *MySoliqProvider:
 		return FiscalProviderMySoliq
+	case *GlobalPayReceiptProvider:
+		return FiscalProviderGlobalPay
+	case PegasusReceiptProvider:
+		return FiscalProviderPegasus
 	case FakeFiscalProvider:
 		return FiscalProviderFake
+	case multiReceiptProvider:
+		if v.name != "" {
+			return v.name
+		}
+		return FiscalProviderPegasus
 	default:
 		// hardFailProvider and unknown → report configured intent
-		if strings.EqualFold(strings.TrimSpace(os.Getenv("FISCAL_PROVIDER")), FiscalProviderMySoliq) {
+		cfg := strings.ToUpper(strings.TrimSpace(os.Getenv("FISCAL_PROVIDER")))
+		switch cfg {
+		case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
 			return FiscalProviderMySoliq
+		case FiscalProviderFake:
+			return FiscalProviderFake
+		case FiscalProviderGlobalPay:
+			return FiscalProviderGlobalPay
+		default:
+			return FiscalProviderPegasus
 		}
-		return FiscalProviderFake
 	}
 }
 
@@ -181,7 +199,7 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 	if amountMinor == 0 {
 		amountMinor = orderRecord.TotalMinor
 	}
-	provider := FiscalProviderFake
+	provider := FiscalProviderPegasus
 	if s != nil {
 		provider = s.ProviderName()
 	}

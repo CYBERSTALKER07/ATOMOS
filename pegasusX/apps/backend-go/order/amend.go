@@ -3,7 +3,10 @@ package order
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // SupplierReturn is one quarantine row for rejected delivery quantity.
@@ -18,11 +21,20 @@ type SupplierReturn struct {
 	WarehouseID string
 }
 
+// DefaultPostDeliveryAmendWindow is the concealed-damage window after COMPLETED.
+const DefaultPostDeliveryAmendWindow = 48 * time.Hour
+
 var validAmendReasons = map[string]struct{}{
 	"DAMAGED":     {},
 	"MISSING":     {},
 	"WRONG_ITEM":  {},
 	"OTHER":       {},
+}
+
+// postDeliveryAmendReasons may be applied after COMPLETED within the claim window.
+var postDeliveryAmendReasons = map[string]struct{}{
+	"DAMAGED": {},
+	"MISSING": {}, // concealed shortage discovered after seal open
 }
 
 func orderAmendable(status Status) bool {
@@ -32,6 +44,39 @@ func orderAmendable(status Status) bool {
 	default:
 		return false
 	}
+}
+
+// orderPostDeliveryAmendable allows COMPLETED orders within the time window for damage/shortage.
+func orderPostDeliveryAmendable(status Status, completedAt, now time.Time, reasons []string) bool {
+	if status != StatusCompleted {
+		return false
+	}
+	if len(reasons) == 0 {
+		return false
+	}
+	for _, r := range reasons {
+		r = normalizeAmendReason(r)
+		if _, ok := postDeliveryAmendReasons[r]; !ok {
+			return false
+		}
+	}
+	window := postDeliveryWindowFromEnv()
+	if completedAt.IsZero() {
+		return true
+	}
+	return !now.After(completedAt.UTC().Add(window))
+}
+
+func postDeliveryWindowFromEnv() time.Duration {
+	h := strings.TrimSpace(os.Getenv("CLAIM_WINDOW_HOURS"))
+	if h == "" {
+		return DefaultPostDeliveryAmendWindow
+	}
+	n, err := strconv.Atoi(h)
+	if err != nil || n <= 0 {
+		return DefaultPostDeliveryAmendWindow
+	}
+	return time.Duration(n) * time.Hour
 }
 
 func normalizeAmendReason(reason string) string {

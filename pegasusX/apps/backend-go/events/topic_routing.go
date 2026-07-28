@@ -15,6 +15,10 @@ var (
 	TopicRealtime = topicFromEnv("KAFKA_TOPIC_REALTIME", "pegasusx-realtime")
 	// TopicWebhooks carries payment gateway settlement events.
 	TopicWebhooks = topicFromEnv("KAFKA_TOPIC_WEBHOOKS", "pegasusx-webhooks")
+	// TopicExceptions carries logistics claims / OS&D / reverse-logistics.
+	TopicExceptions = topicFromEnv("KAFKA_TOPIC_EXCEPTIONS", "logistics.exceptions.v1")
+	// TopicTelemetryLogistics carries temperature / seal / sensor exception telemetry.
+	TopicTelemetryLogistics = topicFromEnv("KAFKA_TOPIC_TELEMETRY_LOGISTICS", "logistics.telemetry.v1")
 )
 
 // DualWriteDomainTopics mirrors events onto domain topics while consumers migrate
@@ -95,6 +99,13 @@ func DomainTopicForEventType(eventType string) string {
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
+	case EventClaimFiled, EventClaimResolved, EventLogisticsExceptionReported,
+		EventReverseLogisticsRequired:
+		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
+		// is done explicitly in order handlers when needed.
+		return TopicExceptions
+	case EventLogisticsTelemetry:
+		return TopicTelemetryLogistics
 	default:
 		return ""
 	}

@@ -210,6 +210,7 @@ func main() {
 	webhookroutes.RegisterRoutes(r, webhookroutes.Deps{Service: app.PaymentService})
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Service:             app.OrderService,
+		ClaimsService:       app.ClaimsService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,

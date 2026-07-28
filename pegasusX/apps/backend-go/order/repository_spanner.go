@@ -569,6 +569,78 @@ func (r *SpannerRepository) GetFiscalAttempt(ctx context.Context, orderID, attem
 	return fr, true, nil
 }
 
+// GetFiscalByReceiptID loads a fiscal attempt by public receipt id (Idx_OrderFiscalReceipts_ByReceiptId).
+func (r *SpannerRepository) GetFiscalByReceiptID(ctx context.Context, receiptID string) (FiscalReceiptRow, bool, error) {
+	if r == nil || r.client == nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("spanner order repository: nil client")
+	}
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return FiscalReceiptRow{}, false, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, AttemptId, SupplierId, RetailerId, Provider, Status,
+			FiscalReceiptId, FiscalQR, AmountMinor, Currency, PaymentMethod,
+			ErrorCode, ErrorMessage, ReasonCode, ActorId, TraceId, CreatedAt, UpdatedAt
+			FROM OrderFiscalReceipts@{FORCE_INDEX=Idx_OrderFiscalReceipts_ByReceiptId}
+			WHERE FiscalReceiptId = @rid
+			LIMIT 1`,
+		Params: map[string]any{"rid": receiptID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done || errors.Is(err, spanner.ErrRowNotFound) {
+			return FiscalReceiptRow{}, false, nil
+		}
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+			return FiscalReceiptRow{}, false, nil
+		}
+		return FiscalReceiptRow{}, false, fmt.Errorf("read fiscal by receipt_id %s: %w", receiptID, err)
+	}
+	var fr FiscalReceiptRow
+	var retailer, fiscalID, fiscalQR, payMethod, errCode, errMsg, reason, actor, trace spanner.NullString
+	var created, updated time.Time
+	if err := row.Columns(
+		&fr.OrderID, &fr.AttemptID, &fr.SupplierID, &retailer, &fr.Provider, &fr.Status,
+		&fiscalID, &fiscalQR, &fr.AmountMinor, &fr.Currency, &payMethod,
+		&errCode, &errMsg, &reason, &actor, &trace, &created, &updated,
+	); err != nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("scan fiscal by receipt_id: %w", err)
+	}
+	if retailer.Valid {
+		fr.RetailerID = retailer.StringVal
+	}
+	if fiscalID.Valid {
+		fr.FiscalReceiptID = fiscalID.StringVal
+	}
+	if fiscalQR.Valid {
+		fr.FiscalQR = fiscalQR.StringVal
+	}
+	if payMethod.Valid {
+		fr.PaymentMethod = payMethod.StringVal
+	}
+	if errCode.Valid {
+		fr.ErrorCode = errCode.StringVal
+	}
+	if errMsg.Valid {
+		fr.ErrorMessage = errMsg.StringVal
+	}
+	if reason.Valid {
+		fr.ReasonCode = reason.StringVal
+	}
+	if actor.Valid {
+		fr.ActorID = actor.StringVal
+	}
+	if trace.Valid {
+		fr.TraceID = trace.StringVal
+	}
+	fr.CreatedAt = created.UTC()
+	fr.UpdatedAt = updated.UTC()
+	return fr, true, nil
+}
+
 // CountFiscalAttemptsByStatus counts OrderFiscalReceipts rows for an order/status.
 func (r *SpannerRepository) CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error) {
 	if r == nil || r.client == nil {

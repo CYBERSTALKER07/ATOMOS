@@ -108,6 +108,13 @@ const (
 	EventCashShortfall = "CASH_SHORTFALL"
 	EventCashOverage   = "CASH_OVERAGE"
 
+	// @Sync(LogisticsException) claims / OS&D / reverse logistics
+	EventClaimFiled                 = "CLAIM_FILED"
+	EventClaimResolved              = "CLAIM_RESOLVED"
+	EventLogisticsExceptionReported = "LOGISTICS_EXCEPTION_REPORTED"
+	EventReverseLogisticsRequired   = "REVERSE_LOGISTICS_REQUIRED"
+	EventLogisticsTelemetry         = "LOGISTICS_TELEMETRY"
+
 	// @Sync(ManifestEvent)
 	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
 	EventManifestLoadingStarted = "MANIFEST_LOADING_STARTED"
@@ -230,6 +237,7 @@ const (
 	AggregateWarehouse             = "Warehouse"
 	AggregateFactory               = "Factory"
 	AggregateOrder                 = "Order"
+	AggregateClaim                 = "Claim"
 	AggregateAIRecommendation      = "AIRecommendation"
 	AggregateRoute                 = "Route"
 	AggregateManifest              = "Manifest"

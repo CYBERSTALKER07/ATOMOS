@@ -34,14 +34,17 @@ func NewDLQWriterFromCSVWithAuth(brokersCSV, topic string, auth kafkautil.Client
 	}
 	return &kafkaDLQWriter{
 		writer: &segmentkafka.Writer{
-			Addr:         segmentkafka.TCP(brokers...),
-			Topic:        trimmedTopic,
-			RequiredAcks: segmentkafka.RequireAll,
-			BatchTimeout: 250 * time.Millisecond,
-			MaxAttempts:  5,
-			Balancer:     &segmentkafka.Hash{},
-			Async:        false,
-			Transport:    transport,
+			Addr:                   segmentkafka.TCP(brokers...),
+			Topic:                  trimmedTopic,
+			RequiredAcks:           segmentkafka.RequireAll,
+			BatchTimeout:           250 * time.Millisecond,
+			MaxAttempts:            1 << 20, // high bound; WriteTimeout caps wait
+			WriteTimeout:           30 * time.Second,
+			ReadTimeout:            10 * time.Second,
+			Balancer:               &segmentkafka.Hash{},
+			Async:                  false,
+			AllowAutoTopicCreation: false,
+			Transport:              transport,
 		},
 	}, nil
 }

@@ -12,10 +12,18 @@ import (
 	"time"
 )
 
-// Fiscal provider selection (ADR-009 §9.4).
+// Fiscal provider selection (ADR-009 hard-gate).
 //
-//	FISCAL_PROVIDER=FAKE      (default — SSMR / local)
-//	FISCAL_PROVIDER=MY_SOLIQ  real HTTP adapter (sandbox or production base URL)
+//	FISCAL_PROVIDER=PEGASUS    (default product path — platform commercial receipts, no Soliq)
+//	FISCAL_PROVIDER=FAKE       SSMR test hooks (amount=13 / fiscal-fail ids)
+//	FISCAL_PROVIDER=MY_SOLIQ   tax OFD HTTP adapter (when Soliq sandbox/prod creds arrive)
+//	FISCAL_PROVIDER=GLOBAL_PAY payment-provider receipts only (rarely used alone)
+//
+// Optional secondary payment receipt (best-effort, never blocks COMPLETED):
+//
+//	FISCAL_GLOBAL_PAY_RECEIPT_ENABLED=true
+//	FISCAL_GLOBAL_PAY_RECEIPT_BASE_URL=...
+//	FISCAL_GLOBAL_PAY_RECEIPT_API_KEY=...
 //
 // My.soliq / OFD credentials (required when MY_SOLIQ):
 //
@@ -25,17 +33,18 @@ import (
 //	FISCAL_MY_SOLIQ_PATH       optional path, default /v1/receipts
 //	FISCAL_MY_SOLIQ_TIMEOUT_MS optional, default 8000
 const (
-	envFiscalProvider       = "FISCAL_PROVIDER"
-	envMySoliqBaseURL       = "FISCAL_MY_SOLIQ_BASE_URL"
-	envMySoliqAPIKey        = "FISCAL_MY_SOLIQ_API_KEY"
-	envMySoliqTIN           = "FISCAL_MY_SOLIQ_TIN"
-	envMySoliqPath          = "FISCAL_MY_SOLIQ_PATH"
-	envMySoliqTimeoutMS     = "FISCAL_MY_SOLIQ_TIMEOUT_MS"
+	envFiscalProvider   = "FISCAL_PROVIDER"
+	envMySoliqBaseURL   = "FISCAL_MY_SOLIQ_BASE_URL"
+	envMySoliqAPIKey    = "FISCAL_MY_SOLIQ_API_KEY"
+	envMySoliqTIN       = "FISCAL_MY_SOLIQ_TIN"
+	envMySoliqPath      = "FISCAL_MY_SOLIQ_PATH"
+	envMySoliqTimeoutMS = "FISCAL_MY_SOLIQ_TIMEOUT_MS"
 	// SSMR fail hook: FakeFiscalProvider rejects amount_minor == FiscalFakeFailAmountMinor.
 	FiscalFakeFailAmountMinor int64 = 13
 )
 
-// ProviderFromEnv selects FAKE or MY_SOLIQ from environment.
+// ProviderFromEnv selects PEGASUS (default), FAKE, MY_SOLIQ, or GLOBAL_PAY.
+// When PEGASUS is primary and Global Pay receipt env is enabled, wraps multi-receipt.
 func ProviderFromEnv() FiscalProvider {
 	switch strings.ToUpper(strings.TrimSpace(os.Getenv(envFiscalProvider))) {
 	case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
@@ -46,8 +55,34 @@ func ProviderFromEnv() FiscalProvider {
 			return hardFailProvider{reason: err.Error()}
 		}
 		return p
-	default:
+	case FiscalProviderFake:
 		return FakeFiscalProvider{}
+	case FiscalProviderGlobalPay:
+		p, err := NewGlobalPayReceiptProviderFromEnv()
+		if err != nil {
+			return hardFailProvider{reason: err.Error()}
+		}
+		if p == nil {
+			return hardFailProvider{reason: "GLOBAL_PAY receipt provider not enabled — set FISCAL_GLOBAL_PAY_RECEIPT_ENABLED=true and credentials"}
+		}
+		return p
+	default:
+		// PEGASUS (and empty / unknown aliases) — product default without Soliq.
+		primary := PegasusReceiptProvider{PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))}
+		gp, err := NewGlobalPayReceiptProviderFromEnv()
+		if err != nil {
+			// Misconfigured secondary must not block platform receipts.
+			// hard-fail only when GLOBAL_PAY is the primary provider (handled above).
+			return primary
+		}
+		if gp != nil {
+			return multiReceiptProvider{
+				primary: primary,
+				payment: gp,
+				name:    FiscalProviderPegasus,
+			}
+		}
+		return primary
 	}
 }
 

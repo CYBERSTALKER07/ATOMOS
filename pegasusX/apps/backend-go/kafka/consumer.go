@@ -80,17 +80,26 @@ func NewConsumer(deps ConsumerDeps) *Consumer {
 		dialer = &kafka.Dialer{Timeout: 15 * time.Second, DualStack: true}
 		slog.Error("kafka consumer dialer", "err", err)
 	}
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        deps.Brokers,
-		GroupID:        deps.GroupID,
-		Topic:          deps.Topic,
-		MaxBytes:       10e6,
-		CommitInterval: time.Second,
-		Dialer:         dialer,
-	})
+	// CommitInterval=0 → CommitMessages is synchronous. workerpool commits only
+	// after handler success or successful DLQ routing (see dispatch + ErrSkipCommit).
+	// Never use ReadMessage auto-commit path; FetchMessage + manual commit only.
+	reader := kafka.NewReader(readerConfig(deps, dialer))
 	return &Consumer{
 		reader: reader,
 		deps:   deps,
+	}
+}
+
+// readerConfig builds a group consumer that only advances offsets via CommitMessages.
+func readerConfig(deps ConsumerDeps, dialer *kafka.Dialer) kafka.ReaderConfig {
+	return kafka.ReaderConfig{
+		Brokers:               deps.Brokers,
+		GroupID:               deps.GroupID,
+		Topic:                 deps.Topic,
+		MaxBytes:              10e6,
+		CommitInterval:        0, // sync commit after success/DLQ
+		WatchPartitionChanges: true,
+		Dialer:                dialer,
 	}
 }
 

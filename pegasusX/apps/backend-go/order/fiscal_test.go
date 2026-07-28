@@ -30,8 +30,43 @@ func TestFakeFiscalProviderFailHook(t *testing.T) {
 	}
 }
 
-func TestProviderFromEnvDefaultsFake(t *testing.T) {
+func TestProviderFromEnvDefaultsPegasus(t *testing.T) {
 	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("FISCAL_GLOBAL_PAY_RECEIPT_ENABLED", "")
+	p := ProviderFromEnv()
+	if _, ok := p.(PegasusReceiptProvider); !ok {
+		t.Fatalf("want PegasusReceiptProvider, got %T", p)
+	}
+}
+
+func TestPegasusReceiptProviderIssuesPlatformReceipt(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "https://api.example.test")
+	t.Setenv("PEGASUSX_ENV", "prod")
+	t.Setenv("FISCAL_PEGASUS_SSMR_HOOKS", "")
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	res, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{
+		AttemptID:   "att-1",
+		OrderID:     "ord-1",
+		SupplierID:  "sup-1",
+		AmountMinor: 150000,
+		Currency:    "UZS",
+	})
+	if err != nil {
+		t.Fatalf("CreateReceipt: %v", err)
+	}
+	if !strings.HasPrefix(res.FiscalReceiptID, "PX-RCPT-") {
+		t.Fatalf("receipt id = %q", res.FiscalReceiptID)
+	}
+	if !strings.Contains(res.FiscalQR, "/v1/platform/receipts/") {
+		t.Fatalf("qr = %q", res.FiscalQR)
+	}
+	if !strings.Contains(string(res.RawPayload), `"tax_ofd":false`) {
+		t.Fatalf("payload missing tax_ofd false: %s", string(res.RawPayload))
+	}
+}
+
+func TestProviderFromEnvFakeStillAvailable(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "FAKE")
 	p := ProviderFromEnv()
 	if _, ok := p.(FakeFiscalProvider); !ok {
 		t.Fatalf("want FakeFiscalProvider, got %T", p)
@@ -108,6 +143,8 @@ func TestFiscalFailThenRetry(t *testing.T) {
 	o.OrderID = "ord-fiscal-fail-cash"
 	repo := &testRepo{found: true, order: o}
 	svc := newTestService(repo, now)
+	// Fail hooks live on FAKE provider; product default is PEGASUS.
+	svc.SetFiscalProvider(FakeFiscalProvider{})
 
 	resp, err := svc.CollectCash(context.Background(), driverClaims(), CollectCashRequest{
 		OrderID:   o.OrderID,

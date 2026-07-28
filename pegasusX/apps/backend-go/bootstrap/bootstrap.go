@@ -22,6 +22,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
+	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
@@ -160,6 +161,7 @@ type App struct {
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
 	OrderService           *order.Service
+	ClaimsService          *claims.Service
 	CreditService          *credit.Service
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
@@ -643,6 +645,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if gatewayPolicyReader != nil {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
+	// Logistics claims domain (post-delivery damage / driver OS&D). Additive; optional bridge.
+	var claimsRepo claims.Repository
+	if spannerClient != nil {
+		claimsRepo = claims.NewSpannerRepository(spannerClient)
+		log.Info("claims repository enabled", "backend", "spanner")
+	} else {
+		claimsRepo = claims.NewMemoryRepository()
+		log.Warn("claims repository fallback enabled", "backend", "in-memory")
+	}
+	claimsSvc := claims.NewService(claims.Config{
+		Repo:   claimsRepo,
+		Orders: orderClaimsLookup{svc: orderSvc},
+		Log:    log,
+	})
+	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
 	order.StartPreorderSweeper(orderSvc)
 	go orderSvc.StartNegotiationSweeper(context.Background())
 	go orderSvc.StartDeferredPaymentSweeper(context.Background(), 5*time.Minute)
@@ -911,6 +928,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
+	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
+	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
 	var warehouseRepo warehouse.Repository
 	if spannerClient != nil {
 		warehouseRepo = warehouse.NewSpannerRepository(spannerClient)
@@ -1002,8 +1021,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 
 	var fcmClient *notifications.FCMClient
-	if strings.TrimSpace(cfg.FirebaseCredentialsPath) != "" {
-		fcmClient, err = notifications.InitFCM(cfg.FirebaseCredentialsPath, spannerClient, log)
+	// Prefer real FCM when project id or credentials path is configured.
+	// Empty/stub credentials JSON falls through to Workload Identity ADC.
+	if strings.TrimSpace(cfg.FirebaseProjectID) != "" || strings.TrimSpace(cfg.FirebaseCredentialsPath) != "" {
+		fcmClient, err = notifications.InitFCM(cfg.FirebaseCredentialsPath, cfg.FirebaseProjectID, spannerClient, log)
 		if err != nil {
 			log.Warn("FCM init failed; using no-op", "err", err)
 			fcmClient = notifications.NewNoOpFCMClient(log)
@@ -1146,6 +1167,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WarehouseService:       warehouseSvc,
 		ReturnsService:         returnsSvc,
 		OrderService:           orderSvc,
+		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,

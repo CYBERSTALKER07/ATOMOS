@@ -5,12 +5,14 @@ package orderroutes
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service             *order.Service
+	ClaimsService       *claims.Service
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 	AllowAuthBypass     bool
@@ -21,6 +23,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	if d.Service == nil {
 		return
 	}
+
+	// Public platform receipt QR target (no auth — redacted commercial view).
+	r.Get("/v1/platform/receipts/{receiptID}", d.Service.HandleGetPlatformReceipt)
 
 	mount := func(gr chi.Router) {
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/order/create", d.Service.HandleCreate)
@@ -49,6 +54,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/reconciliation", d.Service.HandleListReconciliationOrders)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/reconciliation/resolve", d.Service.HandleResolveReconciliation)
+
+		// Post-delivery logistics claims (retailer concealed damage / OS&D).
+		if d.ClaimsService != nil {
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/orders/{orderID}/claims", d.ClaimsService.HandleFileOrderClaim)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/orders/{orderID}/claims", d.ClaimsService.HandleListOrderClaims)
+			// Adjudication → supplier chargeback + optional GP partial refund.
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/approve", d.ClaimsService.HandleApproveClaim)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/reject", d.ClaimsService.HandleRejectClaim)
+		}
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{

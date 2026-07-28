@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
+
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
@@ -104,6 +106,75 @@ type gpTokenResponse struct {
 	UserRedirectUrl string `json:"userRedirectUrl"`
 }
 
+// executeRefund issues a full or partial refund via backoffice perform.
+// Global Pay marketing confirms partial refunds; perform action code is
+// env-overridable (GLOBAL_PAY_REFUND_ACTION, default "RF") until merchant docs confirm.
+func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
+	if e.username == "" || e.password == "" {
+		return ExecutionResult{
+			ResolvedGateway: "GLOBAL_PAY",
+			Mode:            ExecutionModeDirect,
+			PolicySource:    "SUPPLIER_DEFAULT",
+			ProviderRef:     "gp_refund_stub_" + req.OrderID,
+		}, nil
+	}
+	token, err := e.authenticate(ctx)
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+	paymentID := strings.TrimSpace(req.SessionID)
+	if paymentID == "" {
+		paymentID = strings.TrimSpace(req.OrderID)
+	}
+	action := strings.TrimSpace(os.Getenv("GLOBAL_PAY_REFUND_ACTION"))
+	if action == "" {
+		action = "RF" // reverse funds — confirm with Global Pay merchant support
+	}
+	url := fmt.Sprintf("%s/payments/v2/payment/%s/perform", e.getBackofficeBaseURL(), paymentID)
+	body, _ := json.Marshal(map[string]any{
+		"action":       action,
+		"amount_minor": req.AmountMinor,
+		"currency":     req.Currency,
+	})
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	var performResp struct {
+		PaymentID    string `json:"paymentId"`
+		Status       string `json:"status"`
+		IsSuccessful bool   `json:"isSuccessful"`
+	}
+	err = e.doHTTP(ctx, func(callCtx context.Context) error {
+		resp, err := e.httpClient.Do(httpReq.WithContext(callCtx))
+		if err != nil {
+			return MarkRetryable(fmt.Errorf("globalpay refund request failed: %w", err))
+		}
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			return fmt.Errorf("globalpay refund failed with status %d: %s", resp.StatusCode, string(respBody))
+		}
+		_ = json.Unmarshal(respBody, &performResp)
+		return nil
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+	ref := performResp.PaymentID
+	if ref == "" {
+		ref = paymentID
+	}
+	return ExecutionResult{
+		ResolvedGateway: "GLOBAL_PAY",
+		Mode:            ExecutionModeDirect,
+		PolicySource:    "SUPPLIER_DEFAULT",
+		ProviderRef:     ref,
+	}, nil
+}
+
 func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, error) {
 	username := e.username
 	password := e.password
@@ -154,14 +225,13 @@ func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, e
 func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	switch req.Action {
 	case ExecutionActionChargebackRecord, ExecutionActionChargebackReversal:
-		// Chargeback/reversal actions are administrative records only; no live
-		// API call to the gateway is needed in the current implementation.
+		// Internal marketplace debit/credit ledger only (supplier settlement).
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",
 			Mode:            ExecutionModeDirect,
 			PolicySource:    "SUPPLIER_DEFAULT",
 		}, nil
-	case ExecutionActionCheckoutInit, ExecutionActionCheckoutCapture, ExecutionActionStatusCheck:
+	case ExecutionActionCheckoutInit, ExecutionActionCheckoutCapture, ExecutionActionStatusCheck, ExecutionActionRefund:
 		// handled below
 	default:
 		return ExecutionResult{}, &GatewayPolicyError{
@@ -171,6 +241,10 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 			ResolvedGateway:  "GLOBAL_PAY",
 			PolicySource:     "ROUTER_CAPABILITY",
 		}
+	}
+
+	if req.Action == ExecutionActionRefund {
+		return e.executeRefund(ctx, req)
 	}
 
 	if req.Action == ExecutionActionCheckoutCapture {

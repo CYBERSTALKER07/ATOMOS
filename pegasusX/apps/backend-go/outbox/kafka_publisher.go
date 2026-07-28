@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -11,24 +12,54 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// Default publisher reliability knobs.
+// MaxAttempts is intentionally very high; WriteTimeout bounds total wait on
+// transient broker/network failures (kafka-go retries within that envelope).
+const (
+	defaultKafkaPublishMaxAttempts = math.MaxInt32
+	defaultKafkaPublishWriteTimeout = 30 * time.Second
+	defaultKafkaPublishReadTimeout  = 10 * time.Second
+	defaultKafkaPublishBatchTimeout = 250 * time.Millisecond
+)
+
 // KafkaPublisherConfig tunes writer behavior for outbox delivery.
 type KafkaPublisherConfig struct {
 	BatchTimeout time.Duration
 	MaxAttempts  int
+	WriteTimeout time.Duration
+	ReadTimeout  time.Duration
 	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH = Managed Kafka SASL_SSL.
 	Auth kafkautil.ClientAuth
 }
 
 func (c *KafkaPublisherConfig) applyDefaults() {
 	if c.BatchTimeout <= 0 {
-		c.BatchTimeout = 250 * time.Millisecond
+		c.BatchTimeout = defaultKafkaPublishBatchTimeout
 	}
 	if c.MaxAttempts <= 0 {
-		c.MaxAttempts = 5
+		c.MaxAttempts = defaultKafkaPublishMaxAttempts
+	}
+	if c.WriteTimeout <= 0 {
+		c.WriteTimeout = defaultKafkaPublishWriteTimeout
+	}
+	if c.ReadTimeout <= 0 {
+		c.ReadTimeout = defaultKafkaPublishReadTimeout
 	}
 }
 
 // KafkaPublisher publishes outbox events to Kafka with required acks.
+//
+// Reliability model (at-least-once, outbox-backed):
+//   - RequiredAcks=all (broker ISR ack)
+//   - High MaxAttempts + WriteTimeout (retry until delivery window expires)
+//   - Hash balancer on aggregate key (per-entity order)
+//   - Sync writes (Async=false)
+//   - AllowAutoTopicCreation=false (topics owned by Strimzi CRDs)
+//
+// Note: segmentio/kafka-go Writer does not expose enable.idempotence. Duplicate
+// prevention for the outbox path is handled by Relay MarkPublished + consumer
+// event dedup middleware. True broker-side idempotent producers require a
+// transactional client; do not weaken RequireAll / sync writes.
 type KafkaPublisher struct {
 	writer *kafka.Writer
 }
@@ -46,13 +77,16 @@ func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*Kaf
 		return nil, fmt.Errorf("kafka publisher: transport: %w", err)
 	}
 	writer := &kafka.Writer{
-		Addr:         kafka.TCP(brokers...),
-		RequiredAcks: kafka.RequireAll,
-		BatchTimeout: cfg.BatchTimeout,
-		MaxAttempts:  cfg.MaxAttempts,
-		Balancer:     &kafka.Hash{},
-		Async:        false,
-		Transport:    transport,
+		Addr:                   kafka.TCP(brokers...),
+		RequiredAcks:           kafka.RequireAll,
+		BatchTimeout:           cfg.BatchTimeout,
+		MaxAttempts:            cfg.MaxAttempts,
+		WriteTimeout:           cfg.WriteTimeout,
+		ReadTimeout:            cfg.ReadTimeout,
+		Balancer:               &kafka.Hash{},
+		Async:                  false,
+		AllowAutoTopicCreation: false,
+		Transport:              transport,
 	}
 	return &KafkaPublisher{writer: writer}, nil
 }

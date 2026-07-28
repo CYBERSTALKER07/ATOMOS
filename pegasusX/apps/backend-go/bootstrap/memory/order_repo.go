@@ -92,6 +92,35 @@ func (r *inMemoryOrderRepo) GetOrder(_ context.Context, orderID string) (order.O
 	return o, ok, nil
 }
 
+func (r *inMemoryOrderRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (order.FiscalReceiptRow, bool, error) {
+	if r == nil {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, o := range r.byID {
+		if strings.TrimSpace(o.LatestFiscalReceiptID) != receiptID {
+			continue
+		}
+		return order.FiscalReceiptRow{
+			OrderID:         o.OrderID,
+			AttemptID:       o.LatestFiscalAttemptID,
+			SupplierID:      o.SupplierID,
+			RetailerID:      o.RetailerID,
+			Provider:        order.FiscalProviderPegasus,
+			Status:          order.FiscalAttemptSuccess,
+			FiscalReceiptID: receiptID,
+			AmountMinor:     o.TotalMinor,
+			Currency:        o.Currency,
+		}, true, nil
+	}
+	return order.FiscalReceiptRow{}, false, nil
+}
+
 func (r *inMemoryOrderRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (order.FiscalReceiptRow, bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

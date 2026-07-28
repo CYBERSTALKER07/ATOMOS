@@ -31,6 +31,9 @@ func (s *consumerRepoStub) GetOrder(_ context.Context, orderID string) (Order, b
 func (s *consumerRepoStub) GetFiscalAttempt(context.Context, string, string) (FiscalReceiptRow, bool, error) {
 	return FiscalReceiptRow{}, false, nil
 }
+func (s *consumerRepoStub) GetFiscalByReceiptID(context.Context, string) (FiscalReceiptRow, bool, error) {
+	return FiscalReceiptRow{}, false, nil
+}
 func (s *consumerRepoStub) CountFiscalAttemptsByStatus(context.Context, string, string) (int64, error) {
 	return 0, nil
 }

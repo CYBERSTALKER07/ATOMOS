@@ -140,6 +140,24 @@ func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 	return r.order, true, nil
 }
 
+func (r *testRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (FiscalReceiptRow, bool, error) {
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return FiscalReceiptRow{}, false, nil
+	}
+	if r.fiscalAttempts != nil {
+		for _, fr := range r.fiscalAttempts {
+			if fr.FiscalReceiptID == receiptID {
+				return fr, true, nil
+			}
+		}
+	}
+	if r.captured.FiscalReceiptUpdate != nil && r.captured.FiscalReceiptUpdate.FiscalReceiptID == receiptID {
+		return *r.captured.FiscalReceiptUpdate, true, nil
+	}
+	return FiscalReceiptRow{}, false, nil
+}
+
 func (r *testRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error) {
 	if r.fiscalAttempts != nil {
 		if fr, ok := r.fiscalAttempts[orderID+":"+attemptID]; ok {

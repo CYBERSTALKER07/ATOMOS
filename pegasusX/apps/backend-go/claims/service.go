@@ -1,0 +1,488 @@
+package claims
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+)
+
+// DefaultPostDeliveryClaimWindow is how long after COMPLETED a retailer may file.
+const DefaultPostDeliveryClaimWindow = 48 * time.Hour
+
+// OrderStatusCompleted is the post-delivery gate (mirrors order.StatusCompleted without importing order).
+const OrderStatusCompleted = "COMPLETED"
+
+// OrderSnapshot is the minimal order view claims needs (avoids order↔claims import cycle).
+//
+// Lifecycle note: orders become COMPLETED at delivery handshake + fiscal success
+// (same day as delivery), NOT after a multi-day wait. The claim window (default 48h)
+// starts at that completion timestamp (UpdatedAt on COMPLETED).
+type OrderSnapshot struct {
+	OrderID     string
+	SupplierID  string
+	RetailerID  string
+	WarehouseID string
+	Currency    string
+	Status      string
+	TotalMinor  int64
+	LineItems   []OrderLine
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// OrderLookup loads order snapshots for claim authorization.
+type OrderLookup interface {
+	GetOrder(ctx context.Context, orderID string) (OrderSnapshot, bool, error)
+}
+
+// Service is the claims domain application service.
+type Service struct {
+	repo     Repository
+	orders   OrderLookup
+	settler  ChargebackSettler
+	now      func() time.Time
+	newID    func() string
+	log      *slog.Logger
+	window   time.Duration
+}
+
+// Config wires claims Service dependencies.
+type Config struct {
+	Repo     Repository
+	Orders   OrderLookup
+	Settler  ChargebackSettler
+	Now      func() time.Time
+	NewID    func() string
+	Log      *slog.Logger
+	Window   time.Duration
+}
+
+// NewService builds a claims service.
+func NewService(cfg Config) *Service {
+	now := cfg.Now
+	if now == nil {
+		now = time.Now
+	}
+	newID := cfg.NewID
+	if newID == nil {
+		newID = func() string {
+			return fmt.Sprintf("clm_%d", time.Now().UnixNano())
+		}
+	}
+	log := cfg.Log
+	if log == nil {
+		log = slog.Default()
+	}
+	window := cfg.Window
+	if window <= 0 {
+		window = claimWindowFromEnv()
+	}
+	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, now: now, newID: newID, log: log, window: window}
+}
+
+// SetSettler wires payment chargeback settlement after construction.
+func (s *Service) SetSettler(settler ChargebackSettler) {
+	if s != nil {
+		s.settler = settler
+	}
+}
+
+func claimWindowFromEnv() time.Duration {
+	h := strings.TrimSpace(os.Getenv("CLAIM_WINDOW_HOURS"))
+	if h == "" {
+		return DefaultPostDeliveryClaimWindow
+	}
+	n, err := strconv.Atoi(h)
+	if err != nil || n <= 0 {
+		return DefaultPostDeliveryClaimWindow
+	}
+	return time.Duration(n) * time.Hour
+}
+
+// FileRetailerClaim creates an OPEN claim for a completed order within the window.
+func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, orderID string, req FileClaimRequest) (Claim, error) {
+	if s == nil || s.repo == nil || s.orders == nil {
+		return Claim{}, fmt.Errorf("claims service unavailable")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return Claim{}, ErrOrderNotFound
+	}
+	if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin {
+		return Claim{}, ErrForbidden
+	}
+	if !req.ClaimType.Valid() {
+		return Claim{}, ErrInvalidClaimType
+	}
+	if len(req.LineItems) == 0 {
+		return Claim{}, ErrInvalidLineItems
+	}
+	for _, li := range req.LineItems {
+		if strings.TrimSpace(li.SKU) == "" || li.Quantity <= 0 {
+			return Claim{}, ErrInvalidLineItems
+		}
+	}
+
+	// Post-delivery claims require photo evidence for damage types.
+	needsPhoto := req.ClaimType == ClaimTypeDamaged || req.ClaimType == ClaimTypeConcealedDamage ||
+		req.ClaimType == ClaimTypeTemperature || req.ClaimType == ClaimTypeTamper
+	hasPhoto := false
+	for _, e := range req.Evidences {
+		if e.EvidenceType == EvidencePhoto && strings.TrimSpace(e.URI) != "" {
+			hasPhoto = true
+			break
+		}
+	}
+	if needsPhoto && !hasPhoto {
+		return Claim{}, ErrEvidenceRequired
+	}
+
+	o, ok, err := s.orders.GetOrder(ctx, orderID)
+	if err != nil {
+		return Claim{}, err
+	}
+	if !ok {
+		return Claim{}, ErrOrderNotFound
+	}
+	if claims.Role == auth.RoleRetailer && strings.TrimSpace(o.RetailerID) != strings.TrimSpace(claims.Subject) {
+		return Claim{}, ErrForbidden
+	}
+	if strings.ToUpper(strings.TrimSpace(o.Status)) != OrderStatusCompleted {
+		return Claim{}, fmt.Errorf("%w: order status %s (claims only after delivery complete)", ErrClaimNotAllowed, o.Status)
+	}
+	// Window starts at COMPLETED (delivery+handshake+fiscal), not at first ship day.
+	completedAt := o.UpdatedAt
+	if completedAt.IsZero() {
+		completedAt = o.CreatedAt
+	}
+	now := s.now().UTC()
+	if !completedAt.IsZero() && now.After(completedAt.UTC().Add(s.window)) {
+		return Claim{}, ErrClaimWindowExpired
+	}
+
+	// Price from order lines — never trust client-supplied totals for chargeback.
+	pricedLines, pricedTotal, err := PriceClaimLines(o.LineItems, req.LineItems)
+	if err != nil {
+		return Claim{}, err
+	}
+	amountMinor := pricedTotal
+	if req.AmountMinor > 0 && req.AmountMinor < pricedTotal {
+		// Retailer may claim a lower amount; never higher than order-priced total.
+		amountMinor = req.AmountMinor
+	}
+	if o.TotalMinor > 0 && amountMinor > o.TotalMinor {
+		amountMinor = o.TotalMinor
+	}
+
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" {
+		currency = o.Currency
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+
+	claimID := s.newID()
+	if !strings.HasPrefix(claimID, "clm_") {
+		claimID = "clm_" + claimID
+	}
+	evs := make([]Evidence, 0, len(req.Evidences))
+	for _, e := range req.Evidences {
+		uri := strings.TrimSpace(e.URI)
+		if uri == "" {
+			continue
+		}
+		et := e.EvidenceType
+		if et == "" {
+			et = EvidencePhoto
+		}
+		evs = append(evs, Evidence{
+			EvidenceID:   s.newID(),
+			ClaimID:      claimID,
+			EvidenceType: et,
+			URI:          uri,
+			MimeType:     strings.TrimSpace(e.MimeType),
+			CapturedBy:   claims.Subject,
+			CreatedAt:    now,
+		})
+	}
+
+	c := Claim{
+		ClaimID:     claimID,
+		OrderID:     o.OrderID,
+		SupplierID:  o.SupplierID,
+		RetailerID:  o.RetailerID,
+		FiledBy:     claims.Subject,
+		FiledByRole: string(claims.Role),
+		ClaimType:   req.ClaimType,
+		Status:      StatusOpen,
+		Description: strings.TrimSpace(req.Description),
+		AmountMinor: amountMinor,
+		Currency:    currency,
+		LineItems:   pricedLines,
+		Evidences:   evs,
+		Source:      SourceRetailerClaim,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	err = s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":         events.EventClaimFiled,
+			"claim_id":     c.ClaimID,
+			"order_id":     c.OrderID,
+			"supplier_id":  c.SupplierID,
+			"retailer_id":  c.RetailerID,
+			"claim_type":   string(c.ClaimType),
+			"status":       string(c.Status),
+			"source":       string(c.Source),
+			"amount_minor": c.AmountMinor,
+			"currency":     c.Currency,
+			"line_items":   c.LineItems,
+			"timestamp":    now.Format(time.RFC3339Nano),
+		}
+		// Exceptions topic (new) + main (existing consumers).
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		if needsPhoto {
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, map[string]any{
+				"type":         events.EventReverseLogisticsRequired,
+				"claim_id":     c.ClaimID,
+				"order_id":     c.OrderID,
+				"warehouse_id": o.WarehouseID,
+				"supplier_id":  c.SupplierID,
+				"retailer_id":  c.RetailerID,
+				"claim_type":   string(c.ClaimType),
+				"timestamp":    now.Format(time.RFC3339Nano),
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return Claim{}, err
+	}
+	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
+	return c, nil
+}
+
+// CreateFromDriverException opens a claim from a driver OS&D exception report.
+func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot, driverID string, claimType ClaimType, lines []ClaimLine, photoURIs []string, note string) (Claim, error) {
+	if s == nil || s.repo == nil {
+		return Claim{}, fmt.Errorf("claims service unavailable")
+	}
+	if !claimType.Valid() {
+		claimType = ClaimTypeMissing
+	}
+	pricedLines := lines
+	var amount int64
+	if len(o.LineItems) > 0 {
+		if pl, total, err := PriceClaimLines(o.LineItems, lines); err == nil {
+			pricedLines = pl
+			amount = total
+		}
+	}
+	now := s.now().UTC()
+	claimID := "clm_" + s.newID()
+	evs := make([]Evidence, 0, len(photoURIs))
+	for _, uri := range photoURIs {
+		uri = strings.TrimSpace(uri)
+		if uri == "" {
+			continue
+		}
+		evs = append(evs, Evidence{
+			EvidenceID:   s.newID(),
+			ClaimID:      claimID,
+			EvidenceType: EvidencePhoto,
+			URI:          uri,
+			CapturedBy:   driverID,
+			CreatedAt:    now,
+		})
+	}
+	c := Claim{
+		ClaimID:     claimID,
+		OrderID:     o.OrderID,
+		SupplierID:  o.SupplierID,
+		RetailerID:  o.RetailerID,
+		FiledBy:     driverID,
+		FiledByRole: string(auth.RoleDriver),
+		ClaimType:   claimType,
+		Status:      StatusOpen,
+		Description: strings.TrimSpace(note),
+		AmountMinor: amount,
+		LineItems:   pricedLines,
+		Evidences:   evs,
+		Source:      SourceDriverException,
+		Currency:    o.Currency,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	err := s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":        events.EventClaimFiled,
+			"claim_id":    c.ClaimID,
+			"order_id":    c.OrderID,
+			"source":      string(c.Source),
+			"claim_type":  string(c.ClaimType),
+			"driver_id":   driverID,
+			"line_items":  lines,
+			"photo_count": len(evs),
+			"timestamp":   now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+	})
+	return c, err
+}
+
+// ApproveClaim adjudicates an OPEN/UNDER_REVIEW claim, debits supplier ledger,
+// and optionally refunds the retailer card via Global Pay (partial refund).
+func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID string, req ApproveClaimRequest) (Claim, SettlementResult, error) {
+	if s == nil || s.repo == nil {
+		return Claim{}, SettlementResult{}, fmt.Errorf("claims service unavailable")
+	}
+	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+		// Supplier portal admins use RoleAdmin with supplier scope in this stack.
+		return Claim{}, SettlementResult{}, ErrForbidden
+	}
+	c, ok, err := s.repo.GetClaim(ctx, claimID)
+	if err != nil {
+		return Claim{}, SettlementResult{}, err
+	}
+	if !ok {
+		return Claim{}, SettlementResult{}, ErrClaimNotFound
+	}
+	if c.Status != StatusOpen && c.Status != StatusUnderReview {
+		return Claim{}, SettlementResult{}, fmt.Errorf("%w: status %s", ErrInvalidClaimState, c.Status)
+	}
+
+	amount := c.AmountMinor
+	if req.AmountMinor > 0 {
+		if req.AmountMinor > c.AmountMinor && c.AmountMinor > 0 {
+			return Claim{}, SettlementResult{}, fmt.Errorf("%w: approve amount exceeds priced claim", ErrPricingFailed)
+		}
+		amount = req.AmountMinor
+	}
+	if amount <= 0 {
+		return Claim{}, SettlementResult{}, fmt.Errorf("%w: non-positive chargeback amount", ErrPricingFailed)
+	}
+
+	now := s.now().UTC()
+	c.Status = StatusApproved
+	c.AmountMinor = amount
+	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
+	c.ResolvedBy = actor.Subject
+	c.ResolvedAt = &now
+	c.UpdatedAt = now
+
+	var settlement SettlementResult
+	if s.settler != nil {
+		settlement, err = s.settler.SettleClaimChargeback(ctx, ClaimSettlement{
+			ClaimID:           c.ClaimID,
+			OrderID:           c.OrderID,
+			SupplierID:        c.SupplierID,
+			RetailerID:        c.RetailerID,
+			AmountMinor:       amount,
+			Currency:          c.Currency,
+			LineItems:         c.LineItems,
+			SkipGatewayRefund: req.SkipGatewayRefund,
+		})
+		if err != nil {
+			return Claim{}, SettlementResult{}, fmt.Errorf("chargeback settlement: %w", err)
+		}
+	} else {
+		settlement = SettlementResult{
+			AmountMinor: amount,
+			Currency:    c.Currency,
+			Mode:        "LEDGER_PENDING_SETTLER",
+		}
+	}
+
+	// Terminal resolved after money movement recorded.
+	c.Status = StatusResolved
+	if err := s.repo.UpdateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":              events.EventClaimResolved,
+			"claim_id":          c.ClaimID,
+			"order_id":          c.OrderID,
+			"supplier_id":       c.SupplierID,
+			"retailer_id":       c.RetailerID,
+			"status":            string(c.Status),
+			"amount_minor":      c.AmountMinor,
+			"currency":          c.Currency,
+			"chargeback_id":     settlement.ChargebackID,
+			"gateway":           settlement.Gateway,
+			"gateway_refunded":  settlement.GatewayRefunded,
+			"provider_ref":      settlement.ProviderRef,
+			"settlement_mode":   settlement.Mode,
+			"line_items":        c.LineItems,
+			"resolution_note":   c.ResolutionNote,
+			"resolved_by":       c.ResolvedBy,
+			"timestamp":         now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+	}); err != nil {
+		return Claim{}, SettlementResult{}, err
+	}
+	s.log.InfoContext(ctx, "claim approved and settled",
+		"claim_id", c.ClaimID, "amount_minor", amount, "mode", settlement.Mode, "gateway_refunded", settlement.GatewayRefunded)
+	return c, settlement, nil
+}
+
+// RejectClaim closes a claim without chargeback.
+func (s *Service) RejectClaim(ctx context.Context, actor auth.Claims, claimID string, req RejectClaimRequest) (Claim, error) {
+	if s == nil || s.repo == nil {
+		return Claim{}, fmt.Errorf("claims service unavailable")
+	}
+	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+		return Claim{}, ErrForbidden
+	}
+	c, ok, err := s.repo.GetClaim(ctx, claimID)
+	if err != nil {
+		return Claim{}, err
+	}
+	if !ok {
+		return Claim{}, ErrClaimNotFound
+	}
+	if c.Status != StatusOpen && c.Status != StatusUnderReview {
+		return Claim{}, fmt.Errorf("%w: status %s", ErrInvalidClaimState, c.Status)
+	}
+	now := s.now().UTC()
+	c.Status = StatusRejected
+	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
+	c.ResolvedBy = actor.Subject
+	c.ResolvedAt = &now
+	c.UpdatedAt = now
+	err = s.repo.UpdateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":            events.EventClaimResolved,
+			"claim_id":        c.ClaimID,
+			"order_id":        c.OrderID,
+			"status":          string(c.Status),
+			"resolution_note": c.ResolutionNote,
+			"resolved_by":     c.ResolvedBy,
+			"timestamp":       now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+	})
+	return c, err
+}

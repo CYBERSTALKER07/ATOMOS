@@ -225,6 +225,8 @@ type Repository interface {
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
 	// GetFiscalAttempt loads one OrderFiscalReceipts row (ADR-009 worker idempotency).
 	GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error)
+	// GetFiscalByReceiptID loads a successful attempt by public FiscalReceiptId.
+	GetFiscalByReceiptID(ctx context.Context, receiptID string) (FiscalReceiptRow, bool, error)
 	// CountFiscalAttemptsByStatus counts attempts for retry-budget decisions.
 	CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error)
 	ListRetailerOrders(ctx context.Context, retailerID string, limit int) ([]Order, error)
@@ -310,6 +312,7 @@ type Service struct {
 	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
 	previewRateLimiter RateLimiter
 	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
+	claimsBridge       claimsBridge   // optional logistics claims domain
 }
 
 // ServiceConfig is the constructor input.
@@ -397,6 +400,14 @@ func (s *Service) SetCreditService(svc *credit.Service) {
 // SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
 func (s *Service) SetGatewayPolicyReader(reader GatewayPolicyReader) {
 	s.gatewayPolicy = reader
+}
+
+// GetOrder loads an order snapshot by ID (used by claims and other domains).
+func (s *Service) GetOrder(ctx context.Context, orderID string) (Order, bool, error) {
+	if s == nil || s.repo == nil {
+		return Order{}, false, fmt.Errorf("order service unavailable")
+	}
+	return s.repo.GetOrder(ctx, strings.TrimSpace(orderID))
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.
@@ -3071,20 +3082,30 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 
 func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req AmendOrderRequest, actorID string) (AmendOrderResponse, error) {
 	orderID := strings.TrimSpace(current.OrderID)
-	if !orderAmendable(current.Status) {
-		return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
-	}
 
 	amendByProduct := make(map[string]AmendItemRequest, len(req.Items))
+	reasons := make([]string, 0, len(req.Items))
 	for _, item := range req.Items {
 		key := strings.TrimSpace(item.ProductID)
 		if key == "" {
 			continue
 		}
 		amendByProduct[key] = item
+		if r := normalizeAmendReason(item.Reason); r != "" {
+			reasons = append(reasons, r)
+		}
 	}
 	if len(amendByProduct) == 0 {
 		return AmendOrderResponse{}, errors.New("items required")
+	}
+
+	now := s.now()
+	if !orderAmendable(current.Status) {
+		// Post-delivery concealed damage / shortage: COMPLETED within claim window.
+		completedAt := current.UpdatedAt
+		if !orderPostDeliveryAmendable(current.Status, completedAt, now, reasons) {
+			return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
+		}
 	}
 
 	origQtyBySKU := make(map[string]int64, len(current.LineItems))

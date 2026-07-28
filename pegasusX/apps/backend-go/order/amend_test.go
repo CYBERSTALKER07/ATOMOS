@@ -111,6 +111,54 @@ func TestServiceAmendOrderRejectsInvalidState(t *testing.T) {
 	}
 }
 
+func TestServiceAmendOrderAllowsCompletedDamagedWithinWindow(t *testing.T) {
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusCompleted)
+	o.UpdatedAt = now.Add(-2 * time.Hour)
+	repo := &testRepo{found: true, order: o}
+	svc := NewService(ServiceConfig{
+		Repo:  repo,
+		Now:   func() time.Time { return now },
+		NewID: func() string { return "ret-1" },
+		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	resp, err := svc.AmendOrder(context.Background(), driverClaims(), AmendOrderRequest{
+		OrderID: "ord-1",
+		Items: []AmendItemRequest{{
+			ProductID:   "sku-1",
+			AcceptedQty: 2,
+			RejectedQty: 1,
+			Reason:      "DAMAGED",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("post-delivery DAMAGED amend: %v", err)
+	}
+	if resp.AdjustedTotal != 1000 {
+		t.Fatalf("adjusted=%d want 1000", resp.AdjustedTotal)
+	}
+}
+
+func TestServiceAmendOrderRejectsCompletedOutsideWindow(t *testing.T) {
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusCompleted)
+	o.UpdatedAt = now.Add(-72 * time.Hour)
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	_, err := svc.AmendOrder(context.Background(), driverClaims(), AmendOrderRequest{
+		OrderID: "ord-1",
+		Items: []AmendItemRequest{{
+			ProductID:   "sku-1",
+			AcceptedQty: 2,
+			RejectedQty: 1,
+			Reason:      "DAMAGED",
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "cannot be amended") {
+		t.Fatalf("expected window rejection, got %v", err)
+	}
+}
+
 func TestPaymentRequiredDataIncludesOriginalAmountAfterAmend(t *testing.T) {
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 	svc := newTestService(&testRepo{}, now)

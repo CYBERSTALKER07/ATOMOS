@@ -60,6 +60,23 @@ func (r *fakeConsumerReader) CommitMessages(_ context.Context, _ ...segmentkafka
 
 func (r *fakeConsumerReader) Close() error { return nil }
 
+func TestReaderConfig_ManualSyncCommits(t *testing.T) {
+	cfg := readerConfig(ConsumerDeps{
+		Brokers: []string{"localhost:9092"},
+		GroupID: "g1",
+		Topic:   "t1",
+	}, nil)
+	if cfg.CommitInterval != 0 {
+		t.Fatalf("CommitInterval = %v, want 0 (sync manual commit)", cfg.CommitInterval)
+	}
+	if !cfg.WatchPartitionChanges {
+		t.Fatal("WatchPartitionChanges want true for partition scale-out")
+	}
+	if cfg.Topic != "t1" || cfg.GroupID != "g1" {
+		t.Fatalf("topic/group not wired: %+v", cfg)
+	}
+}
+
 func TestRetryBackoffWithJitter_AddsDeterministicJitter(t *testing.T) {
 	original := retryJitterInt63n
 	retryJitterInt63n = func(n int64) int64 {

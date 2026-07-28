@@ -278,8 +278,23 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-// HandleMissingItems serves POST /v1/delivery/missing-items.
+// ExceptionReportItem is one OS&D line on a driver exception report.
+type ExceptionReportItem struct {
+	SKU      string `json:"sku"`
+	Quantity int64  `json:"quantity"`
+	Reason   string `json:"reason"` // MISSING | DAMAGED | WRONG_ITEM | OTHER
+	PhotoURL string `json:"photo_url"`
+}
+
+// HandleMissingItems serves POST /v1/delivery/missing-items (compat alias).
 func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
+	s.HandleExceptionReport(w, r)
+}
+
+// HandleExceptionReport serves POST /v1/delivery/exception-report (and missing-items).
+// Drivers report MISSING/DAMAGED quantities with optional visual proof URLs.
+// DAMAGED lines require photo_url so adjudication is possible.
+func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
@@ -289,7 +304,7 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	body, err := readLimitedBody(r, 64*1024)
+	body, err := readLimitedBody(r, 256*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
@@ -305,12 +320,10 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var req struct {
-		OrderID string `json:"order_id"`
-		Note    string `json:"note"`
-		Items   []struct {
-			SKU      string `json:"sku"`
-			Quantity int64  `json:"quantity"`
-		} `json:"items"`
+		OrderID  string                `json:"order_id"`
+		Note     string                `json:"note"`
+		Items    []ExceptionReportItem `json:"items"`
+		PhotoURL string                `json:"photo_url"` // optional order-level proof
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -343,22 +356,51 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
 	}
 	amendItems := make([]AmendItemRequest, 0, len(req.Items))
+	photoURIs := make([]string, 0, len(req.Items)+1)
+	if u := strings.TrimSpace(req.PhotoURL); u != "" {
+		photoURIs = append(photoURIs, u)
+	}
 	for _, item := range req.Items {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_missing_item"})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_exception_item"})
 			return
+		}
+		reason := normalizeAmendReason(item.Reason)
+		if reason == "" {
+			reason = "MISSING"
+		}
+		if err := validateAmendReason(reason, ""); err != nil && reason != "OTHER" {
+			// OTHER without custom reason still allowed for driver edges — map note.
+			if reason != "OTHER" {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_reason", "message": err.Error()})
+				return
+			}
+		}
+		// Visual proof required for damage / wrong-item during handshake.
+		if reason == "DAMAGED" || reason == "WRONG_ITEM" {
+			photo := strings.TrimSpace(item.PhotoURL)
+			if photo == "" {
+				photo = strings.TrimSpace(req.PhotoURL)
+			}
+			if photo == "" {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_url_required_for_damage"})
+				return
+			}
+			photoURIs = append(photoURIs, photo)
+		} else if u := strings.TrimSpace(item.PhotoURL); u != "" {
+			photoURIs = append(photoURIs, u)
 		}
 		origQty, ok := origQtyBySKU[sku]
 		if !ok || item.Quantity > origQty {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("missing quantity exceeds item quantity for sku %s", sku)})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("exception quantity exceeds item quantity for sku %s", sku)})
 			return
 		}
 		amendItems = append(amendItems, AmendItemRequest{
 			ProductID:   sku,
 			AcceptedQty: origQty - item.Quantity,
 			RejectedQty: item.Quantity,
-			Reason:      "MISSING",
+			Reason:      reason,
 		})
 	}
 
@@ -368,7 +410,7 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		DriverNotes: req.Note,
 	}, missingItemsDriverID(claims, current))
 	if err != nil {
-		s.writeOrderMutationError(w, "missing items amend failed", req.OrderID, err)
+		s.writeOrderMutationError(w, "exception report amend failed", req.OrderID, err)
 		return
 	}
 
@@ -377,31 +419,56 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
+	driverID := missingItemsDriverID(claims, updated)
 	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
 		"type":        events.EventMissingItemsReported,
 		"order_id":    req.OrderID,
-		"driver_id":   missingItemsDriverID(claims, updated),
+		"driver_id":   driverID,
 		"supplier_id": updated.SupplierID,
 		"retailer_id": updated.RetailerID,
 		"note":        req.Note,
 		"items":       req.Items,
+		"photo_urls":  photoURIs,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 	}); err != nil {
-		s.log.ErrorContext(r.Context(), "missing items event failed", "err", err)
+		s.log.ErrorContext(r.Context(), "exception report event failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "event_failed"})
 		return
 	}
 
-	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
-		"type":         "REVERSE_LOGISTICS_REQUIRED",
+	// Logistics exceptions topic (plus main via dual emit for reverse logistics).
+	if err := s.emitExceptionTopics(r.Context(), updated, map[string]any{
+		"type":        events.EventLogisticsExceptionReported,
+		"order_id":    req.OrderID,
+		"driver_id":   driverID,
+		"supplier_id": updated.SupplierID,
+		"retailer_id": updated.RetailerID,
+		"note":        req.Note,
+		"items":       req.Items,
+		"photo_urls":  photoURIs,
+		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "logistics exception topic emit failed", "err", err)
+	}
+
+	if err := s.emitExceptionTopics(r.Context(), updated, map[string]any{
+		"type":         events.EventReverseLogisticsRequired,
 		"order_id":     req.OrderID,
 		"warehouse_id": updated.WarehouseID,
 		"supplier_id":  updated.SupplierID,
 		"retailer_id":  updated.RetailerID,
 		"items":        req.Items,
+		"photo_urls":   photoURIs,
 		"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
+	}
+
+	// Optional claims bridge when service is wired (driver OS&D → claim).
+	if s.claimsBridge != nil {
+		if err := s.claimsBridge.OnDriverException(r.Context(), updated, driverID, req.Items, photoURIs, req.Note); err != nil {
+			s.log.WarnContext(r.Context(), "claims bridge failed", "err", err)
+		}
 	}
 
 	idemCommitted = true
@@ -409,7 +476,43 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		"status":          "reported",
 		"adjusted_total":  amendResp.AdjustedTotal,
 		"original_amount": orderOriginalAmountMinor(updated),
+		"photo_count":     len(photoURIs),
 	})
+}
+
+// claimsBridge is optional — set from bootstrap to open Claims rows from driver OS&D.
+type claimsBridge interface {
+	OnDriverException(ctx context.Context, o Order, driverID string, items []ExceptionReportItem, photos []string, note string) error
+}
+
+// SetClaimsBridge wires the claims domain bridge (optional).
+func (s *Service) SetClaimsBridge(b claimsBridge) {
+	if s != nil {
+		s.claimsBridge = b
+	}
+}
+
+func (s *Service) emitExceptionTopics(ctx context.Context, o Order, payload map[string]any) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner_unavailable")
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		// New logistics exceptions topic.
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		// Keep main so existing notification consumers still see reverse logistics.
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		mutations := make([]*spanner.Mutation, 0, len(buf.events))
+		for _, e := range buf.events {
+			mutations = append(mutations, outboxMutation(e))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	return err
 }
 
 // HandleSplitPayment serves POST /v1/delivery/split-payment.
