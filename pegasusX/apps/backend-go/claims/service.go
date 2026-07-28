@@ -26,16 +26,17 @@ const OrderStatusCompleted = "COMPLETED"
 // (same day as delivery), NOT after a multi-day wait. The claim window (default 48h)
 // starts at that completion timestamp (UpdatedAt on COMPLETED).
 type OrderSnapshot struct {
-	OrderID     string
-	SupplierID  string
-	RetailerID  string
-	WarehouseID string
-	Currency    string
-	Status      string
-	TotalMinor  int64
-	LineItems   []OrderLine
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	OrderID            string
+	SupplierID         string
+	RetailerID         string
+	WarehouseID        string
+	Currency           string
+	Status             string
+	TotalMinor         int64
+	OriginalTotalMinor int64 // commercial total before OS&D amend; preferred chargeback ceiling
+	LineItems          []OrderLine
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // OrderLookup loads order snapshots for claim authorization.
@@ -168,8 +169,15 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		return Claim{}, ErrClaimWindowExpired
 	}
 
+	// Cumulative liability: prior non-rejected claims reserve qty on the order.
+	prior, err := s.repo.ListByOrder(ctx, orderID)
+	if err != nil {
+		return Claim{}, err
+	}
+	priorClaimed := ClaimedQtyBySKU(prior, "")
+
 	// Price from order lines — never trust client-supplied totals for chargeback.
-	pricedLines, pricedTotal, err := PriceClaimLines(o.LineItems, req.LineItems)
+	pricedLines, pricedTotal, err := PriceClaimLinesWithPrior(o.LineItems, req.LineItems, priorClaimed)
 	if err != nil {
 		return Claim{}, err
 	}
@@ -178,9 +186,12 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		// Retailer may claim a lower amount; never higher than order-priced total.
 		amountMinor = req.AmountMinor
 	}
-	if o.TotalMinor > 0 && amountMinor > o.TotalMinor {
-		amountMinor = o.TotalMinor
+	// Prefer original commercial total when present (post-amend TotalMinor may be lower).
+	ceiling := o.OriginalTotalMinor
+	if ceiling <= 0 {
+		ceiling = o.TotalMinor
 	}
+	amountMinor = CapAmount(amountMinor, ceiling)
 
 	currency := strings.TrimSpace(req.Currency)
 	if currency == "" {
@@ -285,13 +296,27 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 	if !claimType.Valid() {
 		claimType = ClaimTypeMissing
 	}
-	pricedLines := lines
+	var priorClaimed map[string]int64
+	if s.repo != nil && o.OrderID != "" {
+		if prior, err := s.repo.ListByOrder(ctx, o.OrderID); err == nil {
+			priorClaimed = ClaimedQtyBySKU(prior, "")
+		}
+	}
+	pricedLines := AggregateClaimLines(lines)
 	var amount int64
 	if len(o.LineItems) > 0 {
-		if pl, total, err := PriceClaimLines(o.LineItems, lines); err == nil {
-			pricedLines = pl
-			amount = total
+		pl, total, err := PriceClaimLinesWithPrior(o.LineItems, lines, priorClaimed)
+		if err != nil {
+			// Driver edges already amended the order; fail closed so we don't open
+			// an unpriced liability row.
+			return Claim{}, err
 		}
+		pricedLines = pl
+		ceiling := o.OriginalTotalMinor
+		if ceiling <= 0 {
+			ceiling = o.TotalMinor
+		}
+		amount = CapAmount(total, ceiling)
 	}
 	now := s.now().UTC()
 	claimID := "clm_" + s.newID()
@@ -310,6 +335,10 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 			CreatedAt:    now,
 		})
 	}
+	currency := o.Currency
+	if currency == "" {
+		currency = "UZS"
+	}
 	c := Claim{
 		ClaimID:     claimID,
 		OrderID:     o.OrderID,
@@ -324,21 +353,22 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		LineItems:   pricedLines,
 		Evidences:   evs,
 		Source:      SourceDriverException,
-		Currency:    o.Currency,
+		Currency:    currency,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 	err := s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
-			"type":        events.EventClaimFiled,
-			"claim_id":    c.ClaimID,
-			"order_id":    c.OrderID,
-			"source":      string(c.Source),
-			"claim_type":  string(c.ClaimType),
-			"driver_id":   driverID,
-			"line_items":  lines,
-			"photo_count": len(evs),
-			"timestamp":   now.Format(time.RFC3339Nano),
+			"type":         events.EventClaimFiled,
+			"claim_id":     c.ClaimID,
+			"order_id":     c.OrderID,
+			"source":       string(c.Source),
+			"claim_type":   string(c.ClaimType),
+			"driver_id":    driverID,
+			"amount_minor": c.AmountMinor,
+			"line_items":   pricedLines,
+			"photo_count":  len(evs),
+			"timestamp":    now.Format(time.RFC3339Nano),
 		}
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
 			return err
@@ -350,6 +380,9 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 
 // ApproveClaim adjudicates an OPEN/UNDER_REVIEW claim, debits supplier ledger,
 // and optionally refunds the retailer card via Global Pay (partial refund).
+//
+// Idempotent: re-approving a RESOLVED claim returns the prior settlement shape
+// without double-charging (deterministic chargeback id = chargeback_<claimID>).
 func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID string, req ApproveClaimRequest) (Claim, SettlementResult, error) {
 	if s == nil || s.repo == nil {
 		return Claim{}, SettlementResult{}, fmt.Errorf("claims service unavailable")
@@ -364,6 +397,21 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	}
 	if !ok {
 		return Claim{}, SettlementResult{}, ErrClaimNotFound
+	}
+
+	// Idempotent replay: already settled.
+	if c.Status == StatusResolved || c.Status == StatusApproved {
+		settlement := SettlementResult{
+			ChargebackID: DeterministicChargebackID(c.ClaimID),
+			AmountMinor:  c.AmountMinor,
+			Currency:     c.Currency,
+			Mode:         "IDEMPOTENT_REPLAY",
+			Idempotent:   true,
+		}
+		return c, settlement, nil
+	}
+	if c.Status == StatusRejected {
+		return Claim{}, SettlementResult{}, fmt.Errorf("%w: status %s", ErrInvalidClaimState, c.Status)
 	}
 	if c.Status != StatusOpen && c.Status != StatusUnderReview {
 		return Claim{}, SettlementResult{}, fmt.Errorf("%w: status %s", ErrInvalidClaimState, c.Status)
@@ -381,12 +429,14 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	}
 
 	now := s.now().UTC()
-	c.Status = StatusApproved
+	// Mark under review before money movement so concurrent approves see busy state.
+	c.Status = StatusUnderReview
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
-	c.ResolvedBy = actor.Subject
-	c.ResolvedAt = &now
 	c.UpdatedAt = now
+	if err := s.repo.UpdateClaim(ctx, c, nil); err != nil {
+		return Claim{}, SettlementResult{}, err
+	}
 
 	var settlement SettlementResult
 	if s.settler != nil {
@@ -401,37 +451,42 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 			SkipGatewayRefund: req.SkipGatewayRefund,
 		})
 		if err != nil {
-			return Claim{}, SettlementResult{}, fmt.Errorf("chargeback settlement: %w", err)
+			// Leave UNDER_REVIEW for ops retry; do not flip to RESOLVED.
+			return c, SettlementResult{}, fmt.Errorf("chargeback settlement: %w", err)
 		}
 	} else {
 		settlement = SettlementResult{
-			AmountMinor: amount,
-			Currency:    c.Currency,
-			Mode:        "LEDGER_PENDING_SETTLER",
+			ChargebackID: DeterministicChargebackID(c.ClaimID),
+			AmountMinor:  amount,
+			Currency:     c.Currency,
+			Mode:         "LEDGER_PENDING_SETTLER",
 		}
 	}
 
 	// Terminal resolved after money movement recorded.
 	c.Status = StatusResolved
+	c.ResolvedBy = actor.Subject
+	c.ResolvedAt = &now
+	c.UpdatedAt = now
 	if err := s.repo.UpdateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
-			"type":              events.EventClaimResolved,
-			"claim_id":          c.ClaimID,
-			"order_id":          c.OrderID,
-			"supplier_id":       c.SupplierID,
-			"retailer_id":       c.RetailerID,
-			"status":            string(c.Status),
-			"amount_minor":      c.AmountMinor,
-			"currency":          c.Currency,
-			"chargeback_id":     settlement.ChargebackID,
-			"gateway":           settlement.Gateway,
-			"gateway_refunded":  settlement.GatewayRefunded,
-			"provider_ref":      settlement.ProviderRef,
-			"settlement_mode":   settlement.Mode,
-			"line_items":        c.LineItems,
-			"resolution_note":   c.ResolutionNote,
-			"resolved_by":       c.ResolvedBy,
-			"timestamp":         now.Format(time.RFC3339Nano),
+			"type":             events.EventClaimResolved,
+			"claim_id":         c.ClaimID,
+			"order_id":         c.OrderID,
+			"supplier_id":      c.SupplierID,
+			"retailer_id":      c.RetailerID,
+			"status":           string(c.Status),
+			"amount_minor":     c.AmountMinor,
+			"currency":         c.Currency,
+			"chargeback_id":    settlement.ChargebackID,
+			"gateway":          settlement.Gateway,
+			"gateway_refunded": settlement.GatewayRefunded,
+			"provider_ref":     settlement.ProviderRef,
+			"settlement_mode":  settlement.Mode,
+			"line_items":       c.LineItems,
+			"resolution_note":  c.ResolutionNote,
+			"resolved_by":      c.ResolvedBy,
+			"timestamp":        now.Format(time.RFC3339Nano),
 		}
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
 			return err
@@ -443,6 +498,18 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	s.log.InfoContext(ctx, "claim approved and settled",
 		"claim_id", c.ClaimID, "amount_minor", amount, "mode", settlement.Mode, "gateway_refunded", settlement.GatewayRefunded)
 	return c, settlement, nil
+}
+
+// DeterministicChargebackID makes approve retries safe against double ledger rows.
+func DeterministicChargebackID(claimID string) string {
+	claimID = strings.TrimSpace(claimID)
+	if claimID == "" {
+		return ""
+	}
+	if strings.HasPrefix(claimID, "clm_") {
+		return "chargeback_" + claimID
+	}
+	return "chargeback_clm_" + claimID
 }
 
 // RejectClaim closes a claim without chargeback.

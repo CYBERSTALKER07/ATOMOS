@@ -2,6 +2,7 @@ package claims
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -167,5 +168,50 @@ func TestApproveClaimSettlesChargeback(t *testing.T) {
 	}
 	if settler.last.OrderID != "ord-1" || settler.last.AmountMinor != 2000 {
 		t.Fatalf("settler input=%+v", settler.last)
+	}
+
+	// Re-approve is idempotent — no second settlement call required for success.
+	again, settle2, err := svc.ApproveClaim(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin,
+	}, c.ClaimID, ApproveClaimRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settle2.Idempotent || again.Status != StatusResolved {
+		t.Fatalf("replay=%+v settle=%+v", again, settle2)
+	}
+}
+
+func TestFileRetailerClaim_BlocksOverClaimAcrossClaims(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	id := 0
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)}, // sku-1 qty 5
+		Now:    func() time.Time { return now },
+		NewID: func() string {
+			id++
+			return fmt.Sprintf("x%d", id)
+		},
+		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 4}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 2}}, // only 1 remaining
+	})
+	if err == nil {
+		t.Fatal("expected cumulative over-claim error")
 	}
 }

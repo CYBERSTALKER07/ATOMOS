@@ -150,7 +150,8 @@ type SettlementResult struct {
 	Gateway         string `json:"gateway,omitempty"`
 	GatewayRefunded bool   `json:"gateway_refunded"`
 	ProviderRef     string `json:"provider_ref,omitempty"`
-	Mode            string `json:"mode"` // LEDGER_ONLY | LEDGER_AND_GATEWAY_REFUND
+	Mode            string `json:"mode"` // LEDGER_ONLY | LEDGER_AND_GATEWAY_REFUND | IDEMPOTENT_REPLAY
+	Idempotent      bool   `json:"idempotent,omitempty"`
 }
 
 // Domain errors.
@@ -165,4 +166,5 @@ var (
 	ErrInvalidClaimState   = errors.New("invalid_claim_state")
 	ErrForbidden           = errors.New("forbidden")
 	ErrPricingFailed       = errors.New("claim_pricing_failed")
+	ErrAlreadySettled      = errors.New("claim_already_settled")
 )

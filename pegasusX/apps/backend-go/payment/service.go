@@ -691,6 +691,16 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 		}
 	}
 
+	// Deterministic id so approve retries InsertOrUpdate the same chargeback row.
+	chargebackID := strings.TrimSpace(in.ClaimID)
+	if chargebackID == "" {
+		chargebackID = s.newID("chargeback")
+	} else if strings.HasPrefix(chargebackID, "clm_") {
+		chargebackID = "chargeback_" + chargebackID
+	} else {
+		chargebackID = "chargeback_clm_" + chargebackID
+	}
+
 	// 1) Always record immutable ledger chargeback (supplier debit / settlement clawback).
 	if _, err := s.execution.Execute(ctx, ExecutionRequest{
 		Gateway:     gateway,
@@ -703,7 +713,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 		return ClaimChargebackResult{}, err
 	}
 	rec := ChargebackRecord{
-		ChargebackID: s.newID("chargeback"),
+		ChargebackID: chargebackID,
 		OrderID:      strings.TrimSpace(in.OrderID),
 		SupplierID:   supplierID,
 		RetailerID:   strings.TrimSpace(in.RetailerID),
@@ -723,7 +733,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 			ExecutionAction: string(ExecutionActionChargebackRecord),
 			AmountMinor:     rec.AmountMinor,
 			Currency:        rec.Currency,
-			Source:          "claims.settle_chargeback",
+			Source:          "claims.settle_chargeback:" + strings.TrimSpace(in.ClaimID),
 		})
 	}); err != nil {
 		return ClaimChargebackResult{}, err

@@ -562,6 +562,7 @@ func buildChargebackLedgerEntry(c ChargebackRecord) LedgerEntryRecord {
 	}
 
 	return LedgerEntryRecord{
+		// Deterministic ledger id (matches chargeback id) so InsertOrUpdate is idempotent.
 		LedgerEntryID: "pledger_chargeback_" + c.ChargebackID,
 		OrderID:       c.OrderID,
 		SupplierID:    c.SupplierID,

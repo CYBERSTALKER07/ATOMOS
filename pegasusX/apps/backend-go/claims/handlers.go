@@ -141,7 +141,9 @@ func writeClaimError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, ErrInvalidClaimState):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_claim_state", "message": err.Error()})
 	case errors.Is(err, ErrPricingFailed), errors.Is(err, ErrInvalidClaimType), errors.Is(err, ErrInvalidLineItems):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "pricing_failed", "message": err.Error()})
+	case errors.Is(err, ErrAlreadySettled):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "claim_already_settled"})
 	default:
 		slog.ErrorContext(r.Context(), "claim operation failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})

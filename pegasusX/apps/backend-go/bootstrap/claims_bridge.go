@@ -30,16 +30,17 @@ func (l orderClaimsLookup) GetOrder(ctx context.Context, orderID string) (claims
 		})
 	}
 	return claims.OrderSnapshot{
-		OrderID:     o.OrderID,
-		SupplierID:  o.SupplierID,
-		RetailerID:  o.RetailerID,
-		WarehouseID: o.WarehouseID,
-		Currency:    o.Currency,
-		Status:      string(o.Status),
-		TotalMinor:  o.TotalMinor,
-		LineItems:   lines,
-		CreatedAt:   o.CreatedAt,
-		UpdatedAt:   o.UpdatedAt,
+		OrderID:            o.OrderID,
+		SupplierID:         o.SupplierID,
+		RetailerID:         o.RetailerID,
+		WarehouseID:        o.WarehouseID,
+		Currency:           o.Currency,
+		Status:             string(o.Status),
+		TotalMinor:         o.TotalMinor,
+		OriginalTotalMinor: o.OriginalTotalMinor,
+		LineItems:          lines,
+		CreatedAt:          o.CreatedAt,
+		UpdatedAt:          o.UpdatedAt,
 	}, true, nil
 }
 
@@ -77,16 +78,17 @@ func (b *driverClaimsBridge) OnDriverException(ctx context.Context, o order.Orde
 		})
 	}
 	snap := claims.OrderSnapshot{
-		OrderID:     o.OrderID,
-		SupplierID:  o.SupplierID,
-		RetailerID:  o.RetailerID,
-		WarehouseID: o.WarehouseID,
-		Currency:    o.Currency,
-		Status:      string(o.Status),
-		TotalMinor:  o.TotalMinor,
-		LineItems:   orderLines,
-		CreatedAt:   o.CreatedAt,
-		UpdatedAt:   o.UpdatedAt,
+		OrderID:            o.OrderID,
+		SupplierID:         o.SupplierID,
+		RetailerID:         o.RetailerID,
+		WarehouseID:        o.WarehouseID,
+		Currency:           o.Currency,
+		Status:             string(o.Status),
+		TotalMinor:         o.TotalMinor,
+		OriginalTotalMinor: o.OriginalTotalMinor,
+		LineItems:          orderLines,
+		CreatedAt:          o.CreatedAt,
+		UpdatedAt:          o.UpdatedAt,
 	}
 	_, err := b.svc.CreateFromDriverException(ctx, snap, driverID, claimType, lines, photos, note)
 	return err

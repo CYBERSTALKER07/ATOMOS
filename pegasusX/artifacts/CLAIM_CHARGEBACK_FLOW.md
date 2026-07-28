@@ -46,9 +46,10 @@ The order is **not** left incomplete for two days.
 | `order_id` | Path + claim row |
 | `supplier_id` / `retailer_id` | Order aggregate |
 | SKUs + qty claimed | Claim `line_items` |
-| Unit price | **Order** `line_items[].unit_price_minor` at file time |
-| Line amount | `qty × unit_price` |
-| Claim total | Sum of lines (capped at order total) |
+| Unit price | **Order** unit prices (weighted avg if mixed prices for same SKU) |
+| Line amount | `qty × unit_price` with **int64 overflow checks** |
+| Claim total | Sum of lines, capped at `OriginalTotalMinor` (else `TotalMinor`) |
+| Multi-claim | Prior OPEN/UNDER_REVIEW/APPROVED/RESOLVED claims **reserve qty** so Σ claimed ≤ ordered |
 | Payment session / gateway | `PaymentSessions` by `order_id` |
 | Provider payment id | Session id / provider reference for GP perform |
 
@@ -93,6 +94,9 @@ Settlement `mode` values:
 - `LEDGER_ONLY` — cash/credit or skip refund  
 - `LEDGER_AND_GATEWAY_REFUND` — GP partial refund succeeded  
 - `LEDGER_ONLY_GATEWAY_REFUND_FAILED` — ledger ok; ops must refund in GP portal  
+- `IDEMPOTENT_REPLAY` — approve called again on already-resolved claim (no double charge)  
+
+**Idempotency:** chargeback id is deterministic (`chargeback_<claim_id>`); ledger uses InsertOrUpdate on that key.
 
 ## Env
 
