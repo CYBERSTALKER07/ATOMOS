@@ -58,7 +58,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		// Post-delivery logistics claims (retailer concealed damage / OS&D).
 		if d.ClaimsService != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/orders/{orderID}/claims", d.ClaimsService.HandleFileOrderClaim)
-			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/orders/{orderID}/claims", d.ClaimsService.HandleListOrderClaims)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/orders/{orderID}/claims", d.ClaimsService.HandleListOrderClaims)
 			// Adjudication → supplier chargeback + optional GP partial refund.
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/approve", d.ClaimsService.HandleApproveClaim)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/reject", d.ClaimsService.HandleRejectClaim)

@@ -99,12 +99,14 @@ func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleListOrderClaims serves GET /v1/orders/{orderID}/claims.
+// Retailers may only list claims on their own orders; admin/warehouse admin may list any.
 func (s *Service) HandleListOrderClaims(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	if _, ok := auth.FromContext(r.Context()); !ok {
+	actor, ok := auth.FromContext(r.Context())
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -112,10 +114,9 @@ func (s *Service) HandleListOrderClaims(w http.ResponseWriter, r *http.Request) 
 	if orderID == "" {
 		orderID = strings.TrimSpace(chi.URLParam(r, "id"))
 	}
-	list, err := s.repo.ListByOrder(r.Context(), orderID)
+	list, err := s.ListOrderClaims(r.Context(), actor, orderID)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "list claims failed", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		writeClaimError(w, r, err)
 		return
 	}
 	if list == nil {

@@ -279,11 +279,76 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 }
 
 // ExceptionReportItem is one OS&D line on a driver exception report.
+// Wire accepts both canonical and driver-app legacy field names.
 type ExceptionReportItem struct {
 	SKU      string `json:"sku"`
 	Quantity int64  `json:"quantity"`
 	Reason   string `json:"reason"` // MISSING | DAMAGED | WRONG_ITEM | OTHER
 	PhotoURL string `json:"photo_url"`
+}
+
+// UnmarshalJSON accepts sku/sku_id and quantity/missing_qty (driver iOS/Android legacy).
+func (it *ExceptionReportItem) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		SKU        string `json:"sku"`
+		SKUID      string `json:"sku_id"`
+		Quantity   int64  `json:"quantity"`
+		MissingQty int64  `json:"missing_qty"`
+		Reason     string `json:"reason"`
+		PhotoURL   string `json:"photo_url"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	it.SKU = strings.TrimSpace(raw.SKU)
+	if it.SKU == "" {
+		it.SKU = strings.TrimSpace(raw.SKUID)
+	}
+	it.Quantity = raw.Quantity
+	if it.Quantity <= 0 {
+		it.Quantity = raw.MissingQty
+	}
+	it.Reason = raw.Reason
+	it.PhotoURL = raw.PhotoURL
+	return nil
+}
+
+// exceptionReportRequest is the POST body for exception-report / missing-items.
+type exceptionReportRequest struct {
+	OrderID  string
+	Note     string
+	Items    []ExceptionReportItem
+	PhotoURL string
+}
+
+// parseExceptionReportBody accepts canonical {items} and legacy driver {missing_items}.
+func parseExceptionReportBody(body []byte) (exceptionReportRequest, error) {
+	var raw struct {
+		OrderID      string                `json:"order_id"`
+		Note         string                `json:"note"`
+		Items        []ExceptionReportItem `json:"items"`
+		MissingItems []ExceptionReportItem `json:"missing_items"`
+		PhotoURL     string                `json:"photo_url"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return exceptionReportRequest{}, err
+	}
+	items := raw.Items
+	if len(items) == 0 {
+		items = raw.MissingItems
+	}
+	// Legacy missing-items default reason MISSING when empty.
+	for i := range items {
+		if strings.TrimSpace(items[i].Reason) == "" {
+			items[i].Reason = "MISSING"
+		}
+	}
+	return exceptionReportRequest{
+		OrderID:  strings.TrimSpace(raw.OrderID),
+		Note:     raw.Note,
+		Items:    items,
+		PhotoURL: raw.PhotoURL,
+	}, nil
 }
 
 // HandleMissingItems serves POST /v1/delivery/missing-items (compat alias).
@@ -294,6 +359,9 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 // HandleExceptionReport serves POST /v1/delivery/exception-report (and missing-items).
 // Drivers report MISSING/DAMAGED quantities with optional visual proof URLs.
 // DAMAGED lines require photo_url so adjudication is possible.
+//
+// Wire compatibility: driver apps send legacy missing_items[{sku_id, missing_qty}];
+// canonical clients send items[{sku, quantity, reason, photo_url}].
 func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -319,17 +387,11 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		}
 	}()
 
-	var req struct {
-		OrderID  string                `json:"order_id"`
-		Note     string                `json:"note"`
-		Items    []ExceptionReportItem `json:"items"`
-		PhotoURL string                `json:"photo_url"` // optional order-level proof
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
+	req, err := parseExceptionReportBody(body)
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
@@ -472,8 +534,10 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	idemCommitted = true
+	// Include order_id + reported status aliases for driver iOS/Android wire contracts.
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":          "reported",
+		"order_id":        req.OrderID,
 		"adjusted_total":  amendResp.AdjustedTotal,
 		"original_amount": orderOriginalAmountMinor(updated),
 		"photo_count":     len(photoURIs),

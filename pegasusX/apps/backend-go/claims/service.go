@@ -96,6 +96,36 @@ func (s *Service) SetSettler(settler ChargebackSettler) {
 	}
 }
 
+// ListOrderClaims returns claims for an order with role-scoped authorization.
+func (s *Service) ListOrderClaims(ctx context.Context, actor auth.Claims, orderID string) ([]Claim, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("claims service unavailable")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return nil, ErrOrderNotFound
+	}
+	// Retailers may only inspect their own orders.
+	if actor.Role == auth.RoleRetailer {
+		if s.orders == nil {
+			return nil, fmt.Errorf("claims service unavailable")
+		}
+		o, ok, err := s.orders.GetOrder(ctx, orderID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, ErrOrderNotFound
+		}
+		if strings.TrimSpace(o.RetailerID) != strings.TrimSpace(actor.Subject) {
+			return nil, ErrForbidden
+		}
+	} else if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+		return nil, ErrForbidden
+	}
+	return s.repo.ListByOrder(ctx, orderID)
+}
+
 func claimWindowFromEnv() time.Duration {
 	h := strings.TrimSpace(os.Getenv("CLAIM_WINDOW_HOURS"))
 	if h == "" {
