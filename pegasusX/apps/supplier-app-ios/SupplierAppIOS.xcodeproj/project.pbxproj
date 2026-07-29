@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C1A100000000000000000002 /* ClaimsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000001 /* ClaimsView.swift */; };
+		C1A100000000000000000004 /* ClaimChargebacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000003 /* ClaimChargebacksView.swift */; };
 		087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5693C9F4B187B5F6696EA133 /* LoginView.swift */; };
 		0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */; };
 		120F1253E07A45C379768773 /* RealtimeHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A6831C3558312E2AD70ABF /* RealtimeHubTests.swift */; };
@@ -182,6 +184,8 @@
 		A3D6E60C714EAC6AA110F2E8 /* SupplierModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierModels.swift; sourceTree = "<group>"; };
 		A85D1AEC89533FA4901AEA57 /* FleetOrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetOrdersView.swift; sourceTree = "<group>"; };
 		AB7FA61008AB8E9CC27FC781 /* ChargebacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChargebacksView.swift; sourceTree = "<group>"; };
+		C1A100000000000000000001 /* ClaimsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimsView.swift; sourceTree = "<group>"; };
+		C1A100000000000000000003 /* ClaimChargebacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimChargebacksView.swift; sourceTree = "<group>"; };
 		ABF27DC6D872DB5DBB36C189 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AE9D49DA9B05E2A2628A8FDC /* SupplierOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierOpsModels.swift; sourceTree = "<group>"; };
 		B0CD3B43FE548CDE96338EE3 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
@@ -332,6 +336,7 @@
 			children = (
 				E089092A5E842AB8F832E97C /* EarlyCompleteView.swift */,
 				C23AD8BBFDAE01EA9C59D920 /* ExceptionsView.swift */,
+				C1A100000000000000000001 /* ClaimsView.swift */,
 				E3F9F7058926FC1BE53C2413 /* NegotiationsView.swift */,
 				70295F7AE76EAFC2311C0E1F /* ShopClosedView.swift */,
 			);
@@ -498,6 +503,7 @@
 			isa = PBXGroup;
 			children = (
 				AB7FA61008AB8E9CC27FC781 /* ChargebacksView.swift */,
+				C1A100000000000000000003 /* ClaimChargebacksView.swift */,
 				54CF6D56A1962D9BE153B0EA /* LedgerView.swift */,
 				9AED086993BC29BE4397E5D7 /* PaymentsView.swift */,
 				C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */,
@@ -781,6 +787,8 @@
 				8833928AF7175934C569A21B /* CatalogDetailView.swift in Sources */,
 				75F793AB9B7CD5A8077C4F09 /* CatalogView.swift in Sources */,
 				483B3A9E6EAC74ABCDD58D59 /* ChargebacksView.swift in Sources */,
+				C1A100000000000000000002 /* ClaimsView.swift in Sources */,
+				C1A100000000000000000004 /* ClaimChargebacksView.swift in Sources */,
 				FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */,
 				98145061B9D6EAFE7865149C /* CollapsibleSidebar.swift in Sources */,
 				2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */,

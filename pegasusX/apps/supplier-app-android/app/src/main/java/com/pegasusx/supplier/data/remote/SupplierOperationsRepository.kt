@@ -319,6 +319,18 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun recordChargebackReversal(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
         api.recordChargebackReversal(idempotencyKey, body)
 
+    suspend fun listSupplierClaims(status: String? = null, limit: Int = 50): Response<SupplierClaimsListResponse> =
+        api.listSupplierClaims(status = status?.ifBlank { null }, limit = limit)
+
+    suspend fun approveClaim(claimId: String, body: ApproveClaimRequest): Response<ApproveClaimResponse> =
+        api.approveClaim(claimId, body)
+
+    suspend fun rejectClaim(claimId: String, body: RejectClaimRequest): Response<SupplierClaim> =
+        api.rejectClaim(claimId, body)
+
+    suspend fun listClaimChargebacks(limit: Int = 100, orderId: String? = null): Response<ClaimChargebacksResponse> =
+        api.listClaimChargebacks(limit = limit, orderId = orderId?.ifBlank { null })
+
     suspend fun createImportSession(
         idempotencyKey: String,
         body: ImportSessionCreateRequest,

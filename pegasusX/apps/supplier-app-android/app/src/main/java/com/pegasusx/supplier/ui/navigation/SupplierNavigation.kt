@@ -50,6 +50,7 @@ import com.pegasusx.supplier.ui.screens.inventory.InventoryScreen
 import com.pegasusx.supplier.ui.screens.inventory.InventoryImportScreen
 import com.pegasusx.supplier.ui.screens.activity.ActivityScreen
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
+import com.pegasusx.supplier.ui.screens.exceptions.ClaimsScreen
 import com.pegasusx.supplier.ui.screens.exceptions.EarlyCompleteScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
 // NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
@@ -68,6 +69,7 @@ import com.pegasusx.supplier.ui.screens.orgfleet.OrgFleetScreen
 import com.pegasusx.supplier.ui.screens.pricing.PricingScreen
 import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
 import com.pegasusx.supplier.ui.screens.returns.ReturnsScreen
+import com.pegasusx.supplier.ui.screens.treasury.ClaimChargebacksScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
@@ -106,6 +108,8 @@ object SupplierRoutes {
     const val RETURNS = "returns"
     const val RECONCILIATION = "reconciliation"
     const val CHARGEBACKS = "chargebacks"
+    const val CLAIMS = "claims"
+    const val CLAIM_CHARGEBACKS = "claim_chargebacks"
     const val RETAILER_OVERRIDES = "retailer_overrides"
     const val INVENTORY_IMPORT = "inventory_import"
     const val TREASURY_HUB = "treasury_hub"
@@ -362,6 +366,8 @@ fun SupplierNavigation(
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
                     onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                    onClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
+                    onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
                     onRetailerOverrides = { navController.navigate(SupplierRoutes.RETAILER_OVERRIDES) },
                     onInventoryImport = { navController.navigate(SupplierRoutes.INVENTORY_IMPORT) },
                     onTreasuryHub = { navController.navigate(SupplierRoutes.TREASURY_HUB) },
@@ -376,7 +382,24 @@ fun SupplierNavigation(
                 )
             }
             composable(SupplierRoutes.EXCEPTIONS) {
-                 ExceptionsScreen(ops) { navController.popBackStack() } 
+                 ExceptionsScreen(
+                     ops = ops,
+                     onBack = { navController.popBackStack() },
+                     onOpenClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
+                 )
+            }
+            composable(SupplierRoutes.CLAIMS) {
+                ClaimsScreen(
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                    onOpenClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
+                )
+            }
+            composable(SupplierRoutes.CLAIM_CHARGEBACKS) {
+                ClaimChargebacksScreen(
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(SupplierRoutes.SHOP_CLOSED) {
                  ShopClosedScreen(ops, realtimeSignals) { navController.popBackStack() } 
@@ -525,6 +548,8 @@ fun SupplierNavigation(
                         onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
                         onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                         onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                        onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
+                        onClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
                     )
                 
             }

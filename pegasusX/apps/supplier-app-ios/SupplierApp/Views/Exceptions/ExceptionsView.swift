@@ -12,12 +12,24 @@ struct ExceptionsView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if rows.isEmpty {
-                SupplierEmptyView(title: "No exceptions", message: "Operational exceptions will appear here.")
+                SupplierEmptyView(
+                    title: "No exceptions",
+                    message: "Operational exceptions will appear here. Use Claims for post-delivery OS&D."
+                )
             } else {
                 ExceptionsList(rows: rows)
             }
         }
         .navigationTitle("Exceptions")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink {
+                    ClaimsView()
+                } label: {
+                    Text("Claims")
+                }
+            }
+        }
         .task { await load() }
     }
 

@@ -128,6 +128,30 @@ interface SupplierApi {
         @Body body: JsonElement,
     ): Response<JsonElement>
 
+    @GET("v1/supplier/claims")
+    suspend fun listSupplierClaims(
+        @Query("status") status: String? = null,
+        @Query("limit") limit: Int = 50,
+    ): Response<SupplierClaimsListResponse>
+
+    @POST("v1/claims/{claimId}/approve")
+    suspend fun approveClaim(
+        @Path("claimId") claimId: String,
+        @Body body: ApproveClaimRequest,
+    ): Response<ApproveClaimResponse>
+
+    @POST("v1/claims/{claimId}/reject")
+    suspend fun rejectClaim(
+        @Path("claimId") claimId: String,
+        @Body body: RejectClaimRequest,
+    ): Response<SupplierClaim>
+
+    @GET("v1/supplier/claim-chargebacks")
+    suspend fun listClaimChargebacks(
+        @Query("limit") limit: Int = 100,
+        @Query("order_id") orderId: String? = null,
+    ): Response<ClaimChargebacksResponse>
+
     @POST("v1/supplier/inventory/imports")
     suspend fun createImportSession(
         @Header("Idempotency-Key") idempotencyKey: String,

@@ -18,7 +18,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun ExceptionsScreen(
+    ops: SupplierOperationsRepository,
+    onBack: () -> Unit,
+    onOpenClaims: () -> Unit = {},
+) {
     var rows by remember { mutableStateOf<List<SupplierExceptionRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -51,6 +55,9 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    TextButton(onClick = onOpenClaims) { Text("Claims") }
+                },
             )
         },
     ) { padding ->
@@ -67,8 +74,10 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             rows.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Empty,
                 headline = "No exceptions",
-                body = "Operational exceptions will appear here.",
+                body = "Operational exceptions will appear here. Use Claims for post-delivery OS&D.",
                 modifier = Modifier.padding(padding),
+                actionLabel = "Open claims",
+                onAction = onOpenClaims,
             )
             else -> Box(Modifier.padding(padding)) { ExceptionsList(rows) }
         }

@@ -3,61 +3,22 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
-import { supplierFetch } from "@/lib/auth";
+import type {
+  Claim,
+  ClaimSettlementMode,
+  ClaimSettlementResult,
+} from "@pegasusx/types";
+import { CLAIM_SETTLEMENT_MODES } from "@pegasusx/types";
+import { createSupplierApi } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
 
-type ClaimLine = {
-  sku: string;
-  quantity: number;
-  reason?: string;
-  unit_price_minor?: number;
-  amount_minor?: number;
-};
-
-type Claim = {
-  claim_id: string;
-  order_id: string;
-  retailer_id: string;
-  claim_type: string;
-  status: string;
-  amount_minor?: number;
-  currency?: string;
-  description?: string;
-  line_items?: ClaimLine[];
-  evidences?: { uri: string; evidence_type: string }[];
-  created_at: string;
-};
-
-type Settlement = {
-  chargeback_id?: string;
-  amount_minor: number;
-  mode: string;
-  gateway_refunded?: boolean;
-};
-
-const SETTLEMENT_MODES = [
-  {
-    value: "LEDGER_ONLY",
-    label: "Ledger only",
-    hint: "Debit supplier settlement only (safe default)",
-  },
-  {
-    value: "STORE_CREDIT",
-    label: "Store credit",
-    hint: "Ledger + reduce retailer credit balance due",
-  },
-  {
-    value: "GATEWAY_REFUND",
-    label: "Card refund (GP)",
-    hint: "Ledger + Global Pay partial refund when session is card",
-  },
-] as const;
+const api = createSupplierApi();
 
 export default function ClaimsQueuePage() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [statusFilter, setStatusFilter] = useState("OPEN");
-  const [settlementMode, setSettlementMode] = useState<string>("LEDGER_ONLY");
+  const [settlementMode, setSettlementMode] = useState<ClaimSettlementMode>("LEDGER_ONLY");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -67,12 +28,10 @@ export default function ClaimsQueuePage() {
     setLoading(true);
     setError(null);
     try {
-      const q = statusFilter ? `?status=${encodeURIComponent(statusFilter)}&limit=50` : "?limit=50";
-      const res = await supplierFetch(`/v1/supplier/claims${q}`);
-      if (!res.ok) {
-        throw new Error(`claims_load_${res.status}`);
-      }
-      const body = (await res.json()) as { claims?: Claim[] };
+      const body = await api.listSupplierClaims({
+        status: statusFilter || undefined,
+        limit: 50,
+      });
       setClaims(body.claims ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_claims_failed");
@@ -89,22 +48,15 @@ export default function ClaimsQueuePage() {
     setBusyId(claimId);
     setLastSettlement(null);
     try {
-      const res = await supplierFetch(`/v1/claims/${encodeURIComponent(claimId)}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resolution_note: "approved_via_supplier_portal",
-          settlement_mode: settlementMode,
-          skip_gateway_refund: settlementMode !== "GATEWAY_REFUND",
-        }),
+      const body = await api.approveClaim(claimId, {
+        resolution_note: "approved_via_supplier_portal",
+        settlement_mode: settlementMode,
+        skip_gateway_refund: settlementMode !== "GATEWAY_REFUND",
       });
-      if (!res.ok) {
-        throw new Error(`approve_${res.status}`);
-      }
-      const body = (await res.json()) as { settlement?: Settlement };
-      if (body.settlement) {
+      const settlement = body.settlement as ClaimSettlementResult | undefined;
+      if (settlement) {
         setLastSettlement(
-          `${body.settlement.mode} · ${body.settlement.amount_minor} · refund=${Boolean(body.settlement.gateway_refunded)} · id=${body.settlement.chargeback_id ?? "—"}`,
+          `${settlement.mode} · ${settlement.amount_minor} · refund=${Boolean(settlement.gateway_refunded)} · id=${settlement.chargeback_id ?? "—"}`,
         );
       }
       await load();
@@ -118,14 +70,9 @@ export default function ClaimsQueuePage() {
   async function reject(claimId: string) {
     setBusyId(claimId);
     try {
-      const res = await supplierFetch(`/v1/claims/${encodeURIComponent(claimId)}/reject`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resolution_note: "rejected_via_supplier_portal" }),
+      await api.rejectClaim(claimId, {
+        resolution_note: "rejected_via_supplier_portal",
       });
-      if (!res.ok) {
-        throw new Error(`reject_${res.status}`);
-      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "reject_failed");
@@ -164,9 +111,9 @@ export default function ClaimsQueuePage() {
           <select
             className="md-btn md-btn-outlined px-3 py-1 max-w-[220px]"
             value={settlementMode}
-            onChange={(e) => setSettlementMode(e.target.value)}
+            onChange={(e) => setSettlementMode(e.target.value as ClaimSettlementMode)}
           >
-            {SETTLEMENT_MODES.map((m) => (
+            {CLAIM_SETTLEMENT_MODES.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
               </option>
@@ -183,7 +130,7 @@ export default function ClaimsQueuePage() {
         ) : null}
       </div>
       <p className="mb-4 text-xs text-[var(--color-md-outline)]">
-        {SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.hint}
+        {CLAIM_SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.hint}
         {" · "}
         <Link href={"/chargebacks/claims" as Route} className="underline text-[var(--color-md-primary)]">
           Claim chargebacks ledger
@@ -241,7 +188,7 @@ export default function ClaimsQueuePage() {
                   disabled={busyId === c.claim_id}
                   onClick={() => void approve(c.claim_id)}
                 >
-                  Approve ({SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.label})
+                  Approve ({CLAIM_SETTLEMENT_MODES.find((m) => m.value === settlementMode)?.label})
                 </button>
                 <button
                   type="button"

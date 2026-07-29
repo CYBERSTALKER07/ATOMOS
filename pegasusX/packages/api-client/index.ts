@@ -10,6 +10,13 @@ import type {
   PaymentChargebackResponse,
   PaymentChargebackReversalRequest,
   PaymentChargebackReversalResponse,
+  SupplierClaimsListResponse,
+  ApproveClaimRequest,
+  ApproveClaimResponse,
+  RejectClaimRequest,
+  Claim,
+  ClaimChargebacksQuery,
+  ClaimChargebacksResponse,
   RejectAIOrderRequest,
   RetailerAIPredictionsResponse,
   RetailerOrderLifecycleResponse,
@@ -1695,6 +1702,51 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  /** GET /v1/supplier/claims — supplier-scoped logistics claims queue. */
+  async listSupplierClaims(query: {
+    status?: string;
+    limit?: number;
+  } = {}): Promise<SupplierClaimsListResponse> {
+    return this.request<SupplierClaimsListResponse>(
+      appendQuery("/v1/supplier/claims", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  /** POST /v1/claims/{claimId}/approve */
+  async approveClaim(
+    claimId: string,
+    request: ApproveClaimRequest = {},
+    idempotencyKey?: string,
+  ): Promise<ApproveClaimResponse> {
+    return this.request<ApproveClaimResponse>(`/v1/claims/${encodeURIComponent(claimId)}/approve`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** POST /v1/claims/{claimId}/reject */
+  async rejectClaim(
+    claimId: string,
+    request: RejectClaimRequest = {},
+    idempotencyKey?: string,
+  ): Promise<Claim> {
+    return this.request<Claim>(`/v1/claims/${encodeURIComponent(claimId)}/reject`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** GET /v1/supplier/claim-chargebacks — claim-originated CHARGEBACK_RECORDED ledger rows. */
+  async listSupplierClaimChargebacks(
+    query: ClaimChargebacksQuery = {},
+  ): Promise<ClaimChargebacksResponse> {
+    return this.request<ClaimChargebacksResponse>(
+      appendQuery("/v1/supplier/claim-chargebacks", query as Record<string, unknown>),
+      "GET",
+    );
   }
 
   private async request<TResponse>(

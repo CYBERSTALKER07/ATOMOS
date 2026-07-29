@@ -38,6 +38,8 @@ fun TreasuryHubScreen(
     onReconciliation: () -> Unit,
     onEarnings: () -> Unit,
     onChargebacks: () -> Unit,
+    onClaimChargebacks: () -> Unit = {},
+    onClaims: () -> Unit = {},
     viewModel: TreasuryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.hubState.collectAsStateWithLifecycle()
@@ -50,6 +52,8 @@ fun TreasuryHubScreen(
         TreasuryLink("Reconciliation", "Settlement mismatches", Icons.Default.Balance, onReconciliation),
         TreasuryLink("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         TreasuryLink("Chargebacks", "Record chargeback or reversal", Icons.Default.Undo, onChargebacks),
+        TreasuryLink("Claim chargebacks", "Logistics claim settlements", Icons.Default.Description, onClaimChargebacks),
+        TreasuryLink("Claims queue", "Approve / reject OS&D claims", Icons.Default.Warning, onClaims),
     )
 
     Scaffold(

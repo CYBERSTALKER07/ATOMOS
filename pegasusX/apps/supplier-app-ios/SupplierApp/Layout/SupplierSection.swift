@@ -34,6 +34,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case treasury = "Treasury"
     case retailerOverrides = "Retailer overrides"
     case chargebacks = "Chargebacks"
+    case claims = "Claims"
+    case claimChargebacks = "Claim chargebacks"
     case businessSetup = "Business setup"
     case inventoryImport = "Import inventory"
     case demandForecast = "Demand forecast"
@@ -82,6 +84,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .treasury: "building.columns"
         case .retailerOverrides: "tag.circle"
         case .chargebacks: "exclamationmark.bubble"
+        case .claims: "exclamationmark.triangle.fill"
+        case .claimChargebacks: "list.bullet.rectangle"
         case .businessSetup: "gearshape.2"
         case .inventoryImport: "square.and.arrow.down"
         case .demandForecast: "chart.xyaxis.line"
@@ -109,7 +113,9 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         [
             .manifests, .dispatchPreview, .activity,
             .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
+            .claims, .claimChargebacks,
             .reconciliation, .operations, .replenishmentPolicies,
+            .exceptions,
         ]
     }
 

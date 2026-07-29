@@ -172,6 +172,10 @@ struct SupplierAdaptiveShell: View {
             RetailerOverridesView()
         case .chargebacks:
             ChargebacksView()
+        case .claims:
+            ClaimsView()
+        case .claimChargebacks:
+            ClaimChargebacksView()
         case .businessSetup:
             BusinessSetupView()
         case .inventoryImport:

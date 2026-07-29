@@ -3,23 +3,11 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
-import { supplierFetch } from "@/lib/auth";
+import type { PaymentLedgerEntry } from "@pegasusx/types";
+import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
 
-type LedgerItem = {
-  ledger_entry_id?: string;
-  order_id?: string;
-  supplier_id?: string;
-  retailer_id?: string;
-  gateway?: string;
-  entry_type?: string;
-  amount_minor?: number;
-  currency?: string;
-  reference_id?: string;
-  source?: string;
-  occurred_at?: string;
-  created_at?: string;
-};
+const api = createSupplierApi();
 
 function fmt(n?: number) {
   return (n ?? 0).toLocaleString();
@@ -38,7 +26,7 @@ function claimIdFromRef(ref?: string, source?: string): string {
 }
 
 export default function ClaimChargebacksPage() {
-  const [items, setItems] = useState<LedgerItem[]>([]);
+  const [items, setItems] = useState<PaymentLedgerEntry[]>([]);
   const [orderFilter, setOrderFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,13 +35,10 @@ export default function ClaimChargebacksPage() {
     setLoading(true);
     setError(null);
     try {
-      const q = new URLSearchParams({ limit: "100" });
-      if (orderFilter.trim()) q.set("order_id", orderFilter.trim());
-      const res = await supplierFetch(`/v1/supplier/claim-chargebacks?${q.toString()}`);
-      if (!res.ok) {
-        throw new Error(`load_${res.status}`);
-      }
-      const body = (await res.json()) as { items?: LedgerItem[]; count?: number };
+      const body = await api.listSupplierClaimChargebacks({
+        limit: 100,
+        order_id: orderFilter.trim() || undefined,
+      });
       setItems(body.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_failed");

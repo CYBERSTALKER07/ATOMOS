@@ -514,6 +514,31 @@ enum SupplierOperationsService {
         try await APIClient.shared.post("v1/payment/chargeback/reversal", body: request, idempotencyKey: idempotencyKey)
     }
 
+    static func listSupplierClaims(status: String? = "OPEN", limit: Int = 50) async throws -> [SupplierClaim] {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty {
+            query["status"] = status
+        }
+        let resp: SupplierClaimsListResponse = try await APIClient.shared.get("v1/supplier/claims", query: query)
+        return resp.claims
+    }
+
+    static func approveClaim(claimId: String, request: ApproveClaimRequest) async throws -> ApproveClaimResponse {
+        try await APIClient.shared.post("v1/claims/\(claimId)/approve", body: request)
+    }
+
+    static func rejectClaim(claimId: String, request: RejectClaimRequest) async throws -> SupplierClaim {
+        try await APIClient.shared.post("v1/claims/\(claimId)/reject", body: request)
+    }
+
+    static func listClaimChargebacks(limit: Int = 100, orderId: String? = nil) async throws -> ClaimChargebacksResponse {
+        var query: [String: String] = ["limit": String(limit)]
+        if let orderId, !orderId.isEmpty {
+            query["order_id"] = orderId
+        }
+        return try await APIClient.shared.get("v1/supplier/claim-chargebacks", query: query)
+    }
+
     static func inventoryAudit() async throws -> [String: String] { // placeholder
         try await APIClient.shared.get("v1/supplier/inventory/audit")
     }

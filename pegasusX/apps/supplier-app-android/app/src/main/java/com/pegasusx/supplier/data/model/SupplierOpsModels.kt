@@ -529,7 +529,7 @@ data class PaymentBypassResponse(
 
 @Serializable
 data class PaymentLedgerEntry(
-    @SerialName("ledger_entry_id") val ledgerEntryId: String,
+    @SerialName("ledger_entry_id") val ledgerEntryId: String = "",
     @SerialName("order_id") val orderId: String? = null,
     @SerialName("supplier_id") val supplierId: String? = null,
     @SerialName("retailer_id") val retailerId: String? = null,
@@ -537,12 +537,85 @@ data class PaymentLedgerEntry(
     @SerialName("entry_type") val entryType: String = "",
     @SerialName("amount_minor") val amountMinor: Long = 0,
     val currency: String = "",
+    @SerialName("reference_id") val referenceId: String? = null,
+    val source: String? = null,
     @SerialName("occurred_at") val occurredAt: String = "",
     @SerialName("created_at") val createdAt: String = "",
 )
 
 @Serializable
 data class PaymentLedgerResponse(
+    val items: List<PaymentLedgerEntry> = emptyList(),
+    val count: Int = 0,
+    val limit: Int = 0,
+    @SerialName("supplier_id") val supplierId: String = "",
+)
+
+// Logistics claims (GET /v1/supplier/claims, approve/reject, claim-chargebacks)
+
+@Serializable
+data class SupplierClaimLine(
+    val sku: String = "",
+    val quantity: Long = 0,
+    val reason: String? = null,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long? = null,
+    @SerialName("amount_minor") val amountMinor: Long? = null,
+)
+
+@Serializable
+data class SupplierClaimEvidence(
+    @SerialName("evidence_type") val evidenceType: String = "",
+    val uri: String = "",
+)
+
+@Serializable
+data class SupplierClaim(
+    @SerialName("claim_id") val claimId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("claim_type") val claimType: String = "",
+    val status: String = "",
+    @SerialName("amount_minor") val amountMinor: Long? = null,
+    val currency: String? = null,
+    val description: String? = null,
+    @SerialName("line_items") val lineItems: List<SupplierClaimLine> = emptyList(),
+    val evidences: List<SupplierClaimEvidence> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class SupplierClaimsListResponse(
+    val claims: List<SupplierClaim> = emptyList(),
+)
+
+@Serializable
+data class ApproveClaimRequest(
+    @SerialName("resolution_note") val resolutionNote: String = "",
+    @SerialName("settlement_mode") val settlementMode: String = "LEDGER_ONLY",
+    @SerialName("skip_gateway_refund") val skipGatewayRefund: Boolean = true,
+)
+
+@Serializable
+data class RejectClaimRequest(
+    @SerialName("resolution_note") val resolutionNote: String = "",
+)
+
+@Serializable
+data class ClaimSettlementResult(
+    @SerialName("chargeback_id") val chargebackId: String? = null,
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    val mode: String = "",
+    @SerialName("gateway_refunded") val gatewayRefunded: Boolean = false,
+)
+
+@Serializable
+data class ApproveClaimResponse(
+    val claim: SupplierClaim? = null,
+    val settlement: ClaimSettlementResult? = null,
+)
+
+@Serializable
+data class ClaimChargebacksResponse(
     val items: List<PaymentLedgerEntry> = emptyList(),
     val count: Int = 0,
     val limit: Int = 0,

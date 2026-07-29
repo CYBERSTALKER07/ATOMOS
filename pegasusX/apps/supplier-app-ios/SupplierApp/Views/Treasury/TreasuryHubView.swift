@@ -39,6 +39,12 @@ struct TreasuryHubView: View {
                                 NavigationLink { ChargebacksView() } label: {
                                     Label("Chargebacks", systemImage: "exclamationmark.bubble")
                                 }
+                                NavigationLink { ClaimChargebacksView() } label: {
+                                    Label("Claim chargebacks", systemImage: "list.bullet.rectangle")
+                                }
+                                NavigationLink { ClaimsView() } label: {
+                                    Label("Claims queue", systemImage: "exclamationmark.triangle.fill")
+                                }
                                 NavigationLink { ReconciliationView() } label: {
                                     Label("Reconciliation", systemImage: "scalemass")
                                 }
