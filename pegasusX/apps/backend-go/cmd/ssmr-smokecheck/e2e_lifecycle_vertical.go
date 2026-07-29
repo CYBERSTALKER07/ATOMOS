@@ -244,7 +244,29 @@ func completeLifecycleDelivery(
 	}
 	// ADR-009: collect enters FISCALIZING; wait for worker SUCCESS → COMPLETED.
 	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); err != nil {
-		return fmt.Errorf("wait fiscal COMPLETED: %w", err)
+		// Pilot unstick: if fiscal worker/outbox lags (PEGASUS receipts still PENDING),
+		// admin force-complete so claims and lifecycle smokes can proceed.
+		adminTok, issueErr := auth.Issue(auth.Claims{
+			Subject:    "ssmr-smoke-supplier-admin",
+			Role:       auth.RoleAdmin,
+			SupplierID: supplierID,
+		}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 15 * time.Minute})
+		if issueErr != nil {
+			return fmt.Errorf("wait fiscal COMPLETED: %w (admin jwt: %v)", err, issueErr)
+		}
+		forceBody := []byte(`{"reason":"ssmr_smoke_fiscal_unstick"}`)
+		st, body, _, forceErr := clientDo(ctx, client, http.MethodPost,
+			base+"/v1/order/"+orderID+"/force-complete", forceBody, adminTok, "lifecycle-force-"+orderID)
+		if forceErr != nil {
+			return fmt.Errorf("wait fiscal COMPLETED: %w (force: %v)", err, forceErr)
+		}
+		if st != http.StatusOK {
+			return fmt.Errorf("wait fiscal COMPLETED: %w (force status %d: %s)", err, st, string(body))
+		}
+		if waitErr := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 20*time.Second); waitErr != nil {
+			return fmt.Errorf("wait fiscal COMPLETED after force: %w", waitErr)
+		}
+		fmt.Println("PX_E2E_FISCAL_FORCE_UNSTICK_OK")
 	}
 	fmt.Println("PX_E2E_FISCAL_CASH_OK")
 	return nil

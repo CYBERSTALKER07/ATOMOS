@@ -693,6 +693,9 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 			in.AmountMinor = session.AmountMinor
 		}
 	}
+	if gateway == "" {
+		gateway = "INTERNAL"
+	}
 
 	// Deterministic id so approve retries InsertOrUpdate the same chargeback row.
 	chargebackID := strings.TrimSpace(in.ClaimID)

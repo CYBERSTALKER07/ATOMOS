@@ -566,8 +566,9 @@ func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cook
 	if err != nil {
 		return err
 	}
-	if status != http.StatusCreated && status != http.StatusOK && status != http.StatusConflict {
-		return fmt.Errorf("org member create status %d body %s", status, string(respBody))
+	createStatus := status
+	if createStatus != http.StatusCreated && createStatus != http.StatusOK && createStatus != http.StatusConflict {
+		return fmt.Errorf("org member create status %d body %s", createStatus, string(respBody))
 	}
 
 	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/org/members", nil, cookie, "")
@@ -577,7 +578,9 @@ func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cook
 	if status != http.StatusOK {
 		return fmt.Errorf("org members list status %d body %s", status, string(respBody))
 	}
-	if !strings.Contains(string(respBody), phone) && status != http.StatusConflict {
+	// Idempotent create returns Conflict with a fixed idempotency key — list may not
+	// contain this run's random phone; require phone only on fresh create.
+	if createStatus != http.StatusConflict && !strings.Contains(string(respBody), phone) {
 		return fmt.Errorf("org members missing created phone %s: %s", phone, string(respBody))
 	}
 	fmt.Println("PX_E2E_ORG_FLEET_OK")

@@ -159,6 +159,15 @@ func NewProviderExecutionRouter(cfg ProviderExecutionRouterConfig) *ProviderExec
 				gateway:      "CASH",
 				checkoutMode: ExecutionModeManual,
 			},
+			// Cash-on-delivery / in-platform sessions with no card PSP.
+			"INTERNAL": &staticProviderExecutor{
+				gateway:      "INTERNAL",
+				checkoutMode: ExecutionModeManual,
+			},
+			"CREDIT": &staticProviderExecutor{
+				gateway:      "CREDIT",
+				checkoutMode: ExecutionModeManual,
+			},
 			"AIRWALLEX": &airwallexProviderExecutor{
 				enabled: cfg.AirwallexDirectExecutionEnabled,
 			},
