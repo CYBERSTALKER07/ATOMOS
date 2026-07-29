@@ -6,8 +6,9 @@ import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
 import { authFetch } from './authSession';
 import { payloadInboundConfirmKey, payloadInboundScanKey } from './utils/idempotency';
+import { InboundReturnsList } from './components/InboundReturnsList';
 
-type InboundRow = {
+export type InboundRow = {
   return_id: string;
   order_id: string;
   sku_id: string;
@@ -216,33 +217,6 @@ export function InboundReturnsPanel({ theme: T, isIOS, isOnline = true, onBack, 
 
   const list = tab === 'queue' ? rows : history;
 
-  const renderRow = (row: InboundRow, selectable: boolean) => (
-    <Pressable
-      key={row.return_id}
-      onPress={() => selectable && toggle(row.return_id)}
-      style={{
-        borderWidth: 1,
-        borderColor: selectable && selected.has(row.return_id) ? T.colors.tint : T.colors.separator,
-        borderRadius: 12,
-        padding: 14,
-        backgroundColor: selectable && selected.has(row.return_id) ? `${T.colors.tint}11` : T.colors.secondaryBackground,
-      }}
-    >
-      <Text style={{ fontWeight: '700', color: T.colors.label }}>{row.product_name}</Text>
-      <Text style={{ fontSize: 12, color: T.colors.secondaryLabel, marginTop: 4 }}>
-        {row.driver_name || 'Driver'} · {row.reason} · {row.received_qty}/{row.expected_qty}
-      </Text>
-      {row.barcode ? (
-        <Text style={{ fontSize: 11, fontFamily: T.typography?.mono?.fontFamily, color: T.colors.secondaryLabel, marginTop: 4 }}>
-          EAN {row.barcode}
-        </Text>
-      ) : null}
-      <Text style={{ fontSize: 11, fontFamily: T.typography?.mono?.fontFamily, color: T.colors.tertiaryLabel, marginTop: 4 }}>
-        {row.return_id.slice(0, 8)} · suggest {row.suggested_disposition}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: T.colors.background }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 0.5, borderBottomColor: T.colors.separator }}>
@@ -343,13 +317,14 @@ export function InboundReturnsPanel({ theme: T, isIOS, isOnline = true, onBack, 
           <ActivityIndicator size="large" color={T.colors.tint} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-          {list.length === 0 ? (
-            <Text style={{ color: T.colors.secondaryLabel, textAlign: 'center', marginTop: 40 }}>
-              {tab === 'queue' ? 'No trucks awaiting gate receive.' : 'No completed receives yet.'}
-            </Text>
-          ) : list.map(row => renderRow(row, tab === 'queue'))}
-        </ScrollView>
+        <InboundReturnsList 
+          theme={T} 
+          list={list} 
+          selectable={tab === 'queue'} 
+          selected={selected} 
+          onToggle={toggle} 
+          emptyText={tab === 'queue' ? 'No trucks awaiting gate receive.' : 'No completed receives yet.'} 
+        />
       )}
     </View>
   );

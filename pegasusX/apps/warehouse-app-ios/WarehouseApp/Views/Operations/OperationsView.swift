@@ -65,110 +65,30 @@ struct OperationsView: View {
                 }
             }
 
-            Section {
-                WarehouseSectionHeader(
-                    title: "Broadcast templates",
-                    subtitle: "Built-in depot starters plus your saved custom messages."
-                )
-            }
-            Section {
-                if templates.isEmpty {
-                    Text("No templates available.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: LabTheme.spacingSM) {
-                            ForEach(templates) { template in
-                                HStack(spacing: 4) {
-                                    Button {
-                                        applyTemplate(template)
-                                    } label: {
-                                        let suffix = template.source == "custom" ? " · saved" : ""
-                                        Text(template.title + suffix)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .font(.caption)
+            OperationsBroadcastForm(
+                broadcastRoles: broadcastRoles,
+                templates: templates,
+                templateDate: $templateDate,
+                customReason: $customReason,
+                title: $title,
+                broadcastRole: $broadcastRole,
+                bodyText: $bodyText,
+                saveAsTemplate: $saveAsTemplate,
+                broadcasting: broadcasting,
+                savingTemplate: savingTemplate,
+                onApplyTemplate: applyTemplate,
+                onDeleteTemplate: deleteTemplate,
+                onSendBroadcast: sendBroadcast
+            )
 
-                                    if template.source == "custom" {
-                                        Button(role: .destructive) {
-                                            Task { await deleteTemplate(template) }
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                        }
-                                        .buttonStyle(.borderless)
-                                        .font(.caption)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Section {
-                WarehouseSectionHeader(title: "Send depot broadcast")
-            }
-            Section {
-                TextField("Effective date (optional)", text: $templateDate)
-                    .textInputAutocapitalization(.never)
-                TextField("Custom reason (optional)", text: $customReason)
-                TextField("Title", text: $title)
-                Picker("Target role", selection: $broadcastRole) {
-                    ForEach(broadcastRoles, id: \.self) { role in
-                        Text(role).tag(role)
-                    }
-                }
-                TextField("Message", text: $bodyText, axis: .vertical)
-                    .lineLimit(4...8)
-                Toggle("Save as custom template for this depot", isOn: $saveAsTemplate)
-                Button(broadcasting || savingTemplate ? "Sending…" : "Send broadcast") {
-                    Task { await sendBroadcast() }
-                }
-                .disabled(
-                    broadcasting || savingTemplate
-                        || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                )
-            }
-
-            Section {
-                WarehouseSectionHeader(
-                    title: "Pricing impact preview (read-only)",
-                    subtitle: "Preview proposed retailer price vs catalog list price. Does not create overrides."
-                )
-            }
-            Section {
-                TextField("Product / SKU ID", text: $productId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .onChange(of: productId) { _, _ in schedulePreview() }
-                TextField("Retailer ID (optional)", text: $retailerId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .onChange(of: retailerId) { _, _ in schedulePreview() }
-                TextField("Proposed price (minor units)", text: $proposedPrice)
-                    .keyboardType(.numberPad)
-                    .onChange(of: proposedPrice) { _, _ in schedulePreview() }
-
-                if previewLoading {
-                    Text("Loading preview…")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                if let preview {
-                    LabeledContent("Retailers on SKU", value: "\(preview.retailersOnSkuCount)")
-                    LabeledContent("Active overrides", value: "\(preview.activeOverrideCount)")
-                    LabeledContent("Catalog list price", value: "\(preview.catalogListPrice)")
-                    LabeledContent("Margin delta / unit", value: "\(preview.marginDeltaPerUnit)")
-                    Text(preview.marginEstimateLabel)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    if preview.readOnly == true {
-                        Text("Read-only — contact supplier to apply overrides.")
-                            .font(.footnote.weight(.medium))
-                    }
-                }
-            }
+            OperationsPricingPreview(
+                productId: $productId,
+                retailerId: $retailerId,
+                proposedPrice: $proposedPrice,
+                previewLoading: previewLoading,
+                preview: preview,
+                onSchedulePreview: schedulePreview
+            )
         }
     }
 

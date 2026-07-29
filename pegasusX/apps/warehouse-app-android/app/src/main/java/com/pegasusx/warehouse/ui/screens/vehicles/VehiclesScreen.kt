@@ -1,14 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -102,55 +97,11 @@ fun VehiclesScreen(
                 body = "Fleet trucks will appear here.",
                 modifier = Modifier.padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(vehicles, key = { it.vehicleId }) { v ->
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onVehicleClick(v.vehicleId) },
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(PegasusSpacing.lg),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "${v.vehicleClass} · ${v.capacityVu} VU",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    v.assignedDriverName.ifBlank { "Unassigned" },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (!v.isActive) {
-                                    Text(
-                                        formatUnavailableReason(v.unavailableReason, v.unavailableNote),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                    )
-                                }
-                            }
-                            WarehouseStatusChip(
-                                status = if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE",
-                            )
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
+            else -> VehiclesList(
+                vehicles = vehicles,
+                onVehicleClick = onVehicleClick,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 

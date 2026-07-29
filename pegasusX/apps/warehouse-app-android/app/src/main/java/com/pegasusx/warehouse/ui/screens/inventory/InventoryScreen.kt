@@ -98,74 +98,34 @@ fun InventoryScreen(
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
-            items.isEmpty() -> PegasusStatePane(
-                kind = PegasusStateKind.Empty,
-                headline = "No Inventory Items",
-                body = "There are no matching items.",
-                modifier = Modifier.fillMaxSize().padding(innerPadding)
-            )
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            else -> InventoryStockList(
+                items = items,
+                policySavingId = policySavingId,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(items, key = { it.productId }) { item ->
-                    val isLow = item.quantity <= item.reorderThreshold
-                    val currentPolicy = item.outOfStockPolicy?.takeIf { it.isNotBlank() } ?: "INHERIT"
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.productName, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        "Qty: ${item.quantity} · Reorder at: ${item.reorderThreshold}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                if (isLow) {
-                                    AssistChip(
-                                        onClick = {},
-                                        label = { Text("LOW", style = MaterialTheme.typography.labelSmall) },
-                                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                    )
-                                }
-                                Spacer(Modifier.width(PegasusSpacing.sm))
-                                TextButton(onClick = { adjustItem = item }) { Text("Adjust") }
-                            }
-                            Spacer(Modifier.height(PegasusSpacing.sm))
-                            InventoryPolicyPicker(
-                                currentPolicy = currentPolicy,
-                                saving = policySavingId == item.productId,
-                                onSelect = { policy ->
-                                    policySavingId = item.productId
-                                    scope.launch {
-                                        try {
-                                            val resp = api.patchInventoryPolicy(
-                                                item.productId,
-                                                InventoryPolicyPatchRequest(outOfStockPolicy = policy),
-                                                WarehouseIdempotencyKeys.inventoryPolicy(item.productId, policy),
-                                            )
-                                            if (resp.isSuccessful) {
-                                                load()
-                                                snackbarHostState.showSnackbar("Policy updated")
-                                            } else {
-                                                snackbarHostState.showSnackbar("Policy update failed (${resp.code()})")
-                                            }
-                                        } catch (e: Exception) {
-                                            snackbarHostState.showSnackbar(e.message ?: "Policy update failed")
-                                        } finally {
-                                            policySavingId = null
-                                        }
-                                    }
-                                },
+                onAdjust = { adjustItem = it },
+                onPolicyChange = { item, policy ->
+                    policySavingId = item.productId
+                    scope.launch {
+                        try {
+                            val resp = api.patchInventoryPolicy(
+                                item.productId,
+                                InventoryPolicyPatchRequest(outOfStockPolicy = policy),
+                                WarehouseIdempotencyKeys.inventoryPolicy(item.productId, policy),
                             )
+                            if (resp.isSuccessful) {
+                                load()
+                                snackbarHostState.showSnackbar("Policy updated")
+                            } else {
+                                snackbarHostState.showSnackbar("Policy update failed (${resp.code()})")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "Policy update failed")
+                        } finally {
+                            policySavingId = null
                         }
                     }
-                }
-            }
+                },
+            )
         }
     }
 

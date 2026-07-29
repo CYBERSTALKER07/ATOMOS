@@ -21,43 +21,13 @@ struct InventoryView: View {
                 } else if items.isEmpty {
                     WarehouseEmptyView(title: "No Inventory Items", message: "There are no matching items.")
                 } else {
-                    ResponsiveGridContentWrapper {
-                        ForEach(items) { item in
-                        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                    Text(item.productName)
-                                        .font(.headline)
-                                    Text("Qty: \(item.quantity) · Reorder: \(item.reorderThreshold)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if item.quantity <= item.reorderThreshold {
-                                    Text("LOW")
-                                        .font(.caption.bold())
-                                        .padding(.horizontal, LabTheme.spacingSM)
-                                        .padding(.vertical, LabTheme.spacingXS)
-                                        .foregroundStyle(.white)
-                                        .background(.red, in: Capsule())
-                                }
-                                Button("Adjust") { adjustItem = item }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                            }
-                            Picker("Out-of-stock policy", selection: Binding(
-                                get: { item.outOfStockPolicy?.isEmpty == false ? item.outOfStockPolicy! : "INHERIT" },
-                                set: { newValue in updatePolicy(item: item, policy: newValue) }
-                            )) {
-                                ForEach(policies, id: \.self) { policy in
-                                    Text(policy).tag(policy)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .disabled(policySavingId == item.productId)
-                        }
-                        .labCard()
-                    }
+                    InventoryStockList(
+                        items: items,
+                        policySavingId: policySavingId,
+                        policies: policies,
+                        onAdjust: { item in adjustItem = item },
+                        onPolicyChange: { item, policy in updatePolicy(item: item, policy: policy) }
+                    )
                 }
             }
             .background(LabTheme.background)

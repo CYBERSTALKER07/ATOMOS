@@ -8,6 +8,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
+import StaffList from '@/components/staff/StaffList';
 import type {
   CreateWarehouseStaffRequest,
   CreateWarehouseStaffResponse,
@@ -200,47 +201,7 @@ export default function StaffPage() {
         </form>
       )}
 
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="md-skeleton md-skeleton-row" />
-          ))}
-        </div>
-      ) : staff.length === 0 ? (
-        <div className="text-center py-20 text-(--muted)">
-          <Icon name="staff" size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No staff members registered</p>
-        </div>
-      ) : (
-        <div className="border border-(--border) rounded-xl overflow-hidden">
-          <table className="desk-table w-full text-sm">
-            <thead>
-              <tr className="border-b border-(--border)" style={{ background: 'var(--surface)' }}>
-                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Phone</th>
-                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Role</th>
-                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map(s => (
-                <tr key={s.worker_id} className="border-b border-(--border) last:border-b-0">
-                  <td className="px-4 py-3">{s.name}</td>
-                  <td className="px-4 py-3 text-(--muted)">{s.phone || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className="status-chip status-chip--submitted">{s.role}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold ${s.is_active ? 'text-(--success)' : 'text-(--danger)'}`}>
-                      {s.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <StaffList staff={staff} loading={loading} />
       </div>
       </PageChrome>
     </PageTransition>

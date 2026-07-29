@@ -81,34 +81,34 @@ struct HomeView: View {
 
                 // MARK: - Vehicle Info Card
                 if !vm.truckId.isEmpty && vm.truckId != "—" {
-                    vehicleInfoCard
+                    VehicleInfoCard(vm: vm)
                         .staggeredAppear(index: 1)
                 }
 
                 // MARK: - Factory supply
                 if TokenStore.shared.isFactoryScopedDriver {
-                    factorySupplyCard
+                    FactorySupplyCard(showSupplyTransfers: $showSupplyTransfers)
                         .staggeredAppear(index: 2)
                 }
 
                 // MARK: - Transit Control Card
-                transitControlCard
+                TransitControlCard(vm: vm)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 3 : 2)
 
                 // MARK: - Today Summary Card
-                todaySummary
+                TodaySummaryCard(vm: vm)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 4 : 3)
 
                 // MARK: - Open Map CTA
-                mapButton
+                MapButton(pendingCount: vm.pendingMissions.count, onOpenMap: onOpenMap)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 5 : 4)
 
                 // MARK: - Quick Actions
-                quickActions
+                QuickActionsSection(showRescueSheet: $showRescueSheet)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 6 : 5)
 
                 // MARK: - Recent Activity
-                recentActivity
+                RecentActivitySection(vm: vm)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 7 : 6)
             }
             .padding(.horizontal, LabTheme.s16)
@@ -207,395 +207,11 @@ struct HomeView: View {
                 .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1) // Modern stroke
         }
     }
-
-    // MARK: - Vehicle Info Card
-
-    private var vehicleInfoCard: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "truck.box.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(LabTheme.fg)
-                .frame(width: 44, height: 44)
-                .background(LabTheme.separator)
-                .clipShape(.rect(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(vm.truckId)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                HStack(spacing: 6) {
-                    Text(vm.licensePlate)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                    if vm.vehicleClass != "—" {
-                        Text("•")
-                            .foregroundStyle(LabTheme.fgTertiary)
-                        Text("\(vm.vehicleClass) · \(Int(vm.maxVolumeVU)) VU")
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                    }
-                }
-            }
-
-            Spacer()
-
-            DriverStatusBadge(text: "ASSIGNED", tint: LabTheme.success)
-        }
-        .padding(LabTheme.s16)
-        .labCard()
-    }
-
-    // MARK: - Transit Control Card
-
-    private var transitControlCard: some View {
-        VStack(spacing: 14) {
-            if vm.isReturning {
-                // Returning to warehouse state
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(LabTheme.warning)
-                        .frame(width: 8, height: 8)
-                        .modifier(PulseModifier())
-                    Text("RETURNING TO WAREHOUSE")
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                        .foregroundStyle(LabTheme.warning)
-                    Spacer()
-                }
-
-                Text("All deliveries completed — head back to depot")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                if vm.returnGoodsTotalUnits > 0 {
-                    Text("\(vm.returnGoodsTotalUnits) item(s) to return on truck")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(LabTheme.warning)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    ForEach(vm.returnGoodsLines.prefix(5)) { line in
-                        Text("· \(line.productName) ×\(line.quantity)")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(LabTheme.fgSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
-                VStack(spacing: 8) {
-                    Button {
-                        Haptics.medium()
-                        openWarehouseInMaps()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("NAVIGATE TO WAREHOUSE")
-                                .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                        }
-                        .foregroundStyle(LabTheme.bg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(LabTheme.warning)
-                        .clipShape(.rect(cornerRadius: LabTheme.buttonRadius))
-                    }
-                    .buttonStyle(.pressable)
-
-                    Button {
-                        Task { await vm.returnComplete() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "house.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("ARRIVED AT WAREHOUSE")
-                                .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                        }
-                        .foregroundStyle(LabTheme.fg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(LabTheme.fg.opacity(0.08))
-                        .clipShape(.rect(cornerRadius: LabTheme.buttonRadius))
-                    }
-                    .buttonStyle(.pressable)
-                }
-            } else if vm.isTransitActive {
-                // Active transit state
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(LabTheme.live)
-                        .frame(width: 8, height: 8)
-                        .modifier(PulseModifier())
-                    Text("IN TRANSIT")
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                        .foregroundStyle(LabTheme.live)
-                    Spacer()
-                    Text("\(vm.inTransitOrders.count) deliveries")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                }
-
-                Text("Telemetry active — drive safely")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if !vm.loadedOrders.isEmpty {
-                // Ready to depart
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("READY TO DEPART")
-                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                            .foregroundStyle(LabTheme.fg)
-                        Text("\(vm.loadedOrders.count) orders loaded")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                    }
-                    Spacer()
-                }
-
-                Button {
-                    Task { await vm.departRoute() }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "truck.box.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("START TRANSIT")
-                            .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                    }
-                    .foregroundStyle(LabTheme.bg)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(LabTheme.fg)
-                    .clipShape(.rect(cornerRadius: LabTheme.buttonRadius))
-                }
-                .buttonStyle(.pressable)
-            } else {
-                // No orders loaded
-                HStack(spacing: 10) {
-                    Image(systemName: "tray")
-                        .font(.system(size: 14))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                    Text("No orders loaded yet")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                    Spacer()
-                }
-            }
-        }
-        .padding(LabTheme.s20)
-        .labCard()
-    }
-
-    // MARK: - Factory Supply
-
-    private var factorySupplyCard: some View {
-        Button {
-            Haptics.medium()
-            showSupplyTransfers = true
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(LabTheme.fg)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Supply transfers")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(LabTheme.fg)
-                    Text("\(TokenStore.shared.factoryName ?? "Factory depot") → warehouse legs")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
-            .padding(LabTheme.s16)
-            .labCard()
-        }
-        .buttonStyle(.pressable)
-    }
-
-    // MARK: - Navigate to Warehouse
-
-    private func openWarehouseInMaps() {
-        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : 41.2995
-        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : 69.2401
-        let depotCoord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
-        let placemark = MKPlacemark(coordinate: depotCoord)
-        let mapItem = MKMapItem(placemark: placemark)
-        mapItem.name = TokenStore.shared.warehouseName ?? "Warehouse"
-        mapItem.openInMaps(launchOptions: [
-            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
-        ])
-    }
-
-    // MARK: - Today Summary
-
-    private var todaySummary: some View {
-        VStack(spacing: LabTheme.s12) {
-            DriverSectionHeader(title: "Today", trailing: todayDate)
-
-            HStack(spacing: LabTheme.s12) {
-                KpiTile(label: "Pending", value: "\(vm.pendingMissions.count)", icon: "clock")
-                KpiTile(label: "Done", value: "\(vm.completedIds.count)", icon: "checkmark", tint: LabTheme.success)
-                KpiTile(label: "Revenue", value: totalRevenue, icon: "banknote")
-            }
-        }
-    }
-
-    private var totalRevenue: String {
-        let total = vm.completedMissions.reduce(0) { $0 + $1.amount }
-        if total == 0 { return "—" }
-        return total.formatted(.number.grouping(.automatic))
-    }
-
-    private var todayDate: String {
-        Date().formatted(.dateTime.day().month(.abbreviated).year()).uppercased()
-    }
-
-    // MARK: - Map Button
-
-    private var mapButton: some View {
-        Button {
-            Haptics.medium()
-            onOpenMap()
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(LabTheme.fg)
-                        .frame(width: 48, height: 48)
-
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(LabTheme.buttonFg)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Open Map")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(LabTheme.fg)
-
-                    Text("\(vm.pendingMissions.count) deliveries waiting")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
-            .padding(LabTheme.s16)
-            .labCard()
-        }
-        .buttonStyle(.pressable)
-    }
-
-    // MARK: - Quick Actions
-
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            DriverSectionHeader(title: "Quick Actions")
-                .padding(.horizontal, LabTheme.s4)
-
-            HStack(spacing: 12) {
-                actionTile(icon: "qrcode.viewfinder", label: "Scan QR")
-                actionTile(icon: "shield.checkered", label: "Offline\nVerify")
-                actionTileButton(icon: "exclamationmark.triangle.fill", label: "Rescue", tint: LabTheme.warning) {
-                    showRescueSheet = true
-                }
-            }
-        }
-    }
-
-    private func actionTile(icon: String, label: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(LabTheme.fg)
-
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(LabTheme.fgSecondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .labCard()
-    }
-
-    private func actionTileButton(icon: String, label: String, tint: Color = LabTheme.fg, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(tint)
-
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .labCard()
-        }
-        .buttonStyle(.pressable)
-    }
-
-    // MARK: - Recent Activity
-
-    private var recentActivity: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            DriverSectionHeader(title: "Recent")
-                .padding(.horizontal, LabTheme.s4)
-
-            if vm.completedMissions.isEmpty {
-                DriverEmptyView(
-                    icon: "clock.arrow.circlepath",
-                    title: "No deliveries yet",
-                    message: "Completed drops will appear here."
-                )
-            } else {
-                ForEach(vm.completedMissions.prefix(3)) { mission in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(LabTheme.success.opacity(0.12))
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(LabTheme.success)
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(mission.order_id)
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(LabTheme.fg)
-                            Text(mission.amount.formattedAmount)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(LabTheme.fgSecondary)
-                        }
-
-                        Spacer()
-
-                        Text(mission.gateway)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                    }
-                    .padding(LabTheme.s12)
-                    .labCard()
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Pulse Animation Modifier
 
-private struct PulseModifier: ViewModifier {
+struct PulseModifier: ViewModifier {
     @State private var isPulsing = false
 
     func body(content: Content) -> some View {

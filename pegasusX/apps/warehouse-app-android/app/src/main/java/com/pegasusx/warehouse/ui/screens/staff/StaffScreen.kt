@@ -71,47 +71,13 @@ fun StaffScreen(
             )
         },
     ) { innerPadding ->
-        when {
-            loading && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("No staff members", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(staff, key = { it.workerId }) { s ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "${s.role} · ${s.phone}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(if (s.isActive) "Active" else "Inactive", style = MaterialTheme.typography.labelSmall) },
-                                colors = if (s.isActive) AssistChipDefaults.assistChipColors()
-                                else AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        StaffList(
+            staff = staff,
+            loading = loading,
+            error = error,
+            onRetry = { load() },
+            modifier = Modifier.padding(innerPadding)
+        )
     }
 
     if (showCreate) {

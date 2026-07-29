@@ -132,37 +132,10 @@ fun TreasuryScreen(
                         }
                     }
                     1 -> {
-                        if (invoices.isEmpty()) {
-                            PegasusStatePane(
-                                kind = PegasusStateKind.Empty,
-                                headline = "No invoices",
-                                body = "Retailer invoices will appear here when issued.",
-                            )
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 340.dp),
-                                contentPadding = PaddingValues(PegasusSpacing.lg),
-                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                            ) {
-                                items(invoices, key = { it.invoiceId }) { inv ->
-                                    val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs
-                                    val displayCurrency = if (inv.currency.isBlank()) "UZS" else inv.currency.uppercase()
-                                    val payoutOwner = buildString {
-                                        append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
-                                        if (inv.payoutOwnerId.isNotBlank()) {
-                                            append(":")
-                                            append(inv.payoutOwnerId.take(8))
-                                        }
-                                    }
-                                    WarehouseOpsListCard(
-                                        headline = inv.retailerName,
-                                        supporting = "${fmt.format(displayAmount)} $displayCurrency · due ${inv.dueDate} · Owner $payoutOwner · Net ${fmt.format(inv.netPayoutAmount)}",
-                                        status = inv.status,
-                                    )
-                                }
-                            }
-                        }
+                        TreasuryTransactionList(
+                            invoices = invoices,
+                            fmt = fmt
+                        )
                     }
                 }
             }

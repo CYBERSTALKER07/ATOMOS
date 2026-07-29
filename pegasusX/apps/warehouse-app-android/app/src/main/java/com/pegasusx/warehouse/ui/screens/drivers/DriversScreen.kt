@@ -29,12 +29,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
-private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
-    "MAINTENANCE" to "Maintenance",
-    "TRUCK_DAMAGED" to "Truck Damaged",
-    "REGULATORY_HOLD" to "Regulatory Hold",
-    "MANUAL_HOLD" to "Manual Hold",
-)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,49 +123,13 @@ fun DriversScreen(
                 body = "Fleet drivers will appear here.",
                 modifier = Modifier.padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(drivers, key = { it.driverId }) { driver ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(driver.name, style = MaterialTheme.typography.titleSmall)
-                                Text(driver.phone, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(
-                                    assignedVehicleLabel(driver, vehicles),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                assignedVehicleReason(driver, vehicles)?.let { reason ->
-                                    Text(
-                                        reason,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                    )
-                                }
-                            }
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                WarehouseStatusChip(status = driver.truckStatus.ifBlank { "IDLE" })
-                                OutlinedButton(
-                                    onClick = { assignDriver = driver },
-                                    enabled = assigningDriverId != driver.driverId,
-                                ) {
-                                    if (assigningDriverId == driver.driverId) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Text(if (driver.vehicleId.isNullOrBlank()) "Assign" else "Reassign")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            else -> DriversList(
+                drivers = drivers,
+                vehicles = vehicles,
+                assigningDriverId = assigningDriverId,
+                onAssignClick = { assignDriver = it },
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 
@@ -263,39 +222,7 @@ private fun AssignVehicleDialog(
     )
 }
 
-private fun assignedVehicleLabel(driver: Driver, vehicles: List<Vehicle>): String {
-    val vehicleId = driver.vehicleId ?: return "Unassigned"
-    val vehicle = vehicles.firstOrNull { it.vehicleId == vehicleId } ?: return "Assigned vehicle unavailable"
-    return vehicleLabel(vehicle)
-}
 
-private fun assignedVehicleReason(driver: Driver, vehicles: List<Vehicle>): String? {
-    val vehicleId = driver.vehicleId ?: return null
-    if (!driver.vehicleIsActive) {
-        return driver.vehicleUnavailableReason?.takeIf { it.isNotBlank() }
-            ?.let { "Vehicle unavailable: ${vehicleUnavailableReasonLabel(it)}" }
-            ?: "Vehicle unavailable"
-    }
-    val vehicle = vehicles.firstOrNull { it.vehicleId == vehicleId } ?: return null
-    if (!vehicle.isActive) {
-        return vehicle.unavailableReason?.takeIf { it.isNotBlank() }
-            ?.let { "Vehicle unavailable: ${vehicleUnavailableReasonLabel(it)}" }
-            ?: "Vehicle unavailable"
-    }
-    return null
-}
-
-private fun vehicleLabel(vehicle: Vehicle): String {
-    val title = if (vehicle.label.isBlank()) vehicle.licensePlate else vehicle.label
-    return listOf(title, vehicle.vehicleClass).filter { it.isNotBlank() }.joinToString(" · ")
-}
-
-private fun vehicleUnavailableReasonLabel(reason: String): String {
-    return DRIVER_UNAVAILABLE_REASON_LABELS[reason]
-        ?: reason.lowercase().split('_').joinToString(" ") { token ->
-            token.replaceFirstChar { ch -> ch.titlecase() }
-        }
-}
 
 @Composable
 private fun CreateDriverDialog(

@@ -47,6 +47,8 @@ import HandoffTimelinePanel from '@/components/HandoffTimelinePanel';
 import EmptyState from '@/components/EmptyState';
 import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
+import DispatchOrderList from '@/components/dispatch/DispatchOrderList';
+import DispatchDriverList from '@/components/dispatch/DispatchDriverList';
 import { warehouseOps } from '@/lib/warehouse-ops';
 
 const TETRIS_BUFFER = 0.95;
@@ -840,116 +842,29 @@ export default function DispatchPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in mt-6">
-          <PageSection
-            title={`Undispatched orders (${orders.length})`}
-            description="Select for dispatch. Double-click a card for order detail."
-            actions={
-              orders.length > 0 ? (
-                <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                  Select all
-                </label>
-              ) : undefined
-            }
-          >
-            {orders.length === 0 ? (
-              <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
-            ) : (
-              <VirtualScrollList
-                className="-mx-5 px-5"
-                height="28rem"
-                items={orders}
-                itemKey={(order) => order.order_id}
-                renderItem={(order, index) => (
-                  <div className="flex items-start gap-2 pb-3">
-                    <label className="flex items-center pt-4 shrink-0 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrderIds.has(order.order_id)}
-                        onChange={() => toggleOrder(order.order_id)}
-                      />
-                    </label>
-                    <div className="flex-1 min-w-0">
-                      <OrderOpsCard
-                        orderId={order.order_id}
-                        retailerName={order.retailer_name || 'Unknown'}
-                        state="PENDING"
-                        amountLabel={`${fmt(order.total_uzs)} UZS · ${formatVU(order.volume_vu ?? 0)} VU`}
-                        index={index}
-                        disabled={opsActingId === order.order_id}
-                        detailOpenMode="double"
-                        onOpenDetail={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
-                        onProposeDate={() => {
-                          setOpsDialog({ orderId: order.order_id, kind: 'propose' });
-                          setOpsReason('');
-                          setOpsProposedDate(new Date().toISOString().slice(0, 10));
-                        }}
-                        onReject={() => {
-                          setOpsDialog({ orderId: order.order_id, kind: 'reject' });
-                          setOpsReason('');
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              />
-            )}
-          </PageSection>
+          <DispatchOrderList
+            orders={orders}
+            selectedOrderIds={selectedOrderIds}
+            allSelected={allSelected}
+            opsActingId={opsActingId}
+            toggleOrder={toggleOrder}
+            toggleSelectAll={toggleSelectAll}
+            onOpenDetail={(orderId) => router.push(`/orders/${orderId}?from=dispatch`)}
+            onProposeDate={(orderId) => {
+              setOpsDialog({ orderId, kind: 'propose' });
+              setOpsReason('');
+              setOpsProposedDate(new Date().toISOString().slice(0, 10));
+            }}
+            onReject={(orderId) => {
+              setOpsDialog({ orderId, kind: 'reject' });
+              setOpsReason('');
+            }}
+          />
 
-          <PageSection title={`Available drivers (${drivers.length})`}>
-            <div className="space-y-4 max-h-80 overflow-y-auto">
-              {drivers.length === 0 ? (
-                <EmptyState variant="no-data" headline="No drivers available" body="All drivers are on route or blocked." />
-              ) : (
-                <div className="space-y-2">
-                  {drivers.map(driver => (
-                    <div key={driver.driver_id} className="flex items-center justify-between p-3 rounded-lg border border-(--border)">
-                      <div>
-                        <div className="text-sm font-medium">{driver.name}</div>
-                        <div className="text-xs text-(--muted)">{driver.vehicle_label || driver.phone || 'Assigned vehicle'}</div>
-                      </div>
-                      <div className="text-right">
-                        <span className="status-chip status-chip--stable">{driver.truck_status || 'IDLE'}</span>
-                        <div className="text-xs text-(--muted) mt-1 font-mono">
-                          {driver.free_volume_vu != null && driver.free_volume_vu > 0
-                            ? `${formatVU(driver.free_volume_vu)} VU free`
-                            : `${formatVU(driver.max_volume_vu ?? 0)} VU max`}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="border-t border-(--border) pt-4">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-(--muted) mb-2">
-                  Unavailable ({unavailableDrivers.length})
-                </h3>
-                {unavailableDrivers.length === 0 ? (
-                  <p className="text-sm text-(--muted) py-2 text-center">No drivers blocked — all assigned trucks eligible or off-shift reasons shown here in real time.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {unavailableDrivers.map(driver => (
-                      <div key={driver.driver_id} className="rounded-lg border border-(--border) p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-medium">{driver.name}</div>
-                            <div className="text-xs text-(--muted)">{driver.vehicle_label || driver.phone || 'Assigned vehicle unavailable'}</div>
-                          </div>
-                          <span className="status-chip status-chip--draft">{driver.truck_status || 'IDLE'}</span>
-                        </div>
-                        {driver.unavailable_reason && (
-                          <div className="mt-2 text-xs" style={{ color: 'var(--warning)' }}>
-                            {formatUnavailableReason(driver.unavailable_reason)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </PageSection>
+          <DispatchDriverList
+            drivers={drivers}
+            unavailableDrivers={unavailableDrivers}
+          />
         </div>
 
         {proposedRoutes.length > 0 && (

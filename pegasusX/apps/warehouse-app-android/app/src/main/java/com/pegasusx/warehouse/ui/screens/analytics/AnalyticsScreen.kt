@@ -133,7 +133,7 @@ fun AnalyticsScreen(
                 }
                 if (data!!.chartDaily.isNotEmpty()) {
                     item {
-                        DailyRevenueChart(
+                        AnalyticsChartGrid(
                             daily = data!!.chartDaily,
                             formatter = fmt,
                         )
@@ -157,52 +157,6 @@ fun AnalyticsScreen(
     }
 }
 
-@Composable
-private fun DailyRevenueChart(
-    daily: List<DailyMetric>,
-    formatter: NumberFormat,
-) {
-    val maxRevenue = daily.maxOfOrNull { it.revenue }?.coerceAtLeast(1L) ?: 1L
-    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-        Text("Daily Revenue", style = MaterialTheme.typography.titleMedium)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(128.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            daily.forEach { day ->
-                val fraction = day.revenue.toFloat() / maxRevenue.toFloat()
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height((fraction * 96f).dp.coerceAtLeast(4.dp))
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.shapes.extraSmall,
-                            ),
-                    )
-                    Text(
-                        text = day.date.takeLast(5),
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-        Text(
-            text = "Peak day: ${formatter.format(daily.maxOf { it.revenue })} UZS",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
 
 @Composable
 private fun ImportMetaCard(

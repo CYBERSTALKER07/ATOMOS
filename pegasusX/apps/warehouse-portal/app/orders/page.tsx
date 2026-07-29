@@ -18,6 +18,7 @@ import { OrderActionDialog, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
 import { OrdersList, type OrderRow, type OrdersTab } from './components/OrdersList';
+import { PreordersList } from '@/components/preorders/PreordersList';
 
 function isoDeliveryDate(dateInput: string): string {
   const dateOnly = dateInput.slice(0, 10);
@@ -309,17 +310,28 @@ export default function OrdersPage() {
           onExport={exportCsv}
         />
         
-        <OrdersList
-          tab={tab}
-          loading={loading}
-          filter={filter}
-          activeItems={activePageItems}
-          preorderItems={preorderPageItems}
-          actingId={actingId}
-          onOpenDetail={openDetail}
-          onProposeDate={handleProposeDate}
-          onReject={handleReject}
-        />
+        {tab === 'active' ? (
+          <OrdersList
+            tab={tab}
+            loading={loading}
+            filter={filter}
+            activeItems={activePageItems}
+            preorderItems={preorderPageItems}
+            actingId={actingId}
+            onOpenDetail={openDetail}
+            onProposeDate={handleProposeDate}
+            onReject={handleReject}
+          />
+        ) : (
+          <PreordersList
+            loading={loading}
+            items={preorderPageItems}
+            actingId={actingId}
+            onOpenDetail={openDetail}
+            onProposeDate={handleProposeDate}
+            onReject={handleReject}
+          />
+        )}
       </PageChrome>
 
       {dialog && dialogCopy ? (

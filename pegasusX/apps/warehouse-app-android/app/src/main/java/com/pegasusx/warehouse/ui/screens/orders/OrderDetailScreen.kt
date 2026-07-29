@@ -327,33 +327,7 @@ fun OrderDetailScreen(
                             }
                         }
                     }
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        HorizontalDivider()
-                        Spacer(Modifier.height(PegasusSpacing.sm))
-                        Text("Line Items", style = MaterialTheme.typography.titleMedium)
-                    }
-                    items(current.lineItems) { item ->
-                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.padding(PegasusSpacing.lg),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.productName.ifBlank { "Product" }, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        "Qty: ${item.quantity}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                Text(
-                                    "${fmt.format(item.unitPrice)} UZS",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
+                    orderLineItems(current, fmt)
                 }
             }
         }

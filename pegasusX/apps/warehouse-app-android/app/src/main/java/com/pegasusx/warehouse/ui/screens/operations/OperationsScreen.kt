@@ -243,165 +243,44 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            WarehouseSectionTitle("Broadcast templates")
-            Text(
-                "Built-in depot starters plus your saved custom messages.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            OperationsBroadcastForm(
+                templates = templates,
+                templateDate = templateDate,
+                onTemplateDateChange = { templateDate = it },
+                customReason = customReason,
+                onCustomReasonChange = { customReason = it },
+                title = title,
+                onTitleChange = { title = it },
+                broadcastRole = broadcastRole,
+                onBroadcastRoleChange = { broadcastRole = it },
+                body = body,
+                onBodyChange = { body = it },
+                saveAsTemplate = saveAsTemplate,
+                onSaveAsTemplateChange = { saveAsTemplate = it },
+                broadcasting = broadcasting,
+                savingTemplate = savingTemplate,
+                onSelectTemplate = { template ->
+                    val (t, b, r) = applyTemplate(template, templateDate, customReason)
+                    title = t
+                    body = b
+                    if (listOf("DRIVER", "RETAILER", "ALL").contains(r)) broadcastRole = r
+                },
+                onDeleteTemplate = { deleteTemplate(it) },
+                onBroadcast = { sendBroadcast() }
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-            ) {
-                templates.forEach { template ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(
-                            selected = false,
-                            onClick = {
-                                val (t, b, r) = applyTemplate(template, templateDate, customReason)
-                                title = t
-                                body = b
-                                if (broadcastRoles.contains(r)) broadcastRole = r
-                            },
-                            label = {
-                                val suffix = if (template.source == "custom") " · saved" else ""
-                                Text(template.title + suffix, maxLines = 1)
-                            },
-                        )
-                        if (template.source == "custom") {
-                            IconButton(onClick = { deleteTemplate(template) }) {
-                                Icon(Icons.Default.Close, contentDescription = "Delete ${template.title}")
-                            }
-                        }
-                    }
-                }
-            }
 
             HorizontalDivider()
-            WarehouseSectionTitle("Send depot broadcast")
-            OutlinedTextField(
-                value = templateDate,
-                onValueChange = { templateDate = it },
-                label = { Text("Effective date (optional)") },
-                placeholder = { Text("2026-07-01") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+            
+            OperationsPricingPreview(
+                productId = productId,
+                onProductIdChange = { productId = it },
+                retailerId = retailerId,
+                onRetailerIdChange = { retailerId = it },
+                proposedPrice = proposedPrice,
+                onProposedPriceChange = { proposedPrice = it.filter { ch -> ch.isDigit() } },
+                previewLoading = previewLoading,
+                preview = preview
             )
-            OutlinedTextField(
-                value = customReason,
-                onValueChange = { customReason = it },
-                label = { Text("Custom reason (optional)") },
-                placeholder = { Text("Bay 2 closed") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
-                OutlinedTextField(
-                    value = broadcastRole,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Target role") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth(),
-                )
-                ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
-                    broadcastRoles.forEach { role ->
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text(role) },
-                            onClick = {
-                                broadcastRole = role
-                                roleExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
-            OutlinedTextField(
-                value = body,
-                onValueChange = { body = it },
-                label = { Text("Message") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 4,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = saveAsTemplate, onCheckedChange = { saveAsTemplate = it })
-                Text("Save as custom template for this depot")
-            }
-            Button(
-                onClick = { sendBroadcast() },
-                enabled = !broadcasting && !savingTemplate,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (broadcasting || savingTemplate) "Sending…" else "Send broadcast")
-            }
-
-            HorizontalDivider()
-            WarehouseSectionTitle("Pricing impact preview (read-only)")
-            Text(
-                "Preview how a proposed retailer price would compare to catalog list price. Does not create overrides.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedTextField(
-                value = productId,
-                onValueChange = { productId = it },
-                label = { Text("Product / SKU ID") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = retailerId,
-                onValueChange = { retailerId = it },
-                label = { Text("Retailer ID (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = proposedPrice,
-                onValueChange = { proposedPrice = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Proposed price (minor units)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
-            if (previewLoading) {
-                Text("Loading preview…", style = MaterialTheme.typography.bodySmall)
-            }
-            preview?.let { p ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = PegasusSpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text("Retailers on SKU: ${p.retailersOnSkuCount}")
-                    Text("Active overrides: ${p.activeOverrideCount}")
-                    Text("Catalog list price: ${p.catalogListPrice}")
-                    Text("Margin delta / unit: ${p.marginDeltaPerUnit}")
-                    Text(
-                        p.marginEstimateLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (p.readOnly == true) {
-                        Text(
-                            "Read-only — contact supplier to apply overrides.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            }
         }
     }
 }

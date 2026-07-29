@@ -11,6 +11,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
 import { useToast } from '@/components/Toast';
+import { OrderLineItems } from '@/components/orders/OrderLineItems';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
 import { orderActionFlags } from '@/lib/order-actions';
@@ -290,38 +291,7 @@ export default function OrderDetailPage() {
               <OrderTimelinePanel orderId={orderId} />
             </section>
 
-            {(order.line_items?.length ?? 0) > 0 ? (
-              <section className="wh-bay-panel wh-bay--inventory wh-order-bento-lines">
-                <div className="wh-section-head">
-                  <div>
-                    <h2 className="wh-section-title">Line items</h2>
-                    <p className="wh-section-desc">{order.line_items?.length ?? 0} products in this order.</p>
-                  </div>
-                </div>
-                <div className="desk-table-wrap">
-                  <table className="desk-table">
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th className="text-right">Qty</th>
-                        <th className="text-right">Unit (UZS)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.line_items?.map((item, idx) => (
-                        <tr key={`${item.product_id ?? idx}`}>
-                          <td>{item.product_name || item.product_id || '—'}</td>
-                          <td className="text-right font-mono tabular-nums">{item.quantity ?? '—'}</td>
-                          <td className="text-right font-mono tabular-nums">
-                            {item.unit_price != null ? fmt(item.unit_price) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
+            <OrderLineItems order={order} />
           </div>
         ) : null}
       </PageChrome>

@@ -50,84 +50,19 @@ struct CashCollectionView: View {
 
             switch phase {
             case .fiscalizing:
-                Image(systemName: "hourglass")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.warning)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Fiscalizing")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text(amount.formattedAmount)
-                    .font(.system(size: 36, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s16)
-                ProgressView()
-                    .scaleEffect(1.2)
-                    .padding(.bottom, LabTheme.s8)
-                Text("Cash captured. Waiting for fiscal receipt…")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
-
+                FiscalizingView(amount: amount)
             case .fiscalFailed:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.destructive)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Fiscal Failed")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text("Retry fiscal receipt or call supervisor for force-complete.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
-
+                FiscalFailedView()
             default:
-                Image(systemName: "banknote.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.success)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Collect Cash")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text(orderId)
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Expected \(amount.formattedAmount)")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .padding(.bottom, LabTheme.s8)
-                Text(receivedAmountDisplay.formattedAmount)
-                    .font(.system(size: 42, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                TextField("Amount received (tiyin)", text: $amountReceivedText)
-                    .keyboardType(.numberPad)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, LabTheme.s24)
-                    .padding(.bottom, LabTheme.s8)
-                    .onChange(of: amountReceivedText) { _, _ in
-                        refreshShortfallNote()
-                    }
-                if let shortfallNote {
-                    Text(shortfallNote)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(LabTheme.destructive)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, LabTheme.s24)
-                        .padding(.bottom, LabTheme.s8)
+                CollectCashView(
+                    orderId: orderId,
+                    amount: amount,
+                    amountReceivedText: $amountReceivedText,
+                    shortfallNote: shortfallNote
+                )
+                .onChange(of: amountReceivedText) { _, _ in
+                    refreshShortfallNote()
                 }
-                Text("Enter cash actually taken. Fiscal receipt uses this amount.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
             }
 
             Spacer()

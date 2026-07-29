@@ -275,225 +275,49 @@ fun OpsSettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                SettingsCard(title = "Pre-order lead window") {
-                    Text(
-                        "Retailers can request delivery between these lead days from today.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                        OutlinedTextField(
-                            value = preorderMinLeadDays,
-                            onValueChange = { preorderMinLeadDays = it },
-                            label = { Text("Min days") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedTextField(
-                            value = preorderMaxLeadDays,
-                            onValueChange = { preorderMaxLeadDays = it },
-                            label = { Text("Max days") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                SettingsCard(title = "Out-of-stock orders") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Accept when out of stock")
-                        Switch(
-                            checked = policy == "ACCEPT_BACKORDER",
-                            onCheckedChange = { policy = if (it) "ACCEPT_BACKORDER" else "REJECT" },
-                        )
-                    }
-                    PolicyOption(
-                        label = "Reject orders when out of stock",
-                        selected = policy == "REJECT",
-                        onSelect = { policy = "REJECT" },
-                    )
-                    PolicyOption(
-                        label = "Accept orders — warn retailer, fulfill when stock arrives",
-                        selected = policy == "ACCEPT_BACKORDER",
-                        onSelect = { policy = "ACCEPT_BACKORDER" },
-                    )
-                }
-
-                SettingsCard(title = "Retailer catalog display") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Show stock counts to retailers")
-                        Switch(checked = showStockCounts, onCheckedChange = { showStockCounts = it })
-                    }
-                }
-
-                SettingsCard(title = "Order line quantity limits") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = clearOrderLineMin, onCheckedChange = { clearOrderLineMin = it })
-                        Text("No minimum quantity", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (!clearOrderLineMin) {
-                        OutlinedTextField(
-                            value = orderLineMin,
-                            onValueChange = { orderLineMin = it },
-                            label = { Text("Minimum quantity") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = clearOrderLineMax, onCheckedChange = { clearOrderLineMax = it })
-                        Text("No maximum quantity", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (!clearOrderLineMax) {
-                        OutlinedTextField(
-                            value = orderLineMax,
-                            onValueChange = { orderLineMax = it },
-                            label = { Text("Maximum quantity") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-
-                SettingsCard(title = "Express delivery") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Express enabled")
-                        Switch(checked = expressEnabled, onCheckedChange = { expressEnabled = it })
-                    }
-                    OutlinedTextField(
-                        value = expressStockFloor,
-                        onValueChange = { expressStockFloor = it },
-                        label = { Text("Express stock floor") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                SettingsCard(title = "Delivery fee rules") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = clearFeeRules, onCheckedChange = { clearFeeRules = it })
-                        Text("No delivery fee rules", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (!clearFeeRules) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                            OutlinedTextField(
-                                value = feeBaseMinor,
-                                onValueChange = { feeBaseMinor = it },
-                                label = { Text("Base fee (minor)") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                            OutlinedTextField(
-                                value = feeCurrency,
-                                onValueChange = { feeCurrency = it },
-                                label = { Text("Currency") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        feeTiers.forEachIndexed { index, tier ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-                                verticalAlignment = Alignment.Bottom,
-                            ) {
-                                OutlinedTextField(
-                                    value = tier.maxKm,
-                                    onValueChange = { value ->
-                                        feeTiers = feeTiers.toMutableList().also { it[index] = tier.copy(maxKm = value) }
-                                    },
-                                    label = { Text("Max km") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                OutlinedTextField(
-                                    value = tier.feeMinor,
-                                    onValueChange = { value ->
-                                        feeTiers = feeTiers.toMutableList().also { it[index] = tier.copy(feeMinor = value) }
-                                    },
-                                    label = { Text("Fee (minor)") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                TextButton(
-                                    enabled = feeTiers.size > 1,
-                                    onClick = { feeTiers = feeTiers.filterIndexed { i, _ -> i != index } },
-                                ) { Text("Remove") }
-                            }
-                        }
-                        TextButton(onClick = { feeTiers = feeTiers + FeeTierDraft() }) {
-                            Text("Add tier")
-                        }
-                    }
-                }
-
-                SettingsCard(title = "Order acceptance hours") {
-                    Text(
-                        "When enforcement is on, retailers cannot preview or create orders outside the window.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Enforce order acceptance hours")
-                        Switch(checked = enforceOrderAcceptance, onCheckedChange = { enforceOrderAcceptance = it })
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Open 24 hours")
-                        Switch(checked = scheduleIs24h, onCheckedChange = { scheduleIs24h = it })
-                    }
-                    OutlinedTextField(
-                        value = scheduleTimezone,
-                        onValueChange = { scheduleTimezone = it },
-                        label = { Text("Timezone") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                        OutlinedTextField(
-                            value = weekdayOpen,
-                            onValueChange = { weekdayOpen = it },
-                            label = { Text("Weekday open") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedTextField(
-                            value = weekdayClose,
-                            onValueChange = { weekdayClose = it },
-                            label = { Text("Weekday close") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Text("Advanced JSON", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(
-                        value = scheduleJSON,
-                        onValueChange = { scheduleJSON = it },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
-                        label = { Text("Schedule JSON") },
-                    )
-                    if (scheduleError != null) {
-                        Text(scheduleError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+                OpsSettingsForm(
+                    preorderMinLeadDays = preorderMinLeadDays,
+                    onPreorderMinLeadDaysChange = { preorderMinLeadDays = it },
+                    preorderMaxLeadDays = preorderMaxLeadDays,
+                    onPreorderMaxLeadDaysChange = { preorderMaxLeadDays = it },
+                    policy = policy,
+                    onPolicyChange = { policy = it },
+                    showStockCounts = showStockCounts,
+                    onShowStockCountsChange = { showStockCounts = it },
+                    clearOrderLineMin = clearOrderLineMin,
+                    onClearOrderLineMinChange = { clearOrderLineMin = it },
+                    orderLineMin = orderLineMin,
+                    onOrderLineMinChange = { orderLineMin = it },
+                    clearOrderLineMax = clearOrderLineMax,
+                    onClearOrderLineMaxChange = { clearOrderLineMax = it },
+                    orderLineMax = orderLineMax,
+                    onOrderLineMaxChange = { orderLineMax = it },
+                    expressEnabled = expressEnabled,
+                    onExpressEnabledChange = { expressEnabled = it },
+                    expressStockFloor = expressStockFloor,
+                    onExpressStockFloorChange = { expressStockFloor = it },
+                    clearFeeRules = clearFeeRules,
+                    onClearFeeRulesChange = { clearFeeRules = it },
+                    feeBaseMinor = feeBaseMinor,
+                    onFeeBaseMinorChange = { feeBaseMinor = it },
+                    feeCurrency = feeCurrency,
+                    onFeeCurrencyChange = { feeCurrency = it },
+                    feeTiers = feeTiers,
+                    onFeeTiersChange = { feeTiers = it },
+                    enforceOrderAcceptance = enforceOrderAcceptance,
+                    onEnforceOrderAcceptanceChange = { enforceOrderAcceptance = it },
+                    scheduleIs24h = scheduleIs24h,
+                    onScheduleIs24hChange = { scheduleIs24h = it },
+                    scheduleTimezone = scheduleTimezone,
+                    onScheduleTimezoneChange = { scheduleTimezone = it },
+                    weekdayOpen = weekdayOpen,
+                    onWeekdayOpenChange = { weekdayOpen = it },
+                    weekdayClose = weekdayClose,
+                    onWeekdayCloseChange = { weekdayClose = it },
+                    scheduleJSON = scheduleJSON,
+                    onScheduleJSONChange = { scheduleJSON = it },
+                    scheduleError = scheduleError,
+                )
 
                 if (saveMessage != null) {
                     Text(saveMessage!!, style = MaterialTheme.typography.bodySmall)
@@ -511,36 +335,4 @@ fun OpsSettingsScreen(
     }
 }
 
-private data class FeeTierDraft(
-    val maxKm: String = "",
-    val feeMinor: String = "0",
-)
 
-@Composable
-private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            content = {
-                Text(title, style = MaterialTheme.typography.titleSmall)
-                content()
-            },
-        )
-    }
-}
-
-@Composable
-private fun PolicyOption(label: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
-            .padding(vertical = PegasusSpacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Spacer(Modifier.width(PegasusSpacing.sm))
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-    }
-}

@@ -57,7 +57,7 @@ import com.pegasus.barcode.EanBarcodeScannerPreview
 import com.pegasus.payload.util.PayloadIdempotencyKeys
 import kotlinx.coroutines.launch
 
-private data class InboundRow(
+data class InboundRow(
     val returnId: String,
     val productName: String,
     val expectedQty: Int,
@@ -295,46 +295,15 @@ fun InboundReturnsScreen(
                         modifier = Modifier.fillMaxSize().padding(16.dp),
                     )
                 } else {
-                    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-                        items(visible, key = { it.returnId }) { row ->
-                            val checked = selected.contains(row.returnId)
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = {
-                                    if (tab == InboundTab.Queue) {
-                                        selected = if (checked) selected - row.returnId else selected + row.returnId
-                                    }
-                                },
-                            ) {
-                                Column(Modifier.padding(16.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(row.productName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                                        AssistChip(onClick = {}, label = { Text(row.physicalStatus) })
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        "Qty ${row.receivedQty}/${row.expectedQty} · ${row.reason}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    if (row.barcode.isNotBlank()) {
-                                        Text(
-                                            "EAN ${row.barcode}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
+                    InboundReturnsList(
+                        rows = visible,
+                        selectable = tab == InboundTab.Queue,
+                        selected = selected,
+                        onToggleSelection = { returnId ->
+                            val checked = selected.contains(returnId)
+                            selected = if (checked) selected - returnId else selected + returnId
                         }
-                    }
+                    )
                 }
             }
         }

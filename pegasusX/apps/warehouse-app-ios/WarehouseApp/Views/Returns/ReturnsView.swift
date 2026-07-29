@@ -101,69 +101,11 @@ struct ReturnsView: View {
     }
 
     private var queueList: some View {
-        Group {
-            if returns.isEmpty {
-                ContentUnavailableView("No inbound returns", systemImage: "arrow.uturn.backward.circle")
-            } else {
-                ResponsiveGridContentWrapper {
-                    Section("Arrived at gate") {
-                        ForEach(returns) { item in
-                            returnRow(item, selectable: true)
-                        }
-                    }
-                }
-            }
-        }
+        ReturnsList(items: returns, isQueueTab: true, selected: $selected)
     }
 
     private var historyList: some View {
-        Group {
-            if history.isEmpty {
-                ContentUnavailableView("No history", systemImage: "clock.arrow.circlepath")
-            } else {
-                ResponsiveGridContentWrapper {
-                    Section("Completed receives") {
-                        ForEach(history) { item in
-                            returnRow(item, selectable: false)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func returnRow(_ item: InboundReturnRow, selectable: Bool) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text(item.productName)
-                    .font(.headline)
-                Text("Qty \(item.receivedQty)/\(item.expectedQty) · \(item.reason)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if !item.driverName.isEmpty {
-                    Text("Driver: \(item.driverName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let code = item.barcode, !code.isEmpty {
-                    Text("EAN \(code)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if selectable {
-                Toggle("", isOn: Binding(
-                    get: { selected.contains(item.returnId) },
-                    set: { on in
-                        if on { selected.insert(item.returnId) }
-                        else { selected.remove(item.returnId) }
-                    }
-                ))
-                .labelsHidden()
-            }
-        }
+        ReturnsList(items: history, isQueueTab: false, selected: $selected)
     }
 
     private func load() async {

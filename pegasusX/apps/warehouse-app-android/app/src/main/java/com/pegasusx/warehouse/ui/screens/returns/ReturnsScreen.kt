@@ -256,58 +256,14 @@ fun ReturnsScreen(
                 }
                 }
                 val visible = if (tab == ReturnsTab.Queue) items else history
-                if (visible.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            if (tab == ReturnsTab.Queue) "No returns at gate" else "No completed receives yet",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                ReturnsList(
+                    items = visible,
+                    isQueueTab = tab == ReturnsTab.Queue,
+                    selected = selected,
+                    onToggleSelect = { id ->
+                        selected = if (selected.contains(id)) selected - id else selected + id
                     }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 340.dp),
-                        contentPadding = PaddingValues(PegasusSpacing.lg),
-                        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(visible, key = { it.returnId }) { r ->
-                            val checked = selected.contains(r.returnId)
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = {
-                                    if (tab == ReturnsTab.Queue) {
-                                        selected = if (checked) selected - r.returnId else selected + r.returnId
-                                    }
-                                },
-                            ) {
-                                Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            r.productName,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        AssistChip(onClick = {}, label = { Text(r.physicalStatus) })
-                                    }
-                                    Spacer(Modifier.height(PegasusSpacing.xs))
-                                    Text(
-                                        "Qty: ${r.receivedQty}/${r.expectedQty} · ${r.reason} · ${r.driverName}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    if (r.barcode.isNotBlank()) {
-                                        Text(
-                                            "EAN ${r.barcode}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                )
             }
         }
     }
