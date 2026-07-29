@@ -4,14 +4,6 @@ import { useCallback, useMemo } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import Link from "next/link";
 import {
-  ShoppingCart,
-  PackageSearch,
-  Inbox,
-  Truck,
-  Brain,
-  Package,
-  ArrowUpRight,
-  Layers3,
   RefreshCw,
   AlertTriangle,
   WifiOff,
@@ -19,10 +11,9 @@ import {
 import { PageChrome } from "@/components/PageChrome";
 import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { motion } from "framer-motion";
-import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
-import CountUp from "../../../components/CountUp";
-import EmptyState from "../../../components/EmptyState";
-import { PageSection } from "../../../components/PageSection";
+import { KpiGrid } from "../../../components/dashboard/KpiGrid";
+import { QuickReorderSection } from "../../../components/dashboard/QuickReorderSection";
+import { AiPredictionSection } from "../../../components/dashboard/AiPredictionSection";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
@@ -236,254 +227,30 @@ export default function DashboardPage() {
               <CreditProfileCard />
             </div>
 
-            <BentoGrid className="mb-10">
-              <BentoCard
-                span={2}
-                interactive={false}
-                className="flex flex-col justify-between"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                      Focus today
-                    </span>
-                    <h2 className="mt-2 text-2xl font-light tracking-tight text-[var(--desk-text-primary)] leading-tight">
-                      Predictive Replenishment
-                    </h2>
-                    <p className="mt-2 md-typescale-body-medium text-[var(--desk-text-secondary)]">
-                      {activeOrders.length} inbound nodes and{" "}
-                      {predictionList.length} AI signals are shaping your next
-                      run.
-                    </p>
-                  </div>
-                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-light text-xs">
-                    {productList.length} SKUS
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 mt-6">
-                  <QuickAction
-                    href="/catalog"
-                    icon={PackageSearch}
-                    label="Catalog"
-                  />
-                  <QuickAction
-                    href="/orders"
-                    icon={ShoppingCart}
-                    label="Orders"
-                  />
-                  <QuickAction href="/insights" icon={Brain} label="Reorder suggestions" />
-                </div>
-              </BentoCard>
-
-              <KpiCard
-                label="Active Nodes"
-                value={activeOrders.length}
-                sub={`${completedOrders.length} archived`}
-                icon={
-                  <Truck size={18} style={{ color: "var(--desk-accent)" }} />
-                }
-              />
-              <KpiCard
-                label="AI Signals"
-                value={predictionList.length}
-                sub={
-                  blockedPredictionCount > 0
-                    ? `${blockedPredictionCount} blocked (sparse history)`
-                    : "Restock Ready"
-                }
-                icon={<Brain size={18} style={{ color: "var(--desk-info)" }} />}
-              />
-              <KpiCard
-                label="Staged Cart"
-                value={cartQuantity}
-                sub="Items in queue"
-                icon={
-                  <ShoppingCart
-                    size={18}
-                    style={{ color: "var(--desk-success)" }}
-                  />
-                }
-              />
-              <KpiCard
-                label="Suppliers"
-                value={new Set(productList.map((p) => p.supplier_id)).size}
-                sub="Active partners"
-                icon={
-                  <Layers3 size={18} style={{ color: "var(--desk-warning)" }} />
-                }
-              />
-            </BentoGrid>
+            <KpiGrid
+              activeOrdersLength={activeOrders.length}
+              predictionListLength={predictionList.length}
+              productListLength={productList.length}
+              cartQuantity={cartQuantity}
+              completedOrdersLength={completedOrders.length}
+              blockedPredictionCount={blockedPredictionCount}
+              uniqueSuppliersCount={new Set(productList.map((p) => p.supplier_id)).size}
+            />
 
             <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
-              <PageSection
-                title="Quick Reorder"
-                description="Stage repeat purchases from your approved catalog."
-              >
-                {reorderProducts.length === 0 ? (
-                  <EmptyState
-                    headline="No products ready for reorder"
-                    body="Catalog feeds are still populating reorder candidates."
-                    variant="no-products"
-                    action="Sync"
-                    onAction={refreshProducts}
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 !mt-0">
-                    {reorderProducts.map((p) => (
-                      <motion.button
-                        key={p.id}
-                        layout
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => addToCart(p)}
-                        className="flex items-center gap-4 p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl text-left hover:shadow-md transition-shadow group"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)] group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
-                          <Package size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
-                            {p.name}
-                          </p>
-                          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate uppercase tracking-widest">
-                            {p.supplier_name}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                            {p.price.toLocaleString()}
-                          </p>
-                          <ArrowUpRight
-                            size={14}
-                            className="ml-auto opacity-20 group-hover:opacity-100 transition-opacity"
-                          />
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-              </PageSection>
+              <QuickReorderSection
+                reorderProducts={reorderProducts}
+                onRefresh={refreshProducts}
+                onAddToCart={addToCart}
+              />
 
-              <PageSection
-                title="AI Restock"
-                description="High-confidence replenishment signals for this cycle."
-                actions={
-                  <Link
-                    href="/insights"
-                    className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
-                  >
-                    View All
-                  </Link>
-                }
-              >
-                <div className="flex flex-col gap-3 !mt-0">
-                  {predictionList.length === 0 ? (
-                    <EmptyState
-                      headline="No AI restock signals"
-                      body="Prediction feed is currently empty for this cycle."
-                      variant="no-predictions"
-                      action="Sync"
-                      onAction={refreshPredictions}
-                    />
-                  ) : (
-                    predictionList.slice(0, 5).map((forecast) => (
-                      <div
-                        key={forecast.id}
-                        className="p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl flex items-center gap-4"
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-light ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
-                        >
-                          {Math.round(forecast.confidence * 100)}%
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
-                              {forecast.productName}
-                            </p>
-                            {isPredictionBlocked(forecast) ? (
-                              <span className="shrink-0 text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-amber-800">
-                                INSUFFICIENT HISTORY
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
-                            {forecast.reasoning}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                            {forecast.predictedQuantity}
-                          </p>
-                          <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-light tracking-tighter">
-                            Units
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </PageSection>
+              <AiPredictionSection
+                predictionList={predictionList}
+                onRefresh={refreshPredictions}
+              />
             </div>
           </motion.div>
       </PageChrome>
     </div>
-  );
-}
-
-function QuickAction({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col items-center gap-2 p-3 bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] rounded-xl hover:bg-[var(--desk-accent-soft)] hover:border-[var(--desk-accent)] hover:text-[var(--desk-accent)] transition-all active:scale-95 group"
-    >
-      <Icon
-        size={20}
-        strokeWidth={1.5}
-        className="group-hover:scale-110 transition-transform"
-      />
-      <span className="md-typescale-label-small font-light uppercase tracking-widest">
-        {label}
-      </span>
-    </Link>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string;
-  value: number;
-  sub: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <BentoCard interactive={false}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-          {label}
-        </span>
-        {icon}
-      </div>
-      <CountUp
-        end={value}
-        className="md-typescale-metric text-[var(--desk-text-primary)]"
-      />
-      <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
-        {sub}
-      </p>
-    </BentoCard>
   );
 }

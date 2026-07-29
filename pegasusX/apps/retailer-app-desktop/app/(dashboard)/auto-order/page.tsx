@@ -2,16 +2,12 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react";
 import {
-  Wand2,
   AlertTriangle,
   RefreshCw,
-  Building2,
-  Layers,
-  Package,
-  Box,
-  CheckCircle2,
   Info,
 } from "lucide-react";
+import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
+import { AutoOrderList } from "@/components/auto-order/AutoOrderList";
 import { PageChrome } from "@/components/PageChrome";
 import { BentoGrid, BentoCard } from "@/components/BentoGrid";
 import { PageSection } from "@/components/PageSection";
@@ -211,167 +207,8 @@ export default function AutoOrderPage() {
         </BentoGrid>
 
         <div className="space-y-6">
-          <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">Global Auto-Order</h3>
-                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">Auto-order everything from all suppliers</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings?.global_enabled || false}
-                  onChange={(e) => handleToggle("global", e.target.checked, settings?.has_any_history || false)}
-                />
-                <div className="w-11 h-6 bg-[var(--desk-surface-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--desk-accent)]"></div>
-              </label>
-            </div>
-            {settings?.global_enabled && (
-              <div className="mt-4 flex items-center gap-2 text-[var(--desk-success)]">
-                <CheckCircle2 size={16} />
-                <span className="md-typescale-body-small">Global auto-order active. Overrides all granular settings.</span>
-              </div>
-            )}
-          </div>
-
-          {(settings?.supplier_overrides?.length ?? 0) > 0 && (
-            <PageSection title="Supplier Overrides">
-              <div className="space-y-2">
-                {settings?.supplier_overrides.map((item) => (
-                  <div key={item.supplier_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Building2 size={18} className="text-[var(--desk-text-tertiary)]" />
-                      <div>
-                        <div className="md-typescale-body-medium">{item.supplier_id}</div>
-                        <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Supplier-level override</div>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={item.enabled}
-                        onChange={(e) => handleToggle("supplier", e.target.checked, item.has_history, item.supplier_id)}
-                      />
-                      <div className="w-11 h-6 bg-[var(--desk-surface-subtle)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--desk-accent)]"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PageSection>
-          )}
-
-          {(settings?.category_overrides?.length ?? 0) > 0 && (
-            <PageSection title="Category Overrides">
-              <div className="space-y-2">
-                {settings?.category_overrides.map((item) => (
-                  <div key={item.category_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Layers size={18} className="text-[var(--desk-text-tertiary)]" />
-                      <div>
-                        <div className="md-typescale-body-medium">{item.category_id}</div>
-                        <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Category-level override</div>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={item.enabled}
-                        onChange={(e) => handleToggle("category", e.target.checked, item.has_history, item.category_id)}
-                      />
-                      <div className="w-11 h-6 bg-[var(--desk-surface-subtle)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--desk-accent)]"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PageSection>
-          )}
-
-          {(settings?.product_overrides?.length ?? 0) > 0 && (
-            <PageSection title="Product Overrides">
-              <div className="space-y-2">
-                {settings?.product_overrides.map((item) => (
-                  <div key={item.product_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Package size={18} className="text-[var(--desk-text-tertiary)]" />
-                      <div>
-                        <div className="md-typescale-body-medium">{item.product_id}</div>
-                        <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Product-level override</div>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={item.enabled}
-                        onChange={(e) => handleToggle("product", e.target.checked, false, item.product_id)}
-                      />
-                      <div className="w-11 h-6 bg-[var(--desk-surface-subtle)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--desk-accent)]"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PageSection>
-          )}
-
-          {(settings?.variant_overrides?.length ?? 0) > 0 && (
-            <PageSection title="Variant / SKU Overrides">
-              <div className="space-y-2">
-                {settings?.variant_overrides.map((item) => (
-                  <div key={item.variant_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Box size={18} className="text-[var(--desk-text-tertiary)]" />
-                      <div>
-                        <div className="md-typescale-body-medium">{item.variant_id}</div>
-                        <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Variant / SKU override</div>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={item.enabled}
-                        onChange={(e) => handleToggle("variant", e.target.checked, false, item.variant_id)}
-                      />
-                      <div className="w-11 h-6 bg-[var(--desk-surface-subtle)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--desk-accent)]"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PageSection>
-          )}
-
-          {predictions.length > 0 && (
-            <PageSection title="Active Predictions">
-              <div className="space-y-2">
-                {predictions.map((pred) => (
-                  <div key={pred.id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <div className="relative flex items-center justify-center w-10 h-10">
-                        <svg className="absolute w-full h-full transform -rotate-90">
-                          <circle cx="20" cy="20" r="18" stroke="var(--desk-border)" strokeWidth="2" fill="none" />
-                          <circle cx="20" cy="20" r="18" stroke={pred.confidence > 0.8 ? "var(--desk-success)" : "var(--desk-warning)"} strokeWidth="2" fill="none" strokeDasharray="113" strokeDashoffset={113 - (113 * pred.confidence)} />
-                        </svg>
-                        <span className="text-[10px] font-bold" style={{ color: pred.confidence > 0.8 ? "var(--desk-success)" : "var(--desk-warning)" }}>
-                          {Math.round(pred.confidence * 100)}%
-                        </span>
-                      </div>
-                      <div>
-                        <div className="md-typescale-body-medium">{pred.productName || pred.product_name}</div>
-                        <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Order by {pred.suggestedOrderDate || pred.suggested_order_date}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="md-typescale-title-medium font-light text-[var(--desk-accent)]">{pred.predictedQuantity || pred.predicted_quantity}</div>
-                      <div className="md-typescale-label-small text-[var(--desk-text-tertiary)]">units</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </PageSection>
-          )}
+          <AutoOrderRules settings={settings} handleToggle={handleToggle} />
+          <AutoOrderList predictions={predictions} />
 
           <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] mt-6">
             <div className="flex items-center gap-2 mb-4">

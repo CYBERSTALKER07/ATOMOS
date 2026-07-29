@@ -23,45 +23,10 @@ struct StaffView: View {
                         message: "No staff members are registered for this factory."
                     )
                 } else {
-                    ResponsiveGridContentWrapper {
-                        Section {
-                            FactorySectionHeader(
-                                title: "Staff roster",
-                                subtitle: "\(staff.count) operators on record"
-                            )
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                            .listRowBackground(Color.clear)
+                    StaffListContent(staff: staff)
+                        .navigationDestination(for: String.self) { staffId in
+                            StaffDetailView(staffId: staffId)
                         }
-
-                        Section {
-                            ForEach(Array(staff.enumerated()), id: \.element.id) { index, member in
-                                NavigationLink(value: member.id) {
-                                    HStack(spacing: LabTheme.spacingLG) {
-                                        Image(systemName: "person.circle")
-                                            .font(.title2)
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 32)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(member.name)
-                                                .font(.subheadline.bold())
-                                            Text(member.phone)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                            Text(member.role)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        FactoryStatusBadge(text: member.status)
-                                    }
-                                }
-                                .staggeredAppear(index: index)
-                            }
-                        }
-                    }
-                    .navigationDestination(for: String.self) { staffId in
-                        StaffDetailView(staffId: staffId)
-                    }
                 }
             }
             .background(LabTheme.background)

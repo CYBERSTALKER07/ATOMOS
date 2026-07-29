@@ -17,7 +17,7 @@ struct ProfileView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: LabTheme.s24) {
                 // MARK: - Header
-                header
+                ProfileHeader()
 
                 // MARK: - Driver Card
                 DriverCard(vm: vm)
@@ -50,22 +50,7 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Header
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("DRIVER")
-                .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                .foregroundStyle(LabTheme.fgTertiary)
-                .tracking(1.2)
-
-            Text("Profile")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
-        }
-        .padding(.top, 60)
-        .padding(.horizontal, LabTheme.s4)
-    }
 
 
 }

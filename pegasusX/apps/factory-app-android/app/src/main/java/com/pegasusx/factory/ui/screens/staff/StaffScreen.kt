@@ -1,15 +1,5 @@
 package com.pegasusx.factory.ui.screens.staff
 
-import androidx.compose.ui.unit.dp
-
-import androidx.compose.foundation.lazy.grid.items
-
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-
-import androidx.compose.foundation.lazy.grid.GridCells
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,12 +11,10 @@ import com.pegasusx.factory.data.model.StaffMember
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.factory.ui.components.FactoryMetricTile
-import com.pegasusx.factory.ui.components.FactoryOpsListCard
-import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
+import com.pegasusx.factory.ui.screens.staff.components.StaffList
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -127,68 +115,12 @@ fun StaffScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
-    ) {
-                item {
-                    StaffSummaryCard(
-                        total = staff.size,
-                        onShift = onShift,
-                    )
-                }
-                item {
-                    FactorySectionTitle(title = "Operator roster")
-                }
-                items(staff, key = { it.id }) { member ->
-                    FactoryOpsListCard(
-                        headline = member.name,
-                        supporting = "${member.role} · ${member.phone}",
-                        status = member.status,
-                        onClick = { onStaffClick(member.id) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StaffSummaryCard(
-    total: Int,
-    onShift: Int,
-) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        ) {
-            Text(
-                text = "Staffing snapshot",
-                style = MaterialTheme.typography.titleLarge,
+            else -> StaffList(
+                staff = staff,
+                onStaffClick = onStaffClick,
+                onShift = onShift,
+                innerPadding = innerPadding
             )
-            Text(
-                text = "Operators currently registered and active on the factory floor.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            ) {
-                FactoryMetricTile("Total", total.toString(), Modifier.weight(1f))
-                FactoryMetricTile("On shift", onShift.toString(), Modifier.weight(1f))
-                FactoryMetricTile("Off shift", (total - onShift).toString(), Modifier.weight(1f))
-            }
         }
     }
 }

@@ -90,6 +90,10 @@ import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.screens.tracking.components.OrderInfoCard
+import com.pegasusx.retailer.ui.screens.tracking.components.RecentReceiptsStrip
+import com.pegasusx.retailer.ui.screens.tracking.components.FiscalReceiptQROverlay
+import com.pegasusx.retailer.ui.screens.tracking.components.TrackingMap
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -225,261 +229,18 @@ fun DeliveryMapScreen(
             )
         }
 
-        // Map
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.isLoading && uiState.orders.isEmpty()) {
-                PegasusLoadingState(
-                    title = "Loading deliveries",
-                    body = "Fetching live driver positions and inbound orders…",
-                )
-            } else {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-                    uiSettings = MapUiSettings(
-                        zoomControlsEnabled = false,
-                        myLocationButtonEnabled = false,
-                        mapToolbarEnabled = false,
-                    ),
-                    onMapClick = { selectedOrder = null },
-                ) {
-                    for (order in visibleOrders) {
-                        val driverLat = order.driverLatitude ?: continue
-                        val driverLng = order.driverLongitude ?: continue
-                        val position = LatLng(driverLat, driverLng)
-
-                        val isGreen = order.isApproaching || order.state == "ARRIVED"
-                        val markerColor = if (isGreen) BitmapDescriptorFactory.HUE_GREEN
-                        else BitmapDescriptorFactory.HUE_VIOLET // Dark marker for active orders
-
-                        Marker(
-                            state = MarkerState(position = position),
-                            title = order.supplierName,
-                            snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
-                            icon = BitmapDescriptorFactory.defaultMarker(markerColor),
-                            onClick = {
-                                selectedOrder = order
-                                true
-                            },
-                        )
-                    }
-                }
-
-                // My location FAB
-                if (hasLocationPermission) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            scope.launch {
-                                // Camera animates to current location via built-in padding
-                                cameraPositionState.animate(
-                                    CameraUpdateFactory.zoomTo(14f),
-                                    durationMs = 300
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = if (selectedOrder != null) 200.dp else 16.dp),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
-                    ) {
-                        Icon(Icons.Default.MyLocation, contentDescription = "My location", modifier = Modifier.size(20.dp))
-                    }
-                }
-
-                // Active count badge
-                if (uiState.activeDeliveryCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(16.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.small)
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text(
-                                "${uiState.activeDeliveryCount} active",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    }
-                }
-
-                // Selected order info card
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = selectedOrder != null,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                ) {
-                    selectedOrder?.let { order ->
-                        OrderInfoCard(order = order)
-                    }
-                }
-
-                // Empty state
-                if (visibleOrders.isEmpty() && !uiState.isLoading) {
-                    PegasusStatePane(
-                        kind = PegasusStateKind.Empty,
-                        headline = "No active deliveries",
-                        body = uiState.emptyStateMessage,
-                        actionLabel = "Refresh",
-                        onAction = viewModel::refresh,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun OrderInfoCard(order: TrackingOrder) {
-    val statusLabel = buildString {
-        append(order.state.replace('_', ' '))
-        if (order.liveLocationAvailable) append(" • Live GPS")
-    }
-    RetailerListCard(
-        headline = order.supplierName.ifEmpty { "Unknown Supplier" },
-        supporting = buildString {
-            append(order.items.joinToString { "${it.productName} ×${it.quantity}" }.ifEmpty { "No items" })
-            append(" · ")
-            append(formatAmount(order.totalAmount))
-        },
-        status = statusLabel,
-        modifier = Modifier.padding(16.dp),
-    )
-}
-
-private fun formatAmount(amount: Long): String {
-    return "%,d".format(amount)
-}
-
-@Composable
-private fun RecentReceiptsStrip(
-    receipts: List<TrackingOrder>,
-    modifier: Modifier = Modifier,
-) {
-    var fiscalQrOrder by remember { mutableStateOf<TrackingOrder?>(null) }
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            "Recent receipts",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+        TrackingMap(
+            isLoading = uiState.isLoading,
+            visibleOrders = visibleOrders,
+            hasLocationPermission = hasLocationPermission,
+            cameraPositionState = cameraPositionState,
+            selectedOrder = selectedOrder,
+            onOrderSelected = { selectedOrder = it },
+            activeDeliveryCount = uiState.activeDeliveryCount,
+            emptyStateMessage = uiState.emptyStateMessage,
+            onRefresh = viewModel::refresh
         )
-        Text(
-            "Completed deliveries from the tracking feed. Tap for fiscal QR when available.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 160.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            receipts.forEach { receipt ->
-                val hasFiscalQr = receipt.fiscalQr.isNotBlank()
-                RetailerListCard(
-                    headline = receipt.supplierName.ifBlank { "Supplier" },
-                    supporting = buildString {
-                        append("#${receipt.orderId.takeLast(8)}")
-                        append(" · ")
-                        append(receipt.fiscalReceiptLabel)
-                        append(" · ")
-                        append(formatAmount(receipt.totalAmount))
-                        if (hasFiscalQr) append(" · Fiscal QR")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (hasFiscalQr) {
-                                Modifier.clickable { fiscalQrOrder = receipt }
-                            } else {
-                                Modifier
-                            },
-                        ),
-                )
-            }
-        }
-    }
-
-    FiscalReceiptQROverlay(
-        order = fiscalQrOrder,
-        onDismiss = { fiscalQrOrder = null },
-    )
-}
-
-@Composable
-private fun FiscalReceiptQROverlay(
-    order: TrackingOrder?,
-    onDismiss: () -> Unit,
-) {
-    if (order == null || order.fiscalQr.isBlank()) return
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                "Fiscal receipt",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                order.fiscalReceiptLabel,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            val bitmap = remember(order.fiscalQr) {
-                runCatching {
-                    val size = 512
-                    val matrix = QRCodeWriter().encode(order.fiscalQr, BarcodeFormat.QR_CODE, size, size)
-                    Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bmp ->
-                        for (x in 0 until size) {
-                            for (y in 0 until size) {
-                                bmp.setPixel(
-                                    x,
-                                    y,
-                                    if (matrix[x, y]) AndroidColor.BLACK else AndroidColor.WHITE,
-                                )
-                            }
-                        }
-                    }
-                }.getOrNull()
-            }
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Fiscal QR",
-                    modifier = Modifier.size(220.dp),
-                )
-            } else {
-                Text(
-                    order.fiscalQr,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            if (order.latestFiscalReceiptId.isNotBlank()) {
-                Text(
-                    "ID · ${order.latestFiscalReceiptId}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
     }
 }
+
+

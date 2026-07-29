@@ -83,29 +83,7 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
             .padding(bottom = 100.dp)
     ) {
         // MARK: - Header
-        Column(
-            modifier = Modifier.padding(
-                top = 60.dp,
-                start = PegasusSpacing.s4,
-                end = PegasusSpacing.s4
-            )
-        ) {
-            Text(
-                text = "DRIVER",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 1.2.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Profile",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        ProfileHeader()
 
         Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
