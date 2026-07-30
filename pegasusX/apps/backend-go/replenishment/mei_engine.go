@@ -28,12 +28,12 @@ type MEIONetworkSummary struct {
 
 // MEIOWarehouseNode summarizes stock health per warehouse in the network.
 type MEIOWarehouseNode struct {
-	WarehouseID   string  `json:"warehouse_id"`
-	SKUCount      int     `json:"sku_count"`
-	CriticalSKUs  int     `json:"critical_skus"`
-	WarningSKUs   int     `json:"warning_skus"`
-	TotalStock    int64   `json:"total_stock"`
-	AvgDaysCover  float64 `json:"avg_days_cover"`
+	WarehouseID  string  `json:"warehouse_id"`
+	SKUCount     int     `json:"sku_count"`
+	CriticalSKUs int     `json:"critical_skus"`
+	WarningSKUs  int     `json:"warning_skus"`
+	TotalStock   int64   `json:"total_stock"`
+	AvgDaysCover float64 `json:"avg_days_cover"`
 }
 
 type meiSkuBalance struct {
@@ -66,12 +66,12 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 	summary.WarehousesScanned = len(warehouses)
 
 	type whAgg struct {
-		skuCount     int
-		critical     int
-		warning      int
-		totalStock   int64
-		daysSum      float64
-		daysCount    int
+		skuCount   int
+		critical   int
+		warning    int
+		totalStock int64
+		daysSum    float64
+		daysCount  int
 	}
 	aggByWh := make(map[string]*whAgg)
 	var balances []meiSkuBalance

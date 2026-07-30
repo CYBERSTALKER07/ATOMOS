@@ -272,7 +272,17 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
-		return nil
+		leg := PaymentLeg{
+			OrderID:        orderID,
+			LegID:          s.newID(),
+			Method:         MethodCredit,
+			AmountMinor:    current.TotalMinor,
+			Status:         PaymentStatusCaptured,
+			IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", orderID, s.newID()),
+			CreatedAt:      s.now(),
+			CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+		}
+		return s.RecordPaymentLeg(ctx, txn, leg)
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
@@ -404,6 +414,23 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 				Status:     string(StatusDeliveredOnCredit),
 				Resolution: ShopClosedResolutionCreditLeave,
 			})
+		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCredit,
+				AmountMinor:    delivered,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
 		},
 	})
 	if err != nil {

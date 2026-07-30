@@ -763,6 +763,9 @@ CREATE TABLE SupplierTruckManifests (
   SealedAt          TIMESTAMP,
   DispatchedAt      TIMESTAMP,
   CompletedAt       TIMESTAMP,
+  LastReplannedAt   TIMESTAMP,
+  ReplanCount       INT64       NOT NULL DEFAULT (0),
+  ReplanReason      STRING(64),
   EncodedRoutePolyline STRING(MAX),
   RouteGeometrySource STRING(32),
   CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -773,6 +776,18 @@ CREATE INDEX Idx_SupplierManifests_BySupplierId ON SupplierTruckManifests(Suppli
 CREATE INDEX Idx_SupplierManifests_ByState ON SupplierTruckManifests(State);
 CREATE INDEX Idx_SupplierManifests_ByDriver ON SupplierTruckManifests(DriverId, State);
 CREATE INDEX Idx_SupplierManifests_ByWarehouse ON SupplierTruckManifests(WarehouseId, State);
+
+CREATE TABLE ManifestReplanLog (
+  ManifestId      STRING(36) NOT NULL,
+  ReplanId        STRING(36) NOT NULL,
+  Reason          STRING(64) NOT NULL,
+  OldSequenceJson BYTES(MAX),
+  NewSequenceJson BYTES(MAX),
+  TriggeredBy     STRING(64) NOT NULL,
+  CreatedAt       TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ManifestId, ReplanId),
+  INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE;
+
 
 CREATE TABLE DispatchRuns (
   RunId           STRING(36)  NOT NULL,
@@ -1359,3 +1374,167 @@ CREATE TABLE DemandAdjustments (
   FactorsJson     JSON,
   ComputedAt      TIMESTAMP NOT NULL,
 ) PRIMARY KEY (RetailerId, Sku, Date);
+-- Money movement ledger (append-only)
+CREATE TABLE OrderPaymentLegs (
+  OrderId           STRING(36) NOT NULL,
+  LegId             STRING(36) NOT NULL,
+  Method            STRING(16) NOT NULL,
+  AmountMinor       INT64 NOT NULL,
+  Status            STRING(16) NOT NULL,
+  IdempotencyKey    STRING(64) NOT NULL,
+  ProviderRef       STRING(128),
+  CreatedAt         TIMESTAMP NOT NULL,
+  CapturedAt        TIMESTAMP,
+) PRIMARY KEY (OrderId, LegId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+-- Explicit shortfalls / discrepancies
+CREATE TABLE OrderSettlementExceptions (
+  OrderId           STRING(36) NOT NULL,
+  ExceptionId       STRING(36) NOT NULL,
+  Type              STRING(32) NOT NULL,
+  AmountMinor       INT64 NOT NULL,
+  Status            STRING(16) NOT NULL,
+  Reason            STRING(MAX),
+  CreatedBy         STRING(64) NOT NULL,
+  CreatedAt         TIMESTAMP NOT NULL,
+) PRIMARY KEY (OrderId, ExceptionId);
+
+CREATE TABLE CreditNotes (
+  CreditNoteId        STRING(36) NOT NULL,
+  OrderId             STRING(36) NOT NULL,
+  Type                STRING(32) NOT NULL,
+  Status              STRING(16) NOT NULL,
+  ReasonCode          STRING(64) NOT NULL,
+  ReasonText          STRING(MAX),
+  TotalNetMinor       INT64 NOT NULL,
+  TotalVatMinor       INT64 NOT NULL,
+  TotalGrossMinor     INT64 NOT NULL,
+  RegimeId            STRING(36),
+  OriginalEhfId       STRING(128),
+  CorrectiveEhfId     STRING(128),
+  CreatedBy           STRING(64) NOT NULL,
+  CreatedAt           TIMESTAMP NOT NULL,
+  IssuedAt            TIMESTAMP,
+  CompletedAt         TIMESTAMP,
+) PRIMARY KEY (CreditNoteId);
+
+CREATE INDEX CreditNotes_ByOrder ON CreditNotes(OrderId);
+
+CREATE TABLE CreditNoteLines (
+  CreditNoteId        STRING(36) NOT NULL,
+  LineId              STRING(36) NOT NULL,
+  OrderLineId         STRING(36) NOT NULL,
+  Sku                 STRING(64) NOT NULL,
+  Qty                 INT64 NOT NULL,
+  UnitNetMinor        INT64 NOT NULL,
+  VatRateBps          INT64 NOT NULL,
+  LineNetMinor        INT64 NOT NULL,
+  LineVatMinor        INT64 NOT NULL,
+  LineGrossMinor      INT64 NOT NULL,
+) PRIMARY KEY (CreditNoteId, LineId),
+  INTERLEAVE IN PARENT CreditNotes ON DELETE CASCADE;
+
+CREATE TABLE ReverseLogisticsTasks (
+  TaskId              STRING(36) NOT NULL,
+  CreditNoteId        STRING(36) NOT NULL,
+  OrderId             STRING(36) NOT NULL,
+  Status              STRING(16) NOT NULL,
+  WarehouseId         STRING(36),
+  DriverId            STRING(36),
+  ExpectedQtyJson     JSON,
+  ReceivedQtyJson     JSON,
+  CreatedAt           TIMESTAMP NOT NULL,
+  UpdatedAt           TIMESTAMP NOT NULL,
+) PRIMARY KEY (TaskId);
+
+CREATE INDEX ReverseLogisticsTasks_ByStatus ON ReverseLogisticsTasks(Status);
+
+CREATE TABLE CashReconciliations (
+  ReconciliationId    STRING(36) NOT NULL,
+  DriverId            STRING(36) NOT NULL,
+  RouteId             STRING(36),
+  ShiftDate           DATE NOT NULL,
+  ExpectedCashMinor   INT64 NOT NULL,
+  DeclaredCashMinor   INT64 NOT NULL,
+  DifferenceMinor     INT64 NOT NULL,
+  Status              STRING(16) NOT NULL,
+  DriverNote          STRING(MAX),
+  FinanceNote         STRING(MAX),
+  CreatedAt           TIMESTAMP NOT NULL,
+  ResolvedAt          TIMESTAMP,
+  ResolvedBy          STRING(64),
+) PRIMARY KEY (ReconciliationId);
+
+CREATE INDEX CashReconciliations_ByDriverDate ON CashReconciliations(DriverId, ShiftDate);
+CREATE INDEX CashReconciliations_ByStatus ON CashReconciliations(Status);
+
+CREATE TABLE ReorderSuggestions (
+  RetailerId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  SuggestedQty    INT64 NOT NULL,
+  AdjustedDemand  FLOAT64 NOT NULL,
+  CurrentStock    INT64 NOT NULL,
+  InFlightQty     INT64 NOT NULL,
+  SafetyStock     FLOAT64 NOT NULL,
+  SuggestedByDate DATE NOT NULL,
+  ComputedAt      TIMESTAMP NOT NULL,
+  Status          STRING(16) NOT NULL,
+) PRIMARY KEY (RetailerId, Sku);
+
+CREATE TABLE RetailerCreditScores (
+  RetailerId STRING(MAX) NOT NULL,
+  Score INT64 NOT NULL,
+  RiskTier STRING(64) NOT NULL,
+  SuggestedLimitMinor INT64 NOT NULL,
+  FactorsJson JSON,
+  WindowStart TIMESTAMP NOT NULL,
+  WindowEnd TIMESTAMP NOT NULL,
+  ComputedAt TIMESTAMP NOT NULL,
+) PRIMARY KEY(RetailerId);
+
+CREATE TABLE RoutePerformanceAnalytics (
+  RouteId STRING(36) NOT NULL,
+  DriverId STRING(36),
+  PlannedStops INT64,
+  ActualStops INT64,
+  PlannedDurationSec INT64,
+  ActualDurationSec INT64,
+  ReplanCount INT64,
+  ComputedAt TIMESTAMP,
+) PRIMARY KEY (RouteId);
+
+CREATE TABLE NotificationPreferences (
+  PrincipalId STRING(36) NOT NULL,
+  PrincipalType STRING(16) NOT NULL,
+  EventType STRING(64) NOT NULL,
+  Channel STRING(16) NOT NULL,
+  Enabled BOOL NOT NULL,
+  QuietFrom STRING(8),
+  QuietTo STRING(8),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (PrincipalId, EventType, Channel);
+
+CREATE TABLE PriceLists (
+  PriceListId     STRING(36) NOT NULL,
+  SupplierId      STRING(36) NOT NULL,
+  Name            STRING(128) NOT NULL,
+  EffectiveFrom   TIMESTAMP NOT NULL,
+  EffectiveTo     TIMESTAMP,
+) PRIMARY KEY (PriceListId);
+
+CREATE TABLE PriceListItems (
+  PriceListId     STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  UnitPriceMinor  INT64 NOT NULL,
+  MinQty          INT64,
+) PRIMARY KEY (PriceListId, Sku),
+  INTERLEAVE IN PARENT PriceLists ON DELETE CASCADE;
+
+CREATE TABLE EventDensitySignals (
+  ZoneH3 STRING(15) NOT NULL,
+  Date DATE NOT NULL,
+  DensityScore FLOAT64,
+  EventsJson JSON,
+  ComputedAt TIMESTAMP,
+) PRIMARY KEY (ZoneH3, Date);

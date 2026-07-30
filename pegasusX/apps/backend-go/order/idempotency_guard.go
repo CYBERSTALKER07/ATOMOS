@@ -51,19 +51,22 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 		return false
 	}
 
-	// Boss rule: Telemetry timestamp skewed > 5 min -> Reject
+	// Boss rule: Telemetry timestamp skewed > 5 min -> Reject (unless offline queued)
 	if len(body) > 0 {
 		var partial struct {
 			ClientTimestamp *time.Time `json:"clientTimestamp"`
+			OfflineQueuedAt *time.Time `json:"offlineQueuedAt"`
 		}
 		if err := json.Unmarshal(body, &partial); err == nil && partial.ClientTimestamp != nil {
-			skew := s.now().Sub(*partial.ClientTimestamp)
-			if skew < 0 {
-				skew = -skew
-			}
-			if skew > 5*time.Minute {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "client_timestamp_skewed"})
-				return true
+			if partial.OfflineQueuedAt == nil {
+				skew := s.now().Sub(*partial.ClientTimestamp)
+				if skew < 0 {
+					skew = -skew
+				}
+				if skew > 5*time.Minute {
+					writeJSON(w, http.StatusBadRequest, map[string]string{"error": "client_timestamp_skewed"})
+					return true
+				}
 			}
 		}
 	}
@@ -100,7 +103,7 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 		StatusCode: status,
 		Response:   resp,
 		StoredAt:   time.Now().UTC(),
-	}, 24*time.Hour)
+	}, 72*time.Hour)
 }
 
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {

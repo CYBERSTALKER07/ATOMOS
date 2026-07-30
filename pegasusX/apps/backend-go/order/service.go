@@ -334,6 +334,7 @@ type Service struct {
 	paymentCapturer PaymentCapturer
 	promotions      *promotion.Service
 	credit          *credit.Service
+	replanner       RouteReplanner
 
 	supplierID         string
 	supplierName       string
@@ -359,6 +360,11 @@ type Service struct {
 	proximityCfg       ProximityConfig
 }
 
+// RouteReplanner handles continuous dynamic resequencing.
+type RouteReplanner interface {
+	ReplanRoute(ctx context.Context, routeID, reason, actor string) error
+}
+
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
 	Repo            Repository
@@ -366,6 +372,7 @@ type ServiceConfig struct {
 	Warehouse       WarehouseResolver
 	Promotions      *promotion.Service
 	Credit          *credit.Service
+	Replanner       RouteReplanner
 	SupplierID      string
 	SupplierName    string
 	Currency        string
@@ -403,6 +410,7 @@ func NewService(c ServiceConfig) *Service {
 		cache:              c.Cache,
 		warehouse:          c.Warehouse,
 		promotions:         c.Promotions,
+		replanner:          c.Replanner,
 		supplierID:         c.SupplierID,
 		supplierName:       strings.TrimSpace(c.SupplierName),
 		currency:           c.Currency,
@@ -755,6 +763,7 @@ type driverTransitionRequest struct {
 	PrepareOrder func(*Order, Status) // previousStatus
 	BuildProofs  func(Order) []DeliveryProofArtifact
 	EmitExtra    func(outbox.TxnBuffer, Order, Status) error
+	InTxn        func(context.Context, *spanner.ReadWriteTransaction) error
 }
 
 type driverTransitionResult struct {
@@ -1485,6 +1494,7 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 
 	previousDriverID := strings.TrimSpace(current.DriverID)
 	previousRouteID := strings.TrimSpace(current.RouteID)
+	previousManifestID := strings.TrimSpace(current.ManifestID)
 	if current.DriverID == normalized.DriverID && current.VehicleID == normalized.VehicleID && current.RouteID == normalized.RouteID && current.ManifestID == normalized.ManifestID {
 		return assignmentResponse(current, assignmentEventType(previousDriverID), current.Version, true), nil
 	}
@@ -1509,6 +1519,19 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 	}
 
 	s.afterOrderMutation(ctx, current)
+	
+	if s.replanner != nil {
+		if previousManifestID != "" && previousManifestID != current.ManifestID {
+			go func(rID, act string) {
+				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_removed", act)
+			}(previousManifestID, claims.Subject)
+		}
+		if current.ManifestID != "" {
+			go func(rID, act string) {
+				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_assigned", act)
+			}(current.ManifestID, claims.Subject)
+		}
+	}
 	s.log.Info("order assignment updated",
 		"order_id", current.OrderID,
 		"supplier_id", current.SupplierID,
@@ -1715,6 +1738,26 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 			row := orderRecord.PendingFiscalReceipts[0]
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CARD")
 		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, delivered, 0); err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCard,
+				AmountMinor:    delivered,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("card-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
+		},
 	})
 	if err != nil {
 		return DriverOrderResponse{}, err
@@ -1845,6 +1888,53 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			}
 			row := orderRecord.PendingFiscalReceipts[0]
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CASH")
+		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			captured, err := s.getCapturedPaymentMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			exceptions, err := s.getExceptionsTotalMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			totalPaid := captured + exceptions + receivedMinor
+			
+			var shortfall int64
+			if totalPaid < delivered {
+				shortfall = delivered - totalPaid
+				ex := SettlementException{
+					OrderID:     req.OrderID,
+					ExceptionID: s.newID(),
+					Type:        "CASH_SHORTFALL",
+					AmountMinor: shortfall,
+					Status:      "OPEN",
+					CreatedBy:   claims.Subject,
+					CreatedAt:   s.now(),
+				}
+				if writeErr := s.RecordSettlementException(txnCtx, txn, ex); writeErr != nil {
+					return writeErr
+				}
+			}
+			
+			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, receivedMinor, shortfall); err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCash,
+				AmountMinor:    receivedMinor,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("cash-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
 		},
 	})
 	if err != nil {
@@ -1982,27 +2072,52 @@ func (s *Service) persistDriverTransition(ctx context.Context, claims auth.Claim
 	if req.BuildProofs != nil {
 		proofs = req.BuildProofs(current)
 	}
-	err := s.repo.UpdateOrder(ctx, current, proofs, func(txn outbox.TxnBuffer) error {
-		params := orderStatusEmitParams{
-			Claims:         claims,
-			Order:          current,
-			PreviousStatus: previousStatus,
-			Reason:         req.Reason,
-			ActorID:        actorID,
-		}
-		if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
-			return err
-		}
-		if req.EmitExtra != nil {
-			if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+	var err error
+	if req.InTxn != nil {
+		err = s.repo.UpdateOrderWithTxn(ctx, current, proofs, req.InTxn, func(txn outbox.TxnBuffer) error {
+			params := orderStatusEmitParams{
+				Claims:         claims,
+				Order:          current,
+				PreviousStatus: previousStatus,
+				Reason:         req.Reason,
+				ActorID:        actorID,
+			}
+			if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
 				return err
 			}
-		}
-		if ab, ok := txn.(outbox.AuditBuffer); ok {
-			return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
-		}
-		return nil
-	})
+			if req.EmitExtra != nil {
+				if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+					return err
+				}
+			}
+			if ab, ok := txn.(outbox.AuditBuffer); ok {
+				return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
+			}
+			return nil
+		})
+	} else {
+		err = s.repo.UpdateOrder(ctx, current, proofs, func(txn outbox.TxnBuffer) error {
+			params := orderStatusEmitParams{
+				Claims:         claims,
+				Order:          current,
+				PreviousStatus: previousStatus,
+				Reason:         req.Reason,
+				ActorID:        actorID,
+			}
+			if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
+				return err
+			}
+			if req.EmitExtra != nil {
+				if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+					return err
+				}
+			}
+			if ab, ok := txn.(outbox.AuditBuffer); ok {
+				return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
+			}
+			return nil
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("transition driver order %s: %w", current.OrderID, err)
 	}

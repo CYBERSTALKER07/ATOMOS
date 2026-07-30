@@ -38,7 +38,7 @@ func AttachSignature(ctx context.Context, signer EDSSigner, payload any) ([]byte
 
 	generic["signature"] = string(signature)
 
-	// 4. Return the final signed JSON. 
+	// 4. Return the final signed JSON.
 	// We don't strictly need this to be canonical, but it's safe to use standard Marshal.
 	finalPayload, err := json.Marshal(generic)
 	if err != nil {

@@ -139,8 +139,8 @@ func handleCreateSignal(s *demand.Service) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "startAt must be before endAt")
 			return
 		}
-		if req.Type != demand.SignalPromo && req.Type != demand.SignalEvent {
-			writeError(w, http.StatusBadRequest, "only PROMO and EVENT types are supported by this endpoint")
+		if req.Type != demand.SignalPromo && req.Type != demand.SignalEvent && req.Type != demand.SignalPayday && req.Type != demand.SignalEventDensity && req.Type != demand.SignalCompetitorPressure {
+			writeError(w, http.StatusBadRequest, "unsupported signal type")
 			return
 		}
 

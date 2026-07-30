@@ -2,6 +2,7 @@ package compliance
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -38,4 +39,26 @@ type Repository interface {
 	FetchDashboardStats(ctx context.Context, f DashboardFilter) (DashboardStats, error)
 	ListProblemOrders(ctx context.Context, f DashboardFilter, limit int) ([]ProblemOrder, error)
 	ExportProblemOrders(ctx context.Context, f DashboardFilter) ([]ProblemOrder, error) // unbounded within date range
+	ListExceptions(ctx context.Context, f ExceptionFilter) ([]ExceptionTicket, error)
+	UpdateExceptionStatus(ctx context.Context, ticketID, newStatus string) error
+}
+
+type ExceptionTicket struct {
+	TicketID     string          `json:"ticketId"`
+	Type         string          `json:"type"`
+	OrderID      string          `json:"orderId"`
+	EhfID        string          `json:"ehfId,omitempty"`
+	Severity     string          `json:"severity"`
+	Status       string          `json:"status"`
+	Title        string          `json:"title"`
+	Description  string          `json:"description"`
+	AssignedRole string          `json:"assignedRole"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	CreatedBy    string          `json:"createdBy"`
+	Payload      json.RawMessage `json:"payload"`
+}
+
+type ExceptionFilter struct {
+	Status   string
+	Severity string
 }

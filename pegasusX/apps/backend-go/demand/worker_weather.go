@@ -163,7 +163,7 @@ func (s *Service) ingestWeather(ctx context.Context, cfg WeatherConfig) error {
 		}
 		return err
 	}
-	
+
 	LastWeatherIngestionTime = time.Now().UTC()
 	return nil
 }

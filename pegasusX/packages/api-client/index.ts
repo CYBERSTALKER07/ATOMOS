@@ -731,7 +731,7 @@ export class ApiClient {
   }
 
   async createDemandSignal(payload: import("@pegasusx/types").CreateSignalRequest): Promise<import("@pegasusx/types").DemandSignal> {
-    return this.request<import("@pegasusx/types").DemandSignal>("/v1/demand/signals", "POST", payload);
+    return this.request<import("@pegasusx/types").DemandSignal>("/v1/demand/signals", "POST", { body: payload });
   }
 
   async importSupplierInventoryCSV(

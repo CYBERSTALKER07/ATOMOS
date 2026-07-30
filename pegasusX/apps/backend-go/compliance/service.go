@@ -57,7 +57,7 @@ func (s *Service) ExportCSV(ctx context.Context, f DashboardFilter) ([]byte, err
 		if o.ForceCompletedAt != nil {
 			forceCompletedAt = o.ForceCompletedAt.Format(time.RFC3339)
 		}
-		
+
 		var claimedAmount string
 		if o.ClaimedAmountMinor > 0 {
 			claimedAmount = fmt.Sprintf("%d", o.ClaimedAmountMinor)
@@ -86,4 +86,12 @@ func (s *Service) ExportCSV(ctx context.Context, f DashboardFilter) ([]byte, err
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (s *Service) ListExceptions(ctx context.Context, f ExceptionFilter) ([]ExceptionTicket, error) {
+	return s.repo.ListExceptions(ctx, f)
+}
+
+func (s *Service) ResolveException(ctx context.Context, ticketID string) error {
+	return s.repo.UpdateExceptionStatus(ctx, ticketID, "RESOLVED")
 }

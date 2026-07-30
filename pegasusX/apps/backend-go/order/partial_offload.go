@@ -327,6 +327,12 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if s.replanner != nil && current.ManifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "partial_offload", act)
+		}(current.ManifestID, claims.Subject)
+	}
+
 	s.invalidateOrderCache(ctx, orderID)
 	s.broadcastShopClosed(ctx, current.SupplierID, current.RetailerID, claims.Subject, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventPartialOffload, Timestamp: now.UTC().Format(time.RFC3339Nano)},

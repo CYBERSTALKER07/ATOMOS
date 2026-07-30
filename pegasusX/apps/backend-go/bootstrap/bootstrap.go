@@ -639,9 +639,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	var complianceSvc *compliance.Service
 	var taxSvc *tax.Service
+	var routingSvc *routing.Service
 	if spannerClient != nil {
 		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
 		taxSvc = tax.NewService(tax.NewSpannerRepository(spannerClient), cacheClient, slog.Default())
+		routingSvc = routing.NewService(spannerClient)
 	}
 
 	orderSvc := order.NewService(order.ServiceConfig{
@@ -662,6 +664,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
 		Idem:            idemStore,
+		Replanner:       routingSvc,
 	})
 	orderSvc.SetManifestStore(manifestStore)
 	if gatewayPolicyReader != nil {

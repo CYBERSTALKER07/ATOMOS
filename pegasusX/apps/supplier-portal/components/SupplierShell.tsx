@@ -63,6 +63,7 @@ const NAV: NavSection[] = [
       { href: "/control-tower", icon: "global", label: "Control Tower" },
       { href: "/analytics/demand", icon: "overview", label: "Demand Forecast" },
       { href: "/analytics/demand/signals", icon: "campaign", label: "Demand Signals" },
+      { href: "/demand/payday-calendar", icon: "campaign", label: "Payday Calendar" },
       { href: "/analytics/knowledge-graph", icon: "topology", label: "Knowledge Graph" },
       { href: "/ai/recommendations", icon: "overview", label: "AI Recommendations" },
     ],

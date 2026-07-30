@@ -377,14 +377,14 @@ func (e *Engine) autoCreateTransfer(ctx context.Context, wh warehouseInfo, insig
 			}),
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId":      transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    wh.SupplierId,
-				"WarehouseId":   wh.WarehouseId,
+				"FactoryId":       factoryID,
+				"SupplierId":      wh.SupplierId,
+				"WarehouseId":     wh.WarehouseId,
 				"SourceInsightId": insightID,
-				"State":         "APPROVED",
-				"TotalVolumeVU": totalVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
+				"State":           "APPROVED",
+				"TotalVolumeVU":   totalVU,
+				"CreatedAt":       spanner.CommitTimestamp,
+				"UpdatedAt":       spanner.CommitTimestamp,
 			}),
 		}
 		payload := events.WarehouseEvent{

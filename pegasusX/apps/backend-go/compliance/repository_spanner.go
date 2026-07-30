@@ -2,6 +2,7 @@ package compliance
 
 import (
 	"context"
+	"encoding/json"
 	"golang.org/x/sync/errgroup"
 
 	"cloud.google.com/go/spanner"
@@ -266,7 +267,7 @@ func runProblemOrdersQuery(ctx context.Context, client *spanner.Client, stmt spa
 		var claimedAmountMinor spanner.NullInt64
 
 		if err := row.Columns(
-			&r.OrderID, &status, &fiscalStatus, &ehfID, &buyerAcceptanceStatus, 
+			&r.OrderID, &status, &fiscalStatus, &ehfID, &buyerAcceptanceStatus,
 			&forceCompletedAt, &forceReason, &claimID, &claimedAmountMinor, &r.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -303,4 +304,76 @@ func runProblemOrdersQuery(ctx context.Context, client *spanner.Client, stmt spa
 		rows = []ProblemOrder{}
 	}
 	return rows, nil
+}
+
+func (r *SpannerRepository) ListExceptions(ctx context.Context, f ExceptionFilter) ([]ExceptionTicket, error) {
+	sql := `SELECT TicketId, Type, OrderId, EhfId, Severity, Status, Title, Description, AssignedRole, CreatedAt, CreatedBy, Payload FROM ExceptionTickets WHERE 1=1`
+	params := map[string]interface{}{}
+
+	if f.Status != "" {
+		sql += " AND Status = @status"
+		params["status"] = f.Status
+	}
+	if f.Severity != "" {
+		sql += " AND Severity = @severity"
+		params["severity"] = f.Severity
+	}
+
+	sql += " ORDER BY CreatedAt DESC"
+
+	stmt := spanner.Statement{
+		SQL:    sql,
+		Params: params,
+	}
+
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var rows []ExceptionTicket
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var t ExceptionTicket
+		var ehfID spanner.NullString
+		var payload spanner.NullJSON
+
+		if err := row.Columns(&t.TicketID, &t.Type, &t.OrderID, &ehfID, &t.Severity, &t.Status, &t.Title, &t.Description, &t.AssignedRole, &t.CreatedAt, &t.CreatedBy, &payload); err != nil {
+			return nil, err
+		}
+
+		if ehfID.Valid {
+			t.EhfID = ehfID.StringVal
+		}
+		if payload.Valid {
+			if b, err := json.Marshal(payload.Value); err == nil {
+				t.Payload = b
+			}
+		}
+		rows = append(rows, t)
+	}
+	if rows == nil {
+		rows = []ExceptionTicket{}
+	}
+	return rows, nil
+}
+
+func (r *SpannerRepository) UpdateExceptionStatus(ctx context.Context, ticketID, newStatus string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		stmt := spanner.Statement{
+			SQL: `UPDATE ExceptionTickets SET Status = @status WHERE TicketId = @ticketId`,
+			Params: map[string]interface{}{
+				"status":   newStatus,
+				"ticketId": ticketID,
+			},
+		}
+		_, err := txn.Update(ctx, stmt)
+		return err
+	})
+	return err
 }

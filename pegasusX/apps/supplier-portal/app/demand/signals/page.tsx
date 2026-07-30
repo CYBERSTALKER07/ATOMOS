@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
 
-type SignalType = "PROMO" | "EVENT";
+
+type SignalType = "PROMO" | "EVENT" | "PAYDAY" | "EVENT_DENSITY" | "COMPETITOR_PRESSURE";
 
 interface DemandSignal {
   signalId: string;
@@ -60,7 +60,7 @@ export default function SignalsPage() {
       const data = await res.json();
       setSignals(data || []);
     } catch (err: any) {
-      toast.error(err.message);
+      console.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -98,15 +98,15 @@ export default function SignalsPage() {
 
   const handleSave = async () => {
     if (form.multiplier < 0.5 || form.multiplier > 2.5) {
-      toast.error("Multiplier must be between 0.5 and 2.5");
+      console.error("Multiplier must be between 0.5 and 2.5");
       return;
     }
     if (new Date(form.startAt) >= new Date(form.endAt)) {
-      toast.error("Start time must be before End time");
+      console.error("Start time must be before End time");
       return;
     }
     if (!form.scope) {
-      toast.error("Scope is required");
+      console.error("Scope is required");
       return;
     }
 
@@ -144,11 +144,11 @@ export default function SignalsPage() {
         throw new Error(d.error || "Failed to save signal");
       }
       
-      toast.success(editingSignal ? "Signal updated" : "Signal created");
+      console.log(editingSignal ? "Signal updated" : "Signal created");
       setIsModalOpen(false);
       fetchSignals();
     } catch (err: any) {
-      toast.error(err.message);
+      console.error(err.message);
     }
   };
 
@@ -159,10 +159,10 @@ export default function SignalsPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to deactivate");
-      toast.success("Signal deactivated");
+      console.log("Signal created successfully");
       fetchSignals();
     } catch (err: any) {
-      toast.error(err.message);
+      console.error(err.message);
     }
   };
 
@@ -190,6 +190,9 @@ export default function SignalsPage() {
           <option value="">All Types</option>
           <option value="PROMO">Promo</option>
           <option value="EVENT">Event</option>
+          <option value="PAYDAY">Payday</option>
+          <option value="EVENT_DENSITY">Event Density</option>
+          <option value="COMPETITOR_PRESSURE">Competitor Pressure</option>
         </select>
 
         <label className="flex items-center gap-2 text-sm">
@@ -291,6 +294,9 @@ export default function SignalsPage() {
                   >
                     <option value="PROMO">Promo</option>
                     <option value="EVENT">Event</option>
+                    <option value="PAYDAY">Payday</option>
+                    <option value="EVENT_DENSITY">Event Density</option>
+                    <option value="COMPETITOR_PRESSURE">Competitor Pressure</option>
                   </select>
                 </div>
                 <div className="space-y-1">

@@ -1059,15 +1059,17 @@ func (r *testRepo) FindPendingBuyerAcceptance(_ context.Context, _ int) ([]*Orde
 	return nil, nil
 }
 
-func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
+func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, proofs []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
 	r.updateCalls++
 	r.captured = o
 	r.order = o // Update the mocked return value so subsequent GetOrder calls see the new state
+	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
 	if emit != nil {
 		buf := &testTxnBuffer{}
 		if err := emit(buf); err != nil {
 			return err
 		}
+		r.bufferedEvents += len(buf.events)
 		r.lastEvents = append(r.lastEvents, buf.events...)
 	}
 	return nil

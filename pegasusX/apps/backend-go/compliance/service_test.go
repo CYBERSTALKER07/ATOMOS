@@ -10,11 +10,17 @@ import (
 
 // mockRepo is a test double for the compliance Repository.
 type mockRepo struct {
-	stats       DashboardStats
-	orders      []ProblemOrder
-	statsErr    error
-	ordersErr   error
-	exportErr   error
+	stats     DashboardStats
+	orders    []ProblemOrder
+	statsErr  error
+	ordersErr error
+	exportErr error
+
+	exceptions      []ExceptionTicket
+	exceptionsErr   error
+	updateErr       error
+	updatedTicketID string
+	updatedStatus   string
 }
 
 func (m *mockRepo) FetchDashboardStats(ctx context.Context, f DashboardFilter) (DashboardStats, error) {
@@ -27,6 +33,16 @@ func (m *mockRepo) ListProblemOrders(ctx context.Context, f DashboardFilter, lim
 
 func (m *mockRepo) ExportProblemOrders(ctx context.Context, f DashboardFilter) ([]ProblemOrder, error) {
 	return m.orders, m.exportErr
+}
+
+func (m *mockRepo) ListExceptions(ctx context.Context, f ExceptionFilter) ([]ExceptionTicket, error) {
+	return m.exceptions, m.exceptionsErr
+}
+
+func (m *mockRepo) UpdateExceptionStatus(ctx context.Context, ticketID, newStatus string) error {
+	m.updatedTicketID = ticketID
+	m.updatedStatus = newStatus
+	return m.updateErr
 }
 
 func TestService_ExportCSV(t *testing.T) {
@@ -103,4 +119,35 @@ func TestService_ExportCSV(t *testing.T) {
 			t.Errorf("expected only headers, got: %s", csvStr)
 		}
 	})
+}
+
+func TestService_ListExceptions(t *testing.T) {
+	repo := &mockRepo{
+		exceptions: []ExceptionTicket{
+			{TicketID: "EXC-1", Status: "OPEN"},
+		},
+	}
+	svc := NewService(repo, slog.Default())
+
+	res, err := svc.ListExceptions(context.Background(), ExceptionFilter{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res) != 1 || res[0].TicketID != "EXC-1" {
+		t.Errorf("unexpected result: %+v", res)
+	}
+}
+
+func TestService_ResolveException(t *testing.T) {
+	repo := &mockRepo{}
+	svc := NewService(repo, slog.Default())
+
+	err := svc.ResolveException(context.Background(), "EXC-2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if repo.updatedTicketID != "EXC-2" || repo.updatedStatus != "RESOLVED" {
+		t.Errorf("unexpected update: %s / %s", repo.updatedTicketID, repo.updatedStatus)
+	}
 }

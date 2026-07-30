@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -115,4 +116,48 @@ func (h *Handler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	_, _ = w.Write(csvData)
+}
+
+func (h *Handler) ListExceptions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	status := r.URL.Query().Get("status")
+	severity := r.URL.Query().Get("severity")
+
+	f := ExceptionFilter{
+		Status:   status,
+		Severity: severity,
+	}
+
+	exceptions, err := h.svc.ListExceptions(ctx, f)
+	if err != nil {
+		http.Error(w, "failed to list exceptions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(exceptions); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) ResolveException(w http.ResponseWriter, r *http.Request) {
+	// Extract ID from path: /v1/compliance/exceptions/{id}/resolve
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	ticketID := parts[len(parts)-2]
+
+	if ticketID == "" {
+		http.Error(w, "invalid ticket id", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.ResolveException(r.Context(), ticketID); err != nil {
+		http.Error(w, "failed to resolve exception", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

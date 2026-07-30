@@ -367,7 +367,7 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 	ctx := r.Context()
 	now := s.now()
 	newStatus := string(StatusShopClosedPending)
-	var attemptID, driverID, supplierID string
+	var attemptID, driverID, supplierID, manifestID string
 	logEventID := s.newID()
 	resolution := ""
 
@@ -389,18 +389,21 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Version", "SupplierId", "Status"})
+			[]string{"Version", "SupplierId", "Status", "ManifestId"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol spanner.NullString
+		var supplierCol, manifestCol spanner.NullString
 		var orderStatus string
-		if err := orderRow.Columns(&version, &supplierCol, &orderStatus); err != nil {
+		if err := orderRow.Columns(&version, &supplierCol, &orderStatus, &manifestCol); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
+		}
+		if manifestCol.Valid {
+			manifestID = manifestCol.StringVal
 		}
 		// Retailer response wins if still PENDING (ARRIVED_SHOP_CLOSED), even after grace clock.
 		if orderStatus != string(StatusShopClosedPending) {
@@ -539,6 +542,12 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		return
 	}
 
+	if s.replanner != nil && manifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
+		}(manifestID, retailerID)
+	}
+
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResponse, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    req.OrderID,
@@ -605,7 +614,7 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	adminID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 	now := s.now()
-	var orderID, driverID, retailerID, supplierID, bypassToken, resolution string
+	var orderID, driverID, retailerID, supplierID, bypassToken, resolution, manifestID string
 	resolution = "WAITING"
 
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -619,17 +628,20 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"Version", "SupplierId"})
+			[]string{"Version", "SupplierId", "ManifestId"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol spanner.NullString
-		if err := orderRow.Columns(&version, &supplierCol); err != nil {
+		var supplierCol, manifestCol spanner.NullString
+		if err := orderRow.Columns(&version, &supplierCol, &manifestCol); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
+		}
+		if manifestCol.Valid {
+			manifestID = manifestCol.StringVal
 		}
 		if strings.TrimSpace(claims.SupplierID) != "" && supplierID != "" && claims.SupplierID != supplierID {
 			return ErrOrderForbidden
@@ -694,6 +706,12 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
+	}
+
+	if s.replanner != nil && manifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
+		}(manifestID, adminID)
 	}
 
 	payload := events.OrderEvent{

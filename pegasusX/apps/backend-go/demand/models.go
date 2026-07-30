@@ -8,10 +8,13 @@ import (
 type SignalType string
 
 const (
-	SignalHoliday SignalType = "HOLIDAY"
-	SignalWeather SignalType = "WEATHER"
-	SignalEvent   SignalType = "EVENT"
-	SignalPromo   SignalType = "PROMO"
+	SignalHoliday            SignalType = "HOLIDAY"
+	SignalWeather            SignalType = "WEATHER"
+	SignalEvent              SignalType = "EVENT"
+	SignalPromo              SignalType = "PROMO"
+	SignalPayday             SignalType = "PAYDAY"
+	SignalEventDensity       SignalType = "EVENT_DENSITY"
+	SignalCompetitorPressure SignalType = "COMPETITOR_PRESSURE"
 )
 
 type DemandSignal struct {

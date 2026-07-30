@@ -6,10 +6,10 @@ import (
 
 func TestCalculateWeatherMultiplier(t *testing.T) {
 	tests := []struct {
-		name       string
-		tempC      float64
-		precipMm   float64
-		want       float64
+		name     string
+		tempC    float64
+		precipMm float64
+		want     float64
 	}{
 		{
 			name:     "Normal weather",

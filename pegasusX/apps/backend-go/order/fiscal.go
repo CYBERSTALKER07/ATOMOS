@@ -737,7 +737,31 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	orderRecord.PendingFiscalReceipts = []FiscalReceiptRow{row}
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
+		if err := s.stampTaxRegimeTxn(ctx, txn, &orderRecord); err != nil {
+			return err
+		}
+		
+		if err := s.AssertMoneyCoversDelivery(ctx, orderID, 0, 0); err != nil {
+			delivered, _ := s.getDeliveredGrossMinor(ctx, orderID)
+			paid, _ := s.getCapturedPaymentMinor(ctx, orderID)
+			exceptions, _ := s.getExceptionsTotalMinor(ctx, orderID)
+			shortfall := delivered - paid - exceptions
+			if shortfall > 0 {
+				ex := SettlementException{
+					OrderID:     orderID,
+					ExceptionID: s.newID(),
+					Type:        "FORCE_COMPLETE_SHORTFALL",
+					AmountMinor: shortfall,
+					Status:      "OPEN",
+					CreatedBy:   claims.Subject,
+					CreatedAt:   now,
+				}
+				if writeErr := s.RecordSettlementException(ctx, txn, ex); writeErr != nil {
+					return writeErr
+				}
+			}
+		}
+		return nil
 	}
 
 	err = s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
@@ -761,6 +785,11 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	s.afterOrderMutation(ctx, orderRecord)
 	if orderRecord.ManifestID != "" {
 		_ = s.tryCompleteManifest(ctx, orderRecord.ManifestID)
+		if s.replanner != nil {
+			go func(rID, act string) {
+				_ = s.replanner.ReplanRoute(context.Background(), rID, "force_skip", act)
+			}(orderRecord.ManifestID, claims.Subject)
+		}
 	}
 
 	return CollectCashResponse{
