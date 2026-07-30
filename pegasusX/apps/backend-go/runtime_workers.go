@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
@@ -45,6 +46,11 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
 		app.ReplenishmentEngine.StartCron(ctx)
 		slog.Info("replenishment engine cron started")
+	}
+	if app.LaborCapacityService != nil {
+		go app.LaborCapacityService.RunDriverScoreWorker(ctx, 24*time.Hour)
+		go app.LaborCapacityService.RunCapacitySnapshotWorker(ctx, 1*time.Hour)
+		slog.Info("labor capacity workers started")
 	}
 
 	streamProcessor := kafka.NewAnalyticsStreamProcessor()

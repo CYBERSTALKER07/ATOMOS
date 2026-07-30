@@ -26,10 +26,12 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
+	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
@@ -252,6 +254,14 @@ func main() {
 
 	demandroutes.RegisterRoutes(r, demandroutes.Deps{
 		Service: app.DemandService,
+	})
+
+	laborcapacityroutes.RegisterRoutes(r, laborcapacityroutes.Deps{
+		Service: app.LaborCapacityService,
+	})
+
+	etaroutes.RegisterRoutes(r, etaroutes.Deps{
+		Service: app.ETAService,
 	})
 
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{

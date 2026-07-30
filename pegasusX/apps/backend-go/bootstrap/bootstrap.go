@@ -25,6 +25,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
+	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
@@ -35,6 +36,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
+	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
@@ -166,6 +168,8 @@ type App struct {
 	TaxService             *tax.Service
 	ComplianceService      *compliance.Service
 	DemandService          *demand.Service
+	LaborCapacityService   *laborcapacity.Service
+	ETAService             *eta.Service
 	OrderService           *order.Service
 	ClaimsService          *claims.Service
 	CreditService          *credit.Service
@@ -1185,6 +1189,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		TaxService:             taxSvc,
 		ComplianceService:      complianceSvc,
 		DemandService:          demand.NewService(spannerClient),
+		LaborCapacityService:   laborcapacity.NewService(spannerClient),
+		ETAService:             eta.NewService(spannerClient),
 		OrderService:           orderSvc,
 		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,
