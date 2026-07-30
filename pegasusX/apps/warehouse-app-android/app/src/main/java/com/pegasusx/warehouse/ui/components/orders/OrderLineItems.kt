@@ -1,4 +1,4 @@
-package com.pegasusx.warehouse.ui.screens.orders
+package com.pegasusx.warehouse.ui.components.orders
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

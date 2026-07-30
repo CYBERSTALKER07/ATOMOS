@@ -16,8 +16,17 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.Route("/v1/demand", func(r chi.Router) {
 		r.Get("/adjustments", handleGetAdjustments(d.Service))
-		r.Get("/signals", handleGetSignals(d.Service))
-		r.Post("/signals", handleCreateSignal(d.Service))
+		
+		r.Route("/signals", func(r chi.Router) {
+			r.Get("/", handleListSignals(d.Service))
+			r.Post("/", handleCreateSignal(d.Service))
+			
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", handleGetSignal(d.Service))
+				r.Patch("/", handleUpdateSignal(d.Service))
+				r.Post("/deactivate", handleDeactivateSignal(d.Service))
+			})
+		})
 	})
 }
 
@@ -67,18 +76,49 @@ func handleGetAdjustments(s *demand.Service) http.HandlerFunc {
 	}
 }
 
-func handleGetSignals(s *demand.Service) http.HandlerFunc {
+func handleListSignals(s *demand.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		signals, err := s.GetSignals(ctx)
+		
+		filter := demand.SignalFilter{}
+		if t := r.URL.Query().Get("type"); t != "" {
+			st := demand.SignalType(t)
+			filter.Type = &st
+		}
+		if scope := r.URL.Query().Get("scope"); scope != "" {
+			filter.Scope = &scope
+		}
+		if activeStr := r.URL.Query().Get("active"); activeStr == "true" {
+			active := true
+			filter.Active = &active
+		}
+
+		signals, err := s.ListSignals(ctx, filter)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"signals": signals,
-		})
+		writeJSON(w, http.StatusOK, signals)
+	}
+}
+
+func handleGetSignal(s *demand.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := chi.URLParam(r, "id")
+
+		sig, err := s.GetSignal(ctx, id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if sig == nil {
+			writeError(w, http.StatusNotFound, "signal not found")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, sig)
 	}
 }
 
@@ -91,8 +131,16 @@ func handleCreateSignal(s *demand.Service) http.HandlerFunc {
 			return
 		}
 
-		if req.Type == "" || req.Scope == "" || req.Multiplier <= 0 {
-			writeError(w, http.StatusBadRequest, "missing required fields or invalid multiplier")
+		if req.Multiplier < 0.5 || req.Multiplier > 2.5 {
+			writeError(w, http.StatusBadRequest, "multiplier must be between 0.5 and 2.5")
+			return
+		}
+		if !req.StartAt.Before(req.EndAt) {
+			writeError(w, http.StatusBadRequest, "startAt must be before endAt")
+			return
+		}
+		if req.Type != demand.SignalPromo && req.Type != demand.SignalEvent {
+			writeError(w, http.StatusBadRequest, "only PROMO and EVENT types are supported by this endpoint")
 			return
 		}
 
@@ -109,6 +157,72 @@ func handleCreateSignal(s *demand.Service) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusCreated, sig)
+	}
+}
+
+func handleUpdateSignal(s *demand.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := chi.URLParam(r, "id")
+
+		sig, err := s.GetSignal(ctx, id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if sig == nil {
+			writeError(w, http.StatusNotFound, "signal not found")
+			return
+		}
+
+		var req demand.CreateSignalRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		if req.Multiplier < 0.5 || req.Multiplier > 2.5 {
+			writeError(w, http.StatusBadRequest, "multiplier must be between 0.5 and 2.5")
+			return
+		}
+		if !req.StartAt.Before(req.EndAt) {
+			writeError(w, http.StatusBadRequest, "startAt must be before endAt")
+			return
+		}
+
+		sig.Type = req.Type
+		sig.Scope = req.Scope
+		sig.Sku = req.Sku
+		sig.StartAt = req.StartAt
+		sig.EndAt = req.EndAt
+		sig.Multiplier = req.Multiplier
+		sig.Meta = req.Meta
+
+		if err := s.UpdateSignal(ctx, sig); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		writeJSON(w, http.StatusOK, sig)
+	}
+}
+
+func handleDeactivateSignal(s *demand.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		id := chi.URLParam(r, "id")
+
+		actor := r.Header.Get("X-User-Id")
+		if actor == "" {
+			actor = "system"
+		}
+
+		if err := s.DeactivateSignal(ctx, id, actor); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]string{"status": "deactivated"})
 	}
 }
 

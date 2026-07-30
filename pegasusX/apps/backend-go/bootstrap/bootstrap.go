@@ -140,6 +140,9 @@ type Config struct {
 	UpdatesBaseURL string
 	// UpdatesDefaultVersion is the fallback app version advertised by updater routes.
 	UpdatesDefaultVersion string
+
+	WeatherWorkerEnabled bool
+	WeatherBaseURL       string
 }
 
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
@@ -267,6 +270,8 @@ func LoadConfig() (*Config, error) {
 		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
 		UpdatesBaseURL:                  strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
 		UpdatesDefaultVersion:           envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
+		WeatherWorkerEnabled:            envBool("WEATHER_WORKER_ENABLED", true),
+		WeatherBaseURL:                  envOr("WEATHER_BASE_URL", "https://api.open-meteo.com/v1/forecast"),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")

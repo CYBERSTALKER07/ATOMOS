@@ -120,7 +120,9 @@ final class AutoUpdater {
 
     func triggerOTAInstall(manifestURL: URL) {
         if !EnterpriseUpdateConfig.enableCdnOta {
-            openStoreListing()
+            Task { @MainActor in
+                openStoreListing()
+            }
             return
         }
         var components = URLComponents(string: "itms-services://")

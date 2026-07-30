@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -51,6 +52,23 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.LaborCapacityService.RunDriverScoreWorker(ctx, 24*time.Hour)
 		go app.LaborCapacityService.RunCapacitySnapshotWorker(ctx, 1*time.Hour)
 		slog.Info("labor capacity workers started")
+	}
+	if app.Config.WeatherWorkerEnabled && app.DemandService != nil {
+		// Use globally configured center. For Phase 1, treating this as city-level default region.
+		weatherCfg := demand.WeatherConfig{
+			BaseURL:        app.Config.WeatherBaseURL,
+			UpdateInterval: 6 * time.Hour,
+			LookaheadDays:  14,
+			Locations: []demand.Location{
+				{
+					Scope: "city:Tashkent", // Default to Tashkent logic for all retailers
+					Lat:   app.Config.DeliveryZoneCenterLat,
+					Lng:   app.Config.DeliveryZoneCenterLng,
+				},
+			},
+		}
+		go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
+		slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays)
 	}
 
 	streamProcessor := kafka.NewAnalyticsStreamProcessor()

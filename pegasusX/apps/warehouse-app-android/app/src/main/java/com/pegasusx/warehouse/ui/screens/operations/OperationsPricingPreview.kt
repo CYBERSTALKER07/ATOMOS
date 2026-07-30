@@ -9,7 +9,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasusx.warehouse.ui.screens.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 
 @Composable
 fun OperationsPricingPreview(

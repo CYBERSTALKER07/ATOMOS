@@ -75,14 +75,37 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 	return adjs, nil
 }
 
-func (s *Service) GetSignals(ctx context.Context) ([]DemandSignal, error) {
+type SignalFilter struct {
+	Type   *SignalType
+	Scope  *string
+	Active *bool
+}
+
+func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]DemandSignal, error) {
+	query := `
+		SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+		FROM DemandSignals
+		WHERE 1=1
+	`
+	params := map[string]interface{}{}
+
+	if filter.Type != nil && *filter.Type != "" {
+		query += " AND Type = @Type"
+		params["Type"] = string(*filter.Type)
+	}
+	if filter.Scope != nil && *filter.Scope != "" {
+		query += " AND Scope = @Scope"
+		params["Scope"] = *filter.Scope
+	}
+	if filter.Active != nil && *filter.Active {
+		query += " AND StartAt <= CURRENT_TIMESTAMP() AND EndAt >= CURRENT_TIMESTAMP()"
+	}
+
+	query += " ORDER BY CreatedAt DESC LIMIT 100"
+
 	stmt := spanner.Statement{
-		SQL: `
-			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
-			FROM DemandSignals
-			ORDER BY CreatedAt DESC
-			LIMIT 100
-		`,
+		SQL:    query,
+		Params: params,
 	}
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -124,6 +147,53 @@ func (s *Service) GetSignals(ctx context.Context) ([]DemandSignal, error) {
 		signals = append(signals, sig)
 	}
 	return signals, nil
+}
+
+func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, error) {
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+			FROM DemandSignals
+			WHERE SignalId = @Id
+		`,
+		Params: map[string]interface{}{"Id": id},
+	}
+	iter := s.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil // Not found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var sig DemandSignal
+	var sku spanner.NullString
+	var meta spanner.NullJSON
+	if err := row.Columns(
+		&sig.SignalId,
+		&sig.Type,
+		&sig.Scope,
+		&sku,
+		&sig.StartAt,
+		&sig.EndAt,
+		&sig.Multiplier,
+		&meta,
+		&sig.CreatedAt,
+		&sig.CreatedBy,
+	); err != nil {
+		return nil, err
+	}
+
+	if sku.Valid {
+		sig.Sku = &sku.StringVal
+	}
+	if meta.Valid {
+		sig.Meta = []byte(meta.Value.(string))
+	}
+	return &sig, nil
 }
 
 type CreateSignalRequest struct {
@@ -169,6 +239,35 @@ func (s *Service) CreateSignal(ctx context.Context, req CreateSignalRequest, cre
 		return nil, err
 	}
 	return &sig, nil
+}
+
+func (s *Service) UpdateSignal(ctx context.Context, sig *DemandSignal) error {
+	var sku spanner.NullString
+	if sig.Sku != nil {
+		sku = spanner.NullString{StringVal: *sig.Sku, Valid: true}
+	}
+	var meta spanner.NullJSON
+	if len(sig.Meta) > 0 {
+		meta = spanner.NullJSON{Value: string(sig.Meta), Valid: true}
+	}
+
+	m := spanner.Update("DemandSignals",
+		[]string{"SignalId", "Type", "Scope", "Sku", "StartAt", "EndAt", "Multiplier", "Meta"},
+		[]interface{}{sig.SignalId, string(sig.Type), sig.Scope, sku, sig.StartAt, sig.EndAt, sig.Multiplier, meta},
+	)
+
+	_, err := s.spanner.Apply(ctx, []*spanner.Mutation{m})
+	return err
+}
+
+func (s *Service) DeactivateSignal(ctx context.Context, id, actor string) error {
+	// Set EndAt to now
+	m := spanner.Update("DemandSignals",
+		[]string{"SignalId", "EndAt"},
+		[]interface{}{id, time.Now().UTC()},
+	)
+	_, err := s.spanner.Apply(ctx, []*spanner.Mutation{m})
+	return err
 }
 
 // Helpers for reading HTTP requests

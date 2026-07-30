@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.BroadcastTemplate
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasusx.warehouse.ui.screens.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -105,16 +105,17 @@ struct DemandForecastView: View {
         } else {
             ResponsiveGridContentWrapper {
                 ForEach(forecast.series) { day in
-                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text(day.date)
-                        .font(.headline)
-                    Text("Projected units: \(day.projectedUnits)")
-                        .font(.subheadline)
-                    Text("Committed: \(day.committedUnits) · Pending: \(day.pendingConfirmationUnits)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                        Text(day.date)
+                            .font(.headline)
+                        Text("Projected units: \(day.projectedUnits)")
+                            .font(.subheadline)
+                        Text("Committed: \(day.committedUnits) · Pending: \(day.pendingConfirmationUnits)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, LabTheme.spacingXS)
                 }
-                .padding(.vertical, LabTheme.spacingXS)
             }
         }
     }

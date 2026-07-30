@@ -49,6 +49,7 @@ struct SupplyRequestsHubView: View {
                     }
                 }
             }
+            }
         }
         .navigationTitle("Supply Requests")
         .toolbar {

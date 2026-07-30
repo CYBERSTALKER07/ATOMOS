@@ -8,22 +8,32 @@
 
 /* Begin PBXBuildFile section */
 		01384C9B79B567F1F72BC249 /* WarehouseLocationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2609561D9AA56F496B5921FC /* WarehouseLocationModels.swift */; };
+		05A5579F6CA4C87A44410AF4 /* OperationsPricingPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7843A0A12E77A59F7E20956 /* OperationsPricingPreview.swift */; };
 		06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C562B270DA26FA42E315270 /* CRMView.swift */; };
 		070366C6AC9816F77AF82067 /* KpiTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5483DF7C844BA0DF1BA8867 /* KpiTile.swift */; };
 		077F15B6950BE610F46999F4 /* WarehouseStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68FAACF73D115016E1A79C6B /* WarehouseStateViews.swift */; };
+		0E8332E7C292C2FFD164A680 /* DispatchOrderList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17EC5A0228C51BAB2F7E9E06 /* DispatchOrderList.swift */; };
 		0F615353C4A841E70D51FA1F /* VehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0721B54C1B62500CACA4B2C4 /* VehicleDetailView.swift */; };
+		11060E71343586AB0834276F /* OperationsBroadcastForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713E25896153EEA0EB283DC3 /* OperationsBroadcastForm.swift */; };
+		12A2DBE7F429D7DB65AF8CCB /* ResponsiveGridContentWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45CC182BCB23240A291B00AE /* ResponsiveGridContentWrapper.swift */; };
 		13904EAE175D6903330C195A /* JwtPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799EA991CE7C1B1EDAFCE49E /* JwtPayload.swift */; };
+		1548FFAAB8D638972ED4C257 /* TreasuryTransactionList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04FE44BB609FC6FF98D61A0A /* TreasuryTransactionList.swift */; };
 		1A6575E659D3664446DA9B06 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790134486F9A09163C61766D /* AnalyticsView.swift */; };
+		1F99F5AD05A40A49FC9CBBA4 /* ForecastSkuTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = B527AF8BB645AA37DBA1E5F3 /* ForecastSkuTable.swift */; };
 		209803EBC9301495F95BDE54 /* FleetLiveMapSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AD38ABE01540649BD3D2EE /* FleetLiveMapSection.swift */; };
 		237177B97CDF6281B19737F4 /* LocationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0479B1DE97BD11E44FD3E67 /* LocationSettingsView.swift */; };
 		286CB7AABB8101E62A579115 /* RealtimeRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = F203A7BA99FB20F8A1858129 /* RealtimeRefresh.swift */; };
+		29A7E756F909B44DDAAE0B21 /* StockCommitmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198FD2F9100BE8979FEBD5C1 /* StockCommitmentsView.swift */; };
 		2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C9CF70E5113B4CF702D63C /* Assets.xcassets */; };
 		2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1963212DE00FAF5E10168BED /* StaffView.swift */; };
 		2FF9DD4213CF98C9D3DC4A97 /* WarehouseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */; };
 		341E7B32E90F94338A169FE0 /* TransferActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337112D659DB9E6E5D560871 /* TransferActionsView.swift */; };
 		37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42346A5EC575B103624DA7B5 /* WarehouseModels.swift */; };
+		390A7E48CB4A7C595CA83007 /* ReplenishmentList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6181F9FBAC88EB530A83E60D /* ReplenishmentList.swift */; };
 		41A7595F804D549A55518F7E /* WarehouseSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FD939828BAF0304FFFACC2F /* WarehouseSectionHeader.swift */; };
+		41B8F6C715381A863A5D1035 /* OrdersList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817B7F353AC6D5152A326E86 /* OrdersList.swift */; };
 		4B806442F1637F7D6DED1EB2 /* EANBarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40855777FD3B251364333F6 /* EANBarcodeScannerView.swift */; };
+		4E027731C1BEA61701276792 /* StaffList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0472393906E47B37CA9A3581 /* StaffList.swift */; };
 		51833833904842F29E1BCF91 /* PreordersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1D7E644EE093FE8A039917 /* PreordersView.swift */; };
 		52C1289EA1E9CFA9602854C6 /* FleetDriverMarkerAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304C3ECD36A18604C024F031 /* FleetDriverMarkerAnimator.swift */; };
 		54390BA6B3478EF2306FF8E2 /* ForecastConfidenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F80DC338B4862E82FF4056 /* ForecastConfidenceView.swift */; };
@@ -31,7 +41,9 @@
 		586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */; };
 		58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */; };
 		5A8DB31AA145934DD541D87E /* OperationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B4EAE072AE754D155A16E4 /* OperationsView.swift */; };
+		5F592F79318B1FF75C8FB0FF /* VehiclesList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1299B6911FBBF66114416A4C /* VehiclesList.swift */; };
 		62C461820F4BD5D36335A0B3 /* DriversView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07A64AD811E451A8DAFB8448 /* DriversView.swift */; };
+		640D8024BE54B3583B9E83DB /* ReturnsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B2748F887D497D40952AB6 /* ReturnsList.swift */; };
 		64EDC6EAD92ED41DE3EB484E /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625F9C13FD7C9A8D3D681D4A /* GeocodeService.swift */; };
 		65C785FD3829E7B906D0E049 /* FirebaseAuthHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A3D8F9EDDB53A7D75E811E /* FirebaseAuthHelper.swift */; };
 		6BA5666C405873005E70A4F8 /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83ED16032B6DABADAD77D9C /* AutoUpdater.swift */; };
@@ -41,15 +53,21 @@
 		7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */; };
 		83EEB6CA24987B9942F3B483 /* PegasusMonochromeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */; };
 		847FEAD79E9D1F03DBBEBD44 /* WarehouseSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A38306625F489B4D906CF07 /* WarehouseSection.swift */; };
+		85D9E5EB17CDA488687E99B4 /* AnalyticsChartGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4443A795516737ADD34D0ED1 /* AnalyticsChartGrid.swift */; };
 		87CDE0C61906C3696F97D7A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1526416176EC1A52A2487036 /* RootView.swift */; };
+		8A3B951CF38ACC9607C541E5 /* ResponsiveGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 322C6C2CA4486D2C1B31481A /* ResponsiveGridView.swift */; };
 		8BB302FE0527A0541C5D0C1B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F00CFF576EF02B2163C0B3F2 /* FirebaseCore */; };
+		8CE5E4DBE131E8A519C45BEC /* OrderOpsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D660AE974076155CB3E62271 /* OrderOpsActions.swift */; };
 		8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D90AF375E01641360D57C5F /* MoreHubView.swift */; };
 		910554ED2A04A10F7CA827FB /* LocationSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37970FE481821C1886663153 /* LocationSetupView.swift */; };
+		91B5EA4CDE86910B8C2C40AA /* EnterpriseUpdateConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B870838CB1A482699A5E3519 /* EnterpriseUpdateConfig.swift */; };
+		94AE960E56DE38F91B191D21 /* PreordersList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9114011BAB43CAA721A695F7 /* PreordersList.swift */; };
 		955FE466ADA6AD692A4D21B2 /* PegasusTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C824961AAD7954F52915E79C /* PegasusTheme.swift */; };
 		96D2B6C29AF7A94F934A06D9 /* WarehouseRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B20495C6FC5D2DB422FEC5 /* WarehouseRealtimeClient.swift */; };
 		97114EF8951F117C3E6A8697 /* TreasuryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */; };
 		974202DC06DD861BACF97ABA /* WarehouseIdempotency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 438B42AEB93A5CCE861FB119 /* WarehouseIdempotency.swift */; };
 		99DF1165810884CD8CA2C2E2 /* SupplyRequestsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */; };
+		9BCCDB665A1903241089D933 /* DispatchDriverList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED8DDF48D3CD79D4004C5D8 /* DispatchDriverList.swift */; };
 		9C0BC628A2F31E782E4BA17E /* OpsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */; };
 		A2CBD459EF223EF8AB98E199 /* PegasusStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125E6918ED632F930D9DA257 /* PegasusStateViews.swift */; };
 		A2F79A2D63F8EF033A04EF32 /* FleetLiveMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */; };
@@ -61,12 +79,14 @@
 		B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40384D8041929DBF46242CFF /* InventoryView.swift */; };
 		C5A7585C386A2029A139C03B /* WarehouseSessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21566E0037FB51D54AB1575 /* WarehouseSessionReconcile.swift */; };
 		C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1323C12B453CA1132BCAB5BB /* LoginView.swift */; };
+		C721D593567B3FA00DBA2898 /* InventoryStockList.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF4F65FDD7AA8A8E2E16E45 /* InventoryStockList.swift */; };
 		C831D098982055FAC6909BBE /* GeocodeLocationSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D4A85FCEA9F6D2CC76439D /* GeocodeLocationSupport.swift */; };
 		CA801C39D981F5AC7F8D07F5 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE063EB847CE470BFD912591 /* AppDelegate.swift */; };
 		CF5BFE1B9756F27FDA763C24 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AAC0004822220E1F3A889B /* ClientPolicyBanner.swift */; };
 		CF8337D641A91779C0F79517 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A5D9CE6DBACDE4ABB90D44E4 /* FirebaseAuth */; };
 		D03E70A76CBFEA79900DCDB1 /* ProductsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B4415599F87770EB09AE1 /* ProductsView.swift */; };
 		D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */; };
+		D51ED53BEC05E8B3643C4C05 /* DriversList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE7DDD4C3491AB5BDEAC4D9 /* DriversList.swift */; };
 		D7975867598F5D28A15AE8E0 /* DemandForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F1BD1A3E24AD77939B217A /* DemandForecastView.swift */; };
 		D79918203A3815B141303368 /* DispatchPreviewMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3F9071290B8729D26669BF /* DispatchPreviewMapView.swift */; };
 		D9CCF999EB8CD7669510CF03 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */; };
@@ -74,7 +94,10 @@
 		DB0F355DA27C5007C69F5E94 /* PortalHandoffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA807B005BF4D669F46C7A0 /* PortalHandoffView.swift */; };
 		DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */; };
 		DF988D85CB05E90DF362F864 /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA8CF92A11C3F61B74CB7AA /* AddressLocationField.swift */; };
+		E600F9CE660855BB1D012B72 /* ForecastChartPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3541BFF7756F96C89DAB3E /* ForecastChartPanel.swift */; };
 		E669C875AC849610CE44BD49 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */; };
+		E82FBE3611411E4041CA627F /* OpsSettingsForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6031CDD83C17CBD5EBA89D9A /* OpsSettingsForm.swift */; };
+		E8808C8EA23C4A4E5B6CD22B /* OrderLineItems.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D31EEE12561F831D926B42 /* OrderLineItems.swift */; };
 		E8A1B2C3D4E5F6789ABCDEF0 /* TomorrowBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B2C3D4E5F6789ABCDEF012 /* TomorrowBoardView.swift */; };
 		E9DBE1FFC1BCBB3426ADB5F5 /* SupplyRequestDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFB03717F0BDEC8F8801AC94 /* SupplyRequestDetailView.swift */; };
 		EC18276A3E30FEB64B7311A2 /* CollapsibleSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */; };
@@ -87,6 +110,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0472393906E47B37CA9A3581 /* StaffList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StaffList.swift; sourceTree = "<group>"; };
+		04FE44BB609FC6FF98D61A0A /* TreasuryTransactionList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TreasuryTransactionList.swift; sourceTree = "<group>"; };
 		05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentConfigView.swift; sourceTree = "<group>"; };
 		0721B54C1B62500CACA4B2C4 /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		07A64AD811E451A8DAFB8448 /* DriversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriversView.swift; sourceTree = "<group>"; };
@@ -94,43 +119,58 @@
 		0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		099B6981BACDB5CF1D58C323 /* VehiclesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclesView.swift; sourceTree = "<group>"; };
 		125E6918ED632F930D9DA257 /* PegasusStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusStateViews.swift; sourceTree = "<group>"; };
+		1299B6911FBBF66114416A4C /* VehiclesList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VehiclesList.swift; sourceTree = "<group>"; };
 		1323C12B453CA1132BCAB5BB /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		1526416176EC1A52A2487036 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		174F09277B9CE738135AF795 /* ReplenishmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplenishmentView.swift; sourceTree = "<group>"; };
+		17EC5A0228C51BAB2F7E9E06 /* DispatchOrderList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DispatchOrderList.swift; sourceTree = "<group>"; };
 		17F1BD1A3E24AD77939B217A /* DemandForecastView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DemandForecastView.swift; sourceTree = "<group>"; };
 		1963212DE00FAF5E10168BED /* StaffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffView.swift; sourceTree = "<group>"; };
+		198FD2F9100BE8979FEBD5C1 /* StockCommitmentsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StockCommitmentsView.swift; sourceTree = "<group>"; };
 		1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOperationsService.swift; sourceTree = "<group>"; };
 		2609561D9AA56F496B5921FC /* WarehouseLocationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseLocationModels.swift; sourceTree = "<group>"; };
+		29B2748F887D497D40952AB6 /* ReturnsList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReturnsList.swift; sourceTree = "<group>"; };
 		2A38306625F489B4D906CF07 /* WarehouseSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseSection.swift; sourceTree = "<group>"; };
 		2CA8CF92A11C3F61B74CB7AA /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
 		2D1D7E644EE093FE8A039917 /* PreordersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreordersView.swift; sourceTree = "<group>"; };
 		2D3F9071290B8729D26669BF /* DispatchPreviewMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchPreviewMapView.swift; sourceTree = "<group>"; };
+		2ED8DDF48D3CD79D4004C5D8 /* DispatchDriverList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DispatchDriverList.swift; sourceTree = "<group>"; };
 		304C3ECD36A18604C024F031 /* FleetDriverMarkerAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetDriverMarkerAnimator.swift; sourceTree = "<group>"; };
+		322C6C2CA4486D2C1B31481A /* ResponsiveGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResponsiveGridView.swift; sourceTree = "<group>"; };
 		337112D659DB9E6E5D560871 /* TransferActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferActionsView.swift; sourceTree = "<group>"; };
 		37970FE481821C1886663153 /* LocationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSetupView.swift; sourceTree = "<group>"; };
 		39AD38ABE01540649BD3D2EE /* FleetLiveMapSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapSection.swift; sourceTree = "<group>"; };
+		3B3541BFF7756F96C89DAB3E /* ForecastChartPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ForecastChartPanel.swift; sourceTree = "<group>"; };
 		3C562B270DA26FA42E315270 /* CRMView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CRMView.swift; sourceTree = "<group>"; };
 		40384D8041929DBF46242CFF /* InventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryView.swift; sourceTree = "<group>"; };
 		42346A5EC575B103624DA7B5 /* WarehouseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseModels.swift; sourceTree = "<group>"; };
 		438B42AEB93A5CCE861FB119 /* WarehouseIdempotency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseIdempotency.swift; sourceTree = "<group>"; };
+		4443A795516737ADD34D0ED1 /* AnalyticsChartGrid.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalyticsChartGrid.swift; sourceTree = "<group>"; };
 		44D4A85FCEA9F6D2CC76439D /* GeocodeLocationSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeLocationSupport.swift; sourceTree = "<group>"; };
+		45CC182BCB23240A291B00AE /* ResponsiveGridContentWrapper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResponsiveGridContentWrapper.swift; sourceTree = "<group>"; };
 		4D90AF375E01641360D57C5F /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
 		57C9CF70E5113B4CF702D63C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5CFBEE0707B2DD71C2643166 /* PegasusMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMotion.swift; sourceTree = "<group>"; };
 		5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpsSettingsView.swift; sourceTree = "<group>"; };
+		6031CDD83C17CBD5EBA89D9A /* OpsSettingsForm.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpsSettingsForm.swift; sourceTree = "<group>"; };
 		61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseAdaptiveShell.swift; sourceTree = "<group>"; };
+		6181F9FBAC88EB530A83E60D /* ReplenishmentList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReplenishmentList.swift; sourceTree = "<group>"; };
 		625F9C13FD7C9A8D3D681D4A /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
 		68FAACF73D115016E1A79C6B /* WarehouseStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseStateViews.swift; sourceTree = "<group>"; };
+		713E25896153EEA0EB283DC3 /* OperationsBroadcastForm.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OperationsBroadcastForm.swift; sourceTree = "<group>"; };
 		73F80DC338B4862E82FF4056 /* ForecastConfidenceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ForecastConfidenceView.swift; sourceTree = "<group>"; };
+		74D31EEE12561F831D926B42 /* OrderLineItems.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrderLineItems.swift; sourceTree = "<group>"; };
 		75F6F3B96E73461F86B14BD3 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		790134486F9A09163C61766D /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		799EA991CE7C1B1EDAFCE49E /* JwtPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JwtPayload.swift; sourceTree = "<group>"; };
 		7AA807B005BF4D669F46C7A0 /* PortalHandoffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalHandoffView.swift; sourceTree = "<group>"; };
 		80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMonochromeTheme.swift; sourceTree = "<group>"; };
+		817B7F353AC6D5152A326E86 /* OrdersList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrdersList.swift; sourceTree = "<group>"; };
 		83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryView.swift; sourceTree = "<group>"; };
 		84659B955E24FFFE335C582C /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
 		86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusWarehouseApp.swift; sourceTree = "<group>"; };
 		8BC14978EB4C787C361EE07F /* ReturnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnsView.swift; sourceTree = "<group>"; };
+		9114011BAB43CAA721A695F7 /* PreordersList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreordersList.swift; sourceTree = "<group>"; };
 		9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOpsModels.swift; sourceTree = "<group>"; };
 		948CD89DFC2A4D9363817EAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		96B4EAE072AE754D155A16E4 /* OperationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationsView.swift; sourceTree = "<group>"; };
@@ -139,15 +179,20 @@
 		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		9FD939828BAF0304FFFACC2F /* WarehouseSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseSectionHeader.swift; sourceTree = "<group>"; };
 		A5483DF7C844BA0DF1BA8867 /* KpiTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KpiTile.swift; sourceTree = "<group>"; };
+		A7843A0A12E77A59F7E20956 /* OperationsPricingPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OperationsPricingPreview.swift; sourceTree = "<group>"; };
 		ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalFeature.swift; sourceTree = "<group>"; };
 		ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		B527AF8BB645AA37DBA1E5F3 /* ForecastSkuTable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ForecastSkuTable.swift; sourceTree = "<group>"; };
 		B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WarehouseAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B870838CB1A482699A5E3519 /* EnterpriseUpdateConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EnterpriseUpdateConfig.swift; sourceTree = "<group>"; };
 		BEA00335123DBABEE6F0DE8F /* DispatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchSettingsView.swift; sourceTree = "<group>"; };
 		BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseService.swift; sourceTree = "<group>"; };
 		C6825A46582832B8CD1F641E /* CreateSupplyRequestSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSupplyRequestSheet.swift; sourceTree = "<group>"; };
 		C824961AAD7954F52915E79C /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
+		CDF4F65FDD7AA8A8E2E16E45 /* InventoryStockList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InventoryStockList.swift; sourceTree = "<group>"; };
 		D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollapsibleSidebar.swift; sourceTree = "<group>"; };
 		D40855777FD3B251364333F6 /* EANBarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EANBarcodeScannerView.swift; sourceTree = "<group>"; };
+		D660AE974076155CB3E62271 /* OrderOpsActions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrderOpsActions.swift; sourceTree = "<group>"; };
 		DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestsHubView.swift; sourceTree = "<group>"; };
 		DE063EB847CE470BFD912591 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		DE62C51E893BF7E92C741E56 /* DispatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchView.swift; sourceTree = "<group>"; };
@@ -163,6 +208,7 @@
 		FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailView.swift; sourceTree = "<group>"; };
 		FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalLinks.swift; sourceTree = "<group>"; };
+		FEE7DDD4C3491AB5BDEAC4D9 /* DriversList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DriversList.swift; sourceTree = "<group>"; };
 		FFB03717F0BDEC8F8801AC94 /* SupplyRequestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -185,6 +231,7 @@
 				2D3F9071290B8729D26669BF /* DispatchPreviewMapView.swift */,
 				BEA00335123DBABEE6F0DE8F /* DispatchSettingsView.swift */,
 				DE62C51E893BF7E92C741E56 /* DispatchView.swift */,
+				17EC5A0228C51BAB2F7E9E06 /* DispatchOrderList.swift */,
 			);
 			path = Dispatch;
 			sourceTree = "<group>";
@@ -194,6 +241,7 @@
 			children = (
 				0721B54C1B62500CACA4B2C4 /* VehicleDetailView.swift */,
 				099B6981BACDB5CF1D58C323 /* VehiclesView.swift */,
+				1299B6911FBBF66114416A4C /* VehiclesList.swift */,
 			);
 			path = Vehicles;
 			sourceTree = "<group>";
@@ -220,6 +268,8 @@
 				61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */,
 				2A38306625F489B4D906CF07 /* WarehouseSection.swift */,
 				9FD939828BAF0304FFFACC2F /* WarehouseSectionHeader.swift */,
+				45CC182BCB23240A291B00AE /* ResponsiveGridContentWrapper.swift */,
+				322C6C2CA4486D2C1B31481A /* ResponsiveGridView.swift */,
 			);
 			path = Layout;
 			sourceTree = "<group>";
@@ -228,6 +278,7 @@
 			isa = PBXGroup;
 			children = (
 				8BC14978EB4C787C361EE07F /* ReturnsView.swift */,
+				29B2748F887D497D40952AB6 /* ReturnsList.swift */,
 			);
 			path = Returns;
 			sourceTree = "<group>";
@@ -240,10 +291,22 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
+		1CC972A2EC7B56C1A793345E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				799E2D7D73D6BE0D02E27B37 /* Dispatch */,
+				AA7E22CC83CB33FB0A460985 /* Inventory */,
+				F49DD2D059C181A2DF50749F /* Orders */,
+			);
+			name = Components;
+			path = Components;
+			sourceTree = "<group>";
+		};
 		2C76B0C8188BD93FFF53D827 /* Replenishment */ = {
 			isa = PBXGroup;
 			children = (
 				174F09277B9CE738135AF795 /* ReplenishmentView.swift */,
+				6181F9FBAC88EB530A83E60D /* ReplenishmentList.swift */,
 			);
 			path = Replenishment;
 			sourceTree = "<group>";
@@ -260,6 +323,7 @@
 			isa = PBXGroup;
 			children = (
 				790134486F9A09163C61766D /* AnalyticsView.swift */,
+				4443A795516737ADD34D0ED1 /* AnalyticsChartGrid.swift */,
 			);
 			path = Analytics;
 			sourceTree = "<group>";
@@ -269,6 +333,7 @@
 			children = (
 				FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */,
 				F1A324E35BD16F7C3A99A737 /* OrdersView.swift */,
+				817B7F353AC6D5152A326E86 /* OrdersList.swift */,
 			);
 			path = Orders;
 			sourceTree = "<group>";
@@ -279,6 +344,15 @@
 				337112D659DB9E6E5D560871 /* TransferActionsView.swift */,
 			);
 			path = Transfers;
+			sourceTree = "<group>";
+		};
+		4EF1C93E66A0C09517A7A8EF /* StockCommitments */ = {
+			isa = PBXGroup;
+			children = (
+				198FD2F9100BE8979FEBD5C1 /* StockCommitmentsView.swift */,
+			);
+			name = StockCommitments;
+			path = StockCommitments;
 			sourceTree = "<group>";
 		};
 		5CED3C6A4785745B82567CD4 /* Products */ = {
@@ -309,6 +383,7 @@
 			isa = PBXGroup;
 			children = (
 				83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */,
+				04FE44BB609FC6FF98D61A0A /* TreasuryTransactionList.swift */,
 			);
 			path = Treasury;
 			sourceTree = "<group>";
@@ -352,14 +427,25 @@
 				4AA1D6C0469249791529FFFF /* Transfers */,
 				652D2A00995F91527FF52B9C /* Treasury */,
 				01C6B6B383F62436C71153AC /* Vehicles */,
+				4EF1C93E66A0C09517A7A8EF /* StockCommitments */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		799E2D7D73D6BE0D02E27B37 /* Dispatch */ = {
+			isa = PBXGroup;
+			children = (
+				2ED8DDF48D3CD79D4004C5D8 /* DispatchDriverList.swift */,
+			);
+			name = Dispatch;
+			path = Dispatch;
 			sourceTree = "<group>";
 		};
 		7FEB4EF8806E0F8F2A6A0310 /* Services */ = {
 			isa = PBXGroup;
 			children = (
 				F83ED16032B6DABADAD77D9C /* AutoUpdater.swift */,
+				B870838CB1A482699A5E3519 /* EnterpriseUpdateConfig.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -376,6 +462,8 @@
 			isa = PBXGroup;
 			children = (
 				96B4EAE072AE754D155A16E4 /* OperationsView.swift */,
+				713E25896153EEA0EB283DC3 /* OperationsBroadcastForm.swift */,
+				A7843A0A12E77A59F7E20956 /* OperationsPricingPreview.swift */,
 			);
 			path = Operations;
 			sourceTree = "<group>";
@@ -403,6 +491,7 @@
 				F04F545467153708642B37FA /* Utilities */,
 				7493F37ACA58FB00B04832F4 /* Views */,
 				FEEA505C8586B227CF8655C1 /* warehouseapp */,
+				1CC972A2EC7B56C1A793345E /* Components */,
 			);
 			path = WarehouseApp;
 			sourceTree = "<group>";
@@ -423,6 +512,15 @@
 				F9B2C3D4E5F6789ABCDEF012 /* TomorrowBoardView.swift */,
 			);
 			path = TomorrowBoard;
+			sourceTree = "<group>";
+		};
+		AA7E22CC83CB33FB0A460985 /* Inventory */ = {
+			isa = PBXGroup;
+			children = (
+				CDF4F65FDD7AA8A8E2E16E45 /* InventoryStockList.swift */,
+			);
+			name = Inventory;
+			path = Inventory;
 			sourceTree = "<group>";
 		};
 		AD1A995D1696BC38ED477895 /* mobile-ios-design */ = {
@@ -487,6 +585,8 @@
 			isa = PBXGroup;
 			children = (
 				17F1BD1A3E24AD77939B217A /* DemandForecastView.swift */,
+				3B3541BFF7756F96C89DAB3E /* ForecastChartPanel.swift */,
+				B527AF8BB645AA37DBA1E5F3 /* ForecastSkuTable.swift */,
 			);
 			path = DemandForecast;
 			sourceTree = "<group>";
@@ -503,6 +603,7 @@
 			isa = PBXGroup;
 			children = (
 				1963212DE00FAF5E10168BED /* StaffView.swift */,
+				0472393906E47B37CA9A3581 /* StaffList.swift */,
 			);
 			path = Staff;
 			sourceTree = "<group>";
@@ -513,6 +614,7 @@
 				40384D8041929DBF46242CFF /* InventoryView.swift */,
 				F0479B1DE97BD11E44FD3E67 /* LocationSettingsView.swift */,
 				5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */,
+				6031CDD83C17CBD5EBA89D9A /* OpsSettingsForm.swift */,
 			);
 			path = Inventory;
 			sourceTree = "<group>";
@@ -528,6 +630,16 @@
 				FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		F49DD2D059C181A2DF50749F /* Orders */ = {
+			isa = PBXGroup;
+			children = (
+				74D31EEE12561F831D926B42 /* OrderLineItems.swift */,
+				D660AE974076155CB3E62271 /* OrderOpsActions.swift */,
+			);
+			name = Orders;
+			path = Orders;
 			sourceTree = "<group>";
 		};
 		F5B07F89A901FB321C233EB5 /* Services */ = {
@@ -552,6 +664,7 @@
 			isa = PBXGroup;
 			children = (
 				2D1D7E644EE093FE8A039917 /* PreordersView.swift */,
+				9114011BAB43CAA721A695F7 /* PreordersList.swift */,
 			);
 			path = Preorders;
 			sourceTree = "<group>";
@@ -579,6 +692,7 @@
 			isa = PBXGroup;
 			children = (
 				07A64AD811E451A8DAFB8448 /* DriversView.swift */,
+				FEE7DDD4C3491AB5BDEAC4D9 /* DriversList.swift */,
 			);
 			path = Drivers;
 			sourceTree = "<group>";
@@ -742,6 +856,29 @@
 				077F15B6950BE610F46999F4 /* WarehouseStateViews.swift in Sources */,
 				54390BA6B3478EF2306FF8E2 /* ForecastConfidenceView.swift in Sources */,
 				D7975867598F5D28A15AE8E0 /* DemandForecastView.swift in Sources */,
+				9BCCDB665A1903241089D933 /* DispatchDriverList.swift in Sources */,
+				C721D593567B3FA00DBA2898 /* InventoryStockList.swift in Sources */,
+				E8808C8EA23C4A4E5B6CD22B /* OrderLineItems.swift in Sources */,
+				8CE5E4DBE131E8A519C45BEC /* OrderOpsActions.swift in Sources */,
+				12A2DBE7F429D7DB65AF8CCB /* ResponsiveGridContentWrapper.swift in Sources */,
+				8A3B951CF38ACC9607C541E5 /* ResponsiveGridView.swift in Sources */,
+				85D9E5EB17CDA488687E99B4 /* AnalyticsChartGrid.swift in Sources */,
+				E600F9CE660855BB1D012B72 /* ForecastChartPanel.swift in Sources */,
+				1F99F5AD05A40A49FC9CBBA4 /* ForecastSkuTable.swift in Sources */,
+				0E8332E7C292C2FFD164A680 /* DispatchOrderList.swift in Sources */,
+				D51ED53BEC05E8B3643C4C05 /* DriversList.swift in Sources */,
+				E82FBE3611411E4041CA627F /* OpsSettingsForm.swift in Sources */,
+				11060E71343586AB0834276F /* OperationsBroadcastForm.swift in Sources */,
+				05A5579F6CA4C87A44410AF4 /* OperationsPricingPreview.swift in Sources */,
+				41B8F6C715381A863A5D1035 /* OrdersList.swift in Sources */,
+				94AE960E56DE38F91B191D21 /* PreordersList.swift in Sources */,
+				390A7E48CB4A7C595CA83007 /* ReplenishmentList.swift in Sources */,
+				640D8024BE54B3583B9E83DB /* ReturnsList.swift in Sources */,
+				4E027731C1BEA61701276792 /* StaffList.swift in Sources */,
+				29A7E756F909B44DDAAE0B21 /* StockCommitmentsView.swift in Sources */,
+				1548FFAAB8D638972ED4C257 /* TreasuryTransactionList.swift in Sources */,
+				5F592F79318B1FF75C8FB0FF /* VehiclesList.swift in Sources */,
+				91B5EA4CDE86910B8C2C40AA /* EnterpriseUpdateConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

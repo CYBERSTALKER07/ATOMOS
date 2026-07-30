@@ -35,6 +35,7 @@ struct DriversView: View {
                             assign(driverId: driverId, vehicleId: vehicleId)
                         }
                     )
+                }
             }
             .background(LabTheme.background)
             .navigationTitle("Drivers")

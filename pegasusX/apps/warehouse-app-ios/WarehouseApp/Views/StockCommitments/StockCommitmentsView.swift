@@ -28,6 +28,7 @@ struct StockCommitmentsView: View {
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                    }
                 }
             }
         }

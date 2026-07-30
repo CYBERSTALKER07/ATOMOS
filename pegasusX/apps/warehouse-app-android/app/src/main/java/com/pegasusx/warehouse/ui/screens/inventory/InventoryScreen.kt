@@ -145,7 +145,7 @@ private val inventoryPolicies = listOf("INHERIT", "REJECT", "ACCEPT_BACKORDER")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InventoryPolicyPicker(
+fun InventoryPolicyPicker(
     currentPolicy: String,
     saving: Boolean,
     onSelect: (String) -> Unit,

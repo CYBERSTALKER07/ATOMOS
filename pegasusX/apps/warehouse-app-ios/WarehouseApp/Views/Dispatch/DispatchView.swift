@@ -2,7 +2,7 @@ import SwiftUI
 
 private let dispatchTetrisBuffer = 0.95
 
-private enum DispatchAssignmentMode: String, CaseIterable, Identifiable {
+enum DispatchAssignmentMode: String, CaseIterable, Identifiable {
     case smart
     case manual
 
@@ -413,6 +413,7 @@ struct DispatchView: View {
                     }
                 }
             }
+            }
         }
     }
 
@@ -439,6 +440,7 @@ struct DispatchView: View {
                         lockPendingRelease = lock
                     }
                 }
+            }
             }
         }
     }

@@ -45,6 +45,7 @@ struct PreordersView: View {
                         activeSheet = .reject(row)
                     }
                 )
+            }
         }
         .navigationTitle("Pre-orders")
         .onAppear {
@@ -193,46 +194,5 @@ struct PreordersView: View {
         formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
         formatter.timeZone = calendar.timeZone
         return formatter.string(from: normalized)
-    }
-}
-
-struct StockCommitmentsView: View {
-    @State private var rows: [StockCommitmentRow] = []
-    @State private var loading = true
-
-    var body: some View {
-        Group {
-            if loading && rows.isEmpty {
-                WarehouseLoadingView(title: "Loading commitments…", message: "Calculating stock reservations")
-            } else if rows.isEmpty {
-                WarehouseEmptyView(title: "No commitments", message: "No stock is currently reserved for upcoming orders.")
-            } else {
-                ResponsiveGridContentWrapper {
-                    ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.name ?? row.skuId).font(.headline)
-                        Text("Available \(row.availableQty) · ASAP \(row.reservedAsap) · Scheduled \(row.reservedScheduled)")
-                            .font(.caption)
-                        Text("On hand \(row.onHand)").font(.caption2)
-                        if row.deficitQty > 0 {
-                            Text("Short \(row.deficitQty)").font(.caption).foregroundStyle(.red)
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle("Stock commitments")
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        defer { loading = false }
-        do {
-            let data = try await WarehouseService.stockCommitments()
-            rows = data.items.isEmpty ? data.skus : data.items
-        } catch {
-            rows = []
-        }
     }
 }
