@@ -136,7 +136,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			return err
 		}
 		if status != string(StatusArrived) {
-			return fmt.Errorf("order must be ARRIVED to report shop closed (current: %s)", status)
+			return fmt.Errorf("%w: order must be ARRIVED to report shop closed (current: %s)", ErrInvalidStatusTransition, status)
 		}
 		if !driverCol.Valid || driverCol.StringVal != driverID {
 			return fmt.Errorf("driver is not assigned to order %s", orderID)
@@ -266,6 +266,14 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			s.UpdateStatus(ctx, updateClaims, orderID, updateReq)
 			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", orderID)
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "max_retries_reached_order_cancelled"})
+			return
+		}
+		if errors.Is(err, ErrInvalidStatusTransition) {
+			s.log.ErrorContext(ctx, "shop closed report failed (invalid status)", "order_id", orderID, "err", err)
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": "invalid_status_transition",
+				"message": err.Error(),
+			})
 			return
 		}
 		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", orderID, "err", err)

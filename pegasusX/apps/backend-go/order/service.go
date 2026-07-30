@@ -2631,7 +2631,10 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 	case errors.Is(err, ErrOrderForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, ErrInvalidStatusTransition):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_transition"})
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "invalid_status_transition",
+			"message": err.Error(),
+		})
 	case errors.Is(err, ErrGeofenceViolation):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "geofence_violation"})
 	case errors.Is(err, ErrAssignmentRequired):

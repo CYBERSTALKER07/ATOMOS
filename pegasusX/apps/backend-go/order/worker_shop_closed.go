@@ -118,6 +118,7 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 			BaseEvent:  events.BaseEvent{Type: events.EventShopClosedTimeout, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:    order.OrderID,
 			SupplierID: order.SupplierID,
+			RetailerID: order.RetailerID,
 			Resolution: string(decision),
 		})
 

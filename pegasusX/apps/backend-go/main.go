@@ -23,6 +23,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
@@ -249,6 +250,10 @@ func main() {
 		DefaultVersion: cfg.UpdatesDefaultVersion,
 	})
 
+	demandroutes.RegisterRoutes(r, demandroutes.Deps{
+		Service: app.DemandService,
+	})
+
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{
 		Service:             app.CatalogService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -299,6 +304,7 @@ func main() {
 
 	// Start background workers
 	go app.OrderService.RunShopClosedWorker(ctx, 30*time.Second)
+	go app.DemandService.RunDemandSensingWorker(ctx, 12*time.Hour)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

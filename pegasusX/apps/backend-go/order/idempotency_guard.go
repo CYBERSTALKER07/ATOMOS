@@ -31,6 +31,9 @@ func idempotencyKeyFromRequest(r *http.Request, body []byte) string {
 		}
 		_ = json.Unmarshal(body, &partial)
 		key = partial.IdempotencyKey
+		if key != "" {
+			r.Header.Set("Idempotency-Key", key)
+		}
 	}
 	return key
 }
@@ -88,7 +91,7 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 }
 
 func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []byte, status int, resp []byte) {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, nil)
 	if key == "" || s.idem == nil {
 		return
 	}
@@ -101,7 +104,7 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 }
 
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, nil)
 	if key == "" || s.idem == nil {
 		return
 	}

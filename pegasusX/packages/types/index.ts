@@ -540,9 +540,34 @@ export interface SupplierDemandSummaryResponse {
   prediction_count: number;
   items: SupplierDemandSummaryItem[];
   generated_at: string;
-  baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed" | string;
-  granularity?: "macro" | "regional" | "micro" | string;
-  confidence?: ForecastConfidence;
+	baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed" | string;
+	granularity?: "macro" | "regional" | "micro" | string;
+	confidence?: ForecastConfidence;
+}
+
+export interface DemandSignal {
+	signalId: string;
+	retailerId?: string;
+	productId?: string;
+	type: string; // HOLIDAY, WEATHER, EVENT, PROMO
+	scope: string; // GLOBAL, REGION, CITY, RETAILER, RETAILER_SKU
+	startDate: string; // "2006-01-02"
+	endDate: string;
+	multiplier: number;
+	description?: string;
+	createdBy: string;
+	createdAt: string;
+}
+
+export interface CreateSignalRequest {
+	retailerId?: string;
+	productId?: string;
+	type: string;
+	scope: string;
+	startDate: string;
+	endDate: string;
+	multiplier: number;
+	description?: string;
 }
 
 export interface SupplierMEIONetworkSummary {

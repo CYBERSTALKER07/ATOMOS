@@ -257,7 +257,7 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if current.Status != StatusArrived {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "must be ARRIVED"})
+		s.writeOrderMutationError(w, "credit leave failed", orderID, fmt.Errorf("%w: order must be ARRIVED for credit leave (current: %s)", ErrInvalidStatusTransition, current.Status))
 		return
 	}
 

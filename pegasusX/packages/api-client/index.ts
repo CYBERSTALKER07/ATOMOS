@@ -726,6 +726,14 @@ export class ApiClient {
     return this.request<SupplierDemandHistoryResponse>("/v1/supplier/analytics/demand/history", "GET");
   }
 
+  async getDemandSignals(): Promise<{ signals: import("@pegasusx/types").DemandSignal[] }> {
+    return this.request<{ signals: import("@pegasusx/types").DemandSignal[] }>("/v1/demand/signals", "GET");
+  }
+
+  async createDemandSignal(payload: import("@pegasusx/types").CreateSignalRequest): Promise<import("@pegasusx/types").DemandSignal> {
+    return this.request<import("@pegasusx/types").DemandSignal>("/v1/demand/signals", "POST", payload);
+  }
+
   async importSupplierInventoryCSV(
     csvBody: string,
     idempotencyKey: string,

@@ -24,6 +24,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
@@ -164,6 +165,7 @@ type App struct {
 	ReturnsService         *returns.Service
 	TaxService             *tax.Service
 	ComplianceService      *compliance.Service
+	DemandService          *demand.Service
 	OrderService           *order.Service
 	ClaimsService          *claims.Service
 	CreditService          *credit.Service
@@ -1182,6 +1184,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ReturnsService:         returnsSvc,
 		TaxService:             taxSvc,
 		ComplianceService:      complianceSvc,
+		DemandService:          demand.NewService(spannerClient),
 		OrderService:           orderSvc,
 		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,

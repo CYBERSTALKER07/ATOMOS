@@ -94,9 +94,14 @@ export default function DemandAnalyticsPage() {
       skeletonVariant="dashboard"
       error={error}
       actions={
-        <Link href={"/analytics" as Route} className="md-btn md-btn-text">
-          Back to analytics
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={"/analytics/demand/signals" as Route} className="md-btn md-btn-filled-tonal md-typescale-label-large px-4 py-2">
+            Manage Signals
+          </Link>
+          <Link href={"/analytics" as Route} className="md-btn md-btn-text">
+            Back to analytics
+          </Link>
+        </div>
       }
     >
       {summary ? (

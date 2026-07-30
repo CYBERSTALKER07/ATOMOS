@@ -4,7 +4,9 @@ import (
 	"context"
 	"math"
 	"strings"
+	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -153,6 +155,49 @@ func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int
 	return out
 }
 
+func (s *Service) demandAdjustmentsByProduct(ctx context.Context, warehouseID string) map[string]float64 {
+	out := make(map[string]float64)
+	if s == nil || s.spannerClient == nil || warehouseID == "" {
+		return out
+	}
+	today := civil.DateOf(time.Now().UTC())
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT d.Sku, SUM(d.AdjustedDemand)
+			FROM DemandAdjustments d
+			JOIN (
+				SELECT DISTINCT RetailerId 
+				FROM Orders 
+				WHERE WarehouseId = @wh 
+				  AND CreatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 28 DAY)
+			) o ON d.RetailerId = o.RetailerId
+			WHERE d.Date = @date
+			GROUP BY d.Sku
+		`,
+		Params: map[string]interface{}{
+			"wh":   warehouseID,
+			"date": spanner.NullDate{Valid: true, Date: today},
+		},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return out
+		}
+		var sku string
+		var val float64
+		if err := row.Columns(&sku, &val); err == nil {
+			out[sku] = val
+		}
+	}
+	return out
+}
+
 func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID string, forecastDays int) ([]demandForecastProduct, error) {
 	if s == nil || s.spannerClient == nil || strings.TrimSpace(warehouseID) == "" {
 		return nil, spanner.ErrRowNotFound
@@ -168,6 +213,7 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 	}
 	insightByProduct := s.replenishmentInsightsByProduct(ctx, warehouseID)
 	baselineByProduct := s.demandBaselineByProduct(ctx, supplierID, warehouseID, forecastDays)
+	adjustmentsByProduct := s.demandAdjustmentsByProduct(ctx, warehouseID)
 	products, err := s.activeProductsBySupplier(ctx, supplierID)
 	if err != nil {
 		return nil, err
@@ -184,6 +230,9 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 		if insight, ok := insightByProduct[product.ProductID]; ok {
 			stock = insight.CurrentStock
 			burn = insight.AvgDailyVelocity
+			if adj, hasAdj := adjustmentsByProduct[product.ProductID]; hasAdj && adj > 0 {
+				burn = adj
+			}
 			recommended = insight.ReorderQuantity
 			daysOut = float64(insight.DaysUntilStockout)
 			switch strings.ToUpper(insight.Urgency) {
