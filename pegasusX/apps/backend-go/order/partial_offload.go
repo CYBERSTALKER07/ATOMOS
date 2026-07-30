@@ -1,6 +1,7 @@
 package order
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -40,21 +42,16 @@ var (
 
 // PartialOffloadLine is one line in POST /v1/delivery/partial-offload.
 type PartialOffloadLine struct {
-	SKU          string `json:"sku"`
-	DeliveredQty int64  `json:"delivered_qty"`
-	RemainingQty int64  `json:"remaining_qty"`
+	OrderLineID  string `json:"orderLineId"`
+	DeliveredQty int64  `json:"deliveredQty"`
+	RemainingQty int64  `json:"remainingQty"`
 	Reason       string `json:"reason,omitempty"` // DAMAGED|MISSING|SHOP_REFUSED|CAPACITY|OTHER
 }
 
 // PartialOffloadRequest is the driver wire shape (offline-capable + idempotent).
 type PartialOffloadRequest struct {
-	OrderID string               `json:"order_id"`
-	Lines   []PartialOffloadLine `json:"lines"`
-	// ClientTimestamp for offline reconciliation (original capture time).
-	ClientTimestamp string `json:"client_timestamp,omitempty"`
-	// SignedNonce optional offline signed nonce (replay key; server stores in log).
-	SignedNonce string `json:"signed_nonce,omitempty"`
-	Note        string `json:"note,omitempty"`
+	Lines    []PartialOffloadLine `json:"lines"`
+	Location DriverTelemetry      `json:"location"`
 }
 
 // PartialOffloadResponse is returned after successful apply.
@@ -76,24 +73,24 @@ func ApplyPartialOffloadLines(current []LineItem, updates []PartialOffloadLine, 
 	if len(updates) == 0 {
 		return nil, 0, 0, ErrPartialEmptyLines
 	}
-	bySKU := make(map[string]PartialOffloadLine, len(updates))
+	byLineID := make(map[string]PartialOffloadLine, len(updates))
 	for _, u := range updates {
-		sku := strings.TrimSpace(u.SKU)
-		if sku == "" {
-			return nil, 0, 0, fmt.Errorf("%w: empty sku", ErrPartialUnknownSKU)
+		id := strings.TrimSpace(u.OrderLineID)
+		if id == "" {
+			return nil, 0, 0, fmt.Errorf("%w: empty orderLineId", ErrPartialUnknownSKU)
 		}
 		if u.DeliveredQty < 0 || u.RemainingQty < 0 {
-			return nil, 0, 0, fmt.Errorf("%w: negative qty on %s", ErrPartialQtyMismatch, sku)
+			return nil, 0, 0, fmt.Errorf("%w: negative qty on %s", ErrPartialQtyMismatch, id)
 		}
 		if reason := strings.ToUpper(strings.TrimSpace(u.Reason)); reason != "" {
 			switch reason {
 			case OffloadReasonDamaged, OffloadReasonMissing, OffloadReasonShopRefused, OffloadReasonCapacity, OffloadReasonOther:
 			default:
-				return nil, 0, 0, fmt.Errorf("invalid offload reason %q on %s", u.Reason, sku)
+				return nil, 0, 0, fmt.Errorf("invalid offload reason %q on %s", u.Reason, id)
 			}
 			u.Reason = reason
 		}
-		bySKU[sku] = u
+		byLineID[id] = u
 	}
 
 	out := make([]LineItem, 0, len(current))
@@ -101,7 +98,7 @@ func ApplyPartialOffloadLines(current []LineItem, updates []PartialOffloadLine, 
 	partialAny := false
 
 	for _, line := range current {
-		u, touched := bySKU[line.SKU]
+		u, touched := byLineID[line.SKU]
 		if !touched {
 			if fullOffloadDefault {
 				// Treat as fully delivered.
@@ -124,7 +121,7 @@ func ApplyPartialOffloadLines(current []LineItem, updates []PartialOffloadLine, 
 			out = append(out, line)
 			continue
 		}
-		delete(bySKU, line.SKU)
+		delete(byLineID, line.SKU)
 		if u.DeliveredQty+u.RemainingQty != line.Quantity {
 			return nil, 0, 0, fmt.Errorf("%w: sku %s delivered(%d)+remaining(%d) != qty(%d)",
 				ErrPartialQtyMismatch, line.SKU, u.DeliveredQty, u.RemainingQty, line.Quantity)
@@ -147,9 +144,9 @@ func ApplyPartialOffloadLines(current []LineItem, updates []PartialOffloadLine, 
 		out = append(out, line)
 	}
 
-	if len(bySKU) > 0 {
-		for sku := range bySKU {
-			return nil, 0, 0, fmt.Errorf("%w: %s", ErrPartialUnknownSKU, sku)
+	if len(byLineID) > 0 {
+		for id := range byLineID {
+			return nil, 0, 0, fmt.Errorf("%w: %s", ErrPartialUnknownSKU, id)
 		}
 	}
 	_ = partialAny
@@ -189,19 +186,20 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
-	if req.OrderID == "" {
+	orderID := chi.URLParam(r, "orderId")
+	if orderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	if err := req.Location.Validate(100.0); err != nil {
+		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
 		return
 	}
 
 	ctx := r.Context()
 	now := s.now()
-	// Offline capture time is advisory; state uses server commit clock.
-	_ = req.ClientTimestamp
-	_ = req.SignedNonce
 
-	current, found, err := s.repo.GetOrder(ctx, req.OrderID)
+	current, found, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "order_load_failed"})
 		return
@@ -215,7 +213,7 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch current.Status {
-	case StatusArrived, StatusArrivedShopClosed, StatusAwaitingPayment, StatusPendingCashCollection:
+	case StatusArrived, StatusShopClosedPending, StatusAwaitingPayment, StatusPendingCashCollection:
 	default:
 		writeJSON(w, http.StatusConflict, map[string]string{
 			"error": fmt.Sprintf("%v: status %s", ErrPartialInvalidStatus, current.Status),
@@ -273,7 +271,15 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 	}
 	current.PendingSupplierReturns = pendingReturns
 
-	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := s.ensureProximityUnlocked(ctx, txn, &current, req.Location.ToLocation(), TransitionOpts{
+			Actor:  claims.Subject,
+			Reason: "partial_offload",
+		}); err != nil {
+			return err
+		}
+		return nil
+	}, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventPartialOffload, Timestamp: now.UTC().Format(time.RFC3339Nano)},
 			OrderID:    current.OrderID,
@@ -284,6 +290,7 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			return err
 		}
+
 		for _, ret := range pendingReturns {
 			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, map[string]any{
 				"type":            events.EventSupplierReturnCreated,
@@ -302,8 +309,9 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
+
 	if err != nil {
-		s.log.ErrorContext(ctx, "partial offload failed", "order_id", req.OrderID, "err", err)
+		s.log.ErrorContext(ctx, "partial offload failed", "order_id", orderID, "err", err)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
@@ -319,7 +327,7 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	s.invalidateOrderCache(ctx, req.OrderID)
+	s.invalidateOrderCache(ctx, orderID)
 	s.broadcastShopClosed(ctx, current.SupplierID, current.RetailerID, claims.Subject, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventPartialOffload, Timestamp: now.UTC().Format(time.RFC3339Nano)},
 		OrderID:    current.OrderID,
@@ -328,14 +336,18 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		SupplierID: current.SupplierID,
 	})
 
-	resp := PartialOffloadResponse{
-		OrderID:         current.OrderID,
-		PartialDelivery: current.PartialDelivery,
-		DeliveredMinor:  deliveredMinor,
-		RemainingMinor:  remainingMinor,
-		Currency:        current.Currency,
-		Status:          string(current.Status),
-		Message:         "Partial offload recorded. Settlement uses delivered portion only.",
+	var proxUnlocked bool
+	var proxMethod string
+	if current.ProximityUnlockedAt != nil {
+		proxUnlocked = true
+		proxMethod = current.ProximityMethod
+	}
+
+	resp := driverEndpointResponse{
+		OrderID:           current.OrderID,
+		Status:            string(current.Status),
+		ProximityUnlocked: proxUnlocked,
+		ProximityMethod:   proxMethod,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)

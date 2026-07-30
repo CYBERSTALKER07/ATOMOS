@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -197,6 +198,117 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
+// HandleCreditLeave serves POST /v1/driver/orders/{orderId}/credit-leave.
+func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleDriver {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	orderID := chi.URLParam(r, "orderId")
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	
+	var req struct {
+		Location DriverTelemetry `json:"location"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	if err := req.Location.Validate(100.0); err != nil {
+		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+		return
+	}
+
+	ctx := r.Context()
+	
+	// Perform transition to DeliveredOnCredit, enforcing proximity via UpdateOrderWithTxn similar to shop-closed.
+	// But let's load the order to get the proximity unlocked status and method, and to perform the update.
+	var current Order
+	current, found, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "order_load_failed"})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
+
+	if current.Status != StatusArrived {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "must be ARRIVED"})
+		return
+	}
+
+	// Update status
+	current.Status = StatusDeliveredOnCredit
+	current.UpdatedAt = s.now().UTC()
+
+	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := s.ensureProximityUnlocked(ctx, txn, &current, req.Location.ToLocation(), TransitionOpts{
+			Actor:  claims.Subject,
+			Reason: "credit_leave",
+		}); err != nil {
+			return err
+		}
+		return nil
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+			OrderID:    current.OrderID,
+			DriverID:   claims.Subject,
+			RetailerID: current.RetailerID,
+			SupplierID: current.SupplierID,
+			Status:     string(current.Status),
+		})
+	})
+	if err != nil {
+		s.log.ErrorContext(ctx, "credit leave failed", "order_id", orderID, "err", err)
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	s.invalidateOrderCache(ctx, orderID)
+
+	var proxUnlocked bool
+	var proxMethod string
+	if current.ProximityUnlockedAt != nil {
+		proxUnlocked = true
+		proxMethod = current.ProximityMethod
+	}
+
+	resp := driverEndpointResponse{
+		OrderID:           orderID,
+		Status:            string(StatusDeliveredOnCredit),
+		ProximityUnlocked: proxUnlocked,
+		ProximityMethod:   proxMethod,
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+}
+
 // HandleCreditDelivery serves POST /v1/delivery/credit-delivery.
 func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -249,7 +361,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		NextStatus: StatusDeliveredOnCredit,
 		Reason:     "credit_delivery",
 		Precheck: func(o Order) error {
-			if o.Status != StatusArrived && o.Status != StatusArrivedShopClosed {
+			if o.Status != StatusArrived && o.Status != StatusShopClosedPending {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED (current: %s)", o.Status)
 			}
 			// Block if already in fiscal path.
@@ -269,7 +381,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		},
 		PrepareOrder: func(o *Order, _ Status) {
 			if o.ShopClosedResolution == "" {
-				o.ShopClosedResolution = ShopClosedResCreditLeave
+				o.ShopClosedResolution = ShopClosedResolutionCreditLeave
 			}
 		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
@@ -290,7 +402,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 				SupplierID: orderRecord.SupplierID,
 				RetailerID: orderRecord.RetailerID,
 				Status:     string(StatusDeliveredOnCredit),
-				Resolution: ShopClosedResCreditLeave,
+				Resolution: ShopClosedResolutionCreditLeave,
 			})
 		},
 	})
@@ -737,7 +849,7 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 	if err := row.Columns(&status, &version, &did, &supplierID, &retailerID); err != nil {
 		return err
 	}
-	if status != string(StatusArrivedShopClosed) {
+	if status != string(StatusShopClosedPending) {
 		return fmt.Errorf("order must be ARRIVED_SHOP_CLOSED (current: %s)", status)
 	}
 	if !did.Valid || did.StringVal != driverID {

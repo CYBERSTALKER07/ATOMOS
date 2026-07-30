@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -18,15 +19,17 @@ import (
 )
 
 type shopClosedReportRequest struct {
-	OrderID   string  `json:"order_id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	// Reason: NO_ANSWER | CLOSED | REFUSED | OTHER
-	Reason string `json:"reason,omitempty"`
-	// PhotoURL optional evidence of closed shop.
-	PhotoURL string `json:"photo_url,omitempty"`
-	// ClientTimestamp for offline mark-closed (original capture time).
-	ClientTimestamp string `json:"client_timestamp,omitempty"`
+	Reason   string          `json:"reason"`
+	Note     string          `json:"note,omitempty"`
+	PhotoURL string          `json:"photoUrl,omitempty"`
+	Location DriverTelemetry `json:"location"`
+}
+
+type driverEndpointResponse struct {
+	OrderID           string `json:"orderId"`
+	Status            string `json:"status"`
+	ProximityUnlocked bool   `json:"proximityUnlocked"`
+	ProximityMethod   string `json:"proximityMethod"`
 }
 
 type shopClosedResponseRequest struct {
@@ -92,52 +95,51 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
-	if req.OrderID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
+	orderID := chi.URLParam(r, "orderId")
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required in path"})
 		return
 	}
+	if err := req.Location.Validate(100.0); err != nil {
+		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+		return
+	}
+
 	reason := NormalizeShopClosedReason(req.Reason)
 
 	driverID := strings.TrimSpace(claims.Subject)
 	attemptID := s.newID()
 	logEventID := s.newID()
 	now := s.now()
-	if ts := strings.TrimSpace(req.ClientTimestamp); ts != "" {
-		if t, perr := time.Parse(time.RFC3339Nano, ts); perr == nil {
-			if t.UTC().Before(now) {
-				now = t.UTC()
-			}
-		} else if t, perr := time.Parse(time.RFC3339, ts); perr == nil {
-			if t.UTC().Before(now) {
-				now = t.UTC()
-			}
-		}
-	}
+	// Client timestamp was removed, just use now
+
 	graceEnds := now.Add(s.shopGrace)
 	ctx := r.Context()
 
 	var retailerID, supplierID string
 	var gpsLat, gpsLng float64
+	var finalProxUnlocked bool
+	var finalProxMethod string
 
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Status", "Version", "RetailerId", "SupplierId", "DriverId", "Lat", "Lng"})
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
+			[]string{"Status", "Version", "RetailerId", "SupplierId", "DriverId", "Lat", "Lng", "H3Cell", "ProximityUnlockedAt", "ProximityMethod"})
 		if err != nil {
-			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
+			return fmt.Errorf("order %s not found: %w", orderID, err)
 		}
 		var status string
 		var version int64
-		var driverCol, retailerCol, supplierCol spanner.NullString
+		var driverCol, retailerCol, supplierCol, h3Cell, proxMethod spanner.NullString
+		var proxUnlockedAt spanner.NullTime
 		var orderLat, orderLng float64
-		if err := row.Columns(&status, &version, &retailerCol, &supplierCol, &driverCol, &orderLat, &orderLng); err != nil {
+		if err := row.Columns(&status, &version, &retailerCol, &supplierCol, &driverCol, &orderLat, &orderLng, &h3Cell, &proxUnlockedAt, &proxMethod); err != nil {
 			return err
 		}
 		if status != string(StatusArrived) {
 			return fmt.Errorf("order must be ARRIVED to report shop closed (current: %s)", status)
 		}
 		if !driverCol.Valid || driverCol.StringVal != driverID {
-			return fmt.Errorf("driver is not assigned to order %s", req.OrderID)
+			return fmt.Errorf("driver is not assigned to order %s", orderID)
 		}
 		if retailerCol.Valid {
 			retailerID = retailerCol.StringVal
@@ -145,15 +147,48 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
 		}
-		gpsLat, gpsLng = req.Latitude, req.Longitude
+		gpsLat, gpsLng = req.Location.Lat, req.Location.Lng
 		if gpsLat == 0 && gpsLng == 0 {
 			gpsLat, gpsLng = orderLat, orderLng
+		}
+
+		// Ensure proximity is unlocked before allowing shop closed report
+		var proxUnlockedAtPtr *time.Time
+		if proxUnlockedAt.Valid {
+			t := proxUnlockedAt.Time
+			proxUnlockedAtPtr = &t
+		}
+		
+		var h3 string
+		if h3Cell.Valid {
+			h3 = h3Cell.StringVal
+		}
+
+		orderRecord := &Order{
+			OrderID:             orderID,
+			Lat:                 orderLat,
+			Lng:                 orderLng,
+			H3Cell:              h3,
+			ProximityUnlockedAt: proxUnlockedAtPtr,
+			ProximityMethod:     proxMethod.StringVal,
+		}
+
+		// Soft proximity check for shop closed: we don't return an error if it fails.
+		_ = s.ensureProximityUnlocked(ctx, txn, orderRecord, req.Location.ToLocation(), TransitionOpts{
+			Actor:  driverID,
+			Reason: "report_shop_closed",
+		})
+		
+		// Ensure we capture if it was unlocked (maybe by this call)
+		if orderRecord.ProximityUnlockedAt != nil {
+			finalProxUnlocked = true
+			finalProxMethod = orderRecord.ProximityMethod
 		}
 
 		// Check for max retries
 		countStmt := spanner.Statement{
 			SQL:    `SELECT COUNT(*) FROM ShopClosedAttempts WHERE OrderId = @oid`,
-			Params: map[string]any{"oid": req.OrderID},
+			Params: map[string]any{"oid": orderID},
 		}
 		countIter := txn.Query(ctx, countStmt)
 		countRow, countErr := countIter.Next()
@@ -168,9 +203,9 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
-			OrderID:    req.OrderID,
+			OrderID:    orderID,
 			DriverID:   driverID,
 			RetailerID: retailerID,
 			SupplierID: supplierID,
@@ -183,6 +218,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 
 		logPayload, _ := json.Marshal(map[string]any{
 			"reason":        reason,
+			"note":          strings.TrimSpace(req.Note),
 			"photo_url":     strings.TrimSpace(req.PhotoURL),
 			"gps_lat":       gpsLat,
 			"gps_lng":       gpsLng,
@@ -192,8 +228,8 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":               req.OrderID,
-				"Status":                string(StatusArrivedShopClosed), // ≡ SHOP_CLOSED_PENDING
+				"OrderId":               orderID,
+				"Status":                string(StatusShopClosedPending), // ≡ SHOP_CLOSED_PENDING
 				"Version":               version + 1,
 				"UpdatedAt":             now.UTC(),
 				"ShopClosedAt":          now.UTC(),
@@ -202,7 +238,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			}),
 			spanner.InsertMap("ShopClosedAttempts", map[string]any{
 				"AttemptId":  attemptID,
-				"OrderId":    req.OrderID,
+				"OrderId":    orderID,
 				"DriverId":   driverID,
 				"RetailerId": retailerID,
 				"ReportedAt": now.UTC(),
@@ -210,7 +246,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 				"GPSLng":     gpsLng,
 			}),
 			spanner.InsertMap("OrderShopClosedLog", map[string]any{
-				"OrderId":   req.OrderID,
+				"OrderId":   orderID,
 				"EventId":   logEventID,
 				"Actor":     driverID,
 				"Action":    "MARKED_CLOSED",
@@ -227,32 +263,31 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if err.Error() == "shop_closed_max_retries" {
 			updateClaims := auth.Claims{Role: auth.RoleAdmin, Subject: "system"}
 			updateReq := UpdateStatusRequest{Status: string(StatusCancelled), Reason: "shop_closed_max_retries"}
-			s.UpdateStatus(ctx, updateClaims, req.OrderID, updateReq)
-			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", req.OrderID)
+			s.UpdateStatus(ctx, updateClaims, orderID, updateReq)
+			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", orderID)
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "max_retries_reached_order_cancelled"})
 			return
 		}
-		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", req.OrderID, "err", err)
+		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", orderID, "err", err)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
 
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
-		OrderID:    req.OrderID,
+		OrderID:    orderID,
 		DriverID:   driverID,
 		RetailerID: retailerID,
 		SupplierID: supplierID,
 		AttemptID:  attemptID,
 	})
-	s.invalidateOrderCache(ctx, req.OrderID)
-	go s.scheduleShopClosedEscalation(context.WithoutCancel(ctx), attemptID, req.OrderID, retailerID, supplierID, driverID)
+	s.invalidateOrderCache(ctx, orderID)
 
-	resp := map[string]any{
-		"status":        string(StatusArrivedShopClosed), // design: SHOP_CLOSED_PENDING
-		"attempt_id":    attemptID,
-		"reason":        reason,
-		"grace_ends_at": graceEnds.UTC().Format(time.RFC3339Nano),
+	resp := driverEndpointResponse{
+		OrderID:           orderID,
+		Status:            string(StatusShopClosedPending),
+		ProximityUnlocked: finalProxUnlocked,
+		ProximityMethod:   finalProxMethod,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
@@ -281,16 +316,6 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-
 	var req shopClosedResponseRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -317,14 +342,28 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 	}
 
 	retailerID := strings.TrimSpace(claims.Subject)
+	s.executeShopClosedRetailerResponse(w, r, body, req, retailerID)
+}
+
+func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *http.Request, rawBody []byte, req shopClosedResponseRequest, retailerID string) {
+	if s.guardIdempotency(w, r, rawBody) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	ctx := r.Context()
 	now := s.now()
-	newStatus := string(StatusArrivedShopClosed)
+	newStatus := string(StatusShopClosedPending)
 	var attemptID, driverID, supplierID string
 	logEventID := s.newID()
 	resolution := ""
 
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `SELECT AttemptId, DriverId FROM ShopClosedAttempts
 			      WHERE OrderId = @oid AND RetailerId = @rid AND Resolution IS NULL
@@ -356,7 +395,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 			supplierID = supplierCol.StringVal
 		}
 		// Retailer response wins if still PENDING (ARRIVED_SHOP_CLOSED), even after grace clock.
-		if orderStatus != string(StatusArrivedShopClosed) {
+		if orderStatus != string(StatusShopClosedPending) {
 			return fmt.Errorf("shop_closed_already_resolved status=%s", orderStatus)
 		}
 
@@ -387,7 +426,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 				}),
 			)
 		case RetailerRespReschedule:
-			resolution = ShopClosedResRescheduled
+			resolution = ShopClosedResolutionRescheduled
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
 					"OrderId":              req.OrderID,
@@ -403,7 +442,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 			)
 		case RetailerRespCreditLeave:
 			// Intent only — driver still executes credit-delivery with proximity.
-			resolution = ShopClosedResCreditLeave
+			resolution = ShopClosedResolutionCreditLeave
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
 					"OrderId":              req.OrderID,
@@ -419,7 +458,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 			)
 		case RetailerRespCancel:
 			newStatus = string(StatusCancelled)
-			resolution = ShopClosedResCancelled
+			resolution = ShopClosedResolutionCancelled
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
 					"OrderId":              req.OrderID,
@@ -435,7 +474,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 				}),
 			)
 		case RetailerRespAuthorizeBypass:
-			resolution = ShopClosedResBypass
+			resolution = ShopClosedResolutionBypass
 			bypassToken := generateShopClosedBypassToken()
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
@@ -502,7 +541,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]string{"status": newStatus}
 	respBytes, _ := json.Marshal(resp)
-	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	s.saveIdempotency(ctx, r, rawBody, http.StatusOK, respBytes)
 	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
@@ -669,245 +708,9 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, orderID, retailerID, supplierID, driverID string) {
-	timer := time.NewTimer(s.shopGrace)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-timer.C:
-	}
 
-	if s.spannerClient == nil {
-		return
-	}
-	now := s.now()
-	escalatedTo := supplierID
-	if escalatedTo == "" {
-		escalatedTo = s.supplierID
-	}
 
-	// Precompute timeout decision outside the tight CAS window (credit read is best-effort).
-	decision := s.evaluateShopClosedTimeout(ctx, orderID, retailerID, supplierID)
-	logEventID := s.newID()
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL:    `SELECT Resolution, RetailerRespondedAt FROM ShopClosedAttempts WHERE AttemptId = @aid`,
-			Params: map[string]any{"aid": attemptID},
-		}
-		iter := txn.Query(ctx, stmt)
-		row, err := iter.Next()
-		iter.Stop()
-		if err != nil {
-			return err
-		}
-		var resolution spanner.NullString
-		var responded spanner.NullTime
-		if err := row.Columns(&resolution, &responded); err != nil {
-			return err
-		}
-		// Retailer response wins if still PENDING when worker fires.
-		if resolution.Valid || responded.Valid {
-			return nil
-		}
-
-		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Status", "Version"})
-		if err != nil {
-			return err
-		}
-		var orderStatus string
-		var version int64
-		if err := orderRow.Columns(&orderStatus, &version); err != nil {
-			return err
-		}
-		if orderStatus != string(StatusArrivedShopClosed) {
-			return nil
-		}
-
-		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:   events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
-			OrderID:     orderID,
-			AttemptID:   attemptID,
-			SupplierID:  supplierID,
-			EscalatedTo: escalatedTo,
-			Resolution:  string(decision.Resolution),
-		}); err != nil {
-			return err
-		}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:  events.BaseEvent{Type: events.EventShopClosedTimeout, Timestamp: now.Format(time.RFC3339Nano)},
-			OrderID:    orderID,
-			AttemptID:  attemptID,
-			SupplierID: supplierID,
-			Resolution: string(decision.Resolution),
-			Response:   decision.Reason,
-		}); err != nil {
-			return err
-		}
-
-		logPayload, _ := json.Marshal(map[string]any{
-			"resolution": decision.Resolution,
-			"reason":     decision.Reason,
-			"attempt_id": attemptID,
-		})
-
-		mutations := []*spanner.Mutation{
-			spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-				"AttemptId":   attemptID,
-				"EscalatedAt": now.UTC(),
-				"EscalatedTo": escalatedTo,
-			}),
-			spanner.InsertMap("OrderShopClosedLog", map[string]any{
-				"OrderId":   orderID,
-				"EventId":   logEventID,
-				"Actor":     "system",
-				"Action":    "TIMEOUT",
-				"Payload":   logPayload,
-				"CreatedAt": now.UTC(),
-			}),
-		}
-
-		// Apply auto-resolution matrix (design §4.2).
-		switch decision.Resolution {
-		case TimeoutCreditLeave:
-			// Mark intent; driver/credit-leave path still requires proximity or supervised bypass.
-			mutations = append(mutations,
-				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":              orderID,
-					"ShopClosedResolution": ShopClosedResCreditLeave,
-					"Version":              version + 1,
-					"UpdatedAt":            now.UTC(),
-				}),
-				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-					"AttemptId":  attemptID,
-					"Resolution": "TIMEOUT_CREDIT_LEAVE",
-					"ResolvedAt": now.UTC(),
-					"ResolvedBy": "system",
-				}),
-			)
-		case TimeoutReturnToWarehouse:
-			mutations = append(mutations,
-				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":              orderID,
-					"Status":               string(StatusCancelled),
-					"ShopClosedResolution": ShopClosedResReturned,
-					"Version":              version + 1,
-					"UpdatedAt":            now.UTC(),
-				}),
-				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-					"AttemptId":  attemptID,
-					"Resolution": "TIMEOUT_RETURN_TO_WAREHOUSE",
-					"ResolvedAt": now.UTC(),
-					"ResolvedBy": "system",
-				}),
-			)
-		case TimeoutForceBypass:
-			tok := generateShopClosedBypassToken()
-			mutations = append(mutations,
-				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":              orderID,
-					"ShopClosedResolution": ShopClosedResBypass,
-					"Version":              version + 1,
-					"UpdatedAt":            now.UTC(),
-				}),
-				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-					"AttemptId":   attemptID,
-					"Resolution":  "TIMEOUT_FORCE_BYPASS",
-					"BypassToken": tok,
-					"ResolvedAt":  now.UTC(),
-					"ResolvedBy":  "system",
-				}),
-			)
-		case TimeoutReschedule:
-			mutations = append(mutations,
-				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":              orderID,
-					"ShopClosedResolution": ShopClosedResRescheduled,
-					"Version":              version + 1,
-					"UpdatedAt":            now.UTC(),
-				}),
-				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-					"AttemptId":  attemptID,
-					"Resolution": "TIMEOUT_RESCHEDULE",
-					"ResolvedAt": now.UTC(),
-					"ResolvedBy": "system",
-				}),
-			)
-		default:
-			// Escalate only (supplier queue) — preserve prior behavior for unknown.
-		}
-
-		for _, e := range buf.events {
-			mutations = append(mutations, outboxMutation(e))
-		}
-		return txn.BufferWrite(mutations)
-	})
-	if err != nil {
-		s.log.WarnContext(ctx, "shop closed escalation skipped", "attempt_id", attemptID, "err", err)
-		return
-	}
-
-	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
-		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
-		OrderID:    orderID,
-		AttemptID:  attemptID,
-		SupplierID: supplierID,
-		Resolution: string(decision.Resolution),
-	})
-}
-
-// evaluateShopClosedTimeout loads credit signals and runs DecideShopClosedTimeout.
-func (s *Service) evaluateShopClosedTimeout(ctx context.Context, orderID, retailerID, supplierID string) ShopClosedTimeoutDecision {
-	in := ShopClosedTimeoutInput{
-		RiskTier:      ShopClosedRiskMedium,
-		ProfileStatus:  "",
-		CreditAllowed:  false,
-		OrderTotalMinor: 0,
-	}
-	if s.repo != nil {
-		if o, found, err := s.repo.GetOrder(ctx, orderID); err == nil && found {
-			in.OrderTotalMinor = o.TotalMinor
-			if supplierID == "" {
-				supplierID = o.SupplierID
-			}
-			if retailerID == "" {
-				retailerID = o.RetailerID
-			}
-		}
-	}
-	if s.credit != nil && retailerID != "" && supplierID != "" {
-		check, err := s.credit.CheckOrder(ctx, retailerID, supplierID, in.OrderTotalMinor)
-		if err == nil {
-			in.CreditAllowed = check.Allowed
-			in.AvailableCreditMinor = check.CreditLimitMinor - check.CurrentBalance
-			if in.AvailableCreditMinor < 0 {
-				in.AvailableCreditMinor = 0
-			}
-			if check.Allowed {
-				in.ProfileStatus = "ACTIVE"
-			} else {
-				switch check.Reason {
-				case "profile_frozen":
-					in.ProfileStatus = "FROZEN"
-				case "profile_blacklisted":
-					in.ProfileStatus = "BLACKLISTED"
-				case "risk_tier_block":
-					in.RiskTier = ShopClosedRiskBlock
-					in.ProfileStatus = "ACTIVE"
-				case "no_credit_profile", "no_credit_limit":
-					in.ProfileStatus = ""
-				default:
-					in.ProfileStatus = "ACTIVE"
-				}
-			}
-		}
-	}
-	// FORCE_BYPASS only via supplier resolve for now (safer default).
-	in.ForceBypassEnabled = false
-	return DecideShopClosedTimeout(in)
-}
 
 func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)

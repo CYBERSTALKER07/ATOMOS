@@ -19,6 +19,7 @@ type Deps struct {
 	PromotionService *promotion.Service
 	OrderService interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
+		HandleRetailerRespondShopClosed(http.ResponseWriter, *http.Request)
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
@@ -80,6 +81,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)
+			rr.Post("/v1/retailer/orders/{orderID}/shop-closed/respond", d.OrderService.HandleRetailerRespondShopClosed)
 		} else {
 			rr.Post("/v1/retailer/shop-closed-response", d.Service.HandleShopClosedResponse)
 		}

@@ -352,7 +352,7 @@ func TestValidateStatusTransitionMatrix(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateStatusTransition(tc.current, tc.next)
+			err := ValidateStatusTransition(string(tc.current), string(tc.next), TransitionOpts{})
 			if tc.wantErr {
 				if !errors.Is(err, ErrInvalidStatusTransition) {
 					t.Fatalf("expected ErrInvalidStatusTransition, got %v", err)

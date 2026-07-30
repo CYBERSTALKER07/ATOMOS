@@ -297,6 +297,9 @@ func main() {
 		slog.Info("[simulator] Global Pay simulator mounted", "prefix", "/sim/globalpay", "env", gpEnv)
 	}
 
+	// Start background workers
+	go app.OrderService.RunShopClosedWorker(ctx, 30*time.Second)
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
 		Handler:           r,

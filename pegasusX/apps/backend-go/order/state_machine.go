@@ -2,8 +2,19 @@ package order
 
 import "fmt"
 
+type TransitionOpts struct {
+    Actor            string
+    Reason           string
+    PhotoURL         string    // for bypass / shop-closed evidence
+    SupervisorToken  string    // for force bypass
+    SkipProximity    bool      // only for supervised force
+}
+
 // ValidateStatusTransition enforces the canonical order lifecycle graph.
-func ValidateStatusTransition(current Status, next Status) error {
+func ValidateStatusTransition(from string, to string, opts TransitionOpts) error {
+	current := Status(from)
+	next := Status(to)
+
 	if current == next {
 		return nil
 	}
@@ -20,9 +31,9 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
 	case StatusArrived:
 		// ADR-009: no soft ARRIVED → COMPLETED (fiscal hard-gate).
-		// Shop-closed path: ARRIVED → ARRIVED_SHOP_CLOSED (design SHOP_CLOSED_PENDING).
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested || next == StatusArrivedShopClosed
-	case StatusArrivedShopClosed:
+		// Shop-closed path: ARRIVED → SHOP_CLOSED_PENDING
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested || next == StatusShopClosedPending
+	case StatusShopClosedPending:
 		// Design SHOP_CLOSED_PENDING resolutions: payment, credit leave, cancel/return, reopen to ARRIVED.
 		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelled || next == StatusArrived || next == StatusCancelRequested
 	case StatusDeliveredOnCredit:

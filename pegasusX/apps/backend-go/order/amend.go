@@ -39,7 +39,7 @@ var postDeliveryAmendReasons = map[string]struct{}{
 
 func orderAmendable(status Status) bool {
 	switch status {
-	case StatusInTransit, StatusArrived, StatusArrivedShopClosed:
+	case StatusInTransit, StatusArrived, StatusShopClosedPending:
 		return true
 	default:
 		return false

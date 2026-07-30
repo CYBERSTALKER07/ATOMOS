@@ -49,7 +49,7 @@ const (
 	StatusLoaded                 Status = "LOADED"
 	StatusInTransit              Status = "IN_TRANSIT"
 	StatusArrived                Status = "ARRIVED"
-	StatusArrivedShopClosed      Status = "ARRIVED_SHOP_CLOSED"
+	StatusShopClosedPending      Status = "SHOP_CLOSED_PENDING"
 	StatusAwaitingPayment        Status = "AWAITING_PAYMENT"
 	StatusPendingCashCollection  Status = "PENDING_CASH_COLLECTION"
 	StatusDeliveredOnCredit      Status = "DELIVERED_ON_CREDIT"
@@ -356,6 +356,7 @@ type Service struct {
 	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
 	claimsBridge       claimsBridge   // optional logistics claims domain
 	taxSvc             *tax.Service   // optional tax regime service
+	proximityCfg       ProximityConfig
 }
 
 // ServiceConfig is the constructor input.
@@ -368,6 +369,7 @@ type ServiceConfig struct {
 	SupplierID      string
 	SupplierName    string
 	Currency        string
+	ProximityCfg    ProximityConfig
 	RetailerHub     *ws.Hub
 	SupplierHub     *ws.Hub
 	DriverHub       *ws.Hub
@@ -1362,7 +1364,7 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		}
 	}
 
-	if err := ValidateStatusTransition(current.Status, nextStatus); err != nil {
+	if err := ValidateStatusTransition(string(current.Status), string(nextStatus), TransitionOpts{}); err != nil {
 		return UpdateStatusResponse{}, err
 	}
 
@@ -1904,7 +1906,7 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 			NoChange:       true,
 		}, nil
 	}
-	if err := ValidateStatusTransition(current.Status, req.NextStatus); err != nil {
+	if err := ValidateStatusTransition(string(current.Status), string(req.NextStatus), TransitionOpts{}); err != nil {
 		return driverTransitionResult{}, err
 	}
 	if req.Precheck != nil {

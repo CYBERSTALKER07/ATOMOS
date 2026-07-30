@@ -238,7 +238,7 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 		}
 		// Unlock only on operational delivery legs before fiscal hard-gate.
 		switch Status(status) {
-		case StatusArrived, StatusArrivedShopClosed, StatusAwaitingPayment,
+		case StatusArrived, StatusShopClosedPending, StatusAwaitingPayment,
 			StatusPendingCashCollection, StatusDeliveredOnCredit:
 		default:
 			return fmt.Errorf("proximity unlock not allowed in status %s", status)

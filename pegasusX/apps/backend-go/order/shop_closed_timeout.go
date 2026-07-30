@@ -1,126 +1,53 @@
 package order
 
-import "strings"
+import "github.com/pegasusx/pegasusx/apps/backend-go/credit"
 
-// ShopClosedTimeoutResolution is the auto-decision when grace expires
-// without a retailer response (design §4.2 step 4).
-type ShopClosedTimeoutResolution string
-
-const (
-	// TimeoutCreditLeave: low/medium risk + credit available → leave on credit.
-	TimeoutCreditLeave ShopClosedTimeoutResolution = "CREDIT_LEAVE"
-	// TimeoutReturnToWarehouse: high risk / no credit / fiscal blocked.
-	TimeoutReturnToWarehouse ShopClosedTimeoutResolution = "RETURN_TO_WAREHOUSE"
-	// TimeoutForceBypass: supervised override path (config + risk gate).
-	TimeoutForceBypass ShopClosedTimeoutResolution = "FORCE_BYPASS"
-	// TimeoutReschedule: optional soft path when order value is tiny and credit blocked.
-	TimeoutReschedule ShopClosedTimeoutResolution = "RESCHEDULE"
-)
-
-// ShopClosedRiskTier mirrors credit risk tiers for timeout policy.
-type ShopClosedRiskTier string
+// TimeoutDecision is the auto-decision when grace expires.
+type TimeoutDecision string
 
 const (
-	ShopClosedRiskLow    ShopClosedRiskTier = "LOW"
-	ShopClosedRiskMedium ShopClosedRiskTier = "MEDIUM"
-	ShopClosedRiskHigh   ShopClosedRiskTier = "HIGH"
-	ShopClosedRiskBlock  ShopClosedRiskTier = "BLOCK"
+	DecisionCreditLeave       TimeoutDecision = "CREDIT_LEAVE"
+	DecisionReturnToWarehouse TimeoutDecision = "RETURN_TO_WAREHOUSE"
+	DecisionForceBypass       TimeoutDecision = "FORCE_BYPASS" // rare, config-gated
 )
 
-// ShopClosedTimeoutInput is the pure decision input (no I/O).
-type ShopClosedTimeoutInput struct {
-	// RiskTier from retailer credit profile (LOW|MEDIUM|HIGH|BLOCK).
-	RiskTier ShopClosedRiskTier
-	// ProfileStatus ACTIVE|FROZEN|CLOSED|BLACKLISTED (empty = treat as no profile).
-	ProfileStatus string
-	// AvailableCreditMinor from credit profile (integer minor units).
-	AvailableCreditMinor int64
-	// OrderTotalMinor order amount in minor units.
-	OrderTotalMinor int64
-	// CreditAllowed is precomputed CheckOrder.Allowed (profile ACTIVE + headroom).
-	CreditAllowed bool
-	// ForceBypassEnabled when supplier policy allows supervised auto-bypass on timeout.
-	ForceBypassEnabled bool
-	// LowValueThresholdMinor: below this and credit blocked → RESCHEDULE instead of return
-	// (default applied by Decide when ≤ 0: 0 means never use reschedule soft path).
-	LowValueThresholdMinor int64
+// TimeoutConfig contains knobs for the timeout matrix.
+type TimeoutConfig struct {
+	MaxAutoCreditMinor       int64 // e.g. 5_000_000 tiyin
+	MaxRiskTierForAutoCredit int   // 1 = low, 2 = medium, ...
+	AllowForceBypass         bool  // usually false in production
 }
 
-// ShopClosedTimeoutDecision is the matrix outcome.
-type ShopClosedTimeoutDecision struct {
-	Resolution ShopClosedTimeoutResolution
-	Reason     string
+// DecideShopClosedTimeout applies the decision matrix (exact specs).
+func DecideShopClosedTimeout(order *Order, profile *credit.Profile, cfg TimeoutConfig) TimeoutDecision {
+	// 1. Credit leave if possible
+	if profile != nil &&
+		profile.Status == "ACTIVE" &&
+		profile.AvailableCreditMinor >= order.TotalMinor &&
+		order.TotalMinor <= cfg.MaxAutoCreditMinor &&
+		riskTierLevel(profile.RiskTier) <= cfg.MaxRiskTierForAutoCredit {
+
+		return DecisionCreditLeave
+	}
+
+	if cfg.AllowForceBypass {
+		return DecisionForceBypass
+	}
+
+	// 2. Default: return to warehouse
+	return DecisionReturnToWarehouse
 }
 
-// DecideShopClosedTimeout evaluates the timeout auto-decision matrix.
-//
-// Matrix (design §4.2 + economic differentiator):
-//
-//	BLOCK / FROZEN / BLACKLISTED / CLOSED → RETURN_TO_WAREHOUSE
-//	HIGH risk                             → RETURN_TO_WAREHOUSE
-//	credit available + LOW|MEDIUM         → CREDIT_LEAVE
-//	ForceBypassEnabled + MEDIUM+          → FORCE_BYPASS (only when credit blocked)
-//	else low value + soft threshold       → RESCHEDULE
-//	else                                  → RETURN_TO_WAREHOUSE
-//
-// Retailer response that arrives while still PENDING always wins over this
-// decision at apply time (caller must re-check Resolution IS NULL).
-func DecideShopClosedTimeout(in ShopClosedTimeoutInput) ShopClosedTimeoutDecision {
-	status := strings.ToUpper(strings.TrimSpace(in.ProfileStatus))
-	tier := normalizeShopClosedRisk(in.RiskTier)
-
-	switch status {
-	case "FROZEN", "BLACKLISTED", "CLOSED":
-		return ShopClosedTimeoutDecision{
-			Resolution: TimeoutReturnToWarehouse,
-			Reason:     "profile_" + strings.ToLower(status),
-		}
-	case "", "NO_PROFILE":
-		// No profile: cannot leave on credit.
-		if in.ForceBypassEnabled && tier != ShopClosedRiskBlock && tier != ShopClosedRiskHigh {
-			return ShopClosedTimeoutDecision{Resolution: TimeoutForceBypass, Reason: "no_profile_force_bypass"}
-		}
-		if in.LowValueThresholdMinor > 0 && in.OrderTotalMinor > 0 && in.OrderTotalMinor <= in.LowValueThresholdMinor {
-			return ShopClosedTimeoutDecision{Resolution: TimeoutReschedule, Reason: "no_profile_low_value"}
-		}
-		return ShopClosedTimeoutDecision{Resolution: TimeoutReturnToWarehouse, Reason: "no_credit_profile"}
-	}
-
-	if tier == ShopClosedRiskBlock {
-		return ShopClosedTimeoutDecision{Resolution: TimeoutReturnToWarehouse, Reason: "risk_tier_block"}
-	}
-	if tier == ShopClosedRiskHigh {
-		if in.ForceBypassEnabled {
-			return ShopClosedTimeoutDecision{Resolution: TimeoutForceBypass, Reason: "high_risk_force_bypass"}
-		}
-		return ShopClosedTimeoutDecision{Resolution: TimeoutReturnToWarehouse, Reason: "high_risk"}
-	}
-
-	// LOW / MEDIUM: credit leave when available and amount covered.
-	if in.CreditAllowed && in.AvailableCreditMinor >= in.OrderTotalMinor && in.OrderTotalMinor >= 0 {
-		return ShopClosedTimeoutDecision{Resolution: TimeoutCreditLeave, Reason: "credit_available"}
-	}
-
-	// Credit blocked at low/medium: optional supervised bypass, else return/reschedule.
-	if in.ForceBypassEnabled {
-		return ShopClosedTimeoutDecision{Resolution: TimeoutForceBypass, Reason: "credit_blocked_force_bypass"}
-	}
-	if in.LowValueThresholdMinor > 0 && in.OrderTotalMinor > 0 && in.OrderTotalMinor <= in.LowValueThresholdMinor {
-		return ShopClosedTimeoutDecision{Resolution: TimeoutReschedule, Reason: "credit_blocked_low_value"}
-	}
-	return ShopClosedTimeoutDecision{Resolution: TimeoutReturnToWarehouse, Reason: "credit_unavailable"}
-}
-
-func normalizeShopClosedRisk(t ShopClosedRiskTier) ShopClosedRiskTier {
-	switch ShopClosedRiskTier(strings.ToUpper(strings.TrimSpace(string(t)))) {
-	case ShopClosedRiskLow:
-		return ShopClosedRiskLow
-	case ShopClosedRiskHigh:
-		return ShopClosedRiskHigh
-	case ShopClosedRiskBlock:
-		return ShopClosedRiskBlock
+func riskTierLevel(rt credit.RiskTier) int {
+	switch rt {
+	case credit.RiskTierLow:
+		return 1
+	case credit.RiskTierMedium:
+		return 2
+	case credit.RiskTierHigh:
+		return 3
 	default:
-		return ShopClosedRiskMedium
+		return 99 // BLOCK or unknown
 	}
 }
 
@@ -134,7 +61,7 @@ const (
 
 // ValidShopClosedReason reports whether reason is a known code.
 func ValidShopClosedReason(reason string) bool {
-	switch strings.ToUpper(strings.TrimSpace(reason)) {
+	switch reason {
 	case ShopClosedReasonNoAnswer, ShopClosedReasonClosed, ShopClosedReasonRefused, ShopClosedReasonOther, "":
 		return true
 	default:
@@ -144,21 +71,20 @@ func ValidShopClosedReason(reason string) bool {
 
 // NormalizeShopClosedReason returns a canonical reason code (default CLOSED).
 func NormalizeShopClosedReason(reason string) string {
-	r := strings.ToUpper(strings.TrimSpace(reason))
-	if r == "" {
+	if reason == "" {
 		return ShopClosedReasonClosed
 	}
-	if ValidShopClosedReason(r) {
-		return r
+	if ValidShopClosedReason(reason) {
+		return reason
 	}
 	return ShopClosedReasonOther
 }
 
 // ShopClosedResolution codes written to Orders.ShopClosedResolution.
 const (
-	ShopClosedResRescheduled = "RESCHEDULED"
-	ShopClosedResCreditLeave = "CREDIT_LEAVE"
-	ShopClosedResCancelled   = "CANCELLED"
-	ShopClosedResBypass      = "BYPASS"
-	ShopClosedResReturned    = "RETURNED"
+	ShopClosedResolutionRescheduled = "RESCHEDULED"
+	ShopClosedResolutionCreditLeave = "CREDIT_LEAVE"
+	ShopClosedResolutionCancelled   = "CANCELLED"
+	ShopClosedResolutionBypass      = "BYPASS"
+	ShopClosedResolutionReturned    = "RETURNED"
 )

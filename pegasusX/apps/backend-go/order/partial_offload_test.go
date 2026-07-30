@@ -11,8 +11,8 @@ func TestApplyPartialOffloadLines_qtyMath(t *testing.T) {
 		{SKU: "B", Quantity: 5, UnitPrice: 200},
 	}
 	updated, del, rem, err := ApplyPartialOffloadLines(current, []PartialOffloadLine{
-		{SKU: "A", DeliveredQty: 7, RemainingQty: 3, Reason: OffloadReasonShopRefused},
-		{SKU: "B", DeliveredQty: 5, RemainingQty: 0},
+		{OrderLineID: "A", DeliveredQty: 7, RemainingQty: 3, Reason: OffloadReasonShopRefused},
+		{OrderLineID: "B", DeliveredQty: 5, RemainingQty: 0},
 	}, true)
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func TestApplyPartialOffloadLines_qtyMath(t *testing.T) {
 func TestApplyPartialOffloadLines_mismatch(t *testing.T) {
 	current := []LineItem{{SKU: "A", Quantity: 10, UnitPrice: 100}}
 	_, _, _, err := ApplyPartialOffloadLines(current, []PartialOffloadLine{
-		{SKU: "A", DeliveredQty: 4, RemainingQty: 4},
+		{OrderLineID: "A", DeliveredQty: 4, RemainingQty: 4},
 	}, true)
 	if !errors.Is(err, ErrPartialQtyMismatch) {
 		t.Fatalf("want ErrPartialQtyMismatch, got %v", err)
@@ -44,7 +44,7 @@ func TestApplyPartialOffloadLines_mismatch(t *testing.T) {
 func TestApplyPartialOffloadLines_unknownSKU(t *testing.T) {
 	current := []LineItem{{SKU: "A", Quantity: 1, UnitPrice: 100}}
 	_, _, _, err := ApplyPartialOffloadLines(current, []PartialOffloadLine{
-		{SKU: "Z", DeliveredQty: 1, RemainingQty: 0},
+		{OrderLineID: "Z", DeliveredQty: 1, RemainingQty: 0},
 	}, true)
 	if !errors.Is(err, ErrPartialUnknownSKU) {
 		t.Fatalf("want ErrPartialUnknownSKU, got %v", err)
@@ -54,7 +54,7 @@ func TestApplyPartialOffloadLines_unknownSKU(t *testing.T) {
 func TestApplyPartialOffloadLines_noneDelivered(t *testing.T) {
 	current := []LineItem{{SKU: "A", Quantity: 3, UnitPrice: 50}}
 	updated, del, rem, err := ApplyPartialOffloadLines(current, []PartialOffloadLine{
-		{SKU: "A", DeliveredQty: 0, RemainingQty: 3, Reason: OffloadReasonMissing},
+		{OrderLineID: "A", DeliveredQty: 0, RemainingQty: 3, Reason: OffloadReasonMissing},
 	}, true)
 	if err != nil {
 		t.Fatal(err)

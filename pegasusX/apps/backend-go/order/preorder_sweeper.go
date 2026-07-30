@@ -165,7 +165,7 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 		if !shouldAccept {
 			continue
 		}
-		if err := ValidateStatusTransition(o.Status, StatusAutoAccepted); err != nil {
+		if err := ValidateStatusTransition(string(o.Status), string(StatusAutoAccepted), TransitionOpts{}); err != nil {
 			s.log.Warn("preorder auto-accept transition blocked", "order_id", o.OrderID, "err", err)
 			continue
 		}
@@ -238,7 +238,7 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 	if o.Status != StatusScheduled && o.Status != StatusAutoAccepted {
 		return nil
 	}
-	if err := ValidateStatusTransition(o.Status, StatusPending); err != nil {
+	if err := ValidateStatusTransition(string(o.Status), string(StatusPending), TransitionOpts{}); err != nil {
 		return err
 	}
 	prev := o.Status
