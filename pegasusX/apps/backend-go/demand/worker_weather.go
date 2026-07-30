@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
 )
 
 type WeatherConfig struct {
@@ -29,6 +30,7 @@ type openMeteoResponse struct {
 	Daily struct {
 		Time             []string  `json:"time"`
 		Temperature2mMax []float64 `json:"temperature_2m_max"`
+		Temperature2mMin []float64 `json:"temperature_2m_min"`
 		PrecipitationSum []float64 `json:"precipitation_sum"`
 	} `json:"daily"`
 }
@@ -51,12 +53,52 @@ func (s *Service) RunWeatherIngestionWorker(ctx context.Context, cfg WeatherConf
 	}
 }
 
+var LastWeatherIngestionTime time.Time
+
 func (s *Service) ingestWeather(ctx context.Context, cfg WeatherConfig) error {
+	// Discover active locations directly from Retailers
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT H3Cell, ANY_VALUE(Lat) as Lat, ANY_VALUE(Lng) as Lng
+			FROM Retailers
+			WHERE H3Cell IS NOT NULL
+			GROUP BY H3Cell
+		`,
+	}
+	iter := s.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var locations []Location
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		var h3 string
+		var lat, lng float64
+		if err := row.Columns(&h3, &lat, &lng); err != nil {
+			return err
+		}
+		locations = append(locations, Location{
+			Scope: "h3:" + h3,
+			Lat:   lat,
+			Lng:   lng,
+		})
+	}
+
+	// Fallback to configured locations if database is empty
+	if len(locations) == 0 {
+		locations = cfg.Locations
+	}
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	var allSignals []DemandSignal
 
-	for _, loc := range cfg.Locations {
-		url := fmt.Sprintf("%s?latitude=%f&longitude=%f&daily=temperature_2m_max,precipitation_sum&forecast_days=%d&timezone=auto",
+	for _, loc := range locations {
+		url := fmt.Sprintf("%s?latitude=%f&longitude=%f&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&forecast_days=%d&timezone=auto",
 			cfg.BaseURL, loc.Lat, loc.Lng, cfg.LookaheadDays)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -77,19 +119,21 @@ func (s *Service) ingestWeather(ctx context.Context, cfg WeatherConfig) error {
 		resp.Body.Close()
 
 		for i, dateStr := range forecast.Daily.Time {
-			if i >= len(forecast.Daily.Temperature2mMax) || i >= len(forecast.Daily.PrecipitationSum) {
+			if i >= len(forecast.Daily.Temperature2mMax) || i >= len(forecast.Daily.PrecipitationSum) || i >= len(forecast.Daily.Temperature2mMin) {
 				continue
 			}
 			date, err := time.Parse("2006-01-02", dateStr)
 			if err != nil {
 				continue
 			}
-			temp := forecast.Daily.Temperature2mMax[i]
+			tempMax := forecast.Daily.Temperature2mMax[i]
+			tempMin := forecast.Daily.Temperature2mMin[i]
 			precip := forecast.Daily.PrecipitationSum[i]
 
-			multiplier := calculateWeatherMultiplier(temp, precip)
+			multiplier := calculateWeatherMultiplier(tempMax, precip) // Phase 1 uses max temp for multiplier
 			meta, _ := json.Marshal(map[string]any{
-				"tempMaxC": temp,
+				"tempMaxC": tempMax,
+				"tempMinC": tempMin,
 				"precipMm": precip,
 				"provider": "open-meteo",
 			})
@@ -113,8 +157,14 @@ func (s *Service) ingestWeather(ctx context.Context, cfg WeatherConfig) error {
 	}
 
 	if len(allSignals) > 0 {
-		return s.UpsertSignals(ctx, allSignals)
+		err := s.UpsertSignals(ctx, allSignals)
+		if err == nil {
+			LastWeatherIngestionTime = time.Now().UTC()
+		}
+		return err
 	}
+	
+	LastWeatherIngestionTime = time.Now().UTC()
 	return nil
 }
 

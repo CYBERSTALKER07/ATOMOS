@@ -95,6 +95,17 @@ func (b *driverClaimsBridge) OnDriverException(ctx context.Context, o order.Orde
 	return err
 }
 
+func (b *driverClaimsBridge) GetRemainingClaimable(ctx context.Context, orderID string) (int64, int64, error) {
+	if b == nil || b.svc == nil {
+		return 0, 0, nil
+	}
+	res, err := b.svc.GetRemainingClaimable(ctx, orderID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return res.RemainingClaimableMinor, res.DeliveredGrossMinor, nil
+}
+
 // returnsClaimsBridge adapts returns.Service to claims.ReverseLogisticsOpener.
 type returnsClaimsBridge struct {
 	svc *returns.Service

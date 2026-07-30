@@ -8,10 +8,11 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
-// RunCapacitySnapshotWorker aggregates driver availability + scores into zone capacity.
+// RunCapacitySnapshotWorker triggers recomputation of today and the next 2 days.
 func (s *Service) RunCapacitySnapshotWorker(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -20,90 +21,222 @@ func (s *Service) RunCapacitySnapshotWorker(ctx context.Context, interval time.D
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := s.RunCapacitySnapshot(ctx); err != nil {
+			now := time.Now().In(time.FixedZone("Asia/Tashkent", 5*3600))
+			// Compute for today + 2 days
+			if err := s.Recompute(ctx, now, now.AddDate(0, 0, 2)); err != nil {
 				slog.Error("capacity snapshot failed", "error", err)
 			}
 		}
 	}
 }
 
-type zoneAgg struct {
-	totalCapacity float64
-	usedCapacity  float64
+type capacityOutbox struct {
+	ZoneH3        string    `json:"zoneH3"`
+	Date          string    `json:"date"`
+	TotalCapacity float64   `json:"totalCapacity"`
+	UsedCapacity  float64   `json:"usedCapacity"`
+	ComputedAt    time.Time `json:"computedAt"`
 }
 
-// RunCapacitySnapshot computes zone capacity from availability + scores.
-func (s *Service) RunCapacitySnapshot(ctx context.Context) error {
-	now := time.Now().UTC()
-	today := civil.DateOf(now)
+// Recompute recalculates zone capacity for a date range globally.
+func (s *Service) Recompute(ctx context.Context, from, to time.Time) error {
+	return s.doRecompute(ctx, civil.DateOf(from), civil.DateOf(to), "")
+}
 
-	// Join DriverAvailability with DriverScores for today.
-	stmt := spanner.Statement{
+// RecomputeZoneDay recalculates capacity for a single zone on a specific date.
+func (s *Service) RecomputeZoneDay(ctx context.Context, zoneH3 string, date time.Time) error {
+	d := civil.DateOf(date)
+	return s.doRecompute(ctx, d, d, zoneH3)
+}
+
+func (s *Service) doRecompute(ctx context.Context, from, to civil.Date, filterZone string) error {
+	now := time.Now().UTC()
+
+	// 1. Fetch available driver capacity
+	capStmt := spanner.Statement{
 		SQL: `
 			SELECT
 				da.ZoneH3,
+				da.Date,
 				da.AvailableHours,
+				da.Status,
 				COALESCE(ds.StopsPerHour, 3.0) as StopsPerHour,
-				COALESCE(ds.Score, 50.0) as Score
+				COALESCE(ds.Score, 70.0) as Score
 			FROM DriverAvailability da
 			LEFT JOIN DriverScores ds ON da.DriverId = ds.DriverId
-			WHERE da.Date = @Today AND da.Status != 'OFF'
+			WHERE da.Date >= @From AND da.Date <= @To
+			  AND da.Status IN ('AVAILABLE', 'LIMITED')
 		`,
 		Params: map[string]interface{}{
-			"Today": today,
+			"From": from,
+			"To":   to,
 		},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	if filterZone != "" {
+		capStmt.SQL += " AND da.ZoneH3 = @Zone"
+		capStmt.Params["Zone"] = filterZone
+	}
+
+	iter := s.spanner.Single().Query(ctx, capStmt)
 	defer iter.Stop()
 
-	zones := make(map[string]*zoneAgg)
+	type zoneDate struct {
+		zone string
+		date civil.Date
+	}
+	type agg struct {
+		totalCapacity float64
+		usedCapacity  float64
+	}
+
+	aggregates := make(map[zoneDate]*agg)
+
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("query zone capacity: %w", err)
+			return fmt.Errorf("query capacity: %w", err)
 		}
 
 		var zoneH3 spanner.NullString
+		var date civil.Date
 		var availableHours, stopsPerHour, score float64
-		if err := row.Columns(&zoneH3, &availableHours, &stopsPerHour, &score); err != nil {
-			return fmt.Errorf("scan zone row: %w", err)
+		var status string
+
+		if err := row.Columns(&zoneH3, &date, &availableHours, &status, &stopsPerHour, &score); err != nil {
+			return fmt.Errorf("scan capacity row: %w", err)
 		}
 
-		zone := "UNKNOWN"
-		if zoneH3.Valid && zoneH3.StringVal != "" {
-			zone = zoneH3.StringVal
+		if !zoneH3.Valid || zoneH3.StringVal == "" {
+			continue
+		}
+		
+		zd := zoneDate{zone: zoneH3.StringVal, date: date}
+		if _, ok := aggregates[zd]; !ok {
+			aggregates[zd] = &agg{}
 		}
 
-		if _, ok := zones[zone]; !ok {
-			zones[zone] = &zoneAgg{}
+		// Apply rules: Score fallback=70, stopsPerHour fallback=3.0 (done in SQL COALESCE)
+		// LIMITED status reduces hours by 0.6
+		hours := availableHours
+		if status == "LIMITED" {
+			hours *= 0.6
 		}
 
-		// AvailableCapacity = hours × stopsPerHour × (score/100)
+		// Avoid 0 division if stopsPerHour was recorded as 0
+		if stopsPerHour <= 0 {
+			stopsPerHour = 3.0
+		}
+
 		scoreFactor := score / 100.0
-		zones[zone].totalCapacity += availableHours * stopsPerHour * scoreFactor
+		aggregates[zd].totalCapacity += hours * stopsPerHour * scoreFactor
 	}
 
-	// Write zone capacities
+	// 2. Compute UsedCapacity from assigned orders
+	usedStmt := spanner.Statement{
+		SQL: `
+			SELECT 
+				ZoneH3, 
+				DATE(PromisedBy, 'Asia/Tashkent') as AssignedDate,
+				COUNT(*) as AssignedStops
+			FROM Orders
+			WHERE Status IN ('ASSIGNED', 'IN_TRANSIT')
+			  AND DATE(PromisedBy, 'Asia/Tashkent') >= CAST(@From AS STRING)
+			  AND DATE(PromisedBy, 'Asia/Tashkent') <= CAST(@To AS STRING)
+			GROUP BY ZoneH3, AssignedDate
+		`,
+		Params: map[string]interface{}{
+			"From": from.String(),
+			"To":   to.String(),
+		},
+	}
+	if filterZone != "" {
+		usedStmt.SQL += " AND ZoneH3 = @Zone"
+		usedStmt.Params["Zone"] = filterZone
+	}
+	
+	uIter := s.spanner.Single().Query(ctx, usedStmt)
+	defer uIter.Stop()
+	for {
+		row, err := uIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query used capacity: %w", err)
+		}
+
+		var zoneH3 spanner.NullString
+		var assignedDate spanner.NullDate
+		var assignedStops int64
+
+		if err := row.Columns(&zoneH3, &assignedDate, &assignedStops); err != nil {
+			return fmt.Errorf("scan used capacity row: %w", err)
+		}
+
+		if !zoneH3.Valid || zoneH3.StringVal == "" || !assignedDate.Valid {
+			continue
+		}
+
+		zd := zoneDate{zone: zoneH3.StringVal, date: assignedDate.Date}
+		if _, ok := aggregates[zd]; !ok {
+			aggregates[zd] = &agg{} // Track zones that have demand but no capacity (0 TotalCapacity explicitly)
+		}
+		aggregates[zd].usedCapacity += float64(assignedStops)
+	}
+
+	// 3. Write mutations & outbox
 	var mutations []*spanner.Mutation
-	for zone, agg := range zones {
+	var events []capacityOutbox
+
+	for zd, a := range aggregates {
 		mutations = append(mutations, spanner.InsertOrUpdateMap("ZoneCapacity", map[string]interface{}{
-			"ZoneH3":        zone,
-			"Date":          today,
-			"TotalCapacity": agg.totalCapacity,
-			"UsedCapacity":  agg.usedCapacity, // Phase 1: 0 until dispatch integration
+			"ZoneH3":        zd.zone,
+			"Date":          zd.date,
+			"TotalCapacity": a.totalCapacity,
+			"UsedCapacity":  a.usedCapacity,
 			"ComputedAt":    now,
 		}))
+		
+		events = append(events, capacityOutbox{
+			ZoneH3:        zd.zone,
+			Date:          zd.date.String(),
+			TotalCapacity: a.totalCapacity,
+			UsedCapacity:  a.usedCapacity,
+			ComputedAt:    now,
+		})
+
+		if len(mutations) >= 500 {
+			if err := s.flushCapacityMutations(ctx, mutations, events); err != nil {
+				return err
+			}
+			mutations = nil
+			events = nil
+		}
 	}
 
 	if len(mutations) > 0 {
-		if _, err := s.spanner.Apply(ctx, mutations); err != nil {
-			return fmt.Errorf("apply zone capacity mutations: %w", err)
+		if err := s.flushCapacityMutations(ctx, mutations, events); err != nil {
+			return err
 		}
 	}
 
-	slog.Info("capacity snapshot complete", "zones", len(zones))
+	slog.Info("zone capacity recompute complete", "zones", len(aggregates))
 	return nil
 }
+
+func (s *Service) flushCapacityMutations(ctx context.Context, mutations []*spanner.Mutation, events []capacityOutbox) error {
+	_, err := s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &txBuf{mutations: &mutations}
+		for _, ev := range events {
+			// capacity.zone.updated
+			aggregateID := fmt.Sprintf("%s|%s", ev.ZoneH3, ev.Date)
+			_ = outbox.EmitJSON(ctx, buf, "ZoneCapacity", aggregateID, "capacity.zone.updated", ev)
+		}
+		return txn.BufferWrite(mutations)
+	})
+	return err
+}
+

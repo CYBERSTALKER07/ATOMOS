@@ -695,6 +695,7 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 // claimsBridge is optional — set from bootstrap to open Claims rows from driver OS&D.
 type claimsBridge interface {
 	OnDriverException(ctx context.Context, o Order, driverID string, items []ExceptionReportItem, photos []string, note string) error
+	GetRemainingClaimable(ctx context.Context, orderID string) (RemainingClaimableMinor int64, DeliveredGrossMinor int64, err error)
 }
 
 // SetClaimsBridge wires the claims domain bridge (optional).

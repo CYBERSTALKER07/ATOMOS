@@ -373,12 +373,12 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		// Retailer may claim a lower amount; never higher than order-priced total.
 		amountMinor = req.AmountMinor
 	}
-	// Prefer original commercial total when present (post-amend TotalMinor may be lower).
-	ceiling := o.OriginalTotalMinor
-	if ceiling <= 0 {
-		ceiling = o.TotalMinor
+	// Canonical integer-safe residual check.
+	rem, err := s.GetRemainingClaimable(ctx, orderID)
+	if err != nil {
+		return Claim{}, err
 	}
-	amountMinor = CapAmount(amountMinor, ceiling)
+	amountMinor = CapAmount(amountMinor, rem.RemainingClaimableMinor)
 
 	currency := strings.TrimSpace(req.Currency)
 	if currency == "" {
@@ -514,11 +514,11 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 			return Claim{}, err
 		}
 		pricedLines = pl
-		ceiling := o.OriginalTotalMinor
-		if ceiling <= 0 {
-			ceiling = o.TotalMinor
+		rem, err := s.GetRemainingClaimable(ctx, o.OrderID)
+		if err != nil {
+			return Claim{}, err
 		}
-		amount = CapAmount(total, ceiling)
+		amount = CapAmount(total, rem.RemainingClaimableMinor)
 	}
 	now := s.now().UTC()
 	claimID := "clm_" + s.newID()
@@ -643,6 +643,15 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		}
 		amount = req.AmountMinor
 	}
+	
+	rem, err := s.GetRemainingClaimable(ctx, c.OrderID)
+	if err != nil {
+		return Claim{}, SettlementResult{}, err
+	}
+	if amount > rem.RemainingClaimableMinor {
+		return Claim{}, SettlementResult{}, fmt.Errorf("%w: approve amount %d exceeds remaining claimable %d", ErrPricingFailed, amount, rem.RemainingClaimableMinor)
+	}
+
 	if amount <= 0 {
 		return Claim{}, SettlementResult{}, fmt.Errorf("%w: non-positive chargeback amount", ErrPricingFailed)
 	}

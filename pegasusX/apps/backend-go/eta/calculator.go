@@ -38,6 +38,12 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 	if confidence < 0 {
 		confidence = 0
 	}
+	
+	// Rule: If historical data is thin (< 10 samples) -> widen the window and lower confidence.
+	isThinData := profile.RecentStopCount < 10
+	if isThinData && confidence > 0.5 {
+		confidence = 0.5
+	}
 
 	currentTime := now
 	currentLat := driverLat
@@ -67,10 +73,19 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 		if bufferMinutes < 5.0 {
 			bufferMinutes = 5.0
 		}
+		
+		if isThinData {
+			bufferMinutes *= 1.5 // Widen the window for thin historical data
+		}
 
 		windowStart := predictedArrival.Add(-time.Duration(bufferMinutes) * time.Minute)
 		windowEnd := predictedArrival.Add(time.Duration(bufferMinutes) * time.Minute)
 
+		thinDataVal := 0.0
+		if isThinData {
+			thinDataVal = 1.0
+		}
+		
 		factors := map[string]float64{
 			"travel_minutes":                   travelMinutes,
 			"remaining_stops_duration_minutes": stopDuration,
@@ -78,6 +93,7 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 			"shop_closed_buffer_minutes":       shopClosedBuffer,
 			"historical_speed_km_h":            speed,
 			"avg_stop_duration_minutes":        stopDuration,
+			"is_thin_data":                     thinDataVal,
 		}
 
 		eta := RouteETA{
@@ -99,3 +115,4 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 
 	return etas
 }
+

@@ -508,7 +508,7 @@ func (s *Service) listForceCompletesFromOrders(ctx context.Context, supplierID s
 }
 
 func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, limit int) ([]ComplianceClaimMismatchRow, error) {
-	// Open/approved claims whose amount exceeds order total, or open claims on cancelled orders.
+	// Query open/approved claims for this supplier. We fetch more than limit because we filter in memory.
 	stmt := spanner.Statement{
 		SQL: `SELECT c.ClaimId, c.OrderId, c.RetailerId, c.Status, IFNULL(c.AmountMinor, 0),
 		             IFNULL(c.Currency, ''), c.CreatedAt,
@@ -517,22 +517,18 @@ func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, li
 		      JOIN Orders o ON o.OrderId = c.OrderId
 		      WHERE c.SupplierId = @sid
 		        AND c.Status IN UNNEST(@statuses)
-		        AND (
-		          IFNULL(c.AmountMinor, 0) > o.TotalMinor
-		          OR o.Status IN UNNEST(@bad_order)
-		        )
 		      ORDER BY c.CreatedAt DESC
 		      LIMIT @lim`,
 		Params: map[string]any{
 			"sid":      supplierID,
-			"statuses": []string{"FILED", "UNDER_REVIEW", "APPROVED", "PENDING"},
-			"bad_order": []string{string(StatusCancelled), string(StatusReconciliationRequired)},
-			"lim":      int64(limit),
+			"statuses": []string{"OPEN", "FILED", "UNDER_REVIEW", "APPROVED", "PENDING"},
+			"lim":      int64(limit * 3), // Fetch more to allow in-memory filtering
 		},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceClaimMismatchRow, 0)
+
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -550,15 +546,57 @@ func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, li
 			return nil, err
 		}
 		r.OrderStatus = orderStatus
-		if r.ClaimAmountMinor > r.OrderTotalMinor {
-			r.MismatchReason = "claim_amount_exceeds_order_total"
-		} else {
-			r.MismatchReason = "open_claim_on_terminal_order_status"
-		}
 		if r.Currency == "" {
 			r.Currency = "UZS"
 		}
-		out = append(out, r)
+
+		// 1. Terminal order mismatch
+		if r.OrderStatus == string(StatusCancelled) || r.OrderStatus == string(StatusReconciliationRequired) {
+			r.MismatchReason = "open_claim_on_terminal_order_status"
+			out = append(out, r)
+			if len(out) >= limit {
+				break
+			}
+			continue
+		}
+
+		// 2. Value mismatch using canonical canonical GetRemainingClaimable
+		if s.claimsBridge != nil {
+			remMinor, deliveredGross, err := s.claimsBridge.GetRemainingClaimable(ctx, r.OrderID)
+			if err == nil {
+				r.OrderTotalMinor = deliveredGross // overwrite with canonical value
+				// Note: If this claim is already APPROVED, it is already deducted from remMinor by the canonical function.
+				// But for compliance dashboard, if the claim amount itself exceeds the residual that was available before it,
+				// it's a mismatch. For now, since this runs async, if it's open, remMinor is the true remaining.
+				// If it's already approved, this simple check might flag it if it took up all the residual.
+				// We assume here that ClaimAmountMinor > remMinor for OPEN claims is the main mismatch we want.
+				if r.ClaimAmountMinor > remMinor && r.ClaimStatus != "APPROVED" {
+					r.MismatchReason = "claim_amount_exceeds_residual"
+					out = append(out, r)
+					if len(out) >= limit {
+						break
+					}
+					continue
+				} else if r.ClaimAmountMinor > r.OrderTotalMinor {
+					// Fallback for approved claims: shouldn't exceed total order value anyway.
+					r.MismatchReason = "claim_amount_exceeds_order_total"
+					out = append(out, r)
+					if len(out) >= limit {
+						break
+					}
+					continue
+				}
+			}
+		} else {
+			// Fallback if bridge is nil
+			if r.ClaimAmountMinor > r.OrderTotalMinor {
+				r.MismatchReason = "claim_amount_exceeds_order_total"
+				out = append(out, r)
+				if len(out) >= limit {
+					break
+				}
+			}
+		}
 	}
 	return out, nil
 }
