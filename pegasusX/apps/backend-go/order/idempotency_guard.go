@@ -20,10 +20,17 @@ func readLimitedBody(r *http.Request, limit int64) ([]byte, error) {
 	return body, err
 }
 
-func idempotencyKeyFromRequest(r *http.Request) string {
+func idempotencyKeyFromRequest(r *http.Request, body []byte) string {
 	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 	if key == "" {
 		key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+	}
+	if key == "" && len(body) > 0 {
+		var partial struct {
+			IdempotencyKey string `json:"idempotencyKey"`
+		}
+		_ = json.Unmarshal(body, &partial)
+		key = partial.IdempotencyKey
 	}
 	return key
 }
@@ -36,10 +43,28 @@ func sha256HexBytes(body []byte) string {
 // guardIdempotency replays a prior response when the key was seen with the same body.
 // Returns true when the handler should stop.
 func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body []byte) bool {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, body)
 	if key == "" || s.idem == nil {
 		return false
 	}
+
+	// Boss rule: Telemetry timestamp skewed > 5 min -> Reject
+	if len(body) > 0 {
+		var partial struct {
+			ClientTimestamp *time.Time `json:"clientTimestamp"`
+		}
+		if err := json.Unmarshal(body, &partial); err == nil && partial.ClientTimestamp != nil {
+			skew := s.now().Sub(*partial.ClientTimestamp)
+			if skew < 0 {
+				skew = -skew
+			}
+			if skew > 5*time.Minute {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "client_timestamp_skewed"})
+				return true
+			}
+		}
+	}
+
 	hash := sha256HexBytes(body)
 	rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
 	switch {
