@@ -26,6 +26,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case pricing = "Pricing"
     case returns = "Returns"
     case reconciliation = "Reconciliation"
+    case compliance = "Compliance audit"
     case notifications = "Notifications"
     case earnings = "Earnings"
     case profile = "Profile"
@@ -76,6 +77,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .pricing: "dollarsign.circle"
         case .returns: "arrow.uturn.backward"
         case .reconciliation: "scalemass"
+        case .compliance: "checkmark.shield"
         case .notifications: "bell"
         case .earnings: "chart.line.uptrend.xyaxis"
         case .profile: "building.2"
@@ -114,7 +116,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
             .manifests, .dispatchPreview, .activity,
             .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
             .claims, .claimChargebacks,
-            .reconciliation, .operations, .replenishmentPolicies,
+            .reconciliation, .compliance, .operations, .replenishmentPolicies,
             .exceptions,
         ]
     }

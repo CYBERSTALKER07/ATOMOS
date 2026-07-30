@@ -568,6 +568,10 @@ struct ShopClosedAttemptRow: Decodable, Identifiable {
     let driverId: String
     let retailerId: String
     let resolution: String
+    let shopClosedReason: String?
+    let shopClosedResolution: String?
+    let graceEndsAt: String?
+    let shopClosedAt: String?
     let createdAt: String
     let updatedAt: String?
 
@@ -577,6 +581,10 @@ struct ShopClosedAttemptRow: Decodable, Identifiable {
         case driverId = "driver_id"
         case retailerId = "retailer_id"
         case resolution
+        case shopClosedReason = "shop_closed_reason"
+        case shopClosedResolution = "shop_closed_resolution"
+        case graceEndsAt = "grace_ends_at"
+        case shopClosedAt = "shop_closed_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -1999,5 +2007,151 @@ struct PromoSimulateResult: Decodable {
         case projectedMarginMinor = "projected_margin_minor"
         case marginDeltaPct = "margin_delta_pct"
         case sandboxOnly = "sandbox_only"
+    }
+}
+
+// MARK: - Compliance audit dashboard
+
+struct ComplianceSummary: Decodable {
+    let openFiscalCount: Int
+    let forceCompleteCount: Int
+    let claimMismatchCount: Int
+    let creditFreezeCount: Int
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case openFiscalCount = "open_fiscal_count"
+        case forceCompleteCount = "force_complete_count"
+        case claimMismatchCount = "claim_mismatch_count"
+        case creditFreezeCount = "credit_freeze_count"
+        case generatedAt = "generated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        openFiscalCount = try c.decodeIfPresent(Int.self, forKey: .openFiscalCount) ?? 0
+        forceCompleteCount = try c.decodeIfPresent(Int.self, forKey: .forceCompleteCount) ?? 0
+        claimMismatchCount = try c.decodeIfPresent(Int.self, forKey: .claimMismatchCount) ?? 0
+        creditFreezeCount = try c.decodeIfPresent(Int.self, forKey: .creditFreezeCount) ?? 0
+        generatedAt = try c.decodeIfPresent(String.self, forKey: .generatedAt) ?? ""
+    }
+}
+
+struct ComplianceFiscalOpenRow: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let status: String
+    let fiscalStatus: String
+    let totalMinor: Int64
+    let currency: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case status
+        case fiscalStatus = "fiscal_status"
+        case totalMinor = "total_minor"
+        case currency
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        fiscalStatus = try c.decodeIfPresent(String.self, forKey: .fiscalStatus) ?? ""
+        totalMinor = try c.decodeIfPresent(Int64.self, forKey: .totalMinor) ?? 0
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+    }
+}
+
+struct ComplianceForceCompleteRow: Decodable, Identifiable {
+    var id: String { orderId + completedAt }
+    let orderId: String
+    let reasonCode: String
+    let actorId: String
+    let completedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case reasonCode = "reason_code"
+        case actorId = "actor_id"
+        case completedAt = "completed_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        reasonCode = try c.decodeIfPresent(String.self, forKey: .reasonCode) ?? ""
+        actorId = try c.decodeIfPresent(String.self, forKey: .actorId) ?? ""
+        completedAt = try c.decodeIfPresent(String.self, forKey: .completedAt) ?? ""
+    }
+}
+
+struct ComplianceClaimMismatchRow: Decodable, Identifiable {
+    var id: String { claimId }
+    let claimId: String
+    let orderId: String
+    let mismatchReason: String
+
+    enum CodingKeys: String, CodingKey {
+        case claimId = "claim_id"
+        case orderId = "order_id"
+        case mismatchReason = "mismatch_reason"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claimId = try c.decode(String.self, forKey: .claimId)
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        mismatchReason = try c.decodeIfPresent(String.self, forKey: .mismatchReason) ?? ""
+    }
+}
+
+struct ComplianceCreditFreezeRow: Decodable, Identifiable {
+    var id: String { retailerId + status }
+    let retailerId: String
+    let status: String
+    let currentBalanceMinor: Int64
+    let creditLimitMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case status
+        case currentBalanceMinor = "current_balance_minor"
+        case creditLimitMinor = "credit_limit_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decode(String.self, forKey: .retailerId)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        currentBalanceMinor = try c.decodeIfPresent(Int64.self, forKey: .currentBalanceMinor) ?? 0
+        creditLimitMinor = try c.decodeIfPresent(Int64.self, forKey: .creditLimitMinor) ?? 0
+    }
+}
+
+struct ComplianceDashboardResponse: Decodable {
+    let summary: ComplianceSummary
+    let openFiscal: [ComplianceFiscalOpenRow]
+    let forceCompletes: [ComplianceForceCompleteRow]
+    let claimMismatches: [ComplianceClaimMismatchRow]
+    let creditFreezes: [ComplianceCreditFreezeRow]
+
+    enum CodingKeys: String, CodingKey {
+        case summary
+        case openFiscal = "open_fiscal"
+        case forceCompletes = "force_completes"
+        case claimMismatches = "claim_mismatches"
+        case creditFreezes = "credit_freezes"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        summary = try c.decodeIfPresent(ComplianceSummary.self, forKey: .summary)
+            ?? ComplianceSummary(from: try decoder.singleValueContainer() as! Decoder)
+        // Fallback empty if decode fails for optional arrays
+        openFiscal = (try? c.decode([ComplianceFiscalOpenRow].self, forKey: .openFiscal)) ?? []
+        forceCompletes = (try? c.decode([ComplianceForceCompleteRow].self, forKey: .forceCompletes)) ?? []
+        claimMismatches = (try? c.decode([ComplianceClaimMismatchRow].self, forKey: .claimMismatches)) ?? []
+        creditFreezes = (try? c.decode([ComplianceCreditFreezeRow].self, forKey: .creditFreezes)) ?? []
     }
 }

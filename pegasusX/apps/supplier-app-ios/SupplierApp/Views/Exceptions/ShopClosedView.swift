@@ -22,6 +22,15 @@ struct ShopClosedView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(row.orderId).font(.headline)
                         Text("Driver \(row.driverId) · Retailer \(row.retailerId)").font(.caption)
+                        if let reason = row.shopClosedReason, !reason.isEmpty {
+                            Text("Reason \(reason)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        if let grace = row.graceEndsAt, !grace.isEmpty {
+                            Text("Grace ends \(grace)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        if let res = row.shopClosedResolution, !res.isEmpty {
+                            Text("Resolution \(res)").font(.caption2)
+                        }
                         HStack {
                             Button("Wait") { resolve(row.attemptId, action: "WAIT") }
                                 .disabled(busyId == row.attemptId)

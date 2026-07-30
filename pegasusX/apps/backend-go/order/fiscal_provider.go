@@ -1,15 +1,14 @@
 package order
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/fiscal"
+	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
 
 // Fiscal provider selection (ADR-009 hard-gate).
@@ -89,6 +88,8 @@ func ProviderFromEnv() FiscalProvider {
 // FakeFiscalProvider succeeds unless OrderID contains "fiscal-fail" or amount is the SSMR fail hook.
 type FakeFiscalProvider struct{}
 
+func (FakeFiscalProvider) GetSoliqClient() soliq.SoliqClient { return nil }
+
 func (FakeFiscalProvider) CreateReceipt(_ context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
 	if strings.Contains(strings.ToLower(req.OrderID), "fiscal-fail") {
 		return FiscalCreateResult{}, fmt.Errorf("fake_ofd_rejected: order_id=%s", req.OrderID)
@@ -113,6 +114,8 @@ func (FakeFiscalProvider) CreateReceipt(_ context.Context, req FiscalCreateReque
 // hardFailProvider always fails — used when MY_SOLIQ is selected but misconfigured.
 type hardFailProvider struct{ reason string }
 
+func (p hardFailProvider) GetSoliqClient() soliq.SoliqClient { return nil }
+
 func (p hardFailProvider) CreateReceipt(_ context.Context, _ FiscalCreateRequest) (FiscalCreateResult, error) {
 	return FiscalCreateResult{}, fmt.Errorf("ofd_misconfigured: %s", p.reason)
 }
@@ -121,11 +124,9 @@ func (p hardFailProvider) CreateReceipt(_ context.Context, _ FiscalCreateRequest
 // Request/response shapes are intentionally thin so sandbox and production
 // gateways can map without changing the worker contract.
 type MySoliqProvider struct {
-	BaseURL    string
-	APIKey     string
-	TIN        string
-	Path       string
-	HTTPClient *http.Client
+	TIN         string
+	soliqClient soliq.SoliqClient
+	signer      fiscal.EDSSigner
 }
 
 // NewMySoliqProviderFromEnv builds a provider from env; errors if required vars missing.
@@ -156,14 +157,16 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 			timeout = time.Duration(n) * time.Millisecond
 		}
 	}
-	return &MySoliqProvider{
+	cfg := soliq.SoliqConfig{
 		BaseURL: base,
 		APIKey:  key,
 		TIN:     tin,
-		Path:    path,
-		HTTPClient: &http.Client{
-			Timeout: timeout,
-		},
+		Timeout: timeout,
+	}
+	return &MySoliqProvider{
+		TIN:         tin,
+		soliqClient: soliq.NewClient(cfg),
+		// Signer is nil initially, it must be injected or set later for EHFs
 	}, nil
 }
 
@@ -226,55 +229,34 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 			UnitPrice: li.UnitPrice,
 		})
 	}
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq marshal: %w", err)
+	if p.signer == nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq: no EDSSigner configured")
 	}
-	url := p.BaseURL + p.Path
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(raw))
-	if err != nil {
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+p.APIKey)
-	httpReq.Header.Set("X-Idempotency-Key", req.AttemptID)
-	httpReq.Header.Set("X-Taxpayer-TIN", p.TIN)
 
-	client := p.HTTPClient
-	if client == nil {
-		client = &http.Client{Timeout: FiscalOFDTimeout}
-	}
-	resp, err := client.Do(httpReq)
+	signedPayload, err := fiscal.AttachSignature(ctx, p.signer, body)
 	if err != nil {
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq http: %w", err)
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq attach signature: %w", err)
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+
+	resp, err := p.soliqClient.Submit(ctx, signedPayload, req.AttemptID)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq submit: %w", err)
 	}
-	var parsed mySoliqReceiptResponse
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq decode: %w body=%s", err, truncate(string(respBody), 200))
+	if !resp.Success {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq error (code=%s): %s", resp.ErrorCode, resp.ErrorMessage)
 	}
-	if parsed.Error != "" || parsed.Code != "" && strings.EqualFold(parsed.Code, "error") {
-		msg := parsed.Error
-		if msg == "" {
-			msg = parsed.Message
-		}
-		return FiscalCreateResult{}, fmt.Errorf("mysoliq error: %s", msg)
-	}
-	receiptID := firstNonEmpty(parsed.FiscalReceiptID, parsed.ReceiptID)
-	qr := firstNonEmpty(parsed.FiscalQR, parsed.QRURL, parsed.QR)
-	if receiptID == "" {
+	
+	if resp.EhfID == "" {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq missing receipt_id in response")
 	}
 	return FiscalCreateResult{
-		FiscalReceiptID: receiptID,
-		FiscalQR:        qr,
-		RawPayload:      respBody,
+		FiscalReceiptID: resp.EhfID,
+		RawPayload:      resp.RawBody,
 	}, nil
+}
+
+func (p *MySoliqProvider) GetSoliqClient() soliq.SoliqClient {
+	return p.soliqClient
 }
 
 func firstNonEmpty(vals ...string) string {
@@ -292,3 +274,8 @@ func truncate(s string, n int) string {
 	}
 	return s[:n] + "…"
 }
+
+func (p *GlobalPayReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
+func (PegasusReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
+func (multiReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
+

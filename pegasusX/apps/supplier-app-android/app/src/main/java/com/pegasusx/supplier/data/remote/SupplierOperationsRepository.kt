@@ -18,6 +18,9 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getShopClosedActive(): Response<ShopClosedActiveResponse> = api.getShopClosedActive()
 
+    suspend fun getComplianceDashboard(limit: Int = 100): Response<ComplianceDashboardResponse> =
+        api.getComplianceDashboard(limit)
+
     suspend fun getNegotiationsPending(): Response<NegotiationPendingResponse> = api.getNegotiationsPending()
 
     suspend fun resolveShopClosed(

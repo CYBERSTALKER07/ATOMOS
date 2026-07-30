@@ -309,6 +309,11 @@ interface SupplierApi {
         @Query("offset") offset: Int = 0,
     ): Response<ShopClosedActiveResponse>
 
+    @GET("v1/compliance/dashboard")
+    suspend fun getComplianceDashboard(
+        @Query("limit") limit: Int = 100,
+    ): Response<ComplianceDashboardResponse>
+
     @GET("v1/supplier/negotiations/pending")
     suspend fun getNegotiationsPending(
         @Query("limit") limit: Int = 500,

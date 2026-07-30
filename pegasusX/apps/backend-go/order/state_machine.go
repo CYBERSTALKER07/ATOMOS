@@ -20,9 +20,11 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
 	case StatusArrived:
 		// ADR-009: no soft ARRIVED → COMPLETED (fiscal hard-gate).
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested
+		// Shop-closed path: ARRIVED → ARRIVED_SHOP_CLOSED (design SHOP_CLOSED_PENDING).
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested || next == StatusArrivedShopClosed
 	case StatusArrivedShopClosed:
-		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
+		// Design SHOP_CLOSED_PENDING resolutions: payment, credit leave, cancel/return, reopen to ARRIVED.
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelled || next == StatusArrived || next == StatusCancelRequested
 	case StatusDeliveredOnCredit:
 		// §9.1: fiscal only when money received — settlement capture enters FISCALIZING.
 		// Force-complete does not start from credit leave-behind (must settle money first).

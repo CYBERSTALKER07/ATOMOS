@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"cloud.google.com/go/spanner"
 	"errors"
 	"io"
 	"log/slog"
@@ -1052,4 +1053,22 @@ func deliveryTestOrder(status Status) Order {
 
 func (r *testRepo) ListManifestOrders(_ context.Context, manifestID string) ([]Order, error) {
 	return nil, nil
+}
+
+func (r *testRepo) FindPendingBuyerAcceptance(_ context.Context, _ int) ([]*Order, error) {
+	return nil, nil
+}
+
+func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
+	r.updateCalls++
+	r.captured = o
+	r.order = o // Update the mocked return value so subsequent GetOrder calls see the new state
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	return nil
 }

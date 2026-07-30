@@ -89,12 +89,25 @@ class ShopClosedWaitingViewModel @Inject constructor(
         }
     }
 
-    fun reportShopClosed(orderId: String) {
+    fun reportShopClosed(
+        orderId: String,
+        reason: String = "CLOSED",
+        latitude: Double? = null,
+        longitude: Double? = null,
+        photoUrl: String? = null,
+    ) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
+                val body = buildMap {
+                    put("order_id", orderId)
+                    put("reason", reason)
+                    latitude?.let { put("latitude", it.toString()) }
+                    longitude?.let { put("longitude", it.toString()) }
+                    photoUrl?.takeIf { it.isNotBlank() }?.let { put("photo_url", it) }
+                }
                 api.reportShopClosed(
-                    mapOf("order_id" to orderId),
+                    body,
                     DriverIdempotencyKeys.reportShopClosed(orderId),
                 )
                 _state.update { it.copy(isSubmitting = false) }

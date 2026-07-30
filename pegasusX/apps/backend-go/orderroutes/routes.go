@@ -6,13 +6,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service             *order.Service
 	ClaimsService       *claims.Service
+	TaxService          *tax.Service
+	ComplianceHandler   *compliance.Handler
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 	AllowAuthBypass     bool
@@ -63,6 +67,19 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/supplier/claims", d.ClaimsService.HandleListSupplierClaims)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/approve", d.ClaimsService.HandleApproveClaim)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/claims/{claimID}/reject", d.ClaimsService.HandleRejectClaim)
+		}
+
+		// Tax regime versioning (admin CRUD).
+		if d.TaxService != nil {
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/admin/tax-regimes", d.TaxService.HandleCreateRegime)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/admin/tax-regimes", d.TaxService.HandleListRegimes)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/admin/tax-regimes/{regimeID}", d.TaxService.HandleGetRegime)
+		}
+		
+		// Compliance / Audit Dashboard
+		if d.ComplianceHandler != nil {
+			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)
+			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/compliance/export", d.ComplianceHandler.ExportCSV)
 		}
 	}
 

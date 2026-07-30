@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum OrderMutationAction: String, Identifiable {
+enum OrderMutationAction: String, Identifiable {
     case reject
     case overflow
 
@@ -46,29 +46,15 @@ struct OrderDetailView: View {
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())
                     }
-                    if showOps(for: order.state) {
-                        Section("Quick actions") {
-                            if canProposeDate(order.state) {
-                                DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
-                                Button("Propose new date") { showProposeSheet = true }
-                                    .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
-                            TextField("Reason (required for propose and cancel)", text: $reasonInput, axis: .vertical)
-                                .lineLimit(2...4)
-                            if canOverflow(order.state) {
-                                Button("Return to dispatch pool") { pendingAction = .overflow }
-                                    .disabled(mutating)
-                            }
-                            if canReject(order.state) {
-                                Button("Cancel order", role: .destructive) { pendingAction = .reject }
-                                    .disabled(mutating)
-                            }
-                            if canReassign(order.state) {
-                                Button("Reassign order") { loadRecommendations() }
-                                    .disabled(mutating)
-                            }
-                        }
-                    }
+                    OrderOpsActions(
+                        state: order.state,
+                        proposeDate: $proposeDate,
+                        reasonInput: $reasonInput,
+                        showProposeSheet: $showProposeSheet,
+                        pendingAction: $pendingAction,
+                        mutating: mutating,
+                        onLoadRecommendations: { loadRecommendations() }
+                    )
                     OrderLineItems(lineItems: order.lineItems)
                 }
             }
@@ -235,29 +221,7 @@ struct OrderDetailView: View {
         }
     }
 
-    private func showOps(for state: String) -> Bool {
-        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state)
-    }
 
-    private func canProposeDate(_ state: String) -> Bool {
-        let s = state.uppercased()
-        let terminal = s == "COMPLETED" || s == "CANCELLED"
-        let inFlight = s == "LOADED" || s == "IN_TRANSIT"
-        return !terminal && !inFlight
-    }
-
-    private func canReject(_ state: String) -> Bool {
-        let s = state.uppercased()
-        return ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(s)
-    }
-
-    private func canOverflow(_ state: String) -> Bool {
-        ["LOADED", "IN_TRANSIT"].contains(state.uppercased())
-    }
-
-    private func canReassign(_ state: String) -> Bool {
-        ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(state.uppercased())
-    }
 
     private func alertTitle(for action: OrderMutationAction) -> String {
         switch action {

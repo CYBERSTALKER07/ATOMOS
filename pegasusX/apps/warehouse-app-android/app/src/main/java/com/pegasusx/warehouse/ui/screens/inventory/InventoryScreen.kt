@@ -25,6 +25,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasusx.warehouse.ui.components.InventoryStockList
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

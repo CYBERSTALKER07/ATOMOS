@@ -223,8 +223,9 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	var req struct {
-		OrderID       string `json:"order_id"`
-		PhotoProofURL string `json:"photo_proof_url"`
+		OrderID          string `json:"order_id"`
+		PhotoProofURL    string `json:"photo_proof_url"`
+		ForceBypassToken string `json:"force_bypass_token,omitempty"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -237,6 +238,12 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	// Proximity gate: credit leave only when unlocked or supervised FORCE_BYPASS.
+	if err := s.requireProximityUnlocked(ctx, req.OrderID, req.ForceBypassToken); err != nil {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": ErrProximityLocked.Error()})
+		return
+	}
+
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:    req.OrderID,
 		NextStatus: StatusDeliveredOnCredit,
@@ -245,16 +252,45 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			if o.Status != StatusArrived && o.Status != StatusArrivedShopClosed {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED (current: %s)", o.Status)
 			}
+			// Block if already in fiscal path.
+			if o.Status == StatusFiscalizing || o.FiscalStatus == FiscalStatusPending || o.FiscalStatus == FiscalStatusSuccess {
+				return fmt.Errorf("credit leave blocked: fiscal state %s", o.FiscalStatus)
+			}
+			if s.credit != nil && o.TotalMinor > 0 {
+				check, cerr := s.credit.CheckOrder(ctx, o.RetailerID, o.SupplierID, o.TotalMinor)
+				if cerr != nil {
+					return cerr
+				}
+				if !check.Allowed {
+					return fmt.Errorf("%w: %s", ErrCreditLimitBreached, check.Reason)
+				}
+			}
 			return nil
 		},
+		PrepareOrder: func(o *Order, _ Status) {
+			if o.ShopClosedResolution == "" {
+				o.ShopClosedResolution = ShopClosedResCreditLeave
+			}
+		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
 				OrderID:    orderRecord.OrderID,
 				DriverID:   claims.Subject,
 				SupplierID: orderRecord.SupplierID,
 				RetailerID: orderRecord.RetailerID,
 				Status:     string(StatusDeliveredOnCredit),
+			}); err != nil {
+				return err
+			}
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventCreditLeave, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+				OrderID:    orderRecord.OrderID,
+				DriverID:   claims.Subject,
+				SupplierID: orderRecord.SupplierID,
+				RetailerID: orderRecord.RetailerID,
+				Status:     string(StatusDeliveredOnCredit),
+				Resolution: ShopClosedResCreditLeave,
 			})
 		},
 	})

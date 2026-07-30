@@ -40,6 +40,7 @@ fun TreasuryHubScreen(
     onChargebacks: () -> Unit,
     onClaimChargebacks: () -> Unit = {},
     onClaims: () -> Unit = {},
+    onCompliance: () -> Unit = {},
     viewModel: TreasuryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.hubState.collectAsStateWithLifecycle()
@@ -50,6 +51,7 @@ fun TreasuryHubScreen(
         TreasuryLink("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
         TreasuryLink("Payments", "Settlement authority", Icons.Default.CreditCard, onPayments),
         TreasuryLink("Reconciliation", "Settlement mismatches", Icons.Default.Balance, onReconciliation),
+        TreasuryLink("Compliance audit", "Open fiscal, force-completes, freezes", Icons.Default.Gavel, onCompliance),
         TreasuryLink("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         TreasuryLink("Chargebacks", "Record chargeback or reversal", Icons.Default.Undo, onChargebacks),
         TreasuryLink("Claim chargebacks", "Logistics claim settlements", Icons.Default.Description, onClaimChargebacks),

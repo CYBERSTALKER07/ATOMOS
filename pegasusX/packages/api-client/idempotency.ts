@@ -312,6 +312,14 @@ export function driverReportShopClosedKey(driverId: string, orderId: string): st
   return `driver-report-shop-closed:${driverId}:${orderId}`;
 }
 
+export function driverProximityUnlockKey(driverId: string, orderId: string): string {
+  return `driver-proximity-unlock:${driverId}:${orderId}`;
+}
+
+export function driverPartialOffloadKey(driverId: string, orderId: string, fingerprint: string): string {
+  return `driver-partial-offload:${driverId}:${orderId}:${stableHash(fingerprint)}`;
+}
+
 export function supplierShopClosedResolveKey(attemptId: string, action: string): string {
   return `shop-closed-resolve:${attemptId}:${action}`;
 }

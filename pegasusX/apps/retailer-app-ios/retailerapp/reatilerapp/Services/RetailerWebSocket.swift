@@ -387,7 +387,7 @@ final class RetailerWebSocket {
                     ?? "Driver"
                 let attemptId = json["attempt_id"] as? String ?? ""
                 let options = json["options"] as? [String]
-                    ?? ["OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY"]
+                    ?? ["OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY", "RESCHEDULE", "CREDIT_LEAVE", "CANCEL", "AUTHORIZE_BYPASS"]
                 let event = ShopClosedAlertEvent(
                     type: type,
                     orderId: orderId,

@@ -50,7 +50,10 @@ data class CashCollectionUiState(
     val overageMinor: Long = 0,
     val error: String? = null,
     val distanceM: Double? = null,
-    val locationAvailable: Boolean = true
+    val locationAvailable: Boolean = true,
+    /** Settlement proximity status for UI badge. */
+    val proximityUnlocked: Boolean = false,
+    val proximityMethod: String? = null,
 ) {
     val varianceMinor: Long get() = amountReceivedMinor - amount
 }
@@ -216,6 +219,26 @@ class CashCollectionViewModel @Inject constructor(
                         it.copy(isCompleting = false, error = "Amount received cannot be negative.")
                     }
                     return@launch
+                }
+                // Settlement proximity unlock (≤100 m / H3) before cash collect.
+                runCatching {
+                    api.proximityUnlock(
+                        mapOf(
+                            "order_id" to orderId,
+                            "latitude" to location.latitude,
+                            "longitude" to location.longitude,
+                        ),
+                        DriverIdempotencyKeys.proximityUnlock(orderId),
+                    )
+                }.onSuccess { unlock ->
+                    val unlocked = (unlock["proximity_unlocked"] as? Boolean) == true
+                        || unlock["proximity_unlocked"]?.toString() == "true"
+                    _state.update {
+                        it.copy(
+                            proximityUnlocked = unlocked,
+                            proximityMethod = unlock["proximity_method"]?.toString(),
+                        )
+                    }
                 }
                 val resp = api.collectCash(
                     request = CollectCashRequest(

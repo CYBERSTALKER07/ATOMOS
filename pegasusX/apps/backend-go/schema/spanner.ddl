@@ -179,6 +179,8 @@ CREATE TABLE Orders (
   DeliveryProposalAt TIMESTAMP,
   DeliveryProposalBy STRING(128),
   DeliveryProposalReason STRING(512),
+  BuyerAcceptanceStatus STRING(MAX),
+  BuyerAcceptanceDeadline TIMESTAMP,
   Version          INT64         NOT NULL,
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -198,6 +200,7 @@ CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByStatusWarehouse ON Orders(Status, WarehouseId, CreatedAt DESC);
+CREATE INDEX Idx_Orders_BuyerAcceptance ON Orders(FiscalStatus, BuyerAcceptanceStatus, BuyerAcceptanceDeadline);
 
 CREATE TABLE SupplierReturns (
   ReturnId          STRING(36)  NOT NULL,
@@ -1260,3 +1263,73 @@ ALTER TABLE Orders ADD COLUMN FiscalStatus STRING(32);
 ALTER TABLE Orders ADD COLUMN LatestFiscalReceiptId STRING(128);
 ALTER TABLE Orders ADD COLUMN FiscalizedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN LatestFiscalAttemptId STRING(36);
+
+-- Enhanced shop-closed + proximity settlement + partial offload (2026-07-29).
+-- Wire status ARRIVED_SHOP_CLOSED ≡ design SHOP_CLOSED_PENDING.
+-- Partial line qty lives in LineItemsJson (DeliveredQty/RemainingQty/OffloadStatus).
+ALTER TABLE Orders ADD COLUMN ShopClosedAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ShopClosedReason STRING(64);
+ALTER TABLE Orders ADD COLUMN ShopClosedGraceEndsAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ShopClosedResolution STRING(32);
+ALTER TABLE Orders ADD COLUMN PartialDelivery BOOL;
+ALTER TABLE Orders ADD COLUMN ProximityUnlockedAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ProximityMethod STRING(16);
+
+CREATE TABLE OrderShopClosedLog (
+  OrderId   STRING(36) NOT NULL,
+  EventId   STRING(36) NOT NULL,
+  Actor     STRING(64) NOT NULL,
+  Action    STRING(32) NOT NULL,
+  Payload   BYTES(MAX),
+  CreatedAt TIMESTAMP NOT NULL,
+) PRIMARY KEY (OrderId, EventId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE INDEX Idx_OrderShopClosedLog_ByOrderCreated
+  ON OrderShopClosedLog(OrderId, CreatedAt DESC);
+
+-- ───────────────────────────────────────────────────────────────────────────────
+-- Tax Regime Versioning — versioned tax configurations + per-line fiscal snapshots
+-- ───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE TaxRegimeVersions (
+  Id             STRING(36)  NOT NULL,
+  CountryCode    STRING(2)   NOT NULL,
+  EffectiveFrom  TIMESTAMP   NOT NULL,
+  EffectiveTo    TIMESTAMP,
+  Currency       STRING(3)   NOT NULL,
+  VatRatesBps    ARRAY<INT64>,
+  SimplifiedRules JSON,
+  CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  CreatedBy      STRING(64)  NOT NULL,
+  UpdatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (Id);
+
+CREATE INDEX Idx_TaxRegimeVersions_Effective
+  ON TaxRegimeVersions(CountryCode, EffectiveFrom DESC);
+
+CREATE TABLE OrderLineFiscalSnapshots (
+  OrderId           STRING(36) NOT NULL,
+  LineSku           STRING(64) NOT NULL,
+  RegimeVersionId   STRING(36) NOT NULL,
+  TaxableMinor      INT64      NOT NULL,
+  VatMinor          INT64      NOT NULL,
+  TotalMinor        INT64      NOT NULL,
+  AppliedVatRateBps INT64      NOT NULL,
+) PRIMARY KEY (OrderId, LineSku),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE TABLE ExceptionTickets (
+    TicketId STRING(36) NOT NULL,
+    Type STRING(64) NOT NULL,
+    OrderId STRING(36) NOT NULL,
+    EhfId STRING(64),
+    Severity STRING(16) NOT NULL,
+    Status STRING(32) NOT NULL,
+    Title STRING(256) NOT NULL,
+    Description STRING(MAX),
+    AssignedRole STRING(64),
+    CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+    CreatedBy STRING(128),
+    Payload JSON
+) PRIMARY KEY (TicketId);

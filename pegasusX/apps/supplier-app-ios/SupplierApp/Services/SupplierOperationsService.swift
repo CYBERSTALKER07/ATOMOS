@@ -21,6 +21,10 @@ enum SupplierOperationsService {
         return resp.data
     }
 
+    static func complianceDashboard(limit: Int = 100) async throws -> ComplianceDashboardResponse {
+        try await APIClient.shared.get("v1/compliance/dashboard?limit=\(limit)")
+    }
+
     static func negotiationsPending(limit: Int = 500, offset: Int = 0) async throws -> [NegotiationProposalRow] {
         let resp: NegotiationPendingResponse = try await APIClient.shared.get(
             "v1/supplier/negotiations/pending?limit=\(limit)&offset=\(offset)"

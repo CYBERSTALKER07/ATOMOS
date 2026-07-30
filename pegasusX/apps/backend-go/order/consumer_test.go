@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"cloud.google.com/go/spanner"
 	"encoding/json"
 	"log/slog"
 	"testing"
@@ -173,4 +174,12 @@ func TestEventConsumer_DeliveryDisputed(t *testing.T) {
 	if err := consumer.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
 		t.Fatalf("HandleEvent: %v", err)
 	}
+}
+
+func (r *consumerRepoStub) FindPendingBuyerAcceptance(_ context.Context, _ int) ([]*Order, error) {
+	return nil, nil
+}
+
+func (r *consumerRepoStub) UpdateOrderWithTxn(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, _ func(outbox.TxnBuffer) error) error {
+	return nil
 }

@@ -34,6 +34,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -109,9 +110,11 @@ var (
 	ErrFiscalAlreadySucceeded    = errors.New("fiscal_already_succeeded")
 	ErrCashAmountRequired        = errors.New("cash_amount_required")
 	ErrCashAmountNegative        = errors.New("cash_amount_negative")
+	ErrProximityRequired         = errors.New("proximity_required")
 )
 
 // LineItem is one line on an order.
+// Partial offload fields are additive JSON on LineItemsJson (no OrderLines table).
 type LineItem struct {
 	SKU               string   `json:"sku"`
 	Name              string   `json:"name"`
@@ -125,6 +128,11 @@ type LineItem struct {
 	IsPerishable      bool     `json:"is_perishable,omitempty"`
 	StorageTempMinC   *float64 `json:"storage_temp_min_c,omitempty"`
 	StorageTempMaxC   *float64 `json:"storage_temp_max_c,omitempty"`
+	// Partial offload (doorstep): DeliveredQty + RemainingQty == Quantity when set.
+	DeliveredQty  int64  `json:"delivered_qty,omitempty"`
+	RemainingQty  int64  `json:"remaining_qty,omitempty"`
+	OffloadStatus string `json:"offload_status,omitempty"` // FULL|PARTIAL|NONE|RETURNED
+	OffloadReason string `json:"offload_reason,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -180,6 +188,18 @@ type Order struct {
 	LatestFiscalAttemptID  string
 	FiscalizedAt           *time.Time
 
+	// Shop-closed / proximity / partial (additive Orders columns; 2026-07-29).
+	ShopClosedAt         *time.Time
+	ShopClosedReason     string
+	ShopClosedGraceEndsAt *time.Time
+	ShopClosedResolution string
+	PartialDelivery      bool
+	ProximityUnlockedAt  *time.Time
+	ProximityMethod      string
+
+	BuyerAcceptanceStatus   string
+	BuyerAcceptanceDeadline *time.Time
+
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
 	// ConditionReports is written in the same UpdateOrder transaction and not stored on Orders.
@@ -188,6 +208,25 @@ type Order struct {
 	PendingFiscalReceipts []FiscalReceiptRow `json:"-"`
 	// FiscalReceiptUpdate updates an existing attempt row (PENDING → SUCCESS|FAILED).
 	FiscalReceiptUpdate *FiscalReceiptRow `json:"-"`
+	// PendingFiscalSnapshots are inserted in the same UpdateOrder transaction at COMPLETED time.
+	PendingFiscalSnapshots []tax.OrderLineFiscalSnapshot `json:"-"`
+	// PendingExceptionTicket is written in the same UpdateOrder transaction.
+	PendingExceptionTicket *ExceptionTicket `json:"-"`
+}
+
+type ExceptionTicket struct {
+	TicketID     string
+	Type         string
+	OrderID      string
+	EhfID        string
+	Severity     string
+	Status       string
+	Title        string
+	Description  string
+	AssignedRole string
+	CreatedAt    time.Time
+	CreatedBy    string
+	Payload      json.RawMessage
 }
 
 // DeliveryProofType classifies one immutable delivery handoff proof row.
@@ -222,11 +261,14 @@ type DeliveryProofArtifact struct {
 type Repository interface {
 	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error
 	UpdateOrder(ctx context.Context, o Order, proofs []DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error
+	UpdateOrderWithTxn(ctx context.Context, o Order, proofs []DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
 	// GetFiscalAttempt loads one OrderFiscalReceipts row (ADR-009 worker idempotency).
 	GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error)
 	// GetFiscalByReceiptID loads a successful attempt by public FiscalReceiptId.
 	GetFiscalByReceiptID(ctx context.Context, receiptID string) (FiscalReceiptRow, bool, error)
+	// FindPendingBuyerAcceptance returns orders in SUCCESS fiscal state waiting for buyer acceptance.
+	FindPendingBuyerAcceptance(ctx context.Context, limit int) ([]*Order, error)
 	// CountFiscalAttemptsByStatus counts attempts for retry-budget decisions.
 	CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error)
 	ListRetailerOrders(ctx context.Context, retailerID string, limit int) ([]Order, error)
@@ -313,6 +355,7 @@ type Service struct {
 	previewRateLimiter RateLimiter
 	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
 	claimsBridge       claimsBridge   // optional logistics claims domain
+	taxSvc             *tax.Service   // optional tax regime service
 }
 
 // ServiceConfig is the constructor input.
@@ -395,6 +438,13 @@ func (s *Service) SetManifestStore(store *manifest.Store) {
 // credit-delivery balance updates.
 func (s *Service) SetCreditService(svc *credit.Service) {
 	s.credit = svc
+}
+
+// SetTaxService wires the tax domain (optional).
+func (s *Service) SetTaxService(t *tax.Service) {
+	if s != nil {
+		s.taxSvc = t
+	}
 }
 
 // SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
@@ -1693,10 +1743,17 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 
 // CollectCash geofence-confirms cash collection, captures payment, and starts fiscal hard-gate (ADR-009).
 // Fiscal amount = amount_received_minor when provided (P0 T3); shortfall/overage emitted as audit events.
+// Proximity settlement: requires ProximityUnlockedAt (or existing geofence within settlement radius).
 func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req CollectCashRequest) (CollectCashResponse, error) {
 	var distanceM float64
 	var attemptID string
 	var receivedMinor, shortfallMinor, overageMinor int64
+	// Settlement proximity gate (design §4.1) — unlock or live 100 m / H3.
+	if err := s.requireProximityUnlocked(ctx, req.OrderID, ""); err != nil {
+		// Fallback: accept if request coords satisfy settlement proximity against order.
+		// (Unlock endpoint is preferred; this keeps single-shot cash collect working offline-sync.)
+		// Full check deferred to Precheck where order coords are available.
+	}
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
 		NextStatus:      StatusFiscalizing,
@@ -1710,6 +1767,15 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			}
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
+			}
+			// Proximity: prior unlock OR live settlement radius / H3 (anti-spoof + doorstep).
+			if err := s.requireProximityUnlocked(ctx, orderRecord.OrderID, ""); err != nil {
+				method, dist, ok := EvaluateSettlementProximity(req.Latitude, req.Longitude, orderRecord.Lat, orderRecord.Lng, orderRecord.H3Cell)
+				if !ok {
+					return fmt.Errorf("%w: unlock required or within %.0fm (dist=%.0f)", ErrProximityLocked, SettlementProximityRadiusM, dist)
+				}
+				_ = method
+				distanceM = dist
 			}
 			if req.AmountReceivedMinor != nil {
 				if *req.AmountReceivedMinor < 0 {
@@ -1725,11 +1791,14 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			} else if receivedMinor > orderRecord.TotalMinor {
 				overageMinor = receivedMinor - orderRecord.TotalMinor
 			}
-			computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
-			if err != nil {
-				return err
+			// Keep approach geofence as outer bound (500 m) when settlement already satisfied.
+			if distanceM == 0 {
+				computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
+				if err != nil {
+					return err
+				}
+				distanceM = computedDistance
 			}
-			distanceM = computedDistance
 			return nil
 		},
 		PrepareOrder: func(o *Order, _ Status) {

@@ -210,6 +210,54 @@ func FormatShopClosedResponse(orderID, response string) FormattedNotification {
 	}
 }
 
+// FormatShopClosedTimeout produces a notification when grace expires and auto-decision runs.
+func FormatShopClosedTimeout(orderID, resolution string) FormattedNotification {
+	body := "Shop-closed grace ended for order " + orderID
+	if resolution != "" {
+		body = "Shop-closed timeout resolved as " + resolution + " for order " + orderID
+	}
+	return FormattedNotification{
+		Title:    "Shop Closed Timeout",
+		Body:     body,
+		DeepLink: "/exceptions/shop-closed",
+		Priority: "high",
+	}
+}
+
+// FormatProximityUnlocked produces a driver/supplier notice when payment modes unlock.
+func FormatProximityUnlocked(orderID, method string) FormattedNotification {
+	body := "Settlement proximity unlocked for order " + orderID
+	if method != "" {
+		body = "Settlement proximity unlocked (" + method + ") for order " + orderID
+	}
+	return FormattedNotification{
+		Title:    "Proximity Unlocked",
+		Body:     body,
+		DeepLink: "/orders/" + orderID,
+		Priority: "normal",
+	}
+}
+
+// FormatPartialOffload produces a notification when driver records partial delivery.
+func FormatPartialOffload(orderID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Partial Offload",
+		Body:     "Partial delivery recorded for order " + orderID + "; settlement uses delivered portion only",
+		DeepLink: "/orders/" + orderID,
+		Priority: "high",
+	}
+}
+
+// FormatCreditLeave produces a notification when goods are left on credit.
+func FormatCreditLeave(orderID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Credit Leave",
+		Body:     "Order " + orderID + " delivered on credit; fiscal path pending settlement",
+		DeepLink: "/orders/" + orderID,
+		Priority: "high",
+	}
+}
+
 // FormatDriverCreated produces a supplier notification when a driver is onboarded.
 func FormatDriverCreated(driverID, homeNodeID string) FormattedNotification {
 	body := "Driver " + driverID + " added to fleet"

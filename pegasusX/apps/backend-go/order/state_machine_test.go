@@ -35,6 +35,22 @@ func TestValidateStatusTransition_cancelRequestedHasExits(t *testing.T) {
 	}
 }
 
+func TestValidateStatusTransition_shopClosedPending(t *testing.T) {
+	// ARRIVED → ARRIVED_SHOP_CLOSED (design SHOP_CLOSED_PENDING)
+	if err := ValidateStatusTransition(StatusArrived, StatusArrivedShopClosed); err != nil {
+		t.Fatalf("ARRIVED -> ARRIVED_SHOP_CLOSED should be allowed: %v", err)
+	}
+	// Resolutions from shop-closed pending
+	for _, next := range []Status{StatusAwaitingPayment, StatusPendingCashCollection, StatusDeliveredOnCredit, StatusCancelled, StatusArrived} {
+		if err := ValidateStatusTransition(StatusArrivedShopClosed, next); err != nil {
+			t.Fatalf("ARRIVED_SHOP_CLOSED -> %s should be allowed: %v", next, err)
+		}
+	}
+	if err := ValidateStatusTransition(StatusArrivedShopClosed, StatusCompleted); !errors.Is(err, ErrInvalidStatusTransition) {
+		t.Fatalf("ARRIVED_SHOP_CLOSED -> COMPLETED must stay blocked")
+	}
+}
+
 func TestValidateStatusTransition_fiscalHardGate(t *testing.T) {
 	// Forbidden soft-completes
 	for _, from := range []Status{StatusArrived, StatusAwaitingPayment, StatusPendingCashCollection} {

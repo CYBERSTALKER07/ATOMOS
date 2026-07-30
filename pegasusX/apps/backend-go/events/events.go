@@ -153,6 +153,12 @@ const (
 	// @Sync(ShopClosedBypassOffloadEvent)
 	EventShopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
 
+	// Enhanced shop-closed / proximity / partial offload (Phase-1 last-mile).
+	EventShopClosedTimeout   = "SHOP_CLOSED_TIMEOUT"
+	EventProximityUnlocked   = "PROXIMITY_UNLOCKED"
+	EventPartialOffload      = "PARTIAL_OFFLOAD"
+	EventCreditLeave         = "CREDIT_LEAVE"
+
 	// @Sync(CreditDeliveryEvent)
 	EventCreditDeliveryMarked   = "CREDIT_DELIVERY_MARKED"
 	EventCreditDeliveryResolved = "CREDIT_DELIVERY_RESOLVED"

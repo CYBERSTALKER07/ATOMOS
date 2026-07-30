@@ -48,6 +48,10 @@ data class OffloadReviewUiState(
     val evidencePhotoUrl: String = "",
     val isUploadingPhoto: Boolean = false,
     val photoPreviewUri: String? = null,
+    /** Settlement proximity: payment modes locked until unlock. */
+    val proximityUnlocked: Boolean = false,
+    val proximityMethod: String? = null,
+    val partialOffloadRecorded: Boolean = false,
 ) {
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
@@ -152,19 +156,101 @@ class OffloadReviewViewModel @Inject constructor(
         }
     }
 
-    fun markCreditDelivery(photoProofUrl: String? = null) {
+    fun markCreditDelivery(photoProofUrl: String? = null, forceBypassToken: String? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
+                if (!_state.value.proximityUnlocked && forceBypassToken.isNullOrBlank()) {
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Proximity locked — unlock settlement at the stop before credit leave.",
+                        )
+                    }
+                    return@launch
+                }
                 val body = buildMap {
                     put("order_id", orderId)
                     photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
+                    forceBypassToken?.takeIf { it.isNotBlank() }?.let { put("force_bypass_token", it) }
                 }
                 api.markCreditDelivery(body, DriverIdempotencyKeys.creditDelivery(orderId))
                 _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
+                }
+            }
+        }
+    }
+
+    /** Unlock cash/credit when GPS is at the stop (≤100 m or H3). */
+    fun unlockProximity(latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val resp = api.proximityUnlock(
+                    mapOf(
+                        "order_id" to orderId,
+                        "latitude" to latitude,
+                        "longitude" to longitude,
+                    ),
+                    DriverIdempotencyKeys.proximityUnlock(orderId),
+                )
+                val unlocked = (resp["proximity_unlocked"] as? Boolean) == true
+                    || resp["proximity_unlocked"]?.toString() == "true"
+                val method = resp["proximity_method"]?.toString()
+                _state.update {
+                    it.copy(
+                        isSubmitting = false,
+                        proximityUnlocked = unlocked,
+                        proximityMethod = method,
+                        error = if (unlocked) null else (resp["message"]?.toString() ?: "Proximity still locked"),
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Proximity unlock failed")
+                }
+            }
+        }
+    }
+
+    /** Submit line-level partial offload (delivered + remaining = qty). */
+    fun submitPartialOffload() {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val current = _state.value
+                val lines = current.audits.map { audit ->
+                    mapOf(
+                        "sku" to audit.item.productId,
+                        "delivered_qty" to audit.accepted.toLong(),
+                        "remaining_qty" to audit.rejected.toLong(),
+                        "reason" to when (audit.reason) {
+                            RejectionReason.DAMAGED -> "DAMAGED"
+                            RejectionReason.MISSING -> "MISSING"
+                            RejectionReason.WRONG_ITEM -> "OTHER"
+                            RejectionReason.OTHER -> "OTHER"
+                        },
+                    )
+                }
+                val fingerprint = lines.joinToString("|") {
+                    "${it["sku"]}:${it["delivered_qty"]}:${it["remaining_qty"]}"
+                }
+                api.partialOffload(
+                    mapOf(
+                        "order_id" to orderId,
+                        "lines" to lines,
+                    ),
+                    DriverIdempotencyKeys.partialOffload(orderId, fingerprint),
+                )
+                _state.update {
+                    it.copy(isSubmitting = false, partialOffloadRecorded = true)
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Partial offload failed")
                 }
             }
         }
@@ -224,7 +310,27 @@ class OffloadReviewViewModel @Inject constructor(
                         }
                         return@launch
                     }
-                    // Route OS&D through exception-report so claims + photo_url are enforced.
+                    // Prefer partial-offload contract (qty math + return path); keep exception-report for photo OS&D.
+                    val lines = current.audits.map { audit ->
+                        mapOf(
+                            "sku" to audit.item.productId,
+                            "delivered_qty" to audit.accepted.toLong(),
+                            "remaining_qty" to audit.rejected.toLong(),
+                            "reason" to when (audit.reason) {
+                                RejectionReason.DAMAGED -> "DAMAGED"
+                                RejectionReason.MISSING -> "MISSING"
+                                RejectionReason.WRONG_ITEM -> "OTHER"
+                                RejectionReason.OTHER -> "OTHER"
+                            },
+                        )
+                    }
+                    val fingerprint = lines.joinToString("|") {
+                        "${it["sku"]}:${it["delivered_qty"]}:${it["remaining_qty"]}"
+                    }
+                    api.partialOffload(
+                        mapOf("order_id" to orderId, "lines" to lines),
+                        DriverIdempotencyKeys.partialOffload(orderId, fingerprint),
+                    )
                     val missingItems = rejectedAudits.map { audit ->
                         val needsLinePhoto = audit.reason == RejectionReason.DAMAGED ||
                             audit.reason == RejectionReason.WRONG_ITEM
@@ -235,18 +341,20 @@ class OffloadReviewViewModel @Inject constructor(
                             photoUrl = if (needsLinePhoto) current.evidencePhotoUrl else null,
                         )
                     }
-                    api.reportMissingItems(
-                        body = MissingItemsPayload(
-                            orderId = orderId,
-                            missingItems = missingItems,
-                            photoUrl = current.evidencePhotoUrl.takeIf { it.isNotBlank() },
-                            note = rejectedAudits
-                                .mapNotNull { it.customReason.takeIf { r -> r.isNotBlank() } }
-                                .joinToString("; ")
-                                .ifBlank { null },
-                        ),
-                        idempotencyKey = DriverIdempotencyKeys.missingItems(orderId),
-                    )
+                    if (current.needsPhotoProof) {
+                        api.reportMissingItems(
+                            body = MissingItemsPayload(
+                                orderId = orderId,
+                                missingItems = missingItems,
+                                photoUrl = current.evidencePhotoUrl.takeIf { it.isNotBlank() },
+                                note = rejectedAudits
+                                    .mapNotNull { it.customReason.takeIf { r -> r.isNotBlank() } }
+                                    .joinToString("; ")
+                                    .ifBlank { null },
+                            ),
+                            idempotencyKey = DriverIdempotencyKeys.missingItems(orderId),
+                        )
+                    }
                 }
 
                 val response = api.confirmOffload(

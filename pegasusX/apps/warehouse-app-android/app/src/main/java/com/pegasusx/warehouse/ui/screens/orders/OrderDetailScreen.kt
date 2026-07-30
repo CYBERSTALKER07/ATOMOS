@@ -58,6 +58,7 @@ import com.pegasusx.warehouse.util.orderActionFlags
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.pegasusx.warehouse.ui.components.orders.orderOpsActions
 
 private enum class OrderMutationAction {
     ProposeDelivery,
@@ -293,40 +294,15 @@ fun OrderDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (showOps) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            HorizontalDivider()
-                            Spacer(Modifier.height(PegasusSpacing.xs))
-                            Text("Warehouse actions", style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(PegasusSpacing.xs))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                if (canDelay) {
-                                    OutlinedButton(
-                                        onClick = { showProposeDatePicker = true },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Propose new date") }
-                                }
-                                if (canOverflow) {
-                                    OutlinedButton(
-                                        onClick = { pendingAction = OrderMutationAction.Overflow },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Overflow") }
-                                }
-                                if (canReject) {
-                                    OutlinedButton(
-                                        onClick = { pendingAction = OrderMutationAction.Reject },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Reject") }
-                                }
-                            }
-                        }
-                    }
+                    orderOpsActions(
+                        canDelay = canDelay,
+                        canOverflow = canOverflow,
+                        canReject = canReject,
+                        mutating = mutating,
+                        onProposeNewDate = { showProposeDatePicker = true },
+                        onOverflow = { pendingAction = OrderMutationAction.Overflow },
+                        onReject = { pendingAction = OrderMutationAction.Reject }
+                    )
                     orderLineItems(current, fmt)
                 }
             }

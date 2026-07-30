@@ -71,6 +71,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/treasury", icon: "treasury", label: "Treasury" },
       { href: "/reconciliation", icon: "reconcile", label: "Reconciliation" },
+      { href: "/compliance", icon: "warning", label: "Compliance audit" },
       { href: "/payments", icon: "payment", label: "Payments" },
       { href: "/earnings", icon: "pricing", label: "Earnings" },
       { href: "/credit/collections", icon: "treasury", label: "Credit collections" },
@@ -83,6 +84,7 @@ const NAV: NavSection[] = [
     label: "Settings",
     items: [
       { href: "/profile", icon: "supplier", label: "Profile" },
+      { href: "/settings/tax-regimes", icon: "overview", label: "Tax Regimes" },
       { href: "/settings/planning", icon: "overview", label: "Planning" },
       { href: "/org-fleet", icon: "person-add", label: "Org & Fleet" },
       { href: "/returns", icon: "returns", label: "Returns" },

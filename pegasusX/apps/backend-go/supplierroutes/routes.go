@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 )
 
 // Deps is the narrow dependency contract for this routes package.
@@ -19,6 +20,7 @@ type Deps struct {
 	OrderService      *order.Service
 	PayloadService    *payload.Service
 	NotificationInbox *notifications.InboxHandlers
+	ComplianceHandler *compliance.Handler
 	JWTSecret         string
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
@@ -135,6 +137,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/supplier/negotiations/pending", d.OrderService.HandleListPendingNegotiations)
 			gr.Post("/v1/supplier/negotiate/resolve", d.OrderService.HandleResolveNegotiation)
 			gr.Post("/v1/supplier/route/approve-early-complete", d.OrderService.HandleApproveEarlyComplete)
+
+		}
+
+		if d.ComplianceHandler != nil {
+			gr.Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)
+			gr.Get("/v1/compliance/export", d.ComplianceHandler.ExportCSV)
 		}
 		
 		if d.PayloadService != nil {

@@ -11,6 +11,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
+
+	"cloud.google.com/go/spanner"
 )
 
 // Fiscal attempt / order denorm statuses (app-enforced).
@@ -102,6 +106,7 @@ type FiscalReceiptRow struct {
 // FiscalProvider calls the OFD / tax receipt API asynchronously from a worker.
 type FiscalProvider interface {
 	CreateReceipt(ctx context.Context, req FiscalCreateRequest) (FiscalCreateResult, error)
+	GetSoliqClient() soliq.SoliqClient
 }
 
 // FiscalCreateRequest is the provider input (integer Tiyin only).
@@ -435,7 +440,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		orderRecord.UpdatedAt = now
 		orderRecord.FiscalReceiptUpdate = &row
 
-		err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+		err = s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, nil, func(txn outbox.TxnBuffer) error {
 			if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 				Order:          orderRecord,
 				PreviousStatus: previousStatus,
@@ -464,7 +469,11 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 	orderRecord.UpdatedAt = now
 	orderRecord.FiscalReceiptUpdate = &row
 
-	err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
+	}
+
+	err = s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 			Order:          orderRecord,
 			PreviousStatus: previousStatus,
@@ -501,7 +510,12 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 	orderRecord.LatestFiscalAttemptID = existing.AttemptID
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
-	err := s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+
+	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
+	}
+
+	err := s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 			Order:          orderRecord,
 			PreviousStatus: previousStatus,
@@ -599,6 +613,47 @@ func (s *Service) RetryFiscal(ctx context.Context, claims auth.Claims, orderID s
 	}, nil
 }
 
+func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderRecord *Order) error {
+	if s.taxSvc == nil {
+		return nil
+	}
+
+	countryCode := "UZ"
+	if orderRecord.Currency == "KZT" {
+		countryCode = "KZ"
+	}
+
+	regime, found, err := s.taxSvc.Repo().GetActiveRegime(ctx, txn, countryCode, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("load active tax regime: %w", err)
+	}
+	if !found {
+		return fmt.Errorf("no active tax regime found for country %s", countryCode)
+	}
+
+	for _, line := range orderRecord.LineItems {
+		net := line.Quantity * line.UnitPrice
+		vat := (net * regime.VatRateBps) / 10000
+		gross := net + vat
+
+		snap := tax.OrderLineFiscalSnapshot{
+			OrderId:     orderRecord.OrderID,
+			OrderLineId: line.SKU,
+			RegimeId:    regime.Id,
+			VatRateBps:  regime.VatRateBps,
+			NetMinor:    net,
+			VatMinor:    vat,
+			GrossMinor:  gross,
+			SnapshotAt:  time.Now().UTC(),
+			CreatedAt:   time.Now().UTC(),
+		}
+		if err := s.taxSvc.Repo().InsertLineSnapshot(ctx, txn, snap); err != nil {
+			return fmt.Errorf("insert tax snapshot: %w", err)
+		}
+	}
+	return nil
+}
+
 // ForceCompleteOrder completes with FORCE_SKIPPED fiscal audit (ADMIN / WAREHOUSE_ADMIN).
 // Rejects when fiscal already SUCCESS (P0 R1/R2).
 func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, orderID, reasonCode string) (CollectCashResponse, error) {
@@ -681,7 +736,11 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	orderRecord.UpdatedAt = now
 	orderRecord.PendingFiscalReceipts = []FiscalReceiptRow{row}
 
-	err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
+	}
+
+	err = s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 			Claims:         claims,
 			Order:          orderRecord,

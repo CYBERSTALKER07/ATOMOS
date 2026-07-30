@@ -114,7 +114,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	case events.EventSupplierUpdated, events.EventSupplierBillingConfigured,
 		events.EventSupplierProfileUpdated, events.EventSupplierBillingUpdated, events.EventSupplierMemberAdded:
 		return d.handleSupplierUpdated(ctx, msg.Value, traceID)
-	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated, events.EventShopClosedResolved, events.EventShopClosedBypassOffload:
+	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated,
+		events.EventShopClosedResolved, events.EventShopClosedBypassOffload, events.EventShopClosedTimeout,
+		events.EventProximityUnlocked, events.EventPartialOffload, events.EventCreditLeave:
 		return d.handleShopClosedEvent(ctx, msg.Value, traceID)
 	case events.EventCreditDeliveryMarked, events.EventCreditDeliveryResolved:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)

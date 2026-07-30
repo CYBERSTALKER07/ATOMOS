@@ -18,6 +18,8 @@ type Deps struct {
 	}
 	OrderService interface {
 		HandleReportShopClosed(http.ResponseWriter, *http.Request)
+		HandleProximityUnlock(http.ResponseWriter, *http.Request)
+		HandlePartialOffload(http.ResponseWriter, *http.Request)
 		HandleConfirmPaymentBypass(http.ResponseWriter, *http.Request)
 		HandleRequestEarlyComplete(http.ResponseWriter, *http.Request)
 		HandleProposeNegotiation(http.ResponseWriter, *http.Request)
@@ -91,6 +93,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/order/amend", d.OrderService.HandleAmendOrder)
 			rr.Post("/v1/fleet/orders/{orderID}/reassign-handshake", d.OrderService.HandleReassignHandshake)
 			rr.Post("/v1/delivery/shop-closed", d.OrderService.HandleReportShopClosed)
+			rr.Post("/v1/delivery/proximity-unlock", d.OrderService.HandleProximityUnlock)
+			rr.Post("/v1/delivery/partial-offload", d.OrderService.HandlePartialOffload)
 			rr.Post("/v1/delivery/bypass-offload", d.OrderService.HandleBypassOffload)
 			rr.Post("/v1/ws/ack", d.Service.HandleWSAck)
 			rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)

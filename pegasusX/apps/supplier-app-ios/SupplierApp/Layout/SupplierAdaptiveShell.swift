@@ -156,6 +156,8 @@ struct SupplierAdaptiveShell: View {
             ReturnsView()
         case .reconciliation:
             ReconciliationView()
+        case .compliance:
+            ComplianceAuditView()
         case .notifications:
             NotificationInboxView()
         case .earnings:

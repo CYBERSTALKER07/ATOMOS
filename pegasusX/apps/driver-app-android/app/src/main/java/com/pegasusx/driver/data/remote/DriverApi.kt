@@ -246,12 +246,26 @@ interface DriverApi {
 
     // ── Shop-Closed Protocol ──
 
-    // Driver reports shop is closed (ARRIVED → ARRIVED_SHOP_CLOSED)
+    // Driver reports shop is closed (ARRIVED → ARRIVED_SHOP_CLOSED ≡ SHOP_CLOSED_PENDING)
     @POST("v1/delivery/shop-closed")
     suspend fun reportShopClosed(
         @Body body: Map<String, String>,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
+
+    // Unlock cash/credit/split when physically at stop (H3 or ≤100m)
+    @POST("v1/delivery/proximity-unlock")
+    suspend fun proximityUnlock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, @JvmSuppressWildcards Any>
+
+    // Line-level partial offload (delivered_qty + remaining_qty == qty)
+    @POST("v1/delivery/partial-offload")
+    suspend fun partialOffload(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, @JvmSuppressWildcards Any>
 
     // Driver uses bypass token to complete offload without retailer QR
     @POST("v1/delivery/bypass-offload")

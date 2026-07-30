@@ -1,4 +1,4 @@
-import type {
+import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReassignResponse, ApplyReassignRequest, StatusResponse, 
   ConfirmAIOrderRequest,
   ConfirmPreorderRequest,
   EditPreorderRequest,
@@ -52,6 +52,15 @@ import type {
   SupplierExceptionsResponse,
   ShopClosedActiveResponse,
   ShopClosedResolveRequest,
+  ShopClosedReportRequest,
+  ShopClosedReportResponse,
+  ProximityUnlockRequest,
+  ProximityUnlockResponse,
+  PartialOffloadRequest,
+  PartialOffloadResponse,
+  CreditDeliveryRequest,
+  ComplianceDashboardResponse,
+  ComplianceExportBucket,
   NegotiationPendingResponse,
   NegotiationResolveRequest,
   NegotiationResolveResponse,
@@ -236,6 +245,8 @@ export {
   driverConfirmPaymentBypassKey,
   driverBypassOffloadKey,
   driverReportShopClosedKey,
+  driverProximityUnlockKey,
+  driverPartialOffloadKey,
   supplierShopClosedResolveKey,
   supplierResolveReturnKey,
   supplierProfileUpdateKey,
@@ -897,6 +908,99 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  /** Driver: mark shop closed at stop (POST /v1/delivery/shop-closed). */
+  async reportShopClosed(
+    request: ShopClosedReportRequest,
+    idempotencyKey: string,
+  ): Promise<ShopClosedReportResponse> {
+    return this.request<ShopClosedReportResponse>("/v1/delivery/shop-closed", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: unlock payment modes when physically at stop. */
+  async proximityUnlock(
+    request: ProximityUnlockRequest,
+    idempotencyKey: string,
+  ): Promise<ProximityUnlockResponse> {
+    return this.request<ProximityUnlockResponse>("/v1/delivery/proximity-unlock", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: line-level partial offload (qty math enforced server-side). */
+  async partialOffload(
+    request: PartialOffloadRequest,
+    idempotencyKey: string,
+  ): Promise<PartialOffloadResponse> {
+    return this.request<PartialOffloadResponse>("/v1/delivery/partial-offload", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: leave delivery on credit (requires proximity unlock or force_bypass_token). */
+  async creditDelivery(
+    request: CreditDeliveryRequest,
+    idempotencyKey: string,
+  ): Promise<{ status?: string; order_id?: string }> {
+    return this.request("/v1/delivery/credit-delivery", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Supplier compliance / fiscal audit dashboard (combined buckets). */
+  async getComplianceDashboard(params?: { limit?: number }): Promise<ComplianceDashboardResponse> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<ComplianceDashboardResponse>(`/v1/compliance/dashboard${suffix}`, "GET");
+  }
+
+  async getComplianceFiscalOpen(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["open_fiscal"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/fiscal-open${suffix}`, "GET");
+  }
+
+  async getComplianceForceCompletes(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["force_completes"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/force-completes${suffix}`, "GET");
+  }
+
+  async getComplianceClaimMismatches(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["claim_mismatches"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/claim-mismatches${suffix}`, "GET");
+  }
+
+  async getComplianceCreditFreezes(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["credit_freezes"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/credit-freezes${suffix}`, "GET");
+  }
+
+  /** JSON export of one or all compliance buckets. For CSV use download URL with format=csv. */
+  async getComplianceExport(params?: {
+    format?: "json" | "csv";
+    bucket?: ComplianceExportBucket;
+    limit?: number;
+  }): Promise<unknown> {
+    const q = new URLSearchParams();
+    q.set("format", params?.format ?? "json");
+    if (params?.bucket) q.set("bucket", params.bucket);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    return this.request(`/v1/compliance/export?${q.toString()}`, "GET");
   }
 
   /** Quantity negotiation disabled ecosystem-wide. */

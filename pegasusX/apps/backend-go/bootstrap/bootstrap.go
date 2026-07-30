@@ -36,6 +36,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
@@ -160,6 +162,8 @@ type App struct {
 	WebhookInbox           *payment.WebhookInboxStore
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
+	TaxService             *tax.Service
+	ComplianceService      *compliance.Service
 	OrderService           *order.Service
 	ClaimsService          *claims.Service
 	CreditService          *credit.Service
@@ -622,6 +626,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		gatewayPolicyReader = payment.NewSpannerPolicyResolver(spannerClient)
 	}
+	var complianceSvc *compliance.Service
+	var taxSvc *tax.Service
+	if spannerClient != nil {
+		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
+		taxSvc = tax.NewService(tax.NewSpannerRepository(spannerClient), cacheClient, slog.Default())
+	}
+
 	orderSvc := order.NewService(order.ServiceConfig{
 		Repo:            orderRepo,
 		Cache:           cacheClient,
@@ -1169,6 +1180,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WebhookInbox:           webhookInbox,
 		WarehouseService:       warehouseSvc,
 		ReturnsService:         returnsSvc,
+		TaxService:             taxSvc,
+		ComplianceService:      complianceSvc,
 		OrderService:           orderSvc,
 		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,

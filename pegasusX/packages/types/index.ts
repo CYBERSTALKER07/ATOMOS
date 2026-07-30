@@ -949,6 +949,10 @@ export interface ShopClosedAttemptRow {
   driver_id: string;
   retailer_id: string;
   resolution: string;
+  shop_closed_reason?: string;
+  shop_closed_resolution?: string;
+  grace_ends_at?: string;
+  shop_closed_at?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -961,6 +965,186 @@ export interface ShopClosedResolveRequest {
   attempt_id: string;
   action: "WAIT" | "BYPASS" | "RETURN_TO_DEPOT";
 }
+
+/** Driver: mark shop closed (POST /v1/delivery/shop-closed). */
+export type ShopClosedReason = "NO_ANSWER" | "CLOSED" | "REFUSED" | "OTHER";
+
+export interface ShopClosedReportRequest {
+  order_id: string;
+  latitude: number;
+  longitude: number;
+  reason?: ShopClosedReason;
+  photo_url?: string;
+  /** Offline capture time (RFC3339). */
+  client_timestamp?: string;
+}
+
+export interface ShopClosedReportResponse {
+  status: "ARRIVED_SHOP_CLOSED";
+  attempt_id: string;
+  reason?: string;
+  grace_ends_at?: string;
+}
+
+/** Retailer response codes for enhanced shop-closed protocol. */
+export type ShopClosedRetailerResponse =
+  | "OPEN_NOW"
+  | "5_MIN"
+  | "CALL_ME"
+  | "CLOSED_TODAY"
+  | "RESCHEDULE"
+  | "CREDIT_LEAVE"
+  | "CANCEL"
+  | "AUTHORIZE_BYPASS";
+
+export interface ShopClosedRetailerResponseRequest {
+  order_id: string;
+  response: ShopClosedRetailerResponse;
+  new_slot?: string;
+  photo_url?: string;
+}
+
+/** Proximity unlock before cash/credit/split (POST /v1/delivery/proximity-unlock). */
+export type ProximityMethod = "H3" | "GEOFENCE_100M" | "MANUAL" | "FORCE_BYPASS";
+
+export interface ProximityUnlockRequest {
+  order_id: string;
+  latitude: number;
+  longitude: number;
+  client_timestamp?: string;
+  force_bypass_token?: string;
+}
+
+export interface ProximityUnlockResponse {
+  order_id: string;
+  proximity_unlocked: boolean;
+  proximity_method?: ProximityMethod | string;
+  distance_m?: number;
+  unlocked_at?: string;
+  payment_modes_enabled: boolean;
+  message?: string;
+}
+
+/** Line-level partial offload (POST /v1/delivery/partial-offload). */
+export type OffloadStatus = "FULL" | "PARTIAL" | "NONE" | "RETURNED";
+export type OffloadReason =
+  | "DAMAGED"
+  | "MISSING"
+  | "SHOP_REFUSED"
+  | "CAPACITY"
+  | "OTHER";
+
+export interface PartialOffloadLine {
+  sku: string;
+  delivered_qty: number;
+  remaining_qty: number;
+  reason?: OffloadReason;
+}
+
+export interface PartialOffloadRequest {
+  order_id: string;
+  lines: PartialOffloadLine[];
+  client_timestamp?: string;
+  signed_nonce?: string;
+  note?: string;
+}
+
+export interface PartialOffloadResponse {
+  order_id: string;
+  partial_delivery: boolean;
+  delivered_minor: number;
+  remaining_minor: number;
+  currency: string;
+  status: string;
+  message: string;
+}
+
+export interface CreditDeliveryRequest {
+  order_id: string;
+  photo_proof_url?: string;
+  force_bypass_token?: string;
+}
+
+/** Timeout auto-decision (server-side matrix). */
+export type ShopClosedTimeoutResolution =
+  | "CREDIT_LEAVE"
+  | "RETURN_TO_WAREHOUSE"
+  | "FORCE_BYPASS"
+  | "RESCHEDULE";
+
+// ── Compliance / fiscal audit dashboard (Phase 1) ──
+
+export interface ComplianceFiscalOpenRow {
+  order_id: string;
+  retailer_id: string;
+  driver_id?: string;
+  status: string;
+  fiscal_status?: string;
+  total_minor: number;
+  currency: string;
+  latest_fiscal_attempt_id?: string;
+  updated_at: string;
+}
+
+export interface ComplianceForceCompleteRow {
+  order_id: string;
+  retailer_id: string;
+  driver_id?: string;
+  status: string;
+  fiscal_status: string;
+  reason_code?: string;
+  actor_id?: string;
+  attempt_id?: string;
+  total_minor: number;
+  currency: string;
+  completed_at: string;
+}
+
+export interface ComplianceClaimMismatchRow {
+  claim_id: string;
+  order_id: string;
+  retailer_id: string;
+  claim_status: string;
+  claim_amount_minor: number;
+  order_total_minor: number;
+  order_status: string;
+  currency: string;
+  mismatch_reason: string;
+  created_at: string;
+}
+
+export interface ComplianceCreditFreezeRow {
+  retailer_id: string;
+  status: string;
+  risk_tier?: string;
+  credit_limit_minor: number;
+  current_balance_minor: number;
+  available_credit_minor: number;
+  updated_at: string;
+}
+
+export interface ComplianceSummary {
+  open_fiscal_count: number;
+  force_complete_count: number;
+  claim_mismatch_count: number;
+  credit_freeze_count: number;
+  generated_at: string;
+}
+
+export interface ComplianceDashboardResponse {
+  summary: ComplianceSummary;
+  open_fiscal: ComplianceFiscalOpenRow[];
+  force_completes: ComplianceForceCompleteRow[];
+  claim_mismatches: ComplianceClaimMismatchRow[];
+  credit_freezes: ComplianceCreditFreezeRow[];
+}
+
+export type ComplianceExportBucket =
+  | "all"
+  | "open_fiscal"
+  | "force_completes"
+  | "claim_mismatches"
+  | "credit_freezes";
 
 export interface NegotiationProposalItem {
   sku_id: string;
@@ -2133,6 +2317,10 @@ export type EventType =
   | "SHOP_CLOSED_ESCALATED"
   | "SHOP_CLOSED_RESOLVED"
   | "SHOP_CLOSED_BYPASS_OFFLOAD"
+  | "SHOP_CLOSED_TIMEOUT"
+  | "PROXIMITY_UNLOCKED"
+  | "PARTIAL_OFFLOAD"
+  | "CREDIT_LEAVE"
   | "CREDIT_DELIVERY_MARKED"
   | "CREDIT_DELIVERY_RESOLVED"
   | "NEGOTIATION_PROPOSED"
@@ -3571,3 +3759,10 @@ export interface MarkNotificationsReadRequest {
 }
 
 export * from "./forecast-confidence";
+
+export type SupplierSettingsResponse = any;
+export type RecommendReassignRequest = any;
+export type RecommendReassignResponse = { candidates?: ReassignmentCandidate[] };
+export type ApplyReassignRequest = any;
+export type StatusResponse = any;
+export type ReassignmentCandidate = any;

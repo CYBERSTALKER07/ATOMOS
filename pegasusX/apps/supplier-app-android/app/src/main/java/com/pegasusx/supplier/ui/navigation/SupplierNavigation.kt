@@ -70,6 +70,7 @@ import com.pegasusx.supplier.ui.screens.pricing.PricingScreen
 import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
 import com.pegasusx.supplier.ui.screens.returns.ReturnsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ClaimChargebacksScreen
+import com.pegasusx.supplier.ui.screens.treasury.ComplianceScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
@@ -147,6 +148,7 @@ object SupplierRoutes {
     const val DELIVERY_ZONES = "delivery_zones"
     const val SUPPLY_LANES = "supply_lanes"
     const val PAYMENTS = "payments"
+    const val COMPLIANCE = "compliance"
     const val NOTIFICATIONS = "notifications"
 }
 
@@ -534,6 +536,9 @@ fun SupplierNavigation(
             composable(SupplierRoutes.RECONCILIATION) {
                  ReconciliationScreen(ops) { navController.popBackStack() } 
             }
+            composable(SupplierRoutes.COMPLIANCE) {
+                ComplianceScreen(ops) { navController.popBackStack() }
+            }
             composable(SupplierRoutes.CHARGEBACKS) {
                 
                     ChargebacksScreen(onBack = { navController.popBackStack() })
@@ -546,6 +551,7 @@ fun SupplierNavigation(
                         onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                         onPayments = { navController.navigate(SupplierRoutes.PAYMENTS) },
                         onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
+                        onCompliance = { navController.navigate(SupplierRoutes.COMPLIANCE) },
                         onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                         onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
                         onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },

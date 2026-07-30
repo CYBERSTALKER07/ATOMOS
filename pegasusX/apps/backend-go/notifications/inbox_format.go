@@ -115,6 +115,26 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
 			return FormatShopClosedResponse(e.OrderID, e.Response)
 		}
+	case events.EventShopClosedTimeout:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosedTimeout(e.OrderID, e.Resolution)
+		}
+	case events.EventProximityUnlocked:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatProximityUnlocked(e.OrderID, e.Status)
+		}
+	case events.EventPartialOffload:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatPartialOffload(e.OrderID)
+		}
+	case events.EventCreditLeave:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatCreditLeave(e.OrderID)
+		}
 	case events.EventDriverCreated:
 		var e events.DriverEvent
 		if json.Unmarshal(payload, &e) == nil && e.DriverID != "" {

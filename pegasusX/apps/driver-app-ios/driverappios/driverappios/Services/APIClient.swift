@@ -237,14 +237,95 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    // MARK: - Shop Closed
+    // MARK: - Shop Closed / Proximity / Partial
 
-    func reportShopClosed(orderId: String) async throws -> [String: String] {
-        let body = ["order_id": orderId]
+    func reportShopClosed(
+        orderId: String,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        reason: String? = nil,
+        photoURL: String? = nil,
+        clientTimestamp: String? = nil
+    ) async throws -> [String: String] {
+        struct Req: Encodable {
+            let order_id: String
+            let latitude: Double?
+            let longitude: Double?
+            let reason: String?
+            let photo_url: String?
+            let client_timestamp: String?
+        }
         return try await post(
             "v1/delivery/shop-closed",
-            body: body,
+            body: Req(
+                order_id: orderId,
+                latitude: latitude,
+                longitude: longitude,
+                reason: reason,
+                photo_url: photoURL,
+                client_timestamp: clientTimestamp
+            ),
             headers: ["Idempotency-Key": DriverIdempotency.reportShopClosed(orderId: orderId)]
+        )
+    }
+
+    /// Unlock payment modes at the stop (H3 or ≤100 m). Required before cash/credit.
+    func proximityUnlock(
+        orderId: String,
+        latitude: Double,
+        longitude: Double,
+        clientTimestamp: String? = nil,
+        forceBypassToken: String? = nil
+    ) async throws -> [String: String] {
+        struct Req: Encodable {
+            let order_id: String
+            let latitude: Double
+            let longitude: Double
+            let client_timestamp: String?
+            let force_bypass_token: String?
+        }
+        return try await post(
+            "v1/delivery/proximity-unlock",
+            body: Req(
+                order_id: orderId,
+                latitude: latitude,
+                longitude: longitude,
+                client_timestamp: clientTimestamp,
+                force_bypass_token: forceBypassToken
+            ),
+            headers: ["Idempotency-Key": DriverIdempotency.proximityUnlock(orderId: orderId)]
+        )
+    }
+
+    /// Line-level partial offload. Each line: delivered_qty + remaining_qty == original qty.
+    func partialOffload(
+        orderId: String,
+        lines: [PartialOffloadLineRequest],
+        clientTimestamp: String? = nil,
+        signedNonce: String? = nil,
+        note: String? = nil
+    ) async throws -> [String: String] {
+        struct Req: Encodable {
+            let order_id: String
+            let lines: [PartialOffloadLineRequest]
+            let client_timestamp: String?
+            let signed_nonce: String?
+            let note: String?
+        }
+        let fingerprint = lines
+            .map { "\($0.sku):\($0.delivered_qty):\($0.remaining_qty)" }
+            .sorted()
+            .joined(separator: "|")
+        return try await post(
+            "v1/delivery/partial-offload",
+            body: Req(
+                order_id: orderId,
+                lines: lines,
+                client_timestamp: clientTimestamp,
+                signed_nonce: signedNonce,
+                note: note
+            ),
+            headers: ["Idempotency-Key": DriverIdempotency.partialOffload(orderId: orderId, fingerprint: fingerprint)]
         )
     }
 
@@ -436,10 +517,15 @@ final class APIClient: @unchecked Sendable {
 
     // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
 
-    /// Edge 32: Mark order as delivered on credit
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async throws -> [String: String] {
+    /// Edge 32: Mark order as delivered on credit (requires proximity unlock or force_bypass_token).
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        forceBypassToken: String? = nil
+    ) async throws -> [String: String] {
         var body: [String: String] = ["order_id": orderId]
         if let url = photoProofUrl { body["photo_proof_url"] = url }
+        if let token = forceBypassToken { body["force_bypass_token"] = token }
         return try await post(
             "v1/delivery/credit-delivery",
             body: body,
@@ -761,6 +847,14 @@ struct RouteReorderResponse: Decodable {
         case routeId = "route_id"
         case stopCount = "stop_count"
     }
+}
+
+/// One line for POST /v1/delivery/partial-offload.
+struct PartialOffloadLineRequest: Encodable {
+    let sku: String
+    let delivered_qty: Int64
+    let remaining_qty: Int64
+    let reason: String?
 }
 
 private struct DepartRequest: Encodable {

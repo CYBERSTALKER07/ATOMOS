@@ -20,6 +20,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
@@ -191,6 +192,7 @@ func main() {
 		OrderService:      app.OrderService,
 		PayloadService:    app.PayloadService,
 		NotificationInbox: app.NotificationInbox,
+		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
 		JWTSecret:         cfg.JWTSecret,
 		Spanner:           app.Spanner,
 		SupplierHub:       app.SupplierHub,
@@ -211,6 +213,8 @@ func main() {
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Service:             app.OrderService,
 		ClaimsService:       app.ClaimsService,
+		TaxService:          app.TaxService,
+		ComplianceHandler:   compliance.NewHandler(app.ComplianceService),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,

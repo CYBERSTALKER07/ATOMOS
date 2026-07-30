@@ -346,6 +346,10 @@ data class ShopClosedAttemptRow(
     @SerialName("driver_id") val driverId: String = "",
     @SerialName("retailer_id") val retailerId: String = "",
     val resolution: String = "",
+    @SerialName("shop_closed_reason") val shopClosedReason: String? = null,
+    @SerialName("shop_closed_resolution") val shopClosedResolution: String? = null,
+    @SerialName("grace_ends_at") val graceEndsAt: String? = null,
+    @SerialName("shop_closed_at") val shopClosedAt: String? = null,
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String? = null,
 )
@@ -353,6 +357,65 @@ data class ShopClosedAttemptRow(
 @Serializable
 data class ShopClosedActiveResponse(
     val data: List<ShopClosedAttemptRow> = emptyList(),
+)
+
+@Serializable
+data class ComplianceSummary(
+    @SerialName("open_fiscal_count") val openFiscalCount: Int = 0,
+    @SerialName("force_complete_count") val forceCompleteCount: Int = 0,
+    @SerialName("claim_mismatch_count") val claimMismatchCount: Int = 0,
+    @SerialName("credit_freeze_count") val creditFreezeCount: Int = 0,
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class ComplianceFiscalOpenRow(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    val status: String = "",
+    @SerialName("fiscal_status") val fiscalStatus: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "UZS",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class ComplianceForceCompleteRow(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("reason_code") val reasonCode: String = "",
+    @SerialName("actor_id") val actorId: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "UZS",
+    @SerialName("completed_at") val completedAt: String = "",
+)
+
+@Serializable
+data class ComplianceClaimMismatchRow(
+    @SerialName("claim_id") val claimId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("claim_amount_minor") val claimAmountMinor: Long = 0,
+    @SerialName("order_total_minor") val orderTotalMinor: Long = 0,
+    @SerialName("mismatch_reason") val mismatchReason: String = "",
+    val currency: String = "UZS",
+)
+
+@Serializable
+data class ComplianceCreditFreezeRow(
+    @SerialName("retailer_id") val retailerId: String,
+    val status: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+)
+
+@Serializable
+data class ComplianceDashboardResponse(
+    val summary: ComplianceSummary = ComplianceSummary(),
+    @SerialName("open_fiscal") val openFiscal: List<ComplianceFiscalOpenRow> = emptyList(),
+    @SerialName("force_completes") val forceCompletes: List<ComplianceForceCompleteRow> = emptyList(),
+    @SerialName("claim_mismatches") val claimMismatches: List<ComplianceClaimMismatchRow> = emptyList(),
+    @SerialName("credit_freezes") val creditFreezes: List<ComplianceCreditFreezeRow> = emptyList(),
 )
 
 @Serializable

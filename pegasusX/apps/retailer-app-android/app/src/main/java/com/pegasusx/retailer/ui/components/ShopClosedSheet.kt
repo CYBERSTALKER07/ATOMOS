@@ -39,6 +39,10 @@ private fun shopClosedOptionLabel(option: String): String = when (option) {
     "5_MIN" -> "I will be back in 5 mins"
     "CALL_ME" -> "Call me"
     "CLOSED_TODAY" -> "Closed for the day"
+    "RESCHEDULE" -> "Reschedule delivery"
+    "CREDIT_LEAVE" -> "Leave on credit"
+    "CANCEL" -> "Cancel remaining"
+    "AUTHORIZE_BYPASS" -> "Authorize bypass offload"
     else -> option
 }
 

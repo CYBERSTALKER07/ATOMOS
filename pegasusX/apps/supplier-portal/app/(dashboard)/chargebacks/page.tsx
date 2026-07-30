@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
-import { apiFetch } from "@/lib/auth";
+import { supplierFetch } from "@/lib/auth";
 import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function ChargebacksPage() {
@@ -36,7 +36,7 @@ export default function ChargebacksPage() {
     setChargebackMessage(null);
     try {
       const idempotencyKey = `cb_${orderId}_${Date.now()}`;
-      const res = await apiFetch("/v1/payment/chargeback", {
+      const res = await supplierFetch("/v1/payment/chargeback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -71,7 +71,7 @@ export default function ChargebacksPage() {
     setReversalMessage(null);
     try {
       const idempotencyKey = `rev_${sessionId}_${Date.now()}`;
-      const res = await apiFetch("/v1/payment/chargeback/reversal", {
+      const res = await supplierFetch("/v1/payment/chargeback/reversal", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
