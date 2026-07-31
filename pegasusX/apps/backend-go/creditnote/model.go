@@ -81,13 +81,13 @@ type ReverseLogisticsTask struct {
 }
 
 type CreateManualCreditNoteRequest struct {
-	OrderId    string
-	Lines      []CreditNoteLineInput
-	ReasonCode string
-	ReasonText string
+	OrderId    string                `json:"order_id"`
+	Lines      []CreditNoteLineInput `json:"lines"`
+	ReasonCode string                `json:"reason_code"`
+	ReasonText string                `json:"reason_text"`
 }
 
 type CreditNoteLineInput struct {
-	OrderLineId string
-	Qty         int64
+	OrderLineId string `json:"order_line_id"`
+	Qty         int64  `json:"qty"`
 }

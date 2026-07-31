@@ -286,6 +286,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("order acceptance closed: %w", err)
 	}
 
+	if err := runGapClosureE2E(ctx, client, base, cookie, supplierID, retailerToken, cfg, orderID); err != nil {
+		return fmt.Errorf("gap closure: %w", err)
+	}
+
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_OK")
