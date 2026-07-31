@@ -377,12 +377,13 @@ type RegisterRequest struct {
 
 // RegisterResponse mirrors what the wizard expects.
 type RegisterResponse struct {
-	SupplierID   string `json:"supplier_id"`
-	LegalName    string `json:"legal_name"`
-	IsRegistered bool   `json:"is_registered"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
-	Token        string `json:"token,omitempty"`
+	SupplierID    string `json:"supplier_id"`
+	LegalName     string `json:"legal_name"`
+	IsRegistered  bool   `json:"is_registered"`
+	IsConfigured  bool   `json:"is_configured"`
+	NextStep      string `json:"next_step"`
+	Token         string `json:"token,omitempty"`
+	FirebaseToken string `json:"firebase_token,omitempty"`
 }
 
 // LoginRequest is the wire shape for POST /v1/auth/supplier/login.
@@ -393,12 +394,13 @@ type LoginRequest struct {
 
 // LoginResponse is the login confirmation payload.
 type LoginResponse struct {
-	SupplierID   string `json:"supplier_id"`
-	IsRegistered bool   `json:"is_registered"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
-	Token        string `json:"token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	SupplierID    string `json:"supplier_id"`
+	IsRegistered  bool   `json:"is_registered"`
+	IsConfigured  bool   `json:"is_configured"`
+	NextStep      string `json:"next_step"`
+	Token         string `json:"token,omitempty"`
+	RefreshToken  string `json:"refresh_token,omitempty"`
+	FirebaseToken string `json:"firebase_token,omitempty"`
 }
 
 // Validate enforces wizard invariants.
@@ -797,6 +799,12 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("session cookie issue failed", "err", err)
 	}
 	resp.Token = token
+	if fbToken, err := auth.MintCustomToken(r.Context(), resp.SupplierID, map[string]interface{}{
+		"role":        string(auth.RoleAdmin),
+		"supplier_id": resp.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp.FirebaseToken = fbToken
+	}
 	respBytes, _ := json.Marshal(resp)
 	if key := r.Header.Get("Idempotency-Key"); key != "" && s.idem != nil {
 		_ = s.idem.Save(r.Context(), key, idempotency.Record{
@@ -847,6 +855,12 @@ func (s *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("supplier refresh token issue failed", "err", err)
 	} else {
 		resp.RefreshToken = refresh
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), resp.SupplierID, map[string]interface{}{
+		"role":        string(auth.RoleAdmin),
+		"supplier_id": resp.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp.FirebaseToken = fbToken
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

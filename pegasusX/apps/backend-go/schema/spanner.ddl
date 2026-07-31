@@ -689,6 +689,16 @@ CREATE TABLE Notifications (
 CREATE INDEX Idx_Notifications_ByRecipientCreated ON Notifications(RecipientId, CreatedAt DESC);
 CREATE INDEX Idx_Notifications_ByRecipientUnread ON Notifications(RecipientId, IsRead, CreatedAt DESC);
 
+CREATE TABLE DeviceTokens (
+  Token     STRING(255) NOT NULL,
+  ActorId   STRING(36)  NOT NULL,
+  ActorRole STRING(20)  NOT NULL,
+  Platform  STRING(20)  NOT NULL,
+  UpdatedAt TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (Token);
+
+CREATE INDEX Idx_DeviceTokens_ByActorRole ON DeviceTokens(ActorId, ActorRole);
+
 CREATE TABLE AuditLog (
   AuditId        STRING(36)    NOT NULL,
   SupplierId     STRING(36)    NOT NULL,

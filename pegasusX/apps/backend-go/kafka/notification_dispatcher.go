@@ -656,6 +656,7 @@ func (d *NotificationDispatcher) broadcastSupplier(ctx context.Context, supplier
 	if d.deps.SupplierHub != nil {
 		d.deps.SupplierHub.Broadcast(ctx, "supplier:"+supplierID, payload)
 	}
+	d.pushFCM(ctx, supplierID, "ADMIN", payload)
 	d.persistInbox(ctx, supplierID, "ADMIN", payload)
 }
 
@@ -696,22 +697,37 @@ func (d *NotificationDispatcher) pushFCM(ctx context.Context, actorID, actorRole
 		Type string `json:"type"`
 	}
 	_ = json.Unmarshal(payload, &envelope)
-	data := map[string]string{"type": envelope.Type, "body": string(payload)}
+	formatted := notifications.FormatFromEvent(actorRole, payload)
+	data := map[string]string{
+		"type":      envelope.Type,
+		"title":     formatted.Title,
+		"body":      formatted.Body,
+		"deep_link": formatted.DeepLink,
+		"payload":   string(payload),
+	}
 	d.deps.Push.NotifyActor(ctx, actorID, actorRole, data)
 }
 
 func (d *NotificationDispatcher) broadcastWarehouse(ctx context.Context, warehouseID string, payload []byte) {
-	if warehouseID == "" || d.deps.WarehouseHub == nil {
+	if warehouseID == "" {
 		return
 	}
-	d.deps.WarehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, payload)
+	if d.deps.WarehouseHub != nil {
+		d.deps.WarehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, payload)
+	}
+	d.pushFCM(ctx, warehouseID, "WAREHOUSE", payload)
+	d.persistInbox(ctx, warehouseID, "WAREHOUSE", payload)
 }
 
 func (d *NotificationDispatcher) broadcastFactory(ctx context.Context, factoryID string, payload []byte) {
-	if factoryID == "" || d.deps.FactoryHub == nil {
+	if factoryID == "" {
 		return
 	}
-	d.deps.FactoryHub.Broadcast(ctx, "factory:"+factoryID, payload)
+	if d.deps.FactoryHub != nil {
+		d.deps.FactoryHub.Broadcast(ctx, "factory:"+factoryID, payload)
+	}
+	d.pushFCM(ctx, factoryID, "FACTORY", payload)
+	d.persistInbox(ctx, factoryID, "FACTORY", payload)
 }
 
 func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierID string, payload []byte) {
@@ -721,6 +737,7 @@ func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierI
 	if d.deps.PayloadHub != nil {
 		d.deps.PayloadHub.Broadcast(ctx, "payload:"+supplierID, payload)
 	}
+	d.pushFCM(ctx, supplierID, "PAYLOAD", payload)
 	d.persistInbox(ctx, supplierID, "PAYLOAD", payload)
 }
 

@@ -224,7 +224,7 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 		b, _ := json.Marshal(map[string]string{"error": "issue_refresh_failed"})
 		return http.StatusInternalServerError, b
 	}
-	b, err := json.Marshal(map[string]any{
+	respMap := map[string]any{
 		"token":         token,
 		"refresh_token": refresh,
 		"is_configured": isConfigured,
@@ -235,7 +235,16 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 			"email":      "",
 			"avatar_url": nil,
 		},
-	})
+	}
+	if fbToken, err := auth.MintCustomToken(context.Background(), ret.RetailerID, map[string]interface{}{
+		"role":        string(auth.RoleRetailer),
+		"retailer_id": ret.RetailerID,
+		"supplier_id": claims.SupplierID,
+	}); err == nil && fbToken != "" {
+		respMap["firebase_token"] = fbToken
+		respMap["firebaseToken"] = fbToken
+	}
+	b, err := json.Marshal(respMap)
 	if err != nil {
 		b, _ = json.Marshal(map[string]string{"error": "marshal_failed"})
 		return http.StatusInternalServerError, b
