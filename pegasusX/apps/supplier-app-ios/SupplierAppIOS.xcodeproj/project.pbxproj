@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		C1A100000000000000000002 /* ClaimsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000001 /* ClaimsView.swift */; };
 		C1A100000000000000000004 /* ClaimChargebacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000003 /* ClaimChargebacksView.swift */; };
+		C1A100000000000000000006 /* FinanceGapViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000005 /* FinanceGapViews.swift */; };
+		C1A100000000000000000008 /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A100000000000000000007 /* NotificationPreferencesView.swift */; };
 		087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5693C9F4B187B5F6696EA133 /* LoginView.swift */; };
 		0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */; };
 		120F1253E07A45C379768773 /* RealtimeHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A6831C3558312E2AD70ABF /* RealtimeHubTests.swift */; };
@@ -186,6 +188,8 @@
 		AB7FA61008AB8E9CC27FC781 /* ChargebacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChargebacksView.swift; sourceTree = "<group>"; };
 		C1A100000000000000000001 /* ClaimsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimsView.swift; sourceTree = "<group>"; };
 		C1A100000000000000000003 /* ClaimChargebacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimChargebacksView.swift; sourceTree = "<group>"; };
+		C1A100000000000000000005 /* FinanceGapViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinanceGapViews.swift; sourceTree = "<group>"; };
+		C1A100000000000000000007 /* NotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreferencesView.swift; sourceTree = "<group>"; };
 		ABF27DC6D872DB5DBB36C189 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AE9D49DA9B05E2A2628A8FDC /* SupplierOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierOpsModels.swift; sourceTree = "<group>"; };
 		B0CD3B43FE548CDE96338EE3 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
@@ -504,6 +508,7 @@
 			children = (
 				AB7FA61008AB8E9CC27FC781 /* ChargebacksView.swift */,
 				C1A100000000000000000003 /* ClaimChargebacksView.swift */,
+				C1A100000000000000000005 /* FinanceGapViews.swift */,
 				54CF6D56A1962D9BE153B0EA /* LedgerView.swift */,
 				9AED086993BC29BE4397E5D7 /* PaymentsView.swift */,
 				C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */,
@@ -558,6 +563,14 @@
 			path = Notifications;
 			sourceTree = "<group>";
 		};
+		C1A100000000000000000009 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				C1A100000000000000000007 /* NotificationPreferencesView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
 		CAB5A216A0C777F897639155 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -588,6 +601,7 @@
 				003C4EDED51407CBBB843A96 /* Promotions */,
 				417671D0CCC32C7ED1156456 /* Returns */,
 				6B11A00D2F91000100PLAN01 /* Planning */,
+				C1A100000000000000000009 /* Settings */,
 				B532738DD3A8F6DA50A7192A /* Treasury */,
 			);
 			path = Views;
@@ -789,6 +803,8 @@
 				483B3A9E6EAC74ABCDD58D59 /* ChargebacksView.swift in Sources */,
 				C1A100000000000000000002 /* ClaimsView.swift in Sources */,
 				C1A100000000000000000004 /* ClaimChargebacksView.swift in Sources */,
+				C1A100000000000000000006 /* FinanceGapViews.swift in Sources */,
+				C1A100000000000000000008 /* NotificationPreferencesView.swift in Sources */,
 				FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */,
 				98145061B9D6EAFE7865149C /* CollapsibleSidebar.swift in Sources */,
 				2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */,

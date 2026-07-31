@@ -229,7 +229,11 @@ fun HomeScreen(
                     returnLines = returnLines,
                     totalUnits = returnUnits,
                     onNavigate = { viewModel.state.value },
-                    onArrived = { viewModel.returnComplete() }
+                    onArrived = { viewModel.returnComplete() },
+                    showCashRecon = state.showCashRecon,
+                    declaredCashMinor = state.declaredCashMinor,
+                    onDeclaredCashChange = viewModel::updateDeclaredCash,
+                    onSubmitCashRecon = { viewModel.submitCashReconciliation() },
                 )
             } else {
                 TransitControlCard(

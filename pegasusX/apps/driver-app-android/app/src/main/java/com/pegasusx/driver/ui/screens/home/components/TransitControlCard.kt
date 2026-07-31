@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -171,7 +172,11 @@ fun ReturningToWarehouseCard(
     returnLines: List<com.pegasusx.driver.data.model.ReturnGoodsLine>,
     totalUnits: Long,
     onNavigate: () -> Unit,
-    onArrived: () -> Unit
+    onArrived: () -> Unit,
+    showCashRecon: Boolean = false,
+    declaredCashMinor: String = "",
+    onDeclaredCashChange: (String) -> Unit = {},
+    onSubmitCashRecon: () -> Unit = {},
 ) {
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
@@ -216,6 +221,28 @@ fun ReturningToWarehouseCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = lab.fgTertiary
                     )
+                }
+            }
+            if (showCashRecon) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Cash reconciliation required before shift end",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = lab.warning,
+                )
+                OutlinedTextField(
+                    value = declaredCashMinor,
+                    onValueChange = onDeclaredCashChange,
+                    label = { Text("Declared cash (minor)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onSubmitCashRecon,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Submit reconciliation")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))

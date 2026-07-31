@@ -60,6 +60,7 @@ import com.pegasusx.supplier.ui.screens.manifests.ManifestDetailScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
+import com.pegasusx.supplier.ui.screens.settings.NotificationPreferencesScreen
 import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrderDetailScreen
@@ -372,6 +373,7 @@ fun SupplierNavigation(
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
+                    onNotificationPrefs = { navController.navigate(SupplierRoutes.NOTIFICATION_PREFS) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
                     onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
@@ -555,6 +557,9 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.ROUTE_PERFORMANCE) {
                 RoutePerformanceScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.NOTIFICATION_PREFS) {
+                NotificationPreferencesScreen(ops) { navController.popBackStack() }
             }
             composable(SupplierRoutes.CHARGEBACKS) {
                 

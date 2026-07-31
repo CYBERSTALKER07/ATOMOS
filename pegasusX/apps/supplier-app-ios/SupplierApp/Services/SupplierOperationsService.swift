@@ -41,6 +41,16 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/user/notification-preferences")
     }
 
+    static func patchNotificationPreferences(_ preferences: [NotificationPreferenceRow]) async throws {
+        struct Body: Encodable {
+            let preferences: [NotificationPreferenceRow]
+        }
+        try await APIClient.shared.patchVoid(
+            "v1/user/notification-preferences",
+            body: Body(preferences: preferences)
+        )
+    }
+
     static func negotiationsPending(limit: Int = 500, offset: Int = 0) async throws -> [NegotiationProposalRow] {
         let resp: NegotiationPendingResponse = try await APIClient.shared.get(
             "v1/supplier/negotiations/pending?limit=\(limit)&offset=\(offset)"

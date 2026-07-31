@@ -2217,7 +2217,7 @@ struct NotificationPreferencesResponse: Decodable {
     let preferences: [NotificationPreferenceRow]
 }
 
-struct NotificationPreferenceRow: Decodable {
+struct NotificationPreferenceRow: Codable {
     let eventType: String
     let channel: String
     let enabled: Bool
