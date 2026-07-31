@@ -4025,6 +4025,81 @@ export interface MarkNotificationsReadRequest {
   mark_all?: boolean;
 }
 
+// ── Fleet Telemetry & Capacity Command Center ─────────────────────────────────
+export interface PartnerFilterMetric {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export interface VehicleShipmentCard {
+  id: string;
+  code: string;
+  status: "WAITING" | "ON_ROUTE" | "COMPLETED" | "DELAYED";
+  vehicle_type: "VAN" | "SEMI_TRUCK" | "BOX_TRUCK" | "FLATBED";
+  eta_seconds: number;
+  distance_miles_left: number;
+  stops_count: number;
+  stops_summary: string[];
+  driver_name?: string;
+  driver_phone?: string;
+  partner_id?: string;
+  partner_name?: string;
+}
+
+export interface VehicleCapacityMetrics {
+  vehicle_id: string;
+  code: string;
+  capacity_percentage: number;
+  current_volume_cubic_meters?: number;
+  max_volume_cubic_meters?: number;
+  current_weight_kg?: number;
+  max_weight_kg?: number;
+}
+
+export interface RouteTelemetryPoint {
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  speed_mph?: number;
+  heading_degrees?: number;
+}
+
+export interface RouteTelemetryDetails {
+  route_id: string;
+  vehicle_code: string;
+  status: string;
+  eta_seconds: number;
+  distance_miles_left: number;
+  start_point: { name: string; latitude: number; longitude: number };
+  destination_point: { name: string; latitude: number; longitude: number };
+  current_location: RouteTelemetryPoint;
+  waypoints: Array<{ name: string; latitude: number; longitude: number; status: "VISITED" | "PENDING" }>;
+}
+
+export interface PoDPhotoReport {
+  id: string;
+  title: string;
+  location_name: string;
+  timestamp: string;
+  photo_url: string;
+  step_number: number;
+}
+
+export interface FleetDispatchOverview {
+  total_count: number;
+  active_count: number;
+  inactive_count: number;
+  partner_filters: PartnerFilterMetric[];
+  shipments: VehicleShipmentCard[];
+}
+
+export interface FleetDispatchFilter {
+  partner_id?: string;
+  status_filter?: "ALL" | "ACTIVE" | "INACTIVE";
+  search_query?: string;
+}
+
 export * from "./forecast-confidence";
 
 export type SupplierSettingsResponse = any;
@@ -4033,3 +4108,4 @@ export type RecommendReassignResponse = { candidates?: ReassignmentCandidate[] }
 export type ApplyReassignRequest = any;
 export type StatusResponse = any;
 export type ReassignmentCandidate = any;
+

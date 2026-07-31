@@ -7,7 +7,7 @@ import AVFoundation
 import SwiftUI
 
 struct QRScannerView: View {
-    let onValidated: (ValidateQRResponse) -> Void
+    let onValidated: (ValidateQRResponse, String) -> Void
     let onCancel: () -> Void
 
     @State private var vm = ScannerViewModel()
@@ -174,5 +174,5 @@ struct QRCameraPreview: UIViewRepresentable {
 }
 
 #Preview {
-    QRScannerView(onValidated: { _ in }, onCancel: {})
+    QRScannerView(onValidated: { _, _ in }, onCancel: {})
 }

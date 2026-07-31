@@ -834,7 +834,9 @@ struct ContentView: View {
                 paymentEvent = payload
             case .driverApproaching:
                 await loadActiveOrders()
-            case .orderCompleted:
+            case .orderCompleted, .fiscalSucceeded:
+                await loadActiveOrders()
+            case .fiscalizing:
                 await loadActiveOrders()
             case .paymentSettled:
                 await loadActiveOrders()

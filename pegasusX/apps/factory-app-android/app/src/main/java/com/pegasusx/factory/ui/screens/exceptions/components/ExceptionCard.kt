@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +20,11 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun ExceptionCard(exception: ManifestException) {
+fun ExceptionCard(
+    exception: ManifestException,
+    resolving: Boolean = false,
+    onResolve: (() -> Unit)? = null,
+) {
     val isDlq = exception.attemptCount >= 3
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -72,6 +77,15 @@ fun ExceptionCard(exception: ManifestException) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (onResolve != null) {
+                Button(
+                    onClick = onResolve,
+                    enabled = !resolving,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (resolving) "Resolving…" else "Resolve")
+                }
+            }
         }
     }
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
-	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -95,10 +94,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.ControlTowerWorker.Run(ctx)
 		slog.Info("control tower playbook worker started")
 	}
-	streamProcessor := kafka.NewAnalyticsStreamProcessor()
-	dummyStream := make(chan []byte)
-	go streamProcessor.Start(ctx, dummyStream)
-	slog.Info("kafka stream processor started")
+	if app.BillingTierConsumer != nil {
+		go app.BillingTierConsumer.Start(ctx)
+		slog.Info("billing tier consumer started")
+	}
 }
 
 func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,20 +18,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pegasusx.driver.data.model.Order
+import com.pegasusx.driver.data.model.DriverEarningsResponse
 import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
 
 @Composable
-fun StatsSection(completedOrders: List<Order>) {
+fun StatsSection(earnings: DriverEarningsResponse?) {
     val lab = LocalPegasusColors.current
-    val totalValue = completedOrders.sumOf { it.totalAmount }
+    val totalValue = earnings?.totalVolume ?: 0L
+    val deliveries = earnings?.totalDeliveries ?: 0L
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Session Stats",
+            text = "Earnings",
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
@@ -43,15 +44,15 @@ fun StatsSection(completedOrders: List<Order>) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             StatCard(
-                title = "Total Value",
+                title = "Total Volume",
                 value = if (totalValue > 0) totalValue.formattedAmount() else "—",
                 icon = Icons.Default.DirectionsCar,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Avg Distance",
-                value = "—",
-                icon = Icons.Default.LocationOn,
+                title = "Deliveries",
+                value = if (deliveries > 0) deliveries.toString() else "—",
+                icon = Icons.Default.LocalShipping,
                 modifier = Modifier.weight(1f)
             )
         }

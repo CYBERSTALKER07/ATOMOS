@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HistorySection: View {
     var vm: FleetViewModel
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -12,13 +12,13 @@ struct HistorySection: View {
 
                 Spacer()
 
-                Text("\(vm.completedMissions.count) rides")
+                Text("\(vm.historyRows.count) rides")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(.horizontal, LabTheme.s8)
 
-            if vm.completedMissions.isEmpty {
+            if vm.historyRows.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 24))
@@ -32,8 +32,8 @@ struct HistorySection: View {
                 .padding(.vertical, 30)
                 .labCard()
             } else {
-                ForEach(Array(vm.completedMissions.enumerated()), id: \.element.id) { index, mission in
-                    HistoryRow(mission: mission, index: index)
+                ForEach(Array(vm.historyRows.enumerated()), id: \.element.id) { index, row in
+                    HistoryRow(row: row, index: index)
                 }
             }
         }
@@ -41,9 +41,9 @@ struct HistorySection: View {
 }
 
 struct HistoryRow: View {
-    let mission: Mission
+    let row: DriverHistoryRow
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
@@ -57,18 +57,18 @@ struct HistoryRow: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(mission.order_id)
+                Text(row.orderId)
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fg)
 
-                Text("\(mission.gateway) · \(mission.amount.formattedAmount)")
+                Text("\(row.status.isEmpty ? "COMPLETED" : row.status) · \(Int(row.totalMinor).formattedAmount)")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(LabTheme.fgSecondary)
             }
 
             Spacer()
 
-            StatusPill(label: "DELIVERED", color: LabTheme.success)
+            StatusPill(label: row.status.isEmpty ? "DELIVERED" : row.status, color: LabTheme.success)
         }
         .padding(LabTheme.s16)
         .labCard()

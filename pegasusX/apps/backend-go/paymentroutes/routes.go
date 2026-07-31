@@ -41,7 +41,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	mountPayers := func(rr chi.Router) {
 		rr.Post("/v1/payers", d.Service.HandleCreatePayer)
-		rr.Get("/v1/payers", d.Service.HandleListPayers)
+		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/payers", d.Service.HandleListPayers)
 		rr.Get("/v1/payers/{payerId}", d.Service.HandleGetPayer)
 		rr.Put("/v1/payers/{payerId}", d.Service.HandleUpdatePayer)
 	}

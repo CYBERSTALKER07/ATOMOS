@@ -43,7 +43,7 @@ targets:
 
           mkdir -p "$SRCROOT/payload-app-ios/Generated"
           cd "$BACKEND_DIR"
-          go run ./cmd/gen-contracts -source events/events.go -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
+          go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
           quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --out "$OUTPUT_PATH"
         outputFiles:
           - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"

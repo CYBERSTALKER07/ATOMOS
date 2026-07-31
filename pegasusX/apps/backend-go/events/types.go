@@ -513,6 +513,28 @@ type ConditionEvent struct {
 	Notes         string   `json:"notes,omitempty"`
 }
 
+// @Sync(LogisticsException)
+// LogisticsException is the payload for CLAIM_* / OS&D / reverse-logistics events.
+type LogisticsException struct {
+	BaseEvent
+	ClaimID        string   `json:"claim_id,omitempty"`
+	OrderID        string   `json:"order_id,omitempty"`
+	SupplierID     string   `json:"supplier_id,omitempty"`
+	RetailerID     string   `json:"retailer_id,omitempty"`
+	DriverID       string   `json:"driver_id,omitempty"`
+	WarehouseID    string   `json:"warehouse_id,omitempty"`
+	ClaimType      string   `json:"claim_type,omitempty"`
+	Status         string   `json:"status,omitempty"`
+	Source         string   `json:"source,omitempty"`
+	AmountMinor    int64    `json:"amount_minor,omitempty"`
+	Currency       string   `json:"currency,omitempty"`
+	Note           string   `json:"note,omitempty"`
+	ResolutionNote string   `json:"resolution_note,omitempty"`
+	SettlementMode string   `json:"settlement_mode,omitempty"`
+	ChargebackID   string   `json:"chargeback_id,omitempty"`
+	PhotoURLs      []string `json:"photo_urls,omitempty"`
+}
+
 // @Sync(CreditEvent)
 // CreditProfileEvent handles retailer credit profile changes.
 type CreditProfileEvent struct {

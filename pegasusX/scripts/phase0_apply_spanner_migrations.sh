@@ -19,6 +19,17 @@ elif [[ -f "$ROOT/.env.k8s" ]]; then
 	set +a
 fi
 
+# Allow operators to target SSMR Spanner without editing generated env files.
+if [[ -n "${PHASE0_SPANNER_PROJECT:-}" ]]; then
+	export SPANNER_PROJECT="$PHASE0_SPANNER_PROJECT"
+fi
+if [[ -n "${PHASE0_SPANNER_INSTANCE:-}" ]]; then
+	export SPANNER_INSTANCE="$PHASE0_SPANNER_INSTANCE"
+fi
+if [[ -n "${PHASE0_SPANNER_DATABASE:-}" ]]; then
+	export SPANNER_DATABASE="$PHASE0_SPANNER_DATABASE"
+fi
+
 # Force cloud Spanner client (LoadConfig would otherwise default emulator for local projects).
 # Explicit empty host + non-local SPANNER_PROJECT both select real GCP ADC.
 if [[ -n "${SPANNER_EMULATOR_HOST:-}" ]]; then

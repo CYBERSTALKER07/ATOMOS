@@ -91,8 +91,8 @@ enum WarehouseIdempotency {
         "warehouse-dispatch:\(warehouseId()):\(actorId):\(stableHash(routeFingerprint))"
     }
 
-    static func rescuePropose(routeId: String) -> String {
-        "warehouse-rescue-propose:\(routeId)"
+    static func rescuePropose(rescueId: String, brokenDriverId: String, rescueDriverId: String) -> String {
+        "warehouse-rescue-propose:\(warehouseId()):\(rescueId):\(brokenDriverId):\(rescueDriverId)"
     }
 
     static func inboundScan(barcode: String, sessionId: String) -> String {

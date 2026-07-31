@@ -7,13 +7,14 @@ struct ManifestExceptionsView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var escalatedOnly = false
+    @State private var resolvingId: String?
 
     var body: some View {
         Group {
             if loading && exceptions.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error, exceptions.isEmpty {
                 ContentUnavailableView {
                     Label("Error", systemImage: "exclamationmark.triangle")
                 } description: {
@@ -34,8 +35,12 @@ struct ManifestExceptionsView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(Array(exceptions.enumerated()), id: \.element.id) { index, exception in
-                        ExceptionRow(exception: exception)
-                            .staggeredAppear(index: index)
+                        ExceptionRow(
+                            exception: exception,
+                            resolving: resolvingId == exception.exceptionId,
+                            onResolve: { resolve(exception.exceptionId) }
+                        )
+                        .staggeredAppear(index: index)
                     }
                 }
             }
@@ -97,6 +102,17 @@ struct ManifestExceptionsView: View {
             }
         }
     }
+
+    private func resolve(_ exceptionId: String) {
+        Task { @MainActor in
+            resolvingId = exceptionId
+            do {
+                _ = try await FactoryService.resolveManifestException(exceptionId: exceptionId)
+                load(silent: true)
+            } catch {
+                self.error = error.localizedDescription
+            }
+            resolvingId = nil
+        }
+    }
 }
-
-

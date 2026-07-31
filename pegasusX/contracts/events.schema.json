@@ -607,6 +607,75 @@
       "title": "InventoryImportPayload",
       "type": "object"
     },
+    "LogisticsExceptionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "chargeback_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "claim_type": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "photo_urls": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_note": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "settlement_mode": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event"
+      ],
+      "title": "LogisticsExceptionPayload",
+      "type": "object"
+    },
     "ManifestPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1764,6 +1833,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ALLOCATION_FAIR_SHARE_APPLIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AllocationFairShareAppliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ALLOCATION_POLICY_APPLIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AllocationPolicyAppliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SyncPayload"
         },
         {
@@ -1817,6 +1924,44 @@
         }
       ],
       "title": "CashShortfallEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CLAIM_FILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ClaimFiledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CLAIM_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ClaimResolvedEnvelope"
     },
     {
       "allOf": [
@@ -1912,6 +2057,25 @@
         }
       ],
       "title": "CreditDeliveryResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CREDIT_LEAVE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CreditLeaveEnvelope"
     },
     {
       "allOf": [
@@ -2277,6 +2441,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOGISTICS_EXCEPTION_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LogisticsExceptionReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOGISTICS_TELEMETRY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LogisticsTelemetryEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ManifestPayload"
         },
         {
@@ -2529,6 +2731,25 @@
         {
           "properties": {
             "type": {
+              "const": "ORDER_ALLOCATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderAllocatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "ORDER_AMENDED"
             }
           },
@@ -2710,6 +2931,25 @@
         }
       ],
       "title": "OrderValidationFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PARTIAL_OFFLOAD"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PartialOffloadEnvelope"
     },
     {
       "allOf": [
@@ -3075,6 +3315,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PROXIMITY_UNLOCKED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProximityUnlockedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PlanningPayload"
         },
         {
@@ -3189,6 +3448,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SEGMENT_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerSegmentUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ReturnPayload"
         },
         {
@@ -3204,6 +3482,25 @@
         }
       ],
       "title": "ReturnReceivedAtWarehouseEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REVERSE_LOGISTICS_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReverseLogisticsRequiredEnvelope"
     },
     {
       "allOf": [
@@ -3242,6 +3539,25 @@
         }
       ],
       "title": "RouteReorderedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SERVICE_POLICY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ServicePolicyUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -3356,6 +3672,44 @@
         }
       ],
       "title": "ShopClosedResponseEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_TIMEOUT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedTimeoutEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SKU_CLASS_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SkuClassUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -3819,14 +4173,19 @@
       "enum": [
         "AI_RECOMMENDATION_CREATED",
         "AI_RECOMMENDATION_DECIDED",
+        "ALLOCATION_FAIR_SHARE_APPLIED",
+        "ALLOCATION_POLICY_APPLIED",
         "CART_SYNC_UPDATED",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
+        "CLAIM_FILED",
+        "CLAIM_RESOLVED",
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
         "CREDIT_DELIVERY_MARKED",
         "CREDIT_DELIVERY_RESOLVED",
+        "CREDIT_LEAVE",
         "DELIVERY_DISPUTED",
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_BASELINE_UPDATED",
@@ -3846,6 +4205,8 @@
         "INVENTORY_IMPORT_STATUS_UPDATE",
         "INVENTORY_IMPORT_UPLOADED",
         "INVENTORY_SYNC_COMPLETE",
+        "LOGISTICS_EXCEPTION_REPORTED",
+        "LOGISTICS_TELEMETRY",
         "MANIFEST_CANCELLED",
         "MANIFEST_COMPLETED",
         "MANIFEST_DISPATCHED",
@@ -3859,6 +4220,7 @@
         "MISSING_ITEMS_REPORTED",
         "NEGOTIATION_PROPOSED",
         "NEGOTIATION_RESOLVED",
+        "ORDER_ALLOCATED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
         "ORDER_CAPACITY_OVERFLOW",
@@ -3869,6 +4231,7 @@
         "ORDER_REASSIGNED",
         "ORDER_STATUS_CHANGED",
         "ORDER_VALIDATION_FAILED",
+        "PARTIAL_OFFLOAD",
         "PAYMENT_CLEARED",
         "PAYMENT_FAILED",
         "PAYMENT_REQUIRED",
@@ -3888,21 +4251,27 @@
         "PRE_ORDER_NUDGE",
         "PRODUCT_HANDLING_UPDATED",
         "PROMOTION_CHANGED",
+        "PROXIMITY_UNLOCKED",
         "REPLENISHMENT_AUTO_APPROVED",
         "REPLENISHMENT_INSIGHT_CREATED",
         "RETAILER_CREDIT_LIMIT_BREACHED",
         "RETAILER_CREDIT_PROFILE_CHANGED",
         "RETAILER_PRICE_OVERRIDE",
         "RETAILER_REGISTERED",
+        "RETAILER_SEGMENT_UPDATED",
         "RETURN_RECEIVED_AT_WAREHOUSE",
+        "REVERSE_LOGISTICS_REQUIRED",
         "ROUTE_CREATED",
         "ROUTE_REORDERED",
+        "SERVICE_POLICY_UPDATED",
         "SETTLEMENT_REQUIRED",
         "SHOP_CLOSED",
         "SHOP_CLOSED_BYPASS_OFFLOAD",
         "SHOP_CLOSED_ESCALATED",
         "SHOP_CLOSED_RESOLVED",
         "SHOP_CLOSED_RESPONSE",
+        "SHOP_CLOSED_TIMEOUT",
+        "SKU_CLASS_UPDATED",
         "SPLIT_PAYMENT_CREATED",
         "SPLIT_SHIPMENT_CREATED",
         "SUPPLIER_BILLING_CONFIGURED",
@@ -3939,14 +4308,19 @@
   "x-event-payload-map": {
     "AI_RECOMMENDATION_CREATED": "AIRecommendationPayload",
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
+    "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
+    "ALLOCATION_POLICY_APPLIED": "OrderPayload",
     "CART_SYNC_UPDATED": "SyncPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",
+    "CLAIM_FILED": "LogisticsExceptionPayload",
+    "CLAIM_RESOLVED": "LogisticsExceptionPayload",
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",
     "CREDIT_DELIVERY_MARKED": "CreditDeliveryPayload",
     "CREDIT_DELIVERY_RESOLVED": "CreditDeliveryPayload",
+    "CREDIT_LEAVE": "ShopClosedBypassOffloadPayload",
     "DELIVERY_DISPUTED": "DeliverySessionPayload",
     "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
     "DEMAND_BASELINE_UPDATED": "PlanningPayload",
@@ -3966,6 +4340,8 @@
     "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportPayload",
     "INVENTORY_IMPORT_UPLOADED": "InventoryImportPayload",
     "INVENTORY_SYNC_COMPLETE": "SyncPayload",
+    "LOGISTICS_EXCEPTION_REPORTED": "LogisticsExceptionPayload",
+    "LOGISTICS_TELEMETRY": "LogisticsExceptionPayload",
     "MANIFEST_CANCELLED": "ManifestPayload",
     "MANIFEST_COMPLETED": "ManifestPayload",
     "MANIFEST_DISPATCHED": "ManifestPayload",
@@ -3979,6 +4355,7 @@
     "MISSING_ITEMS_REPORTED": "OrderPayload",
     "NEGOTIATION_PROPOSED": "NegotiationPayload",
     "NEGOTIATION_RESOLVED": "NegotiationPayload",
+    "ORDER_ALLOCATED": "OrderPayload",
     "ORDER_AMENDED": "OrderPayload",
     "ORDER_ASSIGNED": "OrderPayload",
     "ORDER_CAPACITY_OVERFLOW": "SplitShipmentPayload",
@@ -3989,6 +4366,7 @@
     "ORDER_REASSIGNED": "OrderPayload",
     "ORDER_STATUS_CHANGED": "OrderPayload",
     "ORDER_VALIDATION_FAILED": "OrderPayload",
+    "PARTIAL_OFFLOAD": "ShopClosedBypassOffloadPayload",
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_FAILED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",
@@ -4008,21 +4386,27 @@
     "PRE_ORDER_NUDGE": "PreOrderPayload",
     "PRODUCT_HANDLING_UPDATED": "ProductPayload",
     "PROMOTION_CHANGED": "PromotionPayload",
+    "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
     "REPLENISHMENT_AUTO_APPROVED": "PlanningPayload",
     "REPLENISHMENT_INSIGHT_CREATED": "PlanningPayload",
     "RETAILER_CREDIT_LIMIT_BREACHED": "CreditLimitPayload",
     "RETAILER_CREDIT_PROFILE_CHANGED": "CreditProfilePayload",
     "RETAILER_PRICE_OVERRIDE": "RetailerPriceOverridePayload",
     "RETAILER_REGISTERED": "RetailerPayload",
+    "RETAILER_SEGMENT_UPDATED": "OrderPayload",
     "RETURN_RECEIVED_AT_WAREHOUSE": "ReturnPayload",
+    "REVERSE_LOGISTICS_REQUIRED": "LogisticsExceptionPayload",
     "ROUTE_CREATED": "RoutePayload",
     "ROUTE_REORDERED": "RoutePayload",
+    "SERVICE_POLICY_UPDATED": "OrderPayload",
     "SETTLEMENT_REQUIRED": "FinancePayload",
     "SHOP_CLOSED": "ShopClosedPayload",
     "SHOP_CLOSED_BYPASS_OFFLOAD": "ShopClosedBypassOffloadPayload",
     "SHOP_CLOSED_ESCALATED": "ShopClosedPayload",
     "SHOP_CLOSED_RESOLVED": "ShopClosedPayload",
     "SHOP_CLOSED_RESPONSE": "ShopClosedPayload",
+    "SHOP_CLOSED_TIMEOUT": "ShopClosedBypassOffloadPayload",
+    "SKU_CLASS_UPDATED": "OrderPayload",
     "SPLIT_PAYMENT_CREATED": "FinancePayload",
     "SPLIT_SHIPMENT_CREATED": "SplitShipmentPayload",
     "SUPPLIER_BILLING_CONFIGURED": "SupplierPayload",

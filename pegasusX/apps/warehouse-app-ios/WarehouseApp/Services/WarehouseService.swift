@@ -258,8 +258,36 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/dispatch/execute", body: body, idempotencyKey: idempotencyKey)
     }
 
-    static func proposeRescue(routeId: String, body: [String: AnyCodable]) async throws -> [String: String] {
-        try await api.post("v1/warehouse/ops/dispatch/routes/\(routeId)/rescue", body: body, idempotencyKey: WarehouseIdempotency.rescuePropose(routeId: routeId))
+    /// POST /v1/warehouse/ops/dispatch/rescue/preview — { broken_driver_id }
+    static func previewRescue(brokenDriverId: String) async throws -> [String: AnyCodable] {
+        try await api.post(
+            "v1/warehouse/ops/dispatch/rescue/preview",
+            body: ["broken_driver_id": brokenDriverId]
+        )
+    }
+
+    /// POST /v1/warehouse/ops/dispatch/rescue/propose — { rescue_id, broken_driver_id, rescue_driver_id, force_capacity? }
+    static func proposeRescue(
+        rescueId: String,
+        brokenDriverId: String,
+        rescueDriverId: String,
+        forceCapacity: Bool = false
+    ) async throws -> [String: String] {
+        let body: [String: AnyCodable] = [
+            "rescue_id": AnyCodable(rescueId),
+            "broken_driver_id": AnyCodable(brokenDriverId),
+            "rescue_driver_id": AnyCodable(rescueDriverId),
+            "force_capacity": AnyCodable(forceCapacity),
+        ]
+        return try await api.post(
+            "v1/warehouse/ops/dispatch/rescue/propose",
+            body: body,
+            idempotencyKey: WarehouseIdempotency.rescuePropose(
+                rescueId: rescueId,
+                brokenDriverId: brokenDriverId,
+                rescueDriverId: rescueDriverId
+            )
+        )
     }
 
     static func supplyRequests(state: String? = nil) async throws -> [WarehouseSupplyRequest] {

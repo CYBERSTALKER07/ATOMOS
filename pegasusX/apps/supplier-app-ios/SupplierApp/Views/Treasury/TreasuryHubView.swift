@@ -54,6 +54,9 @@ struct TreasuryHubView: View {
                                 NavigationLink { CreditNotesListView() } label: {
                                     Label("Credit notes", systemImage: "doc.text")
                                 }
+                                NavigationLink { CreditProfilesView() } label: {
+                                    Label("Credit profiles", systemImage: "creditcard.and.123")
+                                }
                                 NavigationLink { RoutePerformanceListView() } label: {
                                     Label("Route performance", systemImage: "map")
                                 }

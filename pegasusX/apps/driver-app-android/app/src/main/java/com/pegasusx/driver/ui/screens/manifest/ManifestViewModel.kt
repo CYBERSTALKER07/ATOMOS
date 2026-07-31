@@ -10,6 +10,8 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.DepartRequest
+import com.pegasusx.driver.data.model.DriverEarningsResponse
+import com.pegasusx.driver.data.model.DriverHistoryRow
 import com.pegasusx.driver.data.model.EarlyCompletePayload
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderEntity
@@ -83,6 +85,8 @@ data class ManifestUiState(
     val navigationCue: NavigationCue? = null,
     val deliveryEdgeMessage: String? = null,
     val isRequestingEarlyComplete: Boolean = false,
+    val historyRows: List<DriverHistoryRow> = emptyList(),
+    val earnings: DriverEarningsResponse? = null,
 )
 
 @HiltViewModel
@@ -108,6 +112,20 @@ class ManifestViewModel @Inject constructor(
         loadManifest()
         startProfilePolling()
         observeRealtime()
+        loadEarningsAndHistory()
+    }
+
+    fun loadEarningsAndHistory() {
+        viewModelScope.launch {
+            try {
+                val earnings = api.getEarnings()
+                _state.update { it.copy(earnings = earnings) }
+            } catch (_: Exception) { }
+            try {
+                val history = api.getHistory()
+                _state.update { it.copy(historyRows = history.rows) }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun observeRealtime() {

@@ -39,17 +39,23 @@ export function reasonBadge(reason: string) {
 
 interface ManifestExceptionsListProps {
   exceptions: ManifestException[];
+  resolvingId?: string | null;
+  onResolve?: (exceptionId: string) => void;
 }
 
-export function ManifestExceptionsList({ exceptions }: ManifestExceptionsListProps) {
+export function ManifestExceptionsList({
+  exceptions,
+  resolvingId = null,
+  onResolve,
+}: ManifestExceptionsListProps) {
   return (
     <PageSection title="Exception inbox" description="Rows highlighted when attempt count reaches DLQ threshold." className="mt-6">
       <div className="overflow-x-auto -mx-5 px-5">
         <table className="desk-table w-full text-sm">
           <thead>
             <tr className="border-b" style={{ borderColor: 'var(--desk-border)' }}>
-              {['Transfer', 'Manifest', 'Reason', 'Attempts', 'Escalated', 'Time'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: 'var(--desk-text-secondary)' }}>
+              {['Transfer', 'Manifest', 'Reason', 'Attempts', 'Escalated', 'Time', ''].map((h) => (
+                <th key={h || 'actions'} className="px-4 py-3 text-left font-medium" style={{ color: 'var(--desk-text-secondary)' }}>
                   {h}
                 </th>
               ))}
@@ -80,6 +86,18 @@ export function ManifestExceptionsList({ exceptions }: ManifestExceptionsListPro
                 <td className="px-4 py-3">{ex.escalated ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--desk-text-secondary)' }}>
                   {ex.created_at ? new Date(ex.created_at).toLocaleString() : '—'}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {onResolve ? (
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--ghost text-xs"
+                      disabled={resolvingId === ex.exception_id}
+                      onClick={() => onResolve(ex.exception_id)}
+                    >
+                      {resolvingId === ex.exception_id ? 'Resolving…' : 'Resolve'}
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ))}

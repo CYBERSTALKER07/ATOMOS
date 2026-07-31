@@ -389,14 +389,15 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Version", "SupplierId", "Status", "ManifestId"})
+			[]string{"Version", "SupplierId", "Status", "ManifestId", "WarehouseId", "OrderSource", "LineItemsJson"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol, manifestCol spanner.NullString
+		var supplierCol, manifestCol, warehouseCol, orderSourceCol spanner.NullString
 		var orderStatus string
-		if err := orderRow.Columns(&version, &supplierCol, &orderStatus, &manifestCol); err != nil {
+		var lineItemsRaw []byte
+		if err := orderRow.Columns(&version, &supplierCol, &orderStatus, &manifestCol, &warehouseCol, &orderSourceCol, &lineItemsRaw); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
@@ -404,6 +405,14 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		}
 		if manifestCol.Valid {
 			manifestID = manifestCol.StringVal
+		}
+		warehouseID := ""
+		if warehouseCol.Valid {
+			warehouseID = warehouseCol.StringVal
+		}
+		orderSource := ""
+		if orderSourceCol.Valid {
+			orderSource = orderSourceCol.StringVal
 		}
 		// Retailer response wins if still PENDING (ARRIVED_SHOP_CLOSED), even after grace clock.
 		if orderStatus != string(StatusShopClosedPending) {
@@ -470,6 +479,9 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		case RetailerRespCancel:
 			newStatus = string(StatusCancelled)
 			resolution = ShopClosedResolutionCancelled
+			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+				return err
+			}
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
 					"OrderId":              req.OrderID,
@@ -628,13 +640,14 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"Version", "SupplierId", "ManifestId"})
+			[]string{"Version", "SupplierId", "ManifestId", "WarehouseId", "OrderSource", "LineItemsJson"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol, manifestCol spanner.NullString
-		if err := orderRow.Columns(&version, &supplierCol, &manifestCol); err != nil {
+		var supplierCol, manifestCol, warehouseCol, orderSourceCol spanner.NullString
+		var lineItemsRaw []byte
+		if err := orderRow.Columns(&version, &supplierCol, &manifestCol, &warehouseCol, &orderSourceCol, &lineItemsRaw); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
@@ -642,6 +655,14 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 		if manifestCol.Valid {
 			manifestID = manifestCol.StringVal
+		}
+		warehouseID := ""
+		if warehouseCol.Valid {
+			warehouseID = warehouseCol.StringVal
+		}
+		orderSource := ""
+		if orderSourceCol.Valid {
+			orderSource = orderSourceCol.StringVal
 		}
 		if strings.TrimSpace(claims.SupplierID) != "" && supplierID != "" && claims.SupplierID != supplierID {
 			return ErrOrderForbidden
@@ -661,12 +682,16 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 			}))
 		case "RETURN_TO_DEPOT":
 			resolution = "RETURN_TO_DEPOT"
+			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+				return err
+			}
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":   orderID,
-					"Status":    string(StatusCancelled),
-					"Version":   version + 1,
-					"UpdatedAt": now.UTC(),
+					"OrderId":              orderID,
+					"Status":               string(StatusCancelled),
+					"ShopClosedResolution": ShopClosedResolutionReturned,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
 				}),
 				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
 					"AttemptId":  req.AttemptID,

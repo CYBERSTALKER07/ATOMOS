@@ -23,6 +23,8 @@ fun ExceptionsList(
     exceptions: List<ManifestException>,
     escalatedOnly: Boolean,
     onEscalatedOnlyChange: (Boolean) -> Unit,
+    resolvingId: String? = null,
+    onResolve: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -61,7 +63,11 @@ fun ExceptionsList(
             }
         } else {
             items(exceptions, key = { it.exceptionId }) { exception ->
-                ExceptionCard(exception = exception)
+                ExceptionCard(
+                    exception = exception,
+                    resolving = resolvingId == exception.exceptionId,
+                    onResolve = onResolve?.let { callback -> { callback(exception.exceptionId) } },
+                )
             }
         }
     }

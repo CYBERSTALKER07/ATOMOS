@@ -111,6 +111,14 @@ fun HomeScreen(
     var returnUnits by remember { mutableStateOf(0L) }
     var pulseEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
+    var showRescueSheet by remember { mutableStateOf(false) }
+
+    if (showRescueSheet) {
+        RequestRescueSheet(
+            api = api,
+            onDismiss = { showRescueSheet = false },
+        )
+    }
 
     LaunchedEffect(Unit) {
         pulseLoading = true
@@ -304,6 +312,7 @@ fun HomeScreen(
             QuickActionsSection(
                 onScanQR = onScanQR,
                 onOfflineVerify = onOfflineVerify,
+                onRequestRescue = { showRescueSheet = true },
                 hasArrivedOrder = state.orders.any { it.state == OrderState.ARRIVED }
             )
         }

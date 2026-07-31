@@ -17,6 +17,9 @@ var ErrConflict = errors.New("idempotency: key reused with different payload")
 // ErrInProgress is returned when the same idempotency key is already being processed.
 var ErrInProgress = errors.New("idempotency: request in progress")
 
+// ErrMissingKey is returned when a mandatory idempotency key header is missing.
+var ErrMissingKey = errors.New("idempotency: Idempotency-Key header is required")
+
 // Record is what we store per key.
 type Record struct {
 	BodyHash   string
@@ -70,6 +73,14 @@ func Guard(ctx context.Context, store Store, key, bodyHash string) (Record, bool
 		return Record{}, false, err
 	}
 	return Record{}, false, nil
+}
+
+// GuardStrict functions identically to Guard, but returns ErrMissingKey if key is empty.
+func GuardStrict(ctx context.Context, store Store, key, bodyHash string) (Record, bool, error) {
+	if key == "" {
+		return Record{}, false, ErrMissingKey
+	}
+	return Guard(ctx, store, key, bodyHash)
 }
 
 // InMemoryStore is the scaffold-default Store. Safe for concurrent use; not

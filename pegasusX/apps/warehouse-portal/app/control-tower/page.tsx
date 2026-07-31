@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   LiveEKGNetworkGraph,
   HexagonalControlTowerMap,
@@ -22,6 +22,7 @@ import {
   Legend,
 } from "recharts";
 import { cellToBoundary, latLngToCell } from "h3-js";
+import { decodeJwtPayload, useToken } from "@/lib/auth";
 
 
 
@@ -35,8 +36,16 @@ const scenariosData: Record<string, unknown>[] = [];
 
 export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
-  
-  const supplierId = "sup-demo-1";
+  const token = useToken();
+  const supplierId = useMemo(() => {
+    const claims = token ? decodeJwtPayload(token) : null;
+    const sid =
+      (typeof claims?.supplier_id === "string" && claims.supplier_id) ||
+      (typeof claims?.SupplierID === "string" && claims.SupplierID) ||
+      (typeof claims?.sid === "string" && claims.sid) ||
+      "";
+    return sid.trim();
+  }, [token]);
   
   const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
 

@@ -344,9 +344,15 @@ func runGapClosureSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("supplier session: %w", err)
 	}
+	if err := putSupplierTopology(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier topology: %w", err)
+	}
 	retailerID, h3Cell, err := registerRetailer(ctx, client, base, cfg)
 	if err != nil {
 		return fmt.Errorf("retailer register: %w", err)
+	}
+	if err := grantRetailerCredit(ctx, client, base, cookie, retailerID, 500_000_000); err != nil {
+		return fmt.Errorf("retailer credit grant: %w", err)
 	}
 	retailerToken, err := auth.Issue(auth.Claims{
 		Subject:    retailerID,

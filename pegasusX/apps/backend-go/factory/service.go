@@ -320,18 +320,20 @@ func (s *Service) nextIDLocked(prefix string) string {
 }
 
 // portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
-// unless FACTORY_PORTAL_SEED=true is set explicitly for local scaffold runs.
+// unless FACTORY_PORTAL_SEED=true or USE_DEMO_SEED=true is set explicitly for local scaffold runs.
 func (s *Service) portalSeedEnabled() bool {
-	if s.spannerClient != nil {
-		switch strings.ToLower(strings.TrimSpace(os.Getenv("FACTORY_PORTAL_SEED"))) {
+	envOn := func(key string) bool {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
 		case "1", "true", "yes":
 			return true
 		default:
 			return false
 		}
 	}
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("FACTORY_PORTAL_SEED")))
-	return v == "1" || v == "true" || v == "yes"
+	if s.spannerClient != nil {
+		return envOn("FACTORY_PORTAL_SEED") || envOn("USE_DEMO_SEED")
+	}
+	return envOn("FACTORY_PORTAL_SEED") || envOn("USE_DEMO_SEED")
 }
 
 func (s *Service) ensureDemoDataLocked() {
@@ -1103,21 +1105,64 @@ func (s *Service) HandleFleetVehicles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"vehicles": rows})
 }
 
-// HandleStaff serves GET /v1/factory/staff.
+// HandleStaff serves GET /v1/factory/staff and POST /v1/factory/staff (create).
 func (s *Service) HandleStaff(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	switch r.Method {
+	case http.MethodGet:
+		s.mu.Lock()
+		s.ensureDemoDataLocked()
+		rows := append([]StaffRow(nil), s.staff...)
+		mapped := make([]map[string]any, len(rows))
+		for i := range rows {
+			mapped[i] = iosStaffMemberPayload(rows[i])
+		}
+		s.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
 		return
+	case http.MethodPost:
+		s.handleCreateStaff(w, r)
+		return
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleCreateStaff(w http.ResponseWriter, r *http.Request) {
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+		Role string `json:"role"`
+	}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.Role = strings.TrimSpace(req.Role)
+	if req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+		return
+	}
+	if req.Role == "" {
+		req.Role = "FACTORY_OPERATOR"
 	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
-	rows := append([]StaffRow(nil), s.staff...)
-	mapped := make([]map[string]any, len(rows))
-	for i := range rows {
-		mapped[i] = iosStaffMemberPayload(rows[i])
+	row := StaffRow{
+		StaffID: s.nextIDLocked("stf"),
+		Name:    req.Name,
+		Role:    req.Role,
 	}
+	s.staff = append(s.staff, row)
+	payload := iosStaffMemberPayload(row)
 	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
+	writeJSON(w, http.StatusCreated, payload)
 }
 
 // HandleDispatch serves POST /v1/factory/dispatch.
@@ -1778,6 +1823,58 @@ func (s *Service) HandleManifestExceptions(w http.ResponseWriter, r *http.Reques
 
 	sort.Slice(rows, func(i, j int) bool { return rows[i].CreatedAt > rows[j].CreatedAt })
 	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
+}
+
+// HandleResolveManifestException serves POST /v1/factory/manifest-exceptions/{exceptionID}/resolve.
+func (s *Service) HandleResolveManifestException(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	exceptionID := strings.TrimSpace(chi.URLParam(r, "exceptionID"))
+	if exceptionID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "exception_id_required"})
+		return
+	}
+	body, _ := readLimitedBody(r, 64*1024)
+	var req struct {
+		Resolution string `json:"resolution"`
+		Note       string `json:"note"`
+	}
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &req)
+	}
+	req.Resolution = strings.TrimSpace(req.Resolution)
+	if req.Resolution == "" {
+		req.Resolution = "RESOLVED"
+	}
+
+	s.mu.Lock()
+	s.ensureDemoDataLocked()
+	found := -1
+	for i := range s.manifestExceptions {
+		if s.manifestExceptions[i].ExceptionID == exceptionID {
+			found = i
+			break
+		}
+	}
+	if found < 0 {
+		s.mu.Unlock()
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "exception_not_found"})
+		return
+	}
+	row := s.manifestExceptions[found]
+	// Drop from open queue after resolve.
+	s.manifestExceptions = append(s.manifestExceptions[:found], s.manifestExceptions[found+1:]...)
+	s.mu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"exception_id": row.ExceptionID,
+		"manifest_id":  row.ManifestID,
+		"resolution":   req.Resolution,
+		"note":         strings.TrimSpace(req.Note),
+		"status":       "RESOLVED",
+	})
 }
 
 // HandleSupplyRequests serves GET /v1/factory/supply-requests.

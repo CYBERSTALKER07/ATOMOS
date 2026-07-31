@@ -4,6 +4,7 @@ struct ExceptionsView: View {
     @State private var rows: [SupplierExceptionRow] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var busyKey: String?
 
     var body: some View {
         Group {
@@ -17,7 +18,9 @@ struct ExceptionsView: View {
                     message: "Operational exceptions will appear here. Use Claims for post-delivery OS&D."
                 )
             } else {
-                ExceptionsList(rows: rows)
+                ExceptionsList(rows: rows, busyKey: busyKey) { row in
+                    Task { await resolve(row) }
+                }
             }
         }
         .navigationTitle("Exceptions")
@@ -30,6 +33,7 @@ struct ExceptionsView: View {
                 }
             }
         }
+        .refreshable { await load() }
         .task { await load() }
     }
 
@@ -39,6 +43,32 @@ struct ExceptionsView: View {
         defer { loading = false }
         do {
             rows = try await SupplierOperationsService.exceptions()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func resolve(_ row: SupplierExceptionRow) async {
+        let kind = row.kind.uppercased()
+        let key = "\(kind):\(row.orderId)"
+        busyKey = key
+        defer { busyKey = nil }
+        do {
+            let resolveId: String
+            let creditNoteId: String?
+            if kind == "CREDIT_NOTE_DRAFT" {
+                creditNoteId = row.note.flatMap { $0.isEmpty ? nil : $0 }
+                resolveId = creditNoteId ?? row.orderId
+            } else {
+                creditNoteId = nil
+                resolveId = row.orderId
+            }
+            try await SupplierOperationsService.resolveException(
+                kind: kind,
+                id: resolveId,
+                creditNoteId: creditNoteId
+            )
+            await load()
         } catch {
             self.error = error.localizedDescription
         }

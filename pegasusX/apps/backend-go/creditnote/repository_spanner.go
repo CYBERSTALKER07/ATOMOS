@@ -230,37 +230,119 @@ func (r *SpannerRepository) listLines(ctx context.Context, creditNoteID string) 
 }
 
 func (r *SpannerRepository) GetDeliveredOrderLines(ctx context.Context, orderId string) ([]CreditNoteLine, error) {
-	stmt := spanner.Statement{
-		SQL: `
-			SELECT ol.OrderLineId, ol.Sku, ol.Quantity, fs.NetMinor, fs.VatMinor, fs.GrossMinor, fs.VatRateBps
-			FROM OrderLines ol
-			JOIN OrderLineFiscalSnapshots fs ON ol.OrderId = fs.OrderId AND ol.OrderLineId = fs.OrderLineId
-			WHERE ol.OrderId = @orderId
-		`,
-		Params: map[string]interface{}{
-			"orderId": orderId,
-		},
-	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT LineItemsJson FROM Orders WHERE OrderId = @orderId`,
+		Params: map[string]interface{}{"orderId": orderId},
+	})
 	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var lineItemsRaw []byte
+	if err := row.ColumnByName("LineItemsJson", &lineItemsRaw); err != nil {
+		return nil, err
+	}
+	var items []struct {
+		SKU          string `json:"sku"`
+		Quantity     int64  `json:"quantity"`
+		UnitPrice    int64  `json:"unit_price_minor"`
+		DeliveredQty int64  `json:"delivered_qty"`
+	}
+	if len(lineItemsRaw) > 0 {
+		if err := json.Unmarshal(lineItemsRaw, &items); err != nil {
+			return nil, fmt.Errorf("decode line items: %w", err)
+		}
+	}
+
+	fiscalBySku := map[string]struct {
+		TaxableMinor      int64
+		VatMinor          int64
+		TotalMinor        int64
+		AppliedVatRateBps int64
+	}{}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fiscalBySku = nil
+			}
+		}()
+		fiscalIter := r.client.Single().Query(ctx, spanner.Statement{
+			SQL: `
+				SELECT LineSku, TaxableMinor, VatMinor, TotalMinor, AppliedVatRateBps
+				FROM OrderLineFiscalSnapshots
+				WHERE OrderId = @orderId
+			`,
+			Params: map[string]interface{}{"orderId": orderId},
+		})
+		defer fiscalIter.Stop()
+		for {
+			frow, err := fiscalIter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				fiscalBySku = nil
+				return
+			}
+			var sku string
+			var taxable, vat, total, rateBps int64
+			if err := frow.Columns(&sku, &taxable, &vat, &total, &rateBps); err != nil {
+				fiscalBySku = nil
+				return
+			}
+			fiscalBySku[sku] = struct {
+				TaxableMinor      int64
+				VatMinor          int64
+				TotalMinor        int64
+				AppliedVatRateBps int64
+			}{taxable, vat, total, rateBps}
+		}
+	}()
 
 	var lines []CreditNoteLine
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
+	for _, item := range items {
+		sku := strings.TrimSpace(item.SKU)
+		if sku == "" {
+			continue
 		}
-		if err != nil {
-			return nil, err
+		qty := item.Quantity
+		if item.DeliveredQty > 0 {
+			qty = item.DeliveredQty
 		}
-		var l CreditNoteLine
-		if err := row.Columns(&l.OrderLineId, &l.Sku, &l.Qty, &l.LineNetMinor, &l.LineVatMinor, &l.LineGrossMinor, &l.VatRateBps); err != nil {
-			return nil, err
+		if qty <= 0 {
+			continue
 		}
-		if l.Qty > 0 {
-			l.UnitNetMinor = l.LineNetMinor / l.Qty
+		line := CreditNoteLine{
+			OrderLineId: sku,
+			Sku:         sku,
+			Qty:         qty,
 		}
-		lines = append(lines, l)
+		if fiscalBySku != nil {
+			if fs, ok := fiscalBySku[sku]; ok {
+				line.LineNetMinor = fs.TaxableMinor
+				line.LineVatMinor = fs.VatMinor
+				line.LineGrossMinor = fs.TotalMinor
+				line.VatRateBps = fs.AppliedVatRateBps
+			} else {
+				gross := item.UnitPrice * qty
+				line.LineGrossMinor = gross
+				line.LineNetMinor = gross
+				line.LineVatMinor = 0
+			}
+		} else {
+			gross := item.UnitPrice * qty
+			line.LineGrossMinor = gross
+			line.LineNetMinor = gross
+			line.LineVatMinor = 0
+		}
+		if line.Qty > 0 {
+			line.UnitNetMinor = line.LineNetMinor / line.Qty
+		}
+		lines = append(lines, line)
 	}
 	return lines, nil
 }
@@ -286,15 +368,51 @@ func (r *SpannerRepository) GetClaimOrder(ctx context.Context, claimID string) (
 	return orderID, amount, true, nil
 }
 
+func reverseLogisticsTaskMutation(task ReverseLogisticsTask) *spanner.Mutation {
+	expectedNJ := spanner.NullJSON{Valid: false}
+	if len(task.ExpectedQtyJson) > 0 {
+		expectedNJ = spanner.NullJSON{Value: string(task.ExpectedQtyJson), Valid: true}
+	}
+	receivedNJ := spanner.NullJSON{Valid: false}
+	if len(task.ReceivedQtyJson) > 0 {
+		receivedNJ = spanner.NullJSON{Value: string(task.ReceivedQtyJson), Valid: true}
+	}
+	rowMap := map[string]interface{}{
+		"TaskId":          task.TaskId,
+		"CreditNoteId":    task.CreditNoteId,
+		"OrderId":         task.OrderId,
+		"Status":          string(task.Status),
+		"WarehouseId":     task.WarehouseId,
+		"DriverId":        task.DriverId,
+		"ExpectedQtyJson": expectedNJ,
+		"ReceivedQtyJson": receivedNJ,
+		"CreatedAt":       task.CreatedAt,
+		"UpdatedAt":       task.UpdatedAt,
+	}
+	return spanner.InsertOrUpdateMap("ReverseLogisticsTasks", rowMap)
+}
+
+func scanNullJSONBytes(nj spanner.NullJSON) []byte {
+	if !nj.Valid || nj.Value == nil {
+		return nil
+	}
+	switch v := nj.Value.(type) {
+	case string:
+		return []byte(v)
+	case []byte:
+		return v
+	default:
+		b, _ := json.Marshal(v)
+		return b
+	}
+}
+
 func (r *SpannerRepository) SaveReverseLogisticsTask(ctx context.Context, task ReverseLogisticsTask, eventType string) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("creditnote repository unavailable")
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		m, err := spanner.InsertOrUpdateStruct("ReverseLogisticsTasks", task)
-		if err != nil {
-			return err
-		}
+		m := reverseLogisticsTaskMutation(task)
 		buf := &spannerTxnBuffer{}
 		if eventType != "" {
 			payload := map[string]any{
@@ -326,7 +444,8 @@ func (r *SpannerRepository) GetReverseLogisticsTask(ctx context.Context, taskID 
 	}
 	var t ReverseLogisticsTask
 	var wh, driver spanner.NullString
-	if err := row.Columns(&t.TaskId, &t.CreditNoteId, &t.OrderId, &t.Status, &wh, &driver, &t.ExpectedQtyJson, &t.ReceivedQtyJson, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	var expNJ, recNJ spanner.NullJSON
+	if err := row.Columns(&t.TaskId, &t.CreditNoteId, &t.OrderId, &t.Status, &wh, &driver, &expNJ, &recNJ, &t.CreatedAt, &t.UpdatedAt); err != nil {
 		return nil, err
 	}
 	if wh.Valid {
@@ -337,6 +456,8 @@ func (r *SpannerRepository) GetReverseLogisticsTask(ctx context.Context, taskID 
 		v := driver.StringVal
 		t.DriverId = &v
 	}
+	t.ExpectedQtyJson = scanNullJSONBytes(expNJ)
+	t.ReceivedQtyJson = scanNullJSONBytes(recNJ)
 	return &t, nil
 }
 
@@ -352,7 +473,7 @@ func (r *SpannerRepository) ListReverseLogisticsTasks(ctx context.Context, wareh
 	        FROM ReverseLogisticsTasks WHERE Status = @status`
 	params["status"] = status
 	if strings.TrimSpace(warehouseID) != "" {
-		sql += ` AND WarehouseId = @warehouseId`
+		sql += ` AND (WarehouseId = @warehouseId OR WarehouseId IS NULL)`
 		params["warehouseId"] = warehouseID
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT @limit`
@@ -369,7 +490,8 @@ func (r *SpannerRepository) ListReverseLogisticsTasks(ctx context.Context, wareh
 		}
 		var t ReverseLogisticsTask
 		var wh, driver spanner.NullString
-		if err := row.Columns(&t.TaskId, &t.CreditNoteId, &t.OrderId, &t.Status, &wh, &driver, &t.ExpectedQtyJson, &t.ReceivedQtyJson, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		var expNJ, recNJ spanner.NullJSON
+		if err := row.Columns(&t.TaskId, &t.CreditNoteId, &t.OrderId, &t.Status, &wh, &driver, &expNJ, &recNJ, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			continue
 		}
 		if wh.Valid {
@@ -380,6 +502,8 @@ func (r *SpannerRepository) ListReverseLogisticsTasks(ctx context.Context, wareh
 			v := driver.StringVal
 			t.DriverId = &v
 		}
+		t.ExpectedQtyJson = scanNullJSONBytes(expNJ)
+		t.ReceivedQtyJson = scanNullJSONBytes(recNJ)
 		out = append(out, t)
 	}
 	return out, nil
@@ -394,7 +518,8 @@ func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, tas
 		}
 		var task ReverseLogisticsTask
 		var wh, driver spanner.NullString
-		if err := row.Columns(&task.TaskId, &task.CreditNoteId, &task.OrderId, &task.Status, &wh, &driver, &task.ExpectedQtyJson, &task.ReceivedQtyJson, &task.CreatedAt, &task.UpdatedAt); err != nil {
+		var expNJ, recNJ spanner.NullJSON
+		if err := row.Columns(&task.TaskId, &task.CreditNoteId, &task.OrderId, &task.Status, &wh, &driver, &expNJ, &recNJ, &task.CreatedAt, &task.UpdatedAt); err != nil {
 			return err
 		}
 		now := time.Now().UTC()
@@ -402,10 +527,7 @@ func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, tas
 		task.WarehouseId = &warehouseID
 		task.ReceivedQtyJson = receivedJSON
 		task.UpdatedAt = now
-		m, err := spanner.InsertOrUpdateStruct("ReverseLogisticsTasks", task)
-		if err != nil {
-			return err
-		}
+		m := reverseLogisticsTaskMutation(task)
 		buf := &spannerTxnBuffer{}
 		payload := map[string]any{
 			"type":           EventReverseLogisticsReceived,

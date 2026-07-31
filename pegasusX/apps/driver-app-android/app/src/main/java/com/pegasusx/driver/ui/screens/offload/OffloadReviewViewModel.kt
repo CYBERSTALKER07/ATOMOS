@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
+import com.pegasusx.driver.data.model.DeliveryScanQRRequest
 import com.pegasusx.driver.data.model.MissingItemRequest
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.OrderLineItem
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
 import javax.inject.Inject
 
 data class OffloadLineAudit(
@@ -72,6 +74,10 @@ class OffloadReviewViewModel @Inject constructor(
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
     private val retailerName: String = savedStateHandle["retailerName"] ?: ""
+    private val scannedToken: String = (savedStateHandle.get<String>("scannedToken") ?: "")
+        .let { raw ->
+            runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw)
+        }
 
     private val _state = MutableStateFlow(OffloadReviewUiState(orderId = orderId, retailerName = retailerName))
     val state: StateFlow<OffloadReviewUiState> = _state.asStateFlow()
@@ -357,10 +363,25 @@ class OffloadReviewViewModel @Inject constructor(
                     }
                 }
 
-                val response = api.confirmOffload(
-                    request = ConfirmOffloadRequest(orderId = orderId),
-                    idempotencyKey = DriverIdempotencyKeys.offload(orderId),
-                )
+                // Canonical ARRIVED → AWAITING_PAYMENT via scan-qr (validate-qr already done).
+                val response = if (scannedToken.isNotBlank()) {
+                    val scan = api.scanDeliveryQR(
+                        request = DeliveryScanQRRequest(orderId = orderId, qrToken = scannedToken),
+                        idempotencyKey = DriverIdempotencyKeys.offload(orderId),
+                    )
+                    ConfirmOffloadResponse(
+                        orderId = scan.orderId.ifBlank { orderId },
+                        state = scan.state,
+                        paymentMethod = "",
+                        amount = current.adjustedTotal,
+                        message = "Collect payment",
+                    )
+                } else {
+                    api.confirmOffload(
+                        request = ConfirmOffloadRequest(orderId = orderId),
+                        idempotencyKey = DriverIdempotencyKeys.offload(orderId),
+                    )
+                }
                 _state.update { it.copy(isSubmitting = false, offloadResult = response) }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Offload failed") }

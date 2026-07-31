@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.exceptions
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,7 +11,6 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +23,7 @@ fun ExceptionsScreen(
     var rows by remember { mutableStateOf<List<SupplierExceptionRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var busyKey by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -40,6 +38,33 @@ fun ExceptionsScreen(
                 error = e.message
             } finally {
                 loading = false
+            }
+        }
+    }
+
+    fun resolve(row: SupplierExceptionRow) {
+        scope.launch {
+            val kind = row.kind.uppercase()
+            val key = "$kind:${row.orderId}"
+            busyKey = key
+            try {
+                val resolveId = when (kind) {
+                    "CREDIT_NOTE_DRAFT" -> row.note?.takeIf { it.isNotBlank() } ?: row.orderId
+                    else -> row.orderId
+                }
+                val body = when (kind) {
+                    "CREDIT_NOTE_DRAFT" ->
+                        row.note?.takeIf { it.isNotBlank() }?.let { mapOf("credit_note_id" to it) }
+                            ?: emptyMap()
+                    else -> emptyMap()
+                }
+                val resp = ops.resolveException(kind, resolveId, body)
+                if (!resp.isSuccessful) error = "Resolve failed (${resp.code()})"
+                else load()
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                busyKey = null
             }
         }
     }
@@ -79,7 +104,9 @@ fun ExceptionsScreen(
                 actionLabel = "Open claims",
                 onAction = onOpenClaims,
             )
-            else -> Box(Modifier.padding(padding)) { ExceptionsList(rows) }
+            else -> Box(Modifier.padding(padding)) {
+                ExceptionsList(rows = rows, busyKey = busyKey, onResolve = ::resolve)
+            }
         }
     }
 }

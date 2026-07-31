@@ -5,6 +5,7 @@ struct StaffView: View {
     @State private var staff: [StaffMember] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var showCreate = false
 
     var body: some View {
         NavigationStack {
@@ -14,13 +15,15 @@ struct StaffView: View {
                         title: "Loading staff",
                         message: "Fetching factory operators and shift status."
                     )
-                } else if let error {
+                } else if let error, staff.isEmpty {
                     FactoryErrorView(message: error, retry: { load() })
                 } else if staff.isEmpty {
                     FactoryStateView(
                         kind: .empty,
                         headline: "No staff",
-                        message: "No staff members are registered for this factory."
+                        message: "No staff members are registered for this factory.",
+                        actionTitle: "Add Staff",
+                        action: { showCreate = true }
                     )
                 } else {
                     StaffListContent(staff: staff)
@@ -36,8 +39,17 @@ struct StaffView: View {
                     Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Add Staff", systemImage: "plus") { showCreate = true }
+                        .labelStyle(.iconOnly)
+                }
             }
             .task { load() }
+            .sheet(isPresented: $showCreate) {
+                CreateStaffSheet {
+                    load()
+                }
+            }
             .onAppear {
                 realtimeClient.connect(
                     onStateChange: { _ in },
@@ -68,6 +80,59 @@ struct StaffView: View {
                 self.error = error.localizedDescription
             }
             loading = false
+        }
+    }
+}
+
+private struct CreateStaffSheet: View {
+    let onCreated: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var role = "FACTORY_OPERATOR"
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name", text: $name)
+                TextField("Role", text: $role)
+                if let error {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+            .navigationTitle("Add Staff")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .disabled(submitting || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func create() {
+        submitting = true
+        error = nil
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRole = role.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task {
+            do {
+                _ = try await FactoryService.createStaff(
+                    name: trimmedName,
+                    role: trimmedRole.isEmpty ? "FACTORY_OPERATOR" : trimmedRole
+                )
+                dismiss()
+                onCreated()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            submitting = false
         }
     }
 }

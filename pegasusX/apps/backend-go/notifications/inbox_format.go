@@ -135,6 +135,21 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
 			return FormatCreditLeave(e.OrderID)
 		}
+	case events.EventClaimFiled:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimFiled(e.ClaimID, e.OrderID, e.ClaimType)
+		}
+	case events.EventClaimResolved:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimResolved(e.ClaimID, e.OrderID, e.Status)
+		}
+	case events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && (e.OrderID != "" || e.ClaimID != "") {
+			return FormatLogisticsException(eventType, e.OrderID, e.ClaimID)
+		}
 	case events.EventDriverCreated:
 		var e events.DriverEvent
 		if json.Unmarshal(payload, &e) == nil && e.DriverID != "" {

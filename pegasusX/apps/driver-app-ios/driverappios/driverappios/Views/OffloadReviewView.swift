@@ -13,6 +13,7 @@ import UIKit
 struct OffloadReviewView: View {
 
     let response: ValidateQRResponse
+    let scannedToken: String
     let driverId: String
     let onConfirm: (ConfirmOffloadResponse) -> Void
     let onCancel: () -> Void
@@ -332,9 +333,31 @@ struct OffloadReviewView: View {
                 }
             }
 
-            // Confirm offload → ARRIVED → AWAITING_PAYMENT
+            // Canonical ARRIVED → AWAITING_PAYMENT via scan-qr (validate-qr already done).
             do {
-                let result = try await fleetService.confirmOffload(orderId: response.orderId)
+                let adjustedAmount = response.items.reduce(0) { partial, item in
+                    let rejected = rejectedQty[item.id] ?? 0
+                    let accepted = max(0, item.quantity - rejected)
+                    return partial + (item.unitPrice * accepted)
+                }
+                let result: ConfirmOffloadResponse
+                if !scannedToken.isEmpty {
+                    let scan = try await fleetService.scanDeliveryQR(
+                        orderId: response.orderId,
+                        qrToken: scannedToken
+                    )
+                    result = ConfirmOffloadResponse(
+                        orderId: scan.orderId.isEmpty ? response.orderId : scan.orderId,
+                        state: scan.state,
+                        paymentMethod: "",
+                        amount: adjustedAmount,
+                        invoiceId: nil,
+                        retailerId: "",
+                        message: "Collect payment"
+                    )
+                } else {
+                    result = try await fleetService.confirmOffload(orderId: response.orderId)
+                }
                 isSubmitting = false
                 onConfirm(result)
             } catch {

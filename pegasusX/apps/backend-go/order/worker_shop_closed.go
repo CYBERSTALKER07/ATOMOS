@@ -159,7 +159,10 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 			})
 
 		case DecisionReturnToWarehouse:
-			// status -> CANCELLED
+			// status -> CANCELLED + release reserved inventory in the same txn
+			if err := releaseOrderReservationsInTxn(ctx, txn, order); err != nil {
+				return err
+			}
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 				"OrderId":              order.OrderID,
 				"Status":               string(StatusCancelled),
@@ -167,11 +170,11 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 				"Version":              order.Version + 1,
 				"UpdatedAt":            now,
 			}))
-			// release inventory reservation is handled asynchronously or we emit Cancelled event
 			_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
 				OrderID:    order.OrderID,
 				SupplierID: order.SupplierID,
+				Status:     string(StatusCancelled),
 				Reason:     "shop_closed_timeout",
 			})
 
@@ -250,15 +253,32 @@ func max(a, b int64) int64 {
 
 func (s *Service) loadOrderForUpdate(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (*Order, error) {
 	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{
-		"OrderId", "Status", "RetailerId", "SupplierId", "TotalMinor", "Version", "ShopClosedGraceEndsAt",
+		"OrderId", "Status", "RetailerId", "SupplierId", "WarehouseId", "OrderSource", "LineItemsJson",
+		"TotalMinor", "Version", "ShopClosedGraceEndsAt",
 	})
 	if err != nil {
 		return nil, err
 	}
 	var o Order
 	var ts spanner.NullTime
-	if err := row.Columns(&o.OrderID, &o.Status, &o.RetailerID, &o.SupplierID, &o.TotalMinor, &o.Version, &ts); err != nil {
+	var warehouseID, orderSource spanner.NullString
+	var lineItemsRaw []byte
+	if err := row.Columns(
+		&o.OrderID, &o.Status, &o.RetailerID, &o.SupplierID, &warehouseID, &orderSource, &lineItemsRaw,
+		&o.TotalMinor, &o.Version, &ts,
+	); err != nil {
 		return nil, err
+	}
+	if warehouseID.Valid {
+		o.WarehouseID = warehouseID.StringVal
+	}
+	if orderSource.Valid {
+		o.Source = OrderSource(orderSource.StringVal)
+	}
+	if len(lineItemsRaw) > 0 {
+		if err := json.Unmarshal(lineItemsRaw, &o.LineItems); err != nil {
+			return nil, err
+		}
 	}
 	if ts.Valid {
 		o.ShopClosedGraceEndsAt = &ts.Time

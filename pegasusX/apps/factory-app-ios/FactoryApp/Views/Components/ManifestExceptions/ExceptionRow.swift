@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ExceptionRow: View {
     let exception: ManifestException
+    var resolving: Bool = false
+    var onResolve: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
@@ -27,6 +29,12 @@ struct ExceptionRow: View {
                 Text(formattedDate(exception.createdAt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let onResolve {
+                Button(resolving ? "Resolving…" : "Resolve", action: onResolve)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(resolving)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.vertical, LabTheme.spacingXS)

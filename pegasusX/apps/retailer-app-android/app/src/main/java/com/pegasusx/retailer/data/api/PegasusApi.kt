@@ -13,6 +13,7 @@ import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
+import com.pegasusx.retailer.data.model.CreditProfile
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
@@ -177,6 +178,9 @@ interface PegasusApi {
 
     @GET("/v1/retailer/profile")
     suspend fun getRetailerProfile(): Map<String, String>
+
+    @GET("/v1/retailer/credit-profile")
+    suspend fun getCreditProfile(): CreditProfile
 
     @PUT("/v1/retailer/profile")
     suspend fun updateRetailerProfile(

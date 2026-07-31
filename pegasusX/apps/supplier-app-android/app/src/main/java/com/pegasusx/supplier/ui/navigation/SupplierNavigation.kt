@@ -74,6 +74,7 @@ import com.pegasusx.supplier.ui.screens.treasury.ClaimChargebacksScreen
 import com.pegasusx.supplier.ui.screens.analytics.RoutePerformanceScreen
 import com.pegasusx.supplier.ui.screens.treasury.CashReconciliationsScreen
 import com.pegasusx.supplier.ui.screens.treasury.CreditNotesScreen
+import com.pegasusx.supplier.ui.screens.treasury.CreditProfilesScreen
 import com.pegasusx.supplier.ui.screens.treasury.ComplianceScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
@@ -155,6 +156,7 @@ object SupplierRoutes {
     const val COMPLIANCE = "compliance"
     const val CASH_RECONCILIATIONS = "cash_reconciliations"
     const val CREDIT_NOTES = "credit_notes"
+    const val CREDIT_PROFILES = "credit_profiles"
     const val ROUTE_PERFORMANCE = "route_performance"
     const val NOTIFICATION_PREFS = "notification_prefs"
     const val NOTIFICATIONS = "notifications"
@@ -555,6 +557,9 @@ fun SupplierNavigation(
             composable(SupplierRoutes.CREDIT_NOTES) {
                 CreditNotesScreen(ops) { navController.popBackStack() }
             }
+            composable(SupplierRoutes.CREDIT_PROFILES) {
+                CreditProfilesScreen(ops) { navController.popBackStack() }
+            }
             composable(SupplierRoutes.ROUTE_PERFORMANCE) {
                 RoutePerformanceScreen(ops) { navController.popBackStack() }
             }
@@ -576,6 +581,7 @@ fun SupplierNavigation(
                         onCompliance = { navController.navigate(SupplierRoutes.COMPLIANCE) },
                         onCashReconciliations = { navController.navigate(SupplierRoutes.CASH_RECONCILIATIONS) },
                         onCreditNotes = { navController.navigate(SupplierRoutes.CREDIT_NOTES) },
+                        onCreditProfiles = { navController.navigate(SupplierRoutes.CREDIT_PROFILES) },
                         onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                         onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
                         onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },

@@ -555,6 +555,7 @@ struct CheckoutView: View {
                         }
                     }
                 }
+                }
             }
             .navigationTitle("Payment Method")
             .navigationBarTitleDisplayMode(.inline)

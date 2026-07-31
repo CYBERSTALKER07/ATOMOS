@@ -50,7 +50,8 @@ final class OrdersViewModel {
         RetailerWebSocket.shared.connect(retailerId: rid)
         for await event in RetailerWebSocket.shared.eventStream() {
             switch event {
-            case .paymentRequired, .driverApproaching, .orderCompleted, .paymentSettled,
+            case .paymentRequired, .driverApproaching, .orderCompleted, .fiscalSucceeded,
+                 .fiscalizing, .paymentSettled,
                  .paymentFailed, .paymentExpired, .orderStatusChanged, .orderReassigned,
                  .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
                  .preOrderNudge, .preOrderConfirmationPush,

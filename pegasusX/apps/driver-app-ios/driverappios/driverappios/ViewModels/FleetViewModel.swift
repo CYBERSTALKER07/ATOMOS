@@ -28,6 +28,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var completedIds: Set<String> = []
     var completedMissions: [Mission] = []
     var completedOrders: [Order] = []
+    var historyRows: [DriverHistoryRow] = []
+    var earnings: DriverEarningsResponse?
     var showScanner = false
     var showCorrection = false
     var showOfflineVerifier = false
@@ -142,6 +144,21 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 10
         ProfileService.shared.startPolling()
+        Task { await loadEarningsAndHistory() }
+    }
+
+    func loadEarningsAndHistory() async {
+        do {
+            earnings = try await APIClient.shared.getEarnings()
+        } catch {
+            print("[FleetViewModel] earnings load failed: \(error)")
+        }
+        do {
+            let history = try await APIClient.shared.getDriverHistory()
+            historyRows = history.rows
+        } catch {
+            print("[FleetViewModel] history load failed: \(error)")
+        }
     }
 
     // MARK: - Actions

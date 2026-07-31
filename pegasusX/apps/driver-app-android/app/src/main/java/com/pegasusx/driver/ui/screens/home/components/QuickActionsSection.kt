@@ -12,7 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.ShieldMoon
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.components.PegasusCard
@@ -31,6 +32,7 @@ import com.pegasusx.driver.ui.theme.pressable
 fun QuickActionsSection(
     onScanQR: () -> Unit,
     onOfflineVerify: () -> Unit = {},
+    onRequestRescue: () -> Unit = {},
     hasArrivedOrder: Boolean = false,
 ) {
     val lab = LocalPegasusColors.current
@@ -60,10 +62,11 @@ fun QuickActionsSection(
                 onClick = onOfflineVerify
             )
             ActionTile(
-                icon = Icons.Default.Sync,
-                label = "Sync",
+                icon = Icons.Default.Warning,
+                label = "Rescue",
                 modifier = Modifier.weight(1f),
-                onClick = {}
+                iconTint = lab.warning,
+                onClick = onRequestRescue
             )
         }
     }
@@ -75,6 +78,7 @@ private fun ActionTile(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    iconTint: Color? = null,
     onClick: () -> Unit
 ) {
     val lab = LocalPegasusColors.current
@@ -97,7 +101,7 @@ private fun ActionTile(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = lab.fg.copy(alpha = alpha),
+                    tint = (iconTint ?: lab.fg).copy(alpha = alpha),
                     modifier = Modifier.size(20.dp)
                 )
             }

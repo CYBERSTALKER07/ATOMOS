@@ -48,7 +48,7 @@ final class ScannerViewModel {
 
     // MARK: - Handle QR Scan → Validate Only (no state change)
 
-    func handleScan(_ stringValue: String, onValidated: @escaping (ValidateQRResponse) -> Void) {
+    func handleScan(_ stringValue: String, onValidated: @escaping (ValidateQRResponse, String) -> Void) {
         guard !scanLocked else { return }
         scanLocked = true
         isProcessing = true
@@ -92,7 +92,7 @@ final class ScannerViewModel {
                 scanSucceeded = true
                 validatedResponse = response
                 Haptics.success()
-                onValidated(response)
+                onValidated(response, payload.token)
             } catch {
                 isProcessing = false
                 alertTitle = "QR Validation Failed"

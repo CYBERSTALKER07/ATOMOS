@@ -101,6 +101,7 @@ class ScannerViewModel @Inject constructor(
                 val effectiveToken = parsedToken ?: qrToken
                 val parts = effectiveToken.split(":")
                 val orderId = parsedOrderId ?: if (parts.size >= 2) parts[0] else effectiveToken
+                _state.value = _state.value.copy(scannedToken = effectiveToken)
 
                 val response = withTimeout(30_000L) {
                     api.validateQR(

@@ -2,24 +2,29 @@ import SwiftUI
 
 struct StatsSection: View {
     var vm: FleetViewModel
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Session Stats")
+            Text("Earnings")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
                 .padding(.horizontal, LabTheme.s8)
 
             HStack(spacing: 12) {
-                StatCard(title: "Total Value", value: totalValue, icon: "banknote.fill")
-                StatCard(title: "Avg Distance", value: "—", icon: "location.fill")
+                StatCard(title: "Total Volume", value: totalValue, icon: "banknote.fill")
+                StatCard(title: "Deliveries", value: deliveries, icon: "shippingbox.fill")
             }
         }
     }
-    
+
     private var totalValue: String {
-        let total = vm.completedMissions.reduce(0) { $0 + $1.amount }
-        return total > 0 ? total.formattedAmount : "—"
+        let total = vm.earnings?.totalVolume ?? 0
+        return total > 0 ? Int(total).formattedAmount : "—"
+    }
+
+    private var deliveries: String {
+        let count = vm.earnings?.totalDeliveries ?? 0
+        return count > 0 ? "\(count)" : "—"
     }
 }
 
@@ -27,7 +32,7 @@ struct StatCard: View {
     let title: String
     let value: String
     let icon: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)

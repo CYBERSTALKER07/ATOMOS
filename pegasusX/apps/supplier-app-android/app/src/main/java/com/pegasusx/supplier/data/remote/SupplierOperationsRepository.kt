@@ -24,8 +24,41 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getCashReconciliations(): Response<CashReconciliationsResponse> =
         api.getCashReconciliations()
 
+    suspend fun acceptCashReconciliation(
+        id: String,
+        idempotencyKey: String,
+        note: String? = null,
+    ): Response<StatusResponse> =
+        api.acceptCashReconciliation(
+            id = id,
+            idempotencyKey = idempotencyKey,
+            body = if (note.isNullOrBlank()) emptyMap() else mapOf("note" to note),
+        )
+
     suspend fun getCreditNotes(): Response<CreditNotesResponse> =
         api.getCreditNotes()
+
+    suspend fun issueCreditNote(id: String, idempotencyKey: String): Response<StatusResponse> =
+        api.issueCreditNote(id, idempotencyKey)
+
+    suspend fun getCreditProfiles(
+        status: String? = null,
+        limit: Int = 100,
+    ): Response<CreditProfilesResponse> =
+        api.getCreditProfiles(status = status?.ifBlank { null }, limit = limit)
+
+    suspend fun patchRetailerCreditProfile(
+        body: RetailerCreditProfilePatchRequest,
+        idempotencyKey: String,
+    ): Response<StatusResponse> =
+        api.patchRetailerCreditProfile(body, idempotencyKey)
+
+    suspend fun resolveException(
+        kind: String,
+        id: String,
+        body: Map<String, String> = emptyMap(),
+    ): Response<StatusResponse> =
+        api.resolveException(kind, id, body)
 
     suspend fun getRoutePerformance(): Response<RoutePerformanceResponse> =
         api.getRoutePerformance()

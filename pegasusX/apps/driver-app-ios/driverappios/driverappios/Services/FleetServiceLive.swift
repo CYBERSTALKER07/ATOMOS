@@ -74,6 +74,10 @@ final class FleetServiceLive: FleetServiceProtocol {
         try await api.confirmOffload(orderId: orderId)
     }
 
+    func scanDeliveryQR(orderId: String, qrToken: String) async throws -> DeliveryScanQRResponse {
+        try await api.scanDeliveryQR(orderId: orderId, qrToken: qrToken)
+    }
+
     func completeOrder(orderId: String) async throws {
         try await api.completeOrder(orderId: orderId)
     }

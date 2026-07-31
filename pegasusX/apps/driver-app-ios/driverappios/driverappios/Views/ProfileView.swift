@@ -48,11 +48,10 @@ struct ProfileView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
         }
+        .task {
+            await vm.loadEarningsAndHistory()
+        }
     }
-
-
-
-
 }
 
 #Preview {

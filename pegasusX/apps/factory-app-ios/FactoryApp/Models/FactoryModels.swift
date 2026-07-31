@@ -525,6 +525,11 @@ struct StaffListResponse: Decodable {
     let staff: [StaffMember]
 }
 
+struct CreateStaffRequest: Encodable {
+    let name: String
+    let role: String
+}
+
 // MARK: - Insight
 struct Insight: Decodable, Identifiable {
     let id: String
@@ -621,6 +626,39 @@ struct ManifestException: Decodable, Identifiable {
 
 struct ManifestExceptionListResponse: Decodable {
     let exceptions: [ManifestException]
+}
+
+struct ResolveManifestExceptionRequest: Encodable {
+    let resolution: String
+    let note: String
+
+    init(resolution: String = "RESOLVED", note: String = "") {
+        self.resolution = resolution
+        self.note = note
+    }
+}
+
+struct ResolveManifestExceptionResponse: Decodable {
+    let exceptionId: String
+    let manifestId: String
+    let resolution: String
+    let note: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case exceptionId = "exception_id"
+        case manifestId = "manifest_id"
+        case resolution, note, status
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptionId = try c.decodeIfPresent(String.self, forKey: .exceptionId) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        resolution = try c.decodeIfPresent(String.self, forKey: .resolution) ?? ""
+        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+    }
 }
 
 // MARK: - Dispatch

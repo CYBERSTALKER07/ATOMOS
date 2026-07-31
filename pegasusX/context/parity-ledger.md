@@ -7,7 +7,7 @@
 | Supplier portal claims queue + settlement modes | Wired | `@pegasusx/types` + `@pegasusx/api-client` |
 | Supplier Android / iOS claims queue + settlement modes | Wired | Same backend endpoints as portal |
 | Supplier claim-chargebacks ledger (all 3 clients) | Wired | `GET /v1/supplier/claim-chargebacks` |
-| Claim chargebacks live WS push | **Deferred** | Poll / pull-to-refresh only; CLAIM_* events still fan out for other inbox surfaces |
+| Claim chargebacks live WS push | **Wired** | `CLAIM_FILED` / `CLAIM_RESOLVED` fan via `handleDriverEdgeEvent` (supplier + retailer + driver/warehouse rooms) + inbox formatters |
 | Retailer file-claim media | Prior work | Camera both platforms; not part of this close |
 | Manual PSP chargebacks (payment/chargeback) | Unchanged | Separate from logistics claim chargebacks |
 
@@ -29,3 +29,21 @@ See also: `docs/CLAIM_ROLE_ROW.md`.
 | AUTHORIZE_BYPASS photo capture on retailer | Partial | Code requires photo_url; camera UX not expanded on all clients |
 
 See: `docs/big-platform-baseline/last-mile/`.
+
+## Quantity negotiations (2026-07-31)
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Driver quantity negotiation ecosystem | **Product-deferred** | Backend list empty; portal page disabled; native nav stubs hidden / empty-state only |
+
+## Warehouse reverse-logistics / exceptions mobile (2026-07-31)
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Reverse-logistics panel + exceptions hub on warehouse mobile | **Deferred** | Portal-first; inbound returns wired on Android/iOS |
+
+## Offline driver action queue (unchanged)
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Full offline flush orchestrator | **Deferred** | Idempotency keys present; UX after P0–P4 closure |

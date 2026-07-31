@@ -290,6 +290,12 @@ data class StaffListResponse(
     val staff: List<StaffMember> = emptyList(),
 )
 
+@Serializable
+data class CreateStaffRequest(
+    val name: String,
+    val role: String = "FACTORY_OPERATOR",
+)
+
 // ── Insights ──
 @Serializable
 data class Insight(
@@ -330,6 +336,21 @@ data class ManifestException(
 @Serializable
 data class ManifestExceptionListResponse(
     val exceptions: List<ManifestException> = emptyList(),
+)
+
+@Serializable
+data class ResolveManifestExceptionRequest(
+    val resolution: String = "RESOLVED",
+    val note: String = "",
+)
+
+@Serializable
+data class ResolveManifestExceptionResponse(
+    @SerialName("exception_id") val exceptionId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    val resolution: String = "",
+    val note: String = "",
+    val status: String = "",
 )
 
 // ── Transfer create / fleet pickers ──

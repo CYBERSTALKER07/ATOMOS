@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasusx.retailer.ui.screens.profile.components.CreditProfileCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +59,8 @@ fun AccountProfileScreen(
                 .padding(PaddingValues(horizontal = 16.dp, vertical = 12.dp)),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            CreditProfileCard()
+
             Text(
                 text = "Business details and receiving hours used for dispatch SLA scheduling.",
                 style = MaterialTheme.typography.bodySmall,

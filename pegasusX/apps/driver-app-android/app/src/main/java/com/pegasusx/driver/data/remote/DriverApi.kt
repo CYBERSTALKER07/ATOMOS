@@ -15,10 +15,13 @@ import com.pegasusx.driver.data.model.CollectCashResponse
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
+import com.pegasusx.driver.data.model.DeliveryScanQRRequest
+import com.pegasusx.driver.data.model.DeliveryScanQRResponse
 import com.pegasusx.driver.data.model.DepartRequest
 import com.pegasusx.driver.data.model.DeliverySubmitRequest
 import com.pegasusx.driver.data.model.DeliverySubmitResponse
 import com.pegasusx.driver.data.model.DriverEarningsResponse
+import com.pegasusx.driver.data.model.DriverHistoryResponse
 import com.pegasusx.driver.data.model.DriverProfileResponse
 import com.pegasusx.driver.data.model.EarlyCompletePayload
 import com.pegasusx.driver.data.model.EarlyCompleteRequestResponse
@@ -118,12 +121,19 @@ interface DriverApi {
     @POST("v1/order/validate-qr")
     suspend fun validateQR(@Body request: ValidateQRRequest): ValidateQRResponse
 
-    // Confirm offload — ARRIVED → AWAITING_PAYMENT, triggers retailer payment
+    // Confirm offload — ARRIVED → AWAITING_PAYMENT (legacy; prefer scanDeliveryQR)
     @POST("v1/order/confirm-offload")
     suspend fun confirmOffload(
         @Body request: ConfirmOffloadRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): ConfirmOffloadResponse
+
+    // Doorstep QR scan — ARRIVED → AWAITING_PAYMENT (canonical transition)
+    @POST("v1/delivery/scan-qr")
+    suspend fun scanDeliveryQR(
+        @Body request: DeliveryScanQRRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): DeliveryScanQRResponse
 
     // Complete order — capture → FISCALIZING (ADR-009); COMPLETED after fiscal SUCCESS
     @POST("v1/order/complete")
@@ -195,7 +205,7 @@ interface DriverApi {
 
     // Fetch driver history
     @GET("v1/driver/history")
-    suspend fun getHistory(): kotlinx.serialization.json.JsonObject
+    suspend fun getHistory(): DriverHistoryResponse
 
     // Fetch fleet manifest
     @GET("v1/fleet/manifest")

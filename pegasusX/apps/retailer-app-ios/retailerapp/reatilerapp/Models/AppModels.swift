@@ -289,3 +289,29 @@ struct OrderTimelineResponse: Codable {
         case items
     }
 }
+
+struct CreditProfile: Decodable {
+    let retailerId: String
+    let supplierId: String
+    let creditLimitMinor: Int64
+    let currentBalanceMinor: Int64
+    let availableCreditMinor: Int64
+    let riskScore: Int64?
+    let riskTier: String?
+    let delinquencyCount: Int64?
+    let status: String
+    let version: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case supplierId = "supplier_id"
+        case creditLimitMinor = "credit_limit_minor"
+        case currentBalanceMinor = "current_balance_minor"
+        case availableCreditMinor = "available_credit_minor"
+        case riskScore = "risk_score"
+        case riskTier = "risk_tier"
+        case delinquencyCount = "delinquency_count"
+        case status
+        case version
+    }
+}

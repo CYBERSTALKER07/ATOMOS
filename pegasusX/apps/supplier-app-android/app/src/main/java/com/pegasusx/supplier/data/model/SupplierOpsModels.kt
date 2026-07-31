@@ -1075,6 +1075,35 @@ data class CreditNotesResponse(
 )
 
 @Serializable
+data class CreditProfileRow(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+    @SerialName("risk_score") val riskScore: Long = 0,
+    @SerialName("risk_tier") val riskTier: String = "",
+    @SerialName("delinquency_count") val delinquencyCount: Long = 0,
+    val status: String = "",
+    @SerialName("utilization_bps") val utilizationBps: Long? = null,
+    @SerialName("needs_attention") val needsAttention: Boolean = false,
+)
+
+@Serializable
+data class CreditProfilesResponse(
+    val profiles: List<CreditProfileRow> = emptyList(),
+    val count: Int = 0,
+)
+
+@Serializable
+data class RetailerCreditProfilePatchRequest(
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long,
+    val status: String,
+    val reason: String = "collections_desk",
+)
+
+@Serializable
 data class RoutePerformanceRow(
     @SerialName("route_id") val routeId: String = "",
     @SerialName("driver_id") val driverId: String = "",

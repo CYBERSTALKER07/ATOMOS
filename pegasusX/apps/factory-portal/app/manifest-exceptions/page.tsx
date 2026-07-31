@@ -6,11 +6,11 @@ import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
+import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
-import { PageSection } from '@/components/PageSection';
 import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
 import EmptyState from '@/components/EmptyState';
 
@@ -33,6 +33,7 @@ function formatSyncTime(value: number | null) {
 
 
 export default function ManifestExceptionsPage() {
+  const { toast } = useToast();
   const [exceptions, setExceptions] = useState<ManifestException[]>([]);
   const [loading, setLoading] = useState(true);
   const [escalatedOnly, setEscalatedOnly] = useState(false);
@@ -41,6 +42,7 @@ export default function ManifestExceptionsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const previousSignatureRef = useRef('');
 
   const fetchExceptions = useCallback(async (options?: { background?: boolean; silent?: boolean }) => {
@@ -146,6 +148,27 @@ export default function ManifestExceptionsPage() {
 
   const showFatalError = Boolean(error) && exceptions.length === 0 && !loading;
 
+  const handleResolve = useCallback(async (exceptionId: string) => {
+    setResolvingId(exceptionId);
+    try {
+      const res = await apiFetch(`/v1/factory/manifest-exceptions/${encodeURIComponent(exceptionId)}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution: 'RESOLVED', note: '' }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Resolve failed (${res.status})`);
+      }
+      toast('Exception resolved', 'success');
+      await fetchExceptions({ background: true, silent: true });
+    } catch (e: unknown) {
+      toast(e instanceof Error ? e.message : 'Failed to resolve exception', 'error');
+    } finally {
+      setResolvingId(null);
+    }
+  }, [fetchExceptions, toast]);
+
   return (
     <PageTransition>
       <PageChrome
@@ -191,7 +214,11 @@ export default function ManifestExceptionsPage() {
             onAction={escalatedOnly ? () => setEscalatedOnly(false) : undefined}
           />
         ) : (
-          <ManifestExceptionsList exceptions={exceptions} />
+          <ManifestExceptionsList
+            exceptions={exceptions}
+            resolvingId={resolvingId}
+            onResolve={(id) => void handleResolve(id)}
+          />
         )}
       </PageChrome>
     </PageTransition>

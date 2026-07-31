@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pegasusx.driver.data.model.Order
+import com.pegasusx.driver.data.model.DriverHistoryRow
 import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.components.StaggeredAppear
 import com.pegasusx.driver.ui.components.StatusPill
@@ -31,19 +31,33 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
 
 @Composable
-fun HistorySection(completedOrders: List<Order>) {
+fun HistorySection(historyRows: List<DriverHistoryRow>) {
     val lab = LocalPegasusColors.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = "Completed Rides",
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = lab.fg,
-            modifier = Modifier.padding(horizontal = PegasusSpacing.s8)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PegasusSpacing.s8),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Ride History",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = lab.fg,
+            )
+            Text(
+                text = "${historyRows.size} rides",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = FontFamily.Monospace,
+                color = lab.fgTertiary,
+            )
+        }
 
-        if (completedOrders.isEmpty()) {
+        if (historyRows.isEmpty()) {
             PegasusCard {
                 Column(
                     modifier = Modifier
@@ -67,9 +81,9 @@ fun HistorySection(completedOrders: List<Order>) {
                 }
             }
         } else {
-            completedOrders.forEachIndexed { index, order ->
+            historyRows.forEachIndexed { index, row ->
                 StaggeredAppear(index = index) {
-                    HistoryRow(order)
+                    HistoryRow(row)
                 }
             }
         }
@@ -77,7 +91,7 @@ fun HistorySection(completedOrders: List<Order>) {
 }
 
 @Composable
-fun HistoryRow(order: Order) {
+fun HistoryRow(row: DriverHistoryRow) {
     val lab = LocalPegasusColors.current
 
     PegasusCard {
@@ -105,21 +119,21 @@ fun HistoryRow(order: Order) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = order.id,
+                    text = row.orderId,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fg
                 )
                 Text(
-                    text = "${order.retailerName} · ${order.totalAmount.formattedAmount()}",
+                    text = "${row.status.ifBlank { "COMPLETED" }} · ${row.totalMinor.formattedAmount()}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = lab.fgSecondary
                 )
             }
 
-            StatusPill(label = "DELIVERED", color = lab.success)
+            StatusPill(label = row.status.ifBlank { "DELIVERED" }, color = lab.success)
         }
     }
 }

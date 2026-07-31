@@ -276,6 +276,7 @@ struct OrdersView: View {
         }
         .padding(AppTheme.spacingXL)
     }
+}
 
 #Preview {
     NavigationStack {

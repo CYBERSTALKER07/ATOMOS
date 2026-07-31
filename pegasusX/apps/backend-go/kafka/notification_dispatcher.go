@@ -126,6 +126,10 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleRouteEvent(ctx, msg.Value, traceID)
 	case events.EventMissingItemsReported, events.EventSplitPaymentCreated:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
+	case events.EventClaimFiled, events.EventClaimResolved,
+		events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired,
+		events.EventLogisticsTelemetry:
+		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
 	case events.EventDriverAvailabilityChanged:
 		return d.handleDriverAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventAIRecommendationCreated, events.EventAIRecommendationDecided:

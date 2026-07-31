@@ -984,3 +984,17 @@ data class OrderTimelineResponse(
     @SerialName("order_id") val orderId: String,
     val items: List<OrderTimelineEntry> = emptyList(),
 )
+
+@Serializable
+data class CreditProfile(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+    @SerialName("risk_score") val riskScore: Long = 0,
+    @SerialName("risk_tier") val riskTier: String = "",
+    @SerialName("delinquency_count") val delinquencyCount: Long = 0,
+    val status: String = "",
+    val version: Long = 0,
+)

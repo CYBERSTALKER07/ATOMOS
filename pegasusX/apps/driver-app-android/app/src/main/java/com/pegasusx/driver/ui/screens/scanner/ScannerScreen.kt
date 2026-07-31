@@ -63,7 +63,7 @@ import java.util.concurrent.Executors
 @Composable
 fun ScannerScreen(
     onClose: () -> Unit,
-    onValidated: (ValidateQRResponse) -> Unit = {},
+    onValidated: (ValidateQRResponse, String) -> Unit = { _, _ -> },
     viewModel: ScannerViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -174,7 +174,7 @@ fun ScannerScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
-                        onClick = { onValidated(validated) },
+                        onClick = { onValidated(validated, state.scannedToken.orEmpty()) },
                         modifier = Modifier.fillMaxWidth(0.7f)
                     ) {
                         Text("Review Cargo →")

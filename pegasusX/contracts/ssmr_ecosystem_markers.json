@@ -38,6 +38,7 @@
         "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
         "PX_E2E_DELIVERY_OK",
         "PX_E2E_SHOP_CLOSED_OK",
+        "PX_E2E_SHOP_CLOSED_CANCEL_RELEASE_OK",
         "PX_E2E_RETURN_GATE_RECEIVE_OK"
       ]
     },

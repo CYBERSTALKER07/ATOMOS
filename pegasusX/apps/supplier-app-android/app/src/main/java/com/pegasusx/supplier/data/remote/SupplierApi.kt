@@ -339,6 +339,18 @@ interface SupplierApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<StatusResponse>
 
+    @GET("v1/supplier/credit-profiles")
+    suspend fun getCreditProfiles(
+        @Query("status") status: String? = null,
+        @Query("limit") limit: Int? = 100,
+    ): Response<CreditProfilesResponse>
+
+    @PATCH("v1/supplier/retailer-credit-profile")
+    suspend fun patchRetailerCreditProfile(
+        @Body body: RetailerCreditProfilePatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<StatusResponse>
+
     @GET("v1/supplier/route-performance")
     suspend fun getRoutePerformance(@Query("limit") limit: Int? = 50): Response<RoutePerformanceResponse>
 

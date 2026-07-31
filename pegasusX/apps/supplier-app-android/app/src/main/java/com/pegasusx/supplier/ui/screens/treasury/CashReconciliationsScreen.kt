@@ -1,17 +1,21 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.data.model.CashReconciliationRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import java.util.UUID
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,6 +24,7 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<CashReconciliationRow>>(emptyList()) }
+    var busyId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -34,6 +39,22 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
                 error = e.message
             } finally {
                 loading = false
+            }
+        }
+    }
+
+    fun accept(id: String) {
+        scope.launch {
+            busyId = id
+            try {
+                val key = "supplier-cash-recon-accept:$id:${UUID.randomUUID()}"
+                val resp = ops.acceptCashReconciliation(id, key)
+                if (!resp.isSuccessful) error = "Accept failed (${resp.code()})"
+                else load()
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                busyId = null
             }
         }
     }
@@ -62,13 +83,39 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            else -> Column(Modifier.padding(padding).padding(PegasusSpacing.md)) {
-                rows.forEach { row ->
-                    ElevatedCard(Modifier.fillMaxWidth().padding(vertical = PegasusSpacing.xs)) {
-                        Column(Modifier.padding(PegasusSpacing.md)) {
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
+                headline = "No open discrepancies",
+                body = "Driver cash reconciliations appear here when declared cash differs from expected.",
+                modifier = Modifier.padding(padding),
+                actionLabel = "Refresh",
+                onAction = { load() },
+            )
+            else -> LazyColumn(
+                modifier = Modifier.padding(padding),
+                contentPadding = PaddingValues(PegasusSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                items(rows, key = { it.reconciliationId }) { row ->
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.padding(PegasusSpacing.md),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Text(row.reconciliationId, style = MaterialTheme.typography.labelMedium)
                             Text("Driver ${row.driverId} · ${row.status}")
                             Text("Diff ${row.differenceMinor} minor")
+                            val open = row.status.equals("PENDING", ignoreCase = true) ||
+                                row.status.equals("DISPUTED", ignoreCase = true)
+                            if (open) {
+                                Button(
+                                    onClick = { accept(row.reconciliationId) },
+                                    enabled = busyId != row.reconciliationId,
+                                    modifier = Modifier.padding(top = PegasusSpacing.xs),
+                                ) {
+                                    Text("Accept")
+                                }
+                            }
                         }
                     }
                 }

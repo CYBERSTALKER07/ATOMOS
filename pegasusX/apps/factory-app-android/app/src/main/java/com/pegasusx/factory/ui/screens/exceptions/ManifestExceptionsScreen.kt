@@ -63,6 +63,7 @@ fun ManifestExceptionsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var escalatedOnly by remember { mutableStateOf(false) }
+    var resolvingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load(silent: Boolean = false) {
@@ -86,6 +87,24 @@ fun ManifestExceptionsScreen(
                 if (!silent) {
                     loading = false
                 }
+            }
+        }
+    }
+
+    fun resolve(exceptionId: String) {
+        resolvingId = exceptionId
+        scope.launch {
+            try {
+                val resp = api.resolveManifestException(exceptionId)
+                if (resp.isSuccessful) {
+                    load(silent = true)
+                } else {
+                    error = "Resolve failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                resolvingId = null
             }
         }
     }
@@ -140,6 +159,8 @@ fun ManifestExceptionsScreen(
                 exceptions = exceptions,
                 escalatedOnly = escalatedOnly,
                 onEscalatedOnlyChange = { escalatedOnly = it },
+                resolvingId = resolvingId,
+                onResolve = { resolve(it) },
                 modifier = Modifier.padding(innerPadding),
             )
         }

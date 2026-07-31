@@ -385,9 +385,13 @@ interface WarehouseApi {
     suspend fun getPulse(): Response<PulseResponse>
 
     // ── Rescue Operations ──
-    @POST("v1/warehouse/ops/dispatch/routes/{routeId}/rescue")
+    @POST("v1/warehouse/ops/dispatch/rescue/preview")
+    suspend fun previewRescue(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @POST("v1/warehouse/ops/dispatch/rescue/propose")
     suspend fun proposeRescue(
-        @Path("routeId") routeId: String,
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): Response<Map<String, String>>

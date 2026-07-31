@@ -11,6 +11,13 @@ struct ProfileView: View {
     @State private var profilePhone: String = ""
     @State private var profileLocation: String = ""
     @State private var pricingRulesSummary: String = ""
+    @State private var orderCount: Int = 0
+    @State private var totalSpent: Int64 = 0
+    @State private var totalSpentCurrency: String = "UZS"
+    @State private var creditProfile: CreditProfile?
+    @State private var creditLoading = true
+    @State private var creditMissing = false
+    @State private var creditError: String?
 
     @Environment(AuthManager.self) private var auth
 
@@ -27,6 +34,13 @@ struct ProfileView: View {
 
                 // Stats row
                 StatsRowView(orderCount: orderCount, totalSpent: totalSpent, totalSpentCurrency: totalSpentCurrency).slideIn(delay: 0.05)
+
+                CreditProfileSection(
+                    profile: creditProfile,
+                    isLoading: creditLoading,
+                    missing: creditMissing,
+                    error: creditError
+                ).slideIn(delay: 0.06)
 
                 // Order History link
                 OrderHistoryLink(orderCount: orderCount).slideIn(delay: 0.07)
@@ -74,13 +88,16 @@ struct ProfileView: View {
         .background(AppTheme.background)
         .task { await loadProfile() }
         .task { await loadStats() }
+        .task { await loadCreditProfile() }
         .task(id: refreshCenter.refreshToken) {
             await loadProfile()
             await loadStats()
+            await loadCreditProfile()
         }
         .refreshable {
             await loadProfile()
             await loadStats()
+            await loadCreditProfile()
         }
     }
 
@@ -128,6 +145,26 @@ struct ProfileView: View {
         } catch {}
     }
 
+    private func loadCreditProfile() async {
+        creditLoading = true
+        creditError = nil
+        creditMissing = false
+        do {
+            creditProfile = try await api.getCreditProfile()
+        } catch let apiError as APIError {
+            creditProfile = nil
+            if case .serverError(let statusCode, _) = apiError, statusCode == 404 {
+                creditMissing = true
+            } else {
+                creditError = "Credit unavailable"
+            }
+        } catch {
+            creditProfile = nil
+            creditError = "Credit unavailable"
+        }
+        creditLoading = false
+    }
+
     private func toggleGlobalAutoOrder(enabled: Bool, useHistory: Bool) async {
         do {
             let body: [String: Any] = ["global_auto_order_enabled": enabled, "use_history": useHistory]
@@ -137,14 +174,6 @@ struct ProfileView: View {
             )
         } catch {}
     }
-}
-
-private struct SettingsItem: Identifiable {
-    let id = UUID()
-    let icon: String
-    let title: String
-    let subtitle: String?
-    var view: String? = nil
 }
 
 #Preview {

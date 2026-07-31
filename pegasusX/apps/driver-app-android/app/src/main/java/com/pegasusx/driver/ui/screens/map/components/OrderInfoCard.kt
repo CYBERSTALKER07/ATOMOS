@@ -33,6 +33,7 @@ fun OrderInfoCard(
     activeOrder: Order?,
     onOpenScanner: () -> Unit,
     onOpenCorrection: (orderId: String, retailerName: String) -> Unit,
+    onRequestRescue: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -139,6 +140,14 @@ fun OrderInfoCard(
             ) {
                 Text("Delivery Correction", style = MaterialTheme.typography.labelLarge)
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        FilledTonalButton(
+            onClick = onRequestRescue,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Rescue", style = MaterialTheme.typography.labelLarge)
         }
     }
 }

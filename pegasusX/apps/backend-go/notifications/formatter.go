@@ -351,6 +351,69 @@ func formatAvailabilityReason(reason, note string) string {
 	return strings.Join(parts, " ")
 }
 
+// FormatClaimFiled produces inbox copy when a retailer files a claim.
+func FormatClaimFiled(claimID, orderID, claimType string) FormattedNotification {
+	body := "Claim " + claimID + " filed"
+	if orderID != "" {
+		body = "Claim " + claimID + " filed on order " + orderID
+	}
+	if claimType != "" {
+		body += " (" + claimType + ")"
+	}
+	return FormattedNotification{
+		Title:    "Claim filed",
+		Body:     body,
+		DeepLink: "/claims/" + claimID,
+		Priority: "high",
+	}
+}
+
+// FormatClaimResolved produces inbox copy when a claim is approved/rejected.
+func FormatClaimResolved(claimID, orderID, status string) FormattedNotification {
+	body := "Claim " + claimID + " resolved"
+	if status != "" {
+		body = "Claim " + claimID + " is now " + status
+	}
+	if orderID != "" {
+		body += " (order " + orderID + ")"
+	}
+	return FormattedNotification{
+		Title:    "Claim update",
+		Body:     body,
+		DeepLink: "/claims/" + claimID,
+		Priority: "high",
+	}
+}
+
+// FormatLogisticsException produces inbox copy for OS&D / reverse-logistics events.
+func FormatLogisticsException(eventType, orderID, claimID string) FormattedNotification {
+	title := "Logistics exception"
+	switch eventType {
+	case "REVERSE_LOGISTICS_REQUIRED":
+		title = "Return required"
+	case "LOGISTICS_EXCEPTION_REPORTED":
+		title = "Exception reported"
+	}
+	body := title
+	if orderID != "" {
+		body = title + " for order " + orderID
+	} else if claimID != "" {
+		body = title + " for claim " + claimID
+	}
+	deep := "/exceptions"
+	if claimID != "" {
+		deep = "/claims/" + claimID
+	} else if orderID != "" {
+		deep = "/orders/" + orderID
+	}
+	return FormattedNotification{
+		Title:    title,
+		Body:     body,
+		DeepLink: deep,
+		Priority: "high",
+	}
+}
+
 // FormatRetailerPriceOverride produces retailer inbox copy for custom pricing changes.
 func FormatRetailerPriceOverride(productID string, priceMinor int64, currency string, created bool) FormattedNotification {
 	label := strings.TrimSpace(productID)

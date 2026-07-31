@@ -171,6 +171,19 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    /// POST /v1/delivery/scan-qr — ARRIVED → AWAITING_PAYMENT (canonical doorstep transition)
+    func scanDeliveryQR(orderId: String, qrToken: String) async throws -> DeliveryScanQRResponse {
+        struct Req: Encodable {
+            let order_id: String
+            let qr_token: String
+        }
+        return try await post(
+            "v1/delivery/scan-qr",
+            body: Req(order_id: orderId, qr_token: qrToken),
+            headers: ["Idempotency-Key": DriverIdempotency.offload(orderId: orderId)]
+        )
+    }
+
     func completeOrder(orderId: String) async throws {
         struct Resp: Decodable { let status: String }
         let body = ["order_id": orderId]
@@ -639,7 +652,7 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/driver/profile")
     }
 
-    func getDriverHistory() async throws -> [String: AnyDecodable] {
+    func getDriverHistory() async throws -> DriverHistoryResponse {
         return try await get("v1/driver/history")
     }
 

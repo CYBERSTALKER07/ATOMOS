@@ -379,6 +379,10 @@ final class APIClient {
     func getProfile() async throws -> RetailerProfileResponse {
         return try await get(path: "/v1/retailer/profile")
     }
+
+    func getCreditProfile() async throws -> CreditProfile {
+        try await get(path: "/v1/retailer/credit-profile")
+    }
     
     func updateProfile(request: RetailerProfileRequest, idempotencyKey: String) async throws {
         let _: APIResponse<String> = try await put(

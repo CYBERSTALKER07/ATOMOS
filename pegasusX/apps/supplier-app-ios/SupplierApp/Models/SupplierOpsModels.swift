@@ -2180,11 +2180,21 @@ struct CreditNoteRow: Decodable, Identifiable {
     let creditNoteId: String
     let orderId: String
     let status: String
+    let totalGrossMinor: Int64
 
     enum CodingKeys: String, CodingKey {
         case creditNoteId = "credit_note_id"
         case orderId = "order_id"
         case status
+        case totalGrossMinor = "total_gross_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        creditNoteId = try c.decode(String.self, forKey: .creditNoteId)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        status = (try? c.decode(String.self, forKey: .status)) ?? ""
+        totalGrossMinor = (try? c.decode(Int64.self, forKey: .totalGrossMinor)) ?? 0
     }
 }
 
@@ -2193,6 +2203,78 @@ struct CreditNotesResponse: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case creditNotes = "credit_notes"
+    }
+}
+
+struct CreditProfileRow: Decodable, Identifiable {
+    var id: String { retailerId }
+    let retailerId: String
+    let supplierId: String
+    let creditLimitMinor: Int64
+    let currentBalanceMinor: Int64
+    let availableCreditMinor: Int64
+    let riskScore: Int64
+    let riskTier: String
+    let delinquencyCount: Int64
+    let status: String
+    let utilizationBps: Int64?
+    let needsAttention: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case supplierId = "supplier_id"
+        case creditLimitMinor = "credit_limit_minor"
+        case currentBalanceMinor = "current_balance_minor"
+        case availableCreditMinor = "available_credit_minor"
+        case riskScore = "risk_score"
+        case riskTier = "risk_tier"
+        case delinquencyCount = "delinquency_count"
+        case status
+        case utilizationBps = "utilization_bps"
+        case needsAttention = "needs_attention"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decode(String.self, forKey: .retailerId)
+        supplierId = (try? c.decode(String.self, forKey: .supplierId)) ?? ""
+        creditLimitMinor = (try? c.decode(Int64.self, forKey: .creditLimitMinor)) ?? 0
+        currentBalanceMinor = (try? c.decode(Int64.self, forKey: .currentBalanceMinor)) ?? 0
+        availableCreditMinor = (try? c.decode(Int64.self, forKey: .availableCreditMinor)) ?? 0
+        riskScore = (try? c.decode(Int64.self, forKey: .riskScore)) ?? 0
+        riskTier = (try? c.decode(String.self, forKey: .riskTier)) ?? ""
+        delinquencyCount = (try? c.decode(Int64.self, forKey: .delinquencyCount)) ?? 0
+        status = (try? c.decode(String.self, forKey: .status)) ?? ""
+        utilizationBps = try? c.decode(Int64.self, forKey: .utilizationBps)
+        needsAttention = (try? c.decode(Bool.self, forKey: .needsAttention)) ?? false
+    }
+}
+
+struct CreditProfilesResponse: Decodable {
+    let profiles: [CreditProfileRow]
+    let count: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case profiles, count
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        profiles = (try? c.decode([CreditProfileRow].self, forKey: .profiles)) ?? []
+        count = try? c.decode(Int.self, forKey: .count)
+    }
+}
+
+struct RetailerCreditProfilePatchRequest: Encodable {
+    let retailerId: String
+    let creditLimitMinor: Int64
+    let status: String
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case creditLimitMinor = "credit_limit_minor"
+        case status, reason
     }
 }
 

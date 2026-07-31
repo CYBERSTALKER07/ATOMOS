@@ -72,6 +72,8 @@ import com.pegasusx.driver.data.telemetry.LocationTrail
 import com.pegasusx.driver.data.telemetry.formatNavigationDistance
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.ui.screens.home.RequestRescueSheet
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
 import com.pegasusx.driver.ui.components.DriverGpsBanner
 import com.pegasusx.driver.ui.components.DriverStateKind
@@ -107,6 +109,7 @@ private fun locationFlow(context: android.content.Context): Flow<Location> = cal
 
 @Composable
 fun MapScreen(
+    api: DriverApi,
     viewModel: ManifestViewModel,
     onOpenScanner: () -> Unit = {},
     onOpenCorrection: (orderId: String, retailerName: String) -> Unit = { _, _ -> },
@@ -114,6 +117,14 @@ fun MapScreen(
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
     val uiState by viewModel.state.collectAsState()
+    var showRescueSheet by remember { mutableStateOf(false) }
+
+    if (showRescueSheet) {
+        RequestRescueSheet(
+            api = api,
+            onDismiss = { showRescueSheet = false },
+        )
+    }
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -378,6 +389,7 @@ fun MapScreen(
                 activeOrder = activeOrder,
                 onOpenScanner = onOpenScanner,
                 onOpenCorrection = onOpenCorrection,
+                onRequestRescue = { showRescueSheet = true },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)

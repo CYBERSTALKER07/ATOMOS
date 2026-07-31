@@ -245,6 +245,10 @@ func (s *Service) resolveCancelFromRetailer(ctx context.Context, txn *spanner.Re
 	buf := &spannerTxnBuffer{}
 	var mutations []*spanner.Mutation
 
+	if err := releaseOrderReservationsInTxn(ctx, txn, order); err != nil {
+		return err
+	}
+
 	newStatus := StatusCancelled
 	mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 		"OrderId":              order.OrderID,

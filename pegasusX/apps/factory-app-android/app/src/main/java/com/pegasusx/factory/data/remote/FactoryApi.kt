@@ -166,6 +166,9 @@ interface FactoryApi {
     @GET("v1/factory/staff")
     suspend fun getStaff(): Response<StaffListResponse>
 
+    @POST("v1/factory/staff")
+    suspend fun createStaff(@Body body: CreateStaffRequest): Response<StaffMember>
+
     @GET("v1/factory/staff/{id}")
     suspend fun getStaffDetail(@Path("id") id: String): Response<StaffMember>
 
@@ -180,6 +183,12 @@ interface FactoryApi {
     suspend fun getManifestExceptions(
         @Query("escalated") escalated: String? = null,
     ): Response<ManifestExceptionListResponse>
+
+    @POST("v1/factory/manifest-exceptions/{exceptionID}/resolve")
+    suspend fun resolveManifestException(
+        @Path("exceptionID") exceptionId: String,
+        @Body body: ResolveManifestExceptionRequest = ResolveManifestExceptionRequest(),
+    ): Response<ResolveManifestExceptionResponse>
 
     // ── Notifications + client policy ──
     @GET("v1/user/notifications")

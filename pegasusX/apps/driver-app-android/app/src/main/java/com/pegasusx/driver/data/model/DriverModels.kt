@@ -509,7 +509,39 @@ data class DriverEarningsResponse(
     @SerialName("total_deliveries") val totalDeliveries: Long = 0,
     @SerialName("total_volume") val totalVolume: Long = 0,
     @SerialName("total_routes") val totalRoutes: Long = 0,
-    @SerialName("last_30_days") val last30Days: List<DailyEarning> = emptyList()
+    @SerialName("last_30_days") val last30Days: List<DailyEarning> = emptyList(),
+    @SerialName("today_minor") val todayMinor: Long = 0,
+    @SerialName("week_minor") val weekMinor: Long = 0,
+    @SerialName("month_minor") val monthMinor: Long = 0,
+)
+
+@Serializable
+data class DriverHistoryRow(
+    @SerialName("order_id") val orderId: String,
+    val status: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "",
+    @SerialName("completed_at") val completedAt: String = "",
+)
+
+@Serializable
+data class DriverHistoryResponse(
+    val rows: List<DriverHistoryRow> = emptyList(),
+)
+
+@Serializable
+data class DeliveryScanQRRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("qr_token") val qrToken: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+@Serializable
+data class DeliveryScanQRResponse(
+    val valid: Boolean = false,
+    @SerialName("order_id") val orderId: String = "",
+    val state: OrderState = OrderState.AWAITING_PAYMENT,
 )
 
 // ── Pending Cash Collections (mirror of backend-go/order/service.go::PendingCollection) ──

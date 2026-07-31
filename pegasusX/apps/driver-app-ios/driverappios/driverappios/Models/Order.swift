@@ -298,6 +298,27 @@ struct ConfirmOffloadResponse: Codable {
     }
 }
 
+// MARK: - Delivery Scan QR Response
+
+struct DeliveryScanQRResponse: Codable {
+    let valid: Bool
+    let orderId: String
+    let state: String
+
+    enum CodingKeys: String, CodingKey {
+        case valid
+        case orderId = "order_id"
+        case state
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        valid = (try? c.decode(Bool.self, forKey: .valid)) ?? false
+        orderId = (try? c.decode(String.self, forKey: .orderId)) ?? ""
+        state = (try? c.decode(String.self, forKey: .state)) ?? "AWAITING_PAYMENT"
+    }
+}
+
 // MARK: - Collect Cash Response
 
 struct CollectCashResponse: Codable {

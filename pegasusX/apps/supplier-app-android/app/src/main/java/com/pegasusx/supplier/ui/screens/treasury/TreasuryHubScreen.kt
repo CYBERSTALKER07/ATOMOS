@@ -43,6 +43,7 @@ fun TreasuryHubScreen(
     onCompliance: () -> Unit = {},
     onCashReconciliations: () -> Unit = {},
     onCreditNotes: () -> Unit = {},
+    onCreditProfiles: () -> Unit = {},
     viewModel: TreasuryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.hubState.collectAsStateWithLifecycle()
@@ -56,6 +57,7 @@ fun TreasuryHubScreen(
         TreasuryLink("Compliance audit", "Open fiscal, force-completes, freezes", Icons.Default.Gavel, onCompliance),
         TreasuryLink("Cash reconciliations", "Driver shift cash discrepancies", Icons.Default.Money, onCashReconciliations),
         TreasuryLink("Credit notes", "Draft and issue credit notes", Icons.Default.Description, onCreditNotes),
+        TreasuryLink("Credit profiles", "Limits, balances, freeze / unfreeze", Icons.Default.AccountBox, onCreditProfiles),
         TreasuryLink("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         TreasuryLink("Chargebacks", "Record chargeback or reversal", Icons.Default.Undo, onChargebacks),
         TreasuryLink("Claim chargebacks", "Logistics claim settlements", Icons.Default.Description, onClaimChargebacks),

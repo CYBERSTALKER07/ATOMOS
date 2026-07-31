@@ -58,6 +58,7 @@ struct FleetMapView: View {
     @State private var selectedMission: Mission?
     @State private var zoomFocus: ZoomFocus = .both
     @State private var validatedQR: ValidateQRResponse?
+    @State private var scannedQRToken: String = ""
     @State private var offloadResponse: ConfirmOffloadResponse?
     @State private var showRescueSheet = false
 
@@ -69,8 +70,9 @@ struct FleetMapView: View {
                     switch route {
                     case "scanner":
                         QRScannerView(
-                            onValidated: { response in
+                            onValidated: { response, token in
                                 validatedQR = response
+                                scannedQRToken = token
                                 navPath.append("offload-review")
                             },
                             onCancel: { navPath = NavigationPath() }
@@ -80,6 +82,7 @@ struct FleetMapView: View {
                         if let qr = validatedQR {
                             OffloadReviewView(
                                 response: qr,
+                                scannedToken: scannedQRToken,
                                 driverId: vm.driverId,
                                 onConfirm: { result in
                                     offloadResponse = result

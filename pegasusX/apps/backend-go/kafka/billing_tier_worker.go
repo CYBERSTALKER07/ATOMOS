@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
+	segkafka "github.com/segmentio/kafka-go"
 )
 
 // BillingTierWorker consumes ORDER_FINALIZED events and routes them to the MeterWorker.
@@ -20,12 +21,21 @@ func NewBillingTierWorker(meterWorker *billing.MeterWorker) *BillingTierWorker {
 	}
 }
 
+// HandleEvent adapts BillingTierWorker to the Kafka EventHandler signature.
+func (w *BillingTierWorker) HandleEvent(ctx context.Context, msg segkafka.Message) error {
+	return w.HandleMessage(ctx, msg.Value)
+}
+
 // HandleMessage processes incoming Kafka messages for the billing tier worker.
 func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error {
+	if w == nil || w.MeterWorker == nil {
+		return nil
+	}
 	var event struct {
 		Type       string  `json:"type"`
 		OrderID    string  `json:"order_id"`
 		Amount     float64 `json:"amount"`
+		TotalMinor int64   `json:"total_minor"`
 		SupplierID string  `json:"supplier_id"`
 	}
 
@@ -34,9 +44,12 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 		return err
 	}
 
-	if event.Type == "ORDER_FINALIZED" {
-		return w.MeterWorker.ProcessOrderFinalized(ctx, event.OrderID, event.Amount, event.SupplierID)
+	if event.Type != "ORDER_FINALIZED" {
+		return nil
 	}
-
-	return nil
+	amount := event.Amount
+	if amount == 0 && event.TotalMinor > 0 {
+		amount = float64(event.TotalMinor) / 100.0
+	}
+	return w.MeterWorker.ProcessOrderFinalized(ctx, event.OrderID, amount, event.SupplierID)
 }

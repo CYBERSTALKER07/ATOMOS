@@ -29,8 +29,66 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/cash-reconciliations")
     }
 
+    static func acceptCashReconciliation(
+        id: String,
+        note: String? = nil,
+        idempotencyKey: String
+    ) async throws {
+        var body: [String: String] = [:]
+        if let note, !note.isEmpty { body["note"] = note }
+        try await APIClient.shared.postVoid(
+            "v1/supplier/cash-reconciliations/\(id)/accept",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func creditNotes() async throws -> CreditNotesResponse {
         try await APIClient.shared.get("v1/supplier/credit-notes?status=DRAFT&limit=100")
+    }
+
+    static func issueCreditNote(id: String, idempotencyKey: String) async throws {
+        try await APIClient.shared.postVoid(
+            "v1/supplier/credit-notes/\(id)/issue",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func creditProfiles(status: String? = nil, limit: Int = 100) async throws -> [CreditProfileRow] {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty { query["status"] = status }
+        let resp: CreditProfilesResponse = try await APIClient.shared.get(
+            "v1/supplier/credit-profiles",
+            query: query
+        )
+        return resp.profiles
+    }
+
+    static func patchRetailerCreditProfile(
+        _ request: RetailerCreditProfilePatchRequest,
+        idempotencyKey: String
+    ) async throws {
+        try await APIClient.shared.patchVoid(
+            "v1/supplier/retailer-credit-profile",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func resolveException(
+        kind: String,
+        id: String,
+        note: String? = nil,
+        creditNoteId: String? = nil
+    ) async throws {
+        var body: [String: String] = [:]
+        if let note, !note.isEmpty { body["note"] = note }
+        if let creditNoteId, !creditNoteId.isEmpty { body["credit_note_id"] = creditNoteId }
+        try await APIClient.shared.postVoid(
+            "v1/supplier/exceptions/\(kind)/\(id)/resolve",
+            body: body
+        )
     }
 
     static func routePerformance() async throws -> RoutePerformanceResponse {

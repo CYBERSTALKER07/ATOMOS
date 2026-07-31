@@ -38,6 +38,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
@@ -206,6 +207,7 @@ type App struct {
 	NotificationConsumer   *kafka.Consumer
 	OrderEventConsumer     *kafka.Consumer
 	WarehouseEventConsumer *kafka.Consumer
+	BillingTierConsumer    *kafka.Consumer
 	Reliability            *ReliabilityMiddleware
 	InfraHealth            infraroutes.Deps
 	OutboundCircuits       *OutboundCircuits
@@ -1145,6 +1147,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var notificationConsumer *kafka.Consumer
 	var orderEventConsumer *kafka.Consumer
 	var warehouseEventConsumer *kafka.Consumer
+	var billingTierConsumer *kafka.Consumer
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
 		if err != nil {
@@ -1206,6 +1209,20 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				DLQWriter: dlqWriter,
 				Auth:      kafkaAuth,
 			})
+			if spannerClient != nil {
+				const billingConsumerGroup = "void-billing-tier"
+				meterWorker := billing.NewMeterWorker(spannerClient)
+				billingWorker := kafka.NewBillingTierWorker(meterWorker)
+				billingHandler := kafka.WithEventDedup(kafkaEventDedup, billingConsumerGroup, billingWorker.HandleEvent)
+				billingTierConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
+					Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+					GroupID:   billingConsumerGroup,
+					Topic:     events.OrderConsumerTopic(),
+					Handler:   billingHandler,
+					DLQWriter: dlqWriter,
+					Auth:      kafkaAuth,
+				})
+			}
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {
 					log.Warn("notification consumer close failed", "err", err)
@@ -1215,6 +1232,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				}
 				if err := warehouseEventConsumer.Close(); err != nil {
 					log.Warn("warehouse event consumer close failed", "err", err)
+				}
+				if billingTierConsumer != nil {
+					if err := billingTierConsumer.Close(); err != nil {
+						log.Warn("billing tier consumer close failed", "err", err)
+					}
 				}
 				if err := dlqWriter.Close(); err != nil {
 					log.Warn("notification dlq writer close failed", "err", err)
@@ -1227,6 +1249,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				"dlq_topic", cfg.KafkaTopicMainDLQ,
 				"consume_domain", events.ConsumeDomainTopics(),
 				"dual_write", events.DualWriteDomainTopics(),
+				"billing_tier", billingTierConsumer != nil,
 			)
 		}
 	}
@@ -1356,6 +1379,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotificationConsumer:   notificationConsumer,
 		OrderEventConsumer:     orderEventConsumer,
 		WarehouseEventConsumer: warehouseEventConsumer,
+		BillingTierConsumer:    billingTierConsumer,
 		OutboxRelay:            outboxRelay,
 		Reliability:            reliabilityMiddleware,
 		InfraHealth:            infraHealth,
