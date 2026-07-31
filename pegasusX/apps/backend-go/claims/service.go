@@ -67,14 +67,24 @@ type StoreCreditApplier interface {
 	ClearBalance(ctx context.Context, retailerID, supplierID string, amountMinor int64, orderID string) error
 }
 
+// CreditNoteCreator optionally creates financial credit notes from approved claims.
+type CreditNoteCreator interface {
+	CreateFromClaim(ctx context.Context, claimID, actor string) error
+}
+
+func creditNoteAutoFromClaimEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_CLAIM")), "true")
+}
+
 // Service is the claims domain application service.
 type Service struct {
-	repo     Repository
-	orders   OrderLookup
-	settler  ChargebackSettler
-	rl       ReverseLogisticsOpener
-	storeCr  StoreCreditApplier
-	now      func() time.Time
+	repo        Repository
+	orders      OrderLookup
+	settler     ChargebackSettler
+	rl          ReverseLogisticsOpener
+	storeCr     StoreCreditApplier
+	creditNotes CreditNoteCreator
+	now         func() time.Time
 	newID    func() string
 	log      *slog.Logger
 	window   time.Duration
@@ -82,12 +92,13 @@ type Service struct {
 
 // Config wires claims Service dependencies.
 type Config struct {
-	Repo     Repository
-	Orders   OrderLookup
-	Settler  ChargebackSettler
-	RL       ReverseLogisticsOpener
-	StoreCr  StoreCreditApplier
-	Now      func() time.Time
+	Repo         Repository
+	Orders       OrderLookup
+	Settler      ChargebackSettler
+	RL           ReverseLogisticsOpener
+	StoreCr      StoreCreditApplier
+	CreditNotes  CreditNoteCreator
+	Now          func() time.Time
 	NewID    func() string
 	Log      *slog.Logger
 	Window   time.Duration
@@ -113,7 +124,7 @@ func NewService(cfg Config) *Service {
 	if window <= 0 {
 		window = claimWindowFromEnv()
 	}
-	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, storeCr: cfg.StoreCr, now: now, newID: newID, log: log, window: window}
+	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, storeCr: cfg.StoreCr, creditNotes: cfg.CreditNotes, now: now, newID: newID, log: log, window: window}
 }
 
 // SetReverseLogistics wires the warehouse inbound ticket opener (optional).
@@ -127,6 +138,13 @@ func (s *Service) SetReverseLogistics(op ReverseLogisticsOpener) {
 func (s *Service) SetStoreCredit(sc StoreCreditApplier) {
 	if s != nil {
 		s.storeCr = sc
+	}
+}
+
+// SetCreditNotes wires optional auto credit note creation from approved claims.
+func (s *Service) SetCreditNotes(cn CreditNoteCreator) {
+	if s != nil {
+		s.creditNotes = cn
 	}
 }
 
@@ -736,6 +754,11 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	}
 	s.log.InfoContext(ctx, "claim approved and settled",
 		"claim_id", c.ClaimID, "amount_minor", amount, "mode", settlement.Mode, "gateway_refunded", settlement.GatewayRefunded)
+	if s.creditNotes != nil && creditNoteAutoFromClaimEnabled() {
+		if err := s.creditNotes.CreateFromClaim(ctx, c.ClaimID, actor.Subject); err != nil {
+			s.log.WarnContext(ctx, "auto credit note from claim failed", "err", err, "claim_id", c.ClaimID)
+		}
+	}
 	return c, settlement, nil
 }
 

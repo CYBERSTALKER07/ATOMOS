@@ -48,12 +48,42 @@ func (r *SpannerRepository) GetPreference(ctx context.Context, principalID, even
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {
-		return nil, nil // Not found
+		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query preference: %w", err)
 	}
 	return scanPreference(row)
+}
+
+// ListPreferencesForPrincipal returns all preferences for a principal.
+func (r *SpannerRepository) ListPreferencesForPrincipal(ctx context.Context, principalID string) ([]NotificationPreference, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT PrincipalId, PrincipalType, EventType, Channel, Enabled, QuietFrom, QuietTo, UpdatedAt
+			FROM NotificationPreferences WHERE PrincipalId = @pid`,
+		Params: map[string]any{"pid": principalID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var out []NotificationPreference
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list preferences: %w", err)
+		}
+		p, err := scanPreference(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *p)
+	}
+	return out, nil
 }
 
 // UpsertPreference inserts or updates a notification preference.

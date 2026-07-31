@@ -3,6 +3,7 @@ package replenishment
 import (
 	"context"
 	"math"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -11,8 +12,9 @@ import (
 )
 
 type ReorderSuggestionWorker struct {
-	Spanner *spanner.Client
-	Now     func() time.Time
+	Spanner               *spanner.Client
+	Now                   func() time.Time
+	EchelonTargetsEnabled bool
 }
 
 func NewReorderSuggestionWorker(client *spanner.Client) *ReorderSuggestionWorker {
@@ -34,8 +36,16 @@ func ComputeSuggestedQty(adjustedDemandPerDay float64, leadTimeDays float64, saf
 	return int64(suggested)
 }
 
-func (w *ReorderSuggestionWorker) ProcessSuggestion(ctx context.Context, s ReorderSuggestion, leadTimeDays float64) error {
+func (w *ReorderSuggestionWorker) ProcessSuggestion(ctx context.Context, supplierID string, s ReorderSuggestion, leadTimeDays float64) error {
 	s.SuggestedQty = ComputeSuggestedQty(s.AdjustedDemand, leadTimeDays, s.SafetyStock, s.CurrentStock, s.InFlightQty)
+	if w.EchelonTargetsEnabled && w.Spanner != nil && strings.TrimSpace(supplierID) != "" {
+		if targetQty, ok := w.maxEchelonTargetQty(ctx, supplierID, s.Sku); ok {
+			effective := float64(s.CurrentStock + s.InFlightQty)
+			if qty := SuggestedQtyFromTarget(targetQty, effective); qty > 0 {
+				s.SuggestedQty = qty
+			}
+		}
+	}
 	s.ComputedAt = w.Now()
 
 	_, err := w.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -72,4 +82,22 @@ func (w *ReorderSuggestionWorker) ProcessSuggestion(ctx context.Context, s Reord
 	})
 
 	return err
+}
+
+func (w *ReorderSuggestionWorker) maxEchelonTargetQty(ctx context.Context, supplierID, sku string) (int64, bool) {
+	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT MAX(TargetQty) FROM EchelonTargets
+		      WHERE SupplierId = @sid AND Sku = @sku AND Echelon = @echelon`,
+		Params: map[string]any{"sid": supplierID, "sku": sku, "echelon": echelonForward},
+	})
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, false
+	}
+	var max spanner.NullInt64
+	if err := row.Column(0, &max); err != nil || !max.Valid || max.Int64 <= 0 {
+		return 0, false
+	}
+	return max.Int64, true
 }

@@ -43,7 +43,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
-func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
+func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner order repository: nil client")
 	}
@@ -65,7 +65,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		}
 
 		// Reserve on-hand stock for fulfillable quantities (all non-backorder orders, including scheduled pre-orders).
-		if len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
+		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
 			if err := ReserveLineItemsInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.LineItems); err != nil {
 				return err
 			}
@@ -548,6 +548,27 @@ func (r *SpannerRepository) GetOrder(ctx context.Context, orderID string) (Order
 	o, err := scanOrderRowRow(row)
 	if err != nil {
 		return Order{}, false, fmt.Errorf("scan order %s: %w", orderID, err)
+	}
+	return o, true, nil
+}
+
+// GetOrderTxn fetches one order aggregate by id within a transaction.
+func (r *SpannerRepository) GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	if r == nil || r.client == nil {
+		return Order{}, false, fmt.Errorf("spanner order repository: nil client")
+	}
+
+	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, strings.Split(orderSelectColumns, ", "))
+	if err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			return Order{}, false, nil
+		}
+		return Order{}, false, fmt.Errorf("read order txn %s: %w", orderID, err)
+	}
+
+	o, err := scanOrderRowRow(row)
+	if err != nil {
+		return Order{}, false, fmt.Errorf("scan order txn %s: %w", orderID, err)
 	}
 	return o, true, nil
 }
@@ -1161,7 +1182,7 @@ func (r *SpannerRepository) ListBackorderedOrders(ctx context.Context, limit int
 }
 
 // ClearBackorder converts a BACKORDERED order to PENDING and reserves inventory.
-func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error {
+func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Status", "SupplierId", "WarehouseId", "Version"})
 		if err != nil {
@@ -1182,11 +1203,13 @@ func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, 
 			return err
 		}
 
-		if err := ReserveLineItemsInTxn(ctx, txn, supplierID, warehouseID, orderRecord.LineItems); err != nil {
-			return err
-		}
-		if err := insertStockReservationMarkerInTxn(txn, orderID); err != nil {
-			return err
+		if !stockOpts.Skip {
+			if err := ReserveLineItemsInTxn(ctx, txn, supplierID, warehouseID, orderRecord.LineItems); err != nil {
+				return err
+			}
+			if err := insertStockReservationMarkerInTxn(txn, orderID); err != nil {
+				return err
+			}
 		}
 
 		if emit != nil {

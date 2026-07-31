@@ -12,6 +12,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 )
 
 // Deps is the narrow dependency contract for this routes package.
@@ -112,6 +115,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/earnings", d.Service.HandleEarnings)
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory", d.Service.HandleInventory)
+		gr.Patch("/v1/supplier/inventory/policy", d.Service.HandleInventoryPolicy)
 		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
 		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
 			Spanner:      d.Spanner,
@@ -155,6 +159,32 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
 		gr.Get("/v1/supplier/replenishment/traceability", d.Service.HandleReplenishmentTraceability)
+
+		if d.Spanner != nil && d.OrderService != nil {
+			suggestionsAPI := replenishment.NewSuggestionsAPI(d.Spanner, d.OrderService, d.Service.ScopedSupplierID)
+			gr.Get("/v1/replenishment/suggestions", suggestionsAPI.HandleList)
+			gr.Post("/v1/replenishment/suggestions/dismiss", suggestionsAPI.HandleDismiss)
+			gr.Post("/v1/replenishment/suggestions/create-draft", suggestionsAPI.HandleCreateDraft)
+			gr.Post("/v1/replenishment/suggestions/create-drafts", suggestionsAPI.HandleBulkCreateDrafts)
+		}
+
+		if d.Spanner != nil {
+			twinHandler := twin.NewSupplierHTTPHandler(twin.NewSpannerRepository(d.Spanner), d.Service.ScopedSupplierID)
+			gr.Get("/v1/twin/routes/active", twinHandler.ListActiveRoutes)
+			gr.Get("/v1/twin/routes/{routeID}", twinHandler.GetRoute)
+			gr.Get("/v1/twin/routes/{routeID}/inventory", twinHandler.GetRouteInventory)
+
+			segmentHandlers := &segment.Handlers{
+				Service:    segment.NewService(segment.NewSpannerRepository(d.Spanner)),
+				SupplierID: d.Service.ScopedSupplierID,
+			}
+			gr.Post("/v1/supplier/segmentation/bootstrap", segmentHandlers.HandleBootstrap)
+			gr.Get("/v1/supplier/segmentation/retailers", segmentHandlers.HandleRetailerSegments)
+			gr.Patch("/v1/supplier/segmentation/retailers/{retailerID}", segmentHandlers.HandleRetailerSegmentByID)
+			gr.Get("/v1/supplier/segmentation/sku-classes", segmentHandlers.HandleSkuClasses)
+			gr.Patch("/v1/supplier/segmentation/sku-classes/{sku}", segmentHandlers.HandleSkuClassBySKU)
+		}
+
 		gr.Get("/v1/supplier/meio/network-summary", d.Service.HandleMEIONetworkSummary)
 		gr.Get("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)
 		gr.Post("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)

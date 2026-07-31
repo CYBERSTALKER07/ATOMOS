@@ -103,12 +103,18 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 		// For now hardcode cfg, this could come from Supplier or global config
 		cfg := TimeoutConfig{
-			MaxAutoCreditMinor:       50000000, // example: 500,000 max
-			MaxRiskTierForAutoCredit: 2,        // LOW/MEDIUM
-			AllowForceBypass:         false,
+			MaxAutoCreditMinor:            50000000, // example: 500,000 max
+			MaxRiskTierForAutoCredit:      2,        // LOW/MEDIUM
+			AllowForceBypass:              false,
+			CreditScoreEnforcementEnabled: s.creditScoreEnforcement,
 		}
 
-		decision := DecideShopClosedTimeout(order, profile, cfg)
+		score, err := getRetailerCreditScore(ctx, txn, order.RetailerID)
+		if err != nil {
+			s.log.WarnContext(ctx, "failed to load credit score for timeout resolution", "err", err, "retailer_id", order.RetailerID)
+		}
+
+		decision := DecideShopClosedTimeout(order, profile, score, cfg, cfg.CreditScoreEnforcementEnabled)
 
 		buf := &spannerTxnBuffer{}
 		var mutations []*spanner.Mutation

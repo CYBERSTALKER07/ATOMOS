@@ -77,6 +77,7 @@ func DomainTopicForEventType(eventType string) string {
 	switch strings.TrimSpace(eventType) {
 	case EventOrderCreated, EventOrderStatusChanged, EventOrderValidationFailed,
 		EventOrderAssigned, EventOrderReassigned, EventOrderFinalized, EventOrderAmended,
+		EventOrderAllocated,
 		EventPreOrderNotified, EventPreOrderNudge, EventPreOrderConfirmation,
 		EventPreOrderConfirmed, EventPreOrderEdited, EventPreOrderCancelled,
 		EventPreOrderAutoAccepted, EventPreOrderDateProposed, EventPreOrderDateAccepted,

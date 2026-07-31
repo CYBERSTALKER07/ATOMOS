@@ -19,7 +19,8 @@ func TestDecideShopClosedTimeout_CreditLeaveLowRisk(t *testing.T) {
 		MaxRiskTierForAutoCredit: 1, // Low is 1
 	}
 
-	d := DecideShopClosedTimeout(order, profile, cfg)
+	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
+	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
 	assert.Equal(t, DecisionCreditLeave, d)
 }
 
@@ -35,7 +36,8 @@ func TestDecideShopClosedTimeout_HighRiskReturns(t *testing.T) {
 		MaxRiskTierForAutoCredit: 1,
 	}
 
-	d := DecideShopClosedTimeout(order, profile, cfg)
+	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierHigh}
+	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
 	assert.Equal(t, DecisionReturnToWarehouse, d)
 }
 
@@ -51,7 +53,8 @@ func TestDecideShopClosedTimeout_FrozenBlocksCredit(t *testing.T) {
 		MaxRiskTierForAutoCredit: 1,
 	}
 
-	d := DecideShopClosedTimeout(order, profile, cfg)
+	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
+	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
 	assert.Equal(t, DecisionReturnToWarehouse, d, "frozen should return to warehouse")
 }
 
@@ -68,7 +71,8 @@ func TestDecideShopClosedTimeout_ForceBypassWhenEnabled(t *testing.T) {
 		AllowForceBypass:         true,
 	}
 
-	d := DecideShopClosedTimeout(order, profile, cfg)
+	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierMedium}
+	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
 	assert.Equal(t, DecisionForceBypass, d)
 }
 
@@ -79,7 +83,7 @@ func TestDecideShopClosedTimeout_NoProfileLowValueReturns(t *testing.T) {
 		MaxRiskTierForAutoCredit: 1,
 	}
 
-	d := DecideShopClosedTimeout(order, nil, cfg)
+	d := DecideShopClosedTimeout(order, nil, nil, cfg, true)
 	assert.Equal(t, DecisionReturnToWarehouse, d, "no profile defaults to return to warehouse")
 }
 
@@ -95,6 +99,7 @@ func TestDecideShopClosedTimeout_InsufficientCredit(t *testing.T) {
 		MaxRiskTierForAutoCredit: 1,
 	}
 
-	d := DecideShopClosedTimeout(order, profile, cfg)
+	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
+	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
 	assert.Equal(t, DecisionReturnToWarehouse, d)
 }

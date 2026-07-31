@@ -102,6 +102,8 @@ type Service struct {
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
 	openFiscal     OpenFiscalLookup
+	cashReconRequired bool
+	cashReconGate     CashReconciliationGateLookup
 	routeGeometry  RouteGeometryLookup
 	profileLookup  DriverProfileLookup
 	availReader    AvailabilityReader
@@ -141,6 +143,8 @@ type ServiceConfig struct {
 	Depart                       DepartFn
 	ReturnComplete               ReturnCompleteFn
 	OpenFiscal                   OpenFiscalLookup
+	CashReconciliationRequired   bool
+	CashReconciliationGate       CashReconciliationGateLookup
 	RouteGeometry                RouteGeometryLookup
 	ProfileLookup                DriverProfileLookup
 	AvailabilityReader           AvailabilityReader
@@ -208,6 +212,9 @@ type OpenFiscalSnapshot struct {
 
 // OpenFiscalLookup counts orders still in FISCALIZING / FISCAL_FAILED for a driver.
 type OpenFiscalLookup func(ctx context.Context, driverID string) (OpenFiscalSnapshot, error)
+
+// CashReconciliationGateLookup returns true when the driver has an accepted cash reconciliation for today.
+type CashReconciliationGateLookup func(ctx context.Context, driverID string) (bool, error)
 
 // ErrOpenFiscalBlock is returned when shift-end is blocked by open fiscal attempts.
 var ErrOpenFiscalBlock = errors.New("open_fiscal_block")
@@ -287,6 +294,8 @@ func NewService(c ServiceConfig) *Service {
 		depart:             c.Depart,
 		returnComplete:     c.ReturnComplete,
 		openFiscal:         c.OpenFiscal,
+		cashReconRequired:  c.CashReconciliationRequired,
+		cashReconGate:      c.CashReconciliationGate,
 		routeGeometry:      c.RouteGeometry,
 		profileLookup:      c.ProfileLookup,
 		availReader:        c.AvailabilityReader,

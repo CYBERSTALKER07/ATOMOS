@@ -82,6 +82,12 @@ const (
 	EventOrderFinalized        = "ORDER_FINALIZED"
 	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
 	EventOrderAmended          = "ORDER_AMENDED"
+	EventOrderAllocated        = "ORDER_ALLOCATED"
+	EventAllocationPolicyApplied = "ALLOCATION_POLICY_APPLIED"
+	EventAllocationFairShareApplied = "ALLOCATION_FAIR_SHARE_APPLIED"
+	EventRetailerSegmentUpdated   = "RETAILER_SEGMENT_UPDATED"
+	EventSkuClassUpdated          = "SKU_CLASS_UPDATED"
+	EventServicePolicyUpdated     = "SERVICE_POLICY_UPDATED"
 
 	// @Sync(AIRecommendationEvent)
 	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"

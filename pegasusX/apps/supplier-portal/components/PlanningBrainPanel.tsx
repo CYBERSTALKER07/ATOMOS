@@ -122,11 +122,30 @@ export default function PlanningBrainPanel() {
           {running ? "Running…" : "Run scenario"}
         </button>
         {scenario ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <Stat label="SLA risk" value={Math.round(scenario.sla_risk_pct)} suffix="%" />
-            <Stat label="Fleet volume" value={scenario.fleet_volume_orders} />
-            <Stat label="Stockout SKUs" value={scenario.stockout_skus.length} />
-            <Stat label="Capacity breach" value={scenario.capacity_breach ? 1 : 0} labelOverride={scenario.capacity_breach ? "Yes" : "No"} />
+          <div className="flex flex-col gap-3 pt-2">
+            {scenario.mode ? (
+              <span className="md-chip h-6 text-xs w-fit">
+                {scenario.mode === "twin_snapshot" ? "Twin snapshot" : "Heuristic"}
+              </span>
+            ) : null}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Stat label="SLA risk" value={Math.round(scenario.sla_risk_pct)} suffix="%" />
+              {scenario.baseline_sla_risk_pct != null ? (
+                <Stat label="Baseline SLA" value={Math.round(scenario.baseline_sla_risk_pct)} suffix="%" />
+              ) : null}
+              <Stat label="Fleet volume" value={scenario.fleet_volume_orders} />
+              <Stat label="Stockout SKUs" value={scenario.stockout_skus.length} />
+              <Stat label="Capacity breach" value={scenario.capacity_breach ? 1 : 0} labelOverride={scenario.capacity_breach ? "Yes" : "No"} />
+              {scenario.revenue_at_risk_minor != null && scenario.revenue_at_risk_minor > 0 ? (
+                <Stat label="Revenue at risk" value={scenario.revenue_at_risk_minor} suffix=" tiyin" />
+              ) : null}
+            </div>
+            {scenario.stockout_skus.length > 0 ? (
+              <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+                Stockouts: {scenario.stockout_skus.slice(0, 12).join(", ")}
+                {scenario.stockout_skus.length > 12 ? "…" : ""}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>

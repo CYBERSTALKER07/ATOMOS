@@ -61,16 +61,70 @@ func TestAllocateOrder(t *testing.T) {
 	client := newSpannerIntegrationClient(t, ctx)
 	defer client.Close()
 
-	inventoryId1 := fmt.Sprintf("inv1-%d", time.Now().UnixNano())
-	inventoryId2 := fmt.Sprintf("inv2-%d", time.Now().UnixNano())
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	supplierID := "S1-" + suffix
+	wh1 := "W1-" + suffix
+	wh2 := "W2-" + suffix
+	whInactive := "W3-" + suffix
 
 	muts := []*spanner.Mutation{
-		spanner.Insert("InventoryLevels",
-			[]string{"InventoryId", "ProductId", "WarehouseId", "SupplierId", "QuantityOnHand", "QuantityReserved", "ReorderThreshold", "Version", "UpdatedAt"},
-			[]interface{}{inventoryId1, "P1", "W1", "S1", 100, 10, 0, 1, spanner.CommitTimestamp}),
-		spanner.Insert("InventoryLevels",
-			[]string{"InventoryId", "ProductId", "WarehouseId", "SupplierId", "QuantityOnHand", "QuantityReserved", "ReorderThreshold", "Version", "UpdatedAt"},
-			[]interface{}{inventoryId2, "P2", "W2", "S1", 50, 0, 0, 1, spanner.CommitTimestamp}),
+		spanner.InsertMap("Warehouses", map[string]any{
+			"WarehouseId":        wh1,
+			"SupplierId":         supplierID,
+			"Name":               "WH1",
+			"CoverageRadiusKm":   10.0,
+			"IsActive":           true,
+			"IsOnShift":          true,
+			"CreatedAt":          spanner.CommitTimestamp,
+			"UpdatedAt":          spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("Warehouses", map[string]any{
+			"WarehouseId":        wh2,
+			"SupplierId":         supplierID,
+			"Name":               "WH2",
+			"CoverageRadiusKm":   10.0,
+			"IsActive":           true,
+			"IsOnShift":          true,
+			"CreatedAt":          spanner.CommitTimestamp,
+			"UpdatedAt":          spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("Warehouses", map[string]any{
+			"WarehouseId":        whInactive,
+			"SupplierId":         supplierID,
+			"Name":               "WH3",
+			"CoverageRadiusKm":   10.0,
+			"IsActive":           false,
+			"IsOnShift":          false,
+			"CreatedAt":          spanner.CommitTimestamp,
+			"UpdatedAt":          spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      wh1,
+			"ProductId":        "P1",
+			"QuantityOnHand":   100,
+			"QuantityReserved": 10,
+			"ReorderThreshold": 0,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      wh2,
+			"ProductId":        "P2",
+			"QuantityOnHand":   50,
+			"QuantityReserved": 0,
+			"ReorderThreshold": 0,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      whInactive,
+			"ProductId":        "P3",
+			"QuantityOnHand":   1000,
+			"QuantityReserved": 0,
+			"ReorderThreshold": 0,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}),
 	}
 	_, err := client.Apply(ctx, muts)
 	if err != nil {
@@ -78,15 +132,19 @@ func TestAllocateOrder(t *testing.T) {
 	}
 	defer func() {
 		client.Apply(ctx, []*spanner.Mutation{
-			spanner.Delete("InventoryLevels", spanner.Key{inventoryId1}),
-			spanner.Delete("InventoryLevels", spanner.Key{inventoryId2}),
+			spanner.Delete("SupplierInventoryV2", spanner.Key{supplierID, wh1, "P1"}),
+			spanner.Delete("SupplierInventoryV2", spanner.Key{supplierID, wh2, "P2"}),
+			spanner.Delete("SupplierInventoryV2", spanner.Key{supplierID, whInactive, "P3"}),
+			spanner.Delete("Warehouses", spanner.Key{wh1}),
+			spanner.Delete("Warehouses", spanner.Key{wh2}),
+			spanner.Delete("Warehouses", spanner.Key{whInactive}),
 		})
 	}()
 
 	svc := NewAllocationService(client)
 
-	// Test success
 	req := &AllocationRequest{
+		SupplierId: supplierID,
 		Items: []AllocationItem{
 			{ProductId: "P1", QuantityRequired: 50},
 			{ProductId: "P2", QuantityRequired: 25},
@@ -96,17 +154,17 @@ func TestAllocateOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AllocateOrder failed: %v", err)
 	}
-	if res.Fulfillments["P1"] != "W1" {
-		t.Errorf("Expected W1 for P1, got %s", res.Fulfillments["P1"])
+	if res.Fulfillments["P1"] != wh1 {
+		t.Errorf("Expected %s for P1, got %s", wh1, res.Fulfillments["P1"])
 	}
-	if res.Fulfillments["P2"] != "W2" {
-		t.Errorf("Expected W2 for P2, got %s", res.Fulfillments["P2"])
+	if res.Fulfillments["P2"] != wh2 {
+		t.Errorf("Expected %s for P2, got %s", wh2, res.Fulfillments["P2"])
 	}
 
-	// Test failure (insufficient stock)
 	reqFail := &AllocationRequest{
+		SupplierId: supplierID,
 		Items: []AllocationItem{
-			{ProductId: "P1", QuantityRequired: 100}, // 100-10 = 90 available, so 100 should fail
+			{ProductId: "P1", QuantityRequired: 100},
 		},
 	}
 	_, err = svc.AllocateOrder(ctx, reqFail)
@@ -114,10 +172,21 @@ func TestAllocateOrder(t *testing.T) {
 		t.Errorf("Expected error for insufficient stock, got nil")
 	}
 
-	// Test failure (product not found)
-	reqFailNotFound := &AllocationRequest{
+	reqInactive := &AllocationRequest{
+		SupplierId: supplierID,
 		Items: []AllocationItem{
 			{ProductId: "P3", QuantityRequired: 1},
+		},
+	}
+	_, err = svc.AllocateOrder(ctx, reqInactive)
+	if err == nil {
+		t.Errorf("Expected error for inactive warehouse product, got nil")
+	}
+
+	reqFailNotFound := &AllocationRequest{
+		SupplierId: supplierID,
+		Items: []AllocationItem{
+			{ProductId: "P99", QuantityRequired: 1},
 		},
 	}
 	_, err = svc.AllocateOrder(ctx, reqFailNotFound)

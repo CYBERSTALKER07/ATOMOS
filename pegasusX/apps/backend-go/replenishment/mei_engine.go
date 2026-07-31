@@ -34,6 +34,8 @@ type MEIOWarehouseNode struct {
 	WarningSKUs  int     `json:"warning_skus"`
 	TotalStock   int64   `json:"total_stock"`
 	AvgDaysCover float64 `json:"avg_days_cover"`
+	TargetStock  int64   `json:"target_stock,omitempty"`
+	OnHandStock  int64   `json:"on_hand_stock,omitempty"`
 }
 
 type meiSkuBalance struct {
@@ -139,6 +141,12 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 	}
 	summary.SKUsAnalyzed = len(balances)
 
+	if e.EchelonTargetsEnabled {
+		if err := e.upsertEchelonTargets(ctx, summary.SupplierID, balances); err != nil {
+			e.Log.Warn("mei.echelon_targets_failed", "supplier_id", summary.SupplierID, "err", err)
+		}
+	}
+
 	// Network transfer recommendations: move stock from surplus to deficit warehouses.
 	bySKU := make(map[string][]meiSkuBalance)
 	for _, b := range balances {
@@ -193,7 +201,17 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 			WarningSKUs:  agg.warning,
 			TotalStock:   agg.totalStock,
 			AvgDaysCover: avgDays,
+			OnHandStock:  agg.totalStock,
 		})
+	}
+	if e.EchelonTargetsEnabled {
+		for i := range summary.WarehouseBalances {
+			whID := summary.WarehouseBalances[i].WarehouseID
+			targetSum, _, err := e.sumEchelonTargetsByWarehouse(ctx, summary.SupplierID, whID)
+			if err == nil {
+				summary.WarehouseBalances[i].TargetStock = targetSum
+			}
+		}
 	}
 
 	payload := events.PlanningEvent{

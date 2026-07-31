@@ -18,7 +18,7 @@ type consumerRepoStub struct {
 	updated []Order
 }
 
-func (s *consumerRepoStub) CreateOrder(context.Context, *Order, func(outbox.TxnBuffer) error) error {
+func (s *consumerRepoStub) CreateOrder(context.Context, *Order, func(outbox.TxnBuffer) error, StockReservationOpts) error {
 	return nil
 }
 func (s *consumerRepoStub) UpdateOrder(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(outbox.TxnBuffer) error) error {
@@ -29,6 +29,11 @@ func (s *consumerRepoStub) GetOrder(_ context.Context, orderID string) (Order, b
 	o, ok := s.orders[orderID]
 	return o, ok, nil
 }
+
+func (s *consumerRepoStub) GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	return s.GetOrder(ctx, orderID)
+}
+
 func (s *consumerRepoStub) GetFiscalAttempt(context.Context, string, string) (FiscalReceiptRow, bool, error) {
 	return FiscalReceiptRow{}, false, nil
 }
@@ -59,7 +64,7 @@ func (s *consumerRepoStub) ListOrdersForStockCommitment(context.Context, string,
 func (s *consumerRepoStub) ListBackorderedOrders(context.Context, int) ([]Order, error) {
 	return nil, nil
 }
-func (s *consumerRepoStub) ClearBackorder(context.Context, string, func(outbox.TxnBuffer) error) error {
+func (s *consumerRepoStub) ClearBackorder(context.Context, string, func(outbox.TxnBuffer) error, StockReservationOpts) error {
 	return nil
 }
 func (s *consumerRepoStub) ListOrdersByStatus(context.Context, string, string, int) ([]Order, error) {

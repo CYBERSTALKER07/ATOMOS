@@ -616,6 +616,141 @@ export interface SupplierReplenishmentTraceabilityResponse {
   generated_at: string;
 }
 
+export interface ReorderSuggestionRow {
+  retailer_id: string;
+  retailer_name?: string;
+  sku: string;
+  sku_name?: string;
+  suggested_qty: number;
+  adjusted_demand_per_day: number;
+  current_stock: number;
+  in_flight_qty: number;
+  suggested_by_date: string;
+  status: string;
+  computed_at: string;
+}
+
+export interface ReorderSuggestionsListResponse {
+  suggestions: ReorderSuggestionRow[];
+}
+
+export interface ReorderSuggestionDismissRequest {
+  retailer_id: string;
+  sku: string;
+}
+
+export interface ReorderSuggestionCreateDraftRequest {
+  retailer_id: string;
+  sku: string;
+}
+
+export interface ReorderSuggestionBulkCreateDraftsRequest {
+  items: ReorderSuggestionCreateDraftRequest[];
+}
+
+export interface ReorderSuggestionBulkCreateDraftResult {
+  retailer_id: string;
+  sku: string;
+  order_id?: string;
+  error?: string;
+}
+
+export interface ReorderSuggestionBulkCreateDraftsResponse {
+  results: ReorderSuggestionBulkCreateDraftResult[];
+}
+
+export interface CashReconciliationRow {
+  reconciliation_id: string;
+  driver_id: string;
+  route_id?: string;
+  shift_date: string;
+  expected_cash_minor: number;
+  declared_cash_minor: number;
+  difference_minor: number;
+  status: string;
+  driver_note?: string;
+  finance_note?: string;
+  created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+}
+
+export interface CashReconciliationsListResponse {
+  reconciliations: CashReconciliationRow[];
+  supplier_id?: string;
+}
+
+export interface CashReconciliationActionRequest {
+  note?: string;
+}
+
+export interface CreditNoteRow {
+  credit_note_id: string;
+  order_id: string;
+  type: string;
+  status: string;
+  reason_code: string;
+  reason_text?: string;
+  total_net_minor: number;
+  total_vat_minor: number;
+  total_gross_minor: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface CreditNotesListResponse {
+  credit_notes: CreditNoteRow[];
+}
+
+export interface CreateCreditNoteRequest {
+  order_id: string;
+  reason_code: string;
+  reason_text?: string;
+  lines?: Array<{ order_line_id: string; qty: number }>;
+}
+
+export interface TwinStopView {
+  RouteID?: string;
+  StopID?: string;
+  Sequence?: number;
+  Status?: string;
+  PredictedArrival?: string;
+  WindowStart?: string;
+  WindowEnd?: string;
+  DeliveredGrossMinor?: number;
+  RemainingGrossMinor?: number;
+}
+
+export interface TwinVehicleInventoryRow {
+  RouteID?: string;
+  Sku?: string;
+  QtyOnVehicle?: number;
+}
+
+export interface TwinRouteException {
+  type: string;
+  order_id?: string;
+  status?: string;
+  detail?: string;
+}
+
+export interface TwinOpsRouteView {
+  RouteID: string;
+  DriverID: string;
+  Status: string;
+  CurrentLat?: number;
+  CurrentLng?: number;
+  CurrentH3?: string;
+  RemainingStops?: number;
+  Stops?: TwinStopView[];
+  Inventory?: TwinVehicleInventoryRow[];
+  driver_name?: string;
+  driver_score?: number;
+  lateness: "green" | "amber" | "red";
+  has_shop_closed?: boolean;
+  exceptions?: TwinRouteException[];
+}
+
 export interface PlanningSignalIngestStatus {
   projection_count: number;
   last_ingest_at?: string;
@@ -646,6 +781,108 @@ export interface ControlTowerZoneOverrideRequest {
   ttl_seconds?: number;
 }
 
+export interface PlaybookActionResult {
+  index: number;
+  type: string;
+  status: string;
+  message?: string;
+}
+
+export interface ControlTowerPlaybookRun {
+  run_id: string;
+  playbook_id: string;
+  exception_id: string;
+  supplier_id: string;
+  mode: string;
+  status: string;
+  playbook_name?: string;
+  actions_result?: PlaybookActionResult[];
+  created_at: string;
+  executed_at?: string;
+  executed_by?: string;
+}
+
+export interface ControlTowerPlaybookRunsResponse {
+  runs: ControlTowerPlaybookRun[];
+}
+
+export interface ScoredException {
+  exception_id: string;
+  type: string;
+  severity: string;
+  order_id?: string;
+  retailer_id?: string;
+  amount_minor?: number;
+  score: number;
+  severity_rank: number;
+  age_minutes: number;
+  retailer_segment?: string;
+  recommended_playbook_ids?: string[];
+  top_playbook_name?: string;
+  created_at: string;
+}
+
+export interface ScoredExceptionsResponse {
+  exceptions: ScoredException[];
+}
+
+export interface ControlTowerPlaybook {
+  playbook_id: string;
+  supplier_id?: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  priority: number;
+  match_rules: Record<string, unknown>;
+  actions: Array<{ type: string; params?: unknown }>;
+  auto_execute: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface ControlTowerPlaybooksResponse {
+  playbooks: ControlTowerPlaybook[];
+}
+
+export interface RetailerSegmentRow {
+  retailer_id: string;
+  segment: string;
+  reason?: string;
+  updated_at: string;
+}
+
+export interface SkuClassRow {
+  sku: string;
+  velocity_class: string;
+  strategic_flag: boolean;
+  updated_at: string;
+}
+
+export interface RetailerSegmentsResponse {
+  retailers: RetailerSegmentRow[];
+}
+
+export interface SkuClassesResponse {
+  sku_classes: SkuClassRow[];
+}
+
+export interface SegmentationBootstrapResult {
+  segments_upserted: number;
+  sku_classes_upserted: number;
+  policies_seeded: number;
+}
+
+export interface SetRetailerSegmentInput {
+  segment: string;
+  reason?: string;
+}
+
+export interface SetSkuClassInput {
+  velocity_class: string;
+  strategic_flag?: boolean;
+}
+
 export interface PlanningScenarioInput {
   factory_downtime_hours?: number;
   demand_delta_pct?: number;
@@ -660,6 +897,9 @@ export interface PlanningScenarioResult {
   stockout_skus: string[];
   capacity_breach: boolean;
   cached_until: string;
+  mode?: string;
+  baseline_sla_risk_pct?: number;
+  revenue_at_risk_minor?: number;
 }
 
 export interface PlanningSAndOPSnapshot {
@@ -909,6 +1149,8 @@ export interface SupplierExceptionRow {
   note?: string;
   manifest_id?: string;
   updated_at: string;
+  score?: number;
+  top_playbook_name?: string;
 }
 
 export interface SupplierExceptionsResponse {

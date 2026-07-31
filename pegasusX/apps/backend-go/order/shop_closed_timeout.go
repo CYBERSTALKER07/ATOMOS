@@ -13,20 +13,16 @@ const (
 
 // TimeoutConfig contains knobs for the timeout matrix.
 type TimeoutConfig struct {
-	MaxAutoCreditMinor       int64 // e.g. 5_000_000 tiyin
-	MaxRiskTierForAutoCredit int   // 1 = low, 2 = medium, ...
-	AllowForceBypass         bool  // usually false in production
+	MaxAutoCreditMinor            int64 // e.g. 5_000_000 tiyin
+	MaxRiskTierForAutoCredit      int   // 1 = low, 2 = medium, ...
+	AllowForceBypass              bool  // usually false in production
+	CreditScoreEnforcementEnabled bool
 }
 
 // DecideShopClosedTimeout applies the decision matrix (exact specs).
-func DecideShopClosedTimeout(order *Order, profile *credit.Profile, cfg TimeoutConfig) TimeoutDecision {
+func DecideShopClosedTimeout(order *Order, profile *credit.Profile, score *credit.RetailerCreditScore, cfg TimeoutConfig, featureEnabled bool) TimeoutDecision {
 	// 1. Credit leave if possible
-	if profile != nil &&
-		profile.Status == "ACTIVE" &&
-		profile.AvailableCreditMinor >= order.TotalMinor &&
-		order.TotalMinor <= cfg.MaxAutoCreditMinor &&
-		riskTierLevel(profile.RiskTier) <= cfg.MaxRiskTierForAutoCredit {
-
+	if err := CanLeaveOnCredit(order, profile, score, cfg, featureEnabled); err == nil {
 		return DecisionCreditLeave
 	}
 

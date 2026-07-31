@@ -19,7 +19,9 @@ func (s *Service) planningService() *planning.Service {
 	if s.portalSpanner == nil {
 		return nil
 	}
-	return planning.NewService(s.portalSpanner).WithCache(s.cache)
+	svc := planning.NewService(s.portalSpanner).WithCache(s.cache)
+	svc.TwinScenarioEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("TWIN_SCENARIO_ENABLED")), "true")
+	return svc
 }
 
 // HandleMEIONetworkSummary serves GET /v1/supplier/meio/network-summary.

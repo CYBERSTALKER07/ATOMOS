@@ -235,6 +235,23 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	if s.cashReconRequired && s.cashReconGate != nil {
+		ok, gateErr := s.cashReconGate(r.Context(), driverID)
+		if gateErr != nil {
+			s.log.ErrorContext(r.Context(), "cash reconciliation gate failed", "err", gateErr, "driver_id", driverID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cash_reconciliation_lookup_failed"})
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"status":  "cash_reconciliation_required",
+				"error":   "cash_reconciliation_required",
+				"message": "Submit and reconcile declared cash before ending shift.",
+			})
+			return
+		}
+	}
+
 	if s.returnComplete == nil {
 		// Graceful degradation — update availability in-memory and return OK.
 		s.mu.Lock()

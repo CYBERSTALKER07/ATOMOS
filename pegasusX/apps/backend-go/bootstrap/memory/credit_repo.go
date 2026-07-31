@@ -106,3 +106,7 @@ func (r *inMemoryCreditRepo) AdjustBalance(ctx context.Context, retailerID, supp
 	r.byKey[key] = p
 	return nil
 }
+
+func (r *inMemoryCreditRepo) GetScoresForRetailers(_ context.Context, retailerIDs []string) (map[string]credit.RetailerCreditScore, error) {
+	return map[string]credit.RetailerCreditScore{}, nil
+}

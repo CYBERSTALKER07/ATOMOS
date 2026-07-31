@@ -46,7 +46,7 @@ type testRepo struct {
 	fiscalAttempts map[string]FiscalReceiptRow
 }
 
-func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
+func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, _ StockReservationOpts) error {
 	if r.createErr != nil {
 		return r.createErr
 	}
@@ -115,7 +115,7 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	return nil
 }
 
-func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error {
+func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, _ StockReservationOpts) error {
 	if r.updateErr != nil {
 		return r.updateErr
 	}
@@ -139,6 +139,10 @@ func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 		return Order{}, false, nil
 	}
 	return r.order, true, nil
+}
+
+func (r *testRepo) GetOrderTxn(ctx context.Context, _ *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	return r.GetOrder(ctx, orderID)
 }
 
 func (r *testRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (FiscalReceiptRow, bool, error) {

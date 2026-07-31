@@ -13,13 +13,16 @@ type DashboardFilter struct {
 }
 
 type DashboardStats struct {
-	Fiscalizing             int64 `json:"fiscalizing"`
-	FiscalFailed            int64 `json:"fiscalFailed"`
-	ForceCompleted          int64 `json:"forceCompleted"`
-	BuyerAcceptancePending  int64 `json:"buyerAcceptancePending"`
-	BuyerAcceptanceRejected int64 `json:"buyerAcceptanceRejected"`
-	ClaimMismatches         int64 `json:"claimMismatches"`
-	CreditFrozen            int64 `json:"creditFrozen"`
+	Fiscalizing                   int64 `json:"fiscalizing"`
+	FiscalFailed                  int64 `json:"fiscalFailed"`
+	ForceCompleted                int64 `json:"forceCompleted"`
+	BuyerAcceptancePending        int64 `json:"buyerAcceptancePending"`
+	BuyerAcceptanceRejected       int64 `json:"buyerAcceptanceRejected"`
+	ClaimMismatches               int64 `json:"claimMismatches"`
+	CreditFrozen                  int64 `json:"creditFrozen"`
+	OpenCreditNotes               int64 `json:"openCreditNotes"`
+	OpenReverseLogisticsTasks     int64 `json:"openReverseLogisticsTasks"`
+	OpenCashDiscrepancies         int64 `json:"openCashDiscrepancies"`
 }
 
 type ProblemOrder struct {

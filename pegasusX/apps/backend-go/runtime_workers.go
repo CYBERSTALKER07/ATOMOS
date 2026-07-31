@@ -53,6 +53,22 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.LaborCapacityService.RunCapacitySnapshotWorker(ctx, 1*time.Hour)
 		slog.Info("labor capacity workers started")
 	}
+	if app.CreditScoreWorker != nil {
+		go app.CreditScoreWorker.RunNightlyWorker(ctx, 24*time.Hour)
+		slog.Info("retailer credit score worker started")
+	}
+	if app.RouteAnalyticsWorker != nil {
+		go app.RouteAnalyticsWorker.RunNightlyWorker(ctx, 24*time.Hour)
+		slog.Info("route analytics worker started")
+	}
+	supplierID := ""
+	if app.Supplier.SupplierID != "" {
+		supplierID = app.Supplier.SupplierID
+	}
+	if app.ReorderSuggestionWorker != nil && supplierID != "" {
+		go app.ReorderSuggestionWorker.RunBatchWorker(ctx, supplierID, 12*time.Hour)
+		slog.Info("reorder suggestion batch worker started")
+	}
 	if app.Config.WeatherWorkerEnabled && app.DemandService != nil {
 		// Use globally configured center. For Phase 1, treating this as city-level default region.
 		weatherCfg := demand.WeatherConfig{
@@ -71,6 +87,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays)
 	}
 
+	if app.ControlTowerWorker != nil {
+		go app.ControlTowerWorker.Run(ctx)
+		slog.Info("control tower playbook worker started")
+	}
 	streamProcessor := kafka.NewAnalyticsStreamProcessor()
 	dummyStream := make(chan []byte)
 	go streamProcessor.Start(ctx, dummyStream)

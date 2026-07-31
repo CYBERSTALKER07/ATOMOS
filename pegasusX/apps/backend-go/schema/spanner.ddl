@@ -1538,3 +1538,127 @@ CREATE TABLE EventDensitySignals (
   EventsJson JSON,
   ComputedAt TIMESTAMP,
 ) PRIMARY KEY (ZoneH3, Date);
+CREATE TABLE RetailerSegments (
+  RetailerId      STRING(36) NOT NULL,
+  Segment         STRING(16) NOT NULL,
+  Reason          STRING(256),
+  EffectiveFrom   TIMESTAMP NOT NULL,
+  EffectiveTo     TIMESTAMP,
+  UpdatedBy       STRING(64) NOT NULL,
+  UpdatedAt       TIMESTAMP NOT NULL,
+) PRIMARY KEY (RetailerId);
+
+CREATE TABLE SkuClasses (
+  SupplierId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  VelocityClass   STRING(8) NOT NULL,
+  StrategicFlag   BOOL NOT NULL DEFAULT (FALSE),
+  UpdatedAt       TIMESTAMP NOT NULL,
+) PRIMARY KEY (SupplierId, Sku);
+
+CREATE TABLE ServicePolicies (
+  PolicyId              STRING(36) NOT NULL,
+  SupplierId            STRING(36) NOT NULL,
+  RetailerSegment       STRING(16) NOT NULL,
+  SkuClass              STRING(8) NOT NULL,
+  PriorityWeight        INT64 NOT NULL,
+  TargetServiceLevelBps INT64 NOT NULL,
+  MaxFairShareBps       INT64 NOT NULL,
+  MinFairShareBps       INT64 NOT NULL,
+  CreditRiskBoost       INT64 NOT NULL,
+  Enabled               BOOL NOT NULL DEFAULT (TRUE),
+  UpdatedAt             TIMESTAMP NOT NULL,
+) PRIMARY KEY (PolicyId);
+
+CREATE INDEX ServicePolicies_BySupplier ON ServicePolicies(SupplierId);
+
+CREATE TABLE AllocationDecisions (
+  DecisionId      STRING(36) NOT NULL,
+  OrderId         STRING(36) NOT NULL,
+  OrderLineId     STRING(36) NOT NULL,
+  SupplierId      STRING(36) NOT NULL,
+  RetailerId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Qty             INT64 NOT NULL,
+  AllocationMode  STRING(16) NOT NULL,
+  PriorityScore   INT64 NOT NULL,
+  FairShareBps    INT64,
+  PolicyId        STRING(36),
+  RetailerSegment STRING(16),
+  SkuClass        STRING(8),
+  RiskTier        STRING(16),
+  CreatedAt       TIMESTAMP NOT NULL,
+  ConstraintReason STRING(64),
+  RequestedQty    INT64,
+  AllocatedQty    INT64,
+) PRIMARY KEY (DecisionId);
+
+CREATE INDEX AllocationDecisions_ByOrder ON AllocationDecisions(OrderId, CreatedAt DESC);
+
+CREATE INDEX AllocationDecisions_ByRetailer ON AllocationDecisions(RetailerId, CreatedAt DESC);
+
+CREATE TABLE OrderLineAllocations (
+  OrderId         STRING(36) NOT NULL,
+  OrderLineId     STRING(36) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  Qty             INT64 NOT NULL,
+  CreatedAt       TIMESTAMP NOT NULL,
+  AllocationMode  STRING(16),
+  PriorityScore   INT64,
+  FairShareBps    INT64,
+  PolicyId        STRING(36),
+) PRIMARY KEY (OrderId, OrderLineId, WarehouseId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+-- O9-2: Control Tower playbooks — declarative exception → action orchestration.
+CREATE TABLE ControlTowerPlaybooks (
+  PlaybookId        STRING(36) NOT NULL,
+  SupplierId        STRING(36),
+  Name              STRING(128) NOT NULL,
+  Description       STRING(MAX),
+  IsActive          BOOL NOT NULL,
+  Priority          INT64 NOT NULL,
+  MatchRulesJson    JSON NOT NULL,
+  ActionsJson       JSON NOT NULL,
+  AutoExecute       BOOL NOT NULL,
+  CreatedAt         TIMESTAMP NOT NULL,
+  UpdatedAt         TIMESTAMP NOT NULL,
+  CreatedBy         STRING(64) NOT NULL,
+) PRIMARY KEY (PlaybookId);
+
+CREATE INDEX ControlTowerPlaybooks_BySupplierActive
+ON ControlTowerPlaybooks(SupplierId, IsActive, Priority DESC);
+
+CREATE TABLE ControlTowerPlaybookRuns (
+  RunId             STRING(36) NOT NULL,
+  PlaybookId        STRING(36) NOT NULL,
+  ExceptionId       STRING(36) NOT NULL,
+  SupplierId        STRING(36) NOT NULL,
+  Mode              STRING(16) NOT NULL,
+  Status            STRING(16) NOT NULL,
+  ActionsResultJson JSON,
+  CreatedAt         TIMESTAMP NOT NULL,
+  ExecutedAt        TIMESTAMP,
+  ExecutedBy        STRING(64),
+) PRIMARY KEY (RunId);
+
+CREATE INDEX ControlTowerPlaybookRuns_ByException
+ON ControlTowerPlaybookRuns(ExceptionId, CreatedAt DESC);
+
+CREATE INDEX ControlTowerPlaybookRuns_ByStatus
+ON ControlTowerPlaybookRuns(Status, CreatedAt DESC);
+
+CREATE TABLE EchelonTargets (
+  SupplierId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Echelon         STRING(16) NOT NULL,
+  TargetQty       INT64 NOT NULL,
+  SafetyQty       INT64 NOT NULL,
+  ServiceLevelBps INT64 NOT NULL,
+  HorizonDays     INT64 NOT NULL,
+  ComputedAt      TIMESTAMP NOT NULL,
+  Source          STRING(32) NOT NULL,
+) PRIMARY KEY (SupplierId, Sku, WarehouseId, Echelon);

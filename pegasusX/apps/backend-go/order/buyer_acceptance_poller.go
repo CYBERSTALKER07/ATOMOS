@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
@@ -21,15 +22,24 @@ type BuyerAcceptancePoller struct {
 	repo        Repository
 	logger      Logger
 	pollDelay   time.Duration
+	
+	creditnoteSvc *creditnote.Service
+	autoCreditNoteOnBuyerReject bool
 }
 
-func NewBuyerAcceptancePoller(sc soliq.SoliqClient, repo Repository, logger Logger) *BuyerAcceptancePoller {
+func NewBuyerAcceptancePoller(sc soliq.SoliqClient, repo Repository, logger Logger, cnSvc *creditnote.Service) *BuyerAcceptancePoller {
 	return &BuyerAcceptancePoller{
-		soliqClient: sc,
-		repo:        repo,
-		logger:      logger,
-		pollDelay:   1 * time.Minute,
+		soliqClient:   sc,
+		repo:          repo,
+		logger:        logger,
+		pollDelay:     1 * time.Minute,
+		creditnoteSvc: cnSvc,
+		autoCreditNoteOnBuyerReject: false, // default false per instructions
 	}
+}
+
+func (p *BuyerAcceptancePoller) SetAutoCreditNoteOnBuyerReject(enabled bool) {
+	p.autoCreditNoteOnBuyerReject = enabled
 }
 
 // Run executes the poller in an infinite loop.
@@ -101,6 +111,11 @@ func (p *BuyerAcceptancePoller) poll(ctx context.Context) {
 			})
 			if err != nil {
 				p.logger.Error("failed to update order to REJECTED and create exception ticket", "orderId", o.OrderID, "err", err)
+			} else if p.autoCreditNoteOnBuyerReject && p.creditnoteSvc != nil {
+				_, cnErr := p.creditnoteSvc.CreateFromBuyerReject(ctx, o.OrderID, "system:buyer-accept-poller")
+				if cnErr != nil {
+					p.logger.Error("failed to create credit note on buyer reject", "orderId", o.OrderID, "err", cnErr)
+				}
 			}
 			continue
 		}

@@ -24,6 +24,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
@@ -31,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
@@ -259,10 +261,11 @@ type DeliveryProofArtifact struct {
 // callback receives a TxnBuffer scoped to the same RW transaction so the row
 // + outbox event commit atomically.
 type Repository interface {
-	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error
+	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
 	UpdateOrder(ctx context.Context, o Order, proofs []DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error
 	UpdateOrderWithTxn(ctx context.Context, o Order, proofs []DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
+	GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error)
 	// GetFiscalAttempt loads one OrderFiscalReceipts row (ADR-009 worker idempotency).
 	GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error)
 	// GetFiscalByReceiptID loads a successful attempt by public FiscalReceiptId.
@@ -278,7 +281,7 @@ type Repository interface {
 	ListWarehousePreorders(ctx context.Context, warehouseID string, limit, offset int) ([]Order, error)
 	ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error)
 	ListBackorderedOrders(ctx context.Context, limit int) ([]Order, error)
-	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
+	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
 	ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]Order, error)
 	CreateConditionReport(ctx context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error
 	ListConditionReports(ctx context.Context, orderID string) ([]ConditionReport, error)
@@ -345,7 +348,8 @@ type Service struct {
 	spannerClient      *spanner.Client
 	manifestStore      *manifest.Store
 	idem               idempotency.Store
-	shopGrace          time.Duration
+	shopGrace                  time.Duration
+	creditScoreEnforcement     bool
 	log                *slog.Logger
 	now                func() time.Time
 	newID              func() string
@@ -357,12 +361,20 @@ type Service struct {
 	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
 	claimsBridge       claimsBridge   // optional logistics claims domain
 	taxSvc             *tax.Service   // optional tax regime service
+	pricingSvc         pricing.Service // optional pricing engine
 	proximityCfg       ProximityConfig
+	allocator          Allocator
+	allocationRequired bool
 }
 
 // RouteReplanner handles continuous dynamic resequencing.
 type RouteReplanner interface {
 	ReplanRoute(ctx context.Context, routeID, reason, actor string) error
+}
+
+type Allocator interface {
+	AllocateOrder(ctx context.Context, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
+	AllocateOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
 }
 
 // ServiceConfig is the constructor input.
@@ -382,12 +394,14 @@ type ServiceConfig struct {
 	DriverHub       *ws.Hub
 	SpannerClient   *spanner.Client
 	ShopClosedGrace time.Duration
+	CreditScoreEnforcementEnabled bool
 	Log             *slog.Logger
 	Now             func() time.Time
 	NewID           func() string
 	JWTSecret       string
 	Handoff         *handoff.Engine
 	Idem            idempotency.Store
+	Allocator       Allocator
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -418,7 +432,8 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:        c.SupplierHub,
 		driverHub:          c.DriverHub,
 		spannerClient:      c.SpannerClient,
-		shopGrace:          grace,
+		shopGrace:                  grace,
+		creditScoreEnforcement:     c.CreditScoreEnforcementEnabled,
 		log:                c.Log,
 		now:                c.Now,
 		newID:              c.NewID,
@@ -427,6 +442,8 @@ func NewService(c ServiceConfig) *Service {
 		idem:               c.Idem,
 		credit:             c.Credit,
 		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
+		allocator:          c.Allocator,
+		allocationRequired: false,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -452,9 +469,15 @@ func (s *Service) SetCreditService(svc *credit.Service) {
 
 // SetTaxService wires the tax domain (optional).
 func (s *Service) SetTaxService(t *tax.Service) {
-	if s != nil {
-		s.taxSvc = t
-	}
+	s.taxSvc = t
+}
+
+func (s *Service) SetAllocator(a Allocator) {
+	s.allocator = a
+}
+
+func (s *Service) SetPricingService(p pricing.Service) {
+	s.pricingSvc = p
 }
 
 // SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
@@ -462,7 +485,11 @@ func (s *Service) SetGatewayPolicyReader(reader GatewayPolicyReader) {
 	s.gatewayPolicy = reader
 }
 
-// GetOrder loads an order snapshot by ID (used by claims and other domains).
+func (s *Service) SetAllocationRequired(req bool) {
+	s.allocationRequired = req
+}
+
+// GetOrder returns a single order payload.pshot by ID (used by claims and other domains).
 func (s *Service) GetOrder(ctx context.Context, orderID string) (Order, bool, error) {
 	if s == nil || s.repo == nil {
 		return Order{}, false, fmt.Errorf("order service unavailable")
@@ -852,7 +879,7 @@ func (r AssignOrderRequest) Validate() (AssignOrderRequest, error) {
 	return normalized, nil
 }
 
-func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem) ([]LineItem, int64, error) {
+func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem, reqDate *time.Time) ([]LineItem, int64, error) {
 	if len(items) == 0 {
 		return nil, 0, errors.New("line_items required")
 	}
@@ -950,9 +977,25 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 			return nil, 0, fmt.Errorf("line_items[%d].quantity must be > 0", i)
 		}
 
-		serverPrice, ok := prices[sku]
-		if !ok {
-			return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
+		var serverPrice int64
+		if s.pricingSvc != nil {
+			var effectiveDate time.Time
+			if reqDate != nil {
+				effectiveDate = *reqDate
+			} else {
+				effectiveDate = s.now()
+			}
+			p, err := s.pricingSvc.ResolvePrice(ctx, s.supplierID, sku, effectiveDate)
+			if err != nil {
+				return nil, 0, fmt.Errorf("line_items[%d].sku %s failed to resolve price: %w", i, sku, err)
+			}
+			serverPrice = p
+		} else {
+			sp, ok := prices[sku]
+			if !ok {
+				return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
+			}
+			serverPrice = sp
 		}
 
 		snap := snapshots[sku]
@@ -1047,13 +1090,14 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
-	if err != nil {
-		return CreateResponse{}, err
-	}
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("parse requested_delivery_date: %w", err)
+	}
+
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, requestedDeliveryDate)
+	if err != nil {
+		return CreateResponse{}, err
 	}
 	deliverBefore, err := parseOptionalRFC3339(req.DeliverBefore)
 	if err != nil {
@@ -1195,6 +1239,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		UpdatedAt:             now,
 	}
 
+	stockOpts := StockReservationOpts{
+		Skip: deferStockReservationAtCreate(s.allocationRequired, status, source, warehouseID, len(lineItems)),
+	}
+
 	err = s.repo.CreateOrder(ctx, &o, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:             events.BaseEvent{Type: events.EventOrderCreated, Timestamp: o.CreatedAt.Format(time.RFC3339Nano)},
@@ -1229,9 +1277,19 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			})
 		}
 		return nil
-	})
+	}, stockOpts)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
+	}
+
+	if stockOpts.Skip && o.Status == StatusPending {
+		if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
+			if _, cancelErr := s.cancelOrderWithReason(ctx, &o, "system", "SYSTEM", "allocation_failed", ""); cancelErr != nil {
+				s.log.Warn("failed to cancel order after allocation failure", "order_id", o.OrderID, "err", cancelErr)
+			}
+			return CreateResponse{}, fmt.Errorf("allocation failed: %w", err)
+		}
+		o, _, _ = s.repo.GetOrder(ctx, o.OrderID)
 	}
 
 	var backorderOrderID string
@@ -1330,7 +1388,7 @@ func (s *Service) createBackorderOrder(
 			Currency:           bo.Currency,
 			LineItems:          bo.LineItems,
 		})
-	})
+	}, StockReservationOpts{})
 	if err != nil {
 		return "", err
 	}
@@ -3722,4 +3780,29 @@ func resolveRetailerDisplayName(ctx context.Context, client *spanner.Client, ret
 		return retailerID
 	}
 	return strings.TrimSpace(name.StringVal)
+}
+
+// ConfirmAndAllocate runs multi-warehouse allocation and reserves stock inside one Spanner RW txn.
+func (s *Service) ConfirmAndAllocate(ctx context.Context, orderID string) error {
+	if !s.allocationRequired {
+		return nil
+	}
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner client unavailable for allocation")
+	}
+	orderID = strings.TrimSpace(orderID)
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		current, found, err := s.repo.GetOrderTxn(ctx, txn, orderID)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return fmt.Errorf("order %s not found", orderID)
+		}
+		if current.Status != StatusPending {
+			return fmt.Errorf("order %s in status %s cannot be allocated", orderID, current.Status)
+		}
+		return s.allocateAndReserveInTxn(ctx, txn, &current)
+	})
+	return err
 }

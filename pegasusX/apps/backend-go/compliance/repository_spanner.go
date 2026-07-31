@@ -164,6 +164,57 @@ WHERE SupplierId = @supplierId
 		return nil
 	})
 
+	// 8. Open credit notes (not completed or cancelled)
+	g.Go(func() error {
+		iter := r.client.Single().Query(gCtx, spanner.Statement{
+			SQL: `SELECT COUNT(*) AS cnt
+FROM CreditNotes cn
+JOIN Orders o ON cn.OrderId = o.OrderId
+WHERE o.SupplierId = @supplierId
+  AND cn.Status NOT IN ('COMPLETED', 'CANCELLED');`,
+			Params: map[string]interface{}{"supplierId": f.SupplierID},
+		})
+		defer iter.Stop()
+		if row, err := iter.Next(); err == nil {
+			_ = row.Columns(&stats.OpenCreditNotes)
+		}
+		return nil
+	})
+
+	// 9. Open reverse logistics tasks (not received or closed)
+	g.Go(func() error {
+		iter := r.client.Single().Query(gCtx, spanner.Statement{
+			SQL: `SELECT COUNT(*) AS cnt
+FROM ReverseLogisticsTasks rlt
+JOIN Orders o ON rlt.OrderId = o.OrderId
+WHERE o.SupplierId = @supplierId
+  AND rlt.Status NOT IN ('RECEIVED', 'CLOSED');`,
+			Params: map[string]interface{}{"supplierId": f.SupplierID},
+		})
+		defer iter.Stop()
+		if row, err := iter.Next(); err == nil {
+			_ = row.Columns(&stats.OpenReverseLogisticsTasks)
+		}
+		return nil
+	})
+
+	// 10. Open cash discrepancies (pending or disputed reconciliation)
+	g.Go(func() error {
+		iter := r.client.Single().Query(gCtx, spanner.Statement{
+			SQL: `SELECT COUNT(*) AS cnt
+FROM CashReconciliations cr
+JOIN Drivers d ON cr.DriverId = d.DriverId
+WHERE d.SupplierId = @supplierId
+  AND cr.Status IN ('PENDING', 'DISPUTED');`,
+			Params: map[string]interface{}{"supplierId": f.SupplierID},
+		})
+		defer iter.Stop()
+		if row, err := iter.Next(); err == nil {
+			_ = row.Columns(&stats.OpenCashDiscrepancies)
+		}
+		return nil
+	})
+
 	if err := g.Wait(); err != nil {
 		return stats, err
 	}

@@ -92,9 +92,30 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierMEIONetworkSummary,
   SupplierReplenishmentPolicy,
   SupplierReplenishmentTraceabilityResponse,
+  ReorderSuggestionsListResponse,
+  ReorderSuggestionDismissRequest,
+  ReorderSuggestionCreateDraftRequest,
+  ReorderSuggestionBulkCreateDraftsRequest,
+  ReorderSuggestionBulkCreateDraftsResponse,
+  CashReconciliationRow,
+  CashReconciliationsListResponse,
+  CashReconciliationActionRequest,
+  CreditNoteRow,
+  CreditNotesListResponse,
+  CreateCreditNoteRequest,
+  TwinOpsRouteView,
+  TwinVehicleInventoryRow,
   ControlTowerZoneOverride,
   ControlTowerZoneOverridesResponse,
   ControlTowerZoneOverrideRequest,
+  ControlTowerPlaybookRunsResponse,
+  ScoredExceptionsResponse,
+  ControlTowerPlaybooksResponse,
+  RetailerSegmentsResponse,
+  SkuClassesResponse,
+  SegmentationBootstrapResult,
+  SetRetailerSegmentInput,
+  SetSkuClassInput,
   PlanningScenarioInput,
   PlanningScenarioResult,
   PlanningSignalIngestStatus,
@@ -1070,6 +1091,105 @@ export class ApiClient {
     return this.request<SupplierReplenishmentTraceabilityResponse>("/v1/supplier/replenishment/traceability", "GET");
   }
 
+  async listReorderSuggestions(params?: {
+    retailerId?: string;
+    status?: string;
+    sku?: string;
+  }): Promise<ReorderSuggestionsListResponse> {
+    const q = new URLSearchParams();
+    if (params?.retailerId) q.set("retailerId", params.retailerId);
+    if (params?.status) q.set("status", params.status);
+    if (params?.sku) q.set("sku", params.sku);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<ReorderSuggestionsListResponse>(`/v1/replenishment/suggestions${suffix}`, "GET");
+  }
+
+  async dismissReorderSuggestion(request: ReorderSuggestionDismissRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>("/v1/replenishment/suggestions/dismiss", "POST", { body: request });
+  }
+
+  async createDraftFromReorderSuggestion(
+    request: ReorderSuggestionCreateDraftRequest,
+    idempotencyKey?: string,
+  ): Promise<{ order_id: string; status?: string }> {
+    return this.request("/v1/replenishment/suggestions/create-draft", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async bulkCreateDraftsFromReorderSuggestions(
+    request: ReorderSuggestionBulkCreateDraftsRequest,
+    idempotencyKey?: string,
+  ): Promise<ReorderSuggestionBulkCreateDraftsResponse> {
+    return this.request<ReorderSuggestionBulkCreateDraftsResponse>("/v1/replenishment/suggestions/create-drafts", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async listCashReconciliations(params?: { status?: string; limit?: number }): Promise<CashReconciliationsListResponse> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<CashReconciliationsListResponse>(`/v1/supplier/cash-reconciliations${suffix}`, "GET");
+  }
+
+  async acceptCashReconciliation(id: string, request?: CashReconciliationActionRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/cash-reconciliations/${encodeURIComponent(id)}/accept`, "POST", {
+      body: request ?? {},
+    });
+  }
+
+  async writeOffCashReconciliation(id: string, request?: CashReconciliationActionRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/cash-reconciliations/${encodeURIComponent(id)}/write-off`, "POST", {
+      body: request ?? {},
+    });
+  }
+
+  async listCreditNotes(params?: { status?: string; limit?: number }): Promise<CreditNotesListResponse> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<CreditNotesListResponse>(`/v1/supplier/credit-notes${suffix}`, "GET");
+  }
+
+  async createCreditNote(request: CreateCreditNoteRequest): Promise<CreditNoteRow> {
+    return this.request<CreditNoteRow>("/v1/supplier/credit-notes", "POST", { body: request });
+  }
+
+  async issueCreditNote(id: string): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/credit-notes/${encodeURIComponent(id)}/issue`, "POST", {});
+  }
+
+  async listTwinActiveRoutes(params?: {
+    zoneH3?: string;
+    delayedOnly?: boolean;
+    shopClosedOnly?: boolean;
+    driverId?: string;
+  }): Promise<TwinOpsRouteView[]> {
+    const q = new URLSearchParams();
+    if (params?.zoneH3) q.set("zoneH3", params.zoneH3);
+    if (params?.delayedOnly) q.set("delayedOnly", "true");
+    if (params?.shopClosedOnly) q.set("shopClosedOnly", "true");
+    if (params?.driverId) q.set("driverId", params.driverId);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<TwinOpsRouteView[]>(`/v1/twin/routes/active${suffix}`, "GET");
+  }
+
+  async getTwinRoute(routeId: string): Promise<TwinOpsRouteView> {
+    return this.request<TwinOpsRouteView>(`/v1/twin/routes/${encodeURIComponent(routeId)}`, "GET");
+  }
+
+  async getTwinRouteInventory(routeId: string): Promise<TwinVehicleInventoryRow[]> {
+    return this.request<TwinVehicleInventoryRow[]>(
+      `/v1/twin/routes/${encodeURIComponent(routeId)}/inventory`,
+      "GET",
+    );
+  }
+
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
     return this.request<SupplierMEIONetworkSummary>("/v1/supplier/meio/network-summary", "GET");
   }
@@ -1086,6 +1206,71 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  async listPlaybookRuns(status?: string, exceptionId?: string): Promise<ControlTowerPlaybookRunsResponse> {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (exceptionId) params.set("exception_id", exceptionId);
+    const q = params.toString();
+    return this.request<ControlTowerPlaybookRunsResponse>(
+      `/v1/control-tower/runs${q ? `?${q}` : ""}`,
+      "GET",
+    );
+  }
+
+  async listScoredExceptions(limit?: number): Promise<ScoredExceptionsResponse> {
+    const params = new URLSearchParams();
+    if (limit != null) params.set("limit", String(limit));
+    const q = params.toString();
+    return this.request<ScoredExceptionsResponse>(
+      `/v1/control-tower/exceptions/scored${q ? `?${q}` : ""}`,
+      "GET",
+    );
+  }
+
+  async listPlaybooks(): Promise<ControlTowerPlaybooksResponse> {
+    return this.request<ControlTowerPlaybooksResponse>("/v1/control-tower/playbooks", "GET");
+  }
+
+  async deactivatePlaybook(playbookId: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/playbooks/${playbookId}/deactivate`, "POST");
+  }
+
+  async approvePlaybookRun(runId: string, idempotencyKey: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/runs/${runId}/approve`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async skipPlaybookRun(runId: string, idempotencyKey: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/runs/${runId}/skip`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async listRetailerSegments(): Promise<RetailerSegmentsResponse> {
+    return this.request<RetailerSegmentsResponse>("/v1/supplier/segmentation/retailers", "GET");
+  }
+
+  async setRetailerSegment(retailerId: string, body: SetRetailerSegmentInput): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/segmentation/retailers/${encodeURIComponent(retailerId)}`, "PATCH", {
+      body,
+    });
+  }
+
+  async listSkuClasses(): Promise<SkuClassesResponse> {
+    return this.request<SkuClassesResponse>("/v1/supplier/segmentation/sku-classes", "GET");
+  }
+
+  async setSkuClass(sku: string, body: SetSkuClassInput): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/segmentation/sku-classes/${encodeURIComponent(sku)}`, "PATCH", {
+      body,
+    });
+  }
+
+  async bootstrapSegmentation(): Promise<SegmentationBootstrapResult> {
+    return this.request<SegmentationBootstrapResult>("/v1/supplier/segmentation/bootstrap", "POST");
   }
 
   async runPlanningScenario(request: PlanningScenarioInput, idempotencyKey: string): Promise<PlanningScenarioResult> {

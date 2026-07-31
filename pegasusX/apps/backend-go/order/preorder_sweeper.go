@@ -244,6 +244,32 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 	prev := o.Status
 	o.Status = StatusPending
 	o.UpdatedAt = now
+
+	if s.allocationRequired {
+		err := s.repo.UpdateOrderWithTxn(ctx, o, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return s.allocateAndReserveInTxn(ctx, txn, &o)
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:          events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
+				OrderID:            o.OrderID,
+				SupplierID:         o.SupplierID,
+				RetailerID:         o.RetailerID,
+				WarehouseID:        o.WarehouseID,
+				PreviousStatus:     string(prev),
+				Status:             string(o.Status),
+				Reason:             "PREORDER_PROMOTED",
+				OrderSource:        string(o.Source),
+				ConfirmationStatus: string(o.ConfirmationStatus),
+			})
+		})
+		if err != nil {
+			return err
+		}
+		s.afterOrderMutation(ctx, o)
+		s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
+		return nil
+	}
+
 	err := s.repo.UpdateOrder(ctx, o, nil, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:          events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},

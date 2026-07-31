@@ -20,7 +20,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cashreconroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltowerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
@@ -201,6 +204,12 @@ func main() {
 		SupplierHub:       app.SupplierHub,
 		WarehouseHub:      app.WarehouseHub,
 	})
+	controltowerroutes.RegisterRoutes(r, controltowerroutes.Deps{
+		Handlers:            app.ControlTowerHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
 	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
 		Service:   app.PromotionService,
 		JWTSecret: cfg.JWTSecret,
@@ -223,6 +232,18 @@ func main() {
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	creditroutes.RegisterRoutes(r, creditroutes.Deps{Service: app.CreditService})
+	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
+		Handlers:            app.CashReconHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
+	creditnoteroutes.RegisterRoutes(r, creditnoteroutes.Deps{
+		Handlers:            app.CreditNoteHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
 		Service:             app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -295,6 +316,15 @@ func main() {
 		inbox := app.NotificationInbox
 		r.Get("/v1/user/notifications", inbox.HandleList)
 		r.Post("/v1/user/notifications/read", inbox.HandleMarkRead)
+	}
+	if app.NotificationPreferences != nil {
+		prefs := app.NotificationPreferences
+		r.Get("/v1/user/notification-preferences", prefs.HandleGetPreferences)
+		r.Patch("/v1/user/notification-preferences", prefs.HandlePatchPreferences)
+	}
+	if app.AnalyticsHandlers != nil {
+		h := app.AnalyticsHandlers
+		r.Get("/v1/supplier/route-performance", h.HandleListRoutePerformance)
 	}
 
 	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".

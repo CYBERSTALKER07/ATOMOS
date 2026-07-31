@@ -10,12 +10,39 @@ import { ListToolbar } from "@/components/ListToolbar";
 import { PageChrome } from "@/components/PageChrome";
 import { InventoryTable, type InventoryRow } from "@/components/inventory";
 
+type InventoryApiItem = {
+  product_id: string;
+  warehouse_id: string;
+  quantity_on_hand?: number;
+  quantity_reserved?: number;
+  out_of_stock_policy?: string;
+  effective_policy?: string;
+  accepts_backorder?: boolean;
+};
+
+function mapInventoryRow(item: InventoryApiItem): InventoryRow {
+  const onHand = item.quantity_on_hand ?? 0;
+  const reserved = item.quantity_reserved ?? 0;
+  return {
+    sku_id: item.product_id,
+    warehouse_id: item.warehouse_id,
+    product_name: item.product_id,
+    quantity: Math.max(0, onHand - reserved),
+    unit_price_minor: 0,
+    currency: "UZS",
+    out_of_stock_policy: item.out_of_stock_policy || "INHERIT",
+    effective_policy: item.effective_policy,
+    accepts_backorder: item.accepts_backorder,
+  };
+}
+
 export default function PortalInventoryPage() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deltas, setDeltas] = useState<Record<string, string>>({});
   const [adjustingSku, setAdjustingSku] = useState<string | null>(null);
+  const [policyUpdatingKey, setPolicyUpdatingKey] = useState<string | null>(null);
 
   const loadInventory = () => {
     setLoading(true);
@@ -23,8 +50,8 @@ export default function PortalInventoryPage() {
     supplierFetch("/v1/supplier/inventory")
       .then(async (res) => {
         if (!res.ok) throw new Error(`inventory ${res.status}`);
-        const body = (await res.json()) as { items?: InventoryRow[] };
-        setRows(body.items ?? []);
+        const body = (await res.json()) as { items?: InventoryApiItem[] };
+        setRows((body.items ?? []).map(mapInventoryRow));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load inventory"))
       .finally(() => setLoading(false));
@@ -72,13 +99,36 @@ export default function PortalInventoryPage() {
     }
   };
 
+  const updatePolicy = async (row: InventoryRow, policy: string) => {
+    const key = `${row.warehouse_id}:${row.sku_id}`;
+    setPolicyUpdatingKey(key);
+    setError(null);
+    try {
+      const res = await supplierFetch("/v1/supplier/inventory/policy", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          warehouse_id: row.warehouse_id,
+          product_id: row.sku_id,
+          out_of_stock_policy: policy,
+        }),
+      });
+      if (!res.ok) throw new Error(`policy ${res.status}`);
+      loadInventory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "policy_update_failed");
+    } finally {
+      setPolicyUpdatingKey(null);
+    }
+  };
+
   const pagination = usePagination(rows, 20);
 
   return (
     <PageChrome
       icon="inventory"
       title="Inventory"
-      description="SKU availability and audit trail for supplier operations."
+      description="SKU availability, stock policy per warehouse, and quantity adjustments."
       loading={loading}
       error={error}
       empty={rows.length === 0}
@@ -92,13 +142,12 @@ export default function PortalInventoryPage() {
         onExport={() =>
           downloadCsv(
             "supplier-inventory.csv",
-            ["sku_id", "product_name", "quantity", "unit_price_minor", "currency"],
+            ["warehouse_id", "sku_id", "quantity", "out_of_stock_policy"],
             rows.map((row) => [
+              row.warehouse_id,
               row.sku_id,
-              row.product_name,
               String(row.quantity),
-              String(row.unit_price_minor),
-              row.currency,
+              row.out_of_stock_policy ?? "INHERIT",
             ]),
           )
         }
@@ -112,8 +161,10 @@ export default function PortalInventoryPage() {
         items={pagination.pageItems}
         deltas={deltas}
         adjustingSku={adjustingSku}
+        policyUpdatingKey={policyUpdatingKey}
         onDeltaChange={(skuId, value) => setDeltas((prev) => ({ ...prev, [skuId]: value }))}
         onApply={(row) => void adjustRow(row)}
+        onPolicyChange={(row, policy) => void updatePolicy(row, policy)}
       />
     </PageChrome>
   );

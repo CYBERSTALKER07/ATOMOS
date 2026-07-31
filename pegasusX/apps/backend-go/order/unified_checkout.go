@@ -304,7 +304,7 @@ func (s *Service) authoritativeCheckoutLines(
 
 	// Production / SSMR: Spanner catalog is the price authority (same as Create).
 	if s.spannerClient != nil {
-		normalized, _, err := s.normalizeAndQuoteLineItems(ctx, draft)
+		normalized, _, err := s.normalizeAndQuoteLineItems(ctx, draft, nil)
 		if err != nil {
 			return nil, err
 		}

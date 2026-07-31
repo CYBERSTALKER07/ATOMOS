@@ -1,4 +1,4 @@
--- Orders extensions
+-- Orders extensions (partial line qty lives in LineItemsJson — no OrderLines table).
 ALTER TABLE Orders ADD COLUMN ShopClosedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN ShopClosedReason STRING(64);
 ALTER TABLE Orders ADD COLUMN ShopClosedGraceEndsAt TIMESTAMP;
@@ -7,13 +7,6 @@ ALTER TABLE Orders ADD COLUMN PartialDelivery BOOL DEFAULT (false);
 ALTER TABLE Orders ADD COLUMN ProximityUnlockedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN ProximityMethod STRING(16);
 
--- OrderLines extensions
-ALTER TABLE OrderLines ADD COLUMN DeliveredQty INT64;
-ALTER TABLE OrderLines ADD COLUMN RemainingQty INT64;
-ALTER TABLE OrderLines ADD COLUMN OffloadStatus STRING(16);
-ALTER TABLE OrderLines ADD COLUMN OffloadReason STRING(64);
-
--- Shop-closed interaction log
 CREATE TABLE OrderShopClosedLog (
   OrderId     STRING(36) NOT NULL,
   EventId     STRING(36) NOT NULL,
@@ -23,3 +16,6 @@ CREATE TABLE OrderShopClosedLog (
   CreatedAt   TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (OrderId, EventId),
   INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE INDEX Idx_OrderShopClosedLog_ByOrderCreated
+  ON OrderShopClosedLog(OrderId, CreatedAt DESC);

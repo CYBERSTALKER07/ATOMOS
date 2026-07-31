@@ -91,6 +91,10 @@ func (r *testCreditRepo) AdjustBalance(_ context.Context, _, _ string, deltaMino
 	return nil
 }
 
+func (r *testCreditRepo) GetScoresForRetailers(_ context.Context, _ []string) (map[string]RetailerCreditScore, error) {
+	return map[string]RetailerCreditScore{}, nil
+}
+
 func newTestService(repo Repository) *Service {
 	s := NewService(repo)
 	s.SetNow(func() time.Time { return time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC) })

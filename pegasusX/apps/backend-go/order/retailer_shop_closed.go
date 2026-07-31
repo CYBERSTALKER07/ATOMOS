@@ -174,8 +174,20 @@ func (s *Service) resolveCreditLeaveFromRetailer(ctx context.Context, txn *spann
 		return status.Errorf(codes.Internal, "failed to get credit profile: %v", err)
 	}
 
-	if profile == nil || profile.Status != "ACTIVE" || profile.AvailableCreditMinor < order.TotalMinor {
-		return status.Error(codes.FailedPrecondition, "insufficient credit or inactive profile")
+	score, err := getRetailerCreditScore(ctx, txn, order.RetailerID)
+	if err != nil {
+		s.log.WarnContext(ctx, "failed to load credit score for credit leave", "err", err, "retailer_id", order.RetailerID)
+	}
+
+	cfg := TimeoutConfig{
+		MaxAutoCreditMinor:            50000000,
+		MaxRiskTierForAutoCredit:      2,
+		AllowForceBypass:              false,
+		CreditScoreEnforcementEnabled: s.creditScoreEnforcement,
+	}
+
+	if err := CanLeaveOnCredit(order, profile, score, cfg, cfg.CreditScoreEnforcementEnabled); err != nil {
+		return err
 	}
 
 	buf := &spannerTxnBuffer{}

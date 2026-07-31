@@ -63,12 +63,24 @@ type StockWarning struct {
 }
 
 // PlanInventoryCheckout reads warehouse + SKU policy and available stock.
+// reservationCredit adds qty already reserved by an order being edited (pre-order line changes).
 func PlanInventoryCheckout(
 	ctx context.Context,
 	client *spanner.Client,
 	supplierID, warehouseID string,
 	items []LineItem,
 	warehousePolicyOverride string,
+) (InventoryPlan, error) {
+	return PlanInventoryCheckoutWithCredit(ctx, client, supplierID, warehouseID, items, warehousePolicyOverride, nil)
+}
+
+func PlanInventoryCheckoutWithCredit(
+	ctx context.Context,
+	client *spanner.Client,
+	supplierID, warehouseID string,
+	items []LineItem,
+	warehousePolicyOverride string,
+	reservationCredit map[string]int64,
 ) (InventoryPlan, error) {
 	plan := InventoryPlan{}
 	if client == nil || warehouseID == "" || len(items) == 0 {
@@ -122,6 +134,9 @@ func PlanInventoryCheckout(
 			return plan, fmt.Errorf("decode inventory: %w", err)
 		}
 		avail := qoh - qr
+		if credit := reservationCredit[productID]; credit > 0 {
+			avail += credit
+		}
 		if avail < 0 {
 			avail = 0
 		}
@@ -135,6 +150,25 @@ func PlanInventoryCheckout(
 		st.policy = resolveOutOfStockPolicy(warehouseDefault, policy.StringVal)
 	}
 
+	planStates := make(map[string]skuPlanState, len(states))
+	for sku, st := range states {
+		if st == nil {
+			continue
+		}
+		avail := st.available
+		if !st.found && reservationCredit != nil {
+			if credit := reservationCredit[sku]; credit > 0 {
+				avail = credit
+			}
+		}
+		planStates[sku] = skuPlanState{available: avail, policy: st.policy}
+	}
+	return buildInventoryPlan(warehouseDefault, items, planStates)
+}
+
+// buildInventoryPlan splits lines using pre-resolved per-SKU availability and policy (unit-test seam).
+func buildInventoryPlan(warehouseDefault string, items []LineItem, states map[string]skuPlanState) (InventoryPlan, error) {
+	plan := InventoryPlan{}
 	rejected := make([]string, 0)
 	shortfall := make(map[string]int64)
 	oosAll := make([]string, 0)
@@ -144,9 +178,9 @@ func PlanInventoryCheckout(
 		if sku == "" || item.Quantity <= 0 {
 			continue
 		}
-		st := states[sku]
-		if st == nil {
-			st = &skuState{policy: resolveOutOfStockPolicy(warehouseDefault, "")}
+		st, ok := states[sku]
+		if !ok {
+			st = skuPlanState{policy: resolveOutOfStockPolicy(warehouseDefault, "")}
 		}
 		available := st.available
 		requested := item.Quantity
@@ -154,6 +188,7 @@ func PlanInventoryCheckout(
 		if available >= requested {
 			plan.Fulfillable = append(plan.Fulfillable, item)
 			st.available -= requested
+			states[sku] = st
 			continue
 		}
 
@@ -163,6 +198,7 @@ func PlanInventoryCheckout(
 			fill.Quantity = available
 			plan.Fulfillable = append(plan.Fulfillable, fill)
 			st.available = 0
+			states[sku] = st
 		}
 
 		if st.policy == outOfStockPolicyAcceptBackorder {
@@ -207,6 +243,11 @@ func PlanInventoryCheckout(
 		}
 	}
 	return plan, nil
+}
+
+type skuPlanState struct {
+	available int64
+	policy    string
 }
 
 func loadWarehouseDefaultPolicy(ctx context.Context, client *spanner.Client, warehouseID string) (string, error) {

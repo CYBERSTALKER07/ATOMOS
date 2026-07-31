@@ -54,7 +54,7 @@ func (a *RetailerReceivingWindowAdapter) GetReceivingWindows(ctx context.Context
 	return ret.ReceivingWindowOpen, ret.ReceivingWindowClose, nil
 }
 
-func (r *inMemoryOrderRepo) CreateOrder(ctx context.Context, o *order.Order, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryOrderRepo) CreateOrder(ctx context.Context, o *order.Order, emit func(outbox.TxnBuffer) error, _ order.StockReservationOpts) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if o == nil {
@@ -92,6 +92,10 @@ func (r *inMemoryOrderRepo) GetOrder(_ context.Context, orderID string) (order.O
 	defer r.mu.RUnlock()
 	o, ok := r.byID[orderID]
 	return o, ok, nil
+}
+
+func (r *inMemoryOrderRepo) GetOrderTxn(_ context.Context, _ *spanner.ReadWriteTransaction, orderID string) (order.Order, bool, error) {
+	return r.GetOrder(context.Background(), orderID)
 }
 
 func (r *inMemoryOrderRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (order.FiscalReceiptRow, bool, error) {
@@ -311,7 +315,7 @@ func (r *inMemoryOrderRepo) ListOrdersForStockCommitment(_ context.Context, ware
 	return out, nil
 }
 
-func (r *inMemoryOrderRepo) ClearBackorder(ctx context.Context, id string, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryOrderRepo) ClearBackorder(ctx context.Context, id string, emit func(outbox.TxnBuffer) error, _ order.StockReservationOpts) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	o, exists := r.byID[id]

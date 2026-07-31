@@ -6,7 +6,7 @@ CREATE TABLE TaxRegimeVersions (
   EffectiveTo     TIMESTAMP,                    -- NULL = currently active
   Currency        STRING(3) NOT NULL,           -- 'UZS'
   VatRateBps      INT64 NOT NULL,               -- e.g. 1200 = 12.00%
-  Simplified      BOOL NOT NULL DEFAULT false,
+  Simplified      BOOL NOT NULL DEFAULT (false),
   RulesJson       JSON,                         -- thresholds, exemptions, etc.
   CreatedAt       TIMESTAMP NOT NULL,
   CreatedBy       STRING(64) NOT NULL,

@@ -204,7 +204,7 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 			Reason:               strings.TrimSpace(reason),
 		})
 	}
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}

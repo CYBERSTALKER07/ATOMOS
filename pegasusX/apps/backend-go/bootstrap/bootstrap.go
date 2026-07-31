@@ -18,12 +18,17 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cashrecon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
@@ -45,7 +50,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
@@ -53,6 +60,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
+	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
@@ -170,12 +178,18 @@ type App struct {
 	ReturnsService         *returns.Service
 	TaxService             *tax.Service
 	ComplianceService      *compliance.Service
+	ControlTowerService    *controltower.Service
+	ControlTowerHandlers   *controltower.Handlers
+	ControlTowerWorker     *controltower.Worker
 	DemandService          *demand.Service
 	LaborCapacityService   *laborcapacity.Service
 	ETAService             *eta.Service
 	OrderService           *order.Service
 	ClaimsService          *claims.Service
 	CreditService          *credit.Service
+	CreditScoreWorker      *credit.Worker
+	CashReconHandlers      *cashrecon.Handlers
+	CreditNoteHandlers     *creditnote.Handlers
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
@@ -200,6 +214,10 @@ type App struct {
 	OptimizerClient        *optimizerclient.Client
 	DispatchPlanCounters   *plan.SourceCounters
 	ReplenishmentEngine    *replenishment.Engine
+	ReorderSuggestionWorker *replenishment.ReorderSuggestionWorker
+	RouteAnalyticsWorker  *analytics.RouteAnalyticsWorker
+	AnalyticsHandlers     *analytics.Handlers
+	NotificationPreferences *notifications.PreferenceHandlers
 	cleanup                []func()
 	// Spanner *spanner.Client (added when the Spanner client lands)
 	// Kafka   *kafka.SyncWriter
@@ -529,11 +547,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	var notifSvc *notifications.Service
 	var notifInbox *notifications.InboxHandlers
+	var notifPrefHandlers *notifications.PreferenceHandlers
 	var notifAdapter *notificationReaderAdapter
 	if spannerClient != nil {
 		notifRepo := notifications.NewSpannerRepository(spannerClient)
 		notifSvc = notifications.NewService(notifRepo, cacheClient, log)
 		notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
+		notifPrefHandlers = &notifications.PreferenceHandlers{Repo: notifRepo}
 		notifAdapter = &notificationReaderAdapter{svc: notifSvc}
 		log.Info("notification service enabled", "backend", "spanner")
 	}
@@ -629,6 +649,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Warn("credit repository fallback enabled", "backend", "in-memory")
 	}
 	creditSvc := credit.NewService(creditRepo)
+	var creditScoreWorker *credit.Worker
+	if spannerClient != nil {
+		creditScoreWorker = credit.NewWorker(spannerClient)
+	}
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -640,33 +664,59 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var complianceSvc *compliance.Service
 	var taxSvc *tax.Service
 	var routingSvc *routing.Service
+	var pricingSvc pricing.Service
+	var cashReconSvc *cashrecon.Service
+	var cashReconHandlers *cashrecon.Handlers
+	var creditNoteSvc *creditnote.Service
+	var creditNoteHandlers *creditnote.Handlers
+	cashReconRequired := strings.EqualFold(strings.TrimSpace(os.Getenv("CASH_RECONCILIATION_REQUIRED")), "true")
+	creditScoreEnforcement := strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_SCORE_ENFORCEMENT_ENABLED")), "true")
 	if spannerClient != nil {
 		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
 		taxSvc = tax.NewService(tax.NewSpannerRepository(spannerClient), cacheClient, slog.Default())
 		routingSvc = routing.NewService(spannerClient)
+		pricingSvc = pricing.NewService(pricing.NewSpannerRepository(spannerClient))
+		cashReconRepo := cashrecon.NewSpannerRepository(spannerClient)
+		cashReconSvc = cashrecon.NewService(cashReconRepo, cashReconRepo)
+		cashReconHandlers = &cashrecon.Handlers{Svc: cashReconSvc}
+		creditNoteRepo := creditnote.NewSpannerRepository(spannerClient)
+		creditNoteSvc = creditnote.NewService(creditNoteRepo)
+		creditNoteHandlers = &creditnote.Handlers{Svc: creditNoteSvc, SupplierID: func() string { return supplierSeed.SupplierID }}
 	}
 
 	orderSvc := order.NewService(order.ServiceConfig{
-		Repo:            orderRepo,
-		Cache:           cacheClient,
-		Warehouse:       orderWarehouseResolver,
-		Promotions:      promotionSvc,
-		Credit:          creditSvc,
-		SupplierID:      supplierSeed.SupplierID,
-		SupplierName:    cfg.SeedSupplierName,
-		Currency:        cfg.SeedSupplierCurrency,
-		RetailerHub:     retailerHub,
-		SupplierHub:     supplierHub,
-		DriverHub:       driverHub,
-		SpannerClient:   spannerClient,
-		ShopClosedGrace: shopClosedGraceDuration(),
-		Log:             log,
+		Repo:                          orderRepo,
+		Cache:                         cacheClient,
+		Warehouse:                     orderWarehouseResolver,
+		Promotions:                    promotionSvc,
+		Credit:                        creditSvc,
+		SupplierID:                    supplierSeed.SupplierID,
+		SupplierName:                  cfg.SeedSupplierName,
+		Currency:                      cfg.SeedSupplierCurrency,
+		RetailerHub:                   retailerHub,
+		SupplierHub:                   supplierHub,
+		DriverHub:                     driverHub,
+		SpannerClient:                 spannerClient,
+		ShopClosedGrace:               shopClosedGraceDuration(),
+		CreditScoreEnforcementEnabled: creditScoreEnforcement,
+		Log:                           log,
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
 		Idem:            idemStore,
 		Replanner:       routingSvc,
 	})
 	orderSvc.SetManifestStore(manifestStore)
+	if spannerClient != nil {
+		segmentSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
+		allocSvc := allocation.NewAllocationService(spannerClient)
+		allocSvc.SetSegmentService(segmentSvc)
+		allocSvc.SetConstrainedAllocationEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("CONSTRAINED_ALLOCATION_ENABLED")), "true"))
+		orderSvc.SetAllocator(allocSvc)
+	}
+	orderSvc.SetAllocationRequired(strings.EqualFold(strings.TrimSpace(os.Getenv("ALLOCATION_REQUIRED")), "true"))
+	if pricingSvc != nil {
+		orderSvc.SetPricingService(pricingSvc)
+	}
 	if gatewayPolicyReader != nil {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
@@ -684,6 +734,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Orders: orderClaimsLookup{svc: orderSvc},
 		Log:    log,
 	})
+	if creditNoteSvc != nil {
+		claimsSvc.SetCreditNotes(creditnote.ClaimsBridge{Svc: creditNoteSvc})
+	}
 	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
 	order.StartPreorderSweeper(orderSvc)
 	go orderSvc.StartNegotiationSweeper(context.Background())
@@ -703,8 +756,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	dispatchCounters := &plan.SourceCounters{}
 
 	var replenishmentEngine *replenishment.Engine
+	var reorderSuggestionWorker *replenishment.ReorderSuggestionWorker
+	var routeAnalyticsWorker *analytics.RouteAnalyticsWorker
+	var analyticsHandlers *analytics.Handlers
 	if spannerClient != nil {
 		replenishmentEngine = replenishment.NewEngine(spannerClient, log)
+		replenishmentEngine.EchelonTargetsEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("MEIO_ECHELON_TARGETS_ENABLED")), "true")
+		reorderSuggestionWorker = replenishment.NewReorderSuggestionWorker(spannerClient)
+		reorderSuggestionWorker.EchelonTargetsEnabled = replenishmentEngine.EchelonTargetsEnabled
+		routeAnalyticsWorker = analytics.NewRouteAnalyticsWorkerFromClient(spannerClient)
+		analyticsHandlers = &analytics.Handlers{Client: spannerClient, SupplierID: func() string { return supplierSeed.SupplierID }}
 	}
 
 	supplierSvc.SetPortalOps(supplier.PortalOpsConfig{
@@ -860,7 +921,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 	}
 	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
-	orderSvc.SetFiscalProvider(order.ProviderFromEnv())
+	fiscalProvider := order.ProviderFromEnv()
+	orderSvc.SetFiscalProvider(fiscalProvider)
+	if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
+		buyerPoller := order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")), "true") {
+			buyerPoller.SetAutoCreditNoteOnBuyerReject(true)
+		}
+		go buyerPoller.Run(context.Background())
+		log.Info("buyer acceptance poller started")
+	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:               driverRepo,
 		Cache:              cacheClient,
@@ -873,6 +943,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Depart:             driverDepart,
 		ReturnComplete:     driverReturnComplete,
 		OpenFiscal:         driverOpenFiscal,
+		CashReconciliationRequired: cashReconRequired,
+		CashReconciliationGate: func(ctx context.Context, driverID string) (bool, error) {
+			if cashReconSvc == nil {
+				return true, nil
+			}
+			return cashReconSvc.HasAcceptedReconciliation(ctx, driverID, time.Now().UTC())
+		},
 		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
 			tokens := make(map[string]string, len(orderIDs))
 			for _, orderID := range orderIDs {
@@ -1174,6 +1251,42 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	pulseHandlers := &pulse.Handlers{Service: pulseSvc}
 
+	var controlTowerSvc *controltower.Service
+	var controlTowerHandlers *controltower.Handlers
+	var controlTowerWorker *controltower.Worker
+	if spannerClient != nil {
+		ctCfg := controltower.ConfigFromEnv()
+		ctRepo := controltower.NewSpannerRepository(spannerClient)
+		cnSvc := creditNoteSvc
+		if cnSvc == nil {
+			cnSvc = creditnote.NewService(creditnote.NewSpannerRepository(spannerClient))
+		}
+		planSvc := planning.NewService(spannerClient).WithCache(cacheClient)
+		planSvc.TwinScenarioEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("TWIN_SCENARIO_ENABLED")), "true")
+		segSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
+		ctExecutor := controltower.NewActionExecutor(ctRepo, controltower.ExecutorDeps{
+			CreditNotes:   cnSvc,
+			Credit:        creditSvc,
+			Planning:      planSvc,
+			Routing:       routingSvc,
+			Notifications: notifSvc,
+			Returns:       returnsSvc,
+			Segment:       segSvc,
+			Log:           log,
+		})
+		ctEngine := controltower.NewEngine(ctRepo, ctExecutor, segSvc, ctCfg, log)
+		controlTowerSvc = controltower.NewService(ctRepo, ctEngine, ctCfg)
+		controlTowerHandlers = controltower.NewHandlers(controlTowerSvc, supplierSvc.ScopedSupplierID)
+		controlTowerWorker = controltower.NewWorker(controlTowerSvc, log, 3*time.Minute)
+		if ctCfg.Enabled {
+			log.Info("control tower playbooks enabled", "auto_execute", ctCfg.AutoExecute)
+		}
+		supplierSvc.SetControlTower(controlTowerSvc)
+		if replenishmentEngine != nil {
+			replenishmentEngine.SegmentSvc = segSvc
+		}
+	}
+
 	return &App{
 		Config:                 cfg,
 		Cache:                  cacheClient,
@@ -1196,12 +1309,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ReturnsService:         returnsSvc,
 		TaxService:             taxSvc,
 		ComplianceService:      complianceSvc,
+		ControlTowerService:    controlTowerSvc,
+		ControlTowerHandlers:   controlTowerHandlers,
+		ControlTowerWorker:     controlTowerWorker,
 		DemandService:          demand.NewService(spannerClient),
 		LaborCapacityService:   laborcapacity.NewService(spannerClient),
 		ETAService:             eta.NewService(spannerClient),
 		OrderService:           orderSvc,
 		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,
+		CreditScoreWorker:      creditScoreWorker,
+		CashReconHandlers:      cashReconHandlers,
+		CreditNoteHandlers:     creditNoteHandlers,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,
 		RetailerHub:            retailerHub,
@@ -1225,8 +1344,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Spanner:                spannerClient,
 		OptimizerClient:        optimizerCli,
 		DispatchPlanCounters:   dispatchCounters,
-		ReplenishmentEngine:    replenishmentEngine,
-		cleanup:                cleanup,
+		ReplenishmentEngine:     replenishmentEngine,
+		ReorderSuggestionWorker: reorderSuggestionWorker,
+		RouteAnalyticsWorker:    routeAnalyticsWorker,
+		AnalyticsHandlers:       analyticsHandlers,
+		NotificationPreferences: notifPrefHandlers,
+		cleanup:                 cleanup,
 	}, nil
 }
 

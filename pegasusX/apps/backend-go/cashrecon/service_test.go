@@ -3,6 +3,7 @@ package cashrecon
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -11,7 +12,7 @@ type mockRepo struct {
 	saved []CashReconciliation
 }
 
-func (m *mockRepo) SaveReconciliation(ctx context.Context, cr CashReconciliation) error {
+func (m *mockRepo) SaveReconciliation(ctx context.Context, cr CashReconciliation, eventType string) error {
 	for i, c := range m.saved {
 		if c.ReconciliationId == cr.ReconciliationId {
 			m.saved[i] = cr
@@ -35,18 +36,41 @@ func (m *mockRepo) ListReconciliationsByStatus(ctx context.Context, status Recon
 	return nil, nil
 }
 
+func (m *mockRepo) ListByDriver(ctx context.Context, driverID string, shiftDate time.Time) ([]CashReconciliation, error) {
+	return nil, nil
+}
+
+func (m *mockRepo) ListBySupplier(ctx context.Context, supplierID string, status ReconciliationStatus, limit int) ([]CashReconciliation, error) {
+	return nil, nil
+}
+
+type mockCash struct {
+	expected int64
+}
+
+func (m *mockCash) ComputeExpectedCashMinor(ctx context.Context, driverID string, shiftDate time.Time, routeID *string) (int64, error) {
+	return m.expected, nil
+}
+
+func (m *mockCash) HasAcceptedReconciliation(ctx context.Context, driverID string, shiftDate time.Time) (bool, error) {
+	for _, cr := range []CashReconciliation{} {
+		_ = cr
+	}
+	return false, nil
+}
+
 func TestSubmitReconciliation_HappyPath_Match(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewService(repo)
+	svc := NewService(repo, &mockCash{expected: 1000})
 
 	req := SubmitReconciliationRequest{
 		DriverId:          "d-1",
-		ExpectedCashMinor: 1000,
 		DeclaredCashMinor: 1000,
 	}
 
 	cr, err := svc.SubmitReconciliation(context.Background(), req)
 	assert.NoError(t, err)
+	assert.Equal(t, int64(1000), cr.ExpectedCashMinor)
 	assert.Equal(t, int64(0), cr.DifferenceMinor)
 	assert.Equal(t, ReconciliationStatusAccepted, cr.Status)
 	assert.NotNil(t, cr.ResolvedAt)
@@ -55,12 +79,11 @@ func TestSubmitReconciliation_HappyPath_Match(t *testing.T) {
 
 func TestSubmitReconciliation_Discrepancy(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewService(repo)
+	svc := NewService(repo, &mockCash{expected: 1000})
 
 	note := "Lost a 500 bill"
 	req := SubmitReconciliationRequest{
 		DriverId:          "d-1",
-		ExpectedCashMinor: 1000,
 		DeclaredCashMinor: 500,
 		DriverNote:        &note,
 	}
@@ -75,11 +98,10 @@ func TestSubmitReconciliation_Discrepancy(t *testing.T) {
 
 func TestAccept_HappyPath(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewService(repo)
+	svc := NewService(repo, &mockCash{expected: 1000})
 
 	req := SubmitReconciliationRequest{
 		DriverId:          "d-1",
-		ExpectedCashMinor: 1000,
 		DeclaredCashMinor: 500,
 	}
 	cr, _ := svc.SubmitReconciliation(context.Background(), req)
@@ -95,12 +117,11 @@ func TestAccept_HappyPath(t *testing.T) {
 
 func TestAccept_InvalidStatus(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewService(repo)
+	svc := NewService(repo, &mockCash{expected: 1000})
 
 	req := SubmitReconciliationRequest{
 		DriverId:          "d-1",
-		ExpectedCashMinor: 1000,
-		DeclaredCashMinor: 1000, // will be auto-accepted
+		DeclaredCashMinor: 1000,
 	}
 	cr, _ := svc.SubmitReconciliation(context.Background(), req)
 
@@ -111,11 +132,10 @@ func TestAccept_InvalidStatus(t *testing.T) {
 
 func TestWriteOff_HappyPath(t *testing.T) {
 	repo := &mockRepo{}
-	svc := NewService(repo)
+	svc := NewService(repo, &mockCash{expected: 1000})
 
 	req := SubmitReconciliationRequest{
 		DriverId:          "d-1",
-		ExpectedCashMinor: 1000,
 		DeclaredCashMinor: 800,
 	}
 	cr, _ := svc.SubmitReconciliation(context.Background(), req)
@@ -125,4 +145,18 @@ func TestWriteOff_HappyPath(t *testing.T) {
 
 	updated, _ := repo.GetReconciliation(context.Background(), cr.ReconciliationId)
 	assert.Equal(t, ReconciliationStatusWriteOff, updated.Status)
+}
+
+func TestSubmitReconciliation_ExpectedMismatch(t *testing.T) {
+	repo := &mockRepo{}
+	svc := NewService(repo, &mockCash{expected: 1000})
+
+	req := SubmitReconciliationRequest{
+		DriverId:          "d-1",
+		ExpectedCashMinor: 900,
+		DeclaredCashMinor: 1000,
+	}
+	_, err := svc.SubmitReconciliation(context.Background(), req)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "expected_cash_mismatch")
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -187,6 +188,9 @@ type InventoryLevelView struct {
 	QuantityReserved int64  `json:"quantity_reserved"`
 	ReorderThreshold int64  `json:"reorder_threshold"`
 	Version          int64  `json:"version"`
+	OutOfStockPolicy string `json:"out_of_stock_policy,omitempty"`
+	EffectivePolicy  string `json:"effective_policy,omitempty"`
+	AcceptsBackorder bool   `json:"accepts_backorder,omitempty"`
 }
 
 // InventoryLevelUpsert is the write model for inventory import and seed paths.
@@ -252,6 +256,7 @@ type Service struct {
 	fallbackDepotLat      float64
 	fallbackDepotLng      float64
 	replenishmentEngine   *replenishment.Engine
+	controlTower          *controltower.Service
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute

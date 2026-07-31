@@ -12,6 +12,10 @@ type mockApplier struct {
 	mutations []*spanner.Mutation
 }
 
+func (m *mockApplier) Query(ctx context.Context, stmt spanner.Statement) *spanner.RowIterator {
+	return nil
+}
+
 func (m *mockApplier) Apply(ctx context.Context, ms []*spanner.Mutation, opts ...spanner.ApplyOption) (time.Time, error) {
 	m.mutations = ms
 	return time.Now(), nil

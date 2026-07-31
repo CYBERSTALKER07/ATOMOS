@@ -16,6 +16,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
@@ -354,6 +355,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		}
 		routes := assignment.Routes[i:end]
 
+		var chunkSkipped []string
 		chunkErr := spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			batch := &manifest.SupplierWriteBatch{}
 			var chunkQueued []pendingEvent
@@ -366,36 +368,31 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				manifestID := uuid.NewString()
 				routeID := uuid.NewString()
 				vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
-				batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
-					ManifestID:    manifestID,
-					SupplierID:    supplierID,
-					WarehouseID:   warehouseID,
-					RouteID:       routeID,
-					TruckID:       vehicleID,
-					DriverID:      driverID,
-					State:         dispatchExecuteManifestState,
-					TotalVolumeVU: route.LoadedVolume,
-					MaxVolumeVU:   route.MaxVolume,
-					StopCount:     int64(len(route.Orders)),
-					CreatedAt:     now,
-				})
 
 				orderIDs := make([]string, 0, len(route.Orders))
-				for idx, stop := range route.Orders {
+				seq := 0
+				var manifestOrders []manifest.SupplierManifestOrderRow
+				var orderPatches []manifest.OrderPatch
+				var orderEvents []pendingEvent
+				for _, stop := range route.Orders {
 					orderID := strings.TrimSpace(stop.OrderID)
 					if orderID == "" {
 						continue
 					}
-					batch.Orders = append(batch.Orders, manifest.SupplierManifestOrderRow{
+					if err := order.ValidateFulfillmentForManifestTxn(ctx, txn, orderID, warehouseID); err != nil {
+						chunkSkipped = append(chunkSkipped, orderID)
+						continue
+					}
+					manifestOrders = append(manifestOrders, manifest.SupplierManifestOrderRow{
 						ManifestID:    manifestID,
 						OrderID:       orderID,
-						SequenceIndex: int64(idx),
-						LoadingOrder:  int64(idx),
+						SequenceIndex: int64(seq),
+						LoadingOrder:  int64(seq),
 						VolumeVU:      stop.Volume,
 						State:         "LOADED",
 						UpdatedAt:     now,
 					})
-					batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
+					orderPatches = append(orderPatches, manifest.OrderPatch{
 						OrderID:    orderID,
 						Status:     "LOADED",
 						ManifestID: manifestID,
@@ -404,7 +401,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 						RouteID:    routeID,
 						UpdatedAt:  now,
 					})
-					chunkQueued = append(chunkQueued, pendingEvent{
+					orderEvents = append(orderEvents, pendingEvent{
 						aggregateType: events.AggregateOrder,
 						aggregateID:   orderID,
 						payload: events.OrderEvent{
@@ -421,7 +418,28 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 						},
 					})
 					orderIDs = append(orderIDs, orderID)
+					seq++
 				}
+				if len(orderIDs) == 0 {
+					continue
+				}
+
+				batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
+					ManifestID:    manifestID,
+					SupplierID:    supplierID,
+					WarehouseID:   warehouseID,
+					RouteID:       routeID,
+					TruckID:       vehicleID,
+					DriverID:      driverID,
+					State:         dispatchExecuteManifestState,
+					TotalVolumeVU: route.LoadedVolume,
+					MaxVolumeVU:   route.MaxVolume,
+					StopCount:     int64(len(orderIDs)),
+					CreatedAt:     now,
+				})
+				batch.Orders = append(batch.Orders, manifestOrders...)
+				batch.OrderPatches = append(batch.OrderPatches, orderPatches...)
+				chunkQueued = append(chunkQueued, orderEvents...)
 
 				chunkQueued = append(chunkQueued,
 					pendingEvent{
@@ -504,6 +522,10 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				}
 			}
 			return DispatchExecuteResult{}, chunkErr
+		}
+		if len(chunkSkipped) > 0 {
+			out.Orphans = append(out.Orphans, chunkSkipped...)
+			out.Warnings = append(out.Warnings, "allocation_warehouse_mismatch")
 		}
 	}
 

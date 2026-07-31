@@ -18,6 +18,7 @@ type Repository interface {
 	ListBySupplier(ctx context.Context, supplierID, status string, limit int) ([]Profile, error)
 	UpsertProfile(ctx context.Context, p Profile, emit func(outbox.TxnBuffer) error) error
 	AdjustBalance(ctx context.Context, retailerID, supplierID string, deltaMinor int64, emit func(outbox.TxnBuffer) error) error
+	GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error)
 }
 
 // SpannerRepository is a Spanner-backed credit profile repository.
@@ -281,4 +282,42 @@ type spannerTxnBuffer struct {
 func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 	b.events = append(b.events, e)
 	return nil
+}
+
+// GetScoresForRetailers loads latest RetailerCreditScores rows for enrichment.
+func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error) {
+	out := make(map[string]RetailerCreditScore)
+	if r == nil || r.client == nil || len(retailerIDs) == 0 {
+		return out, nil
+	}
+	keys := make([]spanner.Key, 0, len(retailerIDs))
+	for _, id := range retailerIDs {
+		if strings.TrimSpace(id) == "" {
+			continue
+		}
+		keys = append(keys, spanner.Key{id})
+	}
+	if len(keys) == 0 {
+		return out, nil
+	}
+	iter := r.client.Single().Read(ctx, "RetailerCreditScores", spanner.KeySetFromKeys(keys...),
+		[]string{"RetailerId", "Score", "RiskTier", "SuggestedLimitMinor", "ComputedAt"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var rcs RetailerCreditScore
+		var tier string
+		if err := row.Columns(&rcs.RetailerID, &rcs.Score, &tier, &rcs.SuggestedLimitMinor, &rcs.ComputedAt); err != nil {
+			return nil, err
+		}
+		rcs.RiskTier = RiskTier(tier)
+		out[rcs.RetailerID] = rcs
+	}
+	return out, nil
 }

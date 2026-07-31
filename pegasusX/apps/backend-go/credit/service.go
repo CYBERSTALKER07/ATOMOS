@@ -133,6 +133,14 @@ func (s *Service) ClearBalance(ctx context.Context, retailerID, supplierID strin
 	})
 }
 
+// GetProfile loads a retailer credit profile for a supplier.
+func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string) (Profile, bool, error) {
+	if s == nil || s.repo == nil {
+		return Profile{}, false, fmt.Errorf("credit service unavailable")
+	}
+	return s.repo.GetProfile(ctx, retailerID, supplierID)
+}
+
 // UpsertProfile creates or updates a credit profile.
 func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason string) error {
 	now := s.now()

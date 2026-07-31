@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 
 interface DashboardStats {
   fiscalizing: number;
@@ -10,6 +12,9 @@ interface DashboardStats {
   buyerAcceptanceRejected: number;
   claimMismatches: number;
   creditFrozen: number;
+  openCreditNotes: number;
+  openReverseLogisticsTasks: number;
+  openCashDiscrepancies: number;
 }
 
 interface ProblemOrder {
@@ -25,13 +30,34 @@ interface ProblemOrder {
   createdAt: string;
 }
 
-function MetricCard({ title, value, alert }: { title: string, value: number, alert?: boolean }) {
-  return (
-    <div className={`p-6 rounded-xl border ${alert ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
-      <h3 className={`text-sm font-medium ${alert ? 'text-red-800' : 'text-gray-500'}`}>{title}</h3>
-      <p className={`text-3xl font-bold mt-2 ${alert ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
+function MetricCard({
+  title,
+  value,
+  alert,
+  href,
+}: {
+  title: string;
+  value: number;
+  alert?: boolean;
+  href?: Route;
+}) {
+  const card = (
+    <div className={`p-6 rounded-xl border ${alert ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"}`}>
+      <h3 className={`text-sm font-medium ${alert ? "text-red-800" : "text-gray-500"}`}>{title}</h3>
+      <p className={`text-3xl font-bold mt-2 ${alert ? "text-red-600" : "text-gray-900"}`}>{value}</p>
+      {href ? (
+        <p className="text-xs text-gray-500 mt-2 underline">View in Exception Centre</p>
+      ) : null}
     </div>
   );
+  if (href) {
+    return (
+      <Link href={href} className="block hover:opacity-90 transition-opacity">
+        {card}
+      </Link>
+    );
+  }
+  return card;
 }
 
 export default function ComplianceDashboard() {
@@ -92,6 +118,24 @@ export default function ComplianceDashboard() {
               <MetricCard title="BA Rejected" value={stats.buyerAcceptanceRejected} alert={stats.buyerAcceptanceRejected > 0} />
               <MetricCard title="Claim Mismatches" value={stats.claimMismatches} alert={stats.claimMismatches > 0} />
               <MetricCard title="Credit Frozen" value={stats.creditFrozen} alert={stats.creditFrozen > 0} />
+              <MetricCard
+                title="Open Credit Notes"
+                value={stats.openCreditNotes}
+                alert={stats.openCreditNotes > 0}
+                href={"/exceptions/claims" as Route}
+              />
+              <MetricCard
+                title="Open Reverse Logistics"
+                value={stats.openReverseLogisticsTasks}
+                alert={stats.openReverseLogisticsTasks > 0}
+                href={"/exceptions" as Route}
+              />
+              <MetricCard
+                title="Open Cash Discrepancies"
+                value={stats.openCashDiscrepancies}
+                alert={stats.openCashDiscrepancies > 0}
+                href={"/exceptions" as Route}
+              />
             </div>
           )}
 

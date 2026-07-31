@@ -12,7 +12,7 @@ type mockRepo struct {
 	savedTasks []ReverseLogisticsTask
 }
 
-func (m *mockRepo) SaveCreditNote(ctx context.Context, cn CreditNote) error {
+func (m *mockRepo) SaveCreditNote(ctx context.Context, cn CreditNote, eventType string) error {
 	for i, c := range m.savedNotes {
 		if c.CreditNoteId == cn.CreditNoteId {
 			m.savedNotes[i] = cn
@@ -36,8 +36,43 @@ func (m *mockRepo) ListCreditNotesByOrder(ctx context.Context, orderId string) (
 	return nil, nil
 }
 
-func (m *mockRepo) SaveReverseLogisticsTask(ctx context.Context, task ReverseLogisticsTask) error {
+func (m *mockRepo) ListBySupplier(ctx context.Context, supplierID string, status CreditNoteStatus, limit int) ([]CreditNote, error) {
+	return nil, nil
+}
+
+func (m *mockRepo) GetDeliveredOrderLines(ctx context.Context, orderId string) ([]CreditNoteLine, error) {
+	return []CreditNoteLine{
+		{
+			OrderLineId:    "mock-line-1",
+			Sku:            "sku-1",
+			Qty:            2,
+			UnitNetMinor:   100,
+			LineNetMinor:   200,
+			LineVatMinor:   20,
+			LineGrossMinor: 220,
+		},
+	}, nil
+}
+
+func (m *mockRepo) GetClaimOrder(ctx context.Context, claimID string) (string, int64, bool, error) {
+	return "order-claim", 5000, true, nil
+}
+
+func (m *mockRepo) SaveReverseLogisticsTask(ctx context.Context, task ReverseLogisticsTask, eventType string) error {
 	m.savedTasks = append(m.savedTasks, task)
+	return nil
+}
+
+func (m *mockRepo) GetReverseLogisticsTask(ctx context.Context, taskID string) (*ReverseLogisticsTask, error) {
+	for _, t := range m.savedTasks {
+		if t.TaskId == taskID {
+			return &t, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockRepo) ReceiveReverseLogisticsTask(ctx context.Context, taskID string, warehouseID string, receivedJSON []byte, actor string) error {
 	return nil
 }
 
@@ -60,7 +95,7 @@ func TestIssue_HappyPath(t *testing.T) {
 	svc := NewService(repo)
 
 	cn, _ := svc.CreateFromBuyerReject(context.Background(), "order-1", "driver-1")
-	
+
 	err := svc.Issue(context.Background(), cn.CreditNoteId, "manager")
 	assert.NoError(t, err)
 
@@ -90,6 +125,9 @@ func TestCreateManual_HappyPath(t *testing.T) {
 		OrderId:    "order-man",
 		ReasonCode: "MISTAKE",
 		ReasonText: "wrong item packed",
+		Lines: []CreditNoteLineInput{
+			{OrderLineId: "mock-line-1", Qty: 1},
+		},
 	}
 
 	cn, err := svc.CreateManual(context.Background(), req, "user-1")
@@ -97,4 +135,13 @@ func TestCreateManual_HappyPath(t *testing.T) {
 	assert.Equal(t, CreditNoteTypeManual, cn.Type)
 	assert.Equal(t, "MISTAKE", cn.ReasonCode)
 	assert.Equal(t, "wrong item packed", *cn.ReasonText)
+}
+
+func TestCreateFromClaim_HappyPath(t *testing.T) {
+	repo := &mockRepo{}
+	svc := NewService(repo)
+	cn, err := svc.CreateFromClaim(context.Background(), "clm-1", "system")
+	assert.NoError(t, err)
+	assert.Equal(t, "order-claim", cn.OrderId)
+	assert.Equal(t, int64(5000), cn.TotalGrossMinor)
 }
