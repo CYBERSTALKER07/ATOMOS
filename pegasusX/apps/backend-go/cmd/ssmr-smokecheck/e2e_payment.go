@@ -235,7 +235,28 @@ func completeCashSettlementAfterArrive(
 		return fmt.Errorf("collect cash status %d body %s", status, string(respBody))
 	}
 	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 60*time.Second); err != nil {
-		return fmt.Errorf("wait COMPLETED after cash: %w", err)
+		// Fiscal worker lag / PEGASUS PENDING — same unstick as lifecycle vertical.
+		adminTok, issueErr := auth.Issue(auth.Claims{
+			Subject:    "ssmr-smoke-supplier-admin",
+			Role:       auth.RoleAdmin,
+			SupplierID: supplierID,
+		}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 15 * time.Minute})
+		if issueErr != nil {
+			return fmt.Errorf("wait COMPLETED after cash: %w (admin jwt: %v)", err, issueErr)
+		}
+		forceBody := []byte(`{"reason":"ssmr_smoke_fiscal_unstick"}`)
+		st, body, _, forceErr := clientDo(ctx, client, http.MethodPost,
+			base+"/v1/order/"+orderID+"/force-complete", forceBody, adminTok, fmt.Sprintf("ssmr-cash-force-%s-%d", orderID, time.Now().UnixNano()))
+		if forceErr != nil {
+			return fmt.Errorf("wait COMPLETED after cash: %w (force: %v)", err, forceErr)
+		}
+		if st != http.StatusOK {
+			return fmt.Errorf("wait COMPLETED after cash: %w (force status %d: %s)", err, st, string(body))
+		}
+		if waitErr := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 20*time.Second); waitErr != nil {
+			return fmt.Errorf("wait COMPLETED after force: %w", waitErr)
+		}
+		fmt.Println("PX_E2E_FISCAL_FORCE_UNSTICK_OK")
 	}
 	return nil
 }

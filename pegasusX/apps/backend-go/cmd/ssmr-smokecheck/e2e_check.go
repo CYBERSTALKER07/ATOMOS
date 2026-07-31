@@ -210,6 +210,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID, cookie); err != nil {
 		return fmt.Errorf("shop closed e2e: %w", err)
 	}
+	fmt.Println("PX_E2E_SHOP_CLOSED_OK")
 	shopClosedSessionID, err := runCardCheckoutAtDelivery(ctx, client, base, retailerToken, shopClosedOrderID, cfg)
 	if err != nil {
 		if !isGlobalPayMerchantAuthFailure(err) {
