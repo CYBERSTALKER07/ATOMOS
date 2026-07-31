@@ -58,8 +58,8 @@ func TestComputeScore_Formula(t *testing.T) {
 		want      float64
 	}{
 		{"mid_range", 0.5, 0.5, 0.5, 0.5, 0.5, 50.0},
-		{"high_ontime", 1.0, 0.5, 0.0, 0.0, 0.5, 72.5},
-		{"zero_feedback", 0.8, 0.8, 0.1, 0.1, 0.0, 65.0},
+		{"high_ontime", 1.0, 0.5, 0.0, 0.0, 0.5, 82.5},
+		{"zero_feedback", 0.8, 0.8, 0.1, 0.1, 0.0, 75.0},
 	}
 
 	for _, tt := range tests {

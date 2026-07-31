@@ -1,10 +1,10 @@
 # pegasusX execution plan
 
 `PX0-A5` launch readiness guard
-Status: `implemented`
+  Status: `implemented`
 
 `PX7-A3` ai-worker k8s packaging
-Status: `implemented`
+  Status: `implemented`
 
 `PX11-C1` cloud staging smoke
 Status: `implemented`

@@ -12,11 +12,15 @@ ROUTES_TMP="$(mktemp)"
 PATHS_TMP="$(mktemp)"
 trap 'rm -f "$ROUTES_TMP" "$PATHS_TMP"' EXIT
 
-# Collect registered HTTP paths from *routes packages, geolocation mounts, and import wizard.
+# Collect registered HTTP paths from route mounts, main.go, and handler doc comments.
 grep -RhE '"/v1/[^"]+"' \
   apps/backend-go/*routes/*.go \
+  apps/backend-go/main.go \
   apps/backend-go/geolocation/handlers.go \
   apps/backend-go/supplier/import_sessions.go \
+  apps/backend-go/order/compliance_audit.go \
+  apps/backend-go/order/shop_closed.go \
+  apps/backend-go/analytics/*.go \
   2>/dev/null \
   | grep -v '_test.go' \
   | sed -E 's/.*"(\/v1\/[^"]+)".*/\1/' \

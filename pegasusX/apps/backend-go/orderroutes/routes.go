@@ -37,6 +37,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleFactoryAdmin)).Post("/v1/orders/{orderID}/assign", d.Service.HandleAssignOrder)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/arrive", d.Service.HandleMarkArrived)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/proximity-unlock", d.Service.HandleProximityUnlock)
+		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/shop-closed", d.Service.HandleReportShopClosed)
+		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/partial-offload", d.Service.HandlePartialOffload)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/deliver", d.Service.HandleSubmitDelivery)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/sync/batch", d.Service.HandleSyncBatch)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/confirm-offload", d.Service.HandleConfirmOffload)

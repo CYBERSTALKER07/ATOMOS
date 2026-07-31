@@ -143,7 +143,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/supplier/negotiations/pending", d.OrderService.HandleListPendingNegotiations)
 			gr.Post("/v1/supplier/negotiate/resolve", d.OrderService.HandleResolveNegotiation)
 			gr.Post("/v1/supplier/route/approve-early-complete", d.OrderService.HandleApproveEarlyComplete)
-
+			gr.Get("/v1/compliance/fiscal-open", d.OrderService.HandleComplianceFiscalOpen)
+			gr.Get("/v1/compliance/force-completes", d.OrderService.HandleComplianceForceCompletes)
+			gr.Get("/v1/compliance/claim-mismatches", d.OrderService.HandleComplianceClaimMismatches)
+			gr.Get("/v1/compliance/credit-freezes", d.OrderService.HandleComplianceCreditFreezes)
 		}
 
 		if d.ComplianceHandler != nil {
