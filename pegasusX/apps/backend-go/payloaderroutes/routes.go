@@ -45,6 +45,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/payloader/recommend-reassign", d.Service.HandleRecommendReassign)
 		rr.Post("/v1/payloader/reassign-order", d.Service.HandleApplyReassign)
 		rr.Post("/v1/payload/seal", d.Service.HandleSeal)
+		rr.Get("/v1/payload/capacity/{vehicleID}", d.Service.HandleVehicleCapacity)
 		rr.Post("/v1/fleet/reassign", d.Service.HandleFleetReassign)
 
 		rr.Get("/v1/supplier/manifests", d.Service.HandleManifestsList)

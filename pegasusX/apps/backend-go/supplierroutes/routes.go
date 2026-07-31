@@ -108,6 +108,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(warehouseScope).Get("/v1/supplier/dispatch/preview", d.Service.HandleDispatchPreview)
 		gr.With(warehouseScope).Post("/v1/supplier/dispatch/preview", d.Service.HandleDispatchPreview)
 		gr.With(warehouseScope).Post("/v1/supplier/dispatch/execute", d.Service.HandleDispatchExecute)
+		gr.Get("/v1/supplier/dispatch/tracking", d.Service.HandleDispatchTracking)
 		gr.Get("/v1/supplier/activity", d.Service.HandleActivity)
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)

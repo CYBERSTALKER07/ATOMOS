@@ -2107,7 +2107,31 @@ export class ApiClient {
     return payload as TResponse;
   }
 
+  // ── Fleet Telemetry & Capacity Command Center ─────────────────────────────────
+  async getFleetDispatchOverview(
+    role: "supplier" | "warehouse",
+    query: { partner_id?: string; status_filter?: string; search_query?: string } = {},
+  ): Promise<import("@pegasusx/types").FleetDispatchOverview> {
+    return this.request<import("@pegasusx/types").FleetDispatchOverview>(
+      appendQuery(`/v1/${role}/dispatch/tracking`, query as Record<string, unknown>),
+      "GET"
+    );
+  }
+
+  async getVehicleCapacity(vehicleId: string): Promise<import("@pegasusx/types").VehicleCapacityMetrics> {
+    return this.request<import("@pegasusx/types").VehicleCapacityMetrics>(`/v1/payload/capacity/${vehicleId}`, "GET");
+  }
+
+  async getRouteTelemetry(routeId: string): Promise<import("@pegasusx/types").RouteTelemetryDetails> {
+    return this.request<import("@pegasusx/types").RouteTelemetryDetails>(`/v1/driver/telemetry/${routeId}`, "GET");
+  }
+
+  async getShipmentProofPhotos(shipmentId: string): Promise<import("@pegasusx/types").PoDPhotoReport[]> {
+    return this.request<import("@pegasusx/types").PoDPhotoReport[]>(`/v1/delivery/proof-photos/${shipmentId}`, "GET");
+  }
+
   private buildHeaders(extra: HeadersInit | undefined, requiresAuth: boolean, idempotencyKey: string | undefined, hasRawBody: boolean): Headers {
+
     const headers = new Headers(extra);
     if (!hasRawBody) {
       headers.set("Content-Type", "application/json");
