@@ -31,6 +31,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/orders/{id}")
     suspend fun getOrder(@Path("id") id: String): Response<Order>
 
+    @GET("v1/warehouse/orders/{orderId}/receipt")
+    suspend fun getOrderReceipt(
+        @Path("orderId") orderId: String,
+        @Query("format") format: String = "json",
+    ): Response<OrderReceiptMeta>
+
     @POST("v1/warehouse/recommend-reassign")
     suspend fun recommendReassign(
         @Body req: RecommendReassignRequest,

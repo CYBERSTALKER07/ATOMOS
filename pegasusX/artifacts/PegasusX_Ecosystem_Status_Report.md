@@ -83,7 +83,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 | AnalyticsStreamProcessor | **Removed** (was dummy) |
 | KAFKA_TOPIC_SPATIAL | **Removed** from env examples |
 | WS hubs + FCM | WIRED_CODE / ENV_DEPENDENT |
-| Fiscal / Soliq | Documented in `.env.example`; PEGASUS default on SSMR |
+| Fiscal / Soliq | Pegasus branded HTML/PDF receipts Wired (`FISCAL_PROVIDER=PEGASUS`); Soliq OFD deferred |
 | Cloud SSMR | Live pods; ops checklist for DNS/GP/e2e |
 
 ---
@@ -91,7 +91,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 ## Remaining deferred (parity-ledger)
 
 - Quantity negotiations (product)
-- Soliq OFD legal receipts
+- Soliq OFD legal tax receipts (platform Pegasus branded receipts already ship)
 - Cloud DNS / GP SUCCESS / SSMR marker log proof
 
 ---

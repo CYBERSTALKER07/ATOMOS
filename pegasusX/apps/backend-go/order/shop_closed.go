@@ -216,7 +216,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			return err
 		}
 
-		logPayload, _ := json.Marshal(map[string]any{
+		logPayload := map[string]any{
 			"reason":        reason,
 			"note":          strings.TrimSpace(req.Note),
 			"photo_url":     strings.TrimSpace(req.PhotoURL),
@@ -224,7 +224,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			"gps_lng":       gpsLng,
 			"attempt_id":    attemptID,
 			"grace_ends_at": graceEnds.UTC().Format(time.RFC3339Nano),
-		})
+		}
 
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
@@ -250,7 +250,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 				"EventId":   logEventID,
 				"Actor":     driverID,
 				"Action":    "MARKED_CLOSED",
-				"Payload":   logPayload,
+				"Payload":   spanner.NullJSON{Value: logPayload, Valid: true},
 				"CreatedAt": now.UTC(),
 			}),
 		}
@@ -516,19 +516,19 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
 		}
 
-		logPayload, _ := json.Marshal(map[string]any{
+		logPayload := map[string]any{
 			"response":   req.Response,
 			"new_slot":   strings.TrimSpace(req.NewSlot),
 			"photo_url":  strings.TrimSpace(req.PhotoURL),
 			"attempt_id": attemptID,
 			"resolution": resolution,
-		})
+		}
 		mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 			"OrderId":   req.OrderID,
 			"EventId":   logEventID,
 			"Actor":     retailerID,
 			"Action":    "RESPONDED",
-			"Payload":   logPayload,
+			"Payload":   spanner.NullJSON{Value: logPayload, Valid: true},
 			"CreatedAt": now.UTC(),
 		}))
 

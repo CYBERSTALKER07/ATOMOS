@@ -1,82 +1,86 @@
 'use client';
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
-
 type SpendAnalyticsProps = {
   className?: string;
+  categorySpend?: { name: string; value: number }[];
+  spendTrend?: { day: string; spend: number }[];
 };
 
-// Removed Mock Data
-const MOCK_CATEGORY_SPEND: Record<string, unknown>[] = [];
+export default function SpendAnalytics({
+  className,
+  categorySpend = [],
+  spendTrend = [],
+}: SpendAnalyticsProps) {
+  const empty = categorySpend.length === 0 && spendTrend.length === 0;
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-
-const MOCK_SPEND_TREND: Record<string, unknown>[] = [];
-
-const fmtCurrency = (n: number) => new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(n);
-
-export default function SpendAnalytics({ className }: SpendAnalyticsProps) {
   return (
     <div className={className}>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Category Pie Chart */}
-        <div className="h-80 w-full p-4 border rounded-xl" style={{ borderColor: 'var(--color-md-outline-variant)', background: 'var(--color-md-surface-container)' }}>
-          <h3 className="text-sm font-semibold mb-2 text-center" style={{ color: 'var(--color-md-on-surface)' }}>Spend by Category</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <PieChart>
-              <Pie
-                data={MOCK_CATEGORY_SPEND}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {MOCK_CATEGORY_SPEND.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+      {empty ? (
+        <div
+          className="h-80 w-full p-6 border rounded-xl flex items-center justify-center"
+          style={{
+            borderColor: 'var(--color-md-outline-variant)',
+            background: 'var(--color-md-surface-container)',
+          }}
+        >
+          <p className="text-sm text-center" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+            No spend analytics yet. Charts appear after completed orders produce expense history.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div
+            className="h-80 w-full p-4 border rounded-xl overflow-auto"
+            style={{
+              borderColor: 'var(--color-md-outline-variant)',
+              background: 'var(--color-md-surface-container)',
+            }}
+          >
+            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-md-on-surface)' }}>
+              Spend by Category
+            </h3>
+            {categorySpend.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                No category breakdown.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {categorySpend.map((row) => (
+                  <li key={row.name} className="flex justify-between gap-4">
+                    <span>{row.name}</span>
+                    <span className="font-mono tabular-nums">{row.value}</span>
+                  </li>
                 ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value) => [`${fmtCurrency(Number(Array.isArray(value) ? value[0] : value) || 0)} UZS`, 'Spend']} 
-                contentStyle={{ backgroundColor: 'var(--color-md-surface)', borderColor: 'var(--color-md-outline)', borderRadius: '8px', color: 'var(--color-md-on-surface)' }}
-              />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
+              </ul>
+            )}
+          </div>
+          <div
+            className="h-80 w-full p-4 border rounded-xl overflow-auto"
+            style={{
+              borderColor: 'var(--color-md-outline-variant)',
+              background: 'var(--color-md-surface-container)',
+            }}
+          >
+            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-md-on-surface)' }}>
+              7-Day Spending Trend
+            </h3>
+            {spendTrend.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                No trend series.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {spendTrend.map((row) => (
+                  <li key={row.day} className="flex justify-between gap-4">
+                    <span>{row.day}</span>
+                    <span className="font-mono tabular-nums">{row.spend}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-
-        {/* 7-Day Spend Trend */}
-        <div className="h-80 w-full p-4 border rounded-xl" style={{ borderColor: 'var(--color-md-outline-variant)', background: 'var(--color-md-surface-container)' }}>
-          <h3 className="text-sm font-semibold mb-2 text-center" style={{ color: 'var(--color-md-on-surface)' }}>7-Day Spending Trend</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <BarChart data={MOCK_SPEND_TREND} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-md-outline-variant)" vertical={false} />
-              <XAxis dataKey="day" stroke="var(--color-md-on-surface-variant)" tick={{ fontSize: 12, fill: 'var(--color-md-on-surface-variant)' }} />
-              <YAxis tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`} stroke="var(--color-md-on-surface-variant)" tick={{ fontSize: 12, fill: 'var(--color-md-on-surface-variant)' }} />
-              <Tooltip 
-                formatter={(value) => [`${fmtCurrency(Number(Array.isArray(value) ? value[0] : value) || 0)} UZS`, 'Spend']} 
-                contentStyle={{ backgroundColor: 'var(--color-md-surface)', borderColor: 'var(--color-md-outline)', borderRadius: '8px', color: 'var(--color-md-on-surface)' }}
-              />
-              <Bar dataKey="spend" fill="var(--color-md-primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

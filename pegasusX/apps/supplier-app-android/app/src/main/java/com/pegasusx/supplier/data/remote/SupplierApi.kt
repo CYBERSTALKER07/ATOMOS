@@ -314,6 +314,12 @@ interface SupplierApi {
         @Query("limit") limit: Int = 100,
     ): Response<ComplianceDashboardResponse>
 
+    @GET("v1/supplier/orders/{orderId}/receipt")
+    suspend fun getOrderReceipt(
+        @Path("orderId") orderId: String,
+        @Query("format") format: String = "json",
+    ): Response<OrderReceiptMeta>
+
     @GET("v1/supplier/cash-reconciliations")
     suspend fun getCashReconciliations(
         @Query("status") status: String? = null,

@@ -51,12 +51,18 @@ func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreat
 	if base == "" {
 		base = "https://api-ssmr.pegasusx.app"
 	}
-	qr := base + "/v1/platform/receipts/" + receiptID
+	// QR opens the branded HTML document (JSON remains the default Accept/API form).
+	qr := base + "/v1/platform/receipts/" + receiptID + "?format=html"
 
 	currency := strings.TrimSpace(req.Currency)
 	if currency == "" {
 		currency = "UZS"
 	}
+	country := countryFromCurrency(currency)
+	layout := receiptLayoutForCountry(country)
+	company := pegasusCompanyName()
+	tin := pegasusIssuerTIN()
+
 	lines := make([]map[string]any, 0, len(req.LineItems))
 	for _, li := range req.LineItems {
 		lines = append(lines, map[string]any{
@@ -67,22 +73,38 @@ func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreat
 		})
 	}
 	payload := map[string]any{
-		"provider":          FiscalProviderPegasus,
-		"legal_class":       "platform_receipt",
-		"tax_ofd":           false,
-		"tax_ofd_note":      "Soliq/OFD deferred; this is a PegasusX commercial receipt for delivery settlement hard-gate",
-		"receipt_id":        receiptID,
-		"attempt_id":        attemptID,
-		"order_id":          req.OrderID,
-		"supplier_id":       req.SupplierID,
-		"retailer_id":       req.RetailerID,
-		"amount_minor":      req.AmountMinor,
-		"currency":          currency,
-		"payment_method":    req.PaymentMethod,
-		"line_items":        lines,
-		"issued_at":         time.Now().UTC().Format(time.RFC3339),
-		"qr_url":            qr,
-		"payment_receipt":   map[string]any{"provider": FiscalProviderGlobalPay, "status": "deferred", "note": "wire when Global Pay receipt API credentials arrive"},
+		"provider":       FiscalProviderPegasus,
+		"legal_class":    "platform_receipt",
+		"tax_ofd":        false,
+		"tax_ofd_note":   layout.OFDDeferredNote,
+		"receipt_id":     receiptID,
+		"attempt_id":     attemptID,
+		"order_id":       req.OrderID,
+		"supplier_id":    req.SupplierID,
+		"retailer_id":    req.RetailerID,
+		"amount_minor":   req.AmountMinor,
+		"currency":       currency,
+		"country_code":   country,
+		"payment_method": req.PaymentMethod,
+		"line_items":     lines,
+		"issued_at":      time.Now().UTC().Format(time.RFC3339),
+		"qr_url":         qr,
+		"company_name":   company,
+		"issuer_tin":     tin,
+		"logo_path":      "order/receipt_assets/logo.svg",
+		"branding": map[string]any{
+			"company_name": company,
+			"issuer_tin":   tin,
+			"logo_path":    "order/receipt_assets/logo.svg",
+			"title":        layout.Title,
+			"subtitle":     layout.Subtitle,
+			"style":        "pegasus_settlement_v1",
+		},
+		"payment_receipt": map[string]any{
+			"provider": FiscalProviderGlobalPay,
+			"status":   "deferred",
+			"note":     "wire when Global Pay receipt API credentials arrive",
+		},
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {

@@ -119,12 +119,16 @@ export function TrackingStatus({
                     : st === "COMPLETED"
                       ? "Fiscalized"
                       : receipt.state || "—";
+              const canOpen =
+                st === "COMPLETED" ||
+                Boolean(receipt.fiscal_qr) ||
+                Boolean(receipt.latest_fiscal_receipt_id);
               return (
               <div
                 key={receipt.order_id}
-                className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-[var(--desk-border)] px-3 py-2"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-light text-[var(--desk-text-primary)]">
                     {receipt.supplier_name || "Supplier"}
                   </p>
@@ -132,9 +136,39 @@ export function TrackingStatus({
                     #{receipt.order_id.slice(-8)} · {fiscalLabel}
                   </p>
                 </div>
-                <span className="text-sm font-light tabular-nums">
-                  {formatAmount(receipt.total_amount)}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {canOpen ? (
+                    <>
+                      <button
+                        type="button"
+                        className="text-[11px] text-[var(--desk-accent)] underline-offset-2 hover:underline"
+                        onClick={() => {
+                          void import("@/lib/order-receipt").then((m) =>
+                            m.openTrackingReceipt(receipt).catch(() => undefined),
+                          );
+                        }}
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[11px] text-[var(--desk-text-tertiary)] underline-offset-2 hover:underline"
+                        onClick={() => {
+                          void import("@/lib/order-receipt").then((m) =>
+                            m
+                              .openRetailerOrderReceipt(receipt.order_id, "pdf")
+                              .catch(() => undefined),
+                          );
+                        }}
+                      >
+                        PDF
+                      </button>
+                    </>
+                  ) : null}
+                  <span className="text-sm font-light tabular-nums">
+                    {formatAmount(receipt.total_amount)}
+                  </span>
+                </div>
               </div>
             );
             })}

@@ -78,6 +78,52 @@ func (s *Service) AssertMoneyCoversDelivery(ctx context.Context, orderID string,
 	return nil
 }
 
+// AssertMoneyCoversDeliveryTxn is the in-transaction variant (must not open Single() reads).
+func (s *Service) AssertMoneyCoversDeliveryTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, proposedAmountMinor int64, proposedExceptionsMinor int64) error {
+	orderRecord, ok, err := s.repo.GetOrderTxn(ctx, txn, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to get order: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("order not found: %s", orderID)
+	}
+	delivered := deliveredGrossFromOrder(orderRecord)
+	paid, err := s.getCapturedPaymentMinorTxn(ctx, txn, orderID)
+	if err != nil {
+		return err
+	}
+	exceptions, err := s.getExceptionsTotalMinorTxn(ctx, txn, orderID)
+	if err != nil {
+		return err
+	}
+	totalCovered := paid + proposedAmountMinor + exceptions + proposedExceptionsMinor
+	if totalCovered < delivered {
+		return status.Errorf(codes.FailedPrecondition,
+			"payment shortfall: delivered %d, covered %d", delivered, totalCovered)
+	}
+	return nil
+}
+
+func sumAmountMinorRows(iter *spanner.RowIterator) (int64, error) {
+	defer iter.Stop()
+	var total int64
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		var amt int64
+		if err := row.Columns(&amt); err != nil {
+			return 0, err
+		}
+		total += amt
+	}
+	return total, nil
+}
+
 // getExceptionsTotalMinor sums all settlement exceptions for the order.
 func (s *Service) getExceptionsTotalMinor(ctx context.Context, orderID string) (int64, error) {
 	if s.spannerClient == nil {
@@ -89,25 +135,39 @@ func (s *Service) getExceptionsTotalMinor(ctx context.Context, orderID string) (
 			"order_id": orderID,
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
-	var total int64
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, fmt.Errorf("query exceptions: %w", err)
-		}
-		var amt int64
-		if err := row.Columns(&amt); err != nil {
-			return 0, err
-		}
-		total += amt
+	total, err := sumAmountMinorRows(s.spannerClient.Single().Query(ctx, stmt))
+	if err != nil {
+		return 0, fmt.Errorf("query exceptions: %w", err)
 	}
 	return total, nil
+}
+
+func (s *Service) getExceptionsTotalMinorTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (int64, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT AmountMinor FROM OrderSettlementExceptions WHERE OrderId = @order_id`,
+		Params: map[string]interface{}{
+			"order_id": orderID,
+		},
+	}
+	total, err := sumAmountMinorRows(txn.Query(ctx, stmt))
+	if err != nil {
+		return 0, fmt.Errorf("query exceptions: %w", err)
+	}
+	return total, nil
+}
+
+func deliveredGrossFromOrder(orderRecord Order) int64 {
+	var gross int64
+	for _, item := range orderRecord.LineItems {
+		if item.OffloadStatus == "PARTIAL" || item.DeliveredQty > 0 {
+			gross += item.DeliveredQty * item.UnitPrice
+		} else if item.OffloadStatus == "RETURNED" || item.OffloadStatus == "FULL_RETURN" {
+			// Delivered 0
+		} else {
+			gross += item.Quantity * item.UnitPrice
+		}
+	}
+	return gross
 }
 
 // getDeliveredGrossMinor calculates the delivered gross using only lines with DeliveredQty > 0
@@ -120,18 +180,7 @@ func (s *Service) getDeliveredGrossMinor(ctx context.Context, orderID string) (i
 	if !ok {
 		return 0, fmt.Errorf("order not found: %s", orderID)
 	}
-
-	var gross int64
-	for _, item := range orderRecord.LineItems {
-		if item.OffloadStatus == "PARTIAL" || item.DeliveredQty > 0 {
-			gross += item.DeliveredQty * item.UnitPrice
-		} else if item.OffloadStatus == "RETURNED" || item.OffloadStatus == "FULL_RETURN" {
-			// Delivered 0
-		} else {
-			gross += item.Quantity * item.UnitPrice
-		}
-	}
-	return gross, nil
+	return deliveredGrossFromOrder(orderRecord), nil
 }
 
 // getCapturedPaymentMinor sums all CAPTURED payment legs for the order.
@@ -146,23 +195,24 @@ func (s *Service) getCapturedPaymentMinor(ctx context.Context, orderID string) (
 			"status":   string(PaymentStatusCaptured),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
-	defer iter.Stop()
+	total, err := sumAmountMinorRows(s.spannerClient.Single().Query(ctx, stmt))
+	if err != nil {
+		return 0, fmt.Errorf("query payment legs: %w", err)
+	}
+	return total, nil
+}
 
-	var total int64
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, fmt.Errorf("query payment legs: %w", err)
-		}
-		var amt int64
-		if err := row.Columns(&amt); err != nil {
-			return 0, err
-		}
-		total += amt
+func (s *Service) getCapturedPaymentMinorTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (int64, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT AmountMinor FROM OrderPaymentLegs WHERE OrderId = @order_id AND Status = @status`,
+		Params: map[string]interface{}{
+			"order_id": orderID,
+			"status":   string(PaymentStatusCaptured),
+		},
+	}
+	total, err := sumAmountMinorRows(txn.Query(ctx, stmt))
+	if err != nil {
+		return 0, fmt.Errorf("query payment legs: %w", err)
 	}
 	return total, nil
 }

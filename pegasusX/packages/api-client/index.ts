@@ -682,6 +682,44 @@ export class ApiClient {
     });
   }
 
+  /** Role-scoped Pegasus settlement receipt metadata (html_url / pdf_url for branded doc). */
+  async getOrderReceipt(
+    role: "retailer" | "supplier" | "warehouse",
+    orderId: string,
+  ): Promise<{
+    receipt_id: string;
+    html_url?: string;
+    pdf_url?: string;
+    qr_url?: string;
+    party_copy?: string;
+    legal_class?: string;
+    tax_ofd?: boolean;
+    amount_minor?: number;
+    currency?: string;
+  }> {
+    return this.request(
+      `/v1/${role}/orders/${encodeURIComponent(orderId)}/receipt?format=json`,
+      "GET",
+    );
+  }
+
+  /** Fetch branded receipt HTML or PDF bytes with auth (opens via blob URL in portals). */
+  async fetchOrderReceiptBlob(
+    role: "retailer" | "supplier" | "warehouse",
+    orderId: string,
+    format: "html" | "pdf",
+  ): Promise<Blob> {
+    const path = `/v1/${role}/orders/${encodeURIComponent(orderId)}/receipt?format=${format}`;
+    const headers = this.buildHeaders(undefined, true, undefined, true);
+    const fetchImpl = this.config.fetchImpl ?? fetch;
+    const response = await fetchImpl(this.resolveURL(path), { method: "GET", headers });
+    if (!response.ok) {
+      const payload = await parseResponsePayload(response);
+      throw new ApiError(extractErrorMessage(response.status, payload), response.status, payload);
+    }
+    return response.blob();
+  }
+
   async getSupplierDispatchPreview(query: { warehouse_id?: string } = {}): Promise<SupplierDispatchPreview> {
     return this.request<SupplierDispatchPreview>(
       appendQuery("/v1/supplier/dispatch/preview", query as Record<string, unknown>),

@@ -30,7 +30,7 @@ configMapGenerator:
       - PEGASUSX_ENV=staging
       - REQUIRE_INFRA_ADAPTERS=true
       - GLOBAL_PAY_ENV=staging
-      - FISCAL_PROVIDER=FAKE
+      - FISCAL_PROVIDER=PEGASUS
       - SPANNER_PROJECT=pegasus-503013
       - SPANNER_INSTANCE=pegasusx-staging-spanner
       - SPANNER_DATABASE=pegasusx-staging-db

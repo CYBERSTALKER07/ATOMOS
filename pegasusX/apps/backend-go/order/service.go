@@ -1948,20 +1948,24 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CASH")
 		},
 		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
-			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			orderRecord, ok, err := s.repo.GetOrderTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
+				return fmt.Errorf("failed to get order: %w", err)
+			}
+			if !ok {
+				return fmt.Errorf("order not found: %s", req.OrderID)
+			}
+			delivered := deliveredGrossFromOrder(orderRecord)
+			captured, err := s.getCapturedPaymentMinorTxn(txnCtx, txn, req.OrderID)
 			if err != nil {
 				return err
 			}
-			captured, err := s.getCapturedPaymentMinor(txnCtx, req.OrderID)
-			if err != nil {
-				return err
-			}
-			exceptions, err := s.getExceptionsTotalMinor(txnCtx, req.OrderID)
+			exceptions, err := s.getExceptionsTotalMinorTxn(txnCtx, txn, req.OrderID)
 			if err != nil {
 				return err
 			}
 			totalPaid := captured + exceptions + receivedMinor
-			
+
 			var shortfall int64
 			if totalPaid < delivered {
 				shortfall = delivered - totalPaid
@@ -1978,8 +1982,8 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 					return writeErr
 				}
 			}
-			
-			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, receivedMinor, shortfall); err != nil {
+
+			if err := s.AssertMoneyCoversDeliveryTxn(txnCtx, txn, req.OrderID, receivedMinor, shortfall); err != nil {
 				return err
 			}
 			leg := PaymentLeg{

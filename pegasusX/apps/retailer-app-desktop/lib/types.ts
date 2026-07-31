@@ -386,6 +386,9 @@ export interface TrackingOrder {
   is_approaching: boolean;
   delivery_token: string;
   created_at: string;
+  fiscal_status?: string;
+  fiscal_qr?: string;
+  latest_fiscal_receipt_id?: string;
   items: TrackingOrderItem[];
 }
 

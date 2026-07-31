@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.data.remote.WarehouseApi
@@ -85,7 +88,27 @@ fun OrderDetailScreen(
     var reasonInput by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
+
+    fun openReceipt() {
+        scope.launch {
+            try {
+                val resp = api.getOrderReceipt(orderId)
+                val meta = resp.body()
+                val url = meta?.htmlUrl?.ifBlank { null }
+                    ?: meta?.qrUrl?.ifBlank { null }
+                    ?: meta?.pdfUrl?.ifBlank { null }
+                if (resp.isSuccessful && !url.isNullOrBlank()) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } else {
+                    snackbarHostState.showSnackbar("Receipt unavailable (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "Receipt unavailable")
+            }
+        }
+    }
 
     fun load() {
         loading = true
@@ -294,6 +317,17 @@ fun OrderDetailScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                    if (state == "COMPLETED" || state == "FISCALIZING" || state == "FISCAL_FAILED") {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            OutlinedButton(
+                                onClick = { openReceipt() },
+                                enabled = !mutating,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("View Pegasus receipt")
+                            }
+                        }
                     }
                     orderOpsActions(
                         canDelay = canDelay,

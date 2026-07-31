@@ -809,7 +809,7 @@ func (s *Service) offlineManifestHashes(ctx context.Context, detail factory.Mani
 	if s.manifestTokens != nil && len(orderIDs) > 0 {
 		tokens = s.manifestTokens(ctx, orderIDs)
 	}
-	if len(tokens) == 0 {
+	if len(tokens) == 0 && allowDriverDemoFallback() {
 		tokens = demoOrderDeliveryTokens()
 	}
 

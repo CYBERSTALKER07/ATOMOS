@@ -211,7 +211,7 @@ struct DeliveryMapView: View {
         .sheet(item: $fiscalQRReceipt) { receipt in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
-                    Text("Fiscal receipt")
+                    Text("Pegasus receipt")
                         .font(.system(.title3, design: .rounded, weight: .bold))
                     Text(receipt.fiscalReceiptLabel)
                         .font(.system(.subheadline, design: .rounded))
@@ -223,6 +223,16 @@ struct DeliveryMapView: View {
                         Text("ID · \(receipt.latestFiscalReceiptId)")
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    HStack(spacing: AppTheme.spacingMD) {
+                        if let html = receiptHTMLURL(for: receipt) {
+                            Link("Open receipt", destination: html)
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        }
+                        if let pdf = receiptPDFURL(for: receipt) {
+                            Link("PDF", destination: pdf)
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        }
                     }
                     Spacer()
                 }
@@ -236,6 +246,30 @@ struct DeliveryMapView: View {
             }
             .presentationDetents([.medium])
         }
+    }
+
+    // MARK: - Receipt links
+
+    private func receiptHTMLURL(for receipt: TrackingOrder) -> URL? {
+        let qr = receipt.fiscalQr.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !qr.isEmpty {
+            if qr.contains("format=") { return URL(string: qr) }
+            let sep = qr.contains("?") ? "&" : "?"
+            return URL(string: qr + sep + "format=html")
+        }
+        let id = receipt.latestFiscalReceiptId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return nil }
+        let base = api.baseURL.hasSuffix("/") ? api.baseURL : api.baseURL + "/"
+        return URL(string: "\(base)v1/platform/receipts/\(id)?format=html")
+    }
+
+    private func receiptPDFURL(for receipt: TrackingOrder) -> URL? {
+        let id = receipt.latestFiscalReceiptId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = api.baseURL.hasSuffix("/") ? api.baseURL : api.baseURL + "/"
+        if !id.isEmpty {
+            return URL(string: "\(base)v1/platform/receipts/\(id)?format=pdf")
+        }
+        return nil
     }
 
     // MARK: - Data

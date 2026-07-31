@@ -138,13 +138,12 @@ func (s *Service) resolveReschedule(ctx context.Context, txn *spanner.ReadWriteT
 		"ReceivingWindowClose":  *req.NewWindowEnd,
 	}))
 
-	logPayload, _ := json.Marshal(req)
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 		"OrderId":   order.OrderID,
 		"EventId":   s.newID(),
 		"Actor":     order.RetailerID,
 		"Action":    "RESPONDED",
-		"Payload":   logPayload,
+		"Payload":   spanner.NullJSON{Value: req, Valid: true},
 		"CreatedAt": now,
 	}))
 
@@ -212,13 +211,12 @@ func (s *Service) resolveCreditLeaveFromRetailer(ctx context.Context, txn *spann
 		"UpdatedAt":            now,
 	}))
 
-	logPayload, _ := json.Marshal(req)
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 		"OrderId":   order.OrderID,
 		"EventId":   s.newID(),
 		"Actor":     order.RetailerID,
 		"Action":    "RESPONDED",
-		"Payload":   logPayload,
+		"Payload":   spanner.NullJSON{Value: req, Valid: true},
 		"CreatedAt": now,
 	}))
 
@@ -258,13 +256,12 @@ func (s *Service) resolveCancelFromRetailer(ctx context.Context, txn *spanner.Re
 		"UpdatedAt":            now,
 	}))
 
-	logPayload, _ := json.Marshal(req)
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 		"OrderId":   order.OrderID,
 		"EventId":   s.newID(),
 		"Actor":     order.RetailerID,
 		"Action":    "RESPONDED",
-		"Payload":   logPayload,
+		"Payload":   spanner.NullJSON{Value: req, Valid: true},
 		"CreatedAt": now,
 	}))
 
@@ -305,13 +302,12 @@ func (s *Service) resolveBypassFromRetailer(ctx context.Context, txn *spanner.Re
 		"UpdatedAt":            now,
 	}))
 
-	logPayload, _ := json.Marshal(req)
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 		"OrderId":   order.OrderID,
 		"EventId":   s.newID(),
 		"Actor":     order.RetailerID,
 		"Action":    "RESPONDED",
-		"Payload":   logPayload,
+		"Payload":   spanner.NullJSON{Value: req, Valid: true},
 		"CreatedAt": now,
 	}))
 

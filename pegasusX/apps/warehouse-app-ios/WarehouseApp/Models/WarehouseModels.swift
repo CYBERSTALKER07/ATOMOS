@@ -148,6 +148,31 @@ struct Order: Decodable, Identifiable {
     }
 }
 
+struct OrderReceiptMeta: Decodable {
+    let receiptId: String
+    let htmlUrl: String
+    let pdfUrl: String
+    let qrUrl: String
+    let partyCopy: String
+
+    enum CodingKeys: String, CodingKey {
+        case receiptId = "receipt_id"
+        case htmlUrl = "html_url"
+        case pdfUrl = "pdf_url"
+        case qrUrl = "qr_url"
+        case partyCopy = "party_copy"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        receiptId = try c.decodeIfPresent(String.self, forKey: .receiptId) ?? ""
+        htmlUrl = try c.decodeIfPresent(String.self, forKey: .htmlUrl) ?? ""
+        pdfUrl = try c.decodeIfPresent(String.self, forKey: .pdfUrl) ?? ""
+        qrUrl = try c.decodeIfPresent(String.self, forKey: .qrUrl) ?? ""
+        partyCopy = try c.decodeIfPresent(String.self, forKey: .partyCopy) ?? ""
+    }
+}
+
 struct LineItem: Decodable, Identifiable {
     var id: String { productId }
     let productId: String

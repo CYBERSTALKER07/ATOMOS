@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 )
@@ -342,31 +341,4 @@ func mobileActiveFulfillment(order TrackingOrder) map[string]any {
 		m["live_location_available"] = false
 	}
 	return m
-}
-
-func demoTrackingOrdersForRetailer(retailerID, supplierID string) []TrackingOrder {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	return []TrackingOrder{
-		{
-			OrderID:    "ord_retailer_demo_1",
-			SupplierID: supplierID,
-			RetailerID: retailerID,
-			Status:     "IN_TRANSIT",
-			TotalMinor: 28000,
-			Currency:   "UZS",
-			CreatedAt:  now,
-			UpdatedAt:  now,
-			DriverID:   "drv_demo_1",
-			Items: []TrackingLineItem{
-				{ProductID: "prod-milk-1l", ProductName: "Whole Milk 1L", Quantity: 2, UnitPrice: 12000, LineTotal: 24000},
-			},
-			DriverLocation: &TrackingLocation{
-				DriverID:  supplierID,
-				Lat:       41.312,
-				Lng:       69.241,
-				Latitude:  41.312,
-				Longitude: 69.241,
-			},
-		},
-	}
 }

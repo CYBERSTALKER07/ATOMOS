@@ -28,10 +28,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 
-	// Public platform receipt QR target (no auth — redacted commercial view).
+	// Public platform receipt QR target (JSON default; ?format=html|pdf for branded doc).
 	r.Get("/v1/platform/receipts/{receiptID}", d.Service.HandleGetPlatformReceipt)
 
 	mount := func(gr chi.Router) {
+		// Authenticated per-order branded receipts (same document, party_copy label).
+		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/orders/{orderID}/receipt", d.Service.HandleGetRetailerOrderReceipt)
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/orders/{orderID}/receipt", d.Service.HandleGetSupplierOrderReceipt)
+		gr.With(auth.RequireRole(auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin)).Get("/v1/warehouse/orders/{orderID}/receipt", d.Service.HandleGetWarehouseOrderReceipt)
+
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/order/create", d.Service.HandleCreate)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Patch("/v1/order/{orderID}/status", d.Service.HandleUpdateStatus)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleFactoryAdmin)).Post("/v1/orders/{orderID}/assign", d.Service.HandleAssignOrder)
@@ -78,7 +83,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/admin/tax-regimes", d.TaxService.HandleListRegimes)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Get("/v1/admin/tax-regimes/{regimeID}", d.TaxService.HandleGetRegime)
 		}
-		
+
 		// Compliance / Audit Dashboard
 		if d.ComplianceHandler != nil {
 			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)

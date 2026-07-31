@@ -42,7 +42,7 @@
 | Item | Owner |
 |------|-------|
 | Quantity negotiations | Product |
-| Soliq OFD | Tax / ops |
+| Soliq OFD (state tax; Pegasus branded receipts Wired) | Tax / ops |
 | SSMR DNS + GP SUCCESS + marker log | Cloud ops |
 
 Historical snapshot (pre-delete, not current truth): [`../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md`](../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md)

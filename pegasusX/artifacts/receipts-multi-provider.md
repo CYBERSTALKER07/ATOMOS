@@ -1,7 +1,7 @@
 # Multi-layer receipts (no Soliq required for now)
 
-**Date:** 2026-07-27  
-**Decision:** Ship **Pegasus platform receipts** as the ADR-009 hard-gate path.  
+**Date:** 2026-08-01  
+**Decision:** Ship **Pegasus branded platform receipts** as the ADR-009 hard-gate path.  
 Soliq/OFD and Global Pay **payment receipts** plug in later without rewriting order lifecycle.
 
 ## Layers
@@ -18,6 +18,10 @@ Soliq/OFD and Global Pay **payment receipts** plug in later without rewriting or
 # Product default (SSMR / staging / prod until Soliq)
 FISCAL_PROVIDER=PEGASUS
 PUBLIC_BASE_URL=https://api-ssmr.pegasusx.app
+
+# Optional branding overrides for Pegasus settlement receipts
+# PEGASUS_COMPANY_NAME=PegasusX
+# PEGASUS_ISSUER_TIN=
 
 # Optional SSMR-only fail hooks for fiscal e2e (amount=13, order id contains fiscal-fail)
 # Enabled automatically when PEGASUSX_ENV=ssmr
@@ -39,34 +43,48 @@ PUBLIC_BASE_URL=https://api-ssmr.pegasusx.app
 ## What clients get today
 
 1. Cash/card capture → order `FISCALIZING` → worker issues **`PX-RCPT-{attemptId}`**.
-2. Row stored in `OrderFiscalReceipts` with `Provider=PEGASUS`.
-3. QR / deep link: `{PUBLIC_BASE_URL}/v1/platform/receipts/{receiptId}`
-4. Public GET returns redacted commercial view (`tax_ofd: false`).
+2. Row stored in `OrderFiscalReceipts` with `Provider=PEGASUS` (branding + country + line items in payload).
+3. QR / deep link: `{PUBLIC_BASE_URL}/v1/platform/receipts/{receiptId}?format=html` (branded page).
+4. Public GET:
+   - default / `?format=json` → commercial JSON (`tax_ofd: false`, includes `html_url` / `pdf_url` / line items)
+   - `?format=html` or `Accept: text/html` → Pegasus branded HTML receipt
+   - `?format=pdf` → downloadable PDF
+5. Authenticated party copies (same document, `party_copy` label):
+   - `GET /v1/retailer/orders/{orderId}/receipt`
+   - `GET /v1/supplier/orders/{orderId}/receipt`
+   - `GET /v1/warehouse/orders/{orderId}/receipt`
+6. Role UIs: retailer tracking (desktop + mobile), supplier order/compliance, warehouse order detail — view HTML / download PDF.
+
+Country layout: `UZ` (default from UZS) and `KZ` (from KZT) via `order/receipt_layout.go`.
 
 ## What Boss still provides (later)
 
 | Source | Need | Used for |
 |--------|------|----------|
 | **Global Pay** | Receipt API base URL + API key (+ path if non-default) | Layer 2 payment receipts |
-| **Soliq / OFD** | Sandbox base URL + API key + TIN | Layer 3 tax fiscalization |
+| **Soliq / OFD** | Sandbox base URL + API key + TIN + EDS | Layer 3 tax fiscalization |
 | **DNS** (Step 11) | `api-ssmr.pegasusx.app` → LB IP | Trusted HTTPS QR links |
 
-No code rewrite required: set env + restart when credentials land.
+Soliq adapter code remains in-tree (`MySoliqProvider` / `soliq` client) and env-commented — flip `FISCAL_PROVIDER=MY_SOLIQ` when credentials land.
 
 ## Code map
 
 | File | Role |
 |------|------|
-| `order/fiscal_provider_pegasus.go` | Platform receipts |
+| `order/fiscal_provider_pegasus.go` | Platform receipts + branding payload |
+| `order/receipt_document.go` | HTML/PDF renderer |
+| `order/receipt_layout.go` | Country labels / legal footer |
+| `order/receipt_templates/receipt.html.tmpl` | Branded HTML |
+| `order/receipt_assets/logo.svg` | Company mark |
 | `order/fiscal_provider_globalpay.go` | GP HTTP adapter + multi-wrap |
-| `order/fiscal_provider.go` | `ProviderFromEnv` selection |
-| `order/receipt_handlers.go` | `GET /v1/platform/receipts/{receiptID}` |
+| `order/fiscal_provider.go` | `ProviderFromEnv` selection (incl. deferred Soliq) |
+| `order/receipt_handlers.go` | Public + role receipt handlers |
 | `order/repository_spanner.go` | `GetFiscalByReceiptID` |
 
 ## Production target (your product plan)
 
-1. **Pegasus** commercial receipt always (settlement / app QR / ops).  
+1. **Pegasus** branded settlement receipt always (settlement / app QR / ops) — **Wired**.  
 2. **Global Pay** payment receipt when their API is live.  
 3. **Soliq** tax receipt when OFD sandbox/prod is approved — either switch primary to `MY_SOLIQ` or add as additional leg later.
 
-Until (2) and (3), hard-gate remains **PEGASUS only** — orders complete with platform receipts.
+Until (2) and (3), hard-gate remains **PEGASUS only** — orders complete with platform receipts (`tax_ofd: false`).

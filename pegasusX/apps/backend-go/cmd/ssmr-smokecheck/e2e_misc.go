@@ -208,7 +208,7 @@ func runDispatchCapacityE2E(ctx context.Context, client *http.Client, base, cook
 		}},
 	})
 	url := base + "/v1/warehouse/ops/dispatch/execute?warehouse_id=" + whID
-	status, respBody, _, err := clientPost(ctx, client, url, manualBody, cookie, "ssmr-dispatch-capacity")
+	status, respBody, _, err := clientPost(ctx, client, url, manualBody, cookie, fmt.Sprintf("ssmr-dispatch-capacity-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}

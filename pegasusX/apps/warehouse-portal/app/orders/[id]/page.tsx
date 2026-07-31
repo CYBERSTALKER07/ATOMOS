@@ -147,6 +147,38 @@ export default function OrderDetailPage() {
                   <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Order ID</p>
                   <p className="wh-ops-card-id mt-1">{order.order_id}</p>
                 </div>
+                {(state === 'COMPLETED' || canForceFiscal) && (
+                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--outline text-sm"
+                      disabled={acting}
+                      onClick={() => {
+                        void import('@/lib/order-receipt').then((m) =>
+                          m.openWarehouseOrderReceipt(orderId, 'html').catch((err) =>
+                            toast(err instanceof Error ? err.message : 'Receipt unavailable', 'error'),
+                          ),
+                        );
+                      }}
+                    >
+                      View receipt
+                    </button>
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--outline text-sm"
+                      disabled={acting}
+                      onClick={() => {
+                        void import('@/lib/order-receipt').then((m) =>
+                          m.openWarehouseOrderReceipt(orderId, 'pdf').catch((err) =>
+                            toast(err instanceof Error ? err.message : 'PDF unavailable', 'error'),
+                          ),
+                        );
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 

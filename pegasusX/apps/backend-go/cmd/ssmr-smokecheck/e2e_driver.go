@@ -226,11 +226,15 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	}
 
 	shopBody, _ := json.Marshal(map[string]any{
-		"order_id":  orderID,
-		"latitude":  cfg.DeliveryZoneCenterLat,
-		"longitude": cfg.DeliveryZoneCenterLng,
+		"reason": "CLOSED",
+		"location": map[string]any{
+			"lat":            cfg.DeliveryZoneCenterLat,
+			"lng":            cfg.DeliveryZoneCenterLng,
+			"accuracyMeters": 10.0,
+			"recordedAt":     time.Now().UTC().Format(time.RFC3339Nano),
+		},
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/shop-closed", shopBody, driverToken, "driver-report-shop-closed:"+driverID+":"+orderID)
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/driver/orders/"+orderID+"/shop-closed", shopBody, driverToken, fmt.Sprintf("driver-report-shop-closed:%s:%s:%d", driverID, orderID, time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}

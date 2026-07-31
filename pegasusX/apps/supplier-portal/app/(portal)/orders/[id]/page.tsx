@@ -174,6 +174,38 @@ export default function SupplierOrderDetailPage() {
               Driver {listRow.driver_id} · Route {listRow.route_id || 'pending'}
             </p>
           ) : null}
+          {(state === 'COMPLETED' || state === 'FISCAL_FAILED' || state === 'FISCALIZING') && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                className="md-btn md-btn-tonal text-sm px-3 py-1.5"
+                disabled={acting}
+                onClick={() => {
+                  void import('@/lib/order-receipt').then((m) =>
+                    m.openSupplierOrderReceipt(orderId, 'html').catch((err) =>
+                      toast(err instanceof Error ? err.message : 'Receipt unavailable', 'error'),
+                    ),
+                  );
+                }}
+              >
+                View receipt
+              </button>
+              <button
+                type="button"
+                className="md-btn md-btn-outlined text-sm px-3 py-1.5"
+                disabled={acting}
+                onClick={() => {
+                  void import('@/lib/order-receipt').then((m) =>
+                    m.openSupplierOrderReceipt(orderId, 'pdf').catch((err) =>
+                      toast(err instanceof Error ? err.message : 'PDF unavailable', 'error'),
+                    ),
+                  );
+                }}
+              >
+                Download PDF
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="md-card p-5">

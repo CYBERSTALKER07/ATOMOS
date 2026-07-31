@@ -540,10 +540,12 @@ func (s *Service) HandleOrderGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	for _, row := range demoFleetOrders("") {
-		if row["id"] == orderID {
-			writeJSON(w, http.StatusOK, row)
-			return
+	if allowDriverDemoFallback() {
+		for _, row := range demoFleetOrders("") {
+			if row["id"] == orderID {
+				writeJSON(w, http.StatusOK, row)
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})

@@ -104,6 +104,7 @@ func TestHandleManifest_NotFound(t *testing.T) {
 }
 
 func TestHandleManifest_IOSRouteManifest(t *testing.T) {
+	t.Setenv("ALLOW_DRIVER_DEMO_FALLBACK", "true")
 	repo := &driverRepoSpy{}
 	cacheBackend := &driverCacheBackendSpy{}
 	svc := newDriverTestServiceWithManifest(repo, cacheBackend, func(driverID, manifestID, date string) (factory.ManifestDetailSnapshot, bool) {
@@ -137,6 +138,7 @@ func TestHandleManifest_IOSRouteManifest(t *testing.T) {
 }
 
 func TestHandleManifest_DetailResponse(t *testing.T) {
+	t.Setenv("ALLOW_DRIVER_DEMO_FALLBACK", "true")
 	repo := &driverRepoSpy{}
 	cacheBackend := &driverCacheBackendSpy{}
 	svc := newDriverTestServiceWithManifest(repo, cacheBackend, func(driverID, manifestID, date string) (factory.ManifestDetailSnapshot, bool) {

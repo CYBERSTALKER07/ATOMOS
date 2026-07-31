@@ -360,6 +360,17 @@ data class ShopClosedActiveResponse(
 )
 
 @Serializable
+data class OrderReceiptMeta(
+    @SerialName("receipt_id") val receiptId: String = "",
+    @SerialName("html_url") val htmlUrl: String = "",
+    @SerialName("pdf_url") val pdfUrl: String = "",
+    @SerialName("qr_url") val qrUrl: String = "",
+    @SerialName("party_copy") val partyCopy: String = "",
+    @SerialName("legal_class") val legalClass: String = "",
+    @SerialName("tax_ofd") val taxOfd: Boolean = false,
+)
+
+@Serializable
 data class ComplianceSummary(
     @SerialName("open_fiscal_count") val openFiscalCount: Int = 0,
     @SerialName("force_complete_count") val forceCompleteCount: Int = 0,

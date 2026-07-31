@@ -21,6 +21,9 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getComplianceDashboard(limit: Int = 100): Response<ComplianceDashboardResponse> =
         api.getComplianceDashboard(limit)
 
+    suspend fun getOrderReceipt(orderId: String): Response<OrderReceiptMeta> =
+        api.getOrderReceipt(orderId)
+
     suspend fun getCashReconciliations(): Response<CashReconciliationsResponse> =
         api.getCashReconciliations()
 

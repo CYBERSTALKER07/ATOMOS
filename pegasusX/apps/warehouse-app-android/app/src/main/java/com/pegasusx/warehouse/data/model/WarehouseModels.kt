@@ -72,6 +72,17 @@ data class OrderListResponse(
     val orders: List<Order> = emptyList(),
 )
 
+@Serializable
+data class OrderReceiptMeta(
+    @SerialName("receipt_id") val receiptId: String = "",
+    @SerialName("html_url") val htmlUrl: String = "",
+    @SerialName("pdf_url") val pdfUrl: String = "",
+    @SerialName("qr_url") val qrUrl: String = "",
+    @SerialName("party_copy") val partyCopy: String = "",
+    @SerialName("legal_class") val legalClass: String = "",
+    @SerialName("tax_ofd") val taxOfd: Boolean = false,
+)
+
 // ── Drivers ──
 @Serializable
 data class Driver(

@@ -526,9 +526,7 @@ func (s *Service) demoOrdersForRetailer(ctx context.Context, retailerID string) 
 	if err != nil {
 		return []map[string]any{}
 	}
-	if len(orders) == 0 {
-		orders = demoTrackingOrdersForRetailer(retailerID, s.supplierID)
-	}
+	// Empty list is authoritative — never inject demo tracking fixtures.
 	out := make([]map[string]any, 0, len(orders))
 	for i := range orders {
 		out = append(out, mobileTrackingOrder(orders[i]))

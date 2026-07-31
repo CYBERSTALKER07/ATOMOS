@@ -187,16 +187,13 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 			}))
 		}
 
-		// Log entry
-		logPayload, _ := json.Marshal(map[string]any{
-			"decision": decision,
-		})
+		// Log entry (Payload column is JSON in Spanner)
 		mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
 			"OrderId":   order.OrderID,
 			"EventId":   s.newID(),
 			"Actor":     "system",
 			"Action":    "TIMEOUT",
-			"Payload":   logPayload,
+			"Payload":   spanner.NullJSON{Value: map[string]any{"decision": decision}, Valid: true},
 			"CreatedAt": now,
 		}))
 

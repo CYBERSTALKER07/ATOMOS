@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum OrderMutationAction: String, Identifiable {
     case reject
@@ -38,6 +39,7 @@ struct OrderDetailView: View {
                     Button("Retry") { load() }
                 }
             } else if let order {
+                let showReceipt = ["COMPLETED", "FISCALIZING", "FISCAL_FAILED"].contains(order.state.uppercased())
                 ResponsiveGridContentWrapper {
                     Section("Summary") {
                         LabeledContent("State", value: order.state)
@@ -45,6 +47,11 @@ struct OrderDetailView: View {
                         LabeledContent("Retailer", value: order.retailerName.isEmpty ? "—" : order.retailerName)
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())
+                        if showReceipt {
+                            Button("View Pegasus receipt") {
+                                Task { await openReceipt() }
+                            }
+                        }
                     }
                     OrderOpsActions(
                         state: order.state,
@@ -191,6 +198,25 @@ struct OrderDetailView: View {
             } catch {
                 statusMessage = error.localizedDescription
             }
+        }
+    }
+
+    private func openReceipt() async {
+        do {
+            let meta: OrderReceiptMeta = try await APIClient.shared.get(
+                "v1/warehouse/orders/\(orderId)/receipt",
+                query: ["format": "json"]
+            )
+            let raw = [meta.htmlUrl, meta.qrUrl, meta.pdfUrl]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first { !$0.isEmpty }
+            if let raw, let url = URL(string: raw) {
+                await MainActor.run { UIApplication.shared.open(url) }
+            } else {
+                await MainActor.run { statusMessage = "Receipt unavailable" }
+            }
+        } catch {
+            await MainActor.run { statusMessage = error.localizedDescription }
         }
     }
 

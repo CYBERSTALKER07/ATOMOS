@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { VehicleShipmentCard, PartnerFilterMetric } from "@pegasusx/types";
+import { createWarehouseApi } from "@/lib/api";
 import { DispatchSidebarNav } from "../../../supplier-portal/components/dispatch/DispatchSidebarNav";
 import { PartnerFilterBar } from "../../../supplier-portal/components/dispatch/PartnerFilterBar";
 import { ShipmentCardGrid } from "../../../supplier-portal/components/dispatch/ShipmentCardGrid";
@@ -9,49 +10,63 @@ import { VehicleCapacityGauge } from "../../../supplier-portal/components/dispat
 import { RouteTelemetryMap } from "../../../supplier-portal/components/dispatch/RouteTelemetryMap";
 import { CargoPhotoCarousel } from "../../../supplier-portal/components/dispatch/CargoPhotoCarousel";
 
-export default function WarehouseTrackingPage() {
-  const [partnerFilters] = useState<PartnerFilterMetric[]>([
-    { id: "p1", name: "Lockman", count: 24 },
-    { id: "p2", name: "Mertz LLC", count: 22 },
-    { id: "p3", name: "Corkery", count: 8 },
-    { id: "p4", name: "Kuhn and Sons", count: 5 },
-  ]);
+const api = createWarehouseApi();
 
+export default function WarehouseTrackingPage() {
+  const [partnerFilters, setPartnerFilters] = useState<PartnerFilterMetric[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [shipments, setShipments] = useState<VehicleShipmentCard[]>([]);
+  const [selectedShipment, setSelectedShipment] = useState<VehicleShipmentCard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [counts, setCounts] = useState({ total: 0, active: 0, inactive: 0 });
 
-  const [shipments] = useState<VehicleShipmentCard[]>([
-    {
-      id: "v-752069247",
-      code: "SD-752069247",
-      status: "ON_ROUTE",
-      vehicle_type: "SEMI_TRUCK",
-      eta_seconds: 5035,
-      distance_miles_left: 38,
-      stops_count: 5,
-      stops_summary: ["2821 Keelie Hills", "36716 Audreanne Date", "399 Lorine Island", "0732 Allen Crossing"],
-      driver_name: "John Miller",
-      driver_phone: "+1 555-0199",
-      partner_id: "p1",
-      partner_name: "Lockman",
-    },
-    {
-      id: "v-113949207",
-      code: "AL-113949207",
-      status: "WAITING",
-      vehicle_type: "VAN",
-      eta_seconds: 8233,
-      distance_miles_left: 64,
-      stops_count: 5,
-      stops_summary: ["42047 Verta Ridge", "22920 Shondra Street", "6722 Locascio Mount"],
-      driver_name: "Marcus Vance",
-      driver_phone: "+1 555-0189",
-      partner_id: "p2",
-      partner_name: "Mertz LLC",
-    },
-  ]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const overview = await api.getFleetDispatchOverview("warehouse", {
+        partner_id: selectedPartnerId,
+        status_filter: statusFilter === "ALL" ? undefined : statusFilter,
+      });
+      const rows = overview.shipments ?? [];
+      setShipments(rows);
+      setPartnerFilters(overview.partner_filters ?? []);
+      setCounts({
+        total: overview.total_count ?? rows.length,
+        active: overview.active_count ?? rows.filter((s) => s.status === "ON_ROUTE").length,
+        inactive: overview.inactive_count ?? rows.filter((s) => s.status !== "ON_ROUTE").length,
+      });
+      setSelectedShipment((prev) => {
+        if (prev && rows.some((r) => r.id === prev.id)) {
+          return rows.find((r) => r.id === prev.id) ?? null;
+        }
+        return rows[0] ?? null;
+      });
+    } catch (err) {
+      setShipments([]);
+      setPartnerFilters([]);
+      setSelectedShipment(null);
+      setCounts({ total: 0, active: 0, inactive: 0 });
+      setError(err instanceof Error ? err.message : "Failed to load warehouse tracking");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPartnerId, statusFilter]);
 
-  const [selectedShipment, setSelectedShipment] = useState<VehicleShipmentCard>(shipments[0]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filteredShipments = useMemo(() => {
+    return shipments.filter((s) => {
+      if (selectedPartnerId && s.partner_id !== selectedPartnerId) return false;
+      if (statusFilter === "ACTIVE" && s.status !== "ON_ROUTE") return false;
+      if (statusFilter === "INACTIVE" && s.status !== "WAITING") return false;
+      return true;
+    });
+  }, [shipments, selectedPartnerId, statusFilter]);
 
   return (
     <div className="flex h-screen bg-[#0a0b0d] text-white overflow-hidden">
@@ -64,30 +79,44 @@ export default function WarehouseTrackingPage() {
           onPartnerSelect={setSelectedPartnerId}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          totalCount={46}
-          activeCount={20}
-          inactiveCount={26}
+          totalCount={counts.total}
+          activeCount={counts.active}
+          inactiveCount={counts.inactive}
         />
 
-        <ShipmentCardGrid
-          shipments={shipments}
-          selectedShipmentId={selectedShipment?.id}
-          onSelectShipment={setSelectedShipment}
-        />
+        {loading && shipments.length === 0 ? (
+          <p className="text-sm text-gray-500 mt-8">Loading warehouse fleet…</p>
+        ) : error && shipments.length === 0 ? (
+          <p className="text-sm text-red-400 mt-8">{error}</p>
+        ) : filteredShipments.length === 0 ? (
+          <p className="text-sm text-gray-500 mt-8">
+            No dock dispatches yet. Cards appear when warehouse fleet is on route.
+          </p>
+        ) : (
+          <ShipmentCardGrid
+            shipments={filteredShipments}
+            selectedShipmentId={selectedShipment?.id}
+            onSelectShipment={setSelectedShipment}
+          />
+        )}
       </main>
 
       <aside className="w-[580px] bg-[#0c0e11] p-6 overflow-y-auto custom-scrollbar flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white tracking-wide">Warehouse Dock Dispatch ({selectedShipment?.code})</h2>
-            <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg">
-              Verify Dock Loading
-            </button>
+            <h2 className="text-xl font-bold text-white tracking-wide">
+              Warehouse Dock Dispatch ({selectedShipment?.code || "—"})
+            </h2>
           </div>
 
-          <VehicleCapacityGauge capacityPercentage={59} vehicleCode={selectedShipment?.code} />
-          <RouteTelemetryMap vehicleCode={selectedShipment?.code} />
-          <CargoPhotoCarousel />
+          <VehicleCapacityGauge capacityPercentage={null} vehicleCode={selectedShipment?.code ?? null} />
+          <RouteTelemetryMap
+            vehicleCode={selectedShipment?.code ?? null}
+            etaSeconds={selectedShipment?.eta_seconds ?? null}
+            distanceMilesLeft={selectedShipment?.distance_miles_left ?? null}
+            hasLiveRoute={Boolean(selectedShipment)}
+          />
+          <CargoPhotoCarousel photos={[]} />
         </div>
       </aside>
     </div>
