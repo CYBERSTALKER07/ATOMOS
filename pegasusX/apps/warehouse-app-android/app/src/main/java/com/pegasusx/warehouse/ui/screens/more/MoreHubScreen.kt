@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ private data class MoreDestination(
 private val fulfillment = listOf(
     MoreDestination("Manifests", "Loading manifests", Icons.Default.Description, WarehouseRoutes.MANIFESTS),
     MoreDestination("Dispatch", "Preview, supply, locks", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH),
+    MoreDestination("Fleet rescues", "Broken truck rescue propose", Icons.Default.Build, WarehouseRoutes.RESCUES),
     MoreDestination("Dispatch settings", "Auto-dispatch policy", Icons.Default.Tune, WarehouseRoutes.DISPATCH_SETTINGS),
     MoreDestination("Live fleet map", "Route geometry + drivers", Icons.Default.Map, WarehouseRoutes.FLEET_LIVE_MAP),
     MoreDestination("Transfer actions", "Emergency / receive", Icons.Default.SwapHoriz, WarehouseRoutes.TRANSFER_ACTIONS),
@@ -50,7 +52,9 @@ private val inventory = listOf(
 private val operations = listOf(
     MoreDestination("Depot operations", "Broadcasts & pricing preview", Icons.Default.Send, WarehouseRoutes.OPERATIONS),
     MoreDestination("Retailers", "CRM", Icons.Default.Store, WarehouseRoutes.CRM),
-    MoreDestination("Returns", "Return queue", Icons.Default.Undo, WarehouseRoutes.RETURNS),
+    MoreDestination("Returns", "Inbound + credit-note reverse", Icons.AutoMirrored.Filled.Undo, WarehouseRoutes.RETURNS),
+    MoreDestination("Exceptions", "Manifest / delay / lock triage", Icons.Default.Warning, WarehouseRoutes.EXCEPTIONS),
+    MoreDestination("Claims", "Reverse-logistics prep (read-only)", Icons.Default.Report, WarehouseRoutes.CLAIMS),
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),
     MoreDestination("Treasury", "Ledger overview", Icons.Default.AccountBalance, WarehouseRoutes.TREASURY),
     MoreDestination("Payment config", "Gateway visibility", Icons.Default.Payment, WarehouseRoutes.PAYMENT_CONFIG),

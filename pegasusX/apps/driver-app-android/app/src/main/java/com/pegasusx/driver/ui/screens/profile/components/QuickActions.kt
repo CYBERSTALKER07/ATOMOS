@@ -31,19 +31,24 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
 
 @Composable
-fun QuickActions(onEndSession: () -> Unit = {}) {
+fun QuickActions(
+    onEndSession: () -> Unit = {},
+    onOfflineVerifier: () -> Unit = {},
+    onSyncQueue: () -> Unit = {},
+    pendingCount: Int = 0,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ActionRow(
             icon = Icons.Default.ShieldMoon,
             title = "Offline Verifier",
             subtitle = "Hash manifest protocol",
-            onClick = {}
+            onClick = onOfflineVerifier,
         )
         ActionRow(
             icon = Icons.Default.Sync,
             title = "Sync Queue",
-            subtitle = "Upload pending deliveries",
-            onClick = {}
+            subtitle = if (pendingCount > 0) "$pendingCount pending offline actions" else "Upload pending actions",
+            onClick = onSyncQueue,
         )
         ActionRow(
             icon = Icons.Default.Settings,

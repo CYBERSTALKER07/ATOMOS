@@ -75,6 +75,8 @@ import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
 import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
+import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
+import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
 
@@ -89,6 +91,7 @@ object DriverRoutes {
     const val CASH_COLLECTION = "cash_collection/{orderId}/{amount}"
     const val SHOP_CLOSED_WAITING = "shop_closed_waiting/{orderId}"
     const val OFFLINE_VERIFIER = "offline_verifier"
+    const val SYNC_QUEUE = "sync_queue"
     const val SUPPLY_TRANSFERS = "supply_transfers"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
@@ -315,7 +318,14 @@ fun DriverNavigation(
                     )
                 },
                 profileContent = {
-                    ProfileScreen(viewModel = manifestViewModel)
+                    val pendingVm: PendingSyncCountViewModel = hiltViewModel()
+                    val pendingCount by pendingVm.pendingCount.collectAsState()
+                    ProfileScreen(
+                        viewModel = manifestViewModel,
+                        onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
+                        onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        pendingCount = pendingCount,
+                    )
                 },
                 activeRideBar = { onOpenMap ->
                     ActiveRideBar(
@@ -330,6 +340,10 @@ fun DriverNavigation(
 
         composable(DriverRoutes.OFFLINE_VERIFIER) {
             OfflineVerifierScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(DriverRoutes.SYNC_QUEUE) {
+            SyncQueueScreen(onBack = { navController.popBackStack() })
         }
 
         composable(DriverRoutes.SUPPLY_TRANSFERS) {

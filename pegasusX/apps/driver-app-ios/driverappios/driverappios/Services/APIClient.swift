@@ -700,6 +700,26 @@ final class APIClient: @unchecked Sendable {
         "driver-\(action)-\(orderId)"
     }
 
+    /// Replay a queued offline action. Returns (statusCode, raw bytes).
+    func rawRequest(
+        endpoint: String,
+        method: String,
+        body: String,
+        idempotencyKey: String? = nil
+    ) async throws -> (Int, Data) {
+        let path = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
+        var req = try buildRequest(path: path, method: method)
+        if let idempotencyKey, !idempotencyKey.isEmpty {
+            req.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
+        if !body.isEmpty {
+            req.httpBody = body.data(using: .utf8)
+        }
+        let (data, response) = try await dataWithFallback(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
+        return (http.statusCode, data)
+    }
+
     private func buildRequest(path: String, method: String, authenticated: Bool = true) throws -> URLRequest {
         guard let url = URL(string: "\(baseURL)/\(path)") else {
             throw APIError.invalidURL

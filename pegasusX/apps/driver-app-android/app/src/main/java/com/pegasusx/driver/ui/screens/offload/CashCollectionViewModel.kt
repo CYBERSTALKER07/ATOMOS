@@ -14,6 +14,8 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.offline.DriverOfflineActionCatalog
+import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** ADR-009 cash path phases for driver UI. */
 enum class CashFiscalPhase {
@@ -64,6 +68,8 @@ class CashCollectionViewModel @Inject constructor(
     private val api: DriverApi,
     private val app: Application,
     private val driverWebSocket: DriverWebSocket,
+    private val offlineQueue: DriverOfflineQueue,
+    private val json: Json,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
@@ -220,6 +226,7 @@ class CashCollectionViewModel @Inject constructor(
                     }
                     return@launch
                 }
+                val ts = offlineQueue.nowIso()
                 // Settlement proximity unlock (≤100 m / H3) before cash collect.
                 runCatching {
                     api.proximityUnlock(
@@ -227,6 +234,7 @@ class CashCollectionViewModel @Inject constructor(
                             "order_id" to orderId,
                             "latitude" to location.latitude,
                             "longitude" to location.longitude,
+                            "client_timestamp" to ts,
                         ),
                         DriverIdempotencyKeys.proximityUnlock(orderId),
                     )
@@ -239,21 +247,55 @@ class CashCollectionViewModel @Inject constructor(
                             proximityMethod = unlock["proximity_method"]?.toString(),
                         )
                     }
+                }.onFailure { err ->
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(err)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_PROXIMITY,
+                            body = mapOf(
+                                "order_id" to orderId,
+                                "latitude" to location.latitude,
+                                "longitude" to location.longitude,
+                                "client_timestamp" to ts,
+                            ),
+                            idempotencyKey = DriverIdempotencyKeys.proximityUnlock(orderId),
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                    }
                 }
-                val resp = api.collectCash(
-                    request = CollectCashRequest(
-                        orderId = orderId,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        amountReceivedMinor = received,
-                        note = when {
-                            received < amount -> "shortfall"
-                            received > amount -> "overage"
-                            else -> null
-                        },
-                    ),
-                    idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
+                val cashReq = CollectCashRequest(
+                    orderId = orderId,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    amountReceivedMinor = received,
+                    note = when {
+                        received < amount -> "shortfall"
+                        received > amount -> "overage"
+                        else -> null
+                    },
                 )
+                val cashKey = DriverIdempotencyKeys.collectCash(orderId)
+                val resp = try {
+                    api.collectCash(request = cashReq, idempotencyKey = cashKey)
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueue(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_COLLECT_CASH,
+                            payloadJson = json.encodeToString(cashReq),
+                            idempotencyKey = cashKey,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isCompleting = false,
+                                error = "Offline — cash collect queued for sync",
+                            )
+                        }
+                        return@launch
+                    }
+                    throw e
+                }
                 val nextPhase = when (resp.state.uppercase()) {
                     "COMPLETED" -> CashFiscalPhase.DONE
                     "FISCAL_FAILED" -> CashFiscalPhase.FISCAL_FAILED

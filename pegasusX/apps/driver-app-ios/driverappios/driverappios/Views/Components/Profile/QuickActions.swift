@@ -2,15 +2,22 @@ import SwiftUI
 
 struct QuickActions: View {
     let onOfflineVerifier: () -> Void
+    let onSyncQueue: () -> Void
     let onEndSession: () -> Void
+    var pendingCount: Int = 0
     
     var body: some View {
         VStack(spacing: 10) {
             ActionRow(icon: "shield.checkered", title: "Offline Verifier", subtitle: "Hash manifest protocol") {
                 onOfflineVerifier()
             }
-            ActionRow(icon: "arrow.triangle.2.circlepath", title: "Sync Queue", subtitle: "Upload pending deliveries") {
+            ActionRow(
+                icon: "arrow.triangle.2.circlepath",
+                title: "Sync Queue",
+                subtitle: pendingCount > 0 ? "\(pendingCount) pending offline actions" : "Upload pending actions"
+            ) {
                 Haptics.light()
+                onSyncQueue()
             }
             ActionRow(icon: "gearshape.fill", title: "Settings", subtitle: "App configuration") {
                 Haptics.light()

@@ -236,12 +236,32 @@ struct ShopClosedWaitingView: View {
     // MARK: - API Calls
 
     private func reportShopClosed() async {
+        let ts = DriverOfflineActionCatalog.nowIso()
         do {
-            _ = try await APIClient.shared.reportShopClosed(orderId: orderId)
+            _ = try await APIClient.shared.reportShopClosed(
+                orderId: orderId,
+                clientTimestamp: ts
+            )
             isReporting = false
         } catch {
-            isReporting = false
-            reportError = "Failed to report: \(error.localizedDescription)"
+            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) {
+                DriverOfflineQueue.shared.enqueueJSONObject(
+                    endpoint: DriverOfflineActionCatalog.shopClosed,
+                    body: [
+                        "order_id": orderId,
+                        "reason": "CLOSED",
+                        "client_timestamp": ts,
+                    ],
+                    idempotencyKey: DriverIdempotency.reportShopClosed(orderId: orderId),
+                    orderId: orderId,
+                    clientTimestampIso: ts
+                )
+                isReporting = false
+                reportError = "Offline — shop-closed queued for sync"
+            } else {
+                isReporting = false
+                reportError = "Failed to report: \(error.localizedDescription)"
+            }
         }
     }
 

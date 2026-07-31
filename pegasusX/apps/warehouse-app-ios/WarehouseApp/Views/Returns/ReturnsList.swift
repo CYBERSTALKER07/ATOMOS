@@ -14,7 +14,7 @@ struct ReturnsList: View {
                 )
             } else {
                 ResponsiveGridContentWrapper {
-                    Section(isQueueTab ? "Arrived at gate" : "Completed receives") {
+                    Section(isQueueTab ? "Open at gate" : "Completed receives") {
                         ForEach(items) { item in
                             returnRow(item, selectable: isQueueTab)
                         }
@@ -28,13 +28,31 @@ struct ReturnsList: View {
     private func returnRow(_ item: InboundReturnRow, selectable: Bool) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text(item.productName)
-                    .font(.headline)
+                HStack {
+                    Text(item.productName.isEmpty ? item.returnId : item.productName)
+                        .font(.headline)
+                    if item.isClaimTicket {
+                        Text("Claim ticket")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.2))
+                            .clipShape(Capsule())
+                    }
+                }
                 Text("Qty \(item.receivedQty)/\(item.expectedQty) · \(item.reason)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if !item.driverName.isEmpty {
-                    Text("Driver: \(item.driverName)")
+                Text(item.driverName.isEmpty ? (item.isClaimTicket ? "store return" : "—") : "Driver: \(item.driverName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !item.suggestedDisposition.isEmpty {
+                    Text("Suggested: \(item.suggestedDisposition)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if !item.driverNotes.isEmpty {
+                    Text(item.driverNotes)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

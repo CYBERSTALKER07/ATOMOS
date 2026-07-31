@@ -146,9 +146,30 @@ interface WarehouseApi {
 
     @GET("v1/returns/inbound")
     suspend fun getInboundReturns(
-        @Query("physical_status") physicalStatus: String = "ARRIVED",
+        @Query("physical_status") physicalStatus: String = "OPEN",
         @Query("limit") limit: Int = 100,
     ): Response<InboundReturnListResponse>
+
+    @GET("v1/warehouse/reverse-logistics")
+    suspend fun getReverseLogistics(
+        @Query("status") status: String = "OPEN",
+        @Query("warehouse_id") warehouseId: String? = null,
+    ): Response<ReverseLogisticsListResponse>
+
+    @POST("v1/warehouse/reverse-logistics/{taskId}/receive")
+    suspend fun receiveReverseLogistics(
+        @Path("taskId") taskId: String,
+        @Body body: ReverseLogisticsReceiveRequest,
+    ): Response<ReverseLogisticsReceiveResponse>
+
+    @GET("v1/warehouse/ops/exceptions")
+    suspend fun getOpsExceptions(): Response<WarehouseOpsExceptionsResponse>
+
+    @GET("v1/supplier/claims")
+    suspend fun getSupplierClaims(
+        @Query("status") status: String? = "OPEN",
+        @Query("limit") limit: Int = 50,
+    ): Response<WarehouseClaimsResponse>
 
     @POST("v1/returns/inbound/sessions")
     suspend fun createInboundSession(
@@ -387,14 +408,14 @@ interface WarehouseApi {
     // ── Rescue Operations ──
     @POST("v1/warehouse/ops/dispatch/rescue/preview")
     suspend fun previewRescue(
-        @Body body: Map<String, @JvmSuppressWildcards Any>,
-    ): Response<Map<String, @JvmSuppressWildcards Any>>
+        @Body body: RescuePreviewRequest,
+    ): Response<RescuePreviewResponse>
 
     @POST("v1/warehouse/ops/dispatch/rescue/propose")
     suspend fun proposeRescue(
         @Header("Idempotency-Key") idempotencyKey: String,
-        @Body body: Map<String, @JvmSuppressWildcards Any>,
-    ): Response<Map<String, String>>
+        @Body body: RescueProposeRequest,
+    ): Response<RescueProposeResponse>
 
 
     // ── Notifications + client policy ──

@@ -50,17 +50,56 @@ interface RouteManifestDao {
 @Dao
 interface PendingMutationDao {
 
-    @Query("SELECT * FROM pending_mutations ORDER BY createdAt ASC")
+    @Query("SELECT * FROM pending_mutations WHERE status = 'PENDING' ORDER BY priority ASC, createdAt ASC")
+    suspend fun getPending(): List<PendingMutationEntity>
+
+    @Query("SELECT * FROM pending_mutations WHERE status = 'DEAD' ORDER BY createdAt DESC")
+    suspend fun getDead(): List<PendingMutationEntity>
+
+    @Query("SELECT * FROM pending_mutations ORDER BY priority ASC, createdAt ASC")
     suspend fun getAll(): List<PendingMutationEntity>
 
-    @Query("SELECT COUNT(*) FROM pending_mutations")
+    @Query("SELECT COUNT(*) FROM pending_mutations WHERE status = 'PENDING'")
+    fun observePendingCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM pending_mutations WHERE status = 'PENDING'")
     fun observeCount(): Flow<Int>
+
+    @Query("SELECT * FROM pending_mutations WHERE status = 'PENDING' ORDER BY priority ASC, createdAt ASC")
+    fun observePending(): Flow<List<PendingMutationEntity>>
+
+    @Query("SELECT * FROM pending_mutations WHERE status = 'DEAD' ORDER BY createdAt DESC")
+    fun observeDead(): Flow<List<PendingMutationEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(mutation: PendingMutationEntity)
 
     @Query("DELETE FROM pending_mutations WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM pending_mutations WHERE idempotencyKey = :key")
+    suspend fun deleteByIdempotencyKey(key: String)
+
+    @Query(
+        """
+        UPDATE pending_mutations
+        SET attemptCount = attemptCount + 1, lastError = :error
+        WHERE id = :id
+        """,
+    )
+    suspend fun recordAttempt(id: String, error: String)
+
+    @Query(
+        """
+        UPDATE pending_mutations
+        SET status = 'DEAD', lastError = :error, attemptCount = attemptCount + 1
+        WHERE id = :id
+        """,
+    )
+    suspend fun markDead(id: String, error: String)
+
+    @Query("DELETE FROM pending_mutations WHERE status = 'DEAD'")
+    suspend fun clearDead()
 }
 
 @Dao

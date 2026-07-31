@@ -1,6 +1,7 @@
 package com.pegasusx.driver.data.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -587,13 +588,23 @@ data class RouteManifestEntity(
     val fetchedAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "pending_mutations")
+@Entity(
+    tableName = "pending_mutations",
+    indices = [Index(value = ["status"]), Index(value = ["orderId"]), Index(value = ["idempotencyKey"], unique = true)],
+)
 data class PendingMutationEntity(
-    @PrimaryKey val id: String,          // UUID generated client-side
+    @PrimaryKey val id: String,          // UUID or deterministic key
     val endpoint: String,                 // e.g. "v1/order/deliver"
     val payloadJson: String,              // serialized request body
     val idempotencyKey: String,           // deterministic Idempotency-Key header
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val method: String = "POST",
+    val priority: Int = 40,
+    val clientTimestampIso: String = "",
+    val attemptCount: Int = 0,
+    val lastError: String = "",
+    val status: String = "PENDING",       // PENDING | DEAD
+    val orderId: String = "",
 )
 
 @Serializable

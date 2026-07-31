@@ -16,6 +16,8 @@ import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.MediaUploadService
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.offline.DriverOfflineActionCatalog
+import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +72,7 @@ class OffloadReviewViewModel @Inject constructor(
     private val api: DriverApi,
     private val driverWebSocket: DriverWebSocket,
     private val mediaUpload: MediaUploadService,
+    private val offlineQueue: DriverOfflineQueue,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
@@ -175,13 +178,42 @@ class OffloadReviewViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                val body = buildMap {
+                val ts = offlineQueue.nowIso()
+                val body = buildMap<String, Any?> {
                     put("order_id", orderId)
+                    put("client_timestamp", ts)
                     photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
                     forceBypassToken?.takeIf { it.isNotBlank() }?.let { put("force_bypass_token", it) }
                 }
-                api.markCreditDelivery(body, DriverIdempotencyKeys.creditDelivery(orderId))
-                _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+                val key = DriverIdempotencyKeys.creditDelivery(orderId)
+                try {
+                    api.markCreditDelivery(
+                        body.mapValues { it.value?.toString().orEmpty() },
+                        key,
+                    )
+                    _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_CREDIT,
+                            body = body,
+                            idempotencyKey = key,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                creditDeliveryRecorded = true,
+                                error = "Offline — credit leave queued for sync",
+                            )
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
@@ -194,15 +226,16 @@ class OffloadReviewViewModel @Inject constructor(
     fun unlockProximity(latitude: Double, longitude: Double) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
+            val ts = offlineQueue.nowIso()
+            val body = mapOf(
+                "order_id" to orderId,
+                "latitude" to latitude,
+                "longitude" to longitude,
+                "client_timestamp" to ts,
+            )
+            val key = DriverIdempotencyKeys.proximityUnlock(orderId)
             try {
-                val resp = api.proximityUnlock(
-                    mapOf(
-                        "order_id" to orderId,
-                        "latitude" to latitude,
-                        "longitude" to longitude,
-                    ),
-                    DriverIdempotencyKeys.proximityUnlock(orderId),
-                )
+                val resp = api.proximityUnlock(body, key)
                 val unlocked = (resp["proximity_unlocked"] as? Boolean) == true
                     || resp["proximity_unlocked"]?.toString() == "true"
                 val method = resp["proximity_method"]?.toString()
@@ -215,8 +248,24 @@ class OffloadReviewViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _state.update {
-                    it.copy(isSubmitting = false, error = e.message ?: "Proximity unlock failed")
+                if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                    offlineQueue.enqueueMap(
+                        endpoint = DriverOfflineActionCatalog.ENDPOINT_PROXIMITY,
+                        body = body,
+                        idempotencyKey = key,
+                        orderId = orderId,
+                        clientTimestampIso = ts,
+                    )
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Offline — proximity unlock queued for sync",
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(isSubmitting = false, error = e.message ?: "Proximity unlock failed")
+                    }
                 }
             }
         }
@@ -244,15 +293,39 @@ class OffloadReviewViewModel @Inject constructor(
                 val fingerprint = lines.joinToString("|") {
                     "${it["sku"]}:${it["delivered_qty"]}:${it["remaining_qty"]}"
                 }
-                api.partialOffload(
-                    mapOf(
-                        "order_id" to orderId,
-                        "lines" to lines,
-                    ),
-                    DriverIdempotencyKeys.partialOffload(orderId, fingerprint),
+                val ts = offlineQueue.nowIso()
+                val body = mapOf(
+                    "order_id" to orderId,
+                    "lines" to lines,
+                    "client_timestamp" to ts,
                 )
-                _state.update {
-                    it.copy(isSubmitting = false, partialOffloadRecorded = true)
+                val key = DriverIdempotencyKeys.partialOffload(orderId, fingerprint)
+                try {
+                    api.partialOffload(body, key)
+                    _state.update {
+                        it.copy(isSubmitting = false, partialOffloadRecorded = true)
+                    }
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_PARTIAL,
+                            body = body,
+                            idempotencyKey = key,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                partialOffloadRecorded = true,
+                                error = "Offline — partial offload queued for sync",
+                            )
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(isSubmitting = false, error = e.message ?: "Partial offload failed")
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _state.update {

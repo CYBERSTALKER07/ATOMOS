@@ -192,7 +192,7 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/returns")
     }
 
-    static func inboundReturns(physicalStatus: String = "ARRIVED", limit: Int = 100) async throws -> InboundReturnListResponse {
+    static func inboundReturns(physicalStatus: String = "OPEN", limit: Int = 100) async throws -> InboundReturnListResponse {
         try await api.get(
             "v1/returns/inbound",
             query: ["physical_status": physicalStatus, "limit": String(limit)]
@@ -201,6 +201,38 @@ enum WarehouseService {
 
     static func returnsHistory(limit: Int = 50) async throws -> InboundReturnListResponse {
         try await api.get("v1/returns/history", query: ["limit": String(limit)])
+    }
+
+    static func reverseLogistics(status: String = "OPEN", warehouseId: String? = nil) async throws -> ReverseLogisticsListResponse {
+        var query = ["status": status]
+        if let warehouseId, !warehouseId.isEmpty {
+            query["warehouse_id"] = warehouseId
+        }
+        return try await api.get("v1/warehouse/reverse-logistics", query: query)
+    }
+
+    static func receiveReverseLogistics(
+        taskId: String,
+        warehouseId: String,
+        receivedQty: [String: Int]
+    ) async throws -> [String: String] {
+        let body = ReverseLogisticsReceiveRequest(warehouseId: warehouseId, receivedQty: receivedQty)
+        return try await api.post(
+            "v1/warehouse/reverse-logistics/\(taskId)/receive",
+            body: body
+        )
+    }
+
+    static func opsExceptions() async throws -> WarehouseOpsExceptionsResponse {
+        try await api.get("v1/warehouse/ops/exceptions")
+    }
+
+    static func supplierClaims(status: String? = "OPEN", limit: Int = 50) async throws -> WarehouseClaimsResponse {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty {
+            query["status"] = status
+        }
+        return try await api.get("v1/supplier/claims", query: query)
     }
 
     static func createInboundSession() async throws -> String {
@@ -259,10 +291,10 @@ enum WarehouseService {
     }
 
     /// POST /v1/warehouse/ops/dispatch/rescue/preview — { broken_driver_id }
-    static func previewRescue(brokenDriverId: String) async throws -> [String: AnyCodable] {
+    static func previewRescue(brokenDriverId: String) async throws -> RescuePreviewResponse {
         try await api.post(
             "v1/warehouse/ops/dispatch/rescue/preview",
-            body: ["broken_driver_id": brokenDriverId]
+            body: RescuePreviewRequest(brokenDriverId: brokenDriverId)
         )
     }
 
@@ -273,12 +305,12 @@ enum WarehouseService {
         rescueDriverId: String,
         forceCapacity: Bool = false
     ) async throws -> [String: String] {
-        let body: [String: AnyCodable] = [
-            "rescue_id": AnyCodable(rescueId),
-            "broken_driver_id": AnyCodable(brokenDriverId),
-            "rescue_driver_id": AnyCodable(rescueDriverId),
-            "force_capacity": AnyCodable(forceCapacity),
-        ]
+        let body = RescueProposeRequest(
+            rescueId: rescueId,
+            brokenDriverId: brokenDriverId,
+            rescueDriverId: rescueDriverId,
+            forceCapacity: forceCapacity
+        )
         return try await api.post(
             "v1/warehouse/ops/dispatch/rescue/propose",
             body: body,

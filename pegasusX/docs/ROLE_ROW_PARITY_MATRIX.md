@@ -11,8 +11,8 @@
 |------|---------|---------|-----------|-------------|
 | SUPPLIER | portal, Android, iOS | supplierroutes + finance/claims/pulse | **Wired** | Negotiations product-deferred |
 | RETAILER | desktop, Android, iOS | retailerroutes, order, payment, credit | **Wired** | Credit profile on all three |
-| DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | scan-qr doorstep; rescue+earnings bound |
-| WAREHOUSE | portal, Android, iOS | warehouseroutes | **Wired** | Rescue preview/propose; reverse-log portal-deferred |
+| DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | scan-qr doorstep; offline flush orchestrator; rescue+earnings |
+| WAREHOUSE | portal, Android, iOS | warehouseroutes | **Wired** | Reverse-log + exceptions + claims + rescues on portal/Android/iOS |
 | FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Staff POST + exception resolve |
 | PAYLOAD | terminal, Android, iOS | payloaderroutes | **Wired** | Seal/inject/reassign/returns |
 
@@ -42,8 +42,6 @@
 | Item | Owner |
 |------|-------|
 | Quantity negotiations | Product |
-| WH reverse-logistics / exceptions mobile | Ops / mobile |
-| Driver offline flush orchestrator | Driver mobile |
 | Soliq OFD | Tax / ops |
 | SSMR DNS + GP SUCCESS + marker log | Cloud ops |
 

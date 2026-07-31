@@ -25,7 +25,7 @@ See also: `docs/CLAIM_ROLE_ROW.md`.
 | Retailer desktop/Android/iOS enhanced response codes | Wired | RESCHEDULE / CREDIT_LEAVE / CANCEL / AUTHORIZE_BYPASS labels |
 | Supplier portal + Android + iOS queue fields | Wired | grace_ends_at, reason, shop_closed_resolution |
 | Spanner DDL applied on live SSMR | **Pending ops** | Migration `20260729_shop_closed_proximity_partial.ddl` |
-| Offline action queue (full driver offline flush orchestrator) | **Deferred** | Idempotency keys + client_timestamp fields present; full queue UX next |
+| Offline action queue (full driver offline flush orchestrator) | **Wired** | Android Room/WorkManager + iOS QueuedDriverAction/BGTask; Sync Queue UI; 4.1 order; dead-letter |
 | AUTHORIZE_BYPASS photo capture on retailer | Partial | Code requires photo_url; camera UX not expanded on all clients |
 
 See: `docs/big-platform-baseline/last-mile/`.
@@ -40,10 +40,10 @@ See: `docs/big-platform-baseline/last-mile/`.
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Reverse-logistics panel + exceptions hub on warehouse mobile | **Deferred** | Portal-first; inbound returns wired on Android/iOS |
+| Reverse-logistics panel + exceptions hub on warehouse mobile | **Wired** | Android + iOS: credit-note receive, exceptions triage, claims read-only, rescues UI; inbound OPEN + claim-ticket fields |
 
-## Offline driver action queue (unchanged)
+## Offline driver action queue (2026-08-01)
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Full offline flush orchestrator | **Deferred** | Idempotency keys present; UX after P0–P4 closure |
+| Full offline flush orchestrator | **Wired** | Android Room + WorkManager + Sync Queue UI; iOS QueuedDriverAction + BGTask; 4.1 flush order; client_timestamp; dead-letter |

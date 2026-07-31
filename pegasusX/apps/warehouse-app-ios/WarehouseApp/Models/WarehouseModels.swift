@@ -968,7 +968,16 @@ struct InboundReturnRow: Decodable, Identifiable {
     let reason: String
     let physicalStatus: String
     let driverName: String
+    let driverNotes: String
+    let suggestedDisposition: String
     let barcode: String?
+
+    var isClaimTicket: Bool {
+        let notes = driverNotes.lowercased()
+        return notes.contains("claim_id=")
+            || notes.contains("source=retailer_claim")
+            || notes.contains("source=claim")
+    }
 
     enum CodingKeys: String, CodingKey {
         case returnId = "return_id"
@@ -979,7 +988,283 @@ struct InboundReturnRow: Decodable, Identifiable {
         case reason
         case physicalStatus = "physical_status"
         case driverName = "driver_name"
+        case driverNotes = "driver_notes"
+        case suggestedDisposition = "suggested_disposition"
         case barcode
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        returnId = try c.decode(String.self, forKey: .returnId)
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
+        expectedQty = try c.decodeIfPresent(Int.self, forKey: .expectedQty) ?? 0
+        receivedQty = try c.decodeIfPresent(Int.self, forKey: .receivedQty) ?? 0
+        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        physicalStatus = try c.decodeIfPresent(String.self, forKey: .physicalStatus) ?? ""
+        driverName = try c.decodeIfPresent(String.self, forKey: .driverName) ?? ""
+        driverNotes = try c.decodeIfPresent(String.self, forKey: .driverNotes) ?? ""
+        suggestedDisposition = try c.decodeIfPresent(String.self, forKey: .suggestedDisposition) ?? ""
+        barcode = try c.decodeIfPresent(String.self, forKey: .barcode)
+    }
+}
+
+// MARK: - Credit-note reverse logistics
+
+struct ReverseLogisticsTask: Decodable, Identifiable {
+    var id: String { taskId }
+    let taskId: String
+    let orderId: String
+    let status: String
+    let warehouseId: String
+    let expectedQtyJson: String?
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case orderId = "order_id"
+        case status
+        case warehouseId = "warehouse_id"
+        case expectedQtyJson = "expected_qty_json"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        taskId = try c.decodeIfPresent(String.self, forKey: .taskId) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        expectedQtyJson = try c.decodeIfPresent(String.self, forKey: .expectedQtyJson)
+    }
+}
+
+struct ReverseLogisticsListResponse: Decodable {
+    let tasks: [ReverseLogisticsTask]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        tasks = try c.decodeIfPresent([ReverseLogisticsTask].self, forKey: .tasks) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case tasks }
+}
+
+struct ReverseLogisticsReceiveRequest: Encodable {
+    let warehouseId: String
+    let receivedQty: [String: Int]
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case receivedQty = "received_qty"
+    }
+}
+
+// MARK: - Ops exceptions triage
+
+struct DeliveryExpectationWire: Decodable {
+    let targetLabel: String
+
+    enum CodingKeys: String, CodingKey {
+        case targetLabel = "target_label"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        targetLabel = try c.decodeIfPresent(String.self, forKey: .targetLabel) ?? ""
+    }
+}
+
+struct WarehouseOpsException: Decodable, Identifiable {
+    var id: String {
+        if !exceptionId.isEmpty { return exceptionId }
+        return "\(kind)-\(orderId)-\(manifestId)-\(updatedAt)"
+    }
+
+    let exceptionId: String
+    let kind: String
+    let orderId: String
+    let manifestId: String
+    let reason: String
+    let status: String
+    let updatedAt: String
+    let deliveryExpectation: DeliveryExpectationWire?
+
+    enum CodingKeys: String, CodingKey {
+        case exceptionId = "exception_id"
+        case kind
+        case orderId = "order_id"
+        case manifestId = "manifest_id"
+        case reason, status
+        case updatedAt = "updated_at"
+        case deliveryExpectation = "delivery_expectation"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptionId = try c.decodeIfPresent(String.self, forKey: .exceptionId) ?? ""
+        kind = try c.decodeIfPresent(String.self, forKey: .kind) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+        deliveryExpectation = try c.decodeIfPresent(DeliveryExpectationWire.self, forKey: .deliveryExpectation)
+    }
+}
+
+struct WarehouseOpsExceptionsResponse: Decodable {
+    let exceptions: [WarehouseOpsException]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptions = try c.decodeIfPresent([WarehouseOpsException].self, forKey: .exceptions) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case exceptions }
+}
+
+// MARK: - Claims (read-only)
+
+struct WarehouseClaimLine: Decodable, Identifiable {
+    var id: String { "\(sku)-\(quantity)" }
+    let sku: String
+    let quantity: Int
+    let reason: String
+    let amountMinor: Int
+
+    enum CodingKeys: String, CodingKey {
+        case sku, quantity, reason
+        case amountMinor = "amount_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sku = try c.decodeIfPresent(String.self, forKey: .sku) ?? ""
+        quantity = try c.decodeIfPresent(Int.self, forKey: .quantity) ?? 0
+        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        amountMinor = try c.decodeIfPresent(Int.self, forKey: .amountMinor) ?? 0
+    }
+}
+
+struct WarehouseClaim: Decodable, Identifiable {
+    var id: String { claimId }
+    let claimId: String
+    let orderId: String
+    let retailerId: String
+    let claimType: String
+    let status: String
+    let amountMinor: Int
+    let currency: String
+    let description: String
+    let lineItems: [WarehouseClaimLine]
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case claimId = "claim_id"
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case claimType = "claim_type"
+        case status
+        case amountMinor = "amount_minor"
+        case currency, description
+        case lineItems = "line_items"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claimId = try c.decodeIfPresent(String.self, forKey: .claimId) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId) ?? ""
+        claimType = try c.decodeIfPresent(String.self, forKey: .claimType) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        amountMinor = try c.decodeIfPresent(Int.self, forKey: .amountMinor) ?? 0
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        lineItems = try c.decodeIfPresent([WarehouseClaimLine].self, forKey: .lineItems) ?? []
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+    }
+}
+
+struct WarehouseClaimsResponse: Decodable {
+    let claims: [WarehouseClaim]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claims = try c.decodeIfPresent([WarehouseClaim].self, forKey: .claims) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case claims }
+}
+
+// MARK: - Fleet rescue
+
+struct RescuePreviewRequest: Encodable {
+    let brokenDriverId: String
+
+    enum CodingKeys: String, CodingKey {
+        case brokenDriverId = "broken_driver_id"
+    }
+}
+
+struct RescueOption: Decodable, Identifiable {
+    var id: String { driverId }
+    let driverId: String
+    let name: String
+    let licensePlate: String
+    let truckStatus: String
+    let effectiveCapacityVu: Double
+    let isCapacityExceeded: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case name
+        case licensePlate = "license_plate"
+        case truckStatus = "truck_status"
+        case effectiveCapacityVu = "effective_capacity_vu"
+        case isCapacityExceeded = "is_capacity_exceeded"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        licensePlate = try c.decodeIfPresent(String.self, forKey: .licensePlate) ?? ""
+        truckStatus = try c.decodeIfPresent(String.self, forKey: .truckStatus) ?? ""
+        effectiveCapacityVu = try c.decodeIfPresent(Double.self, forKey: .effectiveCapacityVu) ?? 0
+        isCapacityExceeded = try c.decodeIfPresent(Bool.self, forKey: .isCapacityExceeded) ?? false
+    }
+}
+
+struct RescuePreviewResponse: Decodable {
+    let brokenDriverId: String
+    let pendingVolumeVu: Double
+    let rescueOptions: [RescueOption]
+
+    enum CodingKeys: String, CodingKey {
+        case brokenDriverId = "broken_driver_id"
+        case pendingVolumeVu = "pending_volume_vu"
+        case rescueOptions = "rescue_options"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        brokenDriverId = try c.decodeIfPresent(String.self, forKey: .brokenDriverId) ?? ""
+        pendingVolumeVu = try c.decodeIfPresent(Double.self, forKey: .pendingVolumeVu) ?? 0
+        rescueOptions = try c.decodeIfPresent([RescueOption].self, forKey: .rescueOptions) ?? []
+    }
+}
+
+struct RescueProposeRequest: Encodable {
+    let rescueId: String
+    let brokenDriverId: String
+    let rescueDriverId: String
+    let forceCapacity: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case rescueId = "rescue_id"
+        case brokenDriverId = "broken_driver_id"
+        case rescueDriverId = "rescue_driver_id"
+        case forceCapacity = "force_capacity"
     }
 }
 

@@ -433,12 +433,137 @@ data class InboundReturnRow(
     val reason: String = "",
     @SerialName("physical_status") val physicalStatus: String = "",
     @SerialName("driver_name") val driverName: String = "",
+    @SerialName("driver_notes") val driverNotes: String = "",
+    @SerialName("suggested_disposition") val suggestedDisposition: String = "",
     val barcode: String = "",
-)
+) {
+    val isClaimTicket: Boolean
+        get() {
+            val notes = driverNotes.lowercase()
+            return notes.contains("claim_id=") ||
+                notes.contains("source=retailer_claim") ||
+                notes.contains("source=claim")
+        }
+}
 
 @Serializable
 data class InboundReturnListResponse(
     val data: List<InboundReturnRow> = emptyList(),
+)
+
+// ── Credit-note reverse logistics ──
+@Serializable
+data class ReverseLogisticsTask(
+    @SerialName("task_id") val taskId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    val status: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("expected_qty_json") val expectedQtyJson: String? = null,
+)
+
+@Serializable
+data class ReverseLogisticsListResponse(
+    val tasks: List<ReverseLogisticsTask> = emptyList(),
+)
+
+@Serializable
+data class ReverseLogisticsReceiveRequest(
+    @SerialName("warehouse_id") val warehouseId: String,
+    @SerialName("received_qty") val receivedQty: Map<String, Long> = emptyMap(),
+)
+
+@Serializable
+data class ReverseLogisticsReceiveResponse(
+    val status: String = "",
+    val error: String? = null,
+)
+
+// ── Ops exceptions triage ──
+@Serializable
+data class DeliveryExpectationWire(
+    @SerialName("target_label") val targetLabel: String = "",
+)
+
+@Serializable
+data class WarehouseOpsException(
+    @SerialName("exception_id") val exceptionId: String = "",
+    val kind: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    val reason: String = "",
+    val status: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("delivery_expectation") val deliveryExpectation: DeliveryExpectationWire? = null,
+)
+
+@Serializable
+data class WarehouseOpsExceptionsResponse(
+    val exceptions: List<WarehouseOpsException> = emptyList(),
+)
+
+// ── Claims (read-only reverse-log prep) ──
+@Serializable
+data class WarehouseClaimLine(
+    val sku: String = "",
+    val quantity: Long = 0,
+    val reason: String = "",
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+)
+
+@Serializable
+data class WarehouseClaim(
+    @SerialName("claim_id") val claimId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("claim_type") val claimType: String = "",
+    val status: String = "",
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    val currency: String = "UZS",
+    val description: String = "",
+    @SerialName("line_items") val lineItems: List<WarehouseClaimLine> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class WarehouseClaimsResponse(
+    val claims: List<WarehouseClaim> = emptyList(),
+)
+
+// ── Fleet rescue ──
+@Serializable
+data class RescuePreviewRequest(
+    @SerialName("broken_driver_id") val brokenDriverId: String,
+)
+
+@Serializable
+data class RescueOption(
+    @SerialName("driver_id") val driverId: String = "",
+    val name: String = "",
+    @SerialName("license_plate") val licensePlate: String = "",
+    @SerialName("truck_status") val truckStatus: String = "",
+    @SerialName("effective_capacity_vu") val effectiveCapacityVu: Double = 0.0,
+    @SerialName("is_capacity_exceeded") val isCapacityExceeded: Boolean = false,
+)
+
+@Serializable
+data class RescuePreviewResponse(
+    @SerialName("broken_driver_id") val brokenDriverId: String = "",
+    @SerialName("pending_volume_vu") val pendingVolumeVu: Double = 0.0,
+    @SerialName("rescue_options") val rescueOptions: List<RescueOption> = emptyList(),
+)
+
+@Serializable
+data class RescueProposeRequest(
+    @SerialName("rescue_id") val rescueId: String,
+    @SerialName("broken_driver_id") val brokenDriverId: String,
+    @SerialName("rescue_driver_id") val rescueDriverId: String,
+    @SerialName("force_capacity") val forceCapacity: Boolean = false,
+)
+
+@Serializable
+data class RescueProposeResponse(
+    val status: String = "",
+    val error: String? = null,
 )
 
 // ── Treasury ──

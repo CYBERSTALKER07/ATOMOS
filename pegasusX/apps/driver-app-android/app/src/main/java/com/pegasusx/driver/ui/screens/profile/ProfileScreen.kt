@@ -25,7 +25,12 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.screens.profile.components.*
 
 @Composable
-fun ProfileScreen(viewModel: ManifestViewModel) {
+fun ProfileScreen(
+    viewModel: ManifestViewModel,
+    onOfflineVerifier: () -> Unit = {},
+    onSyncQueue: () -> Unit = {},
+    pendingCount: Int = 0,
+) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
     var showEndSession by remember { mutableStateOf(false) }
@@ -71,7 +76,12 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
 
         // MARK: - Quick Actions
         StaggeredAppear(index = 1) {
-            QuickActions(onEndSession = { showEndSession = true })
+            QuickActions(
+                onEndSession = { showEndSession = true },
+                onOfflineVerifier = onOfflineVerifier,
+                onSyncQueue = onSyncQueue,
+                pendingCount = pendingCount,
+            )
         }
 
         Spacer(modifier = Modifier.height(PegasusSpacing.s24))

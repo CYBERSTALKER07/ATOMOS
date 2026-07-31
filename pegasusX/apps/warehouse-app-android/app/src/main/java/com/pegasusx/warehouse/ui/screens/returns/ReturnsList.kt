@@ -29,7 +29,7 @@ fun ReturnsList(
     items: List<InboundReturnRow>,
     isQueueTab: Boolean,
     selected: Set<String>,
-    onToggleSelect: (String) -> Unit
+    onToggleSelect: (String) -> Unit,
 ) {
     if (items.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -47,7 +47,6 @@ fun ReturnsList(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(items, key = { it.returnId }) { r ->
-                val checked = selected.contains(r.returnId)
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
@@ -59,23 +58,50 @@ fun ReturnsList(
                     Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                r.productName,
+                                r.productName.ifBlank { r.returnId },
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.weight(1f),
                             )
                             AssistChip(onClick = {}, label = { Text(r.physicalStatus) })
                         }
+                        if (r.isClaimTicket) {
+                            Spacer(Modifier.height(PegasusSpacing.xs))
+                            AssistChip(onClick = {}, label = { Text("Claim ticket") })
+                        }
                         Spacer(Modifier.height(PegasusSpacing.xs))
                         Text(
-                            "Qty: ${r.receivedQty}/${r.expectedQty} · ${r.reason} · ${r.driverName}",
+                            "Qty: ${r.receivedQty}/${r.expectedQty} · ${r.reason} · ${
+                                r.driverName.ifBlank { if (r.isClaimTicket) "store return" else "—" }
+                            }",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (r.suggestedDisposition.isNotBlank()) {
+                            Text(
+                                "Suggested: ${r.suggestedDisposition}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (r.driverNotes.isNotBlank()) {
+                            Text(
+                                r.driverNotes,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (r.barcode.isNotBlank()) {
                             Text(
                                 "EAN ${r.barcode}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (isQueueTab && selected.contains(r.returnId)) {
+                            Text(
+                                "Selected",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
                     }

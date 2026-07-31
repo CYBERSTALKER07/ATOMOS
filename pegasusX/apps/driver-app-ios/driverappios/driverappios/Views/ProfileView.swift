@@ -11,7 +11,9 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var vm: FleetViewModel
     @State private var showOfflineVerifier = false
+    @State private var showSyncQueue = false
     @State private var showEndSession = false
+    @State private var pendingCount = 0
 
     var body: some View {
         ScrollView {
@@ -25,7 +27,9 @@ struct ProfileView: View {
                 // MARK: - Quick Actions
                 QuickActions(
                     onOfflineVerifier: { showOfflineVerifier = true },
-                    onEndSession: { showEndSession = true }
+                    onSyncQueue: { showSyncQueue = true },
+                    onEndSession: { showEndSession = true },
+                    pendingCount: pendingCount
                 )
 
                 // MARK: - Ride History
@@ -43,18 +47,28 @@ struct ProfileView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showSyncQueue) {
+            SyncQueueView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showEndSession) {
             EndSessionView(vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
         }
         .task {
+            DriverOfflineQueue.shared.attach(container: modelContext.container)
+            pendingCount = DriverOfflineQueue.shared.pendingCount()
             await vm.loadEarningsAndHistory()
+        }
+        .onChange(of: showSyncQueue) { _, open in
+            if !open { pendingCount = DriverOfflineQueue.shared.pendingCount() }
         }
     }
 }
 
 #Preview {
     ProfileView(vm: FleetViewModel())
-        .modelContainer(for: OfflineDelivery.self, inMemory: true)
+        .modelContainer(for: [OfflineDelivery.self, QueuedDriverAction.self], inMemory: true)
 }

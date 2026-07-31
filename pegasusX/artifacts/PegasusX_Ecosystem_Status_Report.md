@@ -68,10 +68,10 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 |------|-----------|-------|
 | Retailer | 9/9 | Credit profile on all three |
 | Supplier | 12/13 | Negotiations **product-deferred**; finance mutations wired |
-| Warehouse | 7/8 | Reverse-logistics panel portal-deferred; control tower uses JWT supplier |
+| Warehouse | 8/8 | Reverse-logistics + exceptions + claims + rescues on all three; control tower uses JWT supplier |
 | Factory | 7/7 | Staff create + exception resolve |
 | Payload | 7/7 | Unchanged strongest row |
-| Driver | 8/9 | Offline queue still deferred |
+| Driver | 9/9 | Offline flush orchestrator wired (Room/SwiftData + Sync Queue + BGTask) |
 
 ---
 
@@ -91,8 +91,6 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 ## Remaining deferred (parity-ledger)
 
 - Quantity negotiations (product)
-- Warehouse reverse-logistics / exceptions mobile (portal-first)
-- Full driver offline flush orchestrator
 - Soliq OFD legal receipts
 - Cloud DNS / GP SUCCESS / SSMR marker log proof
 
