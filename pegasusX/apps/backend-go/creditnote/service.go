@@ -209,6 +209,14 @@ func (s *Service) ReceiveReverseTask(ctx context.Context, taskID, warehouseID st
 	return s.repo.ReceiveReverseLogisticsTask(ctx, taskID, warehouseID, raw, actor)
 }
 
+func (s *Service) OrderLinesForCredit(ctx context.Context, orderID string) ([]CreditNoteLine, error) {
+	return s.repo.GetDeliveredOrderLines(ctx, orderID)
+}
+
+func (s *Service) ListReverseTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {
+	return s.repo.ListReverseLogisticsTasks(ctx, warehouseID, status, limit)
+}
+
 // ClaimsBridge adapts Service for claims.CreditNoteCreator.
 type ClaimsBridge struct {
 	Svc *Service

@@ -10,6 +10,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 
 import { ReturnsList, type InboundRow, isClaimTicket } from '@/components/returns/ReturnsList';
+import { ReverseLogisticsPanel } from '@/components/returns/ReverseLogisticsPanel';
 
 export default function ReturnsPage() {
   const [rows, setRows] = useState<InboundRow[]>([]);
@@ -179,6 +180,10 @@ export default function ReturnsPage() {
             return n;
           })}
         />
+        <section className="mt-8 p-4 border rounded-lg bg-white">
+          <h2 className="text-lg font-semibold mb-2">Credit note reverse logistics</h2>
+          <ReverseLogisticsPanel />
+        </section>
       </PageChrome>
     </PageTransition>
   );

@@ -167,6 +167,12 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 		}
 	}
 
+	if s.afterSensingHook != nil {
+		if err := s.afterSensingHook(ctx); err != nil {
+			return fmt.Errorf("after sensing hook: %w", err)
+		}
+	}
+
 	return nil
 }
 

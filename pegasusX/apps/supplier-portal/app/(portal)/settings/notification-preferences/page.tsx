@@ -13,9 +13,10 @@ type Pref = {
 };
 
 const DEFAULT_EVENTS = [
-  { event_type: "cash_reconciliation.discrepancy", channel: "PUSH" },
-  { event_type: "order.exception", channel: "PUSH" },
-  { event_type: "credit.freeze", channel: "EMAIL" },
+  { event_type: "cash_reconciliation.created", channel: "PUSH" },
+  { event_type: "cash_reconciliation.escalation", channel: "PUSH" },
+  { event_type: "credit_note.created", channel: "PUSH" },
+  { event_type: "credit.score.updated", channel: "EMAIL" },
 ];
 
 export default function NotificationPreferencesPage() {

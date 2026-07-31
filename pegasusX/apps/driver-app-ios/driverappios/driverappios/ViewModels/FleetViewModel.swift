@@ -416,10 +416,40 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             await loadMissions()
         } catch {
             let msg = "\(error)"
-            if msg.localizedCaseInsensitiveContains("open_fiscal_block") {
+            if msg.localizedCaseInsensitiveContains("cash_reconciliation_required") {
+                showCashReconSheet = true
+                deliveryEdgeMessage = "Submit cash reconciliation before ending shift."
+                await loadCashReconciliations()
+            } else if msg.localizedCaseInsensitiveContains("open_fiscal_block") {
                 deliveryEdgeMessage = "Cash bag frozen: clear fiscalizing orders before ending shift."
             }
-            // Driver can retry after clearing fiscal.
+            // Driver can retry after clearing fiscal or cash recon.
+        }
+    }
+
+    var showCashReconSheet = false
+    var cashReconciliations: [APIClient.CashReconciliationRow] = []
+    var declaredCashText = ""
+
+    func loadCashReconciliations() async {
+        do {
+            let resp = try await APIClient.shared.listCashReconciliations()
+            cashReconciliations = resp.reconciliations
+        } catch {
+            cashReconciliations = []
+        }
+    }
+
+    func submitCashReconciliation() async {
+        let minor = Int64(declaredCashText.filter { $0.isNumber }) ?? 0
+        do {
+            _ = try await APIClient.shared.submitCashReconciliation(declaredCashMinor: minor, driverNote: nil)
+            showCashReconSheet = false
+            declaredCashText = ""
+            await loadCashReconciliations()
+            deliveryEdgeMessage = "Cash reconciliation submitted"
+        } catch {
+            deliveryEdgeMessage = "Cash reconciliation failed"
         }
     }
 

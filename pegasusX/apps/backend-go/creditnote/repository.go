@@ -13,5 +13,6 @@ type Repository interface {
 	GetClaimOrder(ctx context.Context, claimID string) (orderID string, amountMinor int64, ok bool, err error)
 	SaveReverseLogisticsTask(ctx context.Context, task ReverseLogisticsTask, eventType string) error
 	GetReverseLogisticsTask(ctx context.Context, taskID string) (*ReverseLogisticsTask, error)
+	ListReverseLogisticsTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error)
 	ReceiveReverseLogisticsTask(ctx context.Context, taskID string, warehouseID string, receivedJSON []byte, actor string) error
 }

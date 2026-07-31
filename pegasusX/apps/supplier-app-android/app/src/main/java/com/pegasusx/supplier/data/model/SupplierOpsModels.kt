@@ -1047,3 +1047,65 @@ data class ControlTowerZoneOverrideCreateRequest(
     @SerialName("ttl_seconds") val ttlSeconds: Int = 1800,
     @SerialName("polygon_geojson") val polygonGeojson: GeoJSONPolygonPayload,
 )
+
+@Serializable
+data class CashReconciliationRow(
+    @SerialName("reconciliation_id") val reconciliationId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    val status: String = "",
+    @SerialName("difference_minor") val differenceMinor: Long = 0,
+)
+
+@Serializable
+data class CashReconciliationsResponse(
+    val reconciliations: List<CashReconciliationRow> = emptyList(),
+)
+
+@Serializable
+data class CreditNoteRow(
+    @SerialName("credit_note_id") val creditNoteId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    val status: String = "",
+    @SerialName("total_gross_minor") val totalGrossMinor: Long = 0,
+)
+
+@Serializable
+data class CreditNotesResponse(
+    @SerialName("credit_notes") val creditNotes: List<CreditNoteRow> = emptyList(),
+)
+
+@Serializable
+data class RoutePerformanceRow(
+    @SerialName("route_id") val routeId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("orders_completed") val ordersCompleted: Int = 0,
+)
+
+@Serializable
+data class RoutePerformanceResponse(
+    val routes: List<RoutePerformanceRow> = emptyList(),
+)
+
+@Serializable
+data class NotificationPreferenceRow(
+    @SerialName("event_type") val eventType: String = "",
+    val channel: String = "",
+    val enabled: Boolean = true,
+    @SerialName("quiet_from") val quietFrom: String? = null,
+    @SerialName("quiet_to") val quietTo: String? = null,
+)
+
+@Serializable
+data class NotificationPreferencesResponse(
+    val preferences: List<NotificationPreferenceRow> = emptyList(),
+)
+
+@Serializable
+data class NotificationPreferencesPatchRequest(
+    val preferences: List<NotificationPreferenceRow> = emptyList(),
+)
+
+@Serializable
+data class StatusResponse(
+    val status: String = "",
+)

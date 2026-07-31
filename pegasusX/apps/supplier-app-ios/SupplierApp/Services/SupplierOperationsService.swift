@@ -25,6 +25,22 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/compliance/dashboard?limit=\(limit)")
     }
 
+    static func cashReconciliations() async throws -> CashReconciliationsResponse {
+        try await APIClient.shared.get("v1/supplier/cash-reconciliations")
+    }
+
+    static func creditNotes() async throws -> CreditNotesResponse {
+        try await APIClient.shared.get("v1/supplier/credit-notes?status=DRAFT&limit=100")
+    }
+
+    static func routePerformance() async throws -> RoutePerformanceResponse {
+        try await APIClient.shared.get("v1/supplier/route-performance")
+    }
+
+    static func notificationPreferences() async throws -> NotificationPreferencesResponse {
+        try await APIClient.shared.get("v1/user/notification-preferences")
+    }
+
     static func negotiationsPending(limit: Int = 500, offset: Int = 0) async throws -> [NegotiationProposalRow] {
         let resp: NegotiationPendingResponse = try await APIClient.shared.get(
             "v1/supplier/negotiations/pending?limit=\(limit)&offset=\(offset)"

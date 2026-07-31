@@ -72,6 +72,10 @@ func (m *mockRepo) GetReverseLogisticsTask(ctx context.Context, taskID string) (
 	return nil, nil
 }
 
+func (m *mockRepo) ListReverseLogisticsTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {
+	return m.savedTasks, nil
+}
+
 func (m *mockRepo) ReceiveReverseLogisticsTask(ctx context.Context, taskID string, warehouseID string, receivedJSON []byte, actor string) error {
 	return nil
 }

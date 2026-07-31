@@ -12,13 +12,19 @@ import (
 )
 
 type Service struct {
-	spanner *spanner.Client
+	spanner          *spanner.Client
+	afterSensingHook func(context.Context) error
 }
 
 func NewService(spannerClient *spanner.Client) *Service {
 	return &Service{
 		spanner: spannerClient,
 	}
+}
+
+// SetAfterSensingHook runs after each successful demand sensing batch (e.g. reorder suggestions).
+func (s *Service) SetAfterSensingHook(fn func(context.Context) error) {
+	s.afterSensingHook = fn
 }
 
 func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, to time.Time) ([]DemandAdjustment, error) {

@@ -139,3 +139,79 @@ func (h *Handlers) HandleReceiveReverse(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "received"})
 }
+
+func (h *Handlers) HandleOrderLines(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	orderID := strings.TrimSpace(r.URL.Query().Get("order_id"))
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	lines, err := h.Svc.OrderLinesForCredit(r.Context(), orderID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	type wireLine struct {
+		OrderLineID string `json:"order_line_id"`
+		Sku         string `json:"sku"`
+		Qty         int64  `json:"qty"`
+		GrossMinor  int64  `json:"gross_minor"`
+	}
+	out := make([]wireLine, 0, len(lines))
+	for _, ln := range lines {
+		out = append(out, wireLine{
+			OrderLineID: ln.OrderLineId,
+			Sku:         ln.Sku,
+			Qty:         ln.Qty,
+			GrossMinor:  ln.LineGrossMinor,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"lines": out})
+}
+
+func (h *Handlers) HandleListReverseTasks(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleWarehouse {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+	if status == "" {
+		status = "OPEN"
+	}
+	tasks, err := h.Svc.ListReverseTasks(r.Context(), warehouseID, status, 50)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_failed"})
+		return
+	}
+	type wireTask struct {
+		TaskID    string `json:"task_id"`
+		OrderID   string `json:"order_id"`
+		Status    string `json:"status"`
+		Warehouse string `json:"warehouse_id,omitempty"`
+	}
+	out := make([]wireTask, 0, len(tasks))
+	for _, t := range tasks {
+		wh := ""
+		if t.WarehouseId != nil {
+			wh = *t.WarehouseId
+		}
+		out = append(out, wireTask{
+			TaskID:    t.TaskId,
+			OrderID:   t.OrderId,
+			Status:    string(t.Status),
+			Warehouse: wh,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tasks": out})
+}

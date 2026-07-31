@@ -1164,6 +1164,37 @@ export class ApiClient {
     return this.request<StatusResponse>(`/v1/supplier/credit-notes/${encodeURIComponent(id)}/issue`, "POST", {});
   }
 
+  async getCreditNoteOrderLines(orderId: string): Promise<{ lines: Array<{ order_line_id: string; sku: string; qty: number; gross_minor: number }> }> {
+    return this.request(`/v1/supplier/credit-notes/order-lines?order_id=${encodeURIComponent(orderId)}`, "GET");
+  }
+
+  async resolveSupplierException(
+    kind: string,
+    id: string,
+    body?: { note?: string; credit_note_id?: string },
+  ): Promise<StatusResponse> {
+    return this.request<StatusResponse>(
+      `/v1/supplier/exceptions/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/resolve`,
+      "POST",
+      { body: body ?? {} },
+    );
+  }
+
+  async getNotificationPreferences(): Promise<{ preferences: Array<{ event_type: string; channel: string; enabled: boolean; quiet_from?: string; quiet_to?: string }> }> {
+    return this.request("/v1/user/notification-preferences", "GET");
+  }
+
+  async patchNotificationPreferences(preferences: Array<{ event_type: string; channel: string; enabled: boolean; quiet_from?: string; quiet_to?: string }>): Promise<StatusResponse> {
+    return this.request<StatusResponse>("/v1/user/notification-preferences", "PATCH", { body: { preferences } });
+  }
+
+  async listRoutePerformance(params?: { limit?: number }): Promise<{ routes: Array<Record<string, unknown>> }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/supplier/route-performance${suffix}`, "GET");
+  }
+
   async listTwinActiveRoutes(params?: {
     zoneH3?: string;
     delayedOnly?: boolean;

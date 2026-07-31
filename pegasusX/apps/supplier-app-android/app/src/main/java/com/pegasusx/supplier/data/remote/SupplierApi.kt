@@ -314,6 +314,49 @@ interface SupplierApi {
         @Query("limit") limit: Int = 100,
     ): Response<ComplianceDashboardResponse>
 
+    @GET("v1/supplier/cash-reconciliations")
+    suspend fun getCashReconciliations(
+        @Query("status") status: String? = null,
+        @Query("limit") limit: Int? = null,
+    ): Response<CashReconciliationsResponse>
+
+    @POST("v1/supplier/cash-reconciliations/{id}/accept")
+    suspend fun acceptCashReconciliation(
+        @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<StatusResponse>
+
+    @GET("v1/supplier/credit-notes")
+    suspend fun getCreditNotes(
+        @Query("status") status: String? = "DRAFT",
+        @Query("limit") limit: Int? = 100,
+    ): Response<CreditNotesResponse>
+
+    @POST("v1/supplier/credit-notes/{id}/issue")
+    suspend fun issueCreditNote(
+        @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<StatusResponse>
+
+    @GET("v1/supplier/route-performance")
+    suspend fun getRoutePerformance(@Query("limit") limit: Int? = 50): Response<RoutePerformanceResponse>
+
+    @GET("v1/user/notification-preferences")
+    suspend fun getNotificationPreferences(): Response<NotificationPreferencesResponse>
+
+    @PATCH("v1/user/notification-preferences")
+    suspend fun patchNotificationPreferences(
+        @Body body: NotificationPreferencesPatchRequest,
+    ): Response<StatusResponse>
+
+    @POST("v1/supplier/exceptions/{kind}/{id}/resolve")
+    suspend fun resolveException(
+        @Path("kind") kind: String,
+        @Path("id") id: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<StatusResponse>
+
     @GET("v1/supplier/negotiations/pending")
     suspend fun getNegotiationsPending(
         @Query("limit") limit: Int = 500,

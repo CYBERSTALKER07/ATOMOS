@@ -189,7 +189,10 @@ type App struct {
 	CreditService          *credit.Service
 	CreditScoreWorker      *credit.Worker
 	CashReconHandlers      *cashrecon.Handlers
+	CashReconService       *cashrecon.Service
+	CashReconEscalation    *cashrecon.EscalationWorker
 	CreditNoteHandlers     *creditnote.Handlers
+	CreditNoteService      *creditnote.Service
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
@@ -1287,6 +1290,23 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 	}
 
+	demandSvc := demand.NewService(spannerClient)
+	if demandSvc != nil && reorderSuggestionWorker != nil {
+		demandSvc.SetAfterSensingHook(func(ctx context.Context) error {
+			return reorderSuggestionWorker.RunBatchAllSuppliers(ctx)
+		})
+	}
+
+	var cashReconEscalation *cashrecon.EscalationWorker
+	if spannerClient != nil && cashReconSvc != nil && notifSvc != nil {
+		cashReconEscalation = &cashrecon.EscalationWorker{
+			Spanner:    spannerClient,
+			Notifier:   notifSvc,
+			SupplierID: supplierSeed.SupplierID,
+			Now:        func() time.Time { return time.Now().UTC() },
+		}
+	}
+
 	return &App{
 		Config:                 cfg,
 		Cache:                  cacheClient,
@@ -1312,7 +1332,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ControlTowerService:    controlTowerSvc,
 		ControlTowerHandlers:   controlTowerHandlers,
 		ControlTowerWorker:     controlTowerWorker,
-		DemandService:          demand.NewService(spannerClient),
+		DemandService:          demandSvc,
 		LaborCapacityService:   laborcapacity.NewService(spannerClient),
 		ETAService:             eta.NewService(spannerClient),
 		OrderService:           orderSvc,
@@ -1320,7 +1340,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		CreditService:          creditSvc,
 		CreditScoreWorker:      creditScoreWorker,
 		CashReconHandlers:      cashReconHandlers,
+		CashReconService:       cashReconSvc,
+		CashReconEscalation:    cashReconEscalation,
 		CreditNoteHandlers:     creditNoteHandlers,
+		CreditNoteService:      creditNoteSvc,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,
 		RetailerHub:            retailerHub,

@@ -65,6 +65,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.Supplier.SupplierID != "" {
 		supplierID = app.Supplier.SupplierID
 	}
+	if app.CashReconEscalation != nil {
+		go app.CashReconEscalation.RunNightlyWorker(ctx, 24*time.Hour)
+		slog.Info("cash reconciliation escalation worker started")
+	}
 	if app.ReorderSuggestionWorker != nil && supplierID != "" {
 		go app.ReorderSuggestionWorker.RunBatchWorker(ctx, supplierID, 12*time.Hour)
 		slog.Info("reorder suggestion batch worker started")

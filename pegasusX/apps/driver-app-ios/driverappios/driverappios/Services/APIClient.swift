@@ -437,6 +437,48 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    struct CashReconciliationRow: Decodable {
+        let reconciliationId: String
+        let expectedCashMinor: Int64
+        let declaredCashMinor: Int64
+        let differenceMinor: Int64
+        let status: String
+
+        enum CodingKeys: String, CodingKey {
+            case reconciliationId = "reconciliation_id"
+            case expectedCashMinor = "expected_cash_minor"
+            case declaredCashMinor = "declared_cash_minor"
+            case differenceMinor = "difference_minor"
+            case status
+        }
+    }
+
+    struct CashReconciliationsResponse: Decodable {
+        let reconciliations: [CashReconciliationRow]
+    }
+
+    func listCashReconciliations() async throws -> CashReconciliationsResponse {
+        try await get("v1/driver/cash-reconciliations")
+    }
+
+    func submitCashReconciliation(declaredCashMinor: Int64, driverNote: String?) async throws -> CashReconciliationRow {
+        struct Body: Encodable {
+            let declaredCashMinor: Int64
+            let driverNote: String?
+
+            enum CodingKeys: String, CodingKey {
+                case declaredCashMinor = "declared_cash_minor"
+                case driverNote = "driver_note"
+            }
+        }
+        let body = Body(declaredCashMinor: declaredCashMinor, driverNote: driverNote)
+        return try await post(
+            "v1/driver/cash-reconciliations",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.cashReconciliation(declaredMinor: declaredCashMinor)]
+        )
+    }
+
     func getReturnGoods() async throws -> ReturnGoodsResponse {
         try await get("v1/driver/return-goods")
     }

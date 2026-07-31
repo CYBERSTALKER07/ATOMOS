@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/google/uuid"
-	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -259,7 +259,7 @@ func (w *Worker) ComputeAndSave(ctx context.Context, retailerID string, inputs R
 		ComputedAt:          windowEnd,
 	}
 
-	return spannerutils.RunReadWriteTransaction(ctx, w.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		mutations := []*spanner.Mutation{
 			spanner.InsertOrUpdateMap("RetailerCreditScores", map[string]any{
 				"RetailerId":          rcs.RetailerID,
@@ -273,22 +273,22 @@ func (w *Worker) ComputeAndSave(ctx context.Context, retailerID string, inputs R
 			}),
 		}
 
-		payload, err := json.Marshal(rcs)
-		if err != nil {
+		buf := &spannerTxnBuffer{}
+		payload := map[string]any{
+			"type":                  "credit.score.updated",
+			"retailer_id":           rcs.RetailerID,
+			"score":                 rcs.Score,
+			"risk_tier":             string(rcs.RiskTier),
+			"suggested_limit_minor": rcs.SuggestedLimitMinor,
+			"window_start":          rcs.WindowStart.UTC().Format(time.RFC3339Nano),
+			"window_end":            rcs.WindowEnd.UTC().Format(time.RFC3339Nano),
+			"computed_at":           rcs.WindowEnd.UTC().Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateRetailer, retailerID, events.TopicMain, payload); err != nil {
 			return err
 		}
-
-		eventID := uuid.New().String()
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       eventID,
-			"AggregateType": "RetailerCreditScore",
-			"AggregateId":   retailerID,
-			"TopicName":     "credit.score.updated",
-			"Payload":       payload,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"PublishedAt":   nil,
-		}))
-
+		mutations = append(mutations, outboxMutations(buf.events)...)
 		return txn.BufferWrite(mutations)
 	})
+	return err
 }

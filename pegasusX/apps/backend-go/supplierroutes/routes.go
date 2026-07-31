@@ -24,6 +24,7 @@ type Deps struct {
 	PayloadService    *payload.Service
 	NotificationInbox *notifications.InboxHandlers
 	ComplianceHandler *compliance.Handler
+	ExceptionResolve  supplier.ExceptionResolveDeps
 	JWTSecret         string
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
@@ -110,6 +111,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/activity", d.Service.HandleActivity)
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)
+		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(d.ExceptionResolve))
 		gr.Get("/v1/supplier/ops/exception-map", d.Service.HandleExceptionMap)
 		gr.Get("/v1/supplier/manifest-exceptions", d.Service.HandleManifestExceptions)
 		gr.Get("/v1/supplier/earnings", d.Service.HandleEarnings)

@@ -45,6 +45,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
@@ -199,6 +200,11 @@ func main() {
 		PayloadService:    app.PayloadService,
 		NotificationInbox: app.NotificationInbox,
 		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
+		ExceptionResolve: supplier.ExceptionResolveDeps{
+			CashRecon:  app.CashReconService,
+			CreditNote: app.CreditNoteService,
+			Credit:     app.CreditService,
+		},
 		JWTSecret:         cfg.JWTSecret,
 		Spanner:           app.Spanner,
 		SupplierHub:       app.SupplierHub,

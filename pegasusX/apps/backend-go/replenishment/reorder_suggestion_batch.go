@@ -6,12 +6,13 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"strings"
 	"google.golang.org/api/iterator"
 )
 
 const batchLeadTimeDays = 2.0
 
-// RunBatch builds reorder suggestions from today's demand adjustments.
+// RunBatch builds reorder suggestions from today's demand adjustments for one supplier.
 func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID string) error {
 	if w == nil || w.Spanner == nil {
 		return nil
@@ -58,7 +59,7 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 			RetailerId:      item.retailerID,
 			Sku:             item.sku,
 			AdjustedDemand:  item.demand,
-			CurrentStock:    0,
+			CurrentStock:    w.retailerStockEstimate(ctx, item.retailerID, item.sku),
 			InFlightQty:     inFlight,
 			SafetyStock:     safety,
 			SuggestedByDate: tomorrow,
@@ -91,6 +92,57 @@ func (w *ReorderSuggestionWorker) inFlightQty(ctx context.Context, retailerID, s
 		return 0
 	}
 	return qty
+}
+
+func (w *ReorderSuggestionWorker) retailerStockEstimate(ctx context.Context, retailerID, sku string) int64 {
+	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `
+			SELECT COALESCE(l.DeliveredQty, 0)
+			FROM Orders o
+			JOIN OrderLines l ON l.OrderId = o.OrderId
+			WHERE o.RetailerId = @rid AND l.Sku = @sku AND o.Status = 'COMPLETED'
+			ORDER BY o.UpdatedAt DESC
+			LIMIT 1`,
+		Params: map[string]any{"rid": retailerID, "sku": sku},
+	})
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0
+	}
+	var qty int64
+	if err := row.Column(0, &qty); err != nil {
+		return 0
+	}
+	return qty
+}
+
+// RunBatchAllSuppliers runs reorder suggestions for every supplier with recent order activity.
+func (w *ReorderSuggestionWorker) RunBatchAllSuppliers(ctx context.Context) error {
+	if w == nil || w.Spanner == nil {
+		return nil
+	}
+	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT DISTINCT SupplierId FROM Orders
+		      WHERE UpdatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+		        AND SupplierId IS NOT NULL`,
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		var supplierID string
+		if err := row.Column(0, &supplierID); err != nil || strings.TrimSpace(supplierID) == "" {
+			continue
+		}
+		_ = w.RunBatch(ctx, supplierID)
+	}
+	return nil
 }
 
 // RunBatchWorker periodically refreshes reorder suggestions after demand sensing.

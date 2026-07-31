@@ -65,11 +65,11 @@ func (w *ReorderSuggestionWorker) ProcessSuggestion(ctx context.Context, supplie
 		}
 
 		payload := map[string]any{
-			"Type":         "reorder.suggestion.updated",
-			"Timestamp":    s.ComputedAt.Format(time.RFC3339Nano),
-			"RetailerId":   s.RetailerId,
-			"Sku":          s.Sku,
-			"SuggestedQty": s.SuggestedQty,
+			"type":           "reorder.suggestion.updated",
+			"timestamp":      s.ComputedAt.Format(time.RFC3339Nano),
+			"retailer_id":    s.RetailerId,
+			"sku":            s.Sku,
+			"suggested_qty":  s.SuggestedQty,
 		}
 
 		buf := &spannerTxnBuffer{}

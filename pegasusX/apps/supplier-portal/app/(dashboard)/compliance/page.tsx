@@ -122,7 +122,7 @@ export default function ComplianceDashboard() {
                 title="Open Credit Notes"
                 value={stats.openCreditNotes}
                 alert={stats.openCreditNotes > 0}
-                href={"/exceptions/claims" as Route}
+                href={"/finance/credit-notes" as Route}
               />
               <MetricCard
                 title="Open Reverse Logistics"
@@ -134,7 +134,7 @@ export default function ComplianceDashboard() {
                 title="Open Cash Discrepancies"
                 value={stats.openCashDiscrepancies}
                 alert={stats.openCashDiscrepancies > 0}
-                href={"/exceptions" as Route}
+                href={"/treasury/cash-reconciliations" as Route}
               />
             </div>
           )}

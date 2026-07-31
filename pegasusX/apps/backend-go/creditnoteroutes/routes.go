@@ -26,6 +26,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-notes", h.HandleList)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/credit-notes", h.HandleCreateManual)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/credit-notes/{id}/issue", h.HandleIssue)
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-notes/order-lines", h.HandleOrderLines)
+		gr.With(auth.RequireRole(auth.RoleWarehouse)).Get("/v1/warehouse/reverse-logistics", h.HandleListReverseTasks)
 		gr.With(auth.RequireRole(auth.RoleWarehouse)).Post("/v1/warehouse/reverse-logistics/{taskId}/receive", h.HandleReceiveReverse)
 	})
 }

@@ -33,6 +33,8 @@ object DriverIdempotencyKeys {
 
     fun returnComplete(truckId: String): String = "driver-return-complete:${driverId()}:$truckId"
 
+    fun cashReconciliation(declaredMinor: Long): String = "driver-cash-recon:${driverId()}:$declaredMinor"
+
     fun syncBatch(orderSignatures: List<String>): String {
         val sorted = orderSignatures.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
         return "driver-sync-batch:${driverId()}:${stableHash(sorted.joinToString(","))}"

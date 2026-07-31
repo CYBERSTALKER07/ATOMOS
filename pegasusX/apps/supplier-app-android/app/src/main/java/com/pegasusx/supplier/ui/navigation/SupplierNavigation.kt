@@ -70,6 +70,9 @@ import com.pegasusx.supplier.ui.screens.pricing.PricingScreen
 import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
 import com.pegasusx.supplier.ui.screens.returns.ReturnsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ClaimChargebacksScreen
+import com.pegasusx.supplier.ui.screens.analytics.RoutePerformanceScreen
+import com.pegasusx.supplier.ui.screens.treasury.CashReconciliationsScreen
+import com.pegasusx.supplier.ui.screens.treasury.CreditNotesScreen
 import com.pegasusx.supplier.ui.screens.treasury.ComplianceScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
@@ -149,6 +152,10 @@ object SupplierRoutes {
     const val SUPPLY_LANES = "supply_lanes"
     const val PAYMENTS = "payments"
     const val COMPLIANCE = "compliance"
+    const val CASH_RECONCILIATIONS = "cash_reconciliations"
+    const val CREDIT_NOTES = "credit_notes"
+    const val ROUTE_PERFORMANCE = "route_performance"
+    const val NOTIFICATION_PREFS = "notification_prefs"
     const val NOTIFICATIONS = "notifications"
 }
 
@@ -485,7 +492,8 @@ fun SupplierNavigation(
                     onOpenPlanningBrain = { navController.navigate(SupplierRoutes.PLANNING_BRAIN) },
                     onOpenKnowledgeGraph = { navController.navigate(SupplierRoutes.KNOWLEDGE_GRAPH) },
                     onOpenPlanningSettings = { navController.navigate(SupplierRoutes.PLANNING_SETTINGS) },
-                 ) 
+                    onOpenRoutePerformance = { navController.navigate(SupplierRoutes.ROUTE_PERFORMANCE) },
+                 )
             }
             composable(SupplierRoutes.AI_RECOMMENDATIONS) {
                  AIRecommendationsScreen(ops) { navController.popBackStack() } 
@@ -539,6 +547,15 @@ fun SupplierNavigation(
             composable(SupplierRoutes.COMPLIANCE) {
                 ComplianceScreen(ops) { navController.popBackStack() }
             }
+            composable(SupplierRoutes.CASH_RECONCILIATIONS) {
+                CashReconciliationsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CREDIT_NOTES) {
+                CreditNotesScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.ROUTE_PERFORMANCE) {
+                RoutePerformanceScreen(ops) { navController.popBackStack() }
+            }
             composable(SupplierRoutes.CHARGEBACKS) {
                 
                     ChargebacksScreen(onBack = { navController.popBackStack() })
@@ -552,6 +569,8 @@ fun SupplierNavigation(
                         onPayments = { navController.navigate(SupplierRoutes.PAYMENTS) },
                         onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
                         onCompliance = { navController.navigate(SupplierRoutes.COMPLIANCE) },
+                        onCashReconciliations = { navController.navigate(SupplierRoutes.CASH_RECONCILIATIONS) },
+                        onCreditNotes = { navController.navigate(SupplierRoutes.CREDIT_NOTES) },
                         onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                         onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
                         onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },

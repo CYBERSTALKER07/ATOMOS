@@ -38,6 +38,19 @@ struct TransitControlCard: View {
                     }
                 }
 
+                if vm.showCashReconSheet || vm.deliveryEdgeMessage?.localizedCaseInsensitiveContains("cash reconciliation") == true {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Cash reconciliation")
+                            .font(.system(size: 12, weight: .semibold))
+                        TextField("Declared cash (minor)", text: Bindable(vm).declaredCashText)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Submit reconciliation") {
+                            Task { await vm.submitCashReconciliation() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+
                 VStack(spacing: 8) {
                     Button {
                         Haptics.medium()

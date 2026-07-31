@@ -2,12 +2,14 @@ package creditnote
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 	grpcstatus "google.golang.org/grpc/status"
@@ -338,6 +340,51 @@ func (r *SpannerRepository) GetReverseLogisticsTask(ctx context.Context, taskID 
 	return &t, nil
 }
 
+func (r *SpannerRepository) ListReverseLogisticsTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("creditnote repository unavailable")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	params := map[string]interface{}{"limit": limit}
+	sql := `SELECT TaskId, CreditNoteId, OrderId, Status, WarehouseId, DriverId, ExpectedQtyJson, ReceivedQtyJson, CreatedAt, UpdatedAt
+	        FROM ReverseLogisticsTasks WHERE Status = @status`
+	params["status"] = status
+	if strings.TrimSpace(warehouseID) != "" {
+		sql += ` AND WarehouseId = @warehouseId`
+		params["warehouseId"] = warehouseID
+	}
+	sql += ` ORDER BY CreatedAt DESC LIMIT @limit`
+	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	defer iter.Stop()
+	var out []ReverseLogisticsTask
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var t ReverseLogisticsTask
+		var wh, driver spanner.NullString
+		if err := row.Columns(&t.TaskId, &t.CreditNoteId, &t.OrderId, &t.Status, &wh, &driver, &t.ExpectedQtyJson, &t.ReceivedQtyJson, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			continue
+		}
+		if wh.Valid {
+			v := wh.StringVal
+			t.WarehouseId = &v
+		}
+		if driver.Valid {
+			v := driver.StringVal
+			t.DriverId = &v
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
 func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, taskID string, warehouseID string, receivedJSON []byte, actor string) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "ReverseLogisticsTasks", spanner.Key{taskID},
@@ -373,6 +420,29 @@ func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, tas
 		}
 		muts := []*spanner.Mutation{m}
 		muts = append(muts, outboxMutations(buf.events)...)
+
+		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{task.OrderId}, []string{"SupplierId"})
+		if err != nil {
+			return fmt.Errorf("order lookup for restock: %w", err)
+		}
+		var supplierID string
+		if err := orderRow.Columns(&supplierID); err != nil {
+			return err
+		}
+
+		received := map[string]int64{}
+		if len(receivedJSON) > 0 {
+			_ = json.Unmarshal(receivedJSON, &received)
+		}
+		for sku, qty := range received {
+			sku = strings.TrimSpace(sku)
+			if sku == "" || qty <= 0 {
+				continue
+			}
+			if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, sku, qty); err != nil {
+				return err
+			}
+		}
 		return txn.BufferWrite(muts)
 	})
 	return err

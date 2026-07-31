@@ -61,6 +61,10 @@ enum DriverIdempotency {
         "driver-return-complete:\(driverId()):\(truckId)"
     }
 
+    static func cashReconciliation(declaredMinor: Int64) -> String {
+        "driver-cash-recon:\(driverId()):\(declaredMinor)"
+    }
+
     static func syncBatch(orderSignatures: [String]) -> String {
         let sorted = orderSignatures
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

@@ -21,6 +21,21 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getComplianceDashboard(limit: Int = 100): Response<ComplianceDashboardResponse> =
         api.getComplianceDashboard(limit)
 
+    suspend fun getCashReconciliations(): Response<CashReconciliationsResponse> =
+        api.getCashReconciliations()
+
+    suspend fun getCreditNotes(): Response<CreditNotesResponse> =
+        api.getCreditNotes()
+
+    suspend fun getRoutePerformance(): Response<RoutePerformanceResponse> =
+        api.getRoutePerformance()
+
+    suspend fun getNotificationPreferences(): Response<NotificationPreferencesResponse> =
+        api.getNotificationPreferences()
+
+    suspend fun patchNotificationPreferences(body: NotificationPreferencesPatchRequest): Response<StatusResponse> =
+        api.patchNotificationPreferences(body)
+
     suspend fun getNegotiationsPending(): Response<NegotiationPendingResponse> = api.getNegotiationsPending()
 
     suspend fun resolveShopClosed(

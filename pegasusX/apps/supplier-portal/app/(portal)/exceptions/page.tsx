@@ -38,7 +38,12 @@ export default function ExceptionsPage() {
         <h2 className="mb-2 md-typescale-title-medium">Recommended playbooks</h2>
         <PlaybookRunsPanel />
       </section>
-      <ExceptionsList exceptions={exceptions} />
+      <ExceptionsList
+        exceptions={exceptions}
+        onResolved={() => {
+          api.getSupplierExceptions().then((resp) => setExceptions(resp.exceptions));
+        }}
+      />
       <div className="flex flex-wrap gap-4 md-typescale-body-medium">
         <Link href={"/exceptions/claims" as Route} className="text-[var(--color-md-primary)] underline">
           Claims / chargebacks

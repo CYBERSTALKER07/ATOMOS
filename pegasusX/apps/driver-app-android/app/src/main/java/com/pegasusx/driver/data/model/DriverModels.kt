@@ -255,6 +255,26 @@ data class ReturnCompleteRequest(
 )
 
 @Serializable
+data class CashReconciliationRow(
+    @SerialName("reconciliation_id") val reconciliationId: String = "",
+    @SerialName("expected_cash_minor") val expectedCashMinor: Long = 0,
+    @SerialName("declared_cash_minor") val declaredCashMinor: Long = 0,
+    @SerialName("difference_minor") val differenceMinor: Long = 0,
+    val status: String = "",
+)
+
+@Serializable
+data class CashReconciliationsResponse(
+    val reconciliations: List<CashReconciliationRow> = emptyList(),
+)
+
+@Serializable
+data class SubmitCashReconciliationRequest(
+    @SerialName("declared_cash_minor") val declaredCashMinor: Long,
+    @SerialName("driver_note") val driverNote: String? = null,
+)
+
+@Serializable
 data class ReturnGoodsLine(
     @SerialName("return_id") val returnId: String,
     @SerialName("order_id") val orderId: String,

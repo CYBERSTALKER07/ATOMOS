@@ -8,7 +8,9 @@ import com.pegasusx.driver.data.model.AmendOrderResponse
 import com.pegasusx.driver.data.model.AuthResponse
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.ClientPolicyResponse
-import com.pegasusx.driver.data.model.CollectCashRequest
+import com.pegasusx.driver.data.model.CashReconciliationRow
+import com.pegasusx.driver.data.model.CashReconciliationsResponse
+import com.pegasusx.driver.data.model.SubmitCashReconciliationRequest
 import com.pegasusx.driver.data.model.CollectCashResponse
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
@@ -212,6 +214,15 @@ interface DriverApi {
         @Body request: ReturnCompleteRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
+
+    @GET("v1/driver/cash-reconciliations")
+    suspend fun listCashReconciliations(): CashReconciliationsResponse
+
+    @POST("v1/driver/cash-reconciliations")
+    suspend fun submitCashReconciliation(
+        @Body request: SubmitCashReconciliationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): CashReconciliationRow
 
     // Reorder stops — driver reorders their active route stops
     @POST("v1/fleet/route/reorder")

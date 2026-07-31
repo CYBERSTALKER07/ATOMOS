@@ -2155,3 +2155,75 @@ struct ComplianceDashboardResponse: Decodable {
         creditFreezes = (try? c.decode([ComplianceCreditFreezeRow].self, forKey: .creditFreezes)) ?? []
     }
 }
+
+struct CashReconciliationRow: Decodable, Identifiable {
+    var id: String { reconciliationId }
+    let reconciliationId: String
+    let driverId: String
+    let status: String
+    let differenceMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case reconciliationId = "reconciliation_id"
+        case driverId = "driver_id"
+        case status
+        case differenceMinor = "difference_minor"
+    }
+}
+
+struct CashReconciliationsResponse: Decodable {
+    let reconciliations: [CashReconciliationRow]
+}
+
+struct CreditNoteRow: Decodable, Identifiable {
+    var id: String { creditNoteId }
+    let creditNoteId: String
+    let orderId: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case creditNoteId = "credit_note_id"
+        case orderId = "order_id"
+        case status
+    }
+}
+
+struct CreditNotesResponse: Decodable {
+    let creditNotes: [CreditNoteRow]
+
+    enum CodingKeys: String, CodingKey {
+        case creditNotes = "credit_notes"
+    }
+}
+
+struct RoutePerformanceRow: Decodable, Identifiable {
+    var id: String { routeId }
+    let routeId: String
+    let driverId: String
+    let ordersCompleted: Int
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case driverId = "driver_id"
+        case ordersCompleted = "orders_completed"
+    }
+}
+
+struct RoutePerformanceResponse: Decodable {
+    let routes: [RoutePerformanceRow]
+}
+
+struct NotificationPreferencesResponse: Decodable {
+    let preferences: [NotificationPreferenceRow]
+}
+
+struct NotificationPreferenceRow: Decodable {
+    let eventType: String
+    let channel: String
+    let enabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case eventType = "event_type"
+        case channel, enabled
+    }
+}
