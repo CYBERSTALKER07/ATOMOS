@@ -254,7 +254,7 @@ func completeLifecycleDelivery(
 		if issueErr != nil {
 			return fmt.Errorf("wait fiscal COMPLETED: %w (admin jwt: %v)", err, issueErr)
 		}
-		forceBody := []byte(`{"reason":"ssmr_smoke_fiscal_unstick"}`)
+		forceBody := []byte(`{"reason_code":"ssmr_smoke_fiscal_unstick"}`)
 		st, body, _, forceErr := clientDo(ctx, client, http.MethodPost,
 			base+"/v1/order/"+orderID+"/force-complete", forceBody, adminTok, "lifecycle-force-"+orderID)
 		if forceErr != nil {
