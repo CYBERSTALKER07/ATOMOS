@@ -5,6 +5,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# gke-gcloud-auth-plugin lives in the Cloud SDK bin (not always on PATH).
+if [[ -d "/opt/homebrew/share/google-cloud-sdk/bin" ]]; then
+	export PATH="/opt/homebrew/share/google-cloud-sdk/bin:$PATH"
+fi
+
 echo "==> discover-staging-wiring"
 echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "repo: $ROOT"

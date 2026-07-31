@@ -21,10 +21,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		r.Route("/signals", func(r chi.Router) {
 			r.Get("/", handleListSignals(d.Service))
-			r.Get("", handleListSignals(d.Service))
 			r.Post("/", handleCreateSignal(d.Service))
-			r.Post("", handleCreateSignal(d.Service))
-			
+
 			r.Route("/{id}", func(r chi.Router) {
 				r.Get("/", handleGetSignal(d.Service))
 				r.Patch("/", handleUpdateSignal(d.Service))

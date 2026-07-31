@@ -332,3 +332,37 @@ func runGapClosureReorderE2E(ctx context.Context, client *http.Client, base, coo
 	fmt.Println("PX_E2E_REORDER_SUGGESTION_OK")
 	return nil
 }
+
+// runGapClosureSmokeCheck exercises finance gap-closure APIs against a live API (staging/prod port-forward).
+func runGapClosureSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
+	base := strings.TrimRight(envOr("PUBLIC_BASE_URL", "http://localhost:8180"), "/")
+	client := &http.Client{Timeout: 45 * time.Second}
+	if _, err := clientGet(ctx, client, base+"/v1/health"); err != nil {
+		return fmt.Errorf("health: %w", err)
+	}
+	supplierID, cookie, err := ensureSupplierSession(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("supplier session: %w", err)
+	}
+	retailerID, h3Cell, err := registerRetailer(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("retailer register: %w", err)
+	}
+	retailerToken, err := auth.Issue(auth.Claims{
+		Subject:    retailerID,
+		Role:       auth.RoleRetailer,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue retailer jwt: %w", err)
+	}
+	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("order create: %w", err)
+	}
+	return runGapClosureE2E(ctx, client, base, cookie, supplierID, retailerToken, cfg, orderID)
+}

@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIG_DIR="$ROOT/apps/backend-go/schema/migrations"
 # Through fiscal hard-gate receipts (D3 / ADR-009). Keep newest required migration here.
-LAST_MIGRATION="20260720_order_fiscal_receipts.ddl"
+LAST_MIGRATION="20260804_phase_d_notifications.ddl"
 
 if [[ -f "$ROOT/.env.k8s.generated" ]]; then
 	set -a

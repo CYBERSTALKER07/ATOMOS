@@ -23,7 +23,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -42,6 +42,8 @@ func main() {
 		timeout = loadTokensTimeout()
 	case "e2e":
 		timeout = e2eTimeout()
+	case "gap-closure":
+		timeout = 3 * time.Minute
 	case "lifecycle-vertical":
 		// Focused spine is shorter than full ecosystem e2e.
 		timeout = e2eTimeout()
@@ -77,6 +79,8 @@ func main() {
 		checkErr = runSpatialCheck(ctx, cfg)
 	case "e2e":
 		checkErr = runE2ECheck(ctx, cfg)
+	case "gap-closure":
+		checkErr = runGapClosureSmokeCheck(ctx, cfg)
 	case "lifecycle-vertical":
 		checkErr = runLifecycleVerticalE2E(ctx, cfg)
 	case "fiscal":
