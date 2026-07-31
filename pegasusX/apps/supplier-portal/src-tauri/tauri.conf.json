@@ -54,7 +54,9 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["pegasusx-supplier"]
+        "schemes": [
+          "pegasusx-supplier"
+        ]
       }
     },
     "updater": {

@@ -15,6 +15,13 @@ cd "$ROOT"
 
 bash scripts/apply_desktop_updater_pubkey.sh
 
+# Prefer CI secret; fall back to local dev signing key for updater artifacts.
+if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" && -f "$ROOT/contracts/desktop-updater/dev.key" ]]; then
+  export TAURI_SIGNING_PRIVATE_KEY
+  TAURI_SIGNING_PRIVATE_KEY="$(tr -d '\n' <"$ROOT/contracts/desktop-updater/dev.key")"
+  export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+fi
+
 case "$APP" in
   retailer-app-desktop) FILTER="@pegasusx/retailer-app-desktop" ;;
   supplier-portal) FILTER="@pegasusx/supplier-portal" ;;

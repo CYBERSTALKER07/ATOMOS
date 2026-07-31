@@ -43,8 +43,8 @@ export default function AutoOrderPage() {
       if (!res.ok) throw new Error("Predictions fetch failed");
       const data = await res.json();
       setPredictions(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setPredictionsError(err);
+    } catch (err: unknown) {
+      setPredictionsError(err instanceof Error ? err : new Error("Predictions fetch failed"));
     } finally {
       setPredictionsLoading(false);
     }
@@ -138,7 +138,7 @@ export default function AutoOrderPage() {
         title="Auto-Order Engine"
         description="Empathy Engine Intelligence with 5-level granular control."
         loading={isLoading}
-        skeletonVariant="text"
+        skeletonVariant="form"
         actions={
           <div className="flex items-center gap-3">
             <button
@@ -207,7 +207,7 @@ export default function AutoOrderPage() {
         </BentoGrid>
 
         <div className="space-y-6">
-          <AutoOrderRules settings={settings} handleToggle={handleToggle} />
+          <AutoOrderRules settings={settings ?? undefined} handleToggle={handleToggle} />
           <AutoOrderList predictions={predictions} />
 
           <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] mt-6">

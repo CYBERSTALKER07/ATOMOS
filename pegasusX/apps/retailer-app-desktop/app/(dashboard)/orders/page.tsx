@@ -22,8 +22,8 @@ import {
 import { Chip } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
-import { OrderFilters } from "../../../../components/orders/OrderFilters";
-import { OrderList } from "../../../../components/orders/OrderList";
+import { OrderFilters } from "../../../components/orders/OrderFilters";
+import { OrderList } from "../../../components/orders/OrderList";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";

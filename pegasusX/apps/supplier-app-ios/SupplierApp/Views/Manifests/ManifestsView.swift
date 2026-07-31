@@ -16,6 +16,7 @@ struct ManifestsView: View {
                 SupplierEmptyView(title: "No manifests", message: "Loading manifests will appear here.")
             } else {
                 ManifestsList(items: rows)
+            }
         }
         .navigationTitle("Manifests")
         .toolbar {

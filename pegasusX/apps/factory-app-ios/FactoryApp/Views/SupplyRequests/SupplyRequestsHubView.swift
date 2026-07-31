@@ -81,5 +81,6 @@ struct SupplyRequestsHubView: View {
             self.error = error.localizedDescription
         }
         loading = false
+    }
 }
 

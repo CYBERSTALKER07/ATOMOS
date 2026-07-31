@@ -21,8 +21,8 @@ import com.pegasusx.driver.ui.theme.formattedAmount
 
 @Composable
 fun OffloadSummaryCard(
-    originalTotal: Double,
-    adjustedTotal: Double,
+    originalTotal: Long,
+    adjustedTotal: Long,
     hasRejections: Boolean
 ) {
     val lab = LocalPegasusColors.current

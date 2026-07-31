@@ -1,10 +1,17 @@
 import { Zap, ArrowUpRight, ChevronRight } from "lucide-react";
+import type { TopProduct } from "../../lib/types";
+
+type DetailedSeriesRow = {
+  order_id: string;
+  total_minor?: number;
+  currency?: string;
+};
 
 interface InsightsSidebarProps {
   totalThisMonth: number;
-  topProducts: any[];
-  detailedError: any;
-  detailedSeries: any[];
+  topProducts: TopProduct[];
+  detailedError: unknown;
+  detailedSeries: DetailedSeriesRow[];
 }
 
 export function InsightsSidebar({
@@ -49,7 +56,7 @@ export function InsightsSidebar({
           </div>
         ) : (
           <div className="space-y-4">
-            {topProducts.slice(0, 5).map((item: any, i: number) => (
+            {topProducts.slice(0, 5).map((item, i: number) => (
               <div
                 key={item.product_id}
                 className="flex items-center gap-4 group"
@@ -89,7 +96,7 @@ export function InsightsSidebar({
           </p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {detailedSeries.slice(0, 8).map((row: any) => (
+            {detailedSeries.slice(0, 8).map((row) => (
               <div
                 key={row.order_id}
                 className="flex items-center justify-between py-2 border-b border-[var(--desk-border)] last:border-0"

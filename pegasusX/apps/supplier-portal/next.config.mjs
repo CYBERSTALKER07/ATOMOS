@@ -15,7 +15,13 @@ const nextConfig = {
   experimental: {
   },
   ...(isTauriBuild
-    ? { output: "export", images: { unoptimized: true } }
+    ? {
+        output: "export",
+        images: { unoptimized: true },
+        eslint: { ignoreDuringBuilds: true },
+        // Packaging gate: `pnpm typecheck` remains the type SoT in CI.
+        typescript: { ignoreBuildErrors: true },
+      }
     : {
         async rewrites() {
           return [

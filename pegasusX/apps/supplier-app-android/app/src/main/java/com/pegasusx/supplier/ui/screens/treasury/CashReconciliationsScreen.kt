@@ -74,7 +74,11 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
         },
     ) { padding ->
         when {
-            loading -> PegasusLoadingState("Loading…", modifier = Modifier.padding(padding))
+            loading -> PegasusLoadingState(
+                title = "Loading…",
+                body = "Driver cash reconciliations",
+                modifier = Modifier.padding(padding),
+            )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unavailable",

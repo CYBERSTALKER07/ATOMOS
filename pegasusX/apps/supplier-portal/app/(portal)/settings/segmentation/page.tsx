@@ -7,7 +7,7 @@ export default function SegmentationSettingsPage() {
   return (
     <PageChrome
       title="Segmentation"
-      subtitle="Retailer segments and SKU velocity classes for constrained allocation (O9-1)."
+      description="Retailer segments and SKU velocity classes for constrained allocation (O9-1)."
     >
       <SegmentationPanel />
     </PageChrome>

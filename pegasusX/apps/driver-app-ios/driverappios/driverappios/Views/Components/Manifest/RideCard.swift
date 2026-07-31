@@ -5,7 +5,7 @@ struct RideCard: View {
     let mission: Mission
     let index: Int
     let loadSeqLabel: String?
-    let location: CLLocation?
+    let location: CLLocationCoordinate2D?
     let onSelect: () -> Void
     
     var body: some View {

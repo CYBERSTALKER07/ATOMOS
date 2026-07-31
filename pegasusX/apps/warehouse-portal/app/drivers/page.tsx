@@ -103,14 +103,87 @@ export default function DriversPage() {
     }
   }
 
-      <DriversList
-        drivers={drivers}
-        vehicles={vehicles}
+  return (
+    <PageTransition>
+      <PageChrome
+        icon="fleet"
+        title="Drivers"
+        description="Fleet drivers with vehicle assignment and live truck status."
         loading={loading}
-        assigningDriverId={assigningDriverId}
-        handleAssignVehicle={handleAssignVehicle}
-      />
-    </div>
+        skeletonVariant="table"
+        error={error}
+        actions={
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCreate(!showCreate)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--primary"
+            >
+              <Icon name="plus" size={16} /> Add driver
+            </button>
+            <button
+              type="button"
+              onClick={() => { void load(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary"
+            >
+              <Icon name="refresh" size={16} />
+            </button>
+          </div>
+        }
+      >
+        {showCreate && (
+          <form
+            onSubmit={handleCreate}
+            className="p-4 rounded-xl border border-(--border) space-y-3 mb-4"
+            style={{ background: 'var(--surface)' }}
+          >
+            <h2 className="text-sm font-semibold">New driver</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                placeholder="Name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                required
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+              <input
+                placeholder="Phone"
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
+                required
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={creating}
+              className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
+            >
+              {creating ? 'Creating…' : 'Create driver'}
+            </button>
+          </form>
+        )}
+
+        {createdPin && (
+          <div
+            className="p-4 rounded-xl border border-(--border) mb-4"
+            style={{ background: 'var(--surface)' }}
+          >
+            <p className="text-sm font-semibold">Driver PIN</p>
+            <p className="text-sm text-(--muted) mt-1">Share this one-time PIN with the driver:</p>
+            <p className="mt-2 font-mono text-lg tracking-widest">{createdPin}</p>
+          </div>
+        )}
+
+        <DriversList
+          drivers={drivers}
+          vehicles={vehicles}
+          loading={loading}
+          assigningDriverId={assigningDriverId}
+          handleAssignVehicle={handleAssignVehicle}
+        />
       </PageChrome>
     </PageTransition>
   );

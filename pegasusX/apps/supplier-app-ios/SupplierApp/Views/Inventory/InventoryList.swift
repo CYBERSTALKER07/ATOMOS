@@ -3,7 +3,7 @@ import SwiftUI
 struct InventoryList: View {
     let items: [InventoryItem]
     let adjustingSku: String?
-    let onAdjustQuantity: (String, Int) async -> Void
+    let onAdjustQuantity: (String, Int64) async -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 

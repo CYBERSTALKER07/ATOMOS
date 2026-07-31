@@ -11,7 +11,7 @@ export default function FleetLiveMapPage() {
         icon="map"
         title="Fleet Live Map"
         description="Real-time map tracking for sealed manifests in transit."
-        skeletonVariant="default"
+        skeletonVariant="dashboard"
       >
         <div className="rounded-xl border border-(--border) overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
           <FleetLiveMapPanel className="h-full w-full" show3DViewToggle={true} />

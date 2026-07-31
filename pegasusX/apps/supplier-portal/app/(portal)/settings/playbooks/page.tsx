@@ -42,7 +42,7 @@ export default function PlaybooksSettingsPage() {
   return (
     <PageChrome
       title="Control tower playbooks"
-      subtitle="Review automated exception playbooks. Deactivate rules you do not want suggested."
+      description="Review automated exception playbooks. Deactivate rules you do not want suggested."
     >
       {error ? <p className="text-sm text-[var(--color-md-error)]">{error}</p> : null}
       {loading ? (

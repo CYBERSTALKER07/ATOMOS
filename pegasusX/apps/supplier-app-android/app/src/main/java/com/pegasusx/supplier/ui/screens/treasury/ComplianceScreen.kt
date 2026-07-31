@@ -99,7 +99,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     item {
                         ElevatedCard(Modifier.fillMaxWidth()) {
                             Column(
-                                modifier.padding(PegasusSpacing.lg),
+                                modifier = Modifier.padding(PegasusSpacing.lg),
                                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                             ) {
                                 Text("Summary", style = MaterialTheme.typography.titleMedium)
@@ -114,8 +114,8 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Text("Open fiscal", style = MaterialTheme.typography.titleSmall)
                     }
                     items(data?.openFiscal.orEmpty(), key = { it.orderId }) { row ->
-                        ElevatedCard(modifier.fillMaxWidth()) {
-                            Column(modifier.padding(PegasusSpacing.md)) {
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.orderId, style = MaterialTheme.typography.titleSmall)
                                 Text("${row.status} · ${row.fiscalStatus}")
                                 Text("${row.totalMinor} ${row.currency}")
@@ -126,8 +126,8 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Text("Force-completes", style = MaterialTheme.typography.titleSmall)
                     }
                     items(data?.forceCompletes.orEmpty(), key = { it.orderId + it.completedAt }) { row ->
-                        ElevatedCard(modifier.fillMaxWidth()) {
-                            Column(modifier.padding(PegasusSpacing.md)) {
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.orderId, style = MaterialTheme.typography.titleSmall)
                                 Text("Reason ${row.reasonCode.ifBlank { "—" }} · Actor ${row.actorId.ifBlank { "—" }}")
                             }
@@ -137,8 +137,8 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Text("Credit freezes", style = MaterialTheme.typography.titleSmall)
                     }
                     items(data?.creditFreezes.orEmpty(), key = { it.retailerId + it.status }) { row ->
-                        ElevatedCard(modifier.fillMaxWidth()) {
-                            Column(modifier.padding(PegasusSpacing.md)) {
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.retailerId, style = MaterialTheme.typography.titleSmall)
                                 Text(row.status)
                                 Text("Balance ${row.currentBalanceMinor} / limit ${row.creditLimitMinor}")
@@ -150,7 +150,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     }
                     items(data?.claimMismatches.orEmpty(), key = { it.claimId }) { row ->
                         ElevatedCard(Modifier.fillMaxWidth()) {
-                            Column(modifier.padding(PegasusSpacing.md)) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.claimId, style = MaterialTheme.typography.titleSmall)
                                 Text("Order ${row.orderId}")
                                 Text(row.mismatchReason)

@@ -80,7 +80,7 @@ export default function OrderDetailPage() {
 
   async function runMutation(
     label: string,
-    fn: () => Promise<{ status?: string }>,
+    fn: () => Promise<unknown>,
     requiresReason = false,
   ) {
     if (requiresReason && !reason.trim()) {
@@ -89,8 +89,9 @@ export default function OrderDetailPage() {
     }
     setActing(true);
     try {
-      const resp = await fn();
-      toast(`${label} · ${resp.status ?? 'ok'}`, 'success');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resp: any = await fn();
+      toast(`${label} · ${resp?.status ?? resp?.state ?? 'ok'}`, 'success');
       setReason('');
       await load();
     } catch (err) {

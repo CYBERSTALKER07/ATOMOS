@@ -61,7 +61,11 @@ fun NotificationPreferencesScreen(ops: SupplierOperationsRepository, onBack: () 
         },
     ) { padding ->
         when {
-            loading -> PegasusLoadingState("Loading…", modifier = Modifier.padding(padding))
+            loading -> PegasusLoadingState(
+                title = "Loading…",
+                body = "Notification preferences",
+                modifier = Modifier.padding(padding),
+            )
             else -> LazyColumn(
                 modifier = Modifier.padding(padding).padding(PegasusSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),

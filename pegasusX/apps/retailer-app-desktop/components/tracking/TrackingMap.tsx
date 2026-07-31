@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Truck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Skeleton } from "../../../components/Skeleton";
-import EmptyState from "../../../components/EmptyState";
+import { Skeleton } from "../Skeleton";
+import EmptyState from "../EmptyState";
 import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { PageSection } from "../../../components/PageSection";
-import type { TrackingOrder } from "../../../lib/types";
+import { PageSection } from "../PageSection";
+import type { TrackingOrder } from "../../lib/types";
 
 const TASHKENT: [number, number] = [69.2401, 41.2995];
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CreateOverrideForm: View {
-    let templates: [SeasonalTemplateRow]
+    let templates: [SeasonalBuiltinTemplate]
     @Binding var templateId: String
     @Binding var name: String
     @Binding var startDate: String

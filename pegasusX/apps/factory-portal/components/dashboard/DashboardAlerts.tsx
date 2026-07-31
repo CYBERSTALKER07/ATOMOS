@@ -30,7 +30,7 @@ export function DashboardAlerts({ stats }: { stats: FactoryStats }) {
                 className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift h-full"
               >
                 <div className="flex items-center justify-between">
-                  <Icon name={kpi.icon as any} size={18} className="text-[var(--muted)]" />
+                  <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
                   {kpi.danger && <span className="status-chip status-chip--critical">Alert</span>}
                 </div>
                 <div className="mt-4 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{kpi.value}</div>

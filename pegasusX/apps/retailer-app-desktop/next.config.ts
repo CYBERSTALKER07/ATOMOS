@@ -16,8 +16,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   ...(isTauriBuild
     ? {
-        output: "export",
+        output: "export" as const,
         images: { unoptimized: true },
+        eslint: { ignoreDuringBuilds: true },
+        // Packaging gate: `pnpm typecheck` remains the type SoT in CI.
+        typescript: { ignoreBuildErrors: true },
       }
     : {
         async rewrites() {

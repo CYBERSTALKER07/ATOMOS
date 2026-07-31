@@ -1,6 +1,6 @@
 import { Search, SlidersHorizontal } from "lucide-react";
-import { Skeleton } from "../../../components/Skeleton";
-import type { Supplier } from "../../../lib/types";
+import { Skeleton } from "../Skeleton";
+import type { Supplier } from "../../lib/types";
 
 export interface CatalogFiltersProps {
   searchQuery: string;

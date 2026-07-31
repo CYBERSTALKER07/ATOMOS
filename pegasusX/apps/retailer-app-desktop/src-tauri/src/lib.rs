@@ -1,6 +1,6 @@
 mod commands;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

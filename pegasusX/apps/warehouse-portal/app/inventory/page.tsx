@@ -286,7 +286,7 @@ export default function InventoryPage() {
             onCancelAdjust={() => closeAdjustFlow()}
             onPolicyChange={(productId, policy) => { void handlePolicyChange(productId, policy); }}
           />
-        )})}
+        )}
         </div>
 
         {confirmItem && confirmQty != null && (

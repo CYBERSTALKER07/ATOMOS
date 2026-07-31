@@ -39,7 +39,7 @@ export default function NotificationInboxPage() {
         title="Notifications Inbox"
         description="View and manage all your factory notifications and alerts."
         loading={loading}
-        skeletonVariant="list"
+        skeletonVariant="table"
         empty={!loading && items.length === 0}
         emptyMessage="No notifications in your inbox at this time."
         actions={

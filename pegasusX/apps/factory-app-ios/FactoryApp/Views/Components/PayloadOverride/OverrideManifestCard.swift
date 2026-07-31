@@ -46,7 +46,7 @@ struct OverrideManifestCard: View {
                     .cornerRadius(LabTheme.radiusSM)
             } else {
                 ForEach(manifest.transfers) { transfer in
-                    TransferRow(
+                    OverrideTransferRow(
                         transfer: transfer, 
                         isProcessing: isProcessing,
                         canMove: manifestsCount > 1,

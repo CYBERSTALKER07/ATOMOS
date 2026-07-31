@@ -1,0 +1,107 @@
+# PegasusX native mobile clients — Android + iOS compile gates
+name: PegasusX Native Mobile Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "pegasusX/apps/*-app-android/**"
+      - "pegasusX/apps/*-app-ios/**"
+      - "pegasusX/scripts/build_native_android_store.sh"
+      - ".github/workflows/pegasusx-native-mobile-build.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "pegasusX/apps/*-app-android/**"
+      - "pegasusX/apps/*-app-ios/**"
+      - ".github/workflows/pegasusx-native-mobile-build.yml"
+
+jobs:
+  android:
+    name: Android / ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - retailer-app-android
+          - supplier-app-android
+          - driver-app-android
+          - warehouse-app-android
+          - factory-app-android
+          - payload-app-android
+    defaults:
+      run:
+        working-directory: pegasusX/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble enterpriseDebug
+        run: ./gradlew :app:assembleEnterpriseDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-enterprise-debug
+          path: pegasusX/apps/${{ matrix.app }}/app/build/outputs/apk/enterprise/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+  ios:
+    name: iOS / ${{ matrix.scheme }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: reatilerapp
+            project: pegasusX/apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj
+          - scheme: SupplierAppIOS
+            project: pegasusX/apps/supplier-app-ios/SupplierAppIOS.xcodeproj
+          - scheme: driverappios
+            project: pegasusX/apps/driver-app-ios/driverappios/driverappios.xcodeproj
+          - scheme: WarehouseAppIOS
+            project: pegasusX/apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj
+          - scheme: FactoryAppIOS
+            project: pegasusX/apps/factory-app-ios/FactoryAppIOS.xcodeproj
+          - scheme: payload-app-ios
+            project: pegasusX/apps/payload-app-ios/payload-app-ios.xcodeproj
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve package dependencies
+        run: |
+          xcodebuild -project "${{ matrix.project }}" -scheme "${{ matrix.scheme }}" \
+            -resolvePackageDependencies || true
+
+      - name: Build for iOS Simulator
+        run: |
+          DEST=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $1,$2}' | head -1 | sed 's/[[:space:]]*$//')
+          # Prefer a concrete available iPhone simulator
+          if xcrun simctl list devices available | grep -q "iPhone 16"; then
+            DEST_ARG='platform=iOS Simulator,name=iPhone 16'
+          elif xcrun simctl list devices available | grep -q "iPhone 17"; then
+            DEST_ARG='platform=iOS Simulator,name=iPhone 17'
+          else
+            DEST_ARG='generic/platform=iOS Simulator'
+          fi
+          echo "Using destination: $DEST_ARG"
+          xcodebuild \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "$DEST_ARG" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build

@@ -371,7 +371,6 @@ fun HomeScreen(
 
 // ── Sidebar (truck list) ─────────────────────────────────────────────────────
 
-@Composable
 // ── Detail pane (Phase 4 loading workflow) ───────────────────────────────────
 
 /*
@@ -606,7 +605,7 @@ private fun SealManifestButton(loading: Boolean, onClick: () -> Unit) {
 // ── Post-seal 60s countdown card (Edge 33 placeholder for missing-items report) ─
 
 @Composable
-private fun PostSealCountdownCard(
+internal fun PostSealCountdownCard(
     orderId: String,
     dispatchCode: String,
     secondsLeft: Int,
@@ -666,7 +665,7 @@ private fun PostSealCountdownCard(
 // ── All Sealed success terminal screen ───────────────────────────────────────
 
 @Composable
-private fun AllSealedSuccessCard(
+internal fun AllSealedSuccessCard(
     dispatchCodes: Map<String, String>,
     onStartNewManifest: () -> Unit,
 ) {
@@ -759,7 +758,7 @@ private fun ErrorBanner(message: String) {
 // ── Phase 5 dialogs & banners ────────────────────────────────────────────────────────
 
 @Composable
-private fun EscalatedBanner(message: String, onDismiss: () -> Unit) {
+internal fun EscalatedBanner(message: String, onDismiss: () -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,

@@ -8,12 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasusx.supplier.data.model.SupplierReassignRecommendations
+import com.pegasusx.supplier.data.model.RecommendReassignResponse
 
 @Composable
 fun ReassignOrderDialog(
     orderId: String,
-    recs: SupplierReassignRecommendations?,
+    recs: RecommendReassignResponse?,
     isReassigning: Boolean,
     onDismiss: () -> Unit,
     onApplyReassign: (String, String, Boolean) -> Unit

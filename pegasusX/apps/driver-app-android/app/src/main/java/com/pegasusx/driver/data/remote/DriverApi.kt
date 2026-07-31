@@ -11,6 +11,7 @@ import com.pegasusx.driver.data.model.ClientPolicyResponse
 import com.pegasusx.driver.data.model.CashReconciliationRow
 import com.pegasusx.driver.data.model.CashReconciliationsResponse
 import com.pegasusx.driver.data.model.SubmitCashReconciliationRequest
+import com.pegasusx.driver.data.model.CollectCashRequest
 import com.pegasusx.driver.data.model.CollectCashResponse
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest

@@ -1,8 +1,8 @@
 import { Package, MapPin, Users, Truck } from "lucide-react";
-import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
-import CountUp from "../../../components/CountUp";
-import { PageSection } from "../../../components/PageSection";
-import type { TrackingOrder } from "../../../lib/types";
+import { BentoGrid, BentoCard } from "../BentoGrid";
+import CountUp from "../CountUp";
+import { PageSection } from "../PageSection";
+import type { TrackingOrder } from "../../lib/types";
 
 function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");

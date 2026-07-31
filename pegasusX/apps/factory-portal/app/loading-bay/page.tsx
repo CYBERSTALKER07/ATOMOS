@@ -6,7 +6,6 @@ import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
-import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -165,7 +164,7 @@ export default function LoadingBayPage() {
             body="Approved transfers will appear here as soon as warehouse demand is accepted."
           />
         ) : (
-          <LoadingBayGrid grouped={grouped as any} />
+          <LoadingBayGrid grouped={grouped} />
         )}
       </PageChrome>
     </PageTransition>

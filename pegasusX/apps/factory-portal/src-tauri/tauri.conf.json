@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3003",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build:static"
+    "beforeDevCommand": "pnpm run dev",
+    "beforeBuildCommand": "pnpm run build:static"
   },
   "app": {
     "macOSPrivateApi": true,
@@ -55,7 +55,9 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["pegasusx-factory"]
+        "schemes": [
+          "pegasusx-factory"
+        ]
       }
     },
     "updater": {

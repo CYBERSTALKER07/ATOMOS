@@ -11,7 +11,7 @@ struct ClientPolicyBanner: View {
             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
                 HStack(alignment: .top, spacing: SupplierTheme.spacingMD) {
                     Image(systemName: force ? "exclamationmark.triangle.fill" : "arrow.down.app.fill")
-                        .foregroundStyle(force ? SupplierTheme.warning : SupplierTheme.primary)
+                        .foregroundStyle(force ? SupplierTheme.warning : Color.accentColor)
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.primary)
@@ -33,7 +33,7 @@ struct ClientPolicyBanner: View {
             .padding(SupplierTheme.spacingMD)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                (force ? SupplierTheme.warning : SupplierTheme.primary).opacity(0.12)
+                (force ? SupplierTheme.warning : Color.accentColor).opacity(0.12)
             )
             .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
         }

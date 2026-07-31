@@ -19,27 +19,28 @@ struct ShopClosedView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(row.orderId).font(.headline)
-                        Text("Driver \(row.driverId) · Retailer \(row.retailerId)").font(.caption)
-                        if let reason = row.shopClosedReason, !reason.isEmpty {
-                            Text("Reason \(reason)").font(.caption2).foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(row.orderId).font(.headline)
+                            Text("Driver \(row.driverId) · Retailer \(row.retailerId)").font(.caption)
+                            if let reason = row.shopClosedReason, !reason.isEmpty {
+                                Text("Reason \(reason)").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            if let grace = row.graceEndsAt, !grace.isEmpty {
+                                Text("Grace ends \(grace)").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            if let res = row.shopClosedResolution, !res.isEmpty {
+                                Text("Resolution \(res)").font(.caption2)
+                            }
+                            HStack {
+                                Button("Wait") { resolve(row.attemptId, action: "WAIT") }
+                                    .disabled(busyId == row.attemptId)
+                                Button("Bypass") { resolve(row.attemptId, action: "BYPASS") }
+                                    .disabled(busyId == row.attemptId)
+                                Button("Return") { resolve(row.attemptId, action: "RETURN_TO_DEPOT") }
+                                    .disabled(busyId == row.attemptId)
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        if let grace = row.graceEndsAt, !grace.isEmpty {
-                            Text("Grace ends \(grace)").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        if let res = row.shopClosedResolution, !res.isEmpty {
-                            Text("Resolution \(res)").font(.caption2)
-                        }
-                        HStack {
-                            Button("Wait") { resolve(row.attemptId, action: "WAIT") }
-                                .disabled(busyId == row.attemptId)
-                            Button("Bypass") { resolve(row.attemptId, action: "BYPASS") }
-                                .disabled(busyId == row.attemptId)
-                            Button("Return") { resolve(row.attemptId, action: "RETURN_TO_DEPOT") }
-                                .disabled(busyId == row.attemptId)
-                        }
-                        .buttonStyle(.bordered)
                     }
                 }
             }

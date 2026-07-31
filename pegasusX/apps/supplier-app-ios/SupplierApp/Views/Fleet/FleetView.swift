@@ -80,7 +80,7 @@ struct FleetView: View {
     private func fleetList<Rows: View>(
         emptyTitle: String,
         emptyMessage: String,
-        @ViewBuilder rows: () -> Rows
+        @ViewBuilder rows: @escaping () -> Rows
     ) -> some View {
         if (segment == 0 && drivers.isEmpty) || (segment == 1 && vehicles.isEmpty) {
             SupplierEmptyView(title: emptyTitle, message: emptyMessage)

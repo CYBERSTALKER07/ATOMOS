@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Package } from "lucide-react";
-import { Skeleton } from "../../../components/Skeleton";
-import EmptyState from "../../../components/EmptyState";
-import { isCatalogBlocked } from "../../../lib/stock-policy";
-import { productDisplayPrice, productListPrice, productSalePrice } from "../../../lib/types";
-import type { Product } from "../../../lib/types";
+import { Skeleton } from "../Skeleton";
+import EmptyState from "../EmptyState";
+import { isCatalogBlocked } from "../../lib/stock-policy";
+import { productDisplayPrice, productListPrice, productSalePrice } from "../../lib/types";
+import type { Product } from "../../lib/types";
 
 export interface EmptyStateConfig {
   headline: string;

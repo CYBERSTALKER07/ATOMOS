@@ -4,9 +4,9 @@ import { AnimatePresence } from "framer-motion";
 import { PackageOpen, ArrowUpRight } from "lucide-react";
 import { Chip } from "@heroui/react";
 import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
-import EmptyState from "../../../components/EmptyState";
-import { ListRowSkeleton } from "../../../components/Skeleton";
-import type { Order } from "../../../lib/types";
+import EmptyState from "../EmptyState";
+import { ListRowSkeleton } from "../Skeleton";
+import type { Order } from "../../lib/types";
 
 interface OrderListProps {
   loading: boolean;

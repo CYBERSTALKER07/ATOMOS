@@ -46,7 +46,11 @@ fun RoutePerformanceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit
         },
     ) { padding ->
         if (loading) {
-            PegasusLoadingState("Loading…", modifier = Modifier.padding(padding))
+            PegasusLoadingState(
+                title = "Loading…",
+                body = "Fetching route performance metrics.",
+                modifier = Modifier.padding(padding),
+            )
         } else {
             Column(Modifier.padding(padding).padding(PegasusSpacing.md)) {
                 rows.forEach { row ->

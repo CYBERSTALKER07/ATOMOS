@@ -1,6 +1,6 @@
 mod commands;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 pub fn run() {
     env_logger::init();

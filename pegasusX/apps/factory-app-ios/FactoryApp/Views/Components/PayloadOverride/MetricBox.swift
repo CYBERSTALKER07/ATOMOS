@@ -15,7 +15,7 @@ struct MetricBox: View {
     let value: String
     
     var body: some View {
-        VStack(spacing: LabTheme.spacingXXS) {
+        VStack(spacing: LabTheme.spacingXS) {
             Text(value)
                 .font(.headline)
             Text(label)

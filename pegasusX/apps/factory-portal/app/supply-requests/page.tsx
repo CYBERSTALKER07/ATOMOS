@@ -25,6 +25,8 @@ import { SupplyRequestBoard } from '@/components/supply-requests/SupplyRequestBo
 
 type FilterState = 'ALL' | 'SUBMITTED' | 'ACKNOWLEDGED' | 'IN_PRODUCTION' | 'READY' | 'FULFILLED' | 'CANCELLED';
 
+const LIVE_REFRESH_MS = 30_000;
+
 function requestSignature(items: SupplyRequest[]) {
   return items
     .map((request) => `${request.request_id}:${request.state}:${request.total_volume_vu}`)

@@ -794,7 +794,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                             qrToken: o.qrToken, paymentGateway: o.paymentGateway,
                             createdAt: o.createdAt, updatedAt: o.updatedAt, items: o.items,
                             estimatedArrivalAt: o.estimatedArrivalAt, etaDurationSec: o.etaDurationSec,
-                            etaDistanceM: o.etaDistanceM, routeId: o.routeId, sequenceIndex: o.sequenceIndex
+                            etaDistanceM: o.etaDistanceM, routeId: o.routeId, sequenceIndex: o.sequenceIndex,
+                            isPartial: o.isPartial, splitGroupId: o.splitGroupId
                         )
                     }
                 } catch {

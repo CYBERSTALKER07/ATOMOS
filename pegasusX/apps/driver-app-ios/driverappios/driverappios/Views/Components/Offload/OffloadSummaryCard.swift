@@ -2,7 +2,7 @@ import SwiftUI
 
 struct OffloadSummaryCard: View {
     let retailerName: String
-    let totalAmount: Double
+    let totalAmount: Int
     
     var body: some View {
         HStack {

@@ -49,7 +49,7 @@ export default function MySuppliersPage() {
       const data = await res.json();
       const existingIds = new Set(supplierList.map(s => s.id));
       setSearchResults((Array.isArray(data) ? data : []).filter((s: Supplier) => !existingIds.has(s.id)));
-    } catch (err: any) {
+    } catch {
       setSearchError("Failed to search suppliers.");
     } finally {
       setIsSearching(false);
@@ -98,7 +98,7 @@ export default function MySuppliersPage() {
         title="My Suppliers"
         description="Manage your approved wholesale suppliers and discover new partners."
         loading={isLoading}
-        skeletonVariant="text"
+        skeletonVariant="table"
         actions={
           <div className="flex items-center gap-3">
             <button

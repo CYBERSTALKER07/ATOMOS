@@ -80,6 +80,8 @@ struct FactoryAdaptiveShell: View {
             DashboardView(
                 onOpenSupplyRequests: { sidebarSelection = .supplyRequests },
                 onOpenPayloadOverride: { sidebarSelection = .payloadOverride },
+                onOpenManifestExceptions: { sidebarSelection = .manifestExceptions },
+                onOpenAnalytics: { sidebarSelection = .analytics },
                 onOpenInsights: { sidebarSelection = .insights }
             )
         case .loadingBay:

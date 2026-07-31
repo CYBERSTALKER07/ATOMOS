@@ -3,7 +3,7 @@ import SwiftUI
 
 struct DistanceInfo: View {
     let mission: Mission
-    let location: CLLocation?
+    let location: CLLocationCoordinate2D?
     
     var body: some View {
         if let loc = location {

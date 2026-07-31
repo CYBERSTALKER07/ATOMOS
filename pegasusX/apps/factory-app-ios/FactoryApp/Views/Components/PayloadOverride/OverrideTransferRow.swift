@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TransferRow: View {
+struct OverrideTransferRow: View {
     let transfer: ManifestTransfer
     let isProcessing: Bool
     let canMove: Bool

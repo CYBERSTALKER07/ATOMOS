@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
 
+export const dynamic = "force-static";
+
+/** Required for `output: "export"` (Tauri). Desktop talks to the backend directly. */
+export function generateStaticParams() {
+  return [];
+}
+
 const DEFAULT_BACKEND_BASE_URL = "http://localhost:8180";
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",

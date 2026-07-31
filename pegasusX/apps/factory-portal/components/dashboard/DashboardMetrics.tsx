@@ -21,7 +21,7 @@ export function DashboardMetrics({ stats }: { stats: FactoryStats }) {
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-[var(--muted)]">{kpi.label}</span>
-              <Icon name={kpi.icon as any} size={18} className="text-[var(--muted)]" />
+              <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
             </div>
             <div className="mt-5 text-4xl font-semibold tracking-tight text-[var(--foreground)] tabular-nums">{kpi.value}</div>
             <p className="mt-2 text-sm text-[var(--muted)]">{kpi.detail}</p>

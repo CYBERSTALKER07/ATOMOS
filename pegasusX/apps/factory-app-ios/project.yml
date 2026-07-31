@@ -33,6 +33,7 @@ targets:
       - path: FactoryApp
         excludes:
           - "**/.DS_Store"
+          - "Views/Components/LoadingBay/PayloadOverrideView.swift"
       - path: ../../packages/mobile-ios-design
     resources:
       - path: FactoryApp/Assets.xcassets

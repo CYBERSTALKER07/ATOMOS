@@ -78,7 +78,7 @@ export function DashboardActionGrid({ stats }: { stats: FactoryStats }) {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)]">
-                    <Icon name={card.icon as any} size={20} />
+                    <Icon name={card.icon} size={20} />
                   </div>
                   <Icon name="chevronR" size={16} className="text-[var(--muted)]" />
                 </div>

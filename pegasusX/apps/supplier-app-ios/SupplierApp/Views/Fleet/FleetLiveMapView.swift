@@ -96,12 +96,13 @@ struct FleetLiveMapView: View {
                 if !exceptionCells.isEmpty {
                     ResponsiveGridContentWrapper {
                         ForEach(exceptionCells) { cell in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
-                                .font(.subheadline.bold())
-                            Text("Total \(cell.counts["total", default: 0]) · shop closed \(cell.counts["shop_closed", default: 0])")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
+                                    .font(.subheadline.bold())
+                                Text("Total \(cell.counts["total", default: 0]) · shop closed \(cell.counts["shop_closed", default: 0])")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

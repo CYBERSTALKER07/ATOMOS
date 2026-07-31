@@ -257,7 +257,7 @@ final class APIClient: @unchecked Sendable {
     func clientPolicy(platform: String, version: String) async throws -> ClientPolicyResponse {
         let role = EnterpriseUpdateConfig.policyRole
         let channel = EnterpriseUpdateConfig.channel
-        try await get(
+        return try await get(
             "v1/platform/client-policy?role=\(role)&platform=\(platform)&version=\(version)&channel=\(channel)"
         )
     }

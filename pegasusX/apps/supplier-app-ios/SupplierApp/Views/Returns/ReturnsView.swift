@@ -25,56 +25,57 @@ struct ReturnsView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(items) { row in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(row.productName).font(.headline)
-                        Text("Qty \(row.quantity) · \(row.reason)")
-                            .font(.subheadline)
-                        Text("Physical: \(row.physicalStatus)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if !row.driverName.isEmpty {
-                            Text("Driver: \(row.driverName)")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(row.productName).font(.headline)
+                            Text("Qty \(row.quantity) · \(row.reason)")
+                                .font(.subheadline)
+                            Text("Physical: \(row.physicalStatus)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                        }
-                        if row.receivedQty > 0 {
-                            Text("Scanned: \(row.receivedQty)")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
-                        }
+                            if !row.driverName.isEmpty {
+                                Text("Driver: \(row.driverName)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if row.receivedQty > 0 {
+                                Text("Scanned: \(row.receivedQty)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
 
-                        if resolvingId == row.returnId {
-                            Picker("Resolution", selection: $resolution) {
-                                ForEach(resolutions, id: \.self) { option in
-                                    Text(option.replacingOccurrences(of: "_", with: " ")).tag(option)
+                            if resolvingId == row.returnId {
+                                Picker("Resolution", selection: $resolution) {
+                                    ForEach(resolutions, id: \.self) { option in
+                                        Text(option.replacingOccurrences(of: "_", with: " ")).tag(option)
+                                    }
                                 }
-                            }
-                            .pickerStyle(.menu)
-                            TextField("Notes (optional)", text: $notes)
-                                .textInputAutocapitalization(.sentences)
-                            HStack {
-                                Button(actionLoading == row.returnId ? "…" : "Confirm") {
-                                    Task { await resolve(returnId: row.returnId) }
+                                .pickerStyle(.menu)
+                                TextField("Notes (optional)", text: $notes)
+                                    .textInputAutocapitalization(.sentences)
+                                HStack {
+                                    Button(actionLoading == row.returnId ? "…" : "Confirm") {
+                                        Task { await resolve(returnId: row.returnId) }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .disabled(actionLoading == row.returnId)
+                                    Button("Cancel") { resolvingId = nil }
+                                        .buttonStyle(.bordered)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(actionLoading == row.returnId)
-                                Button("Cancel") { resolvingId = nil }
-                                    .buttonStyle(.bordered)
+                            } else if row.physicalStatus == "RESTOCKED" || row.physicalStatus == "WRITTEN_OFF" {
+                                Text("Gate resolved")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Button("Dispute / override") {
+                                    resolvingId = row.returnId
+                                    resolution = "RETURN_TO_STOCK"
+                                    notes = ""
+                                }
+                                .buttonStyle(.bordered)
                             }
-                        } else if row.physicalStatus == "RESTOCKED" || row.physicalStatus == "WRITTEN_OFF" {
-                            Text("Gate resolved")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Button("Dispute / override") {
-                                resolvingId = row.returnId
-                                resolution = "RETURN_TO_STOCK"
-                                notes = ""
-                            }
-                            .buttonStyle(.bordered)
                         }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }

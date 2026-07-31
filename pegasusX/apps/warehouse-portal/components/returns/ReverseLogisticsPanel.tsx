@@ -15,8 +15,8 @@ type ReverseTask = {
   expected_qty_json?: string;
 };
 
-function taskId(t: ReverseTask) => t.TaskId ?? t.task_id ?? '';
-function orderId(t: ReverseTask) => t.OrderId ?? t.order_id ?? '';
+const taskId = (t: ReverseTask) => t.TaskId ?? t.task_id ?? '';
+const orderId = (t: ReverseTask) => t.OrderId ?? t.order_id ?? '';
 
 export function ReverseLogisticsPanel() {
   const [tasks, setTasks] = useState<ReverseTask[]>([]);

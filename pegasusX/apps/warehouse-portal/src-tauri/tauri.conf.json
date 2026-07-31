@@ -55,7 +55,9 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["pegasusx-warehouse"]
+        "schemes": [
+          "pegasusx-warehouse"
+        ]
       }
     },
     "updater": {

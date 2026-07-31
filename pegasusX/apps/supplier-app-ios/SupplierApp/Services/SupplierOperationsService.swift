@@ -380,8 +380,8 @@ enum SupplierOperationsService {
         let request = ApplyReassignRequest(driverId: driverId, isPartial: isPartial)
         try await APIClient.shared.postVoid(
             "v1/supplier/reassign-order",
-            query: ["order_id": orderId],
             body: request,
+            query: ["order_id": orderId],
             idempotencyKey: idempotencyKey
         )
     }

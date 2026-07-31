@@ -83,7 +83,11 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
         },
     ) { padding ->
         when {
-            loading -> PegasusLoadingState("Loading…", modifier = Modifier.padding(padding))
+            loading -> PegasusLoadingState(
+                title = "Loading…",
+                body = "Retailer credit profiles",
+                modifier = Modifier.padding(padding),
+            )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unavailable",

@@ -12,7 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
-import com.pegasusx.supplier.ui.viewmodel.InventoryItem
+import com.pegasusx.supplier.data.model.InventoryItem
 
 @Composable
 fun InventoryList(

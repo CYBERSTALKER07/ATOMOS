@@ -17,15 +17,16 @@ struct ManifestExceptionsView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(rows) { row in
-                    NavigationLink {
-                        ManifestDetailView(manifestId: row.manifestId)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(row.reason).font(.headline)
-                            Text("Manifest \(row.manifestId.prefix(8))…").font(.caption)
-                            Text("Order \(row.orderId.prefix(8))… · attempts \(row.attemptCount)").font(.caption)
-                            if row.escalated {
-                                Text("Escalated").font(.caption).foregroundStyle(.red)
+                        NavigationLink {
+                            ManifestDetailView(manifestId: row.manifestId)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.reason).font(.headline)
+                                Text("Manifest \(row.manifestId.prefix(8))…").font(.caption)
+                                Text("Order \(row.orderId.prefix(8))… · attempts \(row.attemptCount)").font(.caption)
+                                if row.escalated {
+                                    Text("Escalated").font(.caption).foregroundStyle(.red)
+                                }
                             }
                         }
                     }

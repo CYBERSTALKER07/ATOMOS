@@ -27,43 +27,44 @@ struct PromotionsView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(promotions) { promo in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(promo.name)
-                            .font(.headline)
-                        Text(promoSummary(promo))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let sim = simResults[promo.promotionId] {
-                            Text("P&L sandbox: \(sim.projectedVolume) units · margin \(sim.projectedMarginMinor / 100) (\(Int(sim.marginDeltaPct))%)")
-                                .font(.caption2)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(promo.name)
+                                .font(.headline)
+                            Text(promoSummary(promo))
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
-                        }
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        if promo.isActive {
-                            Button {
-                                Task { await simulate(promo) }
-                            } label: {
-                                Text(simulatingId == promo.promotionId ? "…" : "P&L")
+                            if let sim = simResults[promo.promotionId] {
+                                Text("P&L sandbox: \(sim.projectedVolume) units · margin \(sim.projectedMarginMinor / 100) (\(Int(sim.marginDeltaPct))%)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
-                            .tint(.purple)
                         }
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if promo.isActive {
-                            Button {
-                                editingPromotion = promo
-                                name = promo.name
-                                discountBps = String(promo.discountBps)
-                                showEdit = true
-                            } label: {
-                                Text("Edit")
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            if promo.isActive {
+                                Button {
+                                    Task { await simulate(promo) }
+                                } label: {
+                                    Text(simulatingId == promo.promotionId ? "…" : "P&L")
+                                }
+                                .tint(.purple)
                             }
-                            .tint(.blue)
-                            Button(role: .destructive) {
-                                Task { await deactivate(promo.promotionId) }
-                            } label: {
-                                Text("Deactivate")
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if promo.isActive {
+                                Button {
+                                    editingPromotion = promo
+                                    name = promo.name
+                                    discountBps = String(promo.discountBps)
+                                    showEdit = true
+                                } label: {
+                                    Text("Edit")
+                                }
+                                .tint(.blue)
+                                Button(role: .destructive) {
+                                    Task { await deactivate(promo.promotionId) }
+                                } label: {
+                                    Text("Deactivate")
+                                }
                             }
                         }
                     }

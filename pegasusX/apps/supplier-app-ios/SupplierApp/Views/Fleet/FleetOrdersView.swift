@@ -16,10 +16,11 @@ struct FleetOrdersView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.orderId).font(.headline)
-                        Text("\(row.status) · Driver \(row.driverId ?? "—")").font(.subheadline)
-                        if let routeId = row.routeId { Text("Route \(routeId)").font(.caption) }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(row.orderId).font(.headline)
+                            Text("\(row.status) · Driver \(row.driverId ?? "—")").font(.subheadline)
+                            if let routeId = row.routeId { Text("Route \(routeId)").font(.caption) }
+                        }
                     }
                 }
             }

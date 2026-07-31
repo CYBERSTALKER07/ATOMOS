@@ -662,6 +662,8 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Generic HTTP
 
+    private struct EmptyBody: Encodable {}
+
     func get<T: Decodable>(_ path: String) async throws -> T {
         let request = try buildRequest(path: path, method: "GET")
         return try await execute(request)
