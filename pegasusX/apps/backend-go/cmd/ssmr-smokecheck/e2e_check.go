@@ -245,7 +245,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runSupplierClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("supplier client policy: %w", err)
 	}
-	if err := runFactoryOps(ctx, client, base, cookie); err != nil {
+	if err := runFactoryOps(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("factory ops: %w", err)
 	}
 	if err := postDriverTelemetry(ctx, client, base, cfg, supplierID); err != nil {

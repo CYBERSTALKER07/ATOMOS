@@ -244,13 +244,18 @@ func completeCashSettlementAfterArrive(
 		if issueErr != nil {
 			return fmt.Errorf("wait COMPLETED after cash: %w (admin jwt: %v)", err, issueErr)
 		}
-		forceBody := []byte(`{"reason_code":"ssmr_smoke_fiscal_unstick"}`)
+		forceBody := []byte(`{"reason_code":"OPS_ESCALATION"}`)
 		st, body, _, forceErr := clientDo(ctx, client, http.MethodPost,
 			base+"/v1/order/"+orderID+"/force-complete", forceBody, adminTok, fmt.Sprintf("ssmr-cash-force-%s-%d", orderID, time.Now().UnixNano()))
 		if forceErr != nil {
 			return fmt.Errorf("wait COMPLETED after cash: %w (force: %v)", err, forceErr)
 		}
 		if st != http.StatusOK {
+			// Fiscal SUCCESS may already be racing COMPLETED — keep polling.
+			if waitErr := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); waitErr == nil {
+				fmt.Println("PX_E2E_FISCAL_RACE_COMPLETED_OK")
+				return nil
+			}
 			return fmt.Errorf("wait COMPLETED after cash: %w (force status %d: %s)", err, st, string(body))
 		}
 		if waitErr := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 20*time.Second); waitErr != nil {

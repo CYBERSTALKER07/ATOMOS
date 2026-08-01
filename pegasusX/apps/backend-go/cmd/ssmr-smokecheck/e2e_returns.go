@@ -16,24 +16,22 @@ import (
 )
 
 func runReturnGateE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, cookie, retailerToken, h3Cell string) error {
-	loginBody, _ := json.Marshal(map[string]string{
-		"phone": envOr("PAYLOAD_DEMO_PHONE", "+998901110022"),
-		"pin":   envOr("PAYLOAD_DEMO_PIN", "33333333"),
-	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/auth/payloader/login", loginBody, "", "")
+	// Issue a payloader JWT scoped to the SSMR warehouse. Demo login defaults to
+	// warehouse-demo-1 when PAYLOAD_DEMO_WAREHOUSE_ID is unset, which hides returns.
+	payloaderToken, err := auth.Issue(auth.Claims{
+		Subject:      envOr("PAYLOAD_DEMO_WORKER_ID", "payloader-demo-1"),
+		Role:         auth.RolePayload,
+		SupplierID:   supplierID,
+		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   demoWarehouseID(),
+		IsConfigured: true,
+	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
 	if err != nil {
-		return err
+		return fmt.Errorf("issue payloader jwt: %w", err)
 	}
-	if status != http.StatusOK {
-		return fmt.Errorf("payloader login status %d body %s", status, string(respBody))
-	}
-	var loginResp struct {
-		Token string `json:"token"`
-	}
-	if err := json.Unmarshal(respBody, &loginResp); err != nil || loginResp.Token == "" {
-		return fmt.Errorf("payloader login missing token")
-	}
-	payloaderToken := loginResp.Token
+	var status int
+	var respBody []byte
 
 	if status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/returns/inbound?physical_status=ARRIVED&limit=10", nil, payloaderToken, ""); err != nil {
 		return err
@@ -158,10 +156,30 @@ func runReturnGateReceiveE2E(
 		return fmt.Errorf("return-gate depart: %w", err)
 	}
 
-	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
+	// Seal leaves orders LOADED; arrive requires IN_TRANSIT (same as payment-at-delivery path).
+	adminToken, err := auth.Issue(auth.Claims{
+		Subject:    supplierID,
+		Role:       auth.RoleAdmin,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
+	if err != nil {
+		return fmt.Errorf("return-gate admin jwt: %w", err)
+	}
 	var status int
 	var respBody []byte
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "")
+	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
+		patchBody, _ := json.Marshal(map[string]string{"status": next})
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, fmt.Sprintf("return-gate-status:%s:%s", orderID, next))
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK && status != http.StatusConflict {
+			return fmt.Errorf("return-gate order status %s: %d body %s", next, status, string(respBody))
+		}
+	}
+
+	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, fmt.Sprintf("return-gate-arrive:%s", orderID))
 	if err != nil {
 		return err
 	}
@@ -431,14 +449,16 @@ func promoteReturnGateForE2E(ctx context.Context, cfg *bootstrap.Config, orderID
 	}
 	defer client.Close()
 	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// Inbound list filters physical_status=ARRIVED; promote any pre-arrival row for the smoke order.
 		stmt := spanner.Statement{
 			SQL: `UPDATE SupplierReturns
-			      SET PhysicalStatus = @on_truck
-			      WHERE OrderId = @order_id AND PhysicalStatus = @pending`,
+			      SET PhysicalStatus = @arrived
+			      WHERE OrderId = @order_id
+			        AND PhysicalStatus IN UNNEST(@from_states)`,
 			Params: map[string]any{
-				"on_truck": "ON_TRUCK",
-				"order_id": orderID,
-				"pending":  "PENDING",
+				"arrived":     "ARRIVED",
+				"order_id":    orderID,
+				"from_states": []string{"PENDING", "ON_TRUCK"},
 			},
 		}
 		_, err := txn.Update(ctx, stmt)

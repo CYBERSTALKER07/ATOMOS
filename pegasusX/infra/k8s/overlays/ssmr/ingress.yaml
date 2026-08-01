@@ -17,12 +17,9 @@ metadata:
     # Google-managed cert → Active only after DNS A record points here.
     networking.gke.io/managed-certificates: "pegasusx-ssmr-api-cert"
 spec:
-  # Self-signed secret (apply-time) serves HTTPS immediately; ManagedCertificate
-  # replaces it once DNS validates.
-  tls:
-    - hosts:
-        - api-ssmr.pegasusx.app
-      secretName: pegasusx-ssmr-api-tls
+  # TLS via Google ManagedCertificate annotation (Active after DNS A → LB IP).
+  # Do not attach a self-signed tls secretName — dual certs make SNI serve the
+  # untrusted cert and break browsers on HSTS-preloaded .app domains.
   rules:
     - host: api-ssmr.pegasusx.app
       http:

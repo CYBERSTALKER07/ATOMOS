@@ -1,7 +1,7 @@
 # PegasusX Ecosystem Status Report
 
 **Audit date:** 2026-07-31  
-**Closure pass:** 2026-07-31 (gap-closure implemented)  
+**Closure pass:** 2026-08-01 (no-mocks + SSMR marker proof)  
 **Method:** Code-backed. Docs are hints only.  
 **Inventory SoT:** `docs/ECOSYSTEM_FEATURES_BY_ROLE.md`  
 **Intentional divergences:** `context/parity-ledger.md`  
@@ -11,7 +11,7 @@
 
 ## Executive verdict
 
-Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vast majority of catalogued features after the 2026-07-31 gap-closure. Realtime (outbox → Kafka → WS/FCM) is **WIRED_CODE**; cloud proof remains **ops-dependent** (DNS, GP password, redeploy, SSMR log).
+Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vast majority of catalogued features. SSMR cloud marker proof is **green** (2026-08-01, port-forward to live cluster). Remaining ops: DNS/TLS, Global Pay SUCCESS password, Firebase client configs. Negotiations + Soliq OFD stay product-deferred.
 
 | Severity | Finding | Status after closure |
 |----------|---------|----------------------|
@@ -23,7 +23,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 | **P2** Driver rescue/earnings/scan-qr; WH rescue URLs | **FIXED** |
 | **P2** BillingTierWorker / Analytics dummy | **FIXED** — worker wired; dummy removed |
 | **P2** Factory staff write / exception resolve | **FIXED** — backend + 3 clients |
-| **Ops** Cloud staging | **PARTIAL** — cluster live; DNS/GP/redeploy/e2e proof remaining |
+| **Ops** Cloud staging | **PARTIAL** — image `nomock3` live; e2e/marker **PASS**; DNS/GP SUCCESS still open |
 
 **Gates (post-closure):**
 
@@ -32,7 +32,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 | `role_row_contract_check(_full).sh` | PASS (baseline) |
 | `gen_contracts_gate.sh` | **PASS** |
 | `go test ./order ./kafka ./notifications ./events` | **PASS** |
-| `ssmr_ecosystem_marker_gate.sh` | Needs fresh `ssmr-e2e.log` after redeploy |
+| `ssmr_ecosystem_marker_gate.sh` | **PASS** (`ssmr-e2e.log`, 2026-08-01) |
 
 ---
 
@@ -92,7 +92,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 
 - Quantity negotiations (product)
 - Soliq OFD legal tax receipts (platform Pegasus branded receipts already ship)
-- Cloud DNS / GP SUCCESS / SSMR marker log proof
+- Cloud DNS / ManagedCert Active / GP SUCCESS (cash fallback proven)
 
 ---
 

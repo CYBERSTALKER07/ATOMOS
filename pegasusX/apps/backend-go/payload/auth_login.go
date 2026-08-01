@@ -76,7 +76,17 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 
 	warehouseID := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_WAREHOUSE_ID"))
 	if warehouseID == "" {
-		warehouseID = "warehouse-demo-1"
+		warehouseID = strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID"))
+	}
+	if warehouseID == "" {
+		warehouseID = strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))
+	}
+	if warehouseID == "" {
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr") {
+			warehouseID = "ssmr-warehouse-1"
+		} else {
+			warehouseID = "warehouse-demo-1"
+		}
 	}
 	warehouseName := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_WAREHOUSE_NAME"))
 	if warehouseName == "" {
