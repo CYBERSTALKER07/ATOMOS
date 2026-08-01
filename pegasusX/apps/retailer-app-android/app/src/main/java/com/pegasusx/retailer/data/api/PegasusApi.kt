@@ -329,6 +329,67 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): JsonElement
 
+    // Retail OS Phase 5 shifts & time
+    @POST("/v1/retailer/time/clock-in")
+    suspend fun clockIn(
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
+    ): JsonElement
+
+    @POST("/v1/retailer/time/clock-out")
+    suspend fun clockOut(): JsonElement
+
+    @GET("/v1/retailer/time/entries")
+    suspend fun getTimeEntries(): JsonElement
+
+    @GET("/v1/retailer/shifts")
+    suspend fun getShifts(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/shifts")
+    suspend fun openShift(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/shifts/{shiftID}/close")
+    suspend fun closeShift(
+        @Path("shiftID") shiftId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    // Retail OS Phase 6 sections / reports / assist
+    @GET("/v1/retailer/sections")
+    suspend fun getSections(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/sections")
+    suspend fun createSection(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @PUT("/v1/retailer/sections/{sectionID}/skus")
+    suspend fun putSectionSkus(
+        @Path("sectionID") sectionId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    @GET("/v1/retailer/reports/summary")
+    suspend fun getReportsSummary(): JsonElement
+
+    @GET("/v1/retailer/assist/tickets")
+    suspend fun getAssistTickets(): JsonElement
+
+    @POST("/v1/retailer/assist/tickets")
+    suspend fun createAssistTicket(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/assist/tickets/{ticketID}/claim")
+    suspend fun claimAssistTicket(@Path("ticketID") ticketId: String): JsonElement
+
+    @POST("/v1/retailer/assist/tickets/{ticketID}/complete")
+    suspend fun completeAssistTicket(@Path("ticketID") ticketId: String): JsonElement
+
     // ── Analytics ──
     @GET("/v1/retailer/analytics/expenses")
     suspend fun getRetailerExpenses(): RetailerAnalytics

@@ -14,6 +14,10 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocalMall
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
@@ -44,6 +48,10 @@ fun SettingsSection(
     onLocationsClick: () -> Unit = {},
     onStoreStockClick: () -> Unit = {},
     onPosClick: () -> Unit = {},
+    onShiftsClick: () -> Unit = {},
+    onSectionsClick: () -> Unit = {},
+    onReportsClick: () -> Unit = {},
+    onAssistClick: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth()
@@ -63,6 +71,14 @@ fun SettingsSection(
             SettingsListItem(icon = Icons.Outlined.LocalMall, title = "Store stock", subtitle = "Receive, putaway, count", onClick = onStoreStockClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.ShoppingCart, title = "POS", subtitle = "Cashier sales and voids", onClick = onPosClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.Schedule, title = "Shifts", subtitle = "Clock in and cash recon", onClick = onShiftsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.GridView, title = "Sections", subtitle = "Departments and SKU map", onClick = onSectionsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.Assessment, title = "Reports Pro", subtitle = "Sales and inventory digest", onClick = onReportsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.SupportAgent, title = "Floor assist", subtitle = "Section help tickets", onClick = onAssistClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.People, title = "Team", subtitle = "Staff roles and invites", onClick = onTeamClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))

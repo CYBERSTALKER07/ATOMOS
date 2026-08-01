@@ -2818,6 +2818,126 @@ export interface CreateRetailerPosSaleRequest {
   tenders?: RetailerPosTender[];
 }
 
+/** Retail OS Phase 5 shifts & time clock */
+export interface RetailerTimeEntry {
+  entry_id: string;
+  retailer_id: string;
+  user_id: string;
+  location_id: string;
+  status: "OPEN" | "CLOSED" | string;
+  clock_in_at?: string;
+  clock_out_at?: string;
+  auto_closed?: boolean;
+  note?: string;
+}
+
+export interface RetailerTimeEntriesResponse {
+  items: RetailerTimeEntry[];
+  open_entry?: RetailerTimeEntry;
+  clocked_in: boolean;
+}
+
+export interface RetailerShift {
+  shift_id: string;
+  retailer_id: string;
+  location_id: string;
+  register_id?: string;
+  opened_by_user_id: string;
+  closed_by_user_id?: string;
+  status: "OPEN" | "CLOSED" | string;
+  opening_float_minor: number;
+  closing_cash_minor?: number;
+  expected_cash_minor?: number;
+  variance_minor?: number;
+  currency: string;
+  linked_pos_session_id?: string;
+  opened_at?: string;
+  closed_at?: string;
+}
+
+export interface RetailerShiftsResponse {
+  items: RetailerShift[];
+}
+
+export interface OpenRetailerShiftRequest {
+  location_id?: string;
+  register_id?: string;
+  opening_float_minor: number;
+  currency?: string;
+}
+
+export interface CloseRetailerShiftRequest {
+  closing_cash_minor: number;
+}
+
+/** Retail OS Phase 6 sections */
+export interface RetailerSection {
+  section_id: string;
+  retailer_id: string;
+  location_id: string;
+  name: string;
+  aisle_tag?: string;
+  shelf_tag?: string;
+  sort_order?: number;
+  status: "ACTIVE" | "INACTIVE" | string;
+  sku_count?: number;
+  staff_ids?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerSectionsResponse {
+  items: RetailerSection[];
+}
+
+/** Retail OS Phase 6 reports pro */
+export interface RetailerReportsSummary {
+  from?: string;
+  to?: string;
+  location_id?: string;
+  sales_minor: number;
+  sale_count: number;
+  on_hand_sku_count: number;
+  low_stock_count: number;
+  open_variances: number;
+  top_skus?: { sku: string; sales_minor: number; units: number }[];
+  pack?: string;
+}
+
+export interface RetailerReportsSalesItem {
+  key: string;
+  sales_minor: number;
+  sale_count: number;
+  units: number;
+}
+
+/** Retail OS Phase 6 assist */
+export type RetailerAssistTicketStatus =
+  | "OPEN"
+  | "CLAIMED"
+  | "DONE"
+  | "CANCELLED"
+  | string;
+
+export interface RetailerAssistTicket {
+  ticket_id: string;
+  retailer_id: string;
+  location_id: string;
+  section_id: string;
+  note: string;
+  status: RetailerAssistTicketStatus;
+  created_by_user_id: string;
+  claimed_by_user_id?: string;
+  completed_by_user_id?: string;
+  created_at?: string;
+  claimed_at?: string;
+  completed_at?: string;
+  sla_due_at?: string;
+}
+
+export interface RetailerAssistTicketsResponse {
+  items: RetailerAssistTicket[];
+}
 
 export type EventType =
   | "SUPPLIER_CREATED"
@@ -2840,6 +2960,19 @@ export type EventType =
   | "POS_SESSION_CLOSED"
   | "POS_SALE_COMPLETED"
   | "POS_SALE_VOIDED"
+  | "RETAILER_CLOCK_IN"
+  | "RETAILER_CLOCK_OUT"
+  | "RETAILER_SHIFT_OPENED"
+  | "RETAILER_SHIFT_CLOSED"
+  | "RETAILER_SHIFT_CASH_VARIANCE"
+  | "RETAILER_SECTION_CREATED"
+  | "RETAILER_SECTION_UPDATED"
+  | "RETAILER_SECTION_SKU_MAPPED"
+  | "RETAILER_STAFF_SECTION_ASSIGNED"
+  | "RETAILER_ASSIST_TICKET_OPENED"
+  | "RETAILER_ASSIST_TICKET_CLAIMED"
+  | "RETAILER_ASSIST_TICKET_COMPLETED"
+  | "RETAILER_ASSIST_TICKET_CANCELLED"
   | "DRIVER_CREATED"
   | "DRIVER_AVAILABILITY_CHANGED"
   | "DRIVER_LOCATION_UPDATED"

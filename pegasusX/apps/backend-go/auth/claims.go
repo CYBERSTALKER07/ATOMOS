@@ -170,6 +170,7 @@ const (
 	PermShiftClose     = "shift.close"
 	PermReportsView    = "reports.view"
 	PermAssistRespond  = "assist.respond"
+	PermSectionManage  = "section.manage"
 )
 
 // retailerRolePerms is the Phase 0 permission template matrix.
@@ -179,20 +180,20 @@ var retailerRolePerms = map[string]map[string]struct{}{
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
 	},
 	"ADMIN": {
 		PermCapManage: {}, PermStaffManage: {}, PermLocationManage: {},
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
 	},
 	"MANAGER": {
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
 	},
 	"BUYER": {
 		PermOrderPlace: {}, PermOrderCancel: {}, PermStockView: {}, PermReportsView: {},
@@ -207,7 +208,7 @@ var retailerRolePerms = map[string]map[string]struct{}{
 		PermDockReceive: {}, PermStockView: {}, PermStockAdjust: {}, PermStockCount: {}, PermShiftOpen: {},
 	},
 	"SECTION_LEAD": {
-		PermStockView: {}, PermStockCount: {}, PermShiftOpen: {}, PermAssistRespond: {},
+		PermStockView: {}, PermStockCount: {}, PermShiftOpen: {}, PermAssistRespond: {}, PermSectionManage: {},
 	},
 	"VIEWER": {
 		PermStockView: {}, PermReportsView: {},

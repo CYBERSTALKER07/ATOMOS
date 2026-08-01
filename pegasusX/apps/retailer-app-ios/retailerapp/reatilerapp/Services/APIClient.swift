@@ -573,6 +573,107 @@ final class APIClient {
         )
     }
 
+    // Retail OS Phase 5 shifts & time
+    func clockIn(locationId: String? = nil) async throws -> TimeEntryWire {
+        struct Body: Encodable { let location_id: String? }
+        return try await post(
+            path: "/v1/retailer/time/clock-in",
+            body: Body(location_id: locationId)
+        )
+    }
+
+    func clockOut() async throws -> TimeEntryWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/time/clock-out", body: Empty())
+    }
+
+    func getTimeEntries() async throws -> TimeEntriesWire {
+        try await get(path: "/v1/retailer/time/entries")
+    }
+
+    func getShifts(locationId: String? = nil) async throws -> ShiftsListWire {
+        if let locationId, !locationId.isEmpty {
+            return try await get(path: "/v1/retailer/shifts?location_id=\(locationId)")
+        }
+        return try await get(path: "/v1/retailer/shifts")
+    }
+
+    func openShift(registerId: String?, openingFloatMinor: Int64) async throws -> ShiftWire {
+        struct Body: Encodable {
+            let register_id: String?
+            let opening_float_minor: Int64
+            let currency: String
+        }
+        return try await post(
+            path: "/v1/retailer/shifts",
+            body: Body(register_id: registerId, opening_float_minor: openingFloatMinor, currency: "UZS"),
+            headers: ["Idempotency-Key": "shift-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func closeShift(shiftId: String, closingCashMinor: Int64) async throws -> ShiftWire {
+        struct Body: Encodable { let closing_cash_minor: Int64 }
+        return try await post(
+            path: "/v1/retailer/shifts/\(shiftId)/close",
+            body: Body(closing_cash_minor: closingCashMinor)
+        )
+    }
+
+    // Retail OS Phase 6
+    func getSections(locationId: String? = nil) async throws -> SectionsListWire {
+        if let locationId, !locationId.isEmpty {
+            return try await get(path: "/v1/retailer/sections?location_id=\(locationId)")
+        }
+        return try await get(path: "/v1/retailer/sections")
+    }
+
+    func createSection(name: String, aisleTag: String?) async throws -> SectionWire {
+        struct Body: Encodable {
+            let name: String
+            let aisle_tag: String?
+        }
+        return try await post(
+            path: "/v1/retailer/sections",
+            body: Body(name: name, aisle_tag: aisleTag),
+            headers: ["Idempotency-Key": "sec-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func putSectionSkus(sectionId: String, skus: [String]) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable { let skus: [String] }
+        return try await put(path: "/v1/retailer/sections/\(sectionId)/skus", body: Body(skus: skus))
+    }
+
+    func getReportsSummary() async throws -> ReportsSummaryWire {
+        try await get(path: "/v1/retailer/reports/summary")
+    }
+
+    func getAssistTickets() async throws -> AssistTicketsWire {
+        try await get(path: "/v1/retailer/assist/tickets")
+    }
+
+    func createAssistTicket(sectionId: String, note: String) async throws -> AssistTicketWire {
+        struct Body: Encodable {
+            let section_id: String
+            let note: String
+        }
+        return try await post(
+            path: "/v1/retailer/assist/tickets",
+            body: Body(section_id: sectionId, note: note),
+            headers: ["Idempotency-Key": "assist-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func claimAssistTicket(ticketId: String) async throws -> AssistTicketWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/assist/tickets/\(ticketId)/claim", body: Empty())
+    }
+
+    func completeAssistTicket(ticketId: String) async throws -> AssistTicketWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/assist/tickets/\(ticketId)/complete", body: Empty())
+    }
+
     // Retail OS Phase 1 team
     func getOrgMembers() async throws -> RetailerOrgMembersResponse {
         try await get(path: "/v1/retailer/org/members")
@@ -855,6 +956,116 @@ struct PosSaleWire: Codable {
         case saleId = "sale_id"
         case receiptNumber = "receipt_number"
         case totalMinor = "total_minor"
+    }
+}
+
+struct TimeEntriesWire: Codable {
+    let items: [TimeEntryWire]?
+    let clockedIn: Bool
+    let openEntry: TimeEntryWire?
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case clockedIn = "clocked_in"
+        case openEntry = "open_entry"
+    }
+}
+
+struct TimeEntryWire: Codable {
+    let entryId: String?
+    let userId: String?
+    let locationId: String?
+    let status: String?
+    let clockInAt: String?
+    let clockOutAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case entryId = "entry_id"
+        case userId = "user_id"
+        case locationId = "location_id"
+        case clockInAt = "clock_in_at"
+        case clockOutAt = "clock_out_at"
+    }
+}
+
+struct ShiftsListWire: Codable {
+    let items: [ShiftWire]
+}
+
+struct ShiftWire: Codable {
+    let shiftId: String
+    let status: String
+    let openingFloatMinor: Int64
+    let varianceMinor: Int64?
+    let currency: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case currency
+        case shiftId = "shift_id"
+        case openingFloatMinor = "opening_float_minor"
+        case varianceMinor = "variance_minor"
+    }
+}
+
+struct SectionsListWire: Codable {
+    let items: [SectionWire]
+}
+
+struct SectionWire: Codable {
+    let sectionId: String
+    let name: String
+    let aisleTag: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case sectionId = "section_id"
+        case aisleTag = "aisle_tag"
+    }
+}
+
+struct ReportsSummaryWire: Codable {
+    let salesMinor: Int64?
+    let saleCount: Int?
+    let onHandSkuCount: Int?
+    let lowStockCount: Int?
+    let topSkus: [ReportsTopSkuWire]?
+
+    enum CodingKeys: String, CodingKey {
+        case salesMinor = "sales_minor"
+        case saleCount = "sale_count"
+        case onHandSkuCount = "on_hand_sku_count"
+        case lowStockCount = "low_stock_count"
+        case topSkus = "top_skus"
+    }
+}
+
+struct ReportsTopSkuWire: Codable {
+    let sku: String?
+    let salesMinor: Int64?
+    let units: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case sku
+        case salesMinor = "sales_minor"
+        case units
+    }
+}
+
+struct AssistTicketsWire: Codable {
+    let items: [AssistTicketWire]
+}
+
+struct AssistTicketWire: Codable {
+    let ticketId: String
+    let note: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case note
+        case status
+        case ticketId = "ticket_id"
     }
 }
 

@@ -78,6 +78,38 @@ See `docs/RETAILER_STORE_STOCK.md`.
 | Area | Status |
 |------|--------|
 | Ledger balances + movements | Spanner + memory tests |
+
+## Phase 4 POS (shipped)
+
+See `docs/RETAILER_POS.md`.
+
+## Phase 5 Shifts & time (shipped)
+
+See `docs/RETAILER_SHIFTS.md`.
+
+| Area | Status |
+|------|--------|
+| Clock in/out + time entries | Memory + Spanner |
+| Shift open/close cash recon | Linked POS session cash tenders |
+| POS require clock-in | When SHIFTS pack + config |
+| Variance alerts | Owner inbox + outbox event |
+| Clients | Desktop `/shifts`, Android/iOS Profile → Shifts |
+
+## Phase 6 Sections + Reports + Assist (shipped)
+
+| Pack | Doc |
+|------|-----|
+| SECTIONS | `docs/RETAILER_SECTIONS.md` |
+| REPORTS_PRO | `docs/RETAILER_REPORTS_PRO.md` |
+| CUSTOMER_ASSIST | `docs/RETAILER_ASSIST.md` |
+
+| Area | Status |
+|------|--------|
+| Sections CRUD + SKU/staff map | Memory + Spanner |
+| Unassigned SKU pool | From stock balances |
+| Reports summary/sales/inventory/shifts + CSV | Aggregates P3–P5 data |
+| Assist ticket lifecycle | OPEN→CLAIMED→DONE + notify |
+| Clients | Desktop `/sections` `/reports` `/assist`; mobile Profile |
 | Receive from order | LineItemsJson from COMPLETED/ARRIVED-ish |
 | Transfer / adjust / count | APIs + UI |
 | Reorder `CurrentStock` | Prefers store ledger sum |

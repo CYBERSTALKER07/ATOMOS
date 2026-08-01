@@ -45,6 +45,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/capabilities/{packID}/enable", d.Service.HandleCapabilityEnable)
 		rr.Post("/v1/retailer/capabilities/{packID}/disable", d.Service.HandleCapabilityDisable)
 
+		// Retail OS Phase 7 — honest ops pulse (no demo supplier)
+		rr.Get("/v1/retailer/control-tower/pulse", d.Service.HandleControlTowerPulse)
+
 		// Retail OS Phase 1 team (org members)
 		rr.Get("/v1/retailer/org/members", d.Service.HandleOrgMembers)
 		rr.Post("/v1/retailer/org/members", d.Service.HandleOrgMembers)
@@ -89,6 +92,33 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/shifts", d.Service.HandleShifts)
 		rr.Post("/v1/retailer/shifts", d.Service.HandleShifts)
 		rr.Post("/v1/retailer/shifts/{shiftID}/close", d.Service.HandleShiftClose)
+
+		// Retail OS Phase 6 sections + reports + assist
+		// unassigned-skus before {sectionID} so chi does not treat it as an id
+		rr.Get("/v1/retailer/sections/unassigned-skus", d.Service.HandleUnassignedSkus)
+		rr.Get("/v1/retailer/sections", d.Service.HandleSections)
+		rr.Post("/v1/retailer/sections", d.Service.HandleSections)
+		rr.Get("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Patch("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Put("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Delete("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Get("/v1/retailer/sections/{sectionID}/skus", d.Service.HandleSectionSkus)
+		rr.Put("/v1/retailer/sections/{sectionID}/skus", d.Service.HandleSectionSkus)
+		rr.Get("/v1/retailer/sections/{sectionID}/staff", d.Service.HandleSectionStaff)
+		rr.Put("/v1/retailer/sections/{sectionID}/staff", d.Service.HandleSectionStaff)
+		rr.Get("/v1/retailer/me/sections", d.Service.HandleMySections)
+
+		rr.Get("/v1/retailer/reports/summary", d.Service.HandleReportsSummary)
+		rr.Get("/v1/retailer/reports/sales", d.Service.HandleReportsSales)
+		rr.Get("/v1/retailer/reports/inventory", d.Service.HandleReportsInventory)
+		rr.Get("/v1/retailer/reports/shifts", d.Service.HandleReportsShifts)
+		rr.Get("/v1/retailer/reports/export", d.Service.HandleReportsExport)
+
+		rr.Get("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
+		rr.Post("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/claim", d.Service.HandleAssistClaim)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/complete", d.Service.HandleAssistComplete)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/cancel", d.Service.HandleAssistCancel)
 
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)

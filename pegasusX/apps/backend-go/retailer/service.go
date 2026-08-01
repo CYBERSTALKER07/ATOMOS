@@ -329,6 +329,11 @@ type Service struct {
 	// Phase 5 shifts memory
 	timeEntries map[string]TimeEntryDTO // entryID -> entry
 	shifts      map[string]ShiftDTO
+	// Phase 6 sections + assist memory
+	sections         map[string]SectionDTO
+	sectionSkus      map[string]map[string]bool // sectionID -> sku set
+	staffSections    map[string]map[string]bool // sectionID -> userID set
+	assistTickets    map[string]AssistTicketDTO
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -398,6 +403,10 @@ func NewService(c ServiceConfig) *Service {
 		posSales:            make(map[string]PosSaleDTO),
 		timeEntries:         make(map[string]TimeEntryDTO),
 		shifts:              make(map[string]ShiftDTO),
+		sections:            make(map[string]SectionDTO),
+		sectionSkus:         make(map[string]map[string]bool),
+		staffSections:       make(map[string]map[string]bool),
+		assistTickets:       make(map[string]AssistTicketDTO),
 		firebaseVerifier:    c.FirebaseVerifier,
 		spannerClient:       c.Spanner,
 	}

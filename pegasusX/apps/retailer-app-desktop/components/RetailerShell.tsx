@@ -22,6 +22,10 @@ import {
   MapPin,
   Container,
   RefreshCcw,
+  Clock,
+  LayoutGrid,
+  HandHelping,
+  FileBarChart,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -58,7 +62,11 @@ const NAV: NavSection[] = [
       { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
       { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
       { href: "/pos", icon: ShoppingCart, label: "POS", perm: "pos.sell", pack: "POS" },
+      { href: "/shifts", icon: Clock, label: "Shifts", perm: "shift.open", pack: "SHIFTS" },
+      { href: "/sections", icon: LayoutGrid, label: "Sections", perm: "stock.view", pack: "SECTIONS" },
+      { href: "/assist", icon: HandHelping, label: "Assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
       { href: "/insights", icon: BarChart3, label: "Insights", perm: "reports.view" },
+      { href: "/reports", icon: FileBarChart, label: "Reports Pro", perm: "reports.view", pack: "REPORTS_PRO" },
     ],
   },
   {
@@ -87,7 +95,15 @@ function filterNavByPerms(
         // Hide only when pack required AND packs known AND pack disabled AND not CORE.
         if (item.pack && packSet && item.pack !== "CORE" && !packSet.has(item.pack)) {
           // Progressive discovery: stock/POS visible so first use can auto-enable packs.
-          if (item.href === "/stock" || item.href === "/pos") return true;
+          if (
+            item.href === "/stock" ||
+            item.href === "/pos" ||
+            item.href === "/shifts" ||
+            item.href === "/sections" ||
+            item.href === "/assist" ||
+            item.href === "/reports"
+          )
+            return true;
           return false;
         }
         return true;

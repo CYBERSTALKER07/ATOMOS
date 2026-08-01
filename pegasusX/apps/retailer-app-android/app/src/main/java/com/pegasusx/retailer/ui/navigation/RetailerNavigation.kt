@@ -67,6 +67,10 @@ import com.pegasusx.retailer.ui.screens.settings.TeamScreen
 import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
 import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
 import com.pegasusx.retailer.ui.screens.settings.PosScreen
+import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
+import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
+import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
@@ -419,12 +423,36 @@ fun RetailerNavigation(
                             onLocationsClick = { navController.navigate("LOCATIONS") },
                             onStoreStockClick = { navController.navigate("STORE_STOCK") },
                             onPosClick = { navController.navigate("POS") },
+                            onShiftsClick = { navController.navigate("SHIFTS") },
+                            onSectionsClick = { navController.navigate("SECTIONS") },
+                            onReportsClick = { navController.navigate("REPORTS_PRO") },
+                            onAssistClick = { navController.navigate("ASSIST") },
                         )
                     }
                 }
                 composable("POS") {
                     Box(Modifier.fillMaxSize()) {
                         PosScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("SHIFTS") {
+                    Box(Modifier.fillMaxSize()) {
+                        ShiftsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("SECTIONS") {
+                    Box(Modifier.fillMaxSize()) {
+                        SectionsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("REPORTS_PRO") {
+                    Box(Modifier.fillMaxSize()) {
+                        ReportsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("ASSIST") {
+                    Box(Modifier.fillMaxSize()) {
+                        AssistScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("LOCATIONS") {

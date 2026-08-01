@@ -87,6 +87,22 @@ struct SettingsRow: View {
                 NavigationLink(destination: PosView()) {
                     SettingsRowContent(item: item)
                 }
+            } else if item.view == "Shifts" {
+                NavigationLink(destination: ShiftsView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "Sections" {
+                NavigationLink(destination: SectionsView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "ReportsPro" {
+                NavigationLink(destination: ReportsProView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "Assist" {
+                NavigationLink(destination: AssistView()) {
+                    SettingsRowContent(item: item)
+                }
             } else {
                 SettingsRowContent(item: item)
             }

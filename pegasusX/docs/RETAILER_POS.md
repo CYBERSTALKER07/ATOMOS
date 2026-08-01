@@ -5,7 +5,7 @@ Walk-in sales against **store stock** (not warehouse ATP). All money is **int64 
 ## Dependencies
 
 - Hard: **STORE_STOCK** (sale decrements on-hand)
-- Soft: TEAM, SHIFTS (shift hard-require lands in Phase 5)
+- Soft: TEAM, SHIFTS (Phase 5: when SHIFTS on + `require_shift_to_open_register`, POS open requires clock-in)
 
 Creating a register auto-enables STORE_STOCK + POS packs.
 

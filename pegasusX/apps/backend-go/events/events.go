@@ -61,6 +61,15 @@ const (
 	EventRetailerShiftOpened      = "RETAILER_SHIFT_OPENED"
 	EventRetailerShiftClosed      = "RETAILER_SHIFT_CLOSED"
 	EventRetailerShiftVariance    = "RETAILER_SHIFT_CASH_VARIANCE"
+	// Retail OS Phase 6
+	EventRetailerSectionCreated      = "RETAILER_SECTION_CREATED"
+	EventRetailerSectionUpdated      = "RETAILER_SECTION_UPDATED"
+	EventRetailerSectionSkuMapped    = "RETAILER_SECTION_SKU_MAPPED"
+	EventRetailerStaffSectionAssigned = "RETAILER_STAFF_SECTION_ASSIGNED"
+	EventRetailerAssistTicketOpened  = "RETAILER_ASSIST_TICKET_OPENED"
+	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
+	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
+	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
 
 	// @Sync(DriverEvent)
 	EventDriverCreated             = "DRIVER_CREATED"
