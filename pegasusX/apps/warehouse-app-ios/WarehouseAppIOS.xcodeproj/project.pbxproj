@@ -22,6 +22,7 @@
 		237177B97CDF6281B19737F4 /* LocationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0479B1DE97BD11E44FD3E67 /* LocationSettingsView.swift */; };
 		286CB7AABB8101E62A579115 /* RealtimeRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = F203A7BA99FB20F8A1858129 /* RealtimeRefresh.swift */; };
 		2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C9CF70E5113B4CF702D63C /* Assets.xcassets */; };
+		2B8A7676C8138413557CFBE5 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 9DFD51E8E046FAD5D45F27BD /* GoogleService-Info.plist */; };
 		2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1963212DE00FAF5E10168BED /* StaffView.swift */; };
 		2CA0395B1F2825BEE1007BD5 /* TomorrowBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF89252CCBC5DC0B06E0E334 /* TomorrowBoardView.swift */; };
 		2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */; };
@@ -180,6 +181,7 @@
 		97A3D8F9EDDB53A7D75E811E /* FirebaseAuthHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthHelper.swift; sourceTree = "<group>"; };
 		99CF90799C0FB6EB97BE3FA0 /* ForecastChartPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastChartPanel.swift; sourceTree = "<group>"; };
 		9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapView.swift; sourceTree = "<group>"; };
+		9DFD51E8E046FAD5D45F27BD /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		9FD939828BAF0304FFFACC2F /* WarehouseSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseSectionHeader.swift; sourceTree = "<group>"; };
 		A5483DF7C844BA0DF1BA8867 /* KpiTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KpiTile.swift; sourceTree = "<group>"; };
@@ -520,6 +522,7 @@
 			isa = PBXGroup;
 			children = (
 				57C9CF70E5113B4CF702D63C /* Assets.xcassets */,
+				9DFD51E8E046FAD5D45F27BD /* GoogleService-Info.plist */,
 				948CD89DFC2A4D9363817EAF /* Info.plist */,
 				86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */,
 				1526416176EC1A52A2487036 /* RootView.swift */,
@@ -800,6 +803,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */,
+				2B8A7676C8138413557CFBE5 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -35,7 +35,12 @@ final class FirebaseAuthHelper {
             }
         }
         #if DEBUG
-        Auth.auth().useEmulator(withHost: "localhost", port: 9099)
+        if let host = ProcessInfo.processInfo.environment["FIREBASE_AUTH_EMULATOR_HOST"], !host.isEmpty {
+            let parts = host.split(separator: ":", maxSplits: 1).map(String.init)
+            let emulatorHost = parts.first ?? "localhost"
+            let emulatorPort = Int(parts.dropFirst().first ?? "9099") ?? 9099
+            Auth.auth().useEmulator(withHost: emulatorHost, port: emulatorPort)
+        }
         #endif
         initialized = true
     }

@@ -29,10 +29,19 @@ import { useRetailerNotifications } from "../lib/notifications";
 import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import Icon from "./Icon";
+import { apiFetch } from "@/lib/auth";
 
 /* ────────── Navigation Config ────────── */
 
-type NavEntry = { href: string; icon: React.ElementType; label: string };
+type NavEntry = {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  /** If set, entry requires this retailer permission (from /v1/retailer/me). */
+  perm?: string;
+  /** Optional capability pack required (client-side progressive disclosure). */
+  pack?: string;
+};
 type NavSection = { label?: string; items: NavEntry[] };
 type RetailerIdentity = { name: string; company: string; initials: string };
 
@@ -40,14 +49,16 @@ const NAV: NavSection[] = [
   {
     items: [
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { href: "/orders", icon: ShoppingCart, label: "Orders" },
-      { href: "/tracking", icon: MapPin, label: "Tracking" },
-      { href: "/dock", icon: Container, label: "Dock" },
-      { href: "/catalog", icon: PackageSearch, label: "Catalog" },
-      { href: "/procurement", icon: Activity, label: "Procurement" },
-      { href: "/my-suppliers", icon: Store, label: "My Suppliers" },
-      { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order" },
-      { href: "/insights", icon: BarChart3, label: "Insights" },
+      { href: "/orders", icon: ShoppingCart, label: "Orders", perm: "order.place" },
+      { href: "/tracking", icon: MapPin, label: "Tracking", perm: "dock.receive" },
+      { href: "/dock", icon: Container, label: "Dock", perm: "dock.receive" },
+      { href: "/catalog", icon: PackageSearch, label: "Catalog", perm: "order.place" },
+      { href: "/procurement", icon: Activity, label: "Procurement", perm: "order.place" },
+      { href: "/my-suppliers", icon: Store, label: "My Suppliers", perm: "order.place" },
+      { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
+      { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
+      { href: "/pos", icon: ShoppingCart, label: "POS", perm: "pos.sell", pack: "POS" },
+      { href: "/insights", icon: BarChart3, label: "Insights", perm: "reports.view" },
     ],
   },
   {
@@ -55,6 +66,35 @@ const NAV: NavSection[] = [
     items: [{ href: "/settings", icon: Settings, label: "Settings" }],
   },
 ];
+
+function filterNavByPerms(
+  sections: NavSection[],
+  perms: string[] | null,
+  packs: string[] | null,
+): NavSection[] {
+  // Until /me loads, show full nav (owner default). After load, filter.
+  if (!perms) return sections;
+  const set = new Set(perms);
+  const packSet = packs ? new Set(packs) : null;
+  // OWNER matrix is full — empty set means unknown, keep full
+  if (set.size === 0) return sections;
+  return sections
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((item) => {
+        if (item.perm && !set.has(item.perm)) return false;
+        // Show stock nav even if pack off so users can discover (empty state explains).
+        // Hide only when pack required AND packs known AND pack disabled AND not CORE.
+        if (item.pack && packSet && item.pack !== "CORE" && !packSet.has(item.pack)) {
+          // Progressive discovery: stock/POS visible so first use can auto-enable packs.
+          if (item.href === "/stock" || item.href === "/pos") return true;
+          return false;
+        }
+        return true;
+      }),
+    }))
+    .filter((sec) => sec.items.length > 0);
+}
 
 const DEFAULT_IDENTITY: RetailerIdentity = {
   name: "Retailer",
@@ -111,14 +151,19 @@ const DrawerContent = memo(function DrawerContent({
   pathname,
   onToggle,
   onLogout,
+  permissions,
+  capabilities,
 }: {
   isMobile: boolean;
   collapsed: boolean;
   pathname: string;
   onToggle: () => void;
   onLogout: () => void;
+  permissions: string[] | null;
+  capabilities: string[] | null;
 }) {
   const isRail = collapsed && !isMobile;
+  const navSections = filterNavByPerms(NAV, permissions, capabilities);
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -212,7 +257,7 @@ const DrawerContent = memo(function DrawerContent({
         <nav
           className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? "px-1.5" : "px-2.5"}`}
         >
-          {NAV.map((section, si) => (
+          {navSections.map((section, si) => (
             <div key={si}>
               {si > 0 && (
                 <div
@@ -367,6 +412,8 @@ export default function RetailerShell({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
+  const [permissions, setPermissions] = useState<string[] | null>(null);
+  const [capabilities, setCapabilities] = useState<string[] | null>(null);
   const reduceMotion = useReducedMotion();
 
   const handleLogout = useCallback(async () => {
@@ -403,6 +450,52 @@ export default function RetailerShell({
     });
   }, []);
 
+  // Phase 1: permission-filtered nav from /v1/retailer/me
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/v1/retailer/me");
+        if (!res.ok || cancelled) return;
+        const me = (await res.json()) as {
+          permissions?: string[];
+          capabilities?: string[];
+          home_surface?: string;
+          name?: string;
+        };
+        if (!cancelled && Array.isArray(me.permissions)) {
+          setPermissions(me.permissions);
+        }
+        if (!cancelled && Array.isArray(me.capabilities)) {
+          setCapabilities(me.capabilities);
+        }
+        // Optional role home redirect only when landing on root dashboard as cashier/receiver
+        if (
+          !cancelled &&
+          me.home_surface &&
+          me.home_surface !== "dashboard" &&
+          (pathname === "/dashboard" || pathname === "/")
+        ) {
+          const map: Record<string, string> = {
+            pos: "/dashboard", // POS surfaces land in later phases
+            dock: "/dock",
+            catalog: "/catalog",
+            insights: "/insights",
+          };
+          const href = map[me.home_surface];
+          if (href && href !== pathname) {
+            router.replace(href);
+          }
+        }
+      } catch {
+        // keep full nav on failure
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router]);
+
   return (
     <div
       className="flex h-dvh overflow-hidden w-full"
@@ -429,6 +522,8 @@ export default function RetailerShell({
           pathname={pathname}
           onToggle={() => setCollapsed((p) => !p)}
           onLogout={handleLogout}
+          permissions={permissions}
+          capabilities={capabilities}
         />
       </motion.div>
 
@@ -482,6 +577,8 @@ export default function RetailerShell({
                 pathname={pathname}
                 onToggle={() => {}}
                 onLogout={handleLogout}
+                permissions={permissions}
+                capabilities={capabilities}
               />
             </motion.div>
           </div>

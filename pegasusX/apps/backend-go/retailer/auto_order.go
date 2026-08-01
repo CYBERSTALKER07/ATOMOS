@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // AutoOrderSettings is the retailer auto-order configuration DTO.
@@ -89,7 +90,7 @@ func (s *Service) HandleAutoOrderSettings(w http.ResponseWriter, r *http.Request
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, s.getAutoOrderSettings(retailerID))
+	writeJSON(w, http.StatusOK, s.loadAutoOrderDurable(r.Context(), retailerID))
 }
 
 // HandleAutoOrderPatch serves PATCH auto-order settings endpoints.
@@ -104,7 +105,7 @@ func (s *Service) HandleAutoOrderPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings := s.getAutoOrderSettings(retailerID)
+	settings := s.loadAutoOrderDurable(r.Context(), retailerID)
 	path := r.URL.Path
 
 	switch {
@@ -174,7 +175,14 @@ func (s *Service) HandleAutoOrderPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.saveAutoOrderSettings(retailerID, settings)
+	actor := ""
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		actor = auth.ResolveRetailerUserID(claims)
+	}
+	if err := s.saveAutoOrderDurable(r.Context(), retailerID, actor, settings); err != nil {
+		s.log.Warn("auto-order durable save failed", "err", err, "retailer_id", retailerID)
+		// memory already updated inside saveAutoOrderDurable before Spanner write
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

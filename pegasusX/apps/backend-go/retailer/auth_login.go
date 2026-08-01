@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // HandleRetailerLogin authenticates retailers for native and desktop clients.
 // POST /v1/auth/retailer/login  body: { "phone_number", "password" }
+// Phase 1: staff accounts in RetailerUsers authenticate with phone+password;
+// owners still bootstrap via EnsureOwnerUser.
 func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -34,12 +37,15 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 	idToken := strings.TrimSpace(req.IDToken)
 
 	var ret Retailer
+	var sessionUser *RetailerUser
 	var ok bool
 
 	if idToken != "" && s.firebaseVerifier != nil {
 		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
-			s.log.Warn("firebase token verification failed", "err", err)
+			if s.log != nil {
+				s.log.Warn("firebase token verification failed", "err", err)
+			}
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
 			return
 		}
@@ -47,18 +53,35 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
 			return
 		}
-		ret, ok, err = s.resolveFirebaseLogin(r.Context(), claims.PhoneNumber)
-		if err != nil {
+		// Prefer staff/user row by phone, then shop row.
+		if u, found, err := s.findRetailerUserByPhoneAny(r.Context(), claims.PhoneNumber); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
 			return
-		}
-		if !ok {
-			// Unregistered phone numbers are BLOCKED pending admin approval.
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
-			return
+		} else if found {
+			if !u.IsActive {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "user_inactive"})
+				return
+			}
+			shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID)
+			if err != nil || !shopOK {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+				return
+			}
+			ret = shop
+			sessionUser = &u
+			ok = true
+		} else {
+			ret, ok, err = s.resolveFirebaseLogin(r.Context(), claims.PhoneNumber)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+				return
+			}
+			if !ok {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+				return
+			}
 		}
 	} else {
-		// Fallback to demo login if IDToken is not provided.
 		phone := strings.TrimSpace(req.PhoneNumber)
 		if phone == "" {
 			phone = strings.TrimSpace(req.Phone)
@@ -72,15 +95,47 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var err error
-		ret, ok, err = s.resolveRetailerLogin(r.Context(), phone, secret)
-		if err != nil {
+		// Staff / owner with password hash.
+		if u, found, err := s.findRetailerUserByPhoneAny(r.Context(), phone); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
 			return
+		} else if found {
+			if !u.IsActive {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "user_inactive"})
+				return
+			}
+			if strings.TrimSpace(u.PasswordHash) != "" {
+				if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(secret)); err != nil {
+					// Fall through to demo owner path only for owners without match
+					if !u.IsOwner {
+						writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+						return
+					}
+				} else {
+					shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID)
+					if err != nil || !shopOK {
+						// memory path may not have full shop — synthesize
+						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+					} else {
+						ret = shop
+					}
+					sessionUser = &u
+					ok = true
+				}
+			}
 		}
+
 		if !ok {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
-			return
+			var err error
+			ret, ok, err = s.resolveRetailerLogin(r.Context(), phone, secret)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+				return
+			}
+			if !ok {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+				return
+			}
 		}
 	}
 
@@ -89,6 +144,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if sessionUser != nil {
+		s.writeMobileAuthResponseForUser(w, ret, *sessionUser)
+		return
+	}
 	s.writeMobileAuthResponse(w, ret)
 }
 
@@ -126,6 +185,21 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 	if claims.Role != auth.RoleRetailer {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid_refresh_scope"})
 		return
+	}
+	// Refresh capability snapshot when possible.
+	if org := auth.ResolveRetailerOrgID(claims); org != "" {
+		if packs, err := s.LoadEnabledPacks(r.Context(), org); err == nil {
+			claims.CapabilityPacks = packs.List()
+		}
+		if claims.RetailerOrgID == "" {
+			claims.RetailerOrgID = org
+		}
+		if claims.RetailerRole == "" {
+			claims.RetailerRole = "OWNER"
+		}
+		if claims.RetailerUserID == "" {
+			claims.RetailerUserID = auth.ResolveRetailerUserID(claims)
+		}
 	}
 
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
@@ -204,12 +278,66 @@ func retailerProfileConfigured(ret Retailer) bool {
 }
 
 func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
+	// Phase 0: bootstrap OWNER user so JWT Subject is the person id.
+	owner, err := s.EnsureOwnerUser(context.Background(), ret)
+	if err != nil {
+		if s.log != nil {
+			s.log.Warn("owner bootstrap failed; falling back to legacy subject", "retailer_id", ret.RetailerID, "err", err)
+		}
+		owner = RetailerUser{
+			UserID:       ret.RetailerID,
+			RetailerID:   ret.RetailerID,
+			Phone:        ret.Phone,
+			Name:         coalesceRetailerName(ret.Name),
+			RetailerRole: "OWNER",
+			IsOwner:      true,
+			IsActive:     true,
+		}
+	}
+	return s.marshalMobileAuthResponseForUser(ret, owner)
+}
+
+func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUser) (int, []byte) {
 	isConfigured := retailerProfileConfigured(ret)
+	packList := []string{PackCORE}
+	if packs, err := s.LoadEnabledPacks(context.Background(), ret.RetailerID); err == nil {
+		packList = packs.List()
+	}
+
+	role := strings.ToUpper(strings.TrimSpace(user.RetailerRole))
+	if role == "" {
+		if user.IsOwner {
+			role = "OWNER"
+		} else {
+			role = "VIEWER"
+		}
+	}
+
+	// Phase 2: ensure primary location + attach scope/active branch to JWT.
+	var locIDs []string
+	var activeLoc string
+	if primary, err := s.EnsurePrimaryLocation(context.Background(), ret.RetailerID); err == nil {
+		activeLoc = primary.LocationID
+	}
+	if bound, err := s.listUserLocationIDs(context.Background(), user.UserID); err == nil && len(bound) > 0 {
+		locIDs = bound
+		if !containsString(bound, activeLoc) {
+			activeLoc = bound[0]
+		}
+	}
+
 	claims := auth.Claims{
-		Subject:      ret.RetailerID,
-		Role:         auth.RoleRetailer,
-		SupplierID:   ret.SupplierID,
-		IsConfigured: isConfigured,
+		Subject:          user.UserID,
+		Role:             auth.RoleRetailer,
+		SupplierID:       ret.SupplierID,
+		IsConfigured:     isConfigured,
+		RetailerOrgID:    ret.RetailerID,
+		RetailerRole:     role,
+		RetailerUserID:   user.UserID,
+		CapabilityPacks:  packList,
+		PhoneNumber:      user.Phone,
+		LocationIDs:      locIDs,
+		ActiveLocationID: activeLoc,
 	}
 	if claims.SupplierID == "" {
 		claims.SupplierID = s.supplierID
@@ -224,22 +352,38 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 		b, _ := json.Marshal(map[string]string{"error": "issue_refresh_failed"})
 		return http.StatusInternalServerError, b
 	}
+	// Home surface hint for clients (role home).
+	home := roleHomeSurface(role)
 	respMap := map[string]any{
-		"token":         token,
-		"refresh_token": refresh,
-		"is_configured": isConfigured,
+		"token":           token,
+		"refresh_token":   refresh,
+		"is_configured":   isConfigured,
+		"retailer_id":     ret.RetailerID,
+		"retailer_org_id": ret.RetailerID,
+		"user_id":         user.UserID,
+		"retailer_role":   role,
+		"capabilities":    packList,
+		"home_surface":       home,
+		"permissions":        auth.ListRetailerPerms(claims),
+		"active_location_id": activeLoc,
+		"location_ids":       locIDs,
 		"user": map[string]any{
-			"id":         ret.RetailerID,
-			"name":       coalesceRetailerName(ret.Name),
-			"company":    coalesceRetailerName(ret.Name),
-			"email":      "",
-			"avatar_url": nil,
+			"id":          user.UserID,
+			"retailer_id": ret.RetailerID,
+			"name":        coalesceRetailerName(user.Name),
+			"company":     coalesceRetailerName(ret.Name),
+			"email":       "",
+			"avatar_url":  nil,
+			"role":        role,
 		},
 	}
-	if fbToken, err := auth.MintCustomToken(context.Background(), ret.RetailerID, map[string]interface{}{
-		"role":        string(auth.RoleRetailer),
-		"retailer_id": ret.RetailerID,
-		"supplier_id": claims.SupplierID,
+	if fbToken, err := auth.MintCustomToken(context.Background(), user.UserID, map[string]interface{}{
+		"role":             string(auth.RoleRetailer),
+		"retailer_id":      ret.RetailerID,
+		"retailer_org_id":  ret.RetailerID,
+		"retailer_user_id": user.UserID,
+		"retailer_role":    role,
+		"supplier_id":      claims.SupplierID,
 	}); err == nil && fbToken != "" {
 		respMap["firebase_token"] = fbToken
 		respMap["firebaseToken"] = fbToken
@@ -252,8 +396,28 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 	return http.StatusOK, b
 }
 
+func roleHomeSurface(role string) string {
+	switch strings.ToUpper(role) {
+	case "CASHIER":
+		return "pos"
+	case "RECEIVER", "STOCK_CLERK":
+		return "dock"
+	case "BUYER":
+		return "catalog"
+	case "VIEWER":
+		return "insights"
+	default:
+		return "dashboard"
+	}
+}
+
 func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
 	status, body := s.marshalMobileAuthResponse(ret)
+	writeJSONBytes(w, status, body)
+}
+
+func (s *Service) writeMobileAuthResponseForUser(w http.ResponseWriter, ret Retailer, user RetailerUser) {
+	status, body := s.marshalMobileAuthResponseForUser(ret, user)
 	writeJSONBytes(w, status, body)
 }
 

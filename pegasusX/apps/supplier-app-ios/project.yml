@@ -35,6 +35,7 @@ targets:
       - path: ../../packages/mobile-ios-design
     resources:
       - path: SupplierApp/Assets.xcassets
+      - path: SupplierApp/GoogleService-Info.plist
     info:
       path: SupplierApp/Info.plist
       properties:

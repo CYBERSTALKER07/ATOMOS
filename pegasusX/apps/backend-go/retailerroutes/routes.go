@@ -39,6 +39,57 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/register", d.Service.HandleMobileRegister)
 
 	mountProtected := func(rr chi.Router) {
+		// Retail OS Phase 0 identity + capability packs
+		rr.Get("/v1/retailer/me", d.Service.HandleMe)
+		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)
+		rr.Post("/v1/retailer/capabilities/{packID}/enable", d.Service.HandleCapabilityEnable)
+		rr.Post("/v1/retailer/capabilities/{packID}/disable", d.Service.HandleCapabilityDisable)
+
+		// Retail OS Phase 1 team (org members)
+		rr.Get("/v1/retailer/org/members", d.Service.HandleOrgMembers)
+		rr.Post("/v1/retailer/org/members", d.Service.HandleOrgMembers)
+		rr.Patch("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Put("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Delete("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Put("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+		rr.Post("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+
+		// Retail OS Phase 2 locations
+		rr.Get("/v1/retailer/locations", d.Service.HandleLocations)
+		rr.Post("/v1/retailer/locations", d.Service.HandleLocations)
+		rr.Patch("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
+		rr.Put("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
+		rr.Post("/v1/retailer/locations/{locationID}/set-primary", d.Service.HandleLocationSetPrimary)
+		rr.Post("/v1/auth/retailer/switch-location", d.Service.HandleSwitchLocation)
+
+		// Retail OS Phase 3 store stock
+		rr.Get("/v1/retailer/stock", d.Service.HandleStockList)
+		rr.Get("/v1/retailer/stock/movements", d.Service.HandleStockMovements)
+		rr.Get("/v1/retailer/stock/{sku}", d.Service.HandleStockSKU)
+		rr.Post("/v1/retailer/stock/receive-sessions", d.Service.HandleStockReceiveSession)
+		rr.Post("/v1/retailer/stock/receive-sessions/{sessionID}/confirm", d.Service.HandleStockReceiveConfirm)
+		rr.Post("/v1/retailer/stock/transfer", d.Service.HandleStockTransfer)
+		rr.Post("/v1/retailer/stock/adjust", d.Service.HandleStockAdjust)
+		rr.Post("/v1/retailer/stock/counts", d.Service.HandleStockCount)
+
+		// Retail OS Phase 4 POS
+		rr.Get("/v1/retailer/registers", d.Service.HandleRegisters)
+		rr.Post("/v1/retailer/registers", d.Service.HandleRegisters)
+		rr.Post("/v1/retailer/pos/sessions/open", d.Service.HandlePosSessionOpen)
+		rr.Post("/v1/retailer/pos/sessions/{sessionID}/close", d.Service.HandlePosSessionClose)
+		rr.Get("/v1/retailer/pos/sessions/{sessionID}", d.Service.HandlePosSessionGet)
+		rr.Post("/v1/retailer/pos/sales", d.Service.HandlePosSale)
+		rr.Post("/v1/retailer/pos/sales/{saleID}/void", d.Service.HandlePosSaleVoid)
+		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)
+
+		// Retail OS Phase 5 shifts & time clock
+		rr.Post("/v1/retailer/time/clock-in", d.Service.HandleClockIn)
+		rr.Post("/v1/retailer/time/clock-out", d.Service.HandleClockOut)
+		rr.Get("/v1/retailer/time/entries", d.Service.HandleTimeEntries)
+		rr.Get("/v1/retailer/shifts", d.Service.HandleShifts)
+		rr.Post("/v1/retailer/shifts", d.Service.HandleShifts)
+		rr.Post("/v1/retailer/shifts/{shiftID}/close", d.Service.HandleShiftClose)
+
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)
 		rr.Put("/v1/retailer/profile", d.Service.HandleProfile)

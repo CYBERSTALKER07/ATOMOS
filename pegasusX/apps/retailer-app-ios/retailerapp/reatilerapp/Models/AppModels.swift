@@ -176,6 +176,135 @@ struct RetailerProfileResponse: Decodable, Identifiable {
     }
 }
 
+// Retail OS Phase 0
+struct RetailerCapabilityPack: Codable, Identifiable {
+    let id: String
+    let name: String
+    let description: String
+    let hardDeps: [String]?
+    let softDeps: [String]?
+    let alwaysOn: Bool?
+    let enabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, enabled
+        case hardDeps = "hard_deps"
+        case softDeps = "soft_deps"
+        case alwaysOn = "always_on"
+    }
+}
+
+struct RetailerCapabilitiesResponse: Codable {
+    let retailerId: String
+    let capabilities: [String]
+    let packs: [RetailerCapabilityPack]
+
+    enum CodingKeys: String, CodingKey {
+        case capabilities, packs
+        case retailerId = "retailer_id"
+    }
+}
+
+struct RetailerMeResponse: Codable {
+    let userId: String
+    let retailerId: String
+    let retailerOrgId: String
+    let retailerRole: String
+    let name: String
+    let permissions: [String]
+    let capabilities: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case name, permissions, capabilities
+        case userId = "user_id"
+        case retailerId = "retailer_id"
+        case retailerOrgId = "retailer_org_id"
+        case retailerRole = "retailer_role"
+    }
+}
+
+struct RetailerCapabilityMutationResponse: Codable {
+    let status: String?
+    let packId: String?
+    let enabled: Bool?
+    let message: String?
+    let capabilities: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case status, enabled, message, capabilities
+        case packId = "pack_id"
+    }
+}
+
+// Retail OS Phase 2 locations
+struct RetailerLocationDTO: Codable, Identifiable {
+    let locationId: String
+    let retailerId: String?
+    let name: String
+    let deliveryAddress: String?
+    let lat: Double?
+    let lng: Double?
+    let isPrimary: Bool
+    let isActive: Bool
+
+    var id: String { locationId }
+
+    enum CodingKeys: String, CodingKey {
+        case name, lat, lng
+        case locationId = "location_id"
+        case retailerId = "retailer_id"
+        case deliveryAddress = "delivery_address"
+        case isPrimary = "is_primary"
+        case isActive = "is_active"
+    }
+}
+
+struct RetailerLocationsResponse: Codable {
+    let retailerId: String?
+    let activeLocationId: String?
+    let items: [RetailerLocationDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case retailerId = "retailer_id"
+        case activeLocationId = "active_location_id"
+    }
+}
+
+// Retail OS Phase 1 team
+struct RetailerOrgMember: Codable, Identifiable {
+    let userId: String
+    let retailerId: String
+    let name: String
+    let phone: String
+    let retailerRole: String
+    let isOwner: Bool
+    let isActive: Bool
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case name, phone
+        case userId = "user_id"
+        case retailerId = "retailer_id"
+        case retailerRole = "retailer_role"
+        case isOwner = "is_owner"
+        case isActive = "is_active"
+    }
+}
+
+struct RetailerOrgMembersResponse: Codable {
+    let retailerId: String
+    let items: [RetailerOrgMember]
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case retailerId = "retailer_id"
+        case updatedAt = "updated_at"
+    }
+}
+
 struct FamilyMemberRequest: Encodable {
     let nickname: String
     let photoUrl: String?

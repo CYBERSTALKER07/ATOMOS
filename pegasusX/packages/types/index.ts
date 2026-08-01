@@ -2522,6 +2522,303 @@ export interface WsEventEnvelope<T extends string = string, P = unknown> {
   data?: P;
 }
 
+/** Retail OS Phase 0 capability pack ids. */
+export type RetailerCapabilityPackId =
+  | "CORE"
+  | "TEAM"
+  | "LOCATIONS"
+  | "STORE_STOCK"
+  | "SECTIONS"
+  | "POS"
+  | "SHIFTS"
+  | "REPORTS_PRO"
+  | "CUSTOMER_ASSIST";
+
+export type RetailerStaffRole =
+  | "OWNER"
+  | "ADMIN"
+  | "MANAGER"
+  | "BUYER"
+  | "RECEIVER"
+  | "CASHIER"
+  | "STOCK_CLERK"
+  | "SECTION_LEAD"
+  | "VIEWER";
+
+export interface RetailerCapabilityPackMeta {
+  id: RetailerCapabilityPackId | string;
+  name: string;
+  description: string;
+  hard_deps?: string[];
+  soft_deps?: string[];
+  always_on?: boolean;
+}
+
+export interface RetailerCapabilityPackStatus extends RetailerCapabilityPackMeta {
+  enabled: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface RetailerMeResponse {
+  user_id: string;
+  retailer_id: RetailerId;
+  retailer_org_id: RetailerId;
+  retailer_role: RetailerStaffRole | string;
+  name: string;
+  phone?: string;
+  is_owner: boolean;
+  is_configured: boolean;
+  permissions: string[];
+  capabilities: string[];
+  packs: RetailerCapabilityPackStatus[];
+  location_ids?: string[];
+}
+
+export interface RetailerCapabilitiesResponse {
+  retailer_id: RetailerId;
+  capabilities: string[];
+  packs: RetailerCapabilityPackStatus[];
+}
+
+export interface RetailerCapabilityMutationResult {
+  status: "OK" | "BLOCKED" | "WARN" | string;
+  pack_id?: string;
+  enabled?: boolean;
+  capabilities?: string[];
+  missing_hard_deps?: string[];
+  missing_soft_deps?: string[];
+  enable_all?: string[];
+  message?: string;
+  evaluation?: RetailerCapabilityMutationResult;
+}
+
+/** Retail OS Phase 1 team member. */
+export interface RetailerOrgMember {
+  user_id: string;
+  retailer_id: RetailerId;
+  name: string;
+  phone: string;
+  retailer_role: RetailerStaffRole | string;
+  is_owner: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerOrgMembersResponse {
+  retailer_id: RetailerId;
+  items: RetailerOrgMember[];
+  updated_at: string;
+}
+
+export interface CreateRetailerOrgMemberRequest {
+  name: string;
+  phone: string;
+  password: string;
+  retailer_role: RetailerStaffRole | string;
+  is_active?: boolean;
+}
+
+export interface UpdateRetailerOrgMemberRequest {
+  name?: string;
+  retailer_role?: RetailerStaffRole | string;
+  password?: string;
+  is_active?: boolean;
+}
+
+export type RetailerHomeSurface =
+  | "dashboard"
+  | "pos"
+  | "dock"
+  | "catalog"
+  | "insights";
+
+/** Retail OS Phase 2 store branch. */
+export interface RetailerLocation {
+  location_id: string;
+  retailer_id: RetailerId;
+  name: string;
+  delivery_address?: string;
+  place_id?: string;
+  lat?: number;
+  lng?: number;
+  h3_cell?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerLocationsResponse {
+  retailer_id: RetailerId;
+  active_location_id?: string;
+  items: RetailerLocation[];
+}
+
+export interface CreateRetailerLocationRequest {
+  name: string;
+  delivery_address?: string;
+  place_id?: string;
+  lat?: number;
+  lng?: number;
+  h3_cell?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  is_primary?: boolean;
+}
+
+export interface SwitchRetailerLocationRequest {
+  location_id: string;
+}
+
+export interface SwitchRetailerLocationResponse {
+  token: string;
+  refresh_token: string;
+  active_location_id: string;
+  location: RetailerLocation;
+}
+
+/** Retail OS Phase 3 store stock. */
+export type RetailerStockBin = "BACKROOM" | "FLOOR" | "QUARANTINE";
+
+export interface RetailerStockBalance {
+  location_id: string;
+  stock_bin: RetailerStockBin | string;
+  sku: string;
+  on_hand: number;
+  reserved: number;
+  available: number;
+}
+
+export interface RetailerStockListResponse {
+  retailer_id: string;
+  location_id: string;
+  items: RetailerStockBalance[];
+}
+
+export interface RetailerReceiveLine {
+  sku: string;
+  product_name?: string;
+  ordered_qty: number;
+  accepted_qty: number;
+}
+
+export interface RetailerReceiveSession {
+  session_id: string;
+  retailer_id: string;
+  location_id: string;
+  order_id: string;
+  status: "DRAFT" | "CONFIRMED" | string;
+  lines: RetailerReceiveLine[];
+  created_at?: string;
+  confirmed_at?: string;
+}
+
+export interface CreateRetailerReceiveSessionRequest {
+  order_id: string;
+  location_id?: string;
+  confirm?: boolean;
+  stock_bin?: RetailerStockBin | string;
+  lines?: { sku: string; accepted_qty: number }[];
+}
+
+export interface RetailerStockTransferRequest {
+  location_id?: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  sku: string;
+  qty: number;
+  from_bin?: RetailerStockBin | string;
+  to_bin?: RetailerStockBin | string;
+  note?: string;
+}
+
+export interface RetailerStockAdjustRequest {
+  location_id?: string;
+  sku: string;
+  qty_delta: number;
+  stock_bin?: RetailerStockBin | string;
+  note?: string;
+}
+
+export interface RetailerStockCountRequest {
+  location_id?: string;
+  stock_bin?: RetailerStockBin | string;
+  commit?: boolean;
+  lines: { sku: string; counted_qty: number }[];
+}
+
+/** Retail OS Phase 4 POS */
+export interface RetailerRegister {
+  register_id: string;
+  retailer_id: string;
+  location_id: string;
+  label: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface RetailerPosSession {
+  session_id: string;
+  register_id: string;
+  location_id: string;
+  retailer_id: string;
+  opened_by_user_id: string;
+  closed_by_user_id?: string;
+  status: "OPEN" | "CLOSED" | string;
+  opening_float_minor: number;
+  closing_cash_minor?: number;
+  expected_cash_minor?: number;
+  variance_minor?: number;
+  currency: string;
+  opened_at?: string;
+  closed_at?: string;
+}
+
+export interface RetailerPosSaleLine {
+  sku: string;
+  name?: string;
+  qty: number;
+  unit_price_minor: number;
+  line_total_minor: number;
+}
+
+export interface RetailerPosTender {
+  method: "CASH" | "CARD" | "OTHER" | string;
+  amount_minor: number;
+}
+
+export interface RetailerPosSale {
+  sale_id: string;
+  session_id: string;
+  register_id: string;
+  location_id: string;
+  retailer_id: string;
+  cashier_user_id: string;
+  status: "COMPLETED" | "VOIDED" | string;
+  total_minor: number;
+  currency: string;
+  receipt_number: string;
+  lines: RetailerPosSaleLine[];
+  tenders: RetailerPosTender[];
+  stock_bin: string;
+  created_at?: string;
+  voided_at?: string;
+  voided_by_user_id?: string;
+  void_reason?: string;
+}
+
+export interface CreateRetailerPosSaleRequest {
+  session_id: string;
+  stock_bin?: string;
+  currency?: string;
+  lines: { sku: string; name?: string; qty: number; unit_price_minor: number }[];
+  tenders?: RetailerPosTender[];
+}
+
+
 export type EventType =
   | "SUPPLIER_CREATED"
   | "SUPPLIER_UPDATED"
@@ -2530,6 +2827,19 @@ export type EventType =
   | "SUPPLIER_BILLING_CONFIGURED"
   | "SUPPLIER_MEMBER_ADDED"
   | "RETAILER_REGISTERED"
+  | "RETAILER_STAFF_CREATED"
+  | "RETAILER_CAPABILITY_PACK_CHANGED"
+  | "RETAILER_AUTO_ORDER_UPDATED"
+  | "RETAILER_LOCATION_CREATED"
+  | "RETAILER_LOCATION_UPDATED"
+  | "STORE_STOCK_RECEIVED"
+  | "STORE_STOCK_ADJUSTED"
+  | "STORE_STOCK_TRANSFERRED"
+  | "STORE_STOCK_COUNTED"
+  | "POS_SESSION_OPENED"
+  | "POS_SESSION_CLOSED"
+  | "POS_SALE_COMPLETED"
+  | "POS_SALE_VOIDED"
   | "DRIVER_CREATED"
   | "DRIVER_AVAILABILITY_CHANGED"
   | "DRIVER_LOCATION_UPDATED"

@@ -2,6 +2,7 @@
 
 **Audit date:** 2026-07-31  
 **Closure pass:** 2026-08-01 (no-mocks + SSMR marker proof)  
+**Ops refresh:** 2026-08-02 (`nomock4`, DNS/TLS Active, Firebase clients in-tree)  
 **Method:** Code-backed. Docs are hints only.  
 **Inventory SoT:** `docs/ECOSYSTEM_FEATURES_BY_ROLE.md`  
 **Intentional divergences:** `context/parity-ledger.md`  
@@ -11,7 +12,7 @@
 
 ## Executive verdict
 
-Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vast majority of catalogued features. SSMR cloud marker proof is **green** (2026-08-01, port-forward to live cluster). Remaining ops: DNS/TLS, Global Pay SUCCESS password, Firebase client configs. Negotiations + Soliq OFD stay product-deferred.
+Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vast majority of catalogued features. SSMR cloud marker proof is **green** (2026-08-01). Ops refresh 2026-08-02: image **`ssmr-gap-closure-nomock4`**, ManagedCert **Active** on `https://api-ssmr.pegasusx.app`, Firebase iOS/Android client configs applied. Remaining ops: **Global Pay SUCCESS** merchant password (+ SMS/SHA-1 for real OTP). Negotiations + Soliq OFD stay product-deferred.
 
 | Severity | Finding | Status after closure |
 |----------|---------|----------------------|
@@ -23,7 +24,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 | **P2** Driver rescue/earnings/scan-qr; WH rescue URLs | **FIXED** |
 | **P2** BillingTierWorker / Analytics dummy | **FIXED** — worker wired; dummy removed |
 | **P2** Factory staff write / exception resolve | **FIXED** — backend + 3 clients |
-| **Ops** Cloud staging | **PARTIAL** — image `nomock3` live; e2e/marker **PASS**; DNS/GP SUCCESS still open |
+| **Ops** Cloud staging | **PARTIAL** — image `nomock4` live; DNS/TLS **Active**; Firebase clients applied; e2e/marker **PASS**; GP SUCCESS still open |
 
 **Gates (post-closure):**
 
@@ -84,7 +85,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 | KAFKA_TOPIC_SPATIAL | **Removed** from env examples |
 | WS hubs + FCM | WIRED_CODE / ENV_DEPENDENT |
 | Fiscal / Soliq | Pegasus branded HTML/PDF receipts Wired (`FISCAL_PROVIDER=PEGASUS`); Soliq OFD deferred |
-| Cloud SSMR | Live pods; ops checklist for DNS/GP/e2e |
+| Cloud SSMR | Live pods `nomock4`; DNS/TLS Active; Firebase clients in-tree; GP SUCCESS pending |
 
 ---
 
@@ -92,7 +93,7 @@ Core commerce/logistics spine and role-row clients are **WIRED_E2E** for the vas
 
 - Quantity negotiations (product)
 - Soliq OFD legal tax receipts (platform Pegasus branded receipts already ship)
-- Cloud DNS / ManagedCert Active / GP SUCCESS (cash fallback proven)
+- GP SUCCESS merchant password (cash fallback proven; DNS/ManagedCert Active)
 
 ---
 

@@ -15,6 +15,12 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// RetailerPushActorLister expands a retailer org id to active staff user ids
+// for per-user FCM fanout (Retail OS Phase 1). Optional — nil falls back to org id.
+type RetailerPushActorLister interface {
+	ListActiveUserIDs(ctx context.Context, retailerID string) ([]string, error)
+}
+
 // DispatcherDeps provides the dependencies to the NotificationDispatcher.
 type DispatcherDeps struct {
 	SupplierHub     *ws.Hub
@@ -28,6 +34,8 @@ type DispatcherDeps struct {
 	EventDedup      EventDedupStore
 	ConsumerGroupID string
 	Cache           *cache.Cache
+	// RetailerActors optional: multi-user FCM targets under a retailer org.
+	RetailerActors RetailerPushActorLister
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
@@ -667,8 +675,36 @@ func (d *NotificationDispatcher) broadcastRetailer(ctx context.Context, retailer
 	if d.deps.RetailerHub != nil {
 		d.deps.RetailerHub.Broadcast(ctx, "retailer:"+retailerID, payload)
 	}
-	d.pushFCM(ctx, retailerID, "RETAILER", payload)
+	// Phase 1: FCM to each active staff user id (device tokens key on JWT subject).
+	// Also try org id for any legacy tokens registered pre multi-user.
+	actors := []string{retailerID}
+	if d.deps.RetailerActors != nil {
+		if ids, err := d.deps.RetailerActors.ListActiveUserIDs(ctx, retailerID); err == nil && len(ids) > 0 {
+			actors = uniqueStrings(append(ids, retailerID))
+		}
+	}
+	for _, actorID := range actors {
+		d.pushFCM(ctx, actorID, "RETAILER", payload)
+	}
+	// Shared org inbox (clients resolve org via ResolveRetailerOrgID).
 	d.persistInbox(ctx, retailerID, "RETAILER", payload)
+}
+
+func uniqueStrings(in []string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
 }
 
 func (d *NotificationDispatcher) broadcastRetailerPromoSupplier(ctx context.Context, supplierID string, payload []byte) {

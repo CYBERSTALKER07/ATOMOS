@@ -113,6 +113,7 @@
 		C70FAE4C984471734C1543ED /* SupplierTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29985CA974B8C463D2D934CF /* SupplierTheme.swift */; };
 		C82CDAED5117D8087C346FE2 /* PegasusMonochromeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4449FFB2CC8A8E3774B724 /* PegasusMonochromeTheme.swift */; };
 		C8BE665B7530DE2D9B206C66 /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AED086993BC29BE4397E5D7 /* PaymentsView.swift */; };
+		C8E759A332EF8F094EB2BDF7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A2FA938FB49C2CA48584847C /* GoogleService-Info.plist */; };
 		CCFC1E05B46C4264CE320FAC /* BillingGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65D7D5B7F072127C03A0D77 /* BillingGateView.swift */; };
 		CD41C60EB6B6CA9124ED4F57 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E813D3D72A1F27D8FA7361CA /* APIClient.swift */; };
 		CD5F96059C604D56AFDE5B14 /* TreasuryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68EFB265E71B9DF57A5345D /* TreasuryViewModel.swift */; };
@@ -234,6 +235,7 @@
 		9FC47C91CFB954510516FF1D /* RealtimeRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeRefresh.swift; sourceTree = "<group>"; };
 		9FFB54095A63B198144F1D80 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A14CAD6BD4D831470BA28E57 /* ClientPolicyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientPolicyBanner.swift; sourceTree = "<group>"; };
+		A2FA938FB49C2CA48584847C /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A32762EC712CC6BE608C9A59 /* RetailerOverridesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetailerOverridesView.swift; sourceTree = "<group>"; };
 		A389EEF52DDE671FC9D7DD0C /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		A3D6E60C714EAC6AA110F2E8 /* SupplierModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierModels.swift; sourceTree = "<group>"; };
@@ -366,6 +368,7 @@
 			isa = PBXGroup;
 			children = (
 				9FFB54095A63B198144F1D80 /* Assets.xcassets */,
+				A2FA938FB49C2CA48584847C /* GoogleService-Info.plist */,
 				ABF27DC6D872DB5DBB36C189 /* Info.plist */,
 				02591163268547405B01AAA9 /* PegasusSupplierApp.swift */,
 				5592228C962DDC50FE72BC5B /* RootView.swift */,
@@ -872,6 +875,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD03906D0F78F54818548022 /* Assets.xcassets in Resources */,
+				C8E759A332EF8F094EB2BDF7 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

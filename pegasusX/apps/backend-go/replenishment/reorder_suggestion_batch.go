@@ -95,6 +95,44 @@ func (w *ReorderSuggestionWorker) inFlightQty(ctx context.Context, retailerID, s
 }
 
 func (w *ReorderSuggestionWorker) retailerStockEstimate(ctx context.Context, retailerID, sku string) int64 {
+	// Prefer Retail OS Phase 3 store ledger (sum OnHand across bins/locations).
+	if w.Spanner != nil {
+		iter := w.Spanner.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT COALESCE(SUM(OnHand), 0) FROM RetailerStockBalances
+				WHERE RetailerId = @rid AND Sku = @sku`,
+			Params: map[string]any{"rid": retailerID, "sku": sku},
+		})
+		defer iter.Stop()
+		if row, err := iter.Next(); err == nil {
+			var qty int64
+			if err := row.Column(0, &qty); err == nil && qty > 0 {
+				return qty
+			}
+			// qty == 0 may mean no ledger rows OR truly empty — try legacy only when no rows.
+		}
+		// Detect whether any balance row exists.
+		iter2 := w.Spanner.Single().Query(ctx, spanner.Statement{
+			SQL:    `SELECT 1 FROM RetailerStockBalances WHERE RetailerId = @rid AND Sku = @sku LIMIT 1`,
+			Params: map[string]any{"rid": retailerID, "sku": sku},
+		})
+		defer iter2.Stop()
+		if _, err := iter2.Next(); err == nil {
+			// Ledger exists (possibly zero) — trust it.
+			iter3 := w.Spanner.Single().Query(ctx, spanner.Statement{
+				SQL: `SELECT COALESCE(SUM(OnHand), 0) FROM RetailerStockBalances
+					WHERE RetailerId = @rid AND Sku = @sku`,
+				Params: map[string]any{"rid": retailerID, "sku": sku},
+			})
+			defer iter3.Stop()
+			if row, err := iter3.Next(); err == nil {
+				var qty int64
+				_ = row.Column(0, &qty)
+				return qty
+			}
+			return 0
+		}
+	}
+	// Legacy estimate: last completed line delivered qty (pre store-stock).
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT COALESCE(l.DeliveredQty, 0)

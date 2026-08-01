@@ -63,9 +63,14 @@ struct ProfileView: View {
                 // Settings
                 SettingsSectionView(title: "Company", icon: "building.2.fill", items: [
                     SettingsItem(icon: "building.2", title: "Company Info", subtitle: user.company, view: "AccountProfile"),
+                    SettingsItem(icon: "square.stack.3d.up", title: "Store capabilities", subtitle: "Team, stock, POS packs", view: "Capabilities"),
+                    SettingsItem(icon: "mappin.and.ellipse", title: "Locations", subtitle: "Branches and checkout store", view: "Locations"),
+                    SettingsItem(icon: "shippingbox", title: "Store stock", subtitle: "Receive, putaway, count", view: "StoreStock"),
+                    SettingsItem(icon: "cart.fill", title: "POS", subtitle: "Cashier sales and voids", view: "POS"),
+                    SettingsItem(icon: "person.3.fill", title: "Team", subtitle: "Staff roles and invites", view: "Team"),
                     SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods", view: "SavedCards"),
                     SettingsItem(icon: "key", title: "API Access", subtitle: "Developer settings"),
-                    SettingsItem(icon: "person.2.fill", title: "Family Members", subtitle: "Manage family/staff", view: "FamilyMembers"),
+                    SettingsItem(icon: "person.2.fill", title: "Family contacts", subtitle: "Legacy name/phone list", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
 
                 PreferencesSection(aiAutoOrder: $aiAutoOrder, notificationsEnabled: $notificationsEnabled).slideIn(delay: 0.15)

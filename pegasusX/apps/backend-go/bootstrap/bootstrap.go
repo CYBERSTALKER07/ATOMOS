@@ -1181,6 +1181,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				EventDedup:      kafkaEventDedup,
 				ConsumerGroupID: notificationConsumerGroup,
 				Cache:           cacheClient,
+				RetailerActors:  retailerSvc, // Phase 1 multi-user FCM fanout
 			})
 			dispatcherTopics := events.DispatcherConsumerTopics()
 			notificationConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
@@ -1997,6 +1998,14 @@ func (a *notificationReaderAdapter) UnreadCount(ctx context.Context, recipientID
 		return 0, nil
 	}
 	return a.svc.UnreadCount(ctx, recipientID)
+}
+
+// CreateNotification implements retailer.NotificationWriter for variance alerts.
+func (a *notificationReaderAdapter) CreateNotification(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error {
+	if a == nil || a.svc == nil {
+		return nil
+	}
+	return a.svc.CreateNotification(ctx, recipientID, recipientRole, eventType, title, body, deepLink)
 }
 
 // supplierDashboardCountQuery returns a DashboardCountQuery backed by stale

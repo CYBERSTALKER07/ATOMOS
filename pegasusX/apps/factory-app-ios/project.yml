@@ -38,6 +38,7 @@ targets:
     resources:
       - path: FactoryApp/Assets.xcassets
       - path: FactoryApp/Preview Assets.xcassets
+      - path: FactoryApp/GoogleService-Info.plist
     info:
       path: FactoryApp/Info.plist
       properties:
@@ -45,7 +46,7 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.factory
+        PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.factory-app
         INFOPLIST_FILE: FactoryApp/Info.plist
   FactoryAppTests:
     type: bundle.unit-test

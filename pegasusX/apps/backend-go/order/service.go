@@ -508,6 +508,10 @@ type CreateRequest struct {
 	DeliverBefore         string     `json:"deliver_before,omitempty"`
 	DeliveryPriority      string     `json:"delivery_priority,omitempty"`
 	CheckoutPolicyToken   string     `json:"checkout_policy_token,omitempty"`
+	// Retail OS Phase 2: optional store branch; clients may send active location.
+	// Server still uses lat/lng/h3 for routing — location_id is correlation metadata
+	// until Orders.LocationId column ships in a later migration.
+	LocationID string `json:"location_id,omitempty"`
 }
 
 // CreateResponse is what callers get back.

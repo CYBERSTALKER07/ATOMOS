@@ -275,11 +275,17 @@ type OrderLifecycle interface {
 }
 
 // NotificationReader provides read access to the notification inbox.
+// Optional CreateNotification enables Phase 5 variance alerts to owners.
 type NotificationReader interface {
 	ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error)
 	MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error
 	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
+}
+
+// NotificationWriter is optional; implemented by bootstrap adapter for alerts.
+type NotificationWriter interface {
+	CreateNotification(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error
 }
 
 // Service wires repository, cache, idempotency and outbox dependencies.
@@ -305,6 +311,24 @@ type Service struct {
 	favoriteSuppliers   map[string]map[string]bool
 	familyByRetailer    map[string][]FamilyMember
 	autoOrderByRetailer map[string]*AutoOrderSettings
+	// Phase 0/1/2 memory fallbacks when Spanner client is nil (unit tests).
+	ownerByRetailer     map[string]RetailerUser
+	staffByRetailer     map[string][]RetailerUser
+	packsByRetailer     map[string]map[string]bool
+	locationsByRetailer map[string][]RetailerLocation
+	userLocations       map[string][]string // userID -> locationIDs
+	// Phase 3 store stock (memory fallback)
+	stockBalances   map[stockBalanceKey]memStockBalance
+	stockMovements  []StockMovementDTO
+	receiveSessions map[string]ReceiveSessionDTO
+	receiveByOrder  map[string]string
+	// Phase 4 POS memory
+	posRegisters map[string]RegisterDTO
+	posSessions  map[string]PosSessionDTO
+	posSales     map[string]PosSaleDTO
+	// Phase 5 shifts memory
+	timeEntries map[string]TimeEntryDTO // entryID -> entry
+	shifts      map[string]ShiftDTO
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -361,6 +385,19 @@ func NewService(c ServiceConfig) *Service {
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
+		ownerByRetailer:     make(map[string]RetailerUser),
+		staffByRetailer:     make(map[string][]RetailerUser),
+		packsByRetailer:     make(map[string]map[string]bool),
+		locationsByRetailer: make(map[string][]RetailerLocation),
+		userLocations:       make(map[string][]string),
+		stockBalances:       make(map[stockBalanceKey]memStockBalance),
+		receiveSessions:     make(map[string]ReceiveSessionDTO),
+		receiveByOrder:      make(map[string]string),
+		posRegisters:        make(map[string]RegisterDTO),
+		posSessions:         make(map[string]PosSessionDTO),
+		posSales:            make(map[string]PosSaleDTO),
+		timeEntries:         make(map[string]TimeEntryDTO),
+		shifts:              make(map[string]ShiftDTO),
 		firebaseVerifier:    c.FirebaseVerifier,
 		spannerClient:       c.Spanner,
 	}
@@ -489,6 +526,11 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	// Post-commit cache invalidation. Pre-commit invalidation races with
 	// rollback — TTL is the safety net but never the correctness mechanism.
 	s.cache.Invalidate(ctx, retailerByPhoneKey(r.Phone))
+
+	// Phase 0: bootstrap OWNER user for multi-user identity spine.
+	if _, err := s.EnsureOwnerUser(ctx, r); err != nil {
+		s.log.Warn("owner bootstrap after register failed", "retailer_id", r.RetailerID, "err", err)
+	}
 
 	s.log.Info("retailer registered",
 		"retailer_id", r.RetailerID,

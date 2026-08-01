@@ -38,6 +38,29 @@ const (
 
 	// @Sync(RetailerEvent)
 	EventRetailerRegistered = "RETAILER_REGISTERED"
+	// Retail OS Phase 0
+	EventRetailerStaffCreated      = "RETAILER_STAFF_CREATED"
+	EventRetailerCapabilityChanged = "RETAILER_CAPABILITY_PACK_CHANGED"
+	EventRetailerAutoOrderUpdated  = "RETAILER_AUTO_ORDER_UPDATED"
+	// Retail OS Phase 2
+	EventRetailerLocationCreated = "RETAILER_LOCATION_CREATED"
+	EventRetailerLocationUpdated = "RETAILER_LOCATION_UPDATED"
+	// Retail OS Phase 3
+	EventStoreStockReceived    = "STORE_STOCK_RECEIVED"
+	EventStoreStockAdjusted    = "STORE_STOCK_ADJUSTED"
+	EventStoreStockTransferred = "STORE_STOCK_TRANSFERRED"
+	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
+	// Retail OS Phase 4
+	EventPosSessionOpened  = "POS_SESSION_OPENED"
+	EventPosSessionClosed  = "POS_SESSION_CLOSED"
+	EventPosSaleCompleted  = "POS_SALE_COMPLETED"
+	EventPosSaleVoided     = "POS_SALE_VOIDED"
+	// Retail OS Phase 5
+	EventRetailerClockIn          = "RETAILER_CLOCK_IN"
+	EventRetailerClockOut         = "RETAILER_CLOCK_OUT"
+	EventRetailerShiftOpened      = "RETAILER_SHIFT_OPENED"
+	EventRetailerShiftClosed      = "RETAILER_SHIFT_CLOSED"
+	EventRetailerShiftVariance    = "RETAILER_SHIFT_CASH_VARIANCE"
 
 	// @Sync(DriverEvent)
 	EventDriverCreated             = "DRIVER_CREATED"

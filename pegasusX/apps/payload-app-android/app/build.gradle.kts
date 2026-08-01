@@ -9,6 +9,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 val localProps = Properties().also { props ->
@@ -19,6 +20,8 @@ val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
 val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
+val firebaseAuthEmulator = localProps.getProperty("firebase.auth.emulator", "false") == "true"
+val firebaseAuthEmulatorHost = localProps.getProperty("firebase.auth.emulator.host", "10.0.2.2")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
 val backendGoDir = rootProject.file("../../apps/backend-go")
@@ -106,6 +109,8 @@ android {
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
         buildConfigField("String", "WS_BASE_URL", "\"ws://$devHost:8180\"")
+        buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
+        buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
     }
 
 

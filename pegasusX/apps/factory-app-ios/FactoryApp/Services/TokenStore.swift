@@ -16,7 +16,7 @@ final class TokenStore {
 
     var hasAssignedFactory: Bool { JwtPayload.homeNodeId(token: token) != nil }
 
-    private let service = "com.pegasusx.factory"
+    private let service = "com.pegasusx.factory-app"
 
     private init() {
         token = readKeychain(account: "pegasus_factory_jwt")

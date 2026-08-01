@@ -296,7 +296,7 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
-	s.applySupplierFavoriteMutation(rid, supplierID, action)
+	s.applySupplierFavoriteMutationCtx(r.Context(), rid, supplierID, action)
 	respBytes, err := s.supplierListResponseBytes(r.Context(), rid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_suppliers_failed"})
@@ -308,8 +308,8 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 }
 
 func (s *Service) applySupplierFavoriteMutation(retailerID, supplierID, action string) {
+	// Legacy sync path — prefer durable helper when request context is available.
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	prefs := s.favoriteSuppliers[retailerID]
 	if prefs == nil {
 		prefs = map[string]bool{}
@@ -320,16 +320,19 @@ func (s *Service) applySupplierFavoriteMutation(retailerID, supplierID, action s
 		delete(prefs, supplierID)
 	}
 	s.favoriteSuppliers[retailerID] = prefs
+	s.mu.Unlock()
+}
+
+func (s *Service) applySupplierFavoriteMutationCtx(ctx context.Context, retailerID, supplierID, action string) {
+	_ = s.setFavoriteSupplierDurable(ctx, retailerID, supplierID, action == "add")
 }
 
 func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID string) ([]byte, error) {
-	s.mu.RLock()
-	prefs := s.favoriteSuppliers[retailerID]
-	favorite := false
-	if prefs != nil {
-		favorite = prefs[s.supplierID]
+	prefs, err := s.loadFavoriteSuppliersDurable(ctx, retailerID)
+	if err != nil {
+		s.log.Warn("favorite suppliers load failed", "err", err)
 	}
-	s.mu.RUnlock()
+	favorite := prefs != nil && prefs[s.supplierID]
 
 	var pricing *retailerPricingSummary
 	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.supplierID)
@@ -1380,17 +1383,18 @@ func trackingLocationFromTelemetry(location telemetry.DriverLocation) *TrackingL
 
 func retailerIDFromRequest(r *http.Request) (string, error) {
 	if claims, ok := auth.FromContext(r.Context()); ok {
-		subject := strings.TrimSpace(claims.Subject)
-		if subject != "" {
+		// Retail OS v2: tenant id is RetailerOrgID; legacy v1 uses Subject as retailer id.
+		orgID := auth.ResolveRetailerOrgID(claims)
+		if orgID != "" {
 			pathRetailerID := strings.TrimSpace(chi.URLParam(r, "retailerID"))
-			if pathRetailerID != "" && pathRetailerID != subject {
+			if pathRetailerID != "" && pathRetailerID != orgID {
 				return "", errRetailerScopeMismatch
 			}
 			queryRetailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
-			if queryRetailerID != "" && queryRetailerID != subject {
+			if queryRetailerID != "" && queryRetailerID != orgID {
 				return "", errRetailerScopeMismatch
 			}
-			return subject, nil
+			return orgID, nil
 		}
 	}
 	if id := strings.TrimSpace(chi.URLParam(r, "retailerID")); id != "" {

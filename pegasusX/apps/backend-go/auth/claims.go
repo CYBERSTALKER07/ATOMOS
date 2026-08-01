@@ -38,6 +38,10 @@ const (
 // Claims is the parsed JWT identity. Populated by Middleware and read via
 // FromContext. SupplierID is required for every authenticated caller in
 // single-tenant mode.
+//
+// Retail OS (Phase 0+): for Role==RETAILER, Subject is ideally RetailerUserId
+// and RetailerOrgID is the tenant RetailerId. Legacy tokens may leave
+// RetailerOrgID empty and set Subject=RetailerId (treated as OWNER).
 type Claims struct {
 	Subject      string
 	Role         Role
@@ -49,6 +53,14 @@ type Claims struct {
 	IsConfigured bool // supplier completed billing setup
 	PhoneNumber  string
 	TraceID      string
+
+	// Retailer multi-user identity (Role==RETAILER).
+	RetailerOrgID    string   // tenant RetailerId
+	RetailerRole     string   // OWNER | ADMIN | MANAGER | BUYER | ...
+	RetailerUserID   string   // same as Subject when v2 tokens
+	LocationIDs      []string // optional location scope (staff bind)
+	ActiveLocationID string   // currently selected store branch (Phase 2)
+	CapabilityPacks  []string // enabled pack ids excluding always-on CORE (optional cache)
 }
 
 type ctxKey int
@@ -111,4 +123,152 @@ func BearerToken(r *http.Request) string {
 		return ""
 	}
 	return strings.TrimSpace(h[len("Bearer "):])
+}
+
+// ResolveRetailerOrgID returns the retailer tenant id for a RETAILER session.
+// Prefer RetailerOrgID (v2); fall back to Subject for legacy single-owner tokens.
+func ResolveRetailerOrgID(c Claims) string {
+	if org := strings.TrimSpace(c.RetailerOrgID); org != "" {
+		return org
+	}
+	return strings.TrimSpace(c.Subject)
+}
+
+// ResolveRetailerUserID returns the person id for a RETAILER session.
+// Prefer RetailerUserID / Subject when OrgID is set; for legacy tokens the
+// person and org are the same id (owner bootstrap).
+func ResolveRetailerUserID(c Claims) string {
+	if uid := strings.TrimSpace(c.RetailerUserID); uid != "" {
+		return uid
+	}
+	return strings.TrimSpace(c.Subject)
+}
+
+// EffectiveRetailerRole returns the staff role. Empty/legacy → OWNER.
+func EffectiveRetailerRole(c Claims) string {
+	role := strings.ToUpper(strings.TrimSpace(c.RetailerRole))
+	if role == "" {
+		return "OWNER"
+	}
+	return role
+}
+
+// Retailer permission keys (Phase 0 coarse matrix).
+const (
+	PermCapManage      = "cap.manage"
+	PermStaffManage    = "staff.manage"
+	PermLocationManage = "location.manage"
+	PermOrderPlace     = "order.place"
+	PermOrderCancel    = "order.cancel"
+	PermDockReceive    = "dock.receive"
+	PermStockView      = "stock.view"
+	PermStockAdjust    = "stock.adjust"
+	PermStockCount     = "stock.count"
+	PermPosSell        = "pos.sell"
+	PermPosVoid        = "pos.void"
+	PermShiftOpen      = "shift.open"
+	PermShiftClose     = "shift.close"
+	PermReportsView    = "reports.view"
+	PermAssistRespond  = "assist.respond"
+)
+
+// retailerRolePerms is the Phase 0 permission template matrix.
+var retailerRolePerms = map[string]map[string]struct{}{
+	"OWNER": {
+		PermCapManage: {}, PermStaffManage: {}, PermLocationManage: {},
+		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
+		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
+		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
+		PermReportsView: {}, PermAssistRespond: {},
+	},
+	"ADMIN": {
+		PermCapManage: {}, PermStaffManage: {}, PermLocationManage: {},
+		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
+		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
+		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
+		PermReportsView: {}, PermAssistRespond: {},
+	},
+	"MANAGER": {
+		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
+		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
+		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
+		PermReportsView: {}, PermAssistRespond: {},
+	},
+	"BUYER": {
+		PermOrderPlace: {}, PermOrderCancel: {}, PermStockView: {}, PermReportsView: {},
+	},
+	"RECEIVER": {
+		PermDockReceive: {}, PermStockView: {},
+	},
+	"CASHIER": {
+		PermPosSell: {}, PermStockView: {}, PermShiftOpen: {},
+	},
+	"STOCK_CLERK": {
+		PermDockReceive: {}, PermStockView: {}, PermStockAdjust: {}, PermStockCount: {}, PermShiftOpen: {},
+	},
+	"SECTION_LEAD": {
+		PermStockView: {}, PermStockCount: {}, PermShiftOpen: {}, PermAssistRespond: {},
+	},
+	"VIEWER": {
+		PermStockView: {}, PermReportsView: {},
+	},
+}
+
+// HasRetailerPerm reports whether the claims grant the given permission key.
+// Non-RETAILER roles always return false. OWNER always true. Legacy empty role → OWNER.
+func HasRetailerPerm(c Claims, perm string) bool {
+	if c.Role != RoleRetailer {
+		return false
+	}
+	role := EffectiveRetailerRole(c)
+	if role == "OWNER" {
+		return true
+	}
+	set, ok := retailerRolePerms[role]
+	if !ok {
+		return false
+	}
+	_, ok = set[perm]
+	return ok
+}
+
+// ListRetailerPerms returns sorted permission keys for the effective role.
+func ListRetailerPerms(c Claims) []string {
+	role := EffectiveRetailerRole(c)
+	set, ok := retailerRolePerms[role]
+	if !ok {
+		set = retailerRolePerms["VIEWER"]
+	}
+	if role == "OWNER" {
+		set = retailerRolePerms["OWNER"]
+	}
+	out := make([]string, 0, len(set))
+	for p := range set {
+		out = append(out, p)
+	}
+	// stable-ish order not required for auth; callers may sort
+	return out
+}
+
+// RequireRetailerPerm 403s when the authenticated retailer lacks perm.
+// Must be used inside a RETAILER role gate.
+func RequireRetailerPerm(perm string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c, ok := FromContext(r.Context())
+			if !ok {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if c.Role != RoleRetailer {
+				http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+				return
+			}
+			if !HasRetailerPerm(c, perm) {
+				http.Error(w, `{"error":"forbidden","detail":"missing_permission","permission":"`+perm+`"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

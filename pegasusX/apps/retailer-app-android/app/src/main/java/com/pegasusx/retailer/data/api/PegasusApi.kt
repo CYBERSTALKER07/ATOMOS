@@ -203,6 +203,132 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
 
+    // Retail OS Phase 0 — capability packs
+    @GET("/v1/retailer/me")
+    suspend fun getRetailerMe(): JsonElement
+
+    @GET("/v1/retailer/capabilities")
+    suspend fun getCapabilities(): JsonElement
+
+    @POST("/v1/retailer/capabilities/{packID}/enable")
+    suspend fun enableCapability(
+        @Path("packID") packId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/capabilities/{packID}/disable")
+    suspend fun disableCapability(
+        @Path("packID") packId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    // Retail OS Phase 1 — team
+    @GET("/v1/retailer/org/members")
+    suspend fun getOrgMembers(): JsonElement
+
+    @POST("/v1/retailer/org/members")
+    suspend fun createOrgMember(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @DELETE("/v1/retailer/org/members/{userID}")
+    suspend fun deactivateOrgMember(
+        @Path("userID") userId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @PUT("/v1/retailer/org/members/{userID}/locations")
+    suspend fun setMemberLocations(
+        @Path("userID") userId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    // Retail OS Phase 2 — locations
+    @GET("/v1/retailer/locations")
+    suspend fun getLocations(): JsonElement
+
+    @POST("/v1/retailer/locations")
+    suspend fun createLocation(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/locations/{locationID}/set-primary")
+    suspend fun setPrimaryLocation(
+        @Path("locationID") locationId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/auth/retailer/switch-location")
+    suspend fun switchLocation(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    // Retail OS Phase 3 — store stock
+    @GET("/v1/retailer/stock")
+    suspend fun getStoreStock(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/stock/receive-sessions")
+    suspend fun receiveStoreStock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/stock/transfer")
+    suspend fun transferStoreStock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/stock/adjust")
+    suspend fun adjustStoreStock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/stock/counts")
+    suspend fun countStoreStock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    // Retail OS Phase 4 POS
+    @GET("/v1/retailer/registers")
+    suspend fun getRegisters(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/registers")
+    suspend fun createRegister(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/sessions/open")
+    suspend fun openPosSession(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/sessions/{sessionID}/close")
+    suspend fun closePosSession(
+        @Path("sessionID") sessionId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/sales")
+    suspend fun createPosSale(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/sales/{saleID}/void")
+    suspend fun voidPosSale(
+        @Path("saleID") saleId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
     // ── Analytics ──
     @GET("/v1/retailer/analytics/expenses")
     suspend fun getRetailerExpenses(): RetailerAnalytics

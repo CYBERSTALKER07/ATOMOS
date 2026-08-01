@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.LocalMall
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
@@ -35,6 +39,11 @@ fun SettingsSection(
     onAccountClick: () -> Unit,
     onSavedCardsClick: () -> Unit,
     onFamilyMembersClick: () -> Unit,
+    onCapabilitiesClick: () -> Unit = {},
+    onTeamClick: () -> Unit = {},
+    onLocationsClick: () -> Unit = {},
+    onStoreStockClick: () -> Unit = {},
+    onPosClick: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth()
@@ -47,9 +56,19 @@ fun SettingsSection(
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Business details & receiving hours", onClick = onAccountClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.Layers, title = "Store capabilities", subtitle = "Team, stock, POS packs", onClick = onCapabilitiesClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.LocationOn, title = "Locations", subtitle = "Branches and checkout store", onClick = onLocationsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.LocalMall, title = "Store stock", subtitle = "Receive, putaway, count", onClick = onStoreStockClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.ShoppingCart, title = "POS", subtitle = "Cashier sales and voids", onClick = onPosClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.People, title = "Team", subtitle = "Staff roles and invites", onClick = onTeamClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.CreditCard, title = "Saved Cards", subtitle = "Manage payment methods", onClick = onSavedCardsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.People, title = "Family Members", subtitle = "Manage family and staff", onClick = onFamilyMembersClick)
+            SettingsListItem(icon = Icons.Outlined.People, title = "Family contacts", subtitle = "Legacy name/phone list", onClick = onFamilyMembersClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.Notifications, title = "Notifications", subtitle = "Push, email, SMS", onClick = { })
         }

@@ -1672,3 +1672,232 @@ CREATE TABLE EchelonTargets (
   ComputedAt      TIMESTAMP NOT NULL,
   Source          STRING(32) NOT NULL,
 ) PRIMARY KEY (SupplierId, Sku, WarehouseId, Echelon);
+
+-- Retail OS Phase 0: multi-user identity, capability packs, durable settings
+CREATE TABLE RetailerUsers (
+  UserId        STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  Phone         STRING(32)  NOT NULL,
+  Name          STRING(255),
+  PasswordHash  STRING(MAX),
+  FirebaseUid   STRING(128),
+  RetailerRole  STRING(32)  NOT NULL,
+  IsOwner       BOOL        NOT NULL,
+  IsActive      BOOL        NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UserId);
+
+CREATE UNIQUE INDEX UQ_RetailerUsers_ByRetailerPhone ON RetailerUsers(RetailerId, Phone);
+CREATE INDEX Idx_RetailerUsers_ByPhone ON RetailerUsers(Phone);
+CREATE INDEX Idx_RetailerUsers_ByRetailer ON RetailerUsers(RetailerId, IsActive, UpdatedAt DESC);
+
+CREATE TABLE RetailerCapabilityPacks (
+  RetailerId      STRING(36)  NOT NULL,
+  PackId          STRING(32)  NOT NULL,
+  Enabled         BOOL        NOT NULL,
+  EnabledByUserId STRING(36),
+  EnabledAt       TIMESTAMP,
+  ConfigJson      STRING(MAX),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, PackId);
+
+CREATE TABLE RetailerAutoOrderSettings (
+  RetailerId      STRING(36)  NOT NULL,
+  SettingsJson    STRING(MAX) NOT NULL,
+  UpdatedByUserId STRING(36),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId);
+
+CREATE TABLE RetailerFavoriteSuppliers (
+  RetailerId  STRING(36)  NOT NULL,
+  SupplierId  STRING(36)  NOT NULL,
+  IsFavorite  BOOL        NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, SupplierId);
+
+-- Retail OS Phase 2: multi-location stores + staff scope
+CREATE TABLE RetailerLocations (
+  LocationId             STRING(36)  NOT NULL,
+  RetailerId             STRING(36)  NOT NULL,
+  Name                   STRING(255) NOT NULL,
+  DeliveryAddress        STRING(MAX),
+  PlaceId                STRING(128),
+  Lat                    FLOAT64,
+  Lng                    FLOAT64,
+  H3Cell                 STRING(15),
+  ReceivingWindowOpen    STRING(10),
+  ReceivingWindowClose   STRING(10),
+  IsPrimary              BOOL        NOT NULL,
+  IsActive               BOOL        NOT NULL,
+  CreatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LocationId);
+
+CREATE INDEX Idx_RetailerLocations_ByRetailer ON RetailerLocations(RetailerId, IsActive, IsPrimary DESC, UpdatedAt DESC);
+
+CREATE TABLE RetailerUserLocations (
+  UserId      STRING(36) NOT NULL,
+  LocationId  STRING(36) NOT NULL,
+  RetailerId  STRING(36) NOT NULL,
+  CreatedAt   TIMESTAMP  NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UserId, LocationId);
+
+CREATE INDEX Idx_RetailerUserLocations_ByRetailerUser ON RetailerUserLocations(RetailerId, UserId);
+CREATE INDEX Idx_RetailerUserLocations_ByLocation ON RetailerUserLocations(LocationId);
+
+-- Retail OS Phase 3: retailer store inventory ledger
+CREATE TABLE RetailerStockBalances (
+  LocationId  STRING(36)  NOT NULL,
+  StockBin    STRING(16)  NOT NULL,
+  Sku         STRING(64)  NOT NULL,
+  RetailerId  STRING(36)  NOT NULL,
+  OnHand      INT64       NOT NULL,
+  Reserved    INT64       NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LocationId, StockBin, Sku);
+
+CREATE INDEX Idx_RetailerStockBalances_ByRetailerSku ON RetailerStockBalances(RetailerId, Sku, LocationId);
+
+CREATE TABLE RetailerStockMovements (
+  MovementId   STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  StockBin     STRING(16)  NOT NULL,
+  Sku          STRING(64)  NOT NULL,
+  Qty          INT64       NOT NULL,
+  MovementType STRING(32)  NOT NULL,
+  RefType      STRING(32),
+  RefId        STRING(64),
+  ActorUserId  STRING(36),
+  Note         STRING(MAX),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (MovementId);
+
+CREATE INDEX Idx_RetailerStockMovements_ByLocationCreated ON RetailerStockMovements(LocationId, CreatedAt DESC);
+CREATE INDEX Idx_RetailerStockMovements_ByRetailerSku ON RetailerStockMovements(RetailerId, Sku, CreatedAt DESC);
+CREATE INDEX Idx_RetailerStockMovements_ByRef ON RetailerStockMovements(RefType, RefId);
+
+CREATE TABLE RetailerReceiveSessions (
+  SessionId    STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  OrderId      STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  LinesJson    STRING(MAX) NOT NULL,
+  CreatedBy    STRING(36),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ConfirmedAt  TIMESTAMP,
+) PRIMARY KEY (SessionId);
+
+CREATE UNIQUE INDEX UQ_RetailerReceiveSessions_ByOrder ON RetailerReceiveSessions(OrderId);
+CREATE INDEX Idx_RetailerReceiveSessions_ByRetailer ON RetailerReceiveSessions(RetailerId, CreatedAt DESC);
+
+CREATE TABLE RetailerStockCounts (
+  CountId      STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  LinesJson    STRING(MAX) NOT NULL,
+  CreatedBy    STRING(36),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  CommittedAt  TIMESTAMP,
+) PRIMARY KEY (CountId);
+
+CREATE INDEX Idx_RetailerStockCounts_ByLocation ON RetailerStockCounts(LocationId, CreatedAt DESC);
+
+-- Retail OS Phase 4: POS registers, sessions, sales
+CREATE TABLE RetailerRegisters (
+  RegisterId  STRING(36)  NOT NULL,
+  RetailerId  STRING(36)  NOT NULL,
+  LocationId  STRING(36)  NOT NULL,
+  Label       STRING(128) NOT NULL,
+  Status      STRING(16)  NOT NULL,
+  CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RegisterId);
+
+CREATE INDEX Idx_RetailerRegisters_ByLocation ON RetailerRegisters(LocationId, Status, UpdatedAt DESC);
+CREATE INDEX Idx_RetailerRegisters_ByRetailer ON RetailerRegisters(RetailerId, UpdatedAt DESC);
+
+CREATE TABLE RetailerPosSessions (
+  SessionId          STRING(36)  NOT NULL,
+  RegisterId         STRING(36)  NOT NULL,
+  LocationId         STRING(36)  NOT NULL,
+  RetailerId         STRING(36)  NOT NULL,
+  OpenedByUserId     STRING(36)  NOT NULL,
+  ClosedByUserId     STRING(36),
+  Status             STRING(16)  NOT NULL,
+  OpeningFloatMinor  INT64       NOT NULL,
+  ClosingCashMinor   INT64,
+  ExpectedCashMinor  INT64,
+  VarianceMinor      INT64,
+  Currency           STRING(3)   NOT NULL,
+  OpenedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClosedAt           TIMESTAMP,
+) PRIMARY KEY (SessionId);
+
+CREATE INDEX Idx_RetailerPosSessions_ByRegister ON RetailerPosSessions(RegisterId, Status, OpenedAt DESC);
+CREATE INDEX Idx_RetailerPosSessions_ByRetailer ON RetailerPosSessions(RetailerId, OpenedAt DESC);
+
+CREATE TABLE RetailerPosSales (
+  SaleId           STRING(36)  NOT NULL,
+  SessionId        STRING(36)  NOT NULL,
+  RegisterId       STRING(36)  NOT NULL,
+  LocationId       STRING(36)  NOT NULL,
+  RetailerId       STRING(36)  NOT NULL,
+  CashierUserId    STRING(36)  NOT NULL,
+  Status           STRING(16)  NOT NULL,
+  TotalMinor       INT64       NOT NULL,
+  Currency         STRING(3)   NOT NULL,
+  ReceiptNumber    STRING(32)  NOT NULL,
+  LinesJson        STRING(MAX) NOT NULL,
+  TendersJson      STRING(MAX) NOT NULL,
+  StockBin         STRING(16)  NOT NULL,
+  CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  VoidedAt         TIMESTAMP,
+  VoidedByUserId   STRING(36),
+  VoidReason       STRING(MAX),
+) PRIMARY KEY (SaleId);
+
+CREATE INDEX Idx_RetailerPosSales_BySession ON RetailerPosSales(SessionId, CreatedAt DESC);
+CREATE INDEX Idx_RetailerPosSales_ByRetailer ON RetailerPosSales(RetailerId, CreatedAt DESC);
+CREATE UNIQUE INDEX UQ_RetailerPosSales_Receipt ON RetailerPosSales(RetailerId, ReceiptNumber);
+
+-- Retail OS Phase 5: shifts & time clock
+CREATE TABLE RetailerTimeEntries (
+  EntryId      STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  UserId       STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  ClockInAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClockOutAt   TIMESTAMP,
+  AutoClosed   BOOL        NOT NULL,
+  Note         STRING(MAX),
+) PRIMARY KEY (EntryId);
+
+CREATE INDEX Idx_RetailerTimeEntries_ByUserStatus ON RetailerTimeEntries(UserId, Status, ClockInAt DESC);
+CREATE INDEX Idx_RetailerTimeEntries_ByRetailer ON RetailerTimeEntries(RetailerId, ClockInAt DESC);
+
+CREATE TABLE RetailerShifts (
+  ShiftId            STRING(36)  NOT NULL,
+  RetailerId         STRING(36)  NOT NULL,
+  LocationId         STRING(36)  NOT NULL,
+  RegisterId         STRING(36),
+  OpenedByUserId     STRING(36)  NOT NULL,
+  ClosedByUserId     STRING(36),
+  Status             STRING(16)  NOT NULL,
+  OpeningFloatMinor  INT64       NOT NULL,
+  ClosingCashMinor   INT64,
+  ExpectedCashMinor  INT64,
+  VarianceMinor      INT64,
+  Currency           STRING(3)   NOT NULL,
+  LinkedPosSessionId STRING(36),
+  OpenedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClosedAt           TIMESTAMP,
+) PRIMARY KEY (ShiftId);
+
+CREATE INDEX Idx_RetailerShifts_ByLocationStatus ON RetailerShifts(LocationId, Status, OpenedAt DESC);
+CREATE INDEX Idx_RetailerShifts_ByRetailer ON RetailerShifts(RetailerId, OpenedAt DESC);
+CREATE INDEX Idx_RetailerShifts_ByPosSession ON RetailerShifts(LinkedPosSessionId);

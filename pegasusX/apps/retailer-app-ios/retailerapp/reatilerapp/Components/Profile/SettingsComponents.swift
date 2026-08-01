@@ -67,6 +67,26 @@ struct SettingsRow: View {
                 NavigationLink(destination: SavedCardsView()) {
                     SettingsRowContent(item: item)
                 }
+            } else if item.view == "Capabilities" {
+                NavigationLink(destination: CapabilitiesView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "Team" {
+                NavigationLink(destination: TeamView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "Locations" {
+                NavigationLink(destination: LocationsView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "StoreStock" {
+                NavigationLink(destination: StoreStockView()) {
+                    SettingsRowContent(item: item)
+                }
+            } else if item.view == "POS" {
+                NavigationLink(destination: PosView()) {
+                    SettingsRowContent(item: item)
+                }
             } else {
                 SettingsRowContent(item: item)
             }

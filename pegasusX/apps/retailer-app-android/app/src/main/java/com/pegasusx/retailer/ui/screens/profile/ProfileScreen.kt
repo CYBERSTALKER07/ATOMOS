@@ -77,6 +77,11 @@ fun ProfileScreen(
     onAccountClick: () -> Unit = {},
     onSavedCardsClick: () -> Unit = {},
     onFamilyMembersClick: () -> Unit = {},
+    onCapabilitiesClick: () -> Unit = {},
+    onTeamClick: () -> Unit = {},
+    onLocationsClick: () -> Unit = {},
+    onStoreStockClick: () -> Unit = {},
+    onPosClick: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -170,6 +175,11 @@ fun ProfileScreen(
                 onAccountClick = onAccountClick,
                 onSavedCardsClick = onSavedCardsClick,
                 onFamilyMembersClick = onFamilyMembersClick,
+                onCapabilitiesClick = onCapabilitiesClick,
+                onTeamClick = onTeamClick,
+                onLocationsClick = onLocationsClick,
+                onStoreStockClick = onStoreStockClick,
+                onPosClick = onPosClick,
             )
         }
 

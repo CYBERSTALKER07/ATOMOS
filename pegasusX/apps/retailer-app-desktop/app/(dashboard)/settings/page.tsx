@@ -662,6 +662,66 @@ export default function SettingsPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => router.push("/settings/capabilities")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <Layers size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Store capabilities
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Team, stock, POS packs (Retail OS)
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/locations")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <MapPin size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Locations
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Branches, primary store, checkout branch
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/team")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Team
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Staff roles, invites, deactivate
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => router.push("/settings/family")}
                     className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
                   >
@@ -671,10 +731,10 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
-                          Family Members
+                          Family contacts
                         </span>
                         <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                          Staff and delegated ordering
+                          Legacy name/phone list (use Team for logins)
                         </span>
                       </div>
                     </div>

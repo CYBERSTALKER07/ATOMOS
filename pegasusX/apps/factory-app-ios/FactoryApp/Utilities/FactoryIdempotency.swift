@@ -12,7 +12,7 @@ enum FactoryIdempotency {
     private static func factoryId() -> String {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrService: "com.pegasusx.factory",
+            kSecAttrService: "com.pegasusx.factory-app",
             kSecAttrAccount: "factory_id",
             kSecReturnData: true,
             kSecMatchLimit: kSecMatchLimitOne,
