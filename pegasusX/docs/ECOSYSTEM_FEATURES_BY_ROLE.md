@@ -228,6 +228,46 @@ Read own profile: limit, balance, available, status (ACTIVE/FROZEN).
 
 Device token registration + inbox mark-read; FCM when configured.
 
+#### 4.10 Capability packs (Retail OS)
+
+| Pack | Unlocks | Hard deps |
+|------|---------|-----------|
+| CORE | Procurement, dock, claims, credit view | always on |
+| TEAM | Staff invites, roles | — |
+| LOCATIONS | Branches, switcher | soft TEAM |
+| STORE_STOCK | Store ledger, receive, counts | — |
+| SECTIONS | Departments, SKU/staff map | STORE_STOCK |
+| POS | Registers, sales, voids | STORE_STOCK |
+| SHIFTS | Clock, cash shift recon | TEAM |
+| REPORTS_PRO | Ops digests + CSV | — |
+| CUSTOMER_ASSIST | Floor help tickets | SECTIONS + TEAM |
+
+API: `GET/POST /v1/retailer/capabilities*`, `GET /v1/retailer/me`. Docs: `RETAILER_CAPABILITY_PACKS.md`.
+
+#### 4.11 Team & locations
+
+Staff roster (`/v1/retailer/org/members`), JWT person subject + `retailer_org_id`. Locations CRUD + switch-location. Docs: capability packs Phase 1–2.
+
+#### 4.12 Store stock
+
+Bins FLOOR/BACKROOM/QUARANTINE; receive/transfer/adjust/count. Doc: `RETAILER_STORE_STOCK.md`.
+
+#### 4.13 POS
+
+Registers, sessions, sales, tenders, void. Money int64 minor. Doc: `RETAILER_POS.md`.
+
+#### 4.14 Shifts
+
+Clock in/out; shift open/close cash recon; POS may require clock-in. Doc: `RETAILER_SHIFTS.md`.
+
+#### 4.15 Sections / Assist / Reports Pro
+
+Sections + SKU map; assist ticket lifecycle; reports summary/sales/inventory + CSV. Docs: `RETAILER_SECTIONS.md`, `RETAILER_ASSIST.md`, `RETAILER_REPORTS_PRO.md`.
+
+#### 4.16 Control Tower pulse
+
+`GET /v1/retailer/control-tower/pulse` — honest empty/live ops digest (orders, dock, POS, shifts, assist, low stock, 7d sales). **Never** supplier demo ids or mock charts.
+
 ---
 
 ## Part 5 — Role: Supplier (ADMIN)

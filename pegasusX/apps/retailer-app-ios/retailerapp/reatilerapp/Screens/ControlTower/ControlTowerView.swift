@@ -1,70 +1,84 @@
 import SwiftUI
-import Charts
 
 struct ControlTowerView: View {
-    @State private var selectedView: ViewMode = .network
-    
-    enum ViewMode {
-        case network
-        case spatial
-    }
-    
+    @State private var loading = true
+    @State private var error: String?
+    @State private var empty = true
+    @State private var generatedAt = ""
+    @State private var packs = ""
+    @State private var tiles: [(label: String, value: String)] = []
+    private let api = APIClient.shared
+
     var body: some View {
-        ZStack {
-            // Background View
-            if selectedView == .network {
-                LiveEKGNetworkGraph()
-                    .edgesIgnoringSafeArea(.all)
-            } else {
-                HexagonalControlTowerMap()
-                    .edgesIgnoringSafeArea(.all)
-            }
-            
-            // Overlay UI
-            VStack {
-                // Top Bar Segmented Control
-                Picker("View Mode", selection: $selectedView) {
-                    Text("EKG Network").tag(ViewMode.network)
-                    Text("Spatial Map").tag(ViewMode.spatial)
+        NavigationStack {
+            List {
+                Section {
+                    Text("Live counts for your shop — never demo charts.")
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    if !generatedAt.isEmpty {
+                        Text("Updated \(generatedAt) · \(packs)")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    Button("Refresh") { Task { await load() } }
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-                .background(.ultraThinMaterial)
-                .cornerRadius(12)
-                .padding()
-                
-                Spacer()
-                
-                // Analytics Panel
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Live Pulse Analytics")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    HStack(spacing: 20) {
-                        Chart {
-                            BarMark(x: .value("Day", "Mon"), y: .value("Orders", 150))
-                            BarMark(x: .value("Day", "Tue"), y: .value("Orders", 200))
-                            BarMark(x: .value("Day", "Wed"), y: .value("Orders", 180))
+                if let error {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+                if loading && tiles.isEmpty {
+                    Section { ProgressView() }
+                } else if empty && error == nil {
+                    Section {
+                        Text("No live ops signals yet")
+                            .font(.headline)
+                        Text("Place orders, enable stock/POS, open a shift, or create an assist ticket. This stays empty until real activity exists.")
+                            .font(.footnote)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                } else {
+                    Section("Pulse") {
+                        ForEach(tiles, id: \.label) { tile in
+                            HStack {
+                                Text(tile.label)
+                                Spacer()
+                                Text(tile.value).fontWeight(.semibold)
+                            }
                         }
-                        .frame(height: 100)
-                        
-                        Chart {
-                            LineMark(x: .value("Time", "10am"), y: .value("Load", 40))
-                            LineMark(x: .value("Time", "12pm"), y: .value("Load", 85))
-                            LineMark(x: .value("Time", "2pm"), y: .value("Load", 60))
-                        }
-                        .frame(height: 100)
-                        .foregroundStyle(.orange)
                     }
                 }
-                .padding()
-                .background(.ultraThinMaterial)
-                .cornerRadius(16)
-                .padding()
             }
+            .navigationTitle("Ops pulse")
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await load() }
+            .refreshable { await load() }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func load() async {
+        loading = true
+        error = nil
+        defer { loading = false }
+        do {
+            let p = try await api.getControlTowerPulse()
+            empty = p.empty
+            generatedAt = String((p.generatedAt ?? "").prefix(19))
+            packs = (p.capabilities ?? ["CORE"]).joined(separator: ", ")
+            tiles = [
+                ("Open orders", "\(p.openOrders)"),
+                ("Fulfillment", "\(p.activeFulfillments)"),
+                ("Dock pending", "\(p.dockPending)"),
+                ("POS sessions", "\(p.posOpenSessions)"),
+                ("Open shifts", "\(p.openShifts)"),
+                ("Assist", "\(p.openAssistTickets)"),
+                ("Low stock", "\(p.lowStockSkuBins)"),
+                ("Variances", "\(p.shiftVariances7d)"),
+                ("Sales 7d", String(format: "%.2f", Double(p.salesMinor7d) / 100.0)),
+            ]
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 }
 

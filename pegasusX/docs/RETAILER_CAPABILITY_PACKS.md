@@ -123,3 +123,14 @@ Registers → open session → sales (FLOOR stock) → void → close with cash 
 ## Next phases
 
 P5 Shifts (clock + require_shift on POS open), P6 Sections/Reports.
+
+## Phase 7 Hardening / prod gate (shipped)
+
+See `docs/RETAILER_OS_PRODUCTION_GATE.md`, `docs/RETAILER_OS_E2E_MATRIX.md`.
+
+| Area | Status |
+|------|--------|
+| E2E + parity matrix | Documented |
+| Control Tower de-demo | Pulse API + 3 clients empty/live |
+| REAL_WORLD_CASE_MATRIX | Filled for Retail OS |
+| ECOSYSTEM Part 4 | Packs + stock/POS/shifts/sections/assist/reports/CT |

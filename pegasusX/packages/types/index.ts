@@ -2939,6 +2939,23 @@ export interface RetailerAssistTicketsResponse {
   items: RetailerAssistTicket[];
 }
 
+/** Retail OS Phase 7 — honest ops pulse (never demo) */
+export interface RetailerControlTowerPulse {
+  retailer_id: string;
+  generated_at: string;
+  open_orders: number;
+  active_fulfillments: number;
+  dock_pending: number;
+  pos_open_sessions: number;
+  open_shifts: number;
+  open_assist_tickets: number;
+  low_stock_sku_bins: number;
+  shift_variances_7d: number;
+  sales_minor_7d: number;
+  capabilities: string[];
+  empty: boolean;
+}
+
 export type EventType =
   | "SUPPLIER_CREATED"
   | "SUPPLIER_UPDATED"

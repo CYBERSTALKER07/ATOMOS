@@ -375,6 +375,9 @@ interface PegasusApi {
     @GET("/v1/retailer/reports/summary")
     suspend fun getReportsSummary(): JsonElement
 
+    @GET("/v1/retailer/control-tower/pulse")
+    suspend fun getControlTowerPulse(): JsonElement
+
     @GET("/v1/retailer/assist/tickets")
     suspend fun getAssistTickets(): JsonElement
 

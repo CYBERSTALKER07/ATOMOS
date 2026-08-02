@@ -47,3 +47,17 @@ See: `docs/big-platform-baseline/last-mile/`.
 | Item | Status | Notes |
 |------|--------|--------|
 | Full offline flush orchestrator | **Wired** | Android Room + WorkManager + Sync Queue UI; iOS QueuedDriverAction + BGTask; 4.1 flush order; client_timestamp; dead-letter |
+
+## Retail OS (2026-08-02)
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Packs 0–6 backend + 3 clients | **Wired** | TEAM → ASSIST; see `docs/RETAILER_OS_E2E_MATRIX.md` |
+| Control Tower retailer pulse | **Wired** | `GET /v1/retailer/control-tower/pulse`; empty or live; no `sup-demo-1` |
+| Spanner migrations P0–P6 | **Pending ops** | DDL in `schema/migrations/20260802_retail_os_phase*.ddl` + `spanner.ddl` |
+| Family members vs Team | Partial | Legacy family list may remain; Team is RBAC path |
+| Reports inventory valuation | Partial | Qty/movements only — no COGS SoT |
+| Auto-order execution worker | Deferred | Settings durable; worker not Phase 0–7 |
+| Offline POS | Deferred | Online-required v1 |
+| Supplier-style CT playbooks on retailer | N/A | Retailer CT is ops digest, not fleet playbooks |
+

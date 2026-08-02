@@ -1,148 +1,210 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
-import {
-  LiveEKGNetworkGraph,
-  HexagonalControlTowerMap,
-  GlassmorphismPanel,
-  NetworkNode,
-  NetworkLink,
-  useControlTowerWebSocket,
-} from "@pegasusx/ui-kit/control-tower";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend,
-} from "recharts";
-import { cellToBoundary, latLngToCell } from "h3-js";
+import { apiFetch } from "@/lib/auth";
+import { Loader2, Activity, Package, ShoppingCart, Clock, HandHelping } from "lucide-react";
 
-// Removed Mock Data
-const mockNodes: NetworkNode[] = [];
-const mockLinks: NetworkLink[] = [];
-
-const generateH3Data = () => {
-  return [];
+type Pulse = {
+  retailer_id: string;
+  generated_at: string;
+  open_orders: number;
+  active_fulfillments: number;
+  dock_pending: number;
+  pos_open_sessions: number;
+  open_shifts: number;
+  open_assist_tickets: number;
+  low_stock_sku_bins: number;
+  shift_variances_7d: number;
+  sales_minor_7d: number;
+  capabilities: string[];
+  empty: boolean;
 };
 
-const performanceData: Record<string, unknown>[] = [];
-const scenariosData: Record<string, unknown>[] = [];
+type Tile = {
+  label: string;
+  value: string | number;
+  href?: string;
+  icon: React.ElementType;
+};
+
+function formatMoney(minor: number) {
+  return (minor / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function ControlTowerPage() {
-  const [view, setView] = useState<"network" | "map">("network");
+  const [pulse, setPulse] = useState<Pulse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [reconcileEpoch, setReconcileEpoch] = useState(0);
 
   useRetailerSessionReconcile(() => {
     setReconcileEpoch((epoch) => epoch + 1);
   });
-  
-  const supplierId = "sup-demo-1";
-  
-  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
 
-  const displayNodes = networkNodes.length > 0 ? networkNodes : mockNodes;
-  const displayLinks = networkLinks.length > 0 ? networkLinks : mockLinks;
-
-  const [h3Data, setH3Data] = useState<{hex: string, count: number}[]>([]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/v1/retailer/control-tower/pulse");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error || `pulse_${res.status}`);
+      }
+      setPulse((await res.json()) as Pulse);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load pulse");
+      setPulse(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setH3Data(generateH3Data());
-  }, [reconcileEpoch]);
+    void load();
+  }, [load, reconcileEpoch]);
 
-  const displayH3Data = wsH3Data.length > 0 ? wsH3Data : h3Data;
+  const tiles: Tile[] = pulse
+    ? [
+        { label: "Open orders", value: pulse.open_orders, href: "/orders", icon: Package },
+        {
+          label: "Active fulfillment",
+          value: pulse.active_fulfillments,
+          href: "/tracking",
+          icon: Activity,
+        },
+        { label: "Dock pending", value: pulse.dock_pending, href: "/dock", icon: Package },
+        {
+          label: "POS open sessions",
+          value: pulse.pos_open_sessions,
+          href: "/pos",
+          icon: ShoppingCart,
+        },
+        { label: "Open shifts", value: pulse.open_shifts, href: "/shifts", icon: Clock },
+        {
+          label: "Assist tickets",
+          value: pulse.open_assist_tickets,
+          href: "/assist",
+          icon: HandHelping,
+        },
+        { label: "Low stock bins", value: pulse.low_stock_sku_bins, href: "/stock", icon: Package },
+        {
+          label: "Shift variances (closed)",
+          value: pulse.shift_variances_7d,
+          href: "/shifts",
+          icon: Clock,
+        },
+        {
+          label: "Sales 7d",
+          value: formatMoney(pulse.sales_minor_7d),
+          href: "/reports",
+          icon: Activity,
+        },
+      ]
+    : [];
 
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] bg-[#0a0a0a] text-white overflow-hidden p-6 flex flex-col gap-6">
-      
-      {/* Header / Tabs */}
-      <div className="flex items-center justify-between z-10">
+    <div className="relative flex min-h-[calc(100vh-64px)] flex-col gap-6 overflow-hidden bg-[#0a0a0a] p-6 text-white">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Global Control Tower</h1>
-          <p className="text-sm text-gray-400">Real-time network telematics and predictive intelligence.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Retailer ops pulse</h1>
+          <p className="text-sm text-gray-400">
+            Live counts from your shop — empty when quiet, never demo data.
+          </p>
+          {pulse && (
+            <p className="mt-1 text-xs text-gray-500">
+              Updated {pulse.generated_at.slice(0, 19)} · packs:{" "}
+              {(pulse.capabilities || []).join(", ") || "CORE"}
+            </p>
+          )}
         </div>
-        <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
-          <button
-            onClick={() => setView("network")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "network" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
-          >
-            Live Network Graph
-          </button>
-          <button
-            onClick={() => setView("map")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "map" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
-          >
-            Spatial Map (H3)
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+        >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          Refresh
+        </button>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 relative rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-        {view === "network" ? (
-          <LiveEKGNetworkGraph nodes={displayNodes} links={displayLinks} width={1200} height={800} />
-        ) : (
-          <HexagonalControlTowerMap data={displayH3Data} />
-        )}
+      {error && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
 
-        {/* Floating Glassmorphism Panel - Left */}
-        <GlassmorphismPanel 
-          className="absolute top-6 left-6 w-80 h-64 flex flex-col"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Actual vs Plan</h3>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={performanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <YAxis stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
-                  itemStyle={{ color: "#fff" }}
-                />
-                <Line type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: "#10b981" }} />
-                <Line type="monotone" dataKey="plan" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4, fill: "#f59e0b" }} />
-              </LineChart>
-            </ResponsiveContainer>
+      {loading && !pulse && (
+        <div className="flex flex-1 items-center justify-center text-gray-400">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading pulse…
+        </div>
+      )}
+
+      {pulse?.empty && !loading && (
+        <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-16 text-center">
+          <Activity className="mb-4 h-10 w-10 text-emerald-400/80" />
+          <h2 className="text-lg font-semibold">No live ops signals yet</h2>
+          <p className="mt-2 max-w-md text-sm text-gray-400">
+            Place wholesale orders, enable store stock or POS, open a shift, or create an assist
+            ticket. This surface stays empty until real activity exists — it never shows mock
+            charts.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link
+              href="/orders"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              Orders
+            </Link>
+            <Link
+              href="/stock"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              Store stock
+            </Link>
+            <Link
+              href="/pos"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              POS
+            </Link>
           </div>
-        </GlassmorphismPanel>
+        </div>
+      )}
 
-        {/* Floating Glassmorphism Panel - Right */}
-        <GlassmorphismPanel 
-          className="absolute bottom-6 right-6 w-96 h-64 flex flex-col"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Baseline vs Upside Scenarios</h3>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={scenariosData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <YAxis stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
-                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", color: "#666" }} />
-                <Bar dataKey="baseline" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="upside" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </GlassmorphismPanel>
+      {pulse && !pulse.empty && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {tiles.map((tile) => {
+            const Icon = tile.icon;
+            const inner = (
+              <div className="flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-emerald-500/40 hover:bg-white/[0.06]">
+                <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-400">
+                  <Icon className="h-3.5 w-3.5 text-emerald-400" />
+                  {tile.label}
+                </div>
+                <div className="text-2xl font-semibold tabular-nums">{tile.value}</div>
+              </div>
+            );
+            return tile.href ? (
+              <Link key={tile.label} href={tile.href}>
+                {inner}
+              </Link>
+            ) : (
+              <div key={tile.label}>{inner}</div>
+            );
+          })}
+        </div>
+      )}
 
-      </div>
+      <p className="text-xs text-gray-600">
+        Retailer Control Tower is an ops digest for your org, not the supplier telematics
+        playbook. Network graph / H3 maps are omitted unless a real retailer feed is wired.
+      </p>
     </div>
   );
 }

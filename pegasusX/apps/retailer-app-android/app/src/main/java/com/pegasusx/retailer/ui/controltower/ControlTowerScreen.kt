@@ -1,107 +1,142 @@
 package com.pegasusx.retailer.ui.controltower
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import com.pegasusx.retailer.data.api.PegasusApi
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-import com.uber.h3core.H3Core
+data class PulseTile(val label: String, val value: String)
+
+@HiltViewModel
+class ControlTowerViewModel @Inject constructor(val api: PegasusApi) : ViewModel()
 
 @Composable
-fun ControlTowerScreen() {
-    var isNetworkView by remember { mutableStateOf(true) }
-    
-    // Mock Data
-    val nodes = remember { emptyList<NetworkNode>() }
+fun ControlTowerScreen(
+    viewModel: ControlTowerViewModel = hiltViewModel(),
+) {
+    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var empty by remember { mutableStateOf(true) }
+    var generatedAt by remember { mutableStateOf("") }
+    var packs by remember { mutableStateOf("") }
+    var tiles by remember { mutableStateOf(listOf<PulseTile>()) }
 
-    val links = remember { emptyList<NetworkLink>() }
-
-    val h3Data = remember { emptyList<H3DensityData>() }
-
-
-
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
-        // Main Visualization
-        if (isNetworkView) {
-            LiveEKGNetworkGraph(nodes = nodes, links = links)
-        } else {
-            HexagonalControlTowerMap(data = h3Data)
+    fun load() {
+        scope.launch {
+            loading = true
+            error = null
+            try {
+                val p = viewModel.api.getControlTowerPulse().asJsonObject
+                empty = p.get("empty")?.asBoolean != false
+                generatedAt = p.get("generated_at")?.asString?.take(19) ?: ""
+                val caps = p.getAsJsonArray("capabilities")
+                packs = if (caps != null) caps.joinToString { it.asString } else "CORE"
+                tiles = listOf(
+                    PulseTile("Open orders", "${p.get("open_orders")?.asInt ?: 0}"),
+                    PulseTile("Fulfillment", "${p.get("active_fulfillments")?.asInt ?: 0}"),
+                    PulseTile("Dock pending", "${p.get("dock_pending")?.asInt ?: 0}"),
+                    PulseTile("POS sessions", "${p.get("pos_open_sessions")?.asInt ?: 0}"),
+                    PulseTile("Open shifts", "${p.get("open_shifts")?.asInt ?: 0}"),
+                    PulseTile("Assist", "${p.get("open_assist_tickets")?.asInt ?: 0}"),
+                    PulseTile("Low stock", "${p.get("low_stock_sku_bins")?.asInt ?: 0}"),
+                    PulseTile("Variances", "${p.get("shift_variances_7d")?.asInt ?: 0}"),
+                    PulseTile(
+                        "Sales 7d",
+                        "${(p.get("sales_minor_7d")?.asLong ?: 0L) / 100.0}",
+                    ),
+                )
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                loading = false
+            }
         }
+    }
 
-        // Header / Toggle
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-        ) {
-            Text("Global Control Tower", style = MaterialTheme.typography.headlineMedium, color = Color.White)
-            Text("Real-time network telematics and predictive intelligence", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                    .padding(4.dp)
+    LaunchedEffect(Unit) { load() }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0A0A0A))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Retailer ops pulse", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+        Text(
+            "Live counts for your shop — never demo charts.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+        )
+        if (generatedAt.isNotEmpty()) {
+            Text("Updated $generatedAt · $packs", style = MaterialTheme.typography.labelSmall, color = Color.DarkGray)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { load() }) { Text("Refresh") }
+        }
+        error?.let { Text(it, color = Color(0xFFF87171)) }
+        if (loading && tiles.isEmpty()) {
+            CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally), color = Color(0xFF34D399))
+        } else if (empty && error == null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                TextButton(
-                    onClick = { isNetworkView = true },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = if (isNetworkView) Color(0xFF34D399) else Color.Gray,
-                        containerColor = if (isNetworkView) Color(0xFF34D399).copy(alpha = 0.2f) else Color.Transparent
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("No live ops signals yet", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Place orders, enable stock/POS, open a shift, or create an assist ticket. This stays empty until real activity exists.",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
-                ) {
-                    Text("Live Network Graph")
-                }
-                TextButton(
-                    onClick = { isNetworkView = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = if (!isNetworkView) Color(0xFF34D399) else Color.Gray,
-                        containerColor = if (!isNetworkView) Color(0xFF34D399).copy(alpha = 0.2f) else Color.Transparent
-                    )
-                ) {
-                    Text("Spatial Map (H3)")
                 }
             }
-        }
-
-        // Panels
-        Surface(
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomStart)
-                .padding(16.dp)
-                .width(300.dp)
-                .height(250.dp),
-            color = Color.Black.copy(alpha = 0.6f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("ACTUAL VS PLAN", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Spacer(Modifier.height(8.dp))
-                Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
-                    Text("Chart placeholder", modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
-                }
-            }
-        }
-
-        Surface(
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomEnd)
-                .padding(16.dp)
-                .width(300.dp)
-                .height(250.dp),
-            color = Color.Black.copy(alpha = 0.6f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("BASELINE VS UPSIDE SCENARIOS", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Spacer(Modifier.height(8.dp))
-                Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
-                    Text("Chart placeholder", modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(140.dp),
+                contentPadding = PaddingValues(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(tiles) { tile ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f))) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(tile.label, color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                            Text(tile.value, color = Color.White, style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
                 }
             }
         }

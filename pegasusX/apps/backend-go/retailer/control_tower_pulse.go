@@ -58,27 +58,30 @@ func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlT
 	from7 := now.Add(-7 * 24 * time.Hour)
 
 	var openOrders, activeFulfillments, dockPending int
-	if orders, err := s.listRetailerTrackingOrders(ctx, orgID); err == nil {
-		for _, o := range orders {
-			st := o.Status
-			if st != "COMPLETED" && st != "CANCELLED" && st != "DELIVERED" {
-				openOrders++
-			}
-			// Heuristic active fulfillment / dock: mid-lifecycle statuses
-			switch st {
-			case "ASSIGNED", "IN_TRANSIT", "ARRIVED", "OUT_FOR_DELIVERY", "LOADED":
-				activeFulfillments++
-			case "ARRIVED_SHOP_CLOSED", "AT_DOORSTEP", "PENDING_RECEIVE":
-				dockPending++
+	if s.repo != nil {
+		if orders, err := s.listRetailerTrackingOrders(ctx, orgID); err == nil {
+			for _, o := range orders {
+				st := o.Status
+				if st != "COMPLETED" && st != "CANCELLED" && st != "DELIVERED" {
+					openOrders++
+				}
+				switch st {
+				case "ASSIGNED", "IN_TRANSIT", "ARRIVED", "OUT_FOR_DELIVERY", "LOADED":
+					activeFulfillments++
+				case "ARRIVED_SHOP_CLOSED", "AT_DOORSTEP", "PENDING_RECEIVE":
+					dockPending++
+				}
 			}
 		}
 	}
 
 	posOpen := 0
 	s.mu.RLock()
-	for _, sess := range s.posSessions {
-		if sess.RetailerID == orgID && sess.Status == PosSessionOpen {
-			posOpen++
+	if s.posSessions != nil {
+		for _, sess := range s.posSessions {
+			if sess.RetailerID == orgID && sess.Status == PosSessionOpen {
+				posOpen++
+			}
 		}
 	}
 	s.mu.RUnlock()

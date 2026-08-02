@@ -648,6 +648,10 @@ final class APIClient {
         try await get(path: "/v1/retailer/reports/summary")
     }
 
+    func getControlTowerPulse() async throws -> ControlTowerPulseWire {
+        try await get(path: "/v1/retailer/control-tower/pulse")
+    }
+
     func getAssistTickets() async throws -> AssistTicketsWire {
         try await get(path: "/v1/retailer/assist/tickets")
     }
@@ -1038,6 +1042,38 @@ struct ReportsSummaryWire: Codable {
         case onHandSkuCount = "on_hand_sku_count"
         case lowStockCount = "low_stock_count"
         case topSkus = "top_skus"
+    }
+}
+
+struct ControlTowerPulseWire: Codable {
+    let retailerId: String?
+    let generatedAt: String?
+    let openOrders: Int
+    let activeFulfillments: Int
+    let dockPending: Int
+    let posOpenSessions: Int
+    let openShifts: Int
+    let openAssistTickets: Int
+    let lowStockSkuBins: Int
+    let shiftVariances7d: Int
+    let salesMinor7d: Int64
+    let capabilities: [String]?
+    let empty: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case empty
+        case capabilities
+        case retailerId = "retailer_id"
+        case generatedAt = "generated_at"
+        case openOrders = "open_orders"
+        case activeFulfillments = "active_fulfillments"
+        case dockPending = "dock_pending"
+        case posOpenSessions = "pos_open_sessions"
+        case openShifts = "open_shifts"
+        case openAssistTickets = "open_assist_tickets"
+        case lowStockSkuBins = "low_stock_sku_bins"
+        case shiftVariances7d = "shift_variances_7d"
+        case salesMinor7d = "sales_minor_7d"
     }
 }
 
