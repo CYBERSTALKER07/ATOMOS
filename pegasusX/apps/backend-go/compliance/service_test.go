@@ -21,17 +21,21 @@ type mockRepo struct {
 	updateErr       error
 	updatedTicketID string
 	updatedStatus   string
+	lastFilter      DashboardFilter
 }
 
 func (m *mockRepo) FetchDashboardStats(ctx context.Context, f DashboardFilter) (DashboardStats, error) {
+	m.lastFilter = f
 	return m.stats, m.statsErr
 }
 
 func (m *mockRepo) ListProblemOrders(ctx context.Context, f DashboardFilter, limit int) ([]ProblemOrder, error) {
+	m.lastFilter = f
 	return m.orders, m.ordersErr
 }
 
 func (m *mockRepo) ExportProblemOrders(ctx context.Context, f DashboardFilter) ([]ProblemOrder, error) {
+	m.lastFilter = f
 	return m.orders, m.exportErr
 }
 

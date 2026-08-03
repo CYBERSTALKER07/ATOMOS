@@ -1,6 +1,7 @@
--- Contiguous migration inventory: shop-closed proximity/partial columns are defined in
--- 20260729_shop_closed_proximity_partial.ddl. Re-stated here so older apply paths that
--- only knew about 20260731 still converge. Idempotent on AlreadyExists.
+-- Enhanced shop-closed + proximity settlement + partial offload (2026-07-29).
+-- Wire status ARRIVED_SHOP_CLOSED ≡ design SHOP_CLOSED_PENDING.
+-- Partial line qty lives in LineItemsJson (DeliveredQty/RemainingQty/OffloadStatus).
+-- Idempotent: re-apply is safe (AlreadyExists / FailedPrecondition treated as skip).
 
 ALTER TABLE Orders ADD COLUMN ShopClosedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN ShopClosedReason STRING(64);

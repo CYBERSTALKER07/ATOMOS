@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
+import { supplierFetch } from "@/lib/auth";
+import { sessionSupplierId } from "@/lib/supplier-scope";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 
 interface DashboardStats {
   fiscalizing: number;
@@ -61,49 +64,103 @@ function MetricCard({
 }
 
 export default function ComplianceDashboard() {
+  const supplierId = sessionSupplierId();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<ProblemOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
-  const supplierId = "sup-demo-1"; // Dummy ID for demo
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    if (!supplierId) {
+      setLoading(false);
+      setStats(null);
+      setOrders([]);
+      setError("No supplier session. Sign in again to load compliance for your tenant.");
+      return;
+    }
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/compliance/dashboard?supplierId=${supplierId}`);
-      if (!res.ok) throw new Error("Failed to load compliance stats");
+      setError(null);
+      // Supplier scope comes from the session JWT on the backend; do not trust query tenant ids.
+      const res = await supplierFetch("/v1/compliance/dashboard");
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(body || `Failed to load compliance stats (${res.status})`);
+      }
       const data = await res.json();
       setStats(data.stats);
       setOrders(data.orders || []);
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load compliance stats");
+      setStats(null);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
+  }, [supplierId]);
+
+  useSupplierSessionReconcile(fetchDashboardData);
+
+  useEffect(() => {
+    void fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleExport = async () => {
+    if (!supplierId || exporting) return;
+    try {
+      setExporting(true);
+      setError(null);
+      const res = await supplierFetch("/v1/compliance/export");
+      if (!res.ok) {
+        throw new Error(`Export failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `compliance_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleExport = () => {
-    window.location.href = `/api/v1/compliance/export?supplierId=${supplierId}`;
-  };
+  if (!supplierId) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold tracking-tight">Compliance & Fiscal Audit</h1>
+        <p className="text-gray-500 mt-2">
+          No supplier session. Sign in again to load compliance for your tenant.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Compliance & Fiscal Audit</h1>
-          <p className="text-gray-500 mt-2">Track open fiscal states, claim mismatches, and ecosystem integrity.</p>
+          <p className="text-gray-500 mt-2">
+            Track open fiscal states, claim mismatches, and ecosystem integrity for {supplierId}.
+          </p>
         </div>
-        <button 
-          onClick={handleExport}
-          className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        <button
+          onClick={() => void handleExport()}
+          disabled={exporting}
+          className="bg-black hover:bg-gray-800 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium transition-colors"
         >
-          Export Soliq Audit (CSV)
+          {exporting ? "Exporting…" : "Export Soliq Audit (CSV)"}
         </button>
       </div>
+
+      {error ? <div className="text-red-600 text-sm">{error}</div> : null}
 
       {loading ? (
         <div className="text-gray-500 text-center py-12">Loading statistics...</div>
@@ -138,6 +195,10 @@ export default function ComplianceDashboard() {
               />
             </div>
           )}
+
+          {!stats && !error ? (
+            <div className="text-gray-500 text-center py-12">No compliance stats for this supplier yet.</div>
+          ) : null}
 
           {orders && orders.length > 0 && (
             <div className="mt-12">

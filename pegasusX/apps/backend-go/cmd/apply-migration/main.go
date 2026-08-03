@@ -15,6 +15,7 @@ import (
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/schemadrift"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ func main() {
 
 	ddlFlag := flag.String("ddl", "", "path to incremental .ddl file (statements separated by ;)")
 	verifyFlag := flag.Bool("verify", false, "after apply, verify warehouse stock migration objects")
+	verifyShopClosedFlag := flag.Bool("verify-shop-closed", false, "after apply, verify shop-closed / proximity schema objects")
 	flag.Parse()
 
 	ddlPath := strings.TrimSpace(*ddlFlag)
@@ -87,6 +89,19 @@ func main() {
 			slog.Error("verification failed", "err", err)
 			os.Exit(1)
 		}
+	}
+	if *verifyShopClosedFlag {
+		client, err := spanner.NewClient(ctx, databaseName, spannerClientOptions(cfg)...)
+		if err != nil {
+			slog.Error("shop-closed verify client", "err", err)
+			os.Exit(1)
+		}
+		defer client.Close()
+		if err := schemadrift.AssertShopClosedSchema(ctx, client); err != nil {
+			slog.Error("shop-closed verification failed", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("shop-closed schema verified", "database", databaseName)
 	}
 }
 

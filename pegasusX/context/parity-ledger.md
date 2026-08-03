@@ -24,7 +24,7 @@ See also: `docs/CLAIM_ROLE_ROW.md`.
 | Driver iOS API methods | Wired | Full stop-screen UX polish deferred |
 | Retailer desktop/Android/iOS enhanced response codes | Wired | RESCHEDULE / CREDIT_LEAVE / CANCEL / AUTHORIZE_BYPASS labels |
 | Supplier portal + Android + iOS queue fields | Wired | grace_ends_at, reason, shop_closed_resolution |
-| Spanner DDL applied on live SSMR | **Pending ops** | Migration `20260729_shop_closed_proximity_partial.ddl` |
+| Spanner DDL applied on live SSMR | **Wired** | `20260729_shop_closed_proximity_partial.ddl` applied; CI `schema-drift-gate` + `ssmr-smokecheck spanner` assert Orders grace/proximity cols + `OrderShopClosedLog` |
 | Offline action queue (full driver offline flush orchestrator) | **Wired** | Android Room/WorkManager + iOS QueuedDriverAction/BGTask; Sync Queue UI; 4.1 order; dead-letter |
 | AUTHORIZE_BYPASS photo capture on retailer | Partial | Code requires photo_url; camera UX not expanded on all clients |
 

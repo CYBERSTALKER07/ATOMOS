@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
+	"github.com/pegasusx/pegasusx/apps/backend-go/schemadrift"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -124,6 +125,9 @@ func runSpannerCheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return err
 	}
 	if err := assertRetailerSchema(ctx, client); err != nil {
+		return err
+	}
+	if err := schemadrift.AssertShopClosedSchema(ctx, client); err != nil {
 		return err
 	}
 

@@ -20,9 +20,17 @@ export function useControlTowerWebSocket(supplierId: string): ControlTowerData {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    const sid = supplierId.trim();
+    if (!sid) {
+      setNetworkNodes([]);
+      setNetworkLinks([]);
+      setH3Data([]);
+      return;
+    }
+
     // In a real app, this URL would come from env config
-    const wsUrl = `ws://localhost:8080/ws/telemetry?identity=supplier:${supplierId}`;
-    
+    const wsUrl = `ws://localhost:8080/ws/telemetry?identity=supplier:${encodeURIComponent(sid)}`;
+
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onmessage = (event) => {
@@ -42,6 +50,7 @@ export function useControlTowerWebSocket(supplierId: string): ControlTowerData {
     return () => {
       if (ws.current) {
         ws.current.close();
+        ws.current = null;
       }
     };
   }, [supplierId]);

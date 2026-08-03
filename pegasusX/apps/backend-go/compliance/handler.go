@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 type Handler struct {
@@ -16,33 +18,54 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	supplierID := r.URL.Query().Get("supplierId")
-	if supplierID == "" {
-		http.Error(w, "supplierId is required", http.StatusBadRequest)
-		return
+// resolveSessionSupplier binds the request to the JWT supplier_id.
+// Query supplierId is ignored (legacy clients) to prevent cross-tenant IDOR.
+func resolveSessionSupplier(r *http.Request) (string, bool) {
+	sid, ok := auth.ResolveSupplierID(r.Context())
+	if !ok {
+		return "", false
 	}
+	sid = strings.TrimSpace(sid)
+	if sid == "" {
+		return "", false
+	}
+	return sid, true
+}
 
+func parseDateRange(r *http.Request) (from, to time.Time, err error) {
 	fromStr := r.URL.Query().Get("from")
 	toStr := r.URL.Query().Get("to")
-	var from, to time.Time
-	var err error
 	if fromStr != "" {
-		if from, err = time.Parse(time.RFC3339, fromStr); err != nil {
-			http.Error(w, "invalid from date format", http.StatusBadRequest)
-			return
+		from, err = time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("invalid from date format")
 		}
 	} else {
 		from = time.Now().AddDate(0, -1, 0) // default last 30 days
 	}
 	if toStr != "" {
-		if to, err = time.Parse(time.RFC3339, toStr); err != nil {
-			http.Error(w, "invalid to date format", http.StatusBadRequest)
-			return
+		to, err = time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("invalid to date format")
 		}
 	} else {
 		to = time.Now()
+	}
+	return from, to, nil
+}
+
+func (h *Handler) GetDashboard(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	supplierID, ok := resolveSessionSupplier(r)
+	if !ok {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	from, to, err := parseDateRange(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	filter := DashboardFilter{
@@ -73,31 +96,16 @@ func (h *Handler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	supplierID := r.URL.Query().Get("supplierId")
-	if supplierID == "" {
-		http.Error(w, "supplierId is required", http.StatusBadRequest)
+	supplierID, ok := resolveSessionSupplier(r)
+	if !ok {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
-	fromStr := r.URL.Query().Get("from")
-	toStr := r.URL.Query().Get("to")
-	var from, to time.Time
-	var err error
-	if fromStr != "" {
-		if from, err = time.Parse(time.RFC3339, fromStr); err != nil {
-			http.Error(w, "invalid from date format", http.StatusBadRequest)
-			return
-		}
-	} else {
-		from = time.Now().AddDate(0, -1, 0)
-	}
-	if toStr != "" {
-		if to, err = time.Parse(time.RFC3339, toStr); err != nil {
-			http.Error(w, "invalid to date format", http.StatusBadRequest)
-			return
-		}
-	} else {
-		to = time.Now()
+	from, to, err := parseDateRange(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	filter := DashboardFilter{

@@ -1,8 +1,23 @@
-import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
+import { decodeJwtPayload, getSupplierToken, readTokenFromCookie } from "@/lib/auth";
 
+/** Soft scope for cache keys — may return a placeholder when unauthenticated. */
 export function supplierScopeId(): string {
-  const token = readTokenFromCookie();
-  if (!token) return "supplier";
+  return sessionSupplierId() ?? "supplier";
+}
+
+/**
+ * Fail-closed session supplier id from JWT.
+ * Returns null when missing — callers must not fall back to demo tenants.
+ */
+export function sessionSupplierId(): string | null {
+  const token = getSupplierToken() || readTokenFromCookie();
+  if (!token) return null;
   const claims = decodeJwtPayload(token);
-  return typeof claims?.supplier_id === "string" ? claims.supplier_id : "supplier";
+  const sid =
+    (typeof claims?.supplier_id === "string" && claims.supplier_id) ||
+    (typeof claims?.SupplierID === "string" && claims.SupplierID) ||
+    (typeof claims?.sid === "string" && claims.sid) ||
+    "";
+  const trimmed = sid.trim();
+  return trimmed || null;
 }

@@ -66,6 +66,10 @@ jobs:
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
         run: bash scripts/ci_spanner_integration.sh
+      - name: Schema-drift gate (shop-closed / proximity)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/ci_schema_drift_gate.sh
 
   ai-worker:
     runs-on: ubuntu-latest
