@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -60,7 +61,16 @@ func (h *Handler) HandleMediaUploadTicket(w http.ResponseWriter, r *http.Request
 	uploadURL, publicURL, err := storage.GenerateUploadTicketFor(prefix, ext)
 	if err != nil {
 		h.log.ErrorContext(r.Context(), "media upload ticket failed", "err", err, "purpose", purpose)
+		if errors.Is(err, storage.ErrMediaStorageUnavailable) {
+			h.writeError(w, http.StatusServiceUnavailable, "media_storage_unavailable")
+			return
+		}
 		h.writeError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	if storage.IsPlaceholderMediaURL(uploadURL) || storage.IsPlaceholderMediaURL(publicURL) {
+		h.log.ErrorContext(r.Context(), "media upload ticket returned placeholder", "purpose", purpose)
+		h.writeError(w, http.StatusServiceUnavailable, "media_storage_unavailable")
 		return
 	}
 	contentType := "image/jpeg"

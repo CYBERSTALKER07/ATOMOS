@@ -1233,7 +1233,7 @@ func (s *Service) loadOrderLinesForReceive(ctx context.Context, retailerID, orde
 		return nil, fmt.Errorf("order_status_not_receivable:%s", st)
 	}
 	// LineItemsJson is the order qty source of truth for receive.
-	// (Quantity negotiation, when product-enabled, rewrites this before settle.)
+	// Cap to delivered − remaining/offload − open logistics claim qty (G9).
 	var items []struct {
 		SKU         string `json:"sku"`
 		Name        string `json:"name"`
@@ -1241,23 +1241,24 @@ func (s *Service) loadOrderLinesForReceive(ctx context.Context, retailerID, orde
 		Quantity    int64  `json:"quantity"`
 		Qty         int64  `json:"qty"`
 		Delivered   int64  `json:"delivered_qty"`
+		Remaining   int64  `json:"remaining_qty"`
+		OffloadQty  int64  `json:"offload_qty"`
 	}
 	if err := json.Unmarshal(lineBytes, &items); err != nil {
 		return nil, errors.New("order_lines_invalid")
 	}
+	claimedBySKU := s.openClaimQtyBySKU(ctx, orderID)
 	var lines []ReceiveLine
 	for _, it := range items {
 		sku := strings.TrimSpace(it.SKU)
 		if sku == "" {
 			continue
 		}
-		qty := it.Quantity
-		if qty == 0 {
-			qty = it.Qty
+		ordered := it.Quantity
+		if ordered == 0 {
+			ordered = it.Qty
 		}
-		if it.Delivered > 0 {
-			qty = it.Delivered
-		}
+		qty := ReceivableQty(ordered, it.Delivered, it.Remaining, it.OffloadQty, claimedBySKU[sku])
 		name := it.Name
 		if name == "" {
 			name = it.ProductName
@@ -1268,6 +1269,78 @@ func (s *Service) loadOrderLinesForReceive(ctx context.Context, retailerID, orde
 		return nil, errors.New("order_has_no_lines")
 	}
 	return lines, nil
+}
+
+// ReceivableQty is delivered (else ordered) minus driver-excepted residual and open claim qty.
+// Never returns negative.
+func ReceivableQty(ordered, delivered, remaining, offload, openClaimed int64) int64 {
+	base := ordered
+	if delivered > 0 {
+		base = delivered
+	}
+	excepted := remaining
+	if offload > excepted {
+		excepted = offload
+	}
+	out := base - excepted - openClaimed
+	if out < 0 {
+		return 0
+	}
+	return out
+}
+
+// openClaimQtyBySKU sums OPEN/UNDER_REVIEW/APPROVED claim line qtys for an order (best-effort).
+func (s *Service) openClaimQtyBySKU(ctx context.Context, orderID string) map[string]int64 {
+	out := map[string]int64{}
+	if s == nil || s.spannerClient == nil || strings.TrimSpace(orderID) == "" {
+		return out
+	}
+	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT Status, LineItemsJSON FROM Claims@{FORCE_INDEX=Idx_Claims_ByOrderCreated}
+			WHERE OrderId = @oid ORDER BY CreatedAt DESC LIMIT 50`,
+		Params: map[string]any{"oid": strings.TrimSpace(orderID)},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			s.log.Warn("open claim qty lookup failed", "order_id", orderID, "err", err)
+			return out
+		}
+		var status string
+		var lineBytes []byte
+		if err := row.Columns(&status, &lineBytes); err != nil {
+			continue
+		}
+		switch strings.ToUpper(strings.TrimSpace(status)) {
+		case "OPEN", "UNDER_REVIEW", "APPROVED", "RESOLVED":
+		default:
+			continue
+		}
+		var lines []struct {
+			SKU      string `json:"sku"`
+			Quantity int64  `json:"quantity"`
+			Qty      int64  `json:"qty"`
+		}
+		if err := json.Unmarshal(lineBytes, &lines); err != nil {
+			continue
+		}
+		for _, ln := range lines {
+			sku := strings.TrimSpace(ln.SKU)
+			q := ln.Quantity
+			if q == 0 {
+				q = ln.Qty
+			}
+			if sku == "" || q <= 0 {
+				continue
+			}
+			out[sku] += q
+		}
+	}
+	return out
 }
 
 func (s *Service) listStockMovements(ctx context.Context, retailerID, locationID, sku string, limit int) ([]StockMovementDTO, error) {

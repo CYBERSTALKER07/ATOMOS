@@ -18,6 +18,9 @@ import (
 const (
 	// DeliveryPerimeterKey is the canonical Redis set checked by order creation
 	// via SISMEMBER for O(1) retailer zone gating.
+	// Legacy global key — see docs/E2_PER_SUPPLIER_PERIMETER_DESIGN.md for
+	// per-supplier migration (PerimeterKeyForSupplier). Production reads stay
+	// on this key until EH1.1 cutover.
 	DeliveryPerimeterKey = "ssmr:delivery_perimeter"
 	// DeliveryPerimeterCompactedKey stores the compacted perimeter for
 	// transport/debug parity with PolygonToCells + CompactCells output.
@@ -26,6 +29,21 @@ const (
 	DefaultPerimeterResolution = 9
 	defaultPolygonVertices     = 64
 )
+
+// PerimeterKeyForSupplier returns the per-supplier Redis set key (E2 design).
+// Not wired into production AssertInPerimeter yet — Phase C / EH1.1 cutover.
+func PerimeterKeyForSupplier(supplierID string) string {
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return "perimeter:supplier:_unknown"
+	}
+	return "perimeter:supplier:" + supplierID
+}
+
+// PerimeterCompactedKeyForSupplier returns the compacted companion key for a supplier.
+func PerimeterCompactedKeyForSupplier(supplierID string) string {
+	return PerimeterKeyForSupplier(supplierID) + ":compacted"
+}
 
 var (
 	// ErrZoneMiss is returned when the retailer coordinate falls outside the

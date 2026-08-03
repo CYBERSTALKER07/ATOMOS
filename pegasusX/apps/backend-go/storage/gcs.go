@@ -2,7 +2,10 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -10,13 +13,21 @@ import (
 )
 
 var (
-	// Client is nil in local dev when GCS is unavailable; upload tickets fall back to placeholders.
+	// Client is nil in local dev when GCS is unavailable; upload tickets fall back to placeholders
+	// only when EvidenceFailClosed() is false.
 	Client     *storage.Client
 	BucketName string
 )
 
+var (
+	// ErrMediaStorageUnavailable is returned when evidence signing cannot produce a real GCS URL.
+	ErrMediaStorageUnavailable = errors.New("media_storage_unavailable")
+	// ErrInvalidEvidenceURI is returned when a claim photo URI is not an allowed GCS host.
+	ErrInvalidEvidenceURI = errors.New("invalid_evidence_uri")
+)
+
 // InitGCS boots the storage client. An empty bucket name skips client init and
-// leaves Client nil so GenerateUploadTicket can return dev placeholders.
+// leaves Client nil so GenerateUploadTicket can return dev placeholders (non-fail-closed only).
 func InitGCS(ctx context.Context, bucket string) error {
 	BucketName = strings.TrimSpace(bucket)
 	if BucketName == "" {
@@ -28,6 +39,88 @@ func InitGCS(ctx context.Context, bucket string) error {
 	}
 	Client = client
 	return nil
+}
+
+// EvidenceFailClosed is true for production / SSMR / staging or when REQUIRE_INFRA_ADAPTERS=true.
+// Local stacks with REQUIRE_INFRA_ADAPTERS=false may still use placeholders for catalog/dev.
+func EvidenceFailClosed() bool {
+	if envBool("REQUIRE_INFRA_ADAPTERS", true) {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
+	case "production", "prod", "ssmr", "staging":
+		return true
+	default:
+		return false
+	}
+}
+
+func envBool(key string, def bool) bool {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return def
+	}
+	switch strings.ToLower(raw) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return def
+	}
+}
+
+// IsPlaceholderMediaURL reports placehold.co (and empty) media URLs.
+func IsPlaceholderMediaURL(raw string) bool {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return true
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return true
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "placehold.co" || strings.HasSuffix(host, ".placehold.co")
+}
+
+// ValidateEvidenceURI accepts public GCS object URLs for the configured bucket (or any
+// storage.googleapis.com object when bucket is unset in tests). Rejects placeholders.
+func ValidateEvidenceURI(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ErrInvalidEvidenceURI
+	}
+	if IsPlaceholderMediaURL(raw) {
+		return ErrInvalidEvidenceURI
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" {
+		return ErrInvalidEvidenceURI
+	}
+	host := strings.ToLower(u.Hostname())
+	// Signed PUT URLs use googleapis.com / storage.googleapis.com; public URLs use storage.googleapis.com/bucket/...
+	switch {
+	case host == "storage.googleapis.com":
+		if BucketName == "" {
+			return nil
+		}
+		// path: /{bucket}/object...
+		path := strings.TrimPrefix(u.Path, "/")
+		if !strings.HasPrefix(path, BucketName+"/") && path != BucketName {
+			return ErrInvalidEvidenceURI
+		}
+		return nil
+	case strings.HasSuffix(host, ".storage.googleapis.com"):
+		// bucket.storage.googleapis.com/object
+		bucketHost := strings.TrimSuffix(host, ".storage.googleapis.com")
+		if BucketName != "" && bucketHost != BucketName {
+			return ErrInvalidEvidenceURI
+		}
+		return nil
+	default:
+		return ErrInvalidEvidenceURI
+	}
 }
 
 // GenerateUploadTicket creates a short-lived signed PUT URL for catalog image uploads.
@@ -50,6 +143,9 @@ func GenerateUploadTicketFor(objectPrefix, extension string) (uploadURL string, 
 	objectName := objectPrefix + "/" + filename
 
 	if Client == nil {
+		if EvidenceFailClosed() {
+			return "", "", fmt.Errorf("%w: gcs client not initialized", ErrMediaStorageUnavailable)
+		}
 		placeholder := fmt.Sprintf("https://placehold.co/400x400/1a1a2e/e0e0e0?text=%s", filename)
 		return placeholder, placeholder, nil
 	}
@@ -70,14 +166,15 @@ func GenerateUploadTicketFor(objectPrefix, extension string) (uploadURL string, 
 		ContentType: contentType,
 	}
 
-	url, err := Client.Bucket(BucketName).SignedURL(objectName, opts)
+	signed, err := Client.Bucket(BucketName).SignedURL(objectName, opts)
 	if err != nil {
-		// Pilot/SSMR: WI SA may lack iam.serviceAccounts.signBlob until TokenCreator
-		// is bound. Prefer a usable placeholder over hard-failing claim/evidence flows.
+		if EvidenceFailClosed() {
+			return "", "", fmt.Errorf("%w: signBlob failed (bind roles/iam.serviceAccountTokenCreator): %v", ErrMediaStorageUnavailable, err)
+		}
 		placeholder := fmt.Sprintf("https://placehold.co/400x400/1a1a2e/e0e0e0?text=%s", filename)
 		return placeholder, placeholder, nil
 	}
 
 	public := fmt.Sprintf("https://storage.googleapis.com/%s/%s", BucketName, objectName)
-	return url, public, nil
+	return signed, public, nil
 }

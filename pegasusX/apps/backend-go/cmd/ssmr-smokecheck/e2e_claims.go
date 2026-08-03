@@ -55,17 +55,21 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("issue retailer jwt: %w", err)
 	}
 
-	// Media ticket (auth surface) — 200 when signed GCS available or placeholder fallback.
-	// Non-blocking for MISSING claims (no photo required); warn and continue if GCS signBlob IAM lags.
+	// Media ticket must be real GCS (fail-closed on SSMR/prod). placehold.co is forbidden.
 	status, respBody, _, err := clientDo(ctx, client, http.MethodGet,
 		base+"/v1/media/upload-ticket?purpose=claim_evidence&ext=jpg", nil, retailerToken, "")
 	if err != nil {
-		fmt.Printf("PX_E2E_CLAIMS_MEDIA_TICKET_WARN upload-ticket network: %v\n", err)
-	} else if status != http.StatusOK {
-		fmt.Printf("PX_E2E_CLAIMS_MEDIA_TICKET_WARN status=%d body=%s\n", status, string(respBody))
-	} else {
-		fmt.Println("PX_E2E_CLAIMS_MEDIA_TICKET_OK")
+		return fmt.Errorf("claim media upload-ticket network: %w", err)
 	}
+	if status != http.StatusOK {
+		return fmt.Errorf("claim media upload-ticket status=%d body=%s (need GCS signBlob / TokenCreator IAM)", status, string(respBody))
+	}
+	bodyStr := string(respBody)
+	if strings.Contains(bodyStr, "placehold.co") {
+		return fmt.Errorf("claim media upload-ticket returned placehold.co (fail-closed): %s", bodyStr)
+	}
+	fmt.Println("PX_E2E_CLAIMS_MEDIA_TICKET_OK")
+	fmt.Println("PX_E2E_CLAIM_MEDIA_GCS_OK")
 
 	// Drive order to COMPLETED via lifecycle spine.
 	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)

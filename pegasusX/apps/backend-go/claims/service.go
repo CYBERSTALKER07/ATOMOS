@@ -12,6 +12,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 )
 
 // DefaultPostDeliveryClaimWindow is how long after COMPLETED a retailer may file.
@@ -362,13 +363,30 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		req.ClaimType == ClaimTypeTemperature || req.ClaimType == ClaimTypeTamper
 	hasPhoto := false
 	for _, e := range req.Evidences {
-		if e.EvidenceType == EvidencePhoto && strings.TrimSpace(e.URI) != "" {
-			hasPhoto = true
-			break
+		if e.EvidenceType != EvidencePhoto {
+			continue
 		}
+		uri := strings.TrimSpace(e.URI)
+		if uri == "" {
+			continue
+		}
+		if err := storage.ValidateEvidenceURI(uri); err != nil {
+			return Claim{}, ErrInvalidEvidenceURI
+		}
+		hasPhoto = true
 	}
 	if needsPhoto && !hasPhoto {
 		return Claim{}, ErrEvidenceRequired
+	}
+	// Non-photo evidence URIs must also be real GCS objects (no placehold.co).
+	for _, e := range req.Evidences {
+		uri := strings.TrimSpace(e.URI)
+		if uri == "" || e.EvidenceType == EvidencePhoto {
+			continue
+		}
+		if err := storage.ValidateEvidenceURI(uri); err != nil {
+			return Claim{}, ErrInvalidEvidenceURI
+		}
 	}
 
 	o, ok, err := s.orders.GetOrder(ctx, orderID)
@@ -378,8 +396,14 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	if !ok {
 		return Claim{}, ErrOrderNotFound
 	}
-	if claims.Role == auth.RoleRetailer && strings.TrimSpace(o.RetailerID) != strings.TrimSpace(claims.Subject) {
-		return Claim{}, ErrForbidden
+	if claims.Role == auth.RoleRetailer {
+		org := auth.ResolveRetailerOrgID(claims)
+		if strings.TrimSpace(o.RetailerID) != org {
+			return Claim{}, ErrForbidden
+		}
+		if !auth.HasRetailerPerm(claims, auth.PermClaimFile) {
+			return Claim{}, ErrForbidden
+		}
 	}
 	if strings.ToUpper(strings.TrimSpace(o.Status)) != OrderStatusCompleted {
 		return Claim{}, fmt.Errorf("%w: order status %s (claims only after delivery complete)", ErrClaimNotAllowed, o.Status)
@@ -446,7 +470,7 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 			EvidenceType: et,
 			URI:          uri,
 			MimeType:     strings.TrimSpace(e.MimeType),
-			CapturedBy:   claims.Subject,
+			CapturedBy:   auth.ResolveRetailerUserID(claims),
 			CreatedAt:    now,
 		})
 	}
@@ -456,7 +480,7 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		OrderID:     o.OrderID,
 		SupplierID:  o.SupplierID,
 		RetailerID:  o.RetailerID,
-		FiledBy:     claims.Subject,
+		FiledBy:     auth.ResolveRetailerUserID(claims),
 		FiledByRole: string(claims.Role),
 		ClaimType:   req.ClaimType,
 		Status:      StatusOpen,
@@ -509,6 +533,11 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	if err != nil {
 		return Claim{}, err
 	}
+	// Fail-closed QUARANTINE hold for physical claim types (G8).
+	if err := s.holdStoreStockForClaim(ctx, c, auth.ResolveRetailerUserID(claims)); err != nil {
+		s.compensateClaimAfterHoldFailure(ctx, c, err)
+		return Claim{}, fmt.Errorf("%w: %v", ErrClaimStockHoldFailed, err)
+	}
 	// Best-effort dock tickets for physical reverse logistics (damage types).
 	s.openReverseLogistics(ctx, ReverseLogisticsInput{
 		OrderID:     c.OrderID,
@@ -519,8 +548,6 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		Note:        string(c.ClaimType),
 		Lines:       pricedLines,
 	})
-	// Store QUARANTINE hold for physical claims when sellable stock exists.
-	s.holdStoreStockForClaim(ctx, c, claims.Subject)
 	s.maybeAutoApprove(ctx, c)
 	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
 	// Re-read if auto-approve mutated status.
@@ -567,6 +594,9 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		uri = strings.TrimSpace(uri)
 		if uri == "" {
 			continue
+		}
+		if err := storage.ValidateEvidenceURI(uri); err != nil {
+			return Claim{}, ErrInvalidEvidenceURI
 		}
 		evs = append(evs, Evidence{
 			EvidenceID:   s.newID(),
@@ -854,12 +884,37 @@ func claimNeedsStoreHold(t ClaimType) bool {
 	}
 }
 
-func (s *Service) holdStoreStockForClaim(ctx context.Context, c Claim, actor string) {
+// holdStoreStockForClaim quarantines sellable stock for physical claim types.
+// Returns error when the store-stock bridge is wired and HoldForClaim fails (G8 fail-closed).
+// When the bridge is unset (unit tests / partial bootstrap), hold is skipped.
+func (s *Service) holdStoreStockForClaim(ctx context.Context, c Claim, actor string) error {
 	if s == nil || s.storeStock == nil || !claimNeedsStoreHold(c.ClaimType) {
-		return
+		return nil
 	}
 	if err := s.storeStock.HoldForClaim(ctx, c.RetailerID, c.ClaimID, c.OrderID, c.LineItems, actor); err != nil {
-		s.log.WarnContext(ctx, "store claim hold failed", "claim_id", c.ClaimID, "err", err)
+		s.log.ErrorContext(ctx, "store claim hold failed", "claim_id", c.ClaimID, "err", err)
+		return err
+	}
+	return nil
+}
+
+// compensateClaimAfterHoldFailure rejects a just-created OPEN claim so clients never
+// observe durable OPEN + sellable OnHand when quarantine could not be applied.
+func (s *Service) compensateClaimAfterHoldFailure(ctx context.Context, c Claim, holdErr error) {
+	if s == nil || s.repo == nil {
+		return
+	}
+	now := s.now().UTC()
+	c.Status = StatusRejected
+	c.ResolutionNote = "compensated: claim_stock_hold_failed"
+	if holdErr != nil {
+		c.ResolutionNote += ": " + holdErr.Error()
+	}
+	c.ResolvedBy = "system"
+	c.ResolvedAt = &now
+	c.UpdatedAt = now
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, nil); err != nil {
+		s.log.ErrorContext(ctx, "claim hold compensation failed", "claim_id", c.ClaimID, "err", err)
 	}
 }
 

@@ -75,3 +75,23 @@ func TestRetailerProximity_MissingPerimeterFailsClosed(t *testing.T) {
 		t.Fatalf("expected ErrZoneMiss, got: %v", err)
 	}
 }
+
+func TestPerimeterKeyForSupplier(t *testing.T) {
+	a := PerimeterKeyForSupplier("sup-a")
+	b := PerimeterKeyForSupplier("sup-b")
+	if a != "perimeter:supplier:sup-a" {
+		t.Fatalf("a=%s", a)
+	}
+	if b != "perimeter:supplier:sup-b" {
+		t.Fatalf("b=%s", b)
+	}
+	if a == b {
+		t.Fatal("supplier keys must differ")
+	}
+	if PerimeterCompactedKeyForSupplier("sup-a") != "perimeter:supplier:sup-a:compacted" {
+		t.Fatal("compacted key mismatch")
+	}
+	if PerimeterKeyForSupplier("sup-a") == DeliveryPerimeterKey {
+		t.Fatal("per-supplier key must not equal legacy global key")
+	}
+}

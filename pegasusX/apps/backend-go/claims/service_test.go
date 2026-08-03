@@ -2,6 +2,7 @@ package claims
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -95,7 +96,7 @@ func TestFileRetailerClaimSucceedsWithPhotoAndPricesFromOrder(t *testing.T) {
 			EvidenceType EvidenceType `json:"evidence_type"`
 			URI          string       `json:"uri"`
 			MimeType     string       `json:"mime_type"`
-		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg", MimeType: "image/jpeg"}},
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p.jpg", MimeType: "image/jpeg"}},
 	})
 	if err != nil {
 		t.Fatalf("FileRetailerClaim: %v", err)
@@ -114,10 +115,14 @@ func TestFileRetailerClaimSucceedsWithPhotoAndPricesFromOrder(t *testing.T) {
 type fakeStoreStock struct {
 	holds    int
 	resolves []string
+	holdErr  error
 }
 
 func (f *fakeStoreStock) HoldForClaim(_ context.Context, _, _, _ string, lines []ClaimLine, _ string) error {
 	f.holds++
+	if f.holdErr != nil {
+		return f.holdErr
+	}
 	if len(lines) == 0 {
 		return fmt.Errorf("empty lines")
 	}
@@ -149,7 +154,7 @@ func TestFileClaimHoldsStoreStockForPhysicalTypes(t *testing.T) {
 			EvidenceType EvidenceType `json:"evidence_type"`
 			URI          string       `json:"uri"`
 			MimeType     string       `json:"mime_type"`
-		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg"}},
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p.jpg"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +200,7 @@ func TestApproveRejectResolvesStoreStock(t *testing.T) {
 			EvidenceType EvidenceType `json:"evidence_type"`
 			URI          string       `json:"uri"`
 			MimeType     string       `json:"mime_type"`
-		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg"}},
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p.jpg"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +226,7 @@ func TestApproveRejectResolvesStoreStock(t *testing.T) {
 			EvidenceType EvidenceType `json:"evidence_type"`
 			URI          string       `json:"uri"`
 			MimeType     string       `json:"mime_type"`
-		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p2.jpg"}},
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p2.jpg"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -464,7 +469,7 @@ func TestFileRetailerClaim_OpensReverseLogisticsForDamage(t *testing.T) {
 			EvidenceType EvidenceType `json:"evidence_type"`
 			URI          string       `json:"uri"`
 			MimeType     string       `json:"mime_type"`
-		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg", MimeType: "image/jpeg"}},
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p.jpg", MimeType: "image/jpeg"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -495,6 +500,99 @@ func TestFileRetailerClaim_WrongRetailerForbidden(t *testing.T) {
 	})
 	if err != ErrForbidden {
 		t.Fatalf("got %v want forbidden", err)
+	}
+}
+
+func TestFileRetailerClaim_TeamManagerCanFileCashierCannot(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return fmt.Sprintf("id_%d", time.Now().UnixNano()) },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	mgr := auth.Claims{
+		Subject: "user-mgr", Role: auth.RoleRetailer,
+		RetailerOrgID: "ret-1", RetailerUserID: "user-mgr", RetailerRole: "MANAGER",
+	}
+	_, err := svc.FileRetailerClaim(context.Background(), mgr, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("MANAGER file: %v", err)
+	}
+	cashier := auth.Claims{
+		Subject: "user-cash", Role: auth.RoleRetailer,
+		RetailerOrgID: "ret-1", RetailerUserID: "user-cash", RetailerRole: "CASHIER",
+	}
+	_, err = svc.FileRetailerClaim(context.Background(), cashier, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != ErrForbidden {
+		t.Fatalf("CASHIER got %v want forbidden", err)
+	}
+}
+
+func TestFileRetailerClaim_RejectsPlaceholderEvidenceURI(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "x1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeDamaged,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://placehold.co/400x400?text=x"}},
+	})
+	if !errors.Is(err, ErrInvalidEvidenceURI) {
+		t.Fatalf("got %v want invalid_evidence_uri", err)
+	}
+}
+
+func TestFileRetailerClaim_HoldFailureCompensatesOpenClaim(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	stock := &fakeStoreStock{holdErr: fmt.Errorf("location_unavailable")}
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:       repo,
+		Orders:     fakeOrders{ok: true, o: completedOrder(now)},
+		StoreStock: stock,
+		Now:        func() time.Time { return now },
+		NewID:      func() string { return "holdfail1" },
+		Log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeConcealedDamage,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://storage.googleapis.com/pegasusx-test/evidence/p.jpg"}},
+	})
+	if !errors.Is(err, ErrClaimStockHoldFailed) {
+		t.Fatalf("got %v want claim_stock_hold_failed", err)
+	}
+	got, ok, gerr := repo.GetClaim(context.Background(), "clm_holdfail1")
+	if gerr != nil || !ok {
+		t.Fatalf("claim missing after compensate: ok=%v err=%v", ok, gerr)
+	}
+	if got.Status != StatusRejected {
+		t.Fatalf("status=%s want REJECTED (no durable OPEN)", got.Status)
 	}
 }
 

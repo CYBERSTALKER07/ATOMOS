@@ -173,6 +173,10 @@ func writeClaimError(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "claim_window_expired"})
 	case errors.Is(err, ErrEvidenceRequired):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_evidence_required"})
+	case errors.Is(err, ErrInvalidEvidenceURI):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_evidence_uri"})
+	case errors.Is(err, ErrClaimStockHoldFailed):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "claim_stock_hold_failed", "message": err.Error()})
 	case errors.Is(err, ErrInvalidClaimState):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_claim_state", "message": err.Error()})
 	case errors.Is(err, ErrPricingFailed), errors.Is(err, ErrInvalidClaimType), errors.Is(err, ErrInvalidLineItems):

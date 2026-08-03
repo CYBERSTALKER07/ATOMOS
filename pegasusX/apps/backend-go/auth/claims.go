@@ -197,6 +197,7 @@ const (
 	PermReportsView    = "reports.view"
 	PermAssistRespond  = "assist.respond"
 	PermSectionManage  = "section.manage"
+	PermClaimFile      = "claim.file"
 )
 
 // retailerRolePerms is the Phase 0 permission template matrix.
@@ -206,32 +207,32 @@ var retailerRolePerms = map[string]map[string]struct{}{
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {}, PermClaimFile: {},
 	},
 	"ADMIN": {
 		PermCapManage: {}, PermStaffManage: {}, PermLocationManage: {},
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {}, PermClaimFile: {},
 	},
 	"MANAGER": {
 		PermOrderPlace: {}, PermOrderCancel: {}, PermDockReceive: {},
 		PermStockView: {}, PermStockAdjust: {}, PermStockCount: {},
 		PermPosSell: {}, PermPosVoid: {}, PermShiftOpen: {}, PermShiftClose: {},
-		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {},
+		PermReportsView: {}, PermAssistRespond: {}, PermSectionManage: {}, PermClaimFile: {},
 	},
 	"BUYER": {
 		PermOrderPlace: {}, PermOrderCancel: {}, PermStockView: {}, PermReportsView: {},
 	},
 	"RECEIVER": {
-		PermDockReceive: {}, PermStockView: {},
+		PermDockReceive: {}, PermStockView: {}, PermClaimFile: {},
 	},
 	"CASHIER": {
 		PermPosSell: {}, PermStockView: {}, PermShiftOpen: {},
 	},
 	"STOCK_CLERK": {
-		PermDockReceive: {}, PermStockView: {}, PermStockAdjust: {}, PermStockCount: {}, PermShiftOpen: {},
+		PermDockReceive: {}, PermStockView: {}, PermStockAdjust: {}, PermStockCount: {}, PermShiftOpen: {}, PermClaimFile: {},
 	},
 	"SECTION_LEAD": {
 		PermStockView: {}, PermStockCount: {}, PermShiftOpen: {}, PermAssistRespond: {}, PermSectionManage: {},
