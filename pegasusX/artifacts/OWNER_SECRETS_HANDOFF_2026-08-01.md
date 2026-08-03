@@ -19,12 +19,16 @@ Prod-ready gap-closure (no mocks) landed in monorepo and is live on SSMR. Spanne
 
 ## Owner actions (still blocking prod flip)
 
-1. **Global Pay** — real staging `service_id` / username / **password** → GSM (`pegasusx-ssmr-global-pay-*`) → ESO refresh / restart API → SUCCESS path (today e2e proves cash fallback only).  
-   Register webhook: `https://api-ssmr.pegasusx.app/v1/webhooks/global-pay`
+1. **Global Pay** — real staging `service_id` / username / **password** → GSM (`pegasusx-ssmr-global-pay-*`) → ESO refresh / restart API → SUCCESS path.  
+   Register webhook: `https://api-ssmr.pegasusx.app/v1/webhooks/global-pay`  
+   Target marker: `PX_E2E_PAYMENT_CARD_SUCCESS_OK` (see `docs/L1_FIELD_UNLOCK_RELEASE_CHECKLIST.md`).  
+   **2026-08-04:** still GP `2030` unauthorized with current GSM password.
 
 2. **Firebase SMS / device trust** — Blaze + Phone provider; Android SHA-1/SHA-256 for release/debug; APNs for iOS FCM if required.
 
-3. Optional: Soliq/OFD; feature-flag rollout; delete unused `pegasusx-staging-spanner` to cut burn.
+3. Optional: Soliq/OFD (`docs/SOLIQ_SANDBOX_READINESS.md`); `QUANTITY_NEGOTIATION_ENABLED=true` after resolve UX QA; delete unused `pegasusx-staging-spanner` to cut burn.
+
+**Backend image (2026-08-04):** `…/backend-go:ssmr-next-layer-db8f75fb` — see `artifacts/ssmr-next-layer-rollout-2026-08-04.md`.
 
 ## Smoke (public HTTPS)
 

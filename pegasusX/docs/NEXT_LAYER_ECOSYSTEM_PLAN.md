@@ -159,10 +159,10 @@ start(epic):
 
 | ID | Name | Unlocks | Default priority |
 | ---- | ------ | --------- | ------------------ |
-| **L1** | Field unlock (GP + Firebase) | Real card SUCCESS; real SMS OTP | **P0 ops** |
-| **L2** | Retail OS CORE hardening | Family durability/migrate; CT de-demo; notif honesty; auto-order execution | **P0 product** |
+| **L1** | Field unlock (GP + Firebase) | Real card SUCCESS; real SMS OTP | **P0 ops** (eng ready 2026-08-04; owner GP password still blocks SUCCESS) |
+| **L2** | Retail OS CORE hardening | Family durability/migrate; CT de-demo; notif honesty; auto-order execution | **Shipped** (worker flag + CT sim gate) |
 | **L3** | Sell-through → reorder bridge | POS/stock → DemandAdjustments → suggestions → supplier signals | **P0 flywheel** |
-| **L4** | Quantity negotiations | Driver propose ↔ supplier resolve (re-enable) | P1 after P0–P1 Retail OS |
+| **L4** | Quantity negotiations | Driver propose ↔ supplier resolve (re-enable) | **Env-gated** `QUANTITY_NEGOTIATION_ENABLED` (default off) |
 | **L5** | Soliq OFD | Legal fiscal delivery + POS path | P1 when legally required |
 | **L6** | Local / manual POS SKUs | Non-Pegasus goods between wholesales | P1 after P3/P4 |
 | **L7** | Store reverse loop | Claim → QUARANTINE → RETURN/WASTE + WH awareness | P1 after P3 |
