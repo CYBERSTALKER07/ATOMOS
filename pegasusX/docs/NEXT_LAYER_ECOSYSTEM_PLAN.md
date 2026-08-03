@@ -85,13 +85,13 @@
 |------|--------|---------|
 | Auto-order settings | Durable Spanner (+ process cache) | `repository_settings_durable.go`, `auto_order.go` |
 | Favorites | Durable | `RetailerFavoriteSuppliers` |
-| Family members | **In-memory only** | `familyByRetailer` in `retailer/service.go` / `core_handlers.go` |
+| Family members | **Team SoT + durable gone flag** | List RAM legacy; migrate → Team; `family_writes_gone` in `RetailerOrgFlags` |
 | Auto-order **execution** | Settings + event only — **no place-order worker** | `RETAILER_AUTO_ORDER_UPDATED` |
 | Device tokens | Platform path durable; actor = JWT subject | `POST /v1/user/device-token`, `DeviceTokens` |
 | Retailer mobile device-token | Compat no-op | `mobile_compat.go` — clients must use platform route |
 | Fanout | `broadcastRetailer` → active user IDs + legacy org | `kafka/notification_dispatcher.go`, `ListActiveUserIDs` |
 | Control Tower backend | Real playbooks (flag off by default) | `controltower/*`, `CONTROL_TOWER_PLAYBOOKS_ENABLED` |
-| Control Tower retailer UI | **Mock / static** | Android `ControlTowerScreen`, iOS `ControlTowerView` |
+| Control Tower retailer UI | **Wired live pulse** | `GET /v1/retailer/control-tower/pulse` on desktop/Android/iOS; simulator env-gated |
 | CT simulator | Fake H3 pulse | `simulator/control_tower.go` |
 
 ### Flywheel / replenishment
@@ -101,14 +101,16 @@
 | `syncReorderCurrentStock` | Updates `ReorderSuggestions.CurrentStock` if row exists | `retailer/store_stock.go`, called from POS/stock |
 | `ReorderSuggestionWorker` | Batch from `DemandAdjustments`; prefers store OnHand | `replenishment/reorder_suggestion_batch.go` |
 | Demand sensing | Order-history / factors — **not POS lines** | `demand/worker_sensing.go` |
-| POS → DemandAdjustments | **Missing** | — |
-| Auto-order settings → worker | **Missing** | — |
+| POS → DemandAdjustments | **Partial** | `SELL_THROUGH` factor + `RetailerSellThroughDaily` on POS sale/void (`retailer/sell_through.go`) |
+| Reorder worker sell-through merge | **Shipped (L3.3)** | `replenishment/velocity_merge.go` + batch max(base, ST 7d vel) + `sources[]` on suggestions |
+| UI source chips + auto-order from suggestions | **Shipped (L3.4–L3.5)** | Supplier portal chips; retailer reorder list; AutoOrderWorker prefers OPEN ReorderSuggestions |
+| Auto-order settings → worker | **Draft shipped** | `auto_order_worker.go` draft/runs; candidates from suggestions then AI |
 
 ### Deferred / gated product
 
 | Area | Status | Anchors |
 |------|--------|---------|
-| Quantity negotiations | **Disabled** (`410` / empty list) | `order/negotiation_disabled.go` `quantityNegotiationDisabled = true` |
+| Quantity negotiations | **Disabled** (`410` / empty list) | `quantityNegotiationDisabled = true`; code retained, product-deferred |
 | Negotiation schema | Present | `NegotiationProposals` in Spanner DDL |
 | Fiscal | `FISCAL_PROVIDER=PEGASUS` live | `order/fiscal_*.go` |
 | Soliq | Adapter path exists; deferred secrets | `FISCAL_PROVIDER=MY_SOLIQ`, `FISCAL_MY_SOLIQ_*` |
@@ -398,7 +400,7 @@ ReorderSuggestionWorker:
   CurrentStock = store OnHand (exists)
   velocity = max(order_history_velocity, sell_through_velocity)
   respect auto-order overrides (enabled flags)
-  emit suggestions; optional supplier topic DEMAND_SIGNAL
+  emit suggestions; supplier Kafka DEMAND_SIGNAL (B4 shipped 2026-08-02)
 ```
 
 **Supplier consumption**
@@ -659,6 +661,8 @@ POST       /v1/retailer/local-skus/{id}/barcode
 
 ### L7 — Returns / reverse logistics → store stock
 
+Detailed merge plan (rich receiver ↔ store stock ↔ claims, visible vs concealed damage, configurable return windows): [`docs/RETAILER_RECEIVE_STOCK_CLAIMS_PLAN.md`](./RETAILER_RECEIVE_STOCK_CLAIMS_PLAN.md).
+
 #### Purpose
 
 Close the loop when goods already entered the **store ledger**: claim → QUARANTINE → RETURN_TO_SUPPLIER / WASTE, with warehouse reverse ticket remaining SoT for inbound dock.
@@ -841,7 +845,7 @@ SLA timer; complete/cancel
 
 #### Vision
 
-Out of scope until assist tickets proven; photo→shelf compliance is research.
+Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) — non-AI planogram structure (PG1) → human photo audits (PG2) → sidecar CV reusing OSS pipeline shape (PG3). Do **not** fork OSS apps or invent novel detectors. Deferred until L1–L3 and Mode L demand.
 
 **Priority:** lowest vs TEAM → STOCK → POS → SHIFTS → L1–L3.
 
@@ -1047,7 +1051,11 @@ Out of scope until assist tickets proven; photo→shelf compliance is research.
 - Forcing POS on pure B2B buyers  
 - Competing greenfield epic vs Retail OS P0–P1  
 - Offline card / offline POS sale queue  
-- Planogram vision (until L11 assist proven)
+- Planogram vision (until L11 assist proven)  
+
+**Sibling hardening (other roles / ops):** see [`docs/ECOSYSTEM_HARDENING_GAP_PLAN.md`](./ECOSYSTEM_HARDENING_GAP_PLAN.md) (E1–E16 — supplier CT demo, per-supplier zones, pick/rescue, offline crypto, observability/DR). Not a substitute for L1–L11.
+
+**Program sequence (all plans):** see [`docs/PEGASUSX_MASTER_ROADMAP.md`](./PEGASUSX_MASTER_ROADMAP.md).
 
 ---
 

@@ -76,23 +76,26 @@ type PosTender struct {
 
 // PosSaleDTO is a completed or voided sale.
 type PosSaleDTO struct {
-	SaleID         string        `json:"sale_id"`
-	SessionID      string        `json:"session_id"`
-	RegisterID     string        `json:"register_id"`
-	LocationID     string        `json:"location_id"`
-	RetailerID     string        `json:"retailer_id"`
-	CashierUserID  string        `json:"cashier_user_id"`
-	Status         string        `json:"status"`
-	TotalMinor     int64         `json:"total_minor"`
-	Currency       string        `json:"currency"`
-	ReceiptNumber  string        `json:"receipt_number"`
-	Lines          []PosSaleLine `json:"lines"`
-	Tenders        []PosTender   `json:"tenders"`
-	StockBin       string        `json:"stock_bin"`
-	CreatedAt      string        `json:"created_at,omitempty"`
-	VoidedAt       string        `json:"voided_at,omitempty"`
-	VoidedByUserID string        `json:"voided_by_user_id,omitempty"`
-	VoidReason     string        `json:"void_reason,omitempty"`
+	SaleID          string        `json:"sale_id"`
+	SessionID       string        `json:"session_id"`
+	RegisterID      string        `json:"register_id"`
+	LocationID      string        `json:"location_id"`
+	RetailerID      string        `json:"retailer_id"`
+	CashierUserID   string        `json:"cashier_user_id"`
+	Status          string        `json:"status"`
+	TotalMinor      int64         `json:"total_minor"`
+	Currency        string        `json:"currency"`
+	ReceiptNumber   string        `json:"receipt_number"`
+	Lines           []PosSaleLine `json:"lines"`
+	Tenders         []PosTender   `json:"tenders"`
+	StockBin        string        `json:"stock_bin"`
+	CreatedAt       string        `json:"created_at,omitempty"`
+	VoidedAt        string        `json:"voided_at,omitempty"`
+	VoidedByUserID  string        `json:"voided_by_user_id,omitempty"`
+	VoidReason      string        `json:"void_reason,omitempty"`
+	ClientSaleID    string        `json:"client_sale_id,omitempty"`
+	Origin          string        `json:"origin,omitempty"` // online | offline
+	ClientCreatedAt string        `json:"client_created_at,omitempty"`
 }
 
 // HandleRegisters serves GET/POST /v1/retailer/registers
@@ -429,11 +432,14 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var req struct {
-		SessionID string        `json:"session_id"`
-		StockBin  string        `json:"stock_bin"`
-		Currency  string        `json:"currency"`
-		Lines     []PosSaleLine `json:"lines"`
-		Tenders   []PosTender   `json:"tenders"`
+		SessionID       string        `json:"session_id"`
+		StockBin        string        `json:"stock_bin"`
+		Currency        string        `json:"currency"`
+		Lines           []PosSaleLine `json:"lines"`
+		Tenders         []PosTender   `json:"tenders"`
+		ClientSaleID    string        `json:"client_sale_id"`
+		ClientCreatedAt string        `json:"client_created_at"`
+		Origin          string        `json:"origin"` // online | offline
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -444,24 +450,76 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "session_and_lines_required"})
 		return
 	}
+	clientSaleID := strings.TrimSpace(req.ClientSaleID)
+	origin := strings.ToLower(strings.TrimSpace(req.Origin))
+	if origin == "" {
+		origin = "online"
+	}
+	if origin != "online" && origin != "offline" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "invalid_origin", "allowed": "online,offline"})
+		return
+	}
+
+	// Offline origin must be cash-only (no card capture offline).
+	if origin == "offline" {
+		for _, t := range req.Tenders {
+			method := strings.ToUpper(strings.TrimSpace(t.Method))
+			if method != "" && method != TenderCash {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+					"error":  "offline_card_forbidden",
+					"detail": "offline sales allow CASH tender only",
+				})
+				return
+			}
+		}
+	}
+
+	// Idempotent return by client_sale_id (survives beyond HTTP idempotency TTL).
+	if clientSaleID != "" {
+		if existing, ok := s.getPosSaleByClientID(r.Context(), orgID, clientSaleID); ok {
+			respBytes, _ := json.Marshal(existing)
+			idemCommitted = true
+			s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write(respBytes)
+			return
+		}
+	}
+
 	sess, found, err := s.getPosSession(r.Context(), sessionID)
-	if err != nil || !found || sess.RetailerID != orgID || sess.Status != PosSessionOpen {
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "session_lookup_failed"})
+		return
+	}
+	if !found || sess.RetailerID != orgID {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "session_not_open"})
+		return
+	}
+	if sess.Status == PosSessionClosed {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error":  "session_closed_for_offline_sync",
+			"detail": "re-open a session and re-queue failed offline sales under the new session",
+		})
+		return
+	}
+	if sess.Status != PosSessionOpen {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "session_not_open"})
 		return
 	}
 
-	// Normalize lines
+	// Normalize lines (local catalog → local: namespace; barcode → catalog id)
 	var total int64
 	lines := make([]PosSaleLine, 0, len(req.Lines))
 	for _, l := range req.Lines {
-		sku := strings.TrimSpace(l.Sku)
-		if sku == "" || l.Qty <= 0 || l.UnitPriceMinor < 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_line", "sku": sku})
+		sku, name, errMsg := s.validatePosSaleSKU(r.Context(), orgID, l.Sku, l.Name, l.UnitPriceMinor)
+		if errMsg != "" || l.Qty <= 0 || l.UnitPriceMinor < 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_line", "sku": sku, "detail": errMsg})
 			return
 		}
 		lineTotal := l.Qty * l.UnitPriceMinor
 		lines = append(lines, PosSaleLine{
-			Sku: sku, Name: strings.TrimSpace(l.Name), Qty: l.Qty,
+			Sku: sku, Name: name, Qty: l.Qty,
 			UnitPriceMinor: l.UnitPriceMinor, LineTotalMinor: lineTotal,
 		})
 		total += lineTotal
@@ -495,6 +553,15 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	// Re-check offline tenders after defaulting empty → cash.
+	if origin == "offline" {
+		for _, t := range tenders {
+			if t.Method != TenderCash {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "offline_card_forbidden"})
+				return
+			}
+		}
+	}
 
 	bin := normalizeBin(req.StockBin)
 	if bin == "" {
@@ -522,31 +589,38 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		currency = "UZS"
 	}
 	sale := PosSaleDTO{
-		SaleID:        saleID,
-		SessionID:     sessionID,
-		RegisterID:    sess.RegisterID,
-		LocationID:    sess.LocationID,
-		RetailerID:    orgID,
-		CashierUserID: actor,
-		Status:        PosSaleCompleted,
-		TotalMinor:    total,
-		Currency:      currency,
-		ReceiptNumber: receipt,
-		Lines:         lines,
-		Tenders:       tenders,
-		StockBin:      bin,
-		CreatedAt:     s.now().UTC().Format(time.RFC3339Nano),
+		SaleID:          saleID,
+		SessionID:       sessionID,
+		RegisterID:      sess.RegisterID,
+		LocationID:      sess.LocationID,
+		RetailerID:      orgID,
+		CashierUserID:   actor,
+		Status:          PosSaleCompleted,
+		TotalMinor:      total,
+		Currency:        currency,
+		ReceiptNumber:   receipt,
+		Lines:           lines,
+		Tenders:         tenders,
+		StockBin:        bin,
+		CreatedAt:       s.now().UTC().Format(time.RFC3339Nano),
+		ClientSaleID:    clientSaleID,
+		Origin:          origin,
+		ClientCreatedAt: strings.TrimSpace(req.ClientCreatedAt),
 	}
 	if err := s.savePosSale(r.Context(), sale); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_sale_failed"})
 		return
 	}
+	// L3 flywheel: sell-through rollup + DemandAdjustments SELL_THROUGH factor
+	s.recordSellThroughSale(r.Context(), orgID, sess.LocationID, lines)
 	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleCompleted, map[string]any{
-		"sale_id":       saleID,
-		"session_id":    sessionID,
-		"total_minor":   total,
-		"receipt":       receipt,
-		"location_id":   sess.LocationID,
+		"sale_id":        saleID,
+		"session_id":     sessionID,
+		"total_minor":    total,
+		"receipt":        receipt,
+		"location_id":    sess.LocationID,
+		"origin":         origin,
+		"client_sale_id": clientSaleID,
 	})
 	respBytes, _ := json.Marshal(sale)
 	idemCommitted = true
@@ -618,6 +692,7 @@ func (s *Service) HandlePosSaleVoid(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "void_failed"})
 		return
 	}
+	s.recordSellThroughVoid(r.Context(), orgID, sale.LocationID, sale.Lines)
 	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleVoided, map[string]any{
 		"sale_id": saleID, "reason": sale.VoidReason,
 	})
@@ -887,7 +962,13 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 		if s.posSales == nil {
 			s.posSales = map[string]PosSaleDTO{}
 		}
+		if s.posSalesByClient == nil {
+			s.posSalesByClient = map[string]string{}
+		}
 		s.posSales[sale.SaleID] = sale
+		if sale.ClientSaleID != "" {
+			s.posSalesByClient[sale.RetailerID+"|"+sale.ClientSaleID] = sale.SaleID
+		}
 		return nil
 	}
 	row := map[string]any{
@@ -906,6 +987,19 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 		"StockBin":      sale.StockBin,
 		"CreatedAt":     spanner.CommitTimestamp,
 	}
+	if sale.ClientSaleID != "" {
+		row["ClientSaleId"] = sale.ClientSaleID
+	}
+	if sale.Origin != "" {
+		row["Origin"] = sale.Origin
+	}
+	if sale.ClientCreatedAt != "" {
+		if t, err := time.Parse(time.RFC3339Nano, sale.ClientCreatedAt); err == nil {
+			row["ClientCreatedAt"] = t
+		} else if t, err := time.Parse(time.RFC3339, sale.ClientCreatedAt); err == nil {
+			row["ClientCreatedAt"] = t
+		}
+	}
 	if sale.Status == PosSaleVoided {
 		row["VoidedAt"] = spanner.CommitTimestamp
 		row["VoidedByUserId"] = nullableStr(sale.VoidedByUserID)
@@ -913,6 +1007,48 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 	}
 	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPosSales", row)})
 	return err
+}
+
+// getPosSaleByClientID returns a sale previously created with client_sale_id (offline sync idempotency).
+func (s *Service) getPosSaleByClientID(ctx context.Context, retailerID, clientSaleID string) (PosSaleDTO, bool) {
+	clientSaleID = strings.TrimSpace(clientSaleID)
+	if clientSaleID == "" {
+		return PosSaleDTO{}, false
+	}
+	if s.spannerClient == nil {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		if s.posSalesByClient == nil {
+			return PosSaleDTO{}, false
+		}
+		saleID, ok := s.posSalesByClient[retailerID+"|"+clientSaleID]
+		if !ok {
+			return PosSaleDTO{}, false
+		}
+		sale, ok := s.posSales[saleID]
+		return sale, ok
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT SaleId, SessionId, RegisterId, LocationId, RetailerId, CashierUserId,
+			Status, TotalMinor, Currency, ReceiptNumber, LinesJson, TendersJson, StockBin,
+			CreatedAt, VoidedAt, VoidedByUserId, VoidReason, ClientSaleId, Origin, ClientCreatedAt
+			FROM RetailerPosSales@{FORCE_INDEX=UQ_RetailerPosSales_ClientSale}
+			WHERE RetailerId = @rid AND ClientSaleId = @cid
+			LIMIT 1`,
+		Params: map[string]any{"rid": retailerID, "cid": clientSaleID},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		// Index/columns may not exist yet on older DBs — fail open to HTTP idempotency only.
+		return PosSaleDTO{}, false
+	}
+	sale, ok, err := decodePosSaleRowExtended(row)
+	if err != nil || !ok {
+		return PosSaleDTO{}, false
+	}
+	return sale, true
 }
 
 func (s *Service) getPosSale(ctx context.Context, saleID string) (PosSaleDTO, bool, error) {
@@ -959,6 +1095,45 @@ func decodePosSaleRow(row *spanner.Row) (PosSaleDTO, bool, error) {
 	}
 	if voidReason.Valid {
 		sale.VoidReason = voidReason.StringVal
+	}
+	return sale, true, nil
+}
+
+// decodePosSaleRowExtended includes offline audit columns (ClientSaleId, Origin, ClientCreatedAt).
+func decodePosSaleRowExtended(row *spanner.Row) (PosSaleDTO, bool, error) {
+	var sale PosSaleDTO
+	var linesJSON, tendersJSON string
+	var created time.Time
+	var voided spanner.NullTime
+	var voidedBy, voidReason, clientSaleID, origin spanner.NullString
+	var clientCreated spanner.NullTime
+	if err := row.Columns(
+		&sale.SaleID, &sale.SessionID, &sale.RegisterID, &sale.LocationID, &sale.RetailerID, &sale.CashierUserID,
+		&sale.Status, &sale.TotalMinor, &sale.Currency, &sale.ReceiptNumber, &linesJSON, &tendersJSON, &sale.StockBin,
+		&created, &voided, &voidedBy, &voidReason, &clientSaleID, &origin, &clientCreated,
+	); err != nil {
+		return PosSaleDTO{}, false, err
+	}
+	_ = json.Unmarshal([]byte(linesJSON), &sale.Lines)
+	_ = json.Unmarshal([]byte(tendersJSON), &sale.Tenders)
+	sale.CreatedAt = created.UTC().Format(time.RFC3339Nano)
+	if voided.Valid {
+		sale.VoidedAt = voided.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if voidedBy.Valid {
+		sale.VoidedByUserID = voidedBy.StringVal
+	}
+	if voidReason.Valid {
+		sale.VoidReason = voidReason.StringVal
+	}
+	if clientSaleID.Valid {
+		sale.ClientSaleID = clientSaleID.StringVal
+	}
+	if origin.Valid {
+		sale.Origin = origin.StringVal
+	}
+	if clientCreated.Valid {
+		sale.ClientCreatedAt = clientCreated.Time.UTC().Format(time.RFC3339Nano)
 	}
 	return sale, true, nil
 }

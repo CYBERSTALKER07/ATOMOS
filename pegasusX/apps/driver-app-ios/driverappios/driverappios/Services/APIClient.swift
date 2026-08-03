@@ -570,7 +570,9 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+    // Quantity negotiation product-disabled — backend returns 410 feature_disabled.
+    // Not a substitute for missing-items / credit-leave / shop-closed.
+    // func proposeNegotiation(orderId: String, items: [NegotiationItemRequest]) async throws -> NegotiationProposalResponse { ... }
 
     /// Edge 32: Mark order as delivered on credit (requires proximity unlock or force_bypass_token).
     func markCreditDelivery(
@@ -910,6 +912,30 @@ struct EarlyCompleteRequestResponse: Decodable {
         case status
         case orderCount = "order_count"
         case orderIds = "order_ids"
+    }
+}
+
+/// Edge 28 request item for POST /v1/delivery/negotiate.
+struct NegotiationItemRequest: Encodable {
+    let skuId: String
+    let originalQty: Int64
+    let proposedQty: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case skuId = "sku_id"
+        case originalQty = "original_qty"
+        case proposedQty = "proposed_qty"
+    }
+}
+
+/// Edge 28 response for POST /v1/delivery/negotiate.
+struct NegotiationProposalResponse: Decodable {
+    let status: String
+    let proposalId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case proposalId = "proposal_id"
     }
 }
 

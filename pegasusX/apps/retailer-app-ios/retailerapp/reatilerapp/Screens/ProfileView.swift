@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ProfileView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
@@ -199,74 +200,143 @@ struct FamilyMembersView: View {
     @State private var isLoading = false
     @State private var showAddSheet = false
     @State private var errorMessage: String? = nil
+    @State private var familyWrites: String = "open"
+    @State private var migrating = false
+    @State private var showMigrateConfirm = false
+    @State private var migrateResult: FamilyMigrateResult? = nil
+    @State private var banner: String? = nil
 
     private let api = APIClient.shared
+    private var familyGone: Bool { familyWrites == "gone" }
 
     var body: some View {
-        ResponsiveGridContentWrapper {
-            if isLoading && members.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowBackground(Color.clear)
-            } else if let errorMessage, members.isEmpty {
-                VStack(spacing: AppTheme.spacingMD) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.orange)
-                    Text("Family Members Unavailable")
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                    Label("Migrate Family → Team", systemImage: "arrow.left.arrow.right")
                         .font(.headline)
-                    Text(errorMessage)
-                        .font(.subheadline)
+                    Text("Contacts with a phone become Team RECEIVER accounts. Temp passwords show once.")
+                        .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .listRowBackground(Color.clear)
-            } else if members.isEmpty {
-                VStack(spacing: AppTheme.spacingMD) {
-                    Image(systemName: "person.2.badge.plus")
-                        .font(.system(size: 40))
-                        .foregroundStyle(AppTheme.textTertiary)
-                    Text("No Family Members")
-                        .font(.headline)
-                    Text("Add family members to allow them to place orders.")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(members) { member in
-                    HStack(spacing: AppTheme.spacingMD) {
-                        ZStack {
-                            Circle().fill(AppTheme.surfaceElevated).frame(width: 40, height: 40)
-                            Image(systemName: "person.fill").foregroundStyle(AppTheme.accent)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(member.nickname).font(.system(.body, design: .rounded, weight: .semibold))
-                            Text("Added \(member.createdAt.prefix(10))").font(.caption).foregroundStyle(AppTheme.textTertiary)
+                    Button {
+                        showMigrateConfirm = true
+                    } label: {
+                        if migrating {
+                            ProgressView()
+                        } else {
+                            Text(familyGone ? "Already migrated" : "Migrate to Team")
                         }
                     }
-                    .padding(.vertical, 4)
+                    .disabled(migrating || familyGone || members.isEmpty)
+                    .buttonStyle(.borderedProminent)
                 }
-                .onDelete { offsets in
-                    let membersToDelete = offsets.map { members[$0] }
-                    for m in membersToDelete {
-                        Task {
-                            do {
-                                try await api.removeFamilyMember(memberId: m.id)
-                                errorMessage = nil
-                                await loadMembers()
-                            } catch {
-                                errorMessage = RetailerErrorSupport.message(
-                                    for: error,
-                                    restricted: "Family member removal is restricted for this account.",
-                                    offline: "Offline mode active. Reconnect and retry family member removal.",
-                                    fallback: "Could not remove family member. Please try again.",
-                                )
+                .padding(.vertical, 4)
+            }
+
+            if let migrateResult {
+                Section("Migration result") {
+                    Text("\(migrateResult.migrated.count) migrated · \(migrateResult.skipped.count) skipped · \(migrateResult.familyRemaining) remaining")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    ForEach(migrateResult.migrated) { m in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.name).font(.body.weight(.semibold))
+                            Text("\(m.phone) · \(m.retailerRole)")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textTertiary)
+                            if let pw = m.tempPassword {
+                                HStack {
+                                    Text(pw).font(.system(.caption, design: .monospaced))
+                                    Spacer()
+                                    Button("Copy") {
+                                        UIPasteboard.general.string = pw
+                                    }
+                                    .font(.caption)
+                                }
+                            }
+                        }
+                    }
+                    ForEach(migrateResult.skipped) { s in
+                        Text("\(s.phone ?? s.memberId): \(s.reason)")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+
+            if let banner {
+                Section {
+                    Text(banner).font(.caption).foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            if let errorMessage {
+                Section {
+                    Text(errorMessage).font(.caption).foregroundStyle(.red)
+                }
+            }
+
+            Section("Members") {
+                if isLoading && members.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else if members.isEmpty {
+                    VStack(spacing: AppTheme.spacingMD) {
+                        Image(systemName: familyGone ? "person.3" : "person.2.badge.plus")
+                            .font(.system(size: 36))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Text(familyGone ? "Family list empty" : "No Family Members")
+                            .font(.headline)
+                        Text(familyGone
+                            ? "Use Team to manage staff."
+                            : "Add members with a phone, then migrate to Team.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else {
+                    ForEach(members) { member in
+                        HStack(spacing: AppTheme.spacingMD) {
+                            ZStack {
+                                Circle().fill(AppTheme.surfaceElevated).frame(width: 40, height: 40)
+                                Image(systemName: "person.fill").foregroundStyle(AppTheme.accent)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.name).font(.system(.body, design: .rounded, weight: .semibold))
+                                if let phone = member.phone, !phone.isEmpty {
+                                    Text(phone).font(.caption).foregroundStyle(AppTheme.textTertiary)
+                                } else {
+                                    Text("No phone — skipped on migrate")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                                if let created = member.createdAt {
+                                    Text("Added \(created.prefix(10))")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onDelete { offsets in
+                        let membersToDelete = offsets.map { members[$0] }
+                        for m in membersToDelete {
+                            Task {
+                                do {
+                                    try await api.removeFamilyMember(memberId: m.id)
+                                    errorMessage = nil
+                                    await loadMembers()
+                                } catch {
+                                    errorMessage = RetailerErrorSupport.message(
+                                        for: error,
+                                        restricted: "Family member removal is restricted for this account.",
+                                        offline: "Offline mode active. Reconnect and retry family member removal.",
+                                        fallback: "Could not remove family member. Please try again.",
+                                    )
+                                }
                             }
                         }
                     }
@@ -277,11 +347,21 @@ struct FamilyMembersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAddSheet = true } label: { Image(systemName: "plus") }
+                if !familyGone {
+                    Button { showAddSheet = true } label: { Image(systemName: "plus") }
+                }
             }
         }
         .task { await loadMembers() }
         .refreshable { await loadMembers() }
+        .confirmationDialog("Migrate to Team?", isPresented: $showMigrateConfirm, titleVisibility: .visible) {
+            Button("Migrate") {
+                Task { await migrateToTeam() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Temporary passwords appear once. Family add closes after migrate.")
+        }
         .sheet(isPresented: $showAddSheet) {
             NavigationStack {
                 AddFamilyMemberView { request in
@@ -292,12 +372,17 @@ struct FamilyMembersView: View {
                             await loadMembers()
                             showAddSheet = false
                         } catch {
-                            errorMessage = RetailerErrorSupport.message(
-                                for: error,
-                                restricted: "Family member creation is restricted for this account.",
-                                offline: "Offline mode active. Reconnect and retry family member creation.",
-                                fallback: "Could not add family member. Please try again.",
-                            )
+                            if case APIError.serverError(let code, _) = error, code == 410 {
+                                familyWrites = "gone"
+                                errorMessage = "Family writes closed. Use Team staff."
+                            } else {
+                                errorMessage = RetailerErrorSupport.message(
+                                    for: error,
+                                    restricted: "Family member creation is restricted for this account.",
+                                    offline: "Offline mode active. Reconnect and retry family member creation.",
+                                    fallback: "Could not add family member. Please try again.",
+                                )
+                            }
                         }
                     }
                 }
@@ -305,12 +390,14 @@ struct FamilyMembersView: View {
             .presentationDetents([.medium])
         }
     }
-    
+
     private func loadMembers() async {
         isLoading = true
         errorMessage = nil
         do {
-            members = try await api.getFamilyMembers()
+            let list = try await api.getFamilyMembersList()
+            members = list.members
+            familyWrites = list.familyWrites ?? "open"
         } catch {
             errorMessage = RetailerErrorSupport.message(
                 for: error,
@@ -321,17 +408,40 @@ struct FamilyMembersView: View {
         }
         isLoading = false
     }
+
+    private func migrateToTeam() async {
+        migrating = true
+        errorMessage = nil
+        do {
+            let result = try await api.migrateFamilyToTeam()
+            migrateResult = result
+            familyWrites = result.familyWrites
+            banner = "Migrated \(result.migrated.count). Copy temp passwords now."
+            await loadMembers()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Migration requires staff.manage permission.",
+                offline: "Offline mode active. Reconnect and retry migration.",
+                fallback: "Migration failed. Please try again.",
+            )
+        }
+        migrating = false
+    }
 }
 
 struct AddFamilyMemberView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var nickname = ""
+    @State private var name = ""
+    @State private var phone = ""
     var onAdd: (FamilyMemberRequest) -> Void
 
     var body: some View {
         Form {
             Section("Details") {
-                TextField("Nickname", text: $nickname)
+                TextField("Name", text: $name)
+                TextField("Phone (required for Team migrate)", text: $phone)
+                    .keyboardType(.phonePad)
             }
         }
         .navigationTitle("Add Member")
@@ -340,9 +450,15 @@ struct AddFamilyMemberView: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    onAdd(FamilyMemberRequest(nickname: nickname, photoUrl: nil))
+                    onAdd(FamilyMemberRequest(
+                        name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        phone: phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? nil
+                            : phone.trimmingCharacters(in: .whitespacesAndNewlines),
+                        photoUrl: nil
+                    ))
                 }
-                .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
     }

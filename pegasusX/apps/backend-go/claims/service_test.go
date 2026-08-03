@@ -111,6 +111,132 @@ func TestFileRetailerClaimSucceedsWithPhotoAndPricesFromOrder(t *testing.T) {
 	}
 }
 
+type fakeStoreStock struct {
+	holds    int
+	resolves []string
+}
+
+func (f *fakeStoreStock) HoldForClaim(_ context.Context, _, _, _ string, lines []ClaimLine, _ string) error {
+	f.holds++
+	if len(lines) == 0 {
+		return fmt.Errorf("empty lines")
+	}
+	return nil
+}
+
+func (f *fakeStoreStock) ResolveClaimStock(_ context.Context, _, _ string, _ []ClaimLine, disposition, _ string) error {
+	f.resolves = append(f.resolves, disposition)
+	return nil
+}
+
+func TestFileClaimHoldsStoreStockForPhysicalTypes(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	stock := &fakeStoreStock{}
+	svc := NewService(Config{
+		Repo:       NewMemoryRepository(),
+		Orders:     fakeOrders{ok: true, o: completedOrder(now)},
+		StoreStock: stock,
+		Now:        func() time.Time { return now },
+		NewID:      func() string { return "hold1" },
+		Log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeConcealedDamage,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stock.holds != 1 {
+		t.Fatalf("holds=%d want 1", stock.holds)
+	}
+	// MISSING should not hold store stock
+	stock.holds = 0
+	_, err = svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stock.holds != 0 {
+		t.Fatalf("MISSING should not hold store stock, holds=%d", stock.holds)
+	}
+}
+
+func TestApproveRejectResolvesStoreStock(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	stock := &fakeStoreStock{}
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:       repo,
+		Orders:     fakeOrders{ok: true, o: completedOrder(now)},
+		Settler:    &fakeSettler{},
+		StoreStock: stock,
+		Now:        func() time.Time { return now },
+		NewID:      func() string { return "res1" },
+		Log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeDamaged,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p.jpg"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = svc.ApproveClaim(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin,
+	}, c.ClaimID, ApproveClaimRequest{ResolutionNote: "ok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stock.resolves) != 1 || stock.resolves[0] != "RETURN" {
+		t.Fatalf("resolves=%v want RETURN", stock.resolves)
+	}
+
+	// Reject path
+	stock.resolves = nil
+	c2, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeDamaged,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: "https://cdn.example/p2.jpg"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.RejectClaim(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin,
+	}, c2.ClaimID, RejectClaimRequest{ResolutionNote: "nope"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stock.resolves) != 1 || stock.resolves[0] != "RESTORE" {
+		t.Fatalf("resolves=%v want RESTORE", stock.resolves)
+	}
+}
+
 func TestFileRetailerClaimWindowExpired(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	o := completedOrder(now)

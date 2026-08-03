@@ -206,12 +206,84 @@ export interface VariantOverride {
 }
 export interface AutoOrderSettings {
   global_enabled: boolean;
+  /** draft (default) | place — place creates real supplier orders when flag on */
+  execution_mode?: "draft" | "place" | string;
   has_any_history: boolean;
   analytics_start_date?: string;
   supplier_overrides: SupplierOverride[];
   category_overrides: CategoryOverride[];
   product_overrides: ProductOverride[];
   variant_overrides: VariantOverride[];
+}
+
+/** POST /v1/retailer/settings/auto-order/run audit row */
+export interface AutoOrderSkip {
+  sku?: string;
+  reason: string;
+}
+
+export interface AutoOrderPlacedOrder {
+  order_id: string;
+  supplier_id?: string;
+  line_count: number;
+  total_minor: number;
+  skus?: string[];
+}
+
+export interface AutoOrderRun {
+  run_id: string;
+  retailer_id: string;
+  started_at: string;
+  finished_at?: string;
+  mode: "draft" | "place" | string;
+  draft_lines: number;
+  placed_lines?: number;
+  placed_orders?: AutoOrderPlacedOrder[];
+  skipped?: AutoOrderSkip[];
+  status: string;
+  message?: string;
+  suggestions_seen?: number;
+  schedule_bucket?: string;
+  candidate_source?: string;
+}
+
+export interface AutoOrderRunsResponse {
+  items: AutoOrderRun[];
+}
+
+/** Family → Team migrate wire shapes */
+export interface FamilyMigrateItem {
+  member_id: string;
+  user_id: string;
+  phone: string;
+  name: string;
+  retailer_role: string;
+  temp_password?: string;
+}
+
+export interface FamilyMigrateSkipped {
+  member_id: string;
+  phone?: string;
+  reason: string;
+}
+
+export interface FamilyMigrateResult {
+  retailer_id: string;
+  migrated: FamilyMigrateItem[];
+  skipped: FamilyMigrateSkipped[];
+  family_remaining: number;
+  family_writes: string;
+}
+
+export interface FamilyMembersListResponse {
+  members: Array<{
+    member_id: string;
+    name: string;
+    phone?: string;
+    created_at?: string;
+  }>;
+  family_writes?: "open" | "gone" | string;
+  migrate?: string;
 }
 
 /* ── Checkout ── */

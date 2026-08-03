@@ -95,6 +95,9 @@ export default function DemandAnalyticsPage() {
       error={error}
       actions={
         <div className="flex items-center gap-2">
+          <Link href={"/analytics/demand/flywheel" as Route} className="md-btn md-btn-filled-tonal md-typescale-label-large px-4 py-2">
+            POS flywheel
+          </Link>
           <Link href={"/analytics/demand/signals" as Route} className="md-btn md-btn-filled-tonal md-typescale-label-large px-4 py-2">
             Manage Signals
           </Link>

@@ -53,7 +53,8 @@ import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ClaimsScreen
 import com.pegasusx.supplier.ui.screens.exceptions.EarlyCompleteScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
-// NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
+// NegotiationsScreen product-disabled — quantity negotiation gated off.
+// import com.pegasusx.supplier.ui.screens.exceptions.NegotiationsScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ShopClosedScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetOrdersScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestDetailScreen
@@ -417,8 +418,8 @@ fun SupplierNavigation(
             composable(SupplierRoutes.SHOP_CLOSED) {
                  ShopClosedScreen(ops, realtimeSignals) { navController.popBackStack() } 
             }
-            // Quantity negotiation disabled ecosystem-wide.
-            // composable(SupplierRoutes.NEGOTIATIONS) { ... }
+            // Quantity negotiation product-disabled — no NegotiationsScreen route.
+            // const NEGOTIATIONS remains for deep-link stability but is unused.
             composable(SupplierRoutes.MANIFESTS) {
                 ManifestsScreen(
                     ops = ops,

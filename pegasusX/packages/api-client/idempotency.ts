@@ -79,6 +79,21 @@ export function retailerSupplierAddKey(supplierId: string): string {
   return `retailer-supplier-add:${supplierId}`;
 }
 
+/** Family → Team migrate (owner staff.manage). */
+export function retailerFamilyMigrateKey(retailerId: string, dayBucket: string): string {
+  return `retailer-family-migrate:${retailerId}:${dayBucket}`;
+}
+
+/** Auto-order worker manual run (order.place). */
+export function retailerAutoOrderRunKey(retailerId: string, dayBucket: string, mode: string): string {
+  return `retailer-auto-order-run:${retailerId}:${dayBucket}:${mode}`;
+}
+
+/** Offline/online POS sale — stable per client_sale_id (never regenerate on retry). */
+export function retailerPosSaleKey(clientSaleId: string): string {
+  return `pos-sale:${clientSaleId.trim()}`;
+}
+
 export function retailerSupplierRemoveKey(supplierId: string): string {
   return `retailer-supplier-remove:${supplierId}`;
 }

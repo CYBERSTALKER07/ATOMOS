@@ -43,9 +43,16 @@
 - [ ] `context/parity-ledger.md` Retail OS divergences
 - [ ] Pack docs `RETAILER_*.md` for stock/pos/shifts/sections/reports/assist
 
+## Close-out (2026-08-02)
+
+- [x] Family → Team: `POST /v1/retailer/family-members/migrate-to-team`
+- [x] Auto-order execution (draft): `POST …/auto-order/run` + `GET …/runs`
+- [ ] SSMR image includes close-out routes (deploy pending)
+- See `docs/RETAILER_OS_CLOSEOUT.md`
+
 ## Explicit non-blockers (document only)
 
-- Auto-order **execution** worker (settings durable; worker later)
-- Family list vs Team (legacy contact list may remain)
+- Auto-order full `order.create` place mode (draft is v1)
 - Reports inventory without full COGS valuation
-- Offline POS (online-required v1)
+- Offline POS sales (online-required v1)
+- Planogram vision (aisle/shelf tags only)

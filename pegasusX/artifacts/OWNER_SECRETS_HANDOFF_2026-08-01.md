@@ -40,3 +40,11 @@ bash scripts/parity/ssmr_ecosystem_marker_gate.sh ssmr-e2e.log
 ```
 
 **Do not** set `PEGASUSX_ENV=production` until GP SUCCESS + production profile validation pass.
+
+## Retail OS cloud apply (2026-08-02, SSMR)
+
+- Spanner Retail OS DDL **applied** on `pegasusx-ssmr-db` (Users, packs, locations, stock, POS, shifts, sections, assist).
+- Kafka critical topics **READY** (main, orders, dispatch, realtime, webhooks, DLQ).
+- Redis / WS / health **ok**.
+- Backend image still **`ssmr-gap-closure-nomock4`** — needs rebuild+rollout for Retail OS HTTP handlers (pulse currently 404).
+- See `docs/SSMR_RETAIL_OS_CLOUD_APPLY.md`.

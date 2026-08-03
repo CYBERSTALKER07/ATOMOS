@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   HandHelping,
   FileBarChart,
+  Box,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -61,6 +62,7 @@ const NAV: NavSection[] = [
       { href: "/my-suppliers", icon: Store, label: "My Suppliers", perm: "order.place" },
       { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
       { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
+      { href: "/stock/local-skus", icon: Box, label: "Local SKUs", perm: "stock.view", pack: "STORE_STOCK" },
       { href: "/pos", icon: ShoppingCart, label: "POS", perm: "pos.sell", pack: "POS" },
       { href: "/shifts", icon: Clock, label: "Shifts", perm: "shift.open", pack: "SHIFTS" },
       { href: "/sections", icon: LayoutGrid, label: "Sections", perm: "stock.view", pack: "SECTIONS" },
@@ -97,6 +99,7 @@ function filterNavByPerms(
           // Progressive discovery: stock/POS visible so first use can auto-enable packs.
           if (
             item.href === "/stock" ||
+            item.href === "/stock/local-skus" ||
             item.href === "/pos" ||
             item.href === "/shifts" ||
             item.href === "/sections" ||
@@ -120,7 +123,13 @@ const DEFAULT_IDENTITY: RetailerIdentity = {
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
+  if (pathname === href) return true;
+  // Nested pages with their own nav entry (e.g. /stock/local-skus) must not
+  // keep the parent /stock row active.
+  if (href === "/stock" && pathname.startsWith("/stock/")) {
+    return false;
+  }
+  return pathname.startsWith(href + "/");
 }
 
 /* ── Breadcrumb helper ── */

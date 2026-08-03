@@ -131,6 +131,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/analytics/revenue", d.Service.HandleAnalyticsRevenue)
 		gr.Get("/v1/supplier/analytics/demand/today", d.Service.HandleAnalyticsDemandToday)
 		gr.Get("/v1/supplier/analytics/demand/history", d.Service.HandleAnalyticsDemandHistory)
+		// B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (distinct from planning DemandSignals).
+		gr.Get("/v1/supplier/analytics/demand/flywheel", d.Service.HandleAnalyticsDemandFlywheel)
 		gr.Get("/v1/supplier/orders", d.Service.HandleOrders)
 		gr.Post("/v1/supplier/orders/vet", d.Service.HandleVetOrder)
 		gr.Get("/v1/supplier/ai/recommendations", d.Service.HandleAIRecommendations)
@@ -140,7 +142,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/supplier/shop-closed/active", d.OrderService.HandleListActiveShopClosedAttempts)
 			gr.Post("/v1/supplier/shop-closed/resolve", d.OrderService.HandleResolveShopClosed)
 			gr.Post("/v1/supplier/orders/payment-bypass", d.OrderService.HandleIssuePaymentBypass)
-			// Quantity negotiation disabled — handlers return empty list or 410.
+			// Quantity negotiation product-disabled → empty pending list / 410 resolve.
 			gr.Get("/v1/supplier/negotiations/pending", d.OrderService.HandleListPendingNegotiations)
 			gr.Post("/v1/supplier/negotiate/resolve", d.OrderService.HandleResolveNegotiation)
 			gr.Post("/v1/supplier/route/approve-early-complete", d.OrderService.HandleApproveEarlyComplete)

@@ -30,7 +30,9 @@ import com.pegasusx.driver.data.model.LoginRequest
 import com.pegasusx.driver.data.model.ManifestGateResponse
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
-// Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+// Quantity negotiation product-disabled (410) — keep models if re-enabled later.
+// import com.pegasusx.driver.data.model.NegotiationPayload
+// import com.pegasusx.driver.data.model.NegotiationProposalResponse
 import com.pegasusx.driver.data.model.OpenFiscalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
@@ -312,9 +314,13 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): EarlyCompleteRequestResponse
 
-    // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+    // Quantity negotiation product-disabled — backend returns 410 feature_disabled.
+    // Not a substitute for missing-items / credit-leave / shop-closed.
     // @POST("v1/delivery/negotiate")
-    // suspend fun proposeNegotiation(@Body body: NegotiationPayload): NegotiationProposalResponse
+    // suspend fun proposeNegotiation(
+    //     @Body body: NegotiationPayload,
+    //     @Header("Idempotency-Key") idempotencyKey: String,
+    // ): NegotiationProposalResponse
 
     // Edge 32: Mark order as delivered on credit
     @POST("v1/delivery/credit-delivery")

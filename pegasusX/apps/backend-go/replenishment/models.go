@@ -16,4 +16,8 @@ type ReorderSuggestion struct {
 	SuggestedByDate civil.Date
 	ComputedAt      time.Time
 	Status          string
+	// L3 sell-through merge metadata (optional persistence).
+	Sources        []string
+	SellThroughVel float64
+	BaseDemand     float64
 }

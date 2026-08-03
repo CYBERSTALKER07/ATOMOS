@@ -1,4 +1,5 @@
 import SwiftUI
+import Network
 
 struct PosView: View {
     @State private var registerId: String?
@@ -10,8 +11,12 @@ struct PosView: View {
     @State private var banner: String?
     @State private var busy = false
     @State private var lastSaleId: String?
+    @State private var pending: [PendingPosStore.Entry] = []
+    @State private var isOnline = true
+    @State private var pathMonitor = NWPathMonitor()
 
     private let api = APIClient.shared
+    private let store = PendingPosStore.shared
 
     private var totalMinor: Int64 {
         cart.reduce(0) { $0 + $1.qty * $1.unitPriceMinor }
@@ -20,20 +25,45 @@ struct PosView: View {
     var body: some View {
         List {
             Section {
-                Text("Open till → add SKU lines → complete cash sale (decrements FLOOR stock).")
+                Text("Open till online. Cash sales work offline and sync on reconnect. Card requires network.")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
+            }
+            if !isOnline {
+                Section {
+                    Text("Offline · cash queue" + (pending.isEmpty ? "" : " · \(pending.count) pending"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
             }
             if let banner {
                 Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
             }
             Section("Session") {
                 if sessionId == nil {
-                    Button(busy ? "…" : "Open session") { Task { await openSession() } }
-                        .disabled(busy)
+                    Button(busy ? "…" : (isOnline ? "Open session" : "Open needs network")) {
+                        Task { await openSession() }
+                    }
+                    .disabled(busy || !isOnline)
                 } else {
                     Text("Open: \(sessionId!.prefix(12))…")
                     Button("Close session") { Task { await closeSession() } }
+                        .disabled(busy || !isOnline)
+                    if !pending.isEmpty && isOnline {
+                        Button("Sync \(pending.count) offline sale(s)") {
+                            Task { await syncPending() }
+                        }
+                        .disabled(busy)
+                    }
+                }
+            }
+            if !pending.isEmpty {
+                Section("Offline queue") {
+                    ForEach(pending) { p in
+                        Text("\(p.clientReceipt) · \(p.status)" + (p.lastError.map { " · \($0)" } ?? ""))
+                            .font(.caption2)
+                            .foregroundStyle(p.status == "FAILED" ? .red : AppTheme.textTertiary)
+                    }
                 }
             }
             if sessionId != nil {
@@ -53,9 +83,11 @@ struct PosView: View {
                     }
                     Text(String(format: "Total %.2f", Double(totalMinor) / 100.0))
                         .font(.headline)
-                    Button(busy ? "…" : "Complete cash sale") { Task { await completeSale() } }
-                        .disabled(busy || cart.isEmpty)
-                    if lastSaleId != nil {
+                    Button(busy ? "…" : (isOnline ? "Complete cash sale" : "Complete cash sale offline")) {
+                        Task { await completeSale() }
+                    }
+                    .disabled(busy || cart.isEmpty)
+                    if lastSaleId != nil && isOnline {
                         Button("Void last sale", role: .destructive) { Task { await voidLast() } }
                     }
                 }
@@ -63,7 +95,29 @@ struct PosView: View {
         }
         .navigationTitle("POS")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await ensureRegister() }
+        .task {
+            await ensureRegister()
+            refreshPending()
+            startNetworkMonitor()
+            if isOnline { await syncPending() }
+        }
+        .onDisappear { pathMonitor.cancel() }
+    }
+
+    private func startNetworkMonitor() {
+        pathMonitor.pathUpdateHandler = { path in
+            DispatchQueue.main.async {
+                isOnline = path.status == .satisfied
+                if isOnline {
+                    Task { await syncPending() }
+                }
+            }
+        }
+        pathMonitor.start(queue: DispatchQueue(label: "pos.network"))
+    }
+
+    private func refreshPending() {
+        pending = store.active()
     }
 
     private func ensureRegister() async {
@@ -83,6 +137,10 @@ struct PosView: View {
 
     private func openSession() async {
         guard let registerId else { return }
+        guard isOnline else {
+            banner = "Open session requires network"
+            return
+        }
         busy = true
         defer { busy = false }
         do {
@@ -97,6 +155,15 @@ struct PosView: View {
 
     private func closeSession() async {
         guard let sessionId else { return }
+        let active = store.countActive(sessionId: sessionId)
+        if active > 0 {
+            banner = "Sync \(active) offline sale(s) before close"
+            return
+        }
+        guard isOnline else {
+            banner = "Close session requires network"
+            return
+        }
         busy = true
         defer { busy = false }
         do {
@@ -124,20 +191,56 @@ struct PosView: View {
         guard let sessionId else { return }
         busy = true
         defer { busy = false }
+        let lines = cart.map {
+            PosSaleLineWire(sku: $0.sku, name: $0.name, qty: $0.qty, unitPriceMinor: $0.unitPriceMinor)
+        }
+        if !isOnline {
+            do {
+                let entry = try store.enqueue(sessionId: sessionId, lines: lines, totalMinor: totalMinor)
+                lastSaleId = entry.clientSaleId
+                banner = "Offline \(entry.clientReceipt) · will sync"
+                cart = []
+                refreshPending()
+            } catch {
+                banner = error.localizedDescription
+            }
+            return
+        }
         do {
             let sale = try await api.createPosSale(
                 sessionId: sessionId,
-                lines: cart.map {
-                    PosSaleLineWire(sku: $0.sku, name: $0.name, qty: $0.qty, unitPriceMinor: $0.unitPriceMinor)
-                },
-                totalMinor: totalMinor
+                lines: lines,
+                totalMinor: totalMinor,
+                origin: "online"
             )
             lastSaleId = sale.saleId
             banner = "Sale \(sale.receiptNumber)"
             cart = []
         } catch {
-            banner = error.localizedDescription
+            // Network fail → queue offline cash
+            do {
+                let entry = try store.enqueue(sessionId: sessionId, lines: lines, totalMinor: totalMinor)
+                lastSaleId = entry.clientSaleId
+                banner = "Queued offline \(entry.clientReceipt)"
+                cart = []
+                refreshPending()
+            } catch {
+                banner = error.localizedDescription
+            }
         }
+    }
+
+    private func syncPending() async {
+        guard isOnline else { return }
+        busy = true
+        defer { busy = false }
+        let result = await store.flush(using: api)
+        if result.flushed > 0 {
+            banner = "Synced \(result.flushed) offline sale(s)"
+        } else if result.failed > 0 {
+            banner = "\(result.failed) offline sale(s) failed"
+        }
+        refreshPending()
     }
 
     private func voidLast() async {

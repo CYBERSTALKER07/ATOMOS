@@ -72,6 +72,13 @@ type CreditNoteCreator interface {
 	CreateFromClaim(ctx context.Context, claimID, actor string) error
 }
 
+// StoreStockClaimPort moves retailer store stock into/out of QUARANTINE for claims.
+// Implemented by retailer.Service via bootstrap (avoids claims↔retailer import cycle).
+type StoreStockClaimPort interface {
+	HoldForClaim(ctx context.Context, retailerID, claimID, orderID string, lines []ClaimLine, actor string) error
+	ResolveClaimStock(ctx context.Context, retailerID, claimID string, lines []ClaimLine, disposition, actor string) error
+}
+
 func creditNoteAutoFromClaimEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_CLAIM")), "true")
 }
@@ -84,24 +91,26 @@ type Service struct {
 	rl          ReverseLogisticsOpener
 	storeCr     StoreCreditApplier
 	creditNotes CreditNoteCreator
+	storeStock  StoreStockClaimPort
 	now         func() time.Time
-	newID    func() string
-	log      *slog.Logger
-	window   time.Duration
+	newID       func() string
+	log         *slog.Logger
+	window      time.Duration
 }
 
 // Config wires claims Service dependencies.
 type Config struct {
-	Repo         Repository
-	Orders       OrderLookup
-	Settler      ChargebackSettler
-	RL           ReverseLogisticsOpener
-	StoreCr      StoreCreditApplier
-	CreditNotes  CreditNoteCreator
-	Now          func() time.Time
-	NewID    func() string
-	Log      *slog.Logger
-	Window   time.Duration
+	Repo        Repository
+	Orders      OrderLookup
+	Settler     ChargebackSettler
+	RL          ReverseLogisticsOpener
+	StoreCr     StoreCreditApplier
+	CreditNotes CreditNoteCreator
+	StoreStock  StoreStockClaimPort
+	Now         func() time.Time
+	NewID       func() string
+	Log         *slog.Logger
+	Window      time.Duration
 }
 
 // NewService builds a claims service.
@@ -124,7 +133,11 @@ func NewService(cfg Config) *Service {
 	if window <= 0 {
 		window = claimWindowFromEnv()
 	}
-	return &Service{repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL, storeCr: cfg.StoreCr, creditNotes: cfg.CreditNotes, now: now, newID: newID, log: log, window: window}
+	return &Service{
+		repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL,
+		storeCr: cfg.StoreCr, creditNotes: cfg.CreditNotes, storeStock: cfg.StoreStock,
+		now: now, newID: newID, log: log, window: window,
+	}
 }
 
 // SetReverseLogistics wires the warehouse inbound ticket opener (optional).
@@ -138,6 +151,13 @@ func (s *Service) SetReverseLogistics(op ReverseLogisticsOpener) {
 func (s *Service) SetStoreCredit(sc StoreCreditApplier) {
 	if s != nil {
 		s.storeCr = sc
+	}
+}
+
+// SetStoreStock wires retailer store quarantine bridge (optional).
+func (s *Service) SetStoreStock(ss StoreStockClaimPort) {
+	if s != nil {
+		s.storeStock = ss
 	}
 }
 
@@ -499,6 +519,8 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		Note:        string(c.ClaimType),
 		Lines:       pricedLines,
 	})
+	// Store QUARANTINE hold for physical claims when sellable stock exists.
+	s.holdStoreStockForClaim(ctx, c, claims.Subject)
 	s.maybeAutoApprove(ctx, c)
 	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
 	// Re-read if auto-approve mutated status.
@@ -759,6 +781,8 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 			s.log.WarnContext(ctx, "auto credit note from claim failed", "err", err, "claim_id", c.ClaimID)
 		}
 	}
+	// Leave quarantine for reverse logistics / waste after money settlement.
+	s.resolveStoreStockForClaim(ctx, c, "RETURN", actor.Subject)
 	return c, settlement, nil
 }
 
@@ -813,5 +837,37 @@ func (s *Service) RejectClaim(ctx context.Context, actor auth.Claims, claimID st
 		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
 	})
+	if err == nil {
+		// Restore sellable stock when claim is rejected.
+		s.resolveStoreStockForClaim(ctx, c, "RESTORE", actor.Subject)
+	}
 	return c, err
+}
+
+// claimNeedsStoreHold is true for physical goods that may already be on store shelves.
+func claimNeedsStoreHold(t ClaimType) bool {
+	switch t {
+	case ClaimTypeDamaged, ClaimTypeConcealedDamage, ClaimTypeTemperature, ClaimTypeTamper:
+		return true
+	default:
+		return false // MISSING/OTHER: typically never received into store stock
+	}
+}
+
+func (s *Service) holdStoreStockForClaim(ctx context.Context, c Claim, actor string) {
+	if s == nil || s.storeStock == nil || !claimNeedsStoreHold(c.ClaimType) {
+		return
+	}
+	if err := s.storeStock.HoldForClaim(ctx, c.RetailerID, c.ClaimID, c.OrderID, c.LineItems, actor); err != nil {
+		s.log.WarnContext(ctx, "store claim hold failed", "claim_id", c.ClaimID, "err", err)
+	}
+}
+
+func (s *Service) resolveStoreStockForClaim(ctx context.Context, c Claim, disposition, actor string) {
+	if s == nil || s.storeStock == nil || !claimNeedsStoreHold(c.ClaimType) {
+		return
+	}
+	if err := s.storeStock.ResolveClaimStock(ctx, c.RetailerID, c.ClaimID, c.LineItems, disposition, actor); err != nil {
+		s.log.WarnContext(ctx, "store claim stock resolve failed", "claim_id", c.ClaimID, "disposition", disposition, "err", err)
+	}
 }

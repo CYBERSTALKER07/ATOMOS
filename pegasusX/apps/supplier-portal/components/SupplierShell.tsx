@@ -64,6 +64,7 @@ const NAV: NavSection[] = [
       { href: "/analytics", icon: "overview", label: "Analytics" },
       { href: "/control-tower", icon: "global", label: "Control Tower" },
       { href: "/analytics/demand", icon: "overview", label: "Demand Forecast" },
+      { href: "/analytics/demand/flywheel", icon: "campaign", label: "POS flywheel" },
       { href: "/analytics/route-performance", icon: "overview", label: "Route performance" },
       { href: "/analytics/demand/signals", icon: "campaign", label: "Demand Signals" },
       { href: "/demand/payday-calendar", icon: "campaign", label: "Payday Calendar" },

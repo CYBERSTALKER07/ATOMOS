@@ -49,27 +49,35 @@ func (w *ReorderSuggestionWorker) ProcessSuggestion(ctx context.Context, supplie
 	s.ComputedAt = w.Now()
 
 	_, err := w.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		rowMap := map[string]any{
+			"RetailerId":      s.RetailerId,
+			"Sku":             s.Sku,
+			"SuggestedQty":    s.SuggestedQty,
+			"AdjustedDemand":  s.AdjustedDemand,
+			"CurrentStock":    s.CurrentStock,
+			"InFlightQty":     s.InFlightQty,
+			"SafetyStock":     s.SafetyStock,
+			"SuggestedByDate": s.SuggestedByDate,
+			"ComputedAt":      s.ComputedAt,
+			"Status":          s.Status,
+			"SourcesJson":     EncodeSourcesJSON(s.Sources),
+			"SellThroughVel":  s.SellThroughVel,
+			"BaseDemand":      s.BaseDemand,
+		}
 		mutations := []*spanner.Mutation{
-			spanner.InsertOrUpdateMap("ReorderSuggestions", map[string]any{
-				"RetailerId":      s.RetailerId,
-				"Sku":             s.Sku,
-				"SuggestedQty":    s.SuggestedQty,
-				"AdjustedDemand":  s.AdjustedDemand,
-				"CurrentStock":    s.CurrentStock,
-				"InFlightQty":     s.InFlightQty,
-				"SafetyStock":     s.SafetyStock,
-				"SuggestedByDate": s.SuggestedByDate,
-				"ComputedAt":      s.ComputedAt,
-				"Status":          s.Status,
-			}),
+			spanner.InsertOrUpdateMap("ReorderSuggestions", rowMap),
 		}
 
 		payload := map[string]any{
-			"type":           "reorder.suggestion.updated",
-			"timestamp":      s.ComputedAt.Format(time.RFC3339Nano),
-			"retailer_id":    s.RetailerId,
-			"sku":            s.Sku,
-			"suggested_qty":  s.SuggestedQty,
+			"type":              "reorder.suggestion.updated",
+			"timestamp":         s.ComputedAt.Format(time.RFC3339Nano),
+			"retailer_id":       s.RetailerId,
+			"sku":               s.Sku,
+			"suggested_qty":     s.SuggestedQty,
+			"sources":           s.Sources,
+			"sell_through_vel":  s.SellThroughVel,
+			"base_demand":       s.BaseDemand,
+			"adjusted_demand":   s.AdjustedDemand,
 		}
 
 		buf := &spannerTxnBuffer{}

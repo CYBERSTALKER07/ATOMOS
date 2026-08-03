@@ -6,8 +6,36 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 )
+
+// retailerClaimStockBridge adapts retailer store stock to claims quarantine hold.
+type retailerClaimStockBridge struct {
+	svc *retailer.Service
+}
+
+func (b *retailerClaimStockBridge) HoldForClaim(ctx context.Context, retailerID, claimID, orderID string, lines []claims.ClaimLine, actor string) error {
+	if b == nil || b.svc == nil {
+		return nil
+	}
+	hl := make([]retailer.ClaimHoldLine, 0, len(lines))
+	for _, l := range lines {
+		hl = append(hl, retailer.ClaimHoldLine{SKU: l.SKU, Qty: l.Quantity})
+	}
+	return b.svc.HoldForClaim(ctx, retailerID, claimID, orderID, hl, actor)
+}
+
+func (b *retailerClaimStockBridge) ResolveClaimStock(ctx context.Context, retailerID, claimID string, lines []claims.ClaimLine, disposition, actor string) error {
+	if b == nil || b.svc == nil {
+		return nil
+	}
+	hl := make([]retailer.ClaimHoldLine, 0, len(lines))
+	for _, l := range lines {
+		hl = append(hl, retailer.ClaimHoldLine{SKU: l.SKU, Qty: l.Quantity})
+	}
+	return b.svc.ResolveClaimStock(ctx, retailerID, claimID, hl, disposition, actor)
+}
 
 // orderClaimsLookup adapts order.Service to claims.OrderLookup without cycles.
 type orderClaimsLookup struct {

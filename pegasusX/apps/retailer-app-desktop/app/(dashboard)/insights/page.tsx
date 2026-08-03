@@ -29,6 +29,7 @@ import EmptyState from "../../../components/EmptyState";
 import SpendAnalytics from "./SpendAnalytics";
 import { InsightsSummary } from "../../../components/insights/InsightsSummary";
 import { InsightsSidebar } from "../../../components/insights/InsightsSidebar";
+import { SellThroughPanel } from "../../../components/insights/SellThroughPanel";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { correctPrediction } from "../../../lib/api";
@@ -355,6 +356,8 @@ export default function InsightsPage() {
           </button>
         }
       >
+
+      <SellThroughPanel />
 
       {syncBanner && (
         <motion.div

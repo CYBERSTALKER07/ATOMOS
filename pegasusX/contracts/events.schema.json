@@ -1035,6 +1035,61 @@
       "title": "PlanningPayload",
       "type": "object"
     },
+    "DemandSignalPayload": {
+      "additionalProperties": true,
+      "description": "Retailer POS sell-through flywheel signal for supplier demand (no POS internals).",
+      "properties": {
+        "type": {
+          "const": "DEMAND_SIGNAL",
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "location_id": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "day": {
+          "description": "UTC civil day YYYY-MM-DD",
+          "type": "string"
+        },
+        "qty_delta": {
+          "description": "Signed units this event (sale +, void −)",
+          "type": "integer"
+        },
+        "net_sold": {
+          "description": "Day cumulative net sold after this update",
+          "type": "integer"
+        },
+        "source": {
+          "const": "STORE_POS",
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["sale", "void"],
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "retailer_id",
+        "sku",
+        "day",
+        "qty_delta",
+        "source"
+      ],
+      "title": "DemandSignalPayload",
+      "type": "object"
+    },
     "PreOrderPayload": {
       "additionalProperties": true,
       "properties": {
@@ -2133,6 +2188,25 @@
         }
       ],
       "title": "DemandBaselineUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DemandSignalPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DEMAND_SIGNAL"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DemandSignalEnvelope"
     },
     {
       "allOf": [
@@ -4189,6 +4263,7 @@
         "DELIVERY_DISPUTED",
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_BASELINE_UPDATED",
+        "DEMAND_SIGNAL",
         "DISPATCH_ZONE_OVERRIDE",
         "DRIVER_AVAILABILITY_CHANGED",
         "DRIVER_CREATED",
@@ -4324,6 +4399,7 @@
     "DELIVERY_DISPUTED": "DeliverySessionPayload",
     "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
     "DEMAND_BASELINE_UPDATED": "PlanningPayload",
+    "DEMAND_SIGNAL": "DemandSignalPayload",
     "DISPATCH_ZONE_OVERRIDE": "PlanningPayload",
     "DRIVER_AVAILABILITY_CHANGED": "DriverPayload",
     "DRIVER_CREATED": "DriverPayload",

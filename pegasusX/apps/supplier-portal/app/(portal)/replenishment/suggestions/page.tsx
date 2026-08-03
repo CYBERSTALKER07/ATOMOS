@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { ReorderSuggestionRow } from "@pegasusx/types";
+import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
@@ -16,6 +17,7 @@ export default function ReorderSuggestionsPage() {
   const [retailerFilter, setRetailerFilter] = useState("");
   const [skuSearch, setSkuSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("OPEN");
+  const [sourceFilter, setSourceFilter] = useState<"ALL" | "STORE_POS" | "WHOLESALE">("ALL");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [acting, setActing] = useState<string | null>(null);
 
@@ -26,6 +28,8 @@ export default function ReorderSuggestionsPage() {
         retailerId: retailerFilter.trim() || undefined,
         status: statusFilter,
         sku: skuSearch.trim() || undefined,
+        // Server-side POS filter; wholesale-only stays client-side (exclusive).
+        source: sourceFilter === "STORE_POS" ? "STORE_POS" : undefined,
       });
       setSuggestions(resp.suggestions ?? []);
       setError(null);
@@ -34,7 +38,7 @@ export default function ReorderSuggestionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [retailerFilter, skuSearch, statusFilter]);
+  }, [retailerFilter, skuSearch, statusFilter, sourceFilter]);
 
   useEffect(() => {
     void load();
@@ -42,7 +46,17 @@ export default function ReorderSuggestionsPage() {
 
   const rowKey = (row: ReorderSuggestionRow) => `${row.retailer_id}:${row.sku}`;
 
-  const allKeys = useMemo(() => suggestions.map(rowKey), [suggestions]);
+  const filteredSuggestions = useMemo(() => {
+    if (sourceFilter === "ALL") return suggestions;
+    return suggestions.filter((row) => {
+      const src = row.sources?.length ? row.sources : ["WHOLESALE_HISTORY"];
+      if (sourceFilter === "STORE_POS") return src.includes("STORE_POS");
+      // WHOLESALE only — has wholesale and no POS
+      return src.includes("WHOLESALE_HISTORY") && !src.includes("STORE_POS");
+    });
+  }, [suggestions, sourceFilter]);
+
+  const allKeys = useMemo(() => filteredSuggestions.map(rowKey), [filteredSuggestions]);
 
   const toggleAll = () => {
     if (selected.size === allKeys.length) {
@@ -89,7 +103,7 @@ export default function ReorderSuggestionsPage() {
   };
 
   const bulkCreateDrafts = async () => {
-    const items = suggestions
+    const items = filteredSuggestions
       .filter((row) => selected.has(rowKey(row)))
       .map((row) => ({ retailer_id: row.retailer_id, sku: row.sku }));
     if (items.length === 0) return;
@@ -147,12 +161,26 @@ export default function ReorderSuggestionsPage() {
           <option value="DISMISSED">DISMISSED</option>
           <option value="CONVERTED">CONVERTED</option>
         </select>
+        <label className="text-xs flex flex-col gap-1">
+          Source
+          <select
+            className="md-input"
+            value={sourceFilter}
+            onChange={(e) =>
+              setSourceFilter(e.target.value as "ALL" | "STORE_POS" | "WHOLESALE")
+            }
+          >
+            <option value="ALL">All sources</option>
+            <option value="STORE_POS">Has Store POS</option>
+            <option value="WHOLESALE">Wholesale only</option>
+          </select>
+        </label>
         <button type="button" className="md-btn md-btn-outlined" onClick={() => void load()}>
           Apply filters
         </button>
       </div>
 
-      {suggestions.length === 0 && !loading ? (
+      {filteredSuggestions.length === 0 && !loading ? (
         <p className="text-sm" style={{ color: "var(--desk-text-secondary)" }}>
           No suggestions for the current filters. The reorder worker will re-suggest when demand remains.
         </p>
@@ -171,6 +199,9 @@ export default function ReorderSuggestionsPage() {
                 </th>
                 <th className="px-3 py-2">Retailer</th>
                 <th className="px-3 py-2">SKU</th>
+                <th className="px-3 py-2">Sources</th>
+                <th className="px-3 py-2">POS vel / day</th>
+                <th className="px-3 py-2">Base demand / day</th>
                 <th className="px-3 py-2">Suggested qty</th>
                 <th className="px-3 py-2">Adj. demand / day</th>
                 <th className="px-3 py-2">Stock</th>
@@ -181,7 +212,7 @@ export default function ReorderSuggestionsPage() {
               </tr>
             </thead>
             <tbody>
-              {suggestions.map((row) => {
+              {filteredSuggestions.map((row) => {
                 const key = rowKey(row);
                 return (
                   <tr key={key} className="border-t" style={{ borderColor: "var(--desk-border)" }}>
@@ -200,6 +231,19 @@ export default function ReorderSuggestionsPage() {
                     <td className="px-3 py-2">
                       <div>{row.sku_name || row.sku}</div>
                       <div className="text-xs font-mono opacity-70">{row.sku}</div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <DemandSourceChips sources={row.sources} />
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {row.sell_through_velocity != null && row.sell_through_velocity > 0
+                        ? row.sell_through_velocity.toFixed(2)
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {row.base_demand_per_day != null && row.base_demand_per_day > 0
+                        ? row.base_demand_per_day.toFixed(2)
+                        : "—"}
                     </td>
                     <td className="px-3 py-2">{row.suggested_qty}</td>
                     <td className="px-3 py-2">{row.adjusted_demand_per_day.toFixed(2)}</td>

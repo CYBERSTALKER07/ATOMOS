@@ -77,6 +77,7 @@ const (
 	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
 	OrderSourceBackorder      OrderSource = "BACKORDER"
+	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER" // L3.5 place mode
 )
 
 // ConfirmationStatus captures whether a future-dated order still needs a
@@ -512,6 +513,11 @@ type CreateRequest struct {
 	// Server still uses lat/lng/h3 for routing — location_id is correlation metadata
 	// until Orders.LocationId column ships in a later migration.
 	LocationID string `json:"location_id,omitempty"`
+	// SupplierID overrides the service default supplier (auto-order multi-supplier place).
+	SupplierID string `json:"supplier_id,omitempty"`
+	// Source forces order provenance when set (e.g. AUTO_ORDER from auto-order place).
+	// When empty, ClassifyDelivery assigns MANUAL / preorder sources.
+	Source OrderSource `json:"order_source,omitempty"`
 }
 
 // CreateResponse is what callers get back.
@@ -609,6 +615,7 @@ type RetailerOrderLifecycleResponse struct {
 // RetailerAIPrediction projects a pending AI preorder for retailer review.
 type RetailerAIPrediction struct {
 	OrderID               string             `json:"order_id"`
+	SupplierID            string             `json:"supplier_id,omitempty"`
 	Source                OrderSource        `json:"order_source"`
 	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
 	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
@@ -1071,6 +1078,7 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 func retailerPrediction(orderRecord Order) RetailerAIPrediction {
 	return RetailerAIPrediction{
 		OrderID:               orderRecord.OrderID,
+		SupplierID:            orderRecord.SupplierID,
 		Source:                orderRecord.Source,
 		ConfirmationStatus:    orderRecord.ConfirmationStatus,
 		RequestedDeliveryDate: formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
@@ -1094,6 +1102,11 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
+	supplierID := strings.TrimSpace(req.SupplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
+	}
+
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("parse requested_delivery_date: %w", err)
@@ -1114,7 +1127,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
 
-	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.supplierID, req.Lat, req.Lng)
+	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, req.Lat, req.Lng)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
 	}
@@ -1156,11 +1169,15 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	if classifyErr != nil {
 		return CreateResponse{}, classifyErr
 	}
+	// Auto-order place (and other explicit sources) override ClassifyDelivery provenance.
+	if req.Source != "" {
+		source = req.Source
+	}
 
 	var invPlan InventoryPlan
 	if s.spannerClient != nil {
 		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
-		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems, policyOverride)
+		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, supplierID, warehouseID, lineItems, policyOverride)
 		if err != nil {
 			return CreateResponse{}, err
 		}
@@ -1176,7 +1193,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	}
 
 	if s.credit != nil && total > 0 {
-		check, err := s.credit.CheckOrder(ctx, retailerID, s.supplierID, total)
+		check, err := s.credit.CheckOrder(ctx, retailerID, supplierID, total)
 		if err != nil {
 			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
 		}
@@ -1222,7 +1239,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 
 	o := Order{
 		OrderID:               s.newID(),
-		SupplierID:            s.supplierID,
+		SupplierID:            supplierID,
 		RetailerID:            retailerID,
 		WarehouseID:           warehouseID,
 		Status:                status,

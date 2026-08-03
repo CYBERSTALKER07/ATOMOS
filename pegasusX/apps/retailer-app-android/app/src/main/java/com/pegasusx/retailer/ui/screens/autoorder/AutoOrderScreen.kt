@@ -34,8 +34,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.ui.components.DemandSourceChips
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.SquircleShape
 
@@ -67,12 +72,37 @@ import com.pegasusx.retailer.ui.screens.autoorder.components.HeaderCard
 import com.pegasusx.retailer.ui.screens.autoorder.components.HowItWorksCard
 import com.pegasusx.retailer.ui.screens.autoorder.components.OverrideRow
 import com.pegasusx.retailer.ui.screens.autoorder.components.SectionHeader
+import androidx.compose.material.icons.rounded.ShoppingCart
+import androidx.compose.material3.OutlinedButton
 
 @Composable
 fun AutoOrderScreen(
     viewModel: AutoOrderViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    if (uiState.placeConfirmOpen) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPlaceConfirm,
+            title = { Text("Create real supplier orders?") },
+            text = {
+                Text(
+                    "Place mode creates real procurement orders (AUTO_ORDER). " +
+                        "Requires primary location geo, place permission, and " +
+                        "AUTO_ORDER_PLACE_ENABLED on the server.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = viewModel::runAutoOrderPlace,
+                    enabled = !uiState.running,
+                ) { Text("Confirm place") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissPlaceConfirm) { Text("Cancel") }
+            },
+        )
+    }
 
     // History/Fresh dialog — shown for any entity that has existing order history
     val pendingTarget = uiState.pendingEnableTarget
@@ -174,6 +204,167 @@ fun AutoOrderScreen(
                 productCount = uiState.settings?.productOverrides?.size ?: 0,
                 predictionCount = uiState.forecasts.size,
             )
+        }
+
+        // ── Run worker (draft + place) ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text("Auto-order worker", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Draft stages cart lines (idempotent per SKU/day). " +
+                            "Place creates real supplier orders when the server flag is on.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = viewModel::runAutoOrderNow,
+                            enabled = !uiState.running,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            if (uiState.running && uiState.runningMode == "draft") {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Drafting…")
+                            } else {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Draft now")
+                            }
+                        }
+                        Button(
+                            onClick = viewModel::openPlaceConfirm,
+                            enabled = !uiState.running,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            if (uiState.running && uiState.runningMode == "place") {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Placing…")
+                            } else {
+                                Icon(Icons.Rounded.ShoppingCart, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Place now")
+                            }
+                        }
+                    }
+                    uiState.lastRun?.let { run ->
+                        val placedBit = if (run.placedLines > 0) " · placed ${run.placedLines}" else ""
+                        val viaBit = run.candidateSource?.let { " · via $it" } ?: ""
+                        Text(
+                            "Latest: ${run.mode} · draft ${run.draftLines}$placedBit · ${run.status}$viaBit",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        run.message?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall)
+                        }
+                        run.placedOrders.take(5).forEach { po ->
+                            Text(
+                                "${po.orderId}${po.supplierId?.let { " · $it" } ?: ""} · ${po.lineCount} lines",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    if (uiState.runs.isNotEmpty()) {
+                        Text("Last runs", style = MaterialTheme.typography.labelLarge)
+                        uiState.runs.take(8).forEach { run ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                val pBit = if (run.placedLines > 0) " p${run.placedLines}" else ""
+                                Text(
+                                    "${run.scheduleBucket ?: run.startedAt.take(10)} · ${run.mode} · d${run.draftLines}$pBit",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    run.status,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (run.status == "OK" || run.status == "PARTIAL") {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.tertiary
+                                    },
+                                )
+                            }
+                        }
+                    } else if (!uiState.runsLoading) {
+                        Text(
+                            "No runs yet. Enable auto-order and use Draft or Place.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Reorder suggestions + source chips ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Reorder suggestions", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Sell-through aware OPEN suggestions (Store POS / Wholesale)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (uiState.reorderSuggestions.isEmpty()) {
+                        Text(
+                            "No OPEN suggestions yet. POS sell-through and demand batch populate this list.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        uiState.reorderSuggestions.take(12).forEach { row ->
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    "${row.sku} · qty ${row.suggestedQty}" +
+                                        if (row.currentStock > 0) " · stock ${row.currentStock}" else "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                DemandSourceChips(sources = row.sources)
+                                if (row.sellThroughVelocity > 0) {
+                                    Text(
+                                        "POS vel ${"%.1f".format(row.sellThroughVelocity)}/d",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
         }
 
         // ── Global Toggle ──

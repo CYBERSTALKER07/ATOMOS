@@ -34,6 +34,16 @@ const (
 	MoveCountVariance = "COUNT_VARIANCE"
 	MoveSale          = "SALE"
 	MoveSaleVoid      = "SALE_VOID"
+	MoveClaimHold     = "CLAIM_HOLD"    // sellable → QUARANTINE on claim file
+	MoveClaimRelease  = "CLAIM_RELEASE" // leave QUARANTINE (return / waste)
+	MoveClaimRestore  = "CLAIM_RESTORE" // QUARANTINE → FLOOR on reject
+)
+
+// Claim stock disposition for ResolveClaimStock.
+const (
+	ClaimStockReturn  = "RETURN"  // remove from quarantine (reverse logistics)
+	ClaimStockRestore = "RESTORE" // back to floor
+	ClaimStockWaste   = "WASTE"   // scrap out of quarantine
 )
 
 // StockBalanceDTO is one SKU/bin balance row.
@@ -939,15 +949,137 @@ func (s *Service) applyDelta(ctx context.Context, retailerID, locationID, bin, s
 }
 
 func (s *Service) applyTransfer(ctx context.Context, retailerID, fromLoc, toLoc, fromBin, toBin, sku string, qty int64, actor, note string) error {
-	if err := s.applyDelta(ctx, retailerID, fromLoc, fromBin, sku, -qty, MoveTransferBin, "TRANSFER", toLoc+":"+toBin, actor, note); err != nil {
+	return s.applyTransferTyped(ctx, retailerID, fromLoc, toLoc, fromBin, toBin, sku, qty, MoveTransferBin, "TRANSFER", actor, note)
+}
+
+func (s *Service) applyTransferTyped(ctx context.Context, retailerID, fromLoc, toLoc, fromBin, toBin, sku string, qty int64, moveType, refType, actor, note string) error {
+	if err := s.applyDelta(ctx, retailerID, fromLoc, fromBin, sku, -qty, moveType, refType, toLoc+":"+toBin, actor, note); err != nil {
 		return err
 	}
-	if err := s.applyDelta(ctx, retailerID, toLoc, toBin, sku, qty, MoveTransferBin, "TRANSFER", fromLoc+":"+fromBin, actor, note); err != nil {
-		// best-effort reverse — memory path is single-threaded; spanner could leave partial
+	if err := s.applyDelta(ctx, retailerID, toLoc, toBin, sku, qty, moveType, refType, fromLoc+":"+fromBin, actor, note); err != nil {
 		_ = s.applyDelta(ctx, retailerID, fromLoc, fromBin, sku, qty, MoveAdjust, "TRANSFER_ROLLBACK", "", actor, "rollback")
 		return err
 	}
 	return nil
+}
+
+// ClaimHoldLine is one SKU qty to quarantine or resolve.
+type ClaimHoldLine struct {
+	SKU string
+	Qty int64
+}
+
+// HoldForClaim moves sellable stock (FLOOR then BACKROOM) into QUARANTINE for a filed claim.
+// Best-effort per line: insufficient stock is skipped (no receive / already sold) without failing the claim.
+func (s *Service) HoldForClaim(ctx context.Context, retailerID, claimID, orderID string, lines []ClaimHoldLine, actor string) error {
+	if s == nil || retailerID == "" || claimID == "" || len(lines) == 0 {
+		return nil
+	}
+	loc, err := s.EnsurePrimaryLocation(ctx, retailerID)
+	if err != nil {
+		return err
+	}
+	locID := loc.LocationID
+	note := "claim_hold:" + claimID
+	if orderID != "" {
+		note += " order:" + orderID
+	}
+	for _, ln := range lines {
+		sku := strings.TrimSpace(ln.SKU)
+		need := ln.Qty
+		if sku == "" || need <= 0 {
+			continue
+		}
+		// Prefer FLOOR, then BACKROOM.
+		for _, bin := range []string{BinFloor, BinBackroom} {
+			if need <= 0 {
+				break
+			}
+			avail := s.onHandInBin(ctx, locID, bin, sku)
+			if avail <= 0 {
+				continue
+			}
+			take := need
+			if take > avail {
+				take = avail
+			}
+			if err := s.applyTransferTyped(ctx, retailerID, locID, locID, bin, BinQuarantine, sku, take, MoveClaimHold, "CLAIM", actor, note); err != nil {
+				s.log.Warn("claim hold transfer failed", "sku", sku, "bin", bin, "qty", take, "err", err)
+				continue
+			}
+			need -= take
+		}
+		_ = s.syncReorderCurrentStock(ctx, retailerID, sku)
+	}
+	_ = s.emitPosEvent(ctx, retailerID, events.EventStoreStockTransferred, map[string]any{
+		"reason":   "CLAIM_HOLD",
+		"claim_id": claimID,
+		"order_id": orderID,
+	})
+	return nil
+}
+
+// ResolveClaimStock disposes quarantined units after claim adjudication.
+// disposition: RETURN | RESTORE | WASTE
+func (s *Service) ResolveClaimStock(ctx context.Context, retailerID, claimID string, lines []ClaimHoldLine, disposition, actor string) error {
+	if s == nil || retailerID == "" || claimID == "" || len(lines) == 0 {
+		return nil
+	}
+	disposition = strings.ToUpper(strings.TrimSpace(disposition))
+	if disposition == "" {
+		disposition = ClaimStockReturn
+	}
+	loc, err := s.EnsurePrimaryLocation(ctx, retailerID)
+	if err != nil {
+		return err
+	}
+	locID := loc.LocationID
+	note := "claim_" + strings.ToLower(disposition) + ":" + claimID
+	for _, ln := range lines {
+		sku := strings.TrimSpace(ln.SKU)
+		need := ln.Qty
+		if sku == "" || need <= 0 {
+			continue
+		}
+		avail := s.onHandInBin(ctx, locID, BinQuarantine, sku)
+		if avail <= 0 {
+			continue
+		}
+		take := need
+		if take > avail {
+			take = avail
+		}
+		switch disposition {
+		case ClaimStockRestore:
+			_ = s.applyTransferTyped(ctx, retailerID, locID, locID, BinQuarantine, BinFloor, sku, take, MoveClaimRestore, "CLAIM", actor, note)
+		case ClaimStockWaste:
+			_ = s.applyDelta(ctx, retailerID, locID, BinQuarantine, sku, -take, MoveClaimRelease, "CLAIM", claimID, actor, note+":waste")
+		default: // RETURN — leave store via reverse logistics
+			_ = s.applyDelta(ctx, retailerID, locID, BinQuarantine, sku, -take, MoveClaimRelease, "CLAIM", claimID, actor, note+":return")
+		}
+		_ = s.syncReorderCurrentStock(ctx, retailerID, sku)
+	}
+	return nil
+}
+
+func (s *Service) onHandInBin(ctx context.Context, locationID, bin, sku string) int64 {
+	if s.spannerClient == nil {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		if s.stockBalances == nil {
+			return 0
+		}
+		b := s.stockBalances[stockBalanceKey{locationID, bin, sku}]
+		return b.OnHand
+	}
+	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerStockBalances",
+		spanner.Key{locationID, bin, sku}, []string{"OnHand"})
+	if err != nil {
+		return 0
+	}
+	var onHand int64
+	_ = row.Columns(&onHand)
+	return onHand
 }
 
 func (s *Service) applyAdjust(ctx context.Context, retailerID, locationID, bin, sku string, delta int64, actor, note string) error {
@@ -1094,6 +1226,8 @@ func (s *Service) loadOrderLinesForReceive(ctx context.Context, retailerID, orde
 	default:
 		return nil, fmt.Errorf("order_status_not_receivable:%s", st)
 	}
+	// LineItemsJson is the order qty source of truth for receive.
+	// (Quantity negotiation, when product-enabled, rewrites this before settle.)
 	var items []struct {
 		SKU         string `json:"sku"`
 		Name        string `json:"name"`

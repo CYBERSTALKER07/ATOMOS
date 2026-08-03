@@ -109,6 +109,9 @@ func DomainTopicForEventType(eventType string) string {
 		return TopicExceptions
 	case EventLogisticsTelemetry:
 		return TopicTelemetryLogistics
+	case EventDemandSignal:
+		// STORE_POS flywheel → dedicated demand topic for supplier consumers.
+		return TopicDemand
 	default:
 		return ""
 	}

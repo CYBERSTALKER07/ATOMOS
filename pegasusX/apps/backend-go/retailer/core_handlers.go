@@ -630,15 +630,33 @@ func (s *Service) HandleFamilyMembers(w http.ResponseWriter, r *http.Request) {
 		members := append([]FamilyMember(nil), s.familyByRetailer[rid]...)
 		s.mu.RUnlock()
 		sort.Slice(members, func(i, j int) bool { return members[i].CreatedAt > members[j].CreatedAt })
-		writeJSON(w, http.StatusOK, map[string]any{"members": members})
+		familyWrites := "open"
+		if s.isFamilyWritesGone(r.Context(), rid) {
+			familyWrites = "gone"
+			// Team is SoT after migrate — do not surface RAM residual list as live family.
+			members = []FamilyMember{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"members":       members,
+			"family_writes": familyWrites,
+			"migrate":       "/v1/retailer/family-members/migrate-to-team",
+		})
 	case http.MethodPost:
+		// After Family→Team migrate, family writes are gone — use Team invites.
+		if s.familyPostBlocked(w, r, rid) {
+			return
+		}
 		var payload map[string]string
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
 		defer r.Body.Close()
+		// Accept name (desktop) or nickname (mobile legacy).
 		name := strings.TrimSpace(payload["name"])
+		if name == "" {
+			name = strings.TrimSpace(payload["nickname"])
+		}
 		if name == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name required"})
 			return
@@ -652,7 +670,11 @@ func (s *Service) HandleFamilyMembers(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		s.familyByRetailer[rid] = append(s.familyByRetailer[rid], m)
 		s.mu.Unlock()
-		writeJSON(w, http.StatusCreated, m)
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"member":  m,
+			"warning": "legacy_family_ram_only_use_migrate_to_team",
+			"migrate": "/v1/retailer/family-members/migrate-to-team",
+		})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}

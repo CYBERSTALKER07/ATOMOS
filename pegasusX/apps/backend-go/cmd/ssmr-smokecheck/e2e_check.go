@@ -257,7 +257,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runFleetReassignGuardE2E(ctx, client, base, cookie, dispatchHint); err != nil {
 		return fmt.Errorf("fleet reassign guard: %w", err)
 	}
-	// Quantity negotiation disabled ecosystem-wide — skip negotiation E2E.
+	// Quantity negotiation product-deferred — do not exercise propose/resolve.
+	// runNegotiationE2E remains in e2e_driver.go for a future re-enable.
 	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
 
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {

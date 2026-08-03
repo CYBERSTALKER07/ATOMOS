@@ -1,9 +1,11 @@
 package retailer
 
 import (
+	"context"
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
@@ -75,16 +77,7 @@ func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlT
 		}
 	}
 
-	posOpen := 0
-	s.mu.RLock()
-	if s.posSessions != nil {
-		for _, sess := range s.posSessions {
-			if sess.RetailerID == orgID && sess.Status == PosSessionOpen {
-				posOpen++
-			}
-		}
-	}
-	s.mu.RUnlock()
+	posOpen := s.countOpenPosSessions(ctx, orgID)
 
 	openShifts := 0
 	if shifts, err := s.listShifts(ctx, orgID, "", 100); err == nil {
@@ -132,4 +125,34 @@ func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlT
 		pulse.ShiftVariances7d == 0 &&
 		pulse.SalesMinor7d == 0
 	return pulse
+}
+
+// countOpenPosSessions prefers Spanner (multi-pod honest); falls back to process memory.
+func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) int {
+	if s.spannerClient != nil {
+		stmt := spanner.Statement{
+			SQL: `SELECT COUNT(1) FROM RetailerPosSessions
+				WHERE RetailerId = @rid AND Status = @st`,
+			Params: map[string]any{"rid": orgID, "st": PosSessionOpen},
+		}
+		iter := s.spannerClient.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		if row, err := iter.Next(); err == nil {
+			var n int64
+			if err := row.Columns(&n); err == nil {
+				return int(n)
+			}
+		}
+	}
+	n := 0
+	s.mu.RLock()
+	if s.posSessions != nil {
+		for _, sess := range s.posSessions {
+			if sess.RetailerID == orgID && sess.Status == PosSessionOpen {
+				n++
+			}
+		}
+	}
+	s.mu.RUnlock()
+	return n
 }

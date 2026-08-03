@@ -559,6 +559,45 @@ export interface DemandSignal {
 	createdAt: string;
 }
 
+/** Kafka DEMAND_SIGNAL flywheel payload (STORE_POS sell-through). Distinct from planning DemandSignal REST rows. */
+export interface DemandSignalEvent {
+	type: "DEMAND_SIGNAL";
+	timestamp?: string;
+	retailer_id: string;
+	location_id?: string;
+	sku: string;
+	day: string;
+	qty_delta: number;
+	net_sold?: number;
+	source: "STORE_POS";
+	kind?: "sale" | "void";
+	supplier_id?: string;
+}
+
+/** GET /v1/supplier/analytics/demand/flywheel item (B4.4 supplier feed UI). */
+export interface FlywheelDemandItem {
+	signal_id: string;
+	supplier_id?: string;
+	retailer_id: string;
+	location_id?: string;
+	sku: string;
+	day: string;
+	qty_delta: number;
+	net_sold: number;
+	kind: string;
+	source: string;
+	created_at?: string;
+}
+
+export interface FlywheelDemandFeedResponse {
+	source: "STORE_POS" | string;
+	description?: string;
+	items: FlywheelDemandItem[];
+	days: number;
+	count?: number;
+	feed_error?: string;
+}
+
 export interface CreateSignalRequest {
 	retailerId?: string;
 	productId?: string;
@@ -628,6 +667,10 @@ export interface ReorderSuggestionRow {
   suggested_by_date: string;
   status: string;
   computed_at: string;
+  /** L3 sell-through: STORE_POS | WHOLESALE_HISTORY */
+  sources?: string[];
+  sell_through_velocity?: number;
+  base_demand_per_day?: number;
 }
 
 export interface ReorderSuggestionsListResponse {
@@ -2977,6 +3020,8 @@ export type EventType =
   | "POS_SESSION_CLOSED"
   | "POS_SALE_COMPLETED"
   | "POS_SALE_VOIDED"
+  | "RETAILER_SELL_THROUGH_UPDATED"
+  | "DEMAND_SIGNAL"
   | "RETAILER_CLOCK_IN"
   | "RETAILER_CLOCK_OUT"
   | "RETAILER_SHIFT_OPENED"

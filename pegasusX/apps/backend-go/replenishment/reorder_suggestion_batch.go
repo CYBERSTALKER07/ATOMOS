@@ -7,12 +7,14 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"strings"
+
 	"google.golang.org/api/iterator"
 )
 
 const batchLeadTimeDays = 2.0
 
 // RunBatch builds reorder suggestions from today's demand adjustments for one supplier.
+// L3.3: merges POS sell-through velocity (max with base) and tags sources.
 func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID string) error {
 	if w == nil || w.Spanner == nil {
 		return nil
@@ -23,7 +25,7 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
-			SELECT da.RetailerId, da.Sku, da.AdjustedDemand
+			SELECT da.RetailerId, da.Sku, da.AdjustedDemand, da.BaseVelocity, da.FactorsJson
 			FROM DemandAdjustments da
 			WHERE da.Date = @today
 			LIMIT 2000`,
@@ -32,9 +34,11 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 	defer iter.Stop()
 
 	type row struct {
-		retailerID string
-		sku        string
-		demand     float64
+		retailerID     string
+		sku            string
+		adjustedDemand float64
+		baseVelocity   float64
+		factorsJSON    spanner.NullString
 	}
 	var rows []row
 	for {
@@ -46,30 +50,111 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 			return err
 		}
 		var item row
-		if err := r.Columns(&item.retailerID, &item.sku, &item.demand); err != nil {
-			return err
+		var factors spanner.NullJSON
+		// FactorsJson is JSON type in Spanner — try NullJSON then string.
+		if err := r.Columns(&item.retailerID, &item.sku, &item.adjustedDemand, &item.baseVelocity, &factors); err != nil {
+			// Fallback without BaseVelocity/Factors for older schemas
+			if err2 := r.Columns(&item.retailerID, &item.sku, &item.adjustedDemand); err2 != nil {
+				return err
+			}
+		} else if factors.Valid {
+			if s, ok := factors.Value.(string); ok {
+				item.factorsJSON = spanner.NullString{StringVal: s, Valid: true}
+			} else {
+				b, _ := factors.MarshalJSON()
+				item.factorsJSON = spanner.NullString{StringVal: string(b), Valid: true}
+			}
 		}
 		rows = append(rows, item)
 	}
 
 	for _, item := range rows {
+		// Skip pure local SKUs from supplier-facing suggestions (L6 guard).
+		if strings.HasPrefix(strings.ToLower(item.sku), "local:") {
+			continue
+		}
+
+		factors := ParseFactorsJSON("")
+		if item.factorsJSON.Valid {
+			factors = ParseFactorsJSON(item.factorsJSON.StringVal)
+		}
+		base, factorF := StripSellThroughFactor(item.adjustedDemand, item.baseVelocity, factors)
+
+		stUnits, stDays, usedRollup := w.sellThroughUnits(ctx, item.retailerID, item.sku, today, DefaultSellThroughDays)
+		if !usedRollup && factorF > 0 {
+			// Fallback: same-day factor only (before multi-day rollup history exists).
+			stUnits = factorF
+			stDays = 1
+		}
+
+		demand, sources := MergeDemandVelocities(base, stUnits, stDays)
+		stVel := 0.0
+		if stDays > 0 && stUnits > 0 {
+			stVel = stUnits / float64(stDays)
+		}
+
 		inFlight := w.inFlightQty(ctx, item.retailerID, item.sku)
-		safety := item.demand * 0.15
+		safety := demand * 0.15
 		suggestion := ReorderSuggestion{
 			RetailerId:      item.retailerID,
 			Sku:             item.sku,
-			AdjustedDemand:  item.demand,
+			AdjustedDemand:  demand,
 			CurrentStock:    w.retailerStockEstimate(ctx, item.retailerID, item.sku),
 			InFlightQty:     inFlight,
 			SafetyStock:     safety,
 			SuggestedByDate: tomorrow,
 			Status:          SuggestionStatusOpen,
+			Sources:         sources,
+			SellThroughVel:  stVel,
+			BaseDemand:      base,
 		}
 		if err := w.ProcessSuggestion(ctx, supplierID, suggestion, batchLeadTimeDays); err != nil {
 			continue
 		}
 	}
 	return nil
+}
+
+// sellThroughUnits returns net sold (QtySold-QtyVoided) over the last windowDays ending today.
+// usedRollup is true when at least one RetailerSellThroughDaily row was found.
+func (w *ReorderSuggestionWorker) sellThroughUnits(ctx context.Context, retailerID, sku string, today civil.Date, windowDays int) (units float64, days int, usedRollup bool) {
+	if windowDays <= 0 {
+		windowDays = DefaultSellThroughDays
+	}
+	if w == nil || w.Spanner == nil {
+		return 0, windowDays, false
+	}
+	from := today.AddDays(-(windowDays - 1))
+	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `
+			SELECT COALESCE(SUM(QtySold - QtyVoided), 0), COUNT(*)
+			FROM RetailerSellThroughDaily
+			WHERE RetailerId = @rid AND SkuId = @sku
+			  AND Day >= @from AND Day <= @to`,
+		Params: map[string]any{
+			"rid":  retailerID,
+			"sku":  sku,
+			"from": from,
+			"to":   today,
+		},
+	})
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, windowDays, false
+	}
+	var sum int64
+	var cnt int64
+	if err := row.Columns(&sum, &cnt); err != nil {
+		return 0, windowDays, false
+	}
+	if cnt == 0 {
+		return 0, windowDays, false
+	}
+	if sum < 0 {
+		sum = 0
+	}
+	return float64(sum), windowDays, true
 }
 
 func (w *ReorderSuggestionWorker) inFlightQty(ctx context.Context, retailerID, sku string) int64 {

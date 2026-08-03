@@ -274,6 +274,12 @@ type OrderLifecycle interface {
 	ListRetailerAIPredictions(ctx context.Context, retailerID string, limit int) ([]order.RetailerAIPrediction, error)
 }
 
+// OrderCreator places real procurement orders (enterprise auto-order place mode).
+// Implemented by order.Service.Create in bootstrap — never mobile_compat stubs.
+type OrderCreator interface {
+	Create(ctx context.Context, retailerID string, req order.CreateRequest) (order.CreateResponse, error)
+}
+
 // NotificationReader provides read access to the notification inbox.
 // Optional CreateNotification enables Phase 5 variance alerts to owners.
 type NotificationReader interface {
@@ -310,6 +316,7 @@ type Service struct {
 	autoOrderMu         sync.RWMutex
 	favoriteSuppliers   map[string]map[string]bool
 	familyByRetailer    map[string][]FamilyMember
+	familyWritesGone    map[string]bool // orgIDs that completed Family→Team migrate policy
 	autoOrderByRetailer map[string]*AutoOrderSettings
 	// Phase 0/1/2 memory fallbacks when Spanner client is nil (unit tests).
 	ownerByRetailer     map[string]RetailerUser
@@ -323,9 +330,10 @@ type Service struct {
 	receiveSessions map[string]ReceiveSessionDTO
 	receiveByOrder  map[string]string
 	// Phase 4 POS memory
-	posRegisters map[string]RegisterDTO
-	posSessions  map[string]PosSessionDTO
-	posSales     map[string]PosSaleDTO
+	posRegisters     map[string]RegisterDTO
+	posSessions      map[string]PosSessionDTO
+	posSales         map[string]PosSaleDTO
+	posSalesByClient map[string]string // retailerID|clientSaleID -> saleID
 	// Phase 5 shifts memory
 	timeEntries map[string]TimeEntryDTO // entryID -> entry
 	shifts      map[string]ShiftDTO
@@ -334,6 +342,23 @@ type Service struct {
 	sectionSkus      map[string]map[string]bool // sectionID -> sku set
 	staffSections    map[string]map[string]bool // sectionID -> userID set
 	assistTickets    map[string]AssistTicketDTO
+	// Close-out: auto-order execution
+	autoOrderWorker     *autoOrderWorkerState
+	autoOrderCandidates map[string][]AutoOrderCandidate
+	// L3 sell-through (memory)
+	sellThroughDaily   map[sellThroughKey]SellThroughDayDTO
+	sellThroughFactors map[string]float64 // retailer|sku|day → SELL_THROUGH
+	// L3.5 AutoOrder from reorder suggestions (test seed)
+	reorderSuggestionSeed map[string][]RetailerReorderSuggestion
+	// Place mode
+	orderCreator          OrderCreator
+	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED
+	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
+	autoOrderBucket map[string]string
+	// Local POS catalog (memory fallback)
+	localCatalog map[string][]LocalSKU
+	// B4 DEMAND_SIGNAL memory capture (tests + no-Spanner emit path)
+	demandSignalsEmitted []events.DemandSignalEvent
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -341,23 +366,25 @@ type Service struct {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo        Repository
-	CartRepo    CartRepository
-	NotifSvc    NotificationReader
-	Orders      OrderLifecycle
-	Cache       *cache.Cache
-	Idem        idempotency.Store
-	Proximity   *RetailerProximityService
-	Locations   telemetry.LastLocationReader
-	SupplierID  string
-	CountryCode string
-	JWTSecret   string
-	JWTIssuer   string
-	Log         *slog.Logger
-	Now         func() time.Time
-	NewID       func() string
-	FirebaseVerifier auth.FirebaseVerifier
-	Spanner          *spanner.Client
+	Repo                 Repository
+	CartRepo             CartRepository
+	NotifSvc             NotificationReader
+	Orders               OrderLifecycle
+	OrderCreator         OrderCreator // optional; required for mode=place
+	AutoOrderPlaceEnabled bool
+	Cache                *cache.Cache
+	Idem                 idempotency.Store
+	Proximity            *RetailerProximityService
+	Locations            telemetry.LastLocationReader
+	SupplierID           string
+	CountryCode          string
+	JWTSecret            string
+	JWTIssuer            string
+	Log                  *slog.Logger
+	Now                  func() time.Time
+	NewID                func() string
+	FirebaseVerifier     auth.FirebaseVerifier
+	Spanner              *spanner.Client
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -375,8 +402,11 @@ func NewService(c ServiceConfig) *Service {
 		repo:                c.Repo,
 		cartRepo:            c.CartRepo,
 		notifSvc:            c.NotifSvc,
-		orders:              c.Orders,
-		cache:               c.Cache,
+		orders:                c.Orders,
+		orderCreator:          c.OrderCreator,
+		autoOrderPlaceEnabled: c.AutoOrderPlaceEnabled,
+		autoOrderBucket:       make(map[string]string),
+		cache:                 c.Cache,
 		idem:                c.Idem,
 		proximity:           c.Proximity,
 		locations:           c.Locations,
@@ -389,6 +419,7 @@ func NewService(c ServiceConfig) *Service {
 		newID:               c.NewID,
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
+		familyWritesGone:    make(map[string]bool),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
 		ownerByRetailer:     make(map[string]RetailerUser),
 		staffByRetailer:     make(map[string][]RetailerUser),
@@ -401,14 +432,18 @@ func NewService(c ServiceConfig) *Service {
 		posRegisters:        make(map[string]RegisterDTO),
 		posSessions:         make(map[string]PosSessionDTO),
 		posSales:            make(map[string]PosSaleDTO),
+		posSalesByClient:    make(map[string]string),
 		timeEntries:         make(map[string]TimeEntryDTO),
 		shifts:              make(map[string]ShiftDTO),
 		sections:            make(map[string]SectionDTO),
 		sectionSkus:         make(map[string]map[string]bool),
 		staffSections:       make(map[string]map[string]bool),
 		assistTickets:       make(map[string]AssistTicketDTO),
-		firebaseVerifier:    c.FirebaseVerifier,
-		spannerClient:       c.Spanner,
+		sellThroughDaily:      make(map[sellThroughKey]SellThroughDayDTO),
+		sellThroughFactors:    make(map[string]float64),
+		reorderSuggestionSeed: make(map[string][]RetailerReorderSuggestion),
+		firebaseVerifier:      c.FirebaseVerifier,
+		spannerClient:         c.Spanner,
 	}
 }
 
@@ -418,6 +453,23 @@ func (s *Service) SetOrderLifecycle(orders OrderLifecycle) {
 		return
 	}
 	s.orders = orders
+}
+
+// SetOrderCreator wires real order placement for auto-order place mode.
+// Call after order.Service is constructed (bootstrap two-phase wire).
+func (s *Service) SetOrderCreator(creator OrderCreator) {
+	if s == nil {
+		return
+	}
+	s.orderCreator = creator
+}
+
+// SetAutoOrderPlaceEnabled toggles place mode process-wide (env AUTO_ORDER_PLACE_ENABLED).
+func (s *Service) SetAutoOrderPlaceEnabled(enabled bool) {
+	if s == nil {
+		return
+	}
+	s.autoOrderPlaceEnabled = enabled
 }
 
 // RegisterRequest is the wire shape for POST /v1/auth/retailer/register.

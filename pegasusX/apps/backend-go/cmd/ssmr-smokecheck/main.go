@@ -23,7 +23,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|negotiation-isolation|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -93,6 +93,8 @@ func main() {
 		checkErr = runManifestSealSmokeCheck(ctx, cfg)
 	case "claims":
 		checkErr = runClaimsE2E(ctx, cfg)
+	case "negotiation-isolation":
+		checkErr = runNegotiationIsolationCheck(ctx, cfg)
 	case "loadtokens":
 		checkErr = runLoadTokens(ctx, cfg)
 	case "planning-baseline-seed":
@@ -383,6 +385,7 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),
 		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
 		envOr("KAFKA_TOPIC_INVENTORY_IMPORT", events.TopicInventoryImportEvents),
+		envOr("KAFKA_TOPIC_DEMAND", events.TopicDemand),
 		events.TopicPlanningSignalIngest,
 		events.TopicPlanningForecastRequest,
 		events.TopicPlanningForecastResult,

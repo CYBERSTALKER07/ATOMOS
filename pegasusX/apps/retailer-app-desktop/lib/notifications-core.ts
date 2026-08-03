@@ -43,7 +43,9 @@ const retailerNotificationEventTypes = new Set([
   'FISCAL_RECEIPT_SUCCEEDED',
   'FISCAL_RECEIPT_FAILED',
   'FISCAL_RECEIPT_REQUESTED',
-  // 'NEGOTIATION_PROPOSED', // quantity negotiation disabled
+  // Quantity negotiation product-disabled — do not surface until re-enabled.
+  // 'NEGOTIATION_PROPOSED',
+  // 'NEGOTIATION_RESOLVED',
   'PRE_ORDER_AUTO_ACCEPTED',
   'PRE_ORDER_CONFIRMED',
   'PRE_ORDER_EDITED',

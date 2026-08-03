@@ -576,6 +576,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:   cfg.JWTSecret,
 		JWTIssuer:   cfg.JWTIssuer,
 		Log:         log,
+		// Required for sell-through, reorder suggestions, auto-order bucket/runs, locations Spanner path.
+		Spanner: spannerClient,
 	})
 
 	var supplierInventory supplier.InventoryServicer
@@ -790,6 +792,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ReplenishmentEngine:  replenishmentEngine,
 	})
 	retailerSvc.SetOrderLifecycle(orderSvc)
+	// Auto-order place mode: real order.Create (never mobile_compat). Flag default off.
+	retailerSvc.SetOrderCreator(orderSvc)
+	retailerSvc.SetAutoOrderPlaceEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("AUTO_ORDER_PLACE_ENABLED")), "true"))
 
 	factoryNodeID := strings.TrimSpace(os.Getenv("FACTORY_DEMO_ID"))
 	if factoryNodeID == "" {
@@ -803,8 +808,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		warehouseNodeID = "wh-demo-1"
 	}
 
-	// Start Control Tower telemetry simulator
-	simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+	// Fake H3 / network graph telemetry — off by default in SSMR/prod (honesty).
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true") {
+		simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+		log.Info("control tower telemetry simulator enabled")
+	}
 
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
@@ -872,6 +880,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	// Claim / OS&D → warehouse inbound tickets (deduped with amend-created returns).
 	claimsSvc.SetReverseLogistics(&returnsClaimsBridge{svc: returnsSvc})
+	// Store QUARANTINE hold on physical claims (FLOOR/BACKROOM → QUARANTINE).
+	claimsSvc.SetStoreStock(&retailerClaimStockBridge{svc: retailerSvc})
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
 	var driverProfileLookup driver.DriverProfileLookup

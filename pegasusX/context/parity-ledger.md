@@ -30,11 +30,11 @@ See also: `docs/CLAIM_ROLE_ROW.md`.
 
 See: `docs/big-platform-baseline/last-mile/`.
 
-## Quantity negotiations (2026-07-31)
+## Quantity negotiations (product-disabled)
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Driver quantity negotiation ecosystem | **Product-deferred** | Backend list empty; portal page disabled; native nav stubs hidden / empty-state only |
+| Driver quantity negotiation ecosystem | **Product-deferred** | `quantityNegotiationDisabled = true` → 410 propose/resolve, empty pending list, sweeper no-op; clients stubbed; e2e `PX_E2E_NEGOTIATION_SKIPPED`. **Not** a substitute for claims / shop-closed / missing-items / partial offload. |
 
 ## Warehouse reverse-logistics / exceptions mobile (2026-07-31)
 

@@ -686,8 +686,15 @@ func (d *NotificationDispatcher) broadcastRetailer(ctx context.Context, retailer
 	for _, actorID := range actors {
 		d.pushFCM(ctx, actorID, "RETAILER", payload)
 	}
-	// Shared org inbox (clients resolve org via ResolveRetailerOrgID).
+	// Dual-write inbox: org id (legacy + ResolveRetailerOrgID readers) + each staff subject
+	// so TEAM users whose JWT subject is user id still see network pulse / inbox rows.
 	d.persistInbox(ctx, retailerID, "RETAILER", payload)
+	for _, actorID := range actors {
+		if actorID == retailerID {
+			continue
+		}
+		d.persistInbox(ctx, actorID, "RETAILER", payload)
+	}
 }
 
 func uniqueStrings(in []string) []string {

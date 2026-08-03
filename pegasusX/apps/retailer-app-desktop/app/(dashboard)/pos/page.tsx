@@ -8,9 +8,24 @@ import {
   CreditCard,
   Banknote,
   AlertTriangle,
+  WifiOff,
+  CloudUpload,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
+import {
+  clearParkedPosCart,
+  countPendingForSession,
+  enqueueOfflinePosSale,
+  flushPendingPosSales,
+  listPendingPosSales,
+  loadParkedPosCart,
+  newClientSaleId,
+  provisionalReceipt,
+  saveParkedPosCart,
+  type PendingPosSale,
+} from "@/lib/pending-pos-sales";
+import { retailerPosSaleKey } from "@pegasusx/api-client";
 
 type Register = {
   register_id: string;
@@ -40,6 +55,8 @@ type Sale = {
   total_minor: number;
   status: string;
   lines: CartLine[];
+  origin?: string;
+  client_sale_id?: string;
 };
 
 function formatMoney(minor: number, currency = "UZS") {
@@ -66,11 +83,61 @@ export default function POSPage() {
   const [busy, setBusy] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [newRegLabel, setNewRegLabel] = useState("Register 1");
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [pending, setPending] = useState<PendingPosSale[]>([]);
+  const [receiptSeq, setReceiptSeq] = useState(1);
 
   const totalMinor = useMemo(
     () => cart.reduce((s, l) => s + l.qty * l.unit_price_minor, 0),
     [cart],
   );
+
+  const pendingForSession = session
+    ? countPendingForSession(pending, session.session_id)
+    : 0;
+
+  const refreshPending = useCallback(async () => {
+    setPending(await listPendingPosSales());
+  }, []);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    void refreshPending();
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, [refreshPending]);
+
+  useEffect(() => {
+    if (!online) return;
+    void flushPendingPosSales().then(async (r) => {
+      if (r.flushed > 0) {
+        setBanner(`Synced ${r.flushed} offline sale(s)`);
+      }
+      await refreshPending();
+    });
+  }, [online, refreshPending]);
+
+  // Force cash when offline
+  useEffect(() => {
+    if (!online && tender === "CARD") setTender("CASH");
+  }, [online, tender]);
+
+  // Persist parked cart
+  useEffect(() => {
+    if (!session) return;
+    void saveParkedPosCart({
+      sessionId: session.session_id,
+      lines: cart,
+      updatedAt: Date.now(),
+    });
+  }, [cart, session]);
 
   const loadRegisters = useCallback(async () => {
     try {
@@ -114,6 +181,10 @@ export default function POSPage() {
 
   const openSession = async () => {
     if (!registerId) return;
+    if (!online) {
+      setError("Open session requires network. Connect, then open till.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -131,9 +202,11 @@ export default function POSPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error((json as { error?: string }).error || "open_failed");
-      setSession(json as Session);
+      const sess = json as Session;
+      setSession(sess);
+      const parked = await loadParkedPosCart(sess.session_id);
+      setCart(parked?.lines ?? []);
       setBanner("Session open — ready to sell");
-      setCart([]);
       setLastSale(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Open failed");
@@ -144,6 +217,16 @@ export default function POSPage() {
 
   const closeSession = async () => {
     if (!session) return;
+    if (pendingForSession > 0) {
+      setError(
+        `Sync ${pendingForSession} offline sale(s) before closing this session.`,
+      );
+      return;
+    }
+    if (!online) {
+      setError("Close session requires network.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await apiFetch(
@@ -159,6 +242,8 @@ export default function POSPage() {
       const json = await res.json();
       if (!res.ok) throw new Error((json as { error?: string }).error || "close_failed");
       setSession(null);
+      setCart([]);
+      await clearParkedPosCart();
       setBanner(
         `Session closed. Variance: ${formatMoney((json as Session & { variance_minor?: number }).variance_minor ?? 0)}`,
       );
@@ -197,29 +282,71 @@ export default function POSPage() {
 
   const completeSale = async () => {
     if (!session || cart.length === 0) return;
+    if (!online && tender === "CARD") {
+      setError("Card sales require network. Use cash offline.");
+      return;
+    }
     setBusy(true);
     setBanner(null);
+    setError(null);
+
+    const clientSaleId = newClientSaleId();
+    const payload = {
+      session_id: session.session_id,
+      stock_bin: "FLOOR",
+      origin: online ? "online" : "offline",
+      client_sale_id: clientSaleId,
+      client_created_at: new Date().toISOString(),
+      lines: cart.map((l) => ({
+        sku: l.sku,
+        name: l.name,
+        qty: l.qty,
+        unit_price_minor: l.unit_price_minor,
+      })),
+      tenders: [{ method: tender, amount_minor: totalMinor }],
+    };
+
     try {
+      if (!online) {
+        // Offline cash only
+        const receipt = provisionalReceipt(receiptSeq);
+        setReceiptSeq((n) => n + 1);
+        await enqueueOfflinePosSale({
+          clientSaleId,
+          clientReceipt: receipt,
+          sessionId: session.session_id,
+          payload: { ...payload, origin: "offline", tenders: [{ method: "CASH", amount_minor: totalMinor }] },
+        });
+        setLastSale({
+          sale_id: clientSaleId,
+          receipt_number: receipt,
+          total_minor: totalMinor,
+          status: "COMPLETED",
+          lines: cart,
+          origin: "offline",
+          client_sale_id: clientSaleId,
+        });
+        setCart([]);
+        await clearParkedPosCart();
+        setBanner(`Offline sale ${receipt} · ${formatMoney(totalMinor)} · will sync`);
+        await refreshPending();
+        return;
+      }
+
       const res = await apiFetch("/v1/retailer/pos/sales", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `sale-${Date.now()}`,
+          "Idempotency-Key": retailerPosSaleKey(clientSaleId),
         },
-        body: JSON.stringify({
-          session_id: session.session_id,
-          stock_bin: "FLOOR",
-          lines: cart.map((l) => ({
-            sku: l.sku,
-            name: l.name,
-            qty: l.qty,
-            unit_price_minor: l.unit_price_minor,
-          })),
-          tenders: [{ method: tender, amount_minor: totalMinor }],
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) {
+        // Network-ish: queue as offline cash if cash tender
+        if (res.status === 0 || res.status >= 500) {
+          throw new Error((json as { error?: string }).error || `sale_failed_${res.status}`);
+        }
         throw new Error(
           (json as { error?: string; sku?: string }).error
             ? `${(json as { error: string }).error}${(json as { sku?: string }).sku ? ` (${(json as { sku: string }).sku})` : ""}`
@@ -228,9 +355,60 @@ export default function POSPage() {
       }
       setLastSale(json as Sale);
       setCart([]);
+      await clearParkedPosCart();
       setBanner(`Sale ${(json as Sale).receipt_number} · ${formatMoney((json as Sale).total_minor)}`);
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Sale failed");
+      // If online request failed due to network, queue cash sales
+      const msg = e instanceof Error ? e.message : "Sale failed";
+      if (
+        tender === "CASH" &&
+        (/failed to fetch|network|load failed|offline/i.test(msg) || !navigator.onLine)
+      ) {
+        try {
+          const receipt = provisionalReceipt(receiptSeq);
+          setReceiptSeq((n) => n + 1);
+          await enqueueOfflinePosSale({
+            clientSaleId,
+            clientReceipt: receipt,
+            sessionId: session.session_id,
+            payload: { ...payload, origin: "offline", tenders: [{ method: "CASH", amount_minor: totalMinor }] },
+          });
+          setLastSale({
+            sale_id: clientSaleId,
+            receipt_number: receipt,
+            total_minor: totalMinor,
+            status: "COMPLETED",
+            lines: cart,
+            origin: "offline",
+            client_sale_id: clientSaleId,
+          });
+          setCart([]);
+          await clearParkedPosCart();
+          setBanner(`Queued offline ${receipt} · ${formatMoney(totalMinor)}`);
+          await refreshPending();
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+      setBanner(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const syncNow = async () => {
+    setBusy(true);
+    try {
+      const r = await flushPendingPosSales();
+      setBanner(
+        r.flushed > 0
+          ? `Synced ${r.flushed} sale(s)${r.failed ? `, ${r.failed} failed` : ""}`
+          : r.failed
+            ? `${r.failed} sale(s) failed to sync`
+            : "Nothing to sync",
+      );
+      await refreshPending();
     } finally {
       setBusy(false);
     }
@@ -238,6 +416,10 @@ export default function POSPage() {
 
   const voidLast = async () => {
     if (!lastSale || lastSale.status === "VOIDED") return;
+    if (lastSale.origin === "offline" || lastSale.sale_id === lastSale.client_sale_id) {
+      setError("Void requires a synced server sale. Sync first or discard from pending queue.");
+      return;
+    }
     if (!confirm("Void last sale and restock?")) return;
     setBusy(true);
     try {
@@ -263,9 +445,18 @@ export default function POSPage() {
   return (
     <PageChrome
       title="Point of sale"
-      description="Cashier mode: open till, scan/add lines, cash or card, void with manager rights. Sells from FLOOR stock."
+      description="Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network."
     >
       <div className="mx-auto grid max-w-5xl gap-4 px-4 pb-16 pt-2 lg:grid-cols-2">
+        {!online && (
+          <div className="lg:col-span-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            <WifiOff className="h-4 w-4 shrink-0" />
+            Offline · cash sales queue until reconnect. Card disabled. Open/close till needs network.
+            {pendingForSession > 0 && (
+              <span className="ml-auto font-medium">{pendingForSession} pending</span>
+            )}
+          </div>
+        )}
         {banner && (
           <div className="lg:col-span-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
             {banner}
@@ -291,9 +482,9 @@ export default function POSPage() {
               />
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !online}
                 onClick={() => void createRegister()}
-                className="rounded-lg bg-foreground px-3 py-2 text-sm text-background"
+                className="rounded-lg bg-foreground px-3 py-2 text-sm text-background disabled:opacity-50"
               >
                 Create register
               </button>
@@ -318,20 +509,16 @@ export default function POSPage() {
               {!session ? (
                 <>
                   <label className="block text-sm">
-                    Opening float (major units)
+                    Opening float (minor units)
                     <input
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                       value={floatMinor}
                       onChange={(e) => setFloatMinor(e.target.value)}
-                      placeholder="0.00 → enter as tiyin/100 e.g. 100000 for 1000.00"
                     />
                   </label>
-                  <p className="text-xs text-muted-foreground">
-                    Enter float in minor units (integer tiyin/cents). Example: 100000 = 1000.00
-                  </p>
                   <button
                     type="button"
-                    disabled={busy || !registerId}
+                    disabled={busy || !registerId || !online}
                     onClick={() => void openSession()}
                     className="rounded-lg bg-foreground px-3 py-2 text-sm text-background disabled:opacity-50"
                   >
@@ -354,15 +541,48 @@ export default function POSPage() {
                   </label>
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !online || pendingForSession > 0}
                     onClick={() => void closeSession()}
-                    className="rounded-lg border border-border px-3 py-2 text-sm"
+                    className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
                   >
-                    Close session
+                    {pendingForSession > 0
+                      ? `Close blocked (${pendingForSession} pending)`
+                      : "Close session"}
                   </button>
                 </>
               )}
             </>
+          )}
+
+          {pending.length > 0 && (
+            <div className="mt-3 space-y-2 border-t border-border pt-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Offline queue ({pending.length})</h3>
+                <button
+                  type="button"
+                  disabled={busy || !online}
+                  onClick={() => void syncNow()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs disabled:opacity-50"
+                >
+                  <CloudUpload className="h-3 w-3" /> Sync now
+                </button>
+              </div>
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">
+                {pending.map((p) => (
+                  <li
+                    key={p.id}
+                    className={`rounded border px-2 py-1 ${
+                      p.status === "FAILED"
+                        ? "border-red-500/40 text-red-600"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {p.clientReceipt} · {p.status}
+                    {p.lastError ? ` · ${p.lastError}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
 
@@ -370,6 +590,9 @@ export default function POSPage() {
         <section className="rounded-xl border border-border bg-card p-4 space-y-3">
           <h2 className="font-semibold flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" /> Cart
+            {cart.length > 0 && (
+              <span className="text-xs font-normal text-muted-foreground">(auto-parked)</span>
+            )}
           </h2>
           {!session && (
             <p className="text-sm text-muted-foreground">Open a session to sell.</p>
@@ -446,7 +669,8 @@ export default function POSPage() {
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm flex items-center justify-center gap-1 ${
+                  disabled={!online}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm flex items-center justify-center gap-1 disabled:opacity-40 ${
                     tender === "CARD" ? "border-foreground" : "border-border"
                   }`}
                   onClick={() => setTender("CARD")}
@@ -462,11 +686,13 @@ export default function POSPage() {
               >
                 {busy ? (
                   <Loader2 className="inline h-4 w-4 animate-spin" />
-                ) : (
+                ) : online ? (
                   `Complete sale (${tender})`
+                ) : (
+                  "Complete cash sale offline"
                 )}
               </button>
-              {lastSale && lastSale.status === "COMPLETED" && (
+              {lastSale && lastSale.status === "COMPLETED" && lastSale.origin !== "offline" && (
                 <button
                   type="button"
                   disabled={busy}

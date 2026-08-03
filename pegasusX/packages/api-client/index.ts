@@ -218,6 +218,7 @@ export {
   retailerUnifiedCheckoutKey,
   retailerCardCheckoutKey,
   retailerCashCheckoutKey,
+  retailerPosSaleKey,
   retailerSupplierAddKey,
   retailerSupplierRemoveKey,
   supplierDispatchKey,
@@ -785,6 +786,23 @@ export class ApiClient {
     return this.request<SupplierDemandHistoryResponse>("/v1/supplier/analytics/demand/history", "GET");
   }
 
+  /** B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (not planning multipliers). */
+  async getSupplierDemandFlywheel(params?: {
+    days?: number;
+    limit?: number;
+    sku?: string;
+  }): Promise<import("@pegasusx/types").FlywheelDemandFeedResponse> {
+    const q = new URLSearchParams();
+    if (params?.days != null) q.set("days", String(params.days));
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    if (params?.sku) q.set("sku", params.sku);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<import("@pegasusx/types").FlywheelDemandFeedResponse>(
+      `/v1/supplier/analytics/demand/flywheel${suffix}`,
+      "GET",
+    );
+  }
+
   async getDemandSignals(): Promise<{ signals: import("@pegasusx/types").DemandSignal[] }> {
     return this.request<{ signals: import("@pegasusx/types").DemandSignal[] }>("/v1/demand/signals", "GET");
   }
@@ -1070,7 +1088,11 @@ export class ApiClient {
     return this.request(`/v1/compliance/export?${q.toString()}`, "GET");
   }
 
-  /** Quantity negotiation disabled ecosystem-wide. */
+  /**
+   * Quantity negotiation is product-disabled ecosystem-wide.
+   * Backend returns empty pending list; clients must not surface propose UX.
+   * Independent of claims / shop-closed / partial-offload.
+   */
   async getSupplierNegotiationsPending(_params?: { limit?: number; offset?: number }): Promise<NegotiationPendingResponse> {
     return { data: [] };
   }
@@ -1085,7 +1107,10 @@ export class ApiClient {
     });
   }
 
-  /** Quantity negotiation disabled ecosystem-wide. */
+  /**
+   * Quantity negotiation is product-disabled ecosystem-wide (410 on live API).
+   * Do not call — use claims / shop-closed / missing-items for delivery exceptions.
+   */
   async resolveSupplierNegotiation(
     _request: NegotiationResolveRequest,
     _idempotencyKey: string,
@@ -1133,11 +1158,14 @@ export class ApiClient {
     retailerId?: string;
     status?: string;
     sku?: string;
+    /** Server-side demand source filter: STORE_POS | WHOLESALE_HISTORY */
+    source?: string;
   }): Promise<ReorderSuggestionsListResponse> {
     const q = new URLSearchParams();
     if (params?.retailerId) q.set("retailerId", params.retailerId);
     if (params?.status) q.set("status", params.status);
     if (params?.sku) q.set("sku", params.sku);
+    if (params?.source) q.set("source", params.source);
     const suffix = q.toString() ? `?${q.toString()}` : "";
     return this.request<ReorderSuggestionsListResponse>(`/v1/replenishment/suggestions${suffix}`, "GET");
   }

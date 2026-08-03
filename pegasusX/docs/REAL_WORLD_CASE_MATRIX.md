@@ -33,11 +33,25 @@ Operational cases for hypercare and Retail OS. Expand with tickets as pilots run
 | Reports with no POS/stock | Empty modules, not fake series; pack may auto-enable on first GET |
 | Control Tower cold start | `empty: true` — no mock charts or demo supplier ids |
 
+## Ecosystem hardening (see `ECOSYSTEM_HARDENING_GAP_PLAN.md`)
+
+| Case | Expected behavior |
+|------|-------------------|
+| Second supplier different zone | Perimeter keys per supplier; checkout uses order’s supplier |
+| Supplier CT as real tenant | Never `sup-demo-1` / mock charts |
+| Shop-closed after DDL | Grace/proximity columns persist; timeout matrix fires |
+| Credit HIGH + enforce on | CREDIT_LEAVE blocked; audit |
+| Rescue over capacity | Reject or split with residual warning |
+| Offline nonce replay | Second sync rejected |
+| Doorstep cash short | Bag recon line auto-seeded |
+| Temp breach with qty | Claim + WH reverse OPEN |
+| Fiscal stuck | Observability alert (when enabled) |
+
 ## Intentional product deferrals
 
 | Item | Notes |
 |------|-------|
 | Offline POS queue | Split-brain risk; v1 online-required |
-| Planogram vision | v2+ |
+| Planogram vision | v2+ — `PLANOGRAM_VISION_PLAN.md` |
 | Auto-order execution worker | Settings durable; worker separate epic |
 | Family → Team forced migrate | Legacy list may coexist |

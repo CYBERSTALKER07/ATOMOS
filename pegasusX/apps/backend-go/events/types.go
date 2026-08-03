@@ -296,6 +296,24 @@ type AIRecommendationEvent struct {
 	Note             string `json:"note,omitempty"`
 }
 
+// DemandSignalEvent is the flywheel broadcast from retailer POS sell-through.
+// Suppliers subscribe on TopicDemand (or TopicMain when dual-write is off).
+// Deliberately omits POS session/register/tender internals.
+type DemandSignalEvent struct {
+	BaseEvent
+	RetailerID string `json:"retailer_id"`
+	LocationID string `json:"location_id,omitempty"`
+	SKU        string `json:"sku"`
+	Day        string `json:"day"` // YYYY-MM-DD UTC
+	// QtyDelta is signed: sale +qty, void −qty.
+	QtyDelta int64 `json:"qty_delta"`
+	// NetSold is day cumulative net (sold − voided) after this update.
+	NetSold    int64  `json:"net_sold"`
+	Source     string `json:"source"` // always STORE_POS for this path
+	Kind       string `json:"kind"`   // sale | void
+	SupplierID string `json:"supplier_id,omitempty"`
+}
+
 // PromotionEvent signals supplier promotion create, update, or deactivation.
 type PromotionEvent struct {
 	BaseEvent

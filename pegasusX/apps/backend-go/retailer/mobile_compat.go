@@ -170,14 +170,9 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// HandleDeviceToken serves POST /v1/user/device-token.
-func (s *Service) HandleDeviceToken(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
+// HandleDeviceToken is intentionally not mounted. Clients must use platform
+// POST /v1/user/device-token (durable DeviceTokens). Kept as a comment trap:
+// do not re-register a silent OK handler here.
 
 // HandleMobileRegister accepts the legacy mobile registration body and returns AuthResponse.
 func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {

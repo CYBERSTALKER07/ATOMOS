@@ -546,12 +546,22 @@ final class APIClient {
         )
     }
 
-    func createPosSale(sessionId: String, lines: [PosSaleLineWire], totalMinor: Int64) async throws -> PosSaleWire {
+    func createPosSale(
+        sessionId: String,
+        lines: [PosSaleLineWire],
+        totalMinor: Int64,
+        clientSaleId: String = UUID().uuidString,
+        origin: String = "online",
+        clientCreatedAt: String? = nil
+    ) async throws -> PosSaleWire {
         struct Body: Encodable {
             let session_id: String
             let stock_bin: String
             let lines: [PosSaleLineWire]
             let tenders: [PosTenderWire]
+            let client_sale_id: String
+            let origin: String
+            let client_created_at: String?
         }
         return try await post(
             path: "/v1/retailer/pos/sales",
@@ -559,9 +569,12 @@ final class APIClient {
                 session_id: sessionId,
                 stock_bin: "FLOOR",
                 lines: lines,
-                tenders: [PosTenderWire(method: "CASH", amount_minor: totalMinor)]
+                tenders: [PosTenderWire(method: "CASH", amount_minor: totalMinor)],
+                client_sale_id: clientSaleId,
+                origin: origin,
+                client_created_at: clientCreatedAt ?? ISO8601DateFormatter().string(from: Date())
             ),
-            headers: ["Idempotency-Key": "sale-\(Int(Date().timeIntervalSince1970 * 1000))"]
+            headers: ["Idempotency-Key": "pos-sale:\(clientSaleId)"]
         )
     }
 
@@ -711,14 +724,36 @@ final class APIClient {
         return try JSONDecoder().decode(RetailerOrgMembersResponse.self, from: data)
     }
 
+    func getFamilyMembersList() async throws -> FamilyMembersListResponse {
+        try await get(path: "/v1/retailer/family-members")
+    }
+
     func getFamilyMembers() async throws -> [FamilyMemberResponse] {
-        return try await get(path: "/v1/retailer/family-members")
+        let list = try await getFamilyMembersList()
+        return list.members
     }
-    
+
     func addFamilyMember(request: FamilyMemberRequest) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/family-members", body: request)
+        struct Empty: Decodable {}
+        let _: Empty = try await post(
+            path: "/v1/retailer/family-members",
+            body: request,
+            headers: ["Idempotency-Key": "fam-add-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
     }
-    
+
+    func migrateFamilyToTeam(role: String = "RECEIVER") async throws -> FamilyMigrateResult {
+        struct Body: Encodable {
+            let retailerRole: String
+            enum CodingKeys: String, CodingKey { case retailerRole = "retailer_role" }
+        }
+        return try await post(
+            path: "/v1/retailer/family-members/migrate-to-team",
+            body: Body(retailerRole: role),
+            headers: ["Idempotency-Key": "fam-migrate-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
     func removeFamilyMember(memberId: String) async throws {
         // DELETE requires custom wrapper or generic empty request. Reusing existing request helper:
         let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
@@ -826,6 +861,26 @@ final class APIClient {
             path: "/v1/retailer/settings/auto-order/variant/\(skuId)",
             body: ScopedAutoOrderRequest(autoOrderEnabled: enabled, useHistory: useHistory)
         )
+    }
+
+    /// Auto-order worker tick. mode=draft|place (place requires flag + role + geo).
+    func runAutoOrder(mode: String = "draft") async throws -> AutoOrderRun {
+        let encoded = mode.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? mode
+        return try await post(path: "/v1/retailer/settings/auto-order/run?mode=\(encoded)")
+    }
+
+    func getAutoOrderRuns() async throws -> AutoOrderRunsResponse {
+        try await get(path: "/v1/retailer/settings/auto-order/runs")
+    }
+
+    /// OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY).
+    func getReorderSuggestions(source: String? = nil) async throws -> RetailerReorderSuggestionsResponse {
+        var path = "/v1/retailer/reorder-suggestions"
+        if let source, !source.isEmpty {
+            let enc = source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source
+            path += "?source=\(enc)"
+        }
+        return try await get(path: path)
     }
 
     func getTracking() async throws -> TrackingResponse {

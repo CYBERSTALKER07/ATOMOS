@@ -84,6 +84,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/pos/sales", d.Service.HandlePosSale)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/void", d.Service.HandlePosSaleVoid)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)
+		rr.Get("/v1/retailer/pos/catalog", d.Service.HandlePOSCatalogSearch)
+
+		// Local/manual POS catalog (non-Pegasus SKUs)
+		rr.Get("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
+		rr.Post("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
+		rr.Patch("/v1/retailer/local-skus/{localSkuID}", d.Service.HandleLocalSKUByID)
 
 		// Retail OS Phase 5 shifts & time clock
 		rr.Post("/v1/retailer/time/clock-in", d.Service.HandleClockIn)
@@ -113,6 +119,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/reports/inventory", d.Service.HandleReportsInventory)
 		rr.Get("/v1/retailer/reports/shifts", d.Service.HandleReportsShifts)
 		rr.Get("/v1/retailer/reports/export", d.Service.HandleReportsExport)
+
+		// L3 sell-through flywheel insights
+		rr.Get("/v1/retailer/insights/sell-through", d.Service.HandleSellThroughInsights)
+		rr.Get("/v1/retailer/reorder-suggestions", d.Service.HandleRetailerReorderSuggestions)
 
 		rr.Get("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
 		rr.Post("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
@@ -159,6 +169,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/family-members", d.Service.HandleFamilyMembers)
 		rr.Post("/v1/retailer/family-members", d.Service.HandleFamilyMembers)
 		rr.Delete("/v1/retailer/family-members/{memberID}", d.Service.HandleDeleteFamilyMember)
+		rr.Post("/v1/retailer/family-members/migrate-to-team", d.Service.HandleFamilyMigrateToTeam)
+
+		// Auto-order execution (Retail OS close-out)
+		rr.Post("/v1/retailer/settings/auto-order/run", d.Service.HandleAutoOrderRun)
+		rr.Get("/v1/retailer/settings/auto-order/runs", d.Service.HandleAutoOrderRuns)
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)

@@ -4,6 +4,7 @@ import com.pegasusx.retailer.data.model.ApiResponse
 import com.pegasusx.retailer.data.model.ActiveFulfillmentsResponse
 import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
+import com.pegasusx.retailer.data.model.RetailerReorderSuggestionsResponse
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteResponse
@@ -194,6 +195,12 @@ interface PegasusApi {
     @POST("/v1/retailer/family-members")
     suspend fun createFamilyMember(
         @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/family-members/migrate-to-team")
+    suspend fun migrateFamilyToTeam(
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
 
@@ -526,6 +533,22 @@ interface PegasusApi {
         @Path("id") skuId: String,
         @Body body: UpdateSettingsRequest,
     ): ApiResponse
+
+    /** Auto-order worker tick. mode=draft|place (place requires flag + role + geo). */
+    @POST("/v1/retailer/settings/auto-order/run")
+    suspend fun runAutoOrder(
+        @Query("mode") mode: String = "draft",
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @GET("/v1/retailer/settings/auto-order/runs")
+    suspend fun getAutoOrderRuns(): JsonElement
+
+    /** OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY). */
+    @GET("/v1/retailer/reorder-suggestions")
+    suspend fun getReorderSuggestions(
+        @Query("source") source: String? = null,
+    ): RetailerReorderSuggestionsResponse
 
     @GET("/v1/order/{orderId}/timeline")
     suspend fun getOrderTimeline(@Path("orderId") orderId: String): OrderTimelineResponse

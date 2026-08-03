@@ -24,17 +24,20 @@ const (
 
 // SuggestionRow is the wire shape for reorder suggestions.
 type SuggestionRow struct {
-	RetailerID      string  `json:"retailer_id"`
-	RetailerName    string  `json:"retailer_name,omitempty"`
-	Sku             string  `json:"sku"`
-	SkuName         string  `json:"sku_name,omitempty"`
-	SuggestedQty    int64   `json:"suggested_qty"`
-	AdjustedDemand  float64 `json:"adjusted_demand_per_day"`
-	CurrentStock    int64   `json:"current_stock"`
-	InFlightQty     int64   `json:"in_flight_qty"`
-	SuggestedByDate string  `json:"suggested_by_date"`
-	Status          string  `json:"status"`
-	ComputedAt      string  `json:"computed_at"`
+	RetailerID       string   `json:"retailer_id"`
+	RetailerName     string   `json:"retailer_name,omitempty"`
+	Sku              string   `json:"sku"`
+	SkuName          string   `json:"sku_name,omitempty"`
+	SuggestedQty     int64    `json:"suggested_qty"`
+	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
+	CurrentStock     int64    `json:"current_stock"`
+	InFlightQty      int64    `json:"in_flight_qty"`
+	SuggestedByDate  string   `json:"suggested_by_date"`
+	Status           string   `json:"status"`
+	ComputedAt       string   `json:"computed_at"`
+	Sources          []string `json:"sources,omitempty"`
+	SellThroughVel   float64  `json:"sell_through_velocity,omitempty"`
+	BaseDemand       float64  `json:"base_demand_per_day,omitempty"`
 }
 
 // SuggestionsAPI serves supplier-portal reorder suggestion endpoints.
@@ -74,8 +77,16 @@ func (a *SuggestionsAPI) HandleList(w http.ResponseWriter, r *http.Request) {
 		status = SuggestionStatusOpen
 	}
 	skuSearch := strings.TrimSpace(r.URL.Query().Get("sku"))
+	sourceFilter, srcErr := ParseDemandSourcesQuery(r.URL.Query())
+	if srcErr != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+			"error":   "invalid_source",
+			"allowed": SourceStorePOS + "," + SourceWholesaleHistory,
+		})
+		return
+	}
 
-	rows, err := a.listSuggestions(r.Context(), sid, retailerID, status, skuSearch)
+	rows, err := a.listSuggestions(r.Context(), sid, retailerID, status, skuSearch, sourceFilter)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_suggestions_failed"})
 		return
@@ -244,10 +255,11 @@ var (
 	errRetailerLocationMissing  = errors.New("retailer_location_missing")
 )
 
-func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retailerID, status, skuSearch string) ([]SuggestionRow, error) {
+func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retailerID, status, skuSearch string, sourceFilter []string) ([]SuggestionRow, error) {
 	sql := `SELECT rs.RetailerId, rs.Sku, rs.SuggestedQty, rs.AdjustedDemand, rs.CurrentStock,
 	               rs.InFlightQty, rs.SuggestedByDate, rs.ComputedAt, rs.Status,
-	               r.Name AS RetailerName, p.Name AS SkuName
+	               r.Name AS RetailerName, p.Name AS SkuName,
+	               rs.SourcesJson, rs.SellThroughVel, rs.BaseDemand
 	        FROM ReorderSuggestions rs
 	        INNER JOIN (
 	          SELECT DISTINCT RetailerId FROM Orders WHERE SupplierId = @supplierId
@@ -267,6 +279,16 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 		sql += " AND (rs.Sku LIKE @sku OR p.Name LIKE @sku)"
 		params["sku"] = "%" + skuSearch + "%"
 	}
+	if len(sourceFilter) > 0 {
+		// OR match: SourcesJson contains any requested token as JSON string element.
+		parts := make([]string, 0, len(sourceFilter))
+		for i, src := range sourceFilter {
+			key := fmt.Sprintf("srcNeedle%d", i)
+			parts = append(parts, "rs.SourcesJson LIKE @"+key)
+			params[key] = `%"%` + src + `"%`
+		}
+		sql += " AND (" + strings.Join(parts, " OR ") + ")"
+	}
 	sql += " ORDER BY rs.ComputedAt DESC LIMIT 500"
 
 	iter := a.Spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
@@ -284,15 +306,32 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 		var sr SuggestionRow
 		var suggestedBy civil.Date
 		var computedAt time.Time
-		var retailerName, skuName spanner.NullString
+		var retailerName, skuName, sourcesJSON spanner.NullString
+		var stVel, baseDem spanner.NullFloat64
 		if err := row.Columns(
 			&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
 			&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
+			&sourcesJSON, &stVel, &baseDem,
 		); err != nil {
-			return nil, err
+			// Pre-migration schema without L3.3 columns
+			if err2 := row.Columns(
+				&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
+				&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
+			); err2 != nil {
+				return nil, err
+			}
 		}
 		sr.SuggestedByDate = suggestedBy.String()
 		sr.ComputedAt = computedAt.UTC().Format(time.RFC3339Nano)
+		if sourcesJSON.Valid {
+			sr.Sources = DecodeSourcesJSON(sourcesJSON.StringVal)
+		}
+		if stVel.Valid {
+			sr.SellThroughVel = stVel.Float64
+		}
+		if baseDem.Valid {
+			sr.BaseDemand = baseDem.Float64
+		}
 		if retailerName.Valid {
 			sr.RetailerName = retailerName.StringVal
 		}

@@ -23,6 +23,9 @@ var (
 	TopicFreezeLocks = topicFromEnv("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks")
 	// TopicInventoryImportEvents carries supplier bulk-import session lifecycle events.
 	TopicInventoryImportEvents = topicFromEnv("KAFKA_TOPIC_INVENTORY_IMPORT", "pegasusx-inventory-import")
+	// TopicDemand carries STORE_POS flywheel DEMAND_SIGNAL events for supplier subscribers.
+	// Dual-write from TopicMain when KAFKA_TOPIC_DUAL_WRITE=true (see DomainTopicForEventType).
+	TopicDemand = topicFromEnv("KAFKA_TOPIC_DEMAND", "pegasusx-demand")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -50,11 +53,16 @@ const (
 	EventStoreStockAdjusted    = "STORE_STOCK_ADJUSTED"
 	EventStoreStockTransferred = "STORE_STOCK_TRANSFERRED"
 	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
+	EventStoreStockClaimHold   = "STORE_STOCK_CLAIM_HOLD"
 	// Retail OS Phase 4
 	EventPosSessionOpened  = "POS_SESSION_OPENED"
 	EventPosSessionClosed  = "POS_SESSION_CLOSED"
 	EventPosSaleCompleted  = "POS_SALE_COMPLETED"
 	EventPosSaleVoided     = "POS_SALE_VOIDED"
+	// L3 sell-through flywheel
+	EventRetailerSellThroughUpdated = "RETAILER_SELL_THROUGH_UPDATED"
+	// B4 flywheel broadcast to suppliers (sku/qty/day only — no POS internals)
+	EventDemandSignal = "DEMAND_SIGNAL"
 	// Retail OS Phase 5
 	EventRetailerClockIn          = "RETAILER_CLOCK_IN"
 	EventRetailerClockOut         = "RETAILER_CLOCK_OUT"
@@ -292,6 +300,7 @@ const (
 	AggregateProduct               = "Product"
 	AggregateConditionReport       = "ConditionReport"
 	AggregateCreditProfile         = "CreditProfile"
+	AggregateDemandSignal          = "DemandSignal"
 )
 
 func topicFromEnv(key string, fallback string) string {

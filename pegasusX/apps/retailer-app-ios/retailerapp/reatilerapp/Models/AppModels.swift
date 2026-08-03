@@ -306,31 +306,206 @@ struct RetailerOrgMembersResponse: Codable {
 }
 
 struct FamilyMemberRequest: Encodable {
-    let nickname: String
+    let name: String
+    let phone: String?
     let photoUrl: String?
-    
+
     enum CodingKeys: String, CodingKey {
-        case nickname
+        case name
+        case phone
         case photoUrl = "photo_url"
     }
 }
 
 struct FamilyMemberResponse: Codable, Identifiable {
     let memberId: String
-    let retailerId: String
-    let nickname: String
+    let retailerId: String?
+    let name: String
+    let phone: String?
     let photoUrl: String?
-    let createdAt: String
-    
+    let createdAt: String?
+
     var id: String { memberId }
-    
+    /// Legacy alias used by older UI bindings.
+    var nickname: String { name }
+
     enum CodingKeys: String, CodingKey {
+        case name, phone
         case nickname
         case memberId = "member_id"
         case retailerId = "retailer_id"
         case photoUrl = "photo_url"
         case createdAt = "created_at"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        memberId = try c.decode(String.self, forKey: .memberId)
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId)
+        let decodedName = try c.decodeIfPresent(String.self, forKey: .name)
+        let decodedNick = try c.decodeIfPresent(String.self, forKey: .nickname)
+        name = decodedName ?? decodedNick ?? "Member"
+        phone = try c.decodeIfPresent(String.self, forKey: .phone)
+        photoUrl = try c.decodeIfPresent(String.self, forKey: .photoUrl)
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(memberId, forKey: .memberId)
+        try c.encodeIfPresent(retailerId, forKey: .retailerId)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(phone, forKey: .phone)
+        try c.encodeIfPresent(photoUrl, forKey: .photoUrl)
+        try c.encodeIfPresent(createdAt, forKey: .createdAt)
+    }
+}
+
+struct FamilyMembersListResponse: Codable {
+    let members: [FamilyMemberResponse]
+    let familyWrites: String?
+    let migrate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case members
+        case familyWrites = "family_writes"
+        case migrate
+    }
+}
+
+struct FamilyMigrateItem: Codable, Identifiable {
+    let memberId: String
+    let userId: String
+    let phone: String
+    let name: String
+    let retailerRole: String
+    let tempPassword: String?
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case phone, name
+        case memberId = "member_id"
+        case userId = "user_id"
+        case retailerRole = "retailer_role"
+        case tempPassword = "temp_password"
+    }
+}
+
+struct FamilyMigrateSkipped: Codable, Identifiable {
+    let memberId: String
+    let phone: String?
+    let reason: String
+
+    var id: String { memberId }
+
+    enum CodingKeys: String, CodingKey {
+        case phone, reason
+        case memberId = "member_id"
+    }
+}
+
+struct FamilyMigrateResult: Codable {
+    let retailerId: String
+    let migrated: [FamilyMigrateItem]
+    let skipped: [FamilyMigrateSkipped]
+    let familyRemaining: Int
+    let familyWrites: String
+
+    enum CodingKeys: String, CodingKey {
+        case migrated, skipped
+        case retailerId = "retailer_id"
+        case familyRemaining = "family_remaining"
+        case familyWrites = "family_writes"
+    }
+}
+
+struct AutoOrderSkip: Codable {
+    let sku: String?
+    let reason: String
+}
+
+struct AutoOrderPlacedOrder: Codable, Identifiable {
+    let orderId: String
+    let supplierId: String?
+    let lineCount: Int
+    let totalMinor: Int64?
+    let skus: [String]?
+
+    var id: String { orderId }
+
+    enum CodingKeys: String, CodingKey {
+        case skus
+        case orderId = "order_id"
+        case supplierId = "supplier_id"
+        case lineCount = "line_count"
+        case totalMinor = "total_minor"
+    }
+}
+
+struct AutoOrderRun: Codable, Identifiable {
+    let runId: String
+    let retailerId: String
+    let startedAt: String
+    let finishedAt: String?
+    let mode: String
+    let draftLines: Int
+    let placedLines: Int?
+    let placedOrders: [AutoOrderPlacedOrder]?
+    let skipped: [AutoOrderSkip]?
+    let status: String
+    let message: String?
+    let suggestionsSeen: Int?
+    let scheduleBucket: String?
+    let candidateSource: String?
+
+    var id: String { runId }
+
+    enum CodingKeys: String, CodingKey {
+        case mode, status, message, skipped
+        case runId = "run_id"
+        case retailerId = "retailer_id"
+        case startedAt = "started_at"
+        case finishedAt = "finished_at"
+        case draftLines = "draft_lines"
+        case placedLines = "placed_lines"
+        case placedOrders = "placed_orders"
+        case suggestionsSeen = "suggestions_seen"
+        case scheduleBucket = "schedule_bucket"
+        case candidateSource = "candidate_source"
+    }
+}
+
+struct AutoOrderRunsResponse: Codable {
+    let items: [AutoOrderRun]
+}
+
+struct RetailerReorderSuggestion: Codable, Identifiable {
+    let sku: String
+    let suggestedQty: Int64
+    let adjustedDemandPerDay: Double?
+    let currentStock: Int64?
+    let inFlightQty: Int64?
+    let status: String?
+    let sources: [String]?
+    let sellThroughVelocity: Double?
+    let baseDemandPerDay: Double?
+
+    var id: String { sku }
+
+    enum CodingKeys: String, CodingKey {
+        case sku, status, sources
+        case suggestedQty = "suggested_qty"
+        case adjustedDemandPerDay = "adjusted_demand_per_day"
+        case currentStock = "current_stock"
+        case inFlightQty = "in_flight_qty"
+        case sellThroughVelocity = "sell_through_velocity"
+        case baseDemandPerDay = "base_demand_per_day"
+    }
+}
+
+struct RetailerReorderSuggestionsResponse: Codable {
+    let items: [RetailerReorderSuggestion]
 }
 
 struct CartSyncItem: Codable {

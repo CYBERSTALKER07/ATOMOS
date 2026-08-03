@@ -105,6 +105,12 @@ struct AutoOrderView: View {
     @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @State private var pendingTarget: EnableTarget?
     @State private var localToggleStates: [String: Bool] = [:]
+    @State private var runs: [AutoOrderRun] = []
+    @State private var lastRun: AutoOrderRun?
+    @State private var running = false
+    @State private var runningMode: String?
+    @State private var placeConfirmOpen = false
+    @State private var reorderSuggestions: [RetailerReorderSuggestion] = []
 
     private enum EnableTarget {
         case global
@@ -145,6 +151,10 @@ struct AutoOrderView: View {
                             productCount: settings?.productOverrides.count ?? 0,
                             predictionCount: forecasts.count
                         ).slideIn(delay: 0)
+
+                        autoOrderWorkerCard.slideIn(delay: 0.02)
+
+                        reorderSuggestionsCard.slideIn(delay: 0.03)
                         
                         AutoOrderGlobalToggleCard(
                             globalAutoOrder: $globalAutoOrder,
@@ -292,6 +302,140 @@ struct AutoOrderView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var autoOrderWorkerCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            HStack {
+                Image(systemName: "play.circle.fill")
+                    .foregroundStyle(AppTheme.accent)
+                Text("Auto-order worker")
+                    .font(.system(.headline, design: .rounded))
+                Spacer()
+            }
+            Text("Draft stages cart lines (idempotent per SKU/day). Place creates real supplier orders when the server flag is on.")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: AppTheme.spacingSM) {
+                Button {
+                    Task { await runAutoOrder(mode: "draft") }
+                } label: {
+                    HStack {
+                        if running && runningMode == "draft" {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "play.fill")
+                        }
+                        Text(running && runningMode == "draft" ? "Drafting…" : "Draft now")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(running)
+
+                Button {
+                    placeConfirmOpen = true
+                } label: {
+                    HStack {
+                        if running && runningMode == "place" {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "cart.fill")
+                        }
+                        Text(running && runningMode == "place" ? "Placing…" : "Place now")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(running)
+            }
+            .confirmationDialog(
+                "Create real supplier orders?",
+                isPresented: $placeConfirmOpen,
+                titleVisibility: .visible
+            ) {
+                Button("Confirm place", role: .destructive) {
+                    Task { await runAutoOrder(mode: "place") }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Place mode creates real procurement orders (AUTO_ORDER). Requires primary location geo, place permission, and AUTO_ORDER_PLACE_ENABLED.")
+            }
+
+            if let lastRun {
+                let placed = lastRun.placedLines ?? 0
+                let via = lastRun.candidateSource.map { " · via \($0)" } ?? ""
+                Text("Latest: \(lastRun.mode) · draft \(lastRun.draftLines)\(placed > 0 ? " · placed \(placed)" : "") · \(lastRun.status)\(via)")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                if let message = lastRun.message {
+                    Text(message)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                ForEach(lastRun.placedOrders ?? []) { po in
+                    Text("\(po.orderId)\(po.supplierId.map { " · \($0)" } ?? "") · \(po.lineCount) lines")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            if runs.isEmpty {
+                Text("No runs yet. Enable auto-order and use Draft or Place.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                Text("Last runs")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                ForEach(runs.prefix(8)) { run in
+                    let p = run.placedLines ?? 0
+                    HStack {
+                        Text("\(run.scheduleBucket ?? String(run.startedAt.prefix(10))) · \(run.mode) · d\(run.draftLines)\(p > 0 ? " p\(p)" : "")")
+                            .font(.system(.caption2, design: .rounded))
+                        Spacer()
+                        Text(run.status)
+                            .font(.system(.caption2, design: .rounded, weight: .semibold))
+                            .foregroundStyle((run.status == "OK" || run.status == "PARTIAL") ? AppTheme.accent : AppTheme.warning)
+                    }
+                }
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
+    }
+
+    private var reorderSuggestionsCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            Text("Reorder suggestions")
+                .font(.system(.headline, design: .rounded))
+            Text("Sell-through aware OPEN suggestions (Store POS / Wholesale)")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+            if reorderSuggestions.isEmpty {
+                Text("No OPEN suggestions yet. POS sell-through and demand batch populate this list.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                ForEach(reorderSuggestions.prefix(12)) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(row.sku) · qty \(row.suggestedQty)\(row.currentStock.map { " · stock \($0)" } ?? "")")
+                            .font(.system(.subheadline, design: .rounded))
+                        DemandSourceChips(sources: row.sources)
+                        if let vel = row.sellThroughVelocity, vel > 0 {
+                            Text(String(format: "POS vel %.1f/d", vel))
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(AppTheme.textTertiary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    Divider()
+                }
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
+    }
+
     private func syncStatusBanner(_ message: String) -> some View {
         HStack(spacing: AppTheme.spacingSM) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -333,18 +477,73 @@ struct AutoOrderView: View {
         if settings == nil { isLoading = true }
         async let settingsReq: (AutoOrderSettings?, String?) = loadSettings()
         async let forecastsReq: ([DemandForecast], String?) = loadForecasts()
-        
+        async let runsReq: [AutoOrderRun] = loadRuns()
+        async let suggestionsReq: [RetailerReorderSuggestion] = loadSuggestions()
+
         let (fetchedSettings, settingsSyncMessage) = await settingsReq
         let (fetchedForecasts, forecastSyncMessage) = await forecastsReq
-        
+        let fetchedRuns = await runsReq
+        let fetchedSuggestions = await suggestionsReq
+
         withAnimation(AnimationConstants.fluid) {
             settings = fetchedSettings
             forecasts = fetchedForecasts
+            runs = fetchedRuns
+            reorderSuggestions = fetchedSuggestions
             globalAutoOrder = fetchedSettings?.globalEnabled ?? false
             localToggleStates.removeAll()
             syncMessage = settingsSyncMessage ?? forecastSyncMessage
             isLoading = false
         }
+    }
+
+    private func loadRuns() async -> [AutoOrderRun] {
+        do {
+            return try await api.getAutoOrderRuns().items
+        } catch {
+            return runs
+        }
+    }
+
+    private func loadSuggestions() async -> [RetailerReorderSuggestion] {
+        do {
+            return try await api.getReorderSuggestions().items
+        } catch {
+            return reorderSuggestions
+        }
+    }
+
+    private func runAutoOrder(mode: String) async {
+        running = true
+        runningMode = mode
+        do {
+            let run = try await api.runAutoOrder(mode: mode)
+            lastRun = run
+            let placed = run.placedLines ?? 0
+            if mode == "place" {
+                if placed > 0 {
+                    let orders = run.placedOrders?.count ?? 0
+                    syncMessage = "Place run: \(placed) line(s) in \(orders) order(s)" + (run.message.map { " — \($0)" } ?? "")
+                } else {
+                    syncMessage = "Place run \(run.status)\(run.message.map { ": \($0)" } ?? "")"
+                }
+            } else if run.status == "OK" || run.status == "PARTIAL" {
+                syncMessage = "Draft run complete: \(run.draftLines) line(s)" + (run.message.map { " — \($0)" } ?? "")
+            } else {
+                syncMessage = "Run \(run.status)\(run.message.map { ": \($0)" } ?? "")"
+            }
+            runs = await loadRuns()
+            reorderSuggestions = await loadSuggestions()
+        } catch {
+            syncMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Auto-order requires order.place (and manager role for place).",
+                offline: "Offline mode active. Reconnect and retry auto-order run.",
+                fallback: "Auto-order run failed. Check geo, flag, and permissions.",
+            )
+        }
+        running = false
+        runningMode = nil
     }
 
     private func loadSettings() async -> (AutoOrderSettings?, String?) {
