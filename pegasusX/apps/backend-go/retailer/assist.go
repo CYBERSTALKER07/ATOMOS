@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,10 +37,11 @@ type AssistTicketDTO struct {
 	CreatedByUserID   string `json:"created_by_user_id"`
 	ClaimedByUserID   string `json:"claimed_by_user_id,omitempty"`
 	CompletedByUserID string `json:"completed_by_user_id,omitempty"`
-	CreatedAt         string `json:"created_at,omitempty"`
-	ClaimedAt         string `json:"claimed_at,omitempty"`
-	CompletedAt       string `json:"completed_at,omitempty"`
-	SlaDueAt          string `json:"sla_due_at,omitempty"`
+	CreatedAt            string `json:"created_at,omitempty"`
+	ClaimedAt            string `json:"claimed_at,omitempty"`
+	CompletedAt          string `json:"completed_at,omitempty"`
+	SlaDueAt             string `json:"sla_due_at,omitempty"`
+	SlaBreachNotifiedAt  string `json:"sla_breach_notified_at,omitempty"` // C4.1 idempotent SLA alert
 }
 
 // HandleAssistTickets serves GET/POST /v1/retailer/assist/tickets
@@ -258,14 +261,20 @@ func (s *Service) transitionAssist(w http.ResponseWriter, r *http.Request, toSta
 }
 
 func (s *Service) assistSLAMinutes(ctx context.Context, retailerID string) int {
-	raw, err := s.LoadPackConfig(ctx, retailerID, PackCUSTOMERASSIST)
-	if err != nil || raw == nil {
+	// Env override (ops): ASSIST_SLA_MINUTES
+	if raw := strings.TrimSpace(os.Getenv("ASSIST_SLA_MINUTES")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 24*60 {
+			return n
+		}
+	}
+	cfg, err := s.LoadPackConfig(ctx, retailerID, PackCUSTOMERASSIST)
+	if err != nil || cfg == nil {
 		return defaultAssistSLAMinutes
 	}
-	if v, ok := raw["sla_minutes"].(float64); ok && v > 0 {
+	if v, ok := cfg["sla_minutes"].(float64); ok && v > 0 {
 		return int(v)
 	}
-	if v, ok := raw["sla_minutes"].(int); ok && v > 0 {
+	if v, ok := cfg["sla_minutes"].(int); ok && v > 0 {
 		return v
 	}
 	return defaultAssistSLAMinutes
@@ -322,7 +331,17 @@ func (s *Service) saveAssistTicket(ctx context.Context, t AssistTicketDTO) error
 			row["SlaDueAt"] = ts
 		}
 	}
+	if t.SlaBreachNotifiedAt != "" {
+		if ts, err := time.Parse(time.RFC3339Nano, t.SlaBreachNotifiedAt); err == nil {
+			row["SlaBreachNotifiedAt"] = ts
+		}
+	}
 	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerAssistanceTickets", row)})
+	// Pre-migration: column may be missing — retry without optional field
+	if err != nil && strings.Contains(err.Error(), "SlaBreachNotifiedAt") {
+		delete(row, "SlaBreachNotifiedAt")
+		_, err = s.spannerClient.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerAssistanceTickets", row)})
+	}
 	return err
 }
 
@@ -333,9 +352,17 @@ func (s *Service) getAssistTicket(ctx context.Context, ticketID string) (AssistT
 		t, ok := s.assistTickets[ticketID]
 		return t, ok, nil
 	}
+	// Prefer extended columns; fall back if SlaBreachNotifiedAt not migrated yet.
 	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerAssistanceTickets", spanner.Key{ticketID},
 		[]string{"TicketId", "RetailerId", "LocationId", "SectionId", "Note", "Status",
-			"CreatedByUserId", "ClaimedByUserId", "CompletedByUserId", "CreatedAt", "ClaimedAt", "CompletedAt", "SlaDueAt"})
+			"CreatedByUserId", "ClaimedByUserId", "CompletedByUserId", "CreatedAt", "ClaimedAt", "CompletedAt", "SlaDueAt", "SlaBreachNotifiedAt"})
+	if err != nil {
+		if strings.Contains(err.Error(), "SlaBreachNotifiedAt") {
+			row, err = s.spannerClient.Single().ReadRow(ctx, "RetailerAssistanceTickets", spanner.Key{ticketID},
+				[]string{"TicketId", "RetailerId", "LocationId", "SectionId", "Note", "Status",
+					"CreatedByUserId", "ClaimedByUserId", "CompletedByUserId", "CreatedAt", "ClaimedAt", "CompletedAt", "SlaDueAt"})
+		}
+	}
 	if err != nil {
 		if isNotFound(err) {
 			return AssistTicketDTO{}, false, nil
@@ -349,10 +376,14 @@ func decodeAssistRow(row *spanner.Row) (AssistTicketDTO, bool, error) {
 	var t AssistTicketDTO
 	var claimedBy, completedBy spanner.NullString
 	var created time.Time
-	var claimedAt, completedAt, slaDue spanner.NullTime
+	var claimedAt, completedAt, slaDue, slaNotified spanner.NullTime
+	// Extended (14 cols) then legacy (13 cols)
 	if err := row.Columns(&t.TicketID, &t.RetailerID, &t.LocationID, &t.SectionID, &t.Note, &t.Status,
-		&t.CreatedByUserID, &claimedBy, &completedBy, &created, &claimedAt, &completedAt, &slaDue); err != nil {
-		return AssistTicketDTO{}, false, err
+		&t.CreatedByUserID, &claimedBy, &completedBy, &created, &claimedAt, &completedAt, &slaDue, &slaNotified); err != nil {
+		if err2 := row.Columns(&t.TicketID, &t.RetailerID, &t.LocationID, &t.SectionID, &t.Note, &t.Status,
+			&t.CreatedByUserID, &claimedBy, &completedBy, &created, &claimedAt, &completedAt, &slaDue); err2 != nil {
+			return AssistTicketDTO{}, false, err
+		}
 	}
 	if claimedBy.Valid {
 		t.ClaimedByUserID = claimedBy.StringVal
@@ -369,6 +400,9 @@ func decodeAssistRow(row *spanner.Row) (AssistTicketDTO, bool, error) {
 	}
 	if slaDue.Valid {
 		t.SlaDueAt = slaDue.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if slaNotified.Valid {
+		t.SlaBreachNotifiedAt = slaNotified.Time.UTC().Format(time.RFC3339Nano)
 	}
 	return t, true, nil
 }
@@ -399,6 +433,45 @@ func (s *Service) listAssistTickets(ctx context.Context, retailerID, locationID,
 		}
 		return out, nil
 	}
+	sql := `SELECT TicketId, RetailerId, LocationId, SectionId, Note, Status,
+		CreatedByUserId, ClaimedByUserId, CompletedByUserId, CreatedAt, ClaimedAt, CompletedAt, SlaDueAt, SlaBreachNotifiedAt
+		FROM RetailerAssistanceTickets WHERE RetailerId = @rid`
+	params := map[string]any{"rid": retailerID}
+	if locationID != "" {
+		sql += ` AND LocationId = @lid`
+		params["lid"] = locationID
+	}
+	if status != "" {
+		sql += ` AND Status = @st`
+		params["st"] = status
+	}
+	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
+	params["lim"] = int64(limit)
+	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	defer iter.Stop()
+	var out []AssistTicketDTO
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Pre-migration: retry without SlaBreachNotifiedAt
+			if strings.Contains(err.Error(), "SlaBreachNotifiedAt") {
+				return s.listAssistTicketsLegacy(ctx, retailerID, locationID, status, limit)
+			}
+			return nil, err
+		}
+		t, _, err := decodeAssistRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+func (s *Service) listAssistTicketsLegacy(ctx context.Context, retailerID, locationID, status string, limit int) ([]AssistTicketDTO, error) {
 	sql := `SELECT TicketId, RetailerId, LocationId, SectionId, Note, Status,
 		CreatedByUserId, ClaimedByUserId, CompletedByUserId, CreatedAt, ClaimedAt, CompletedAt, SlaDueAt
 		FROM RetailerAssistanceTickets WHERE RetailerId = @rid`

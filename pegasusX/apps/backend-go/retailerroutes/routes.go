@@ -79,6 +79,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/stock/transfer", d.Service.HandleStockTransfer)
 		rr.Post("/v1/retailer/stock/adjust", d.Service.HandleStockAdjust)
 		rr.Post("/v1/retailer/stock/counts", d.Service.HandleStockCount)
+		// Wave C3.3 offline count version protocol
+		rr.Get("/v1/retailer/stock/counts/version", d.Service.HandleStockCountVersion)
+		rr.Post("/v1/retailer/stock/counts/commit", d.Service.HandleStockCountCommit)
 
 		// Retail OS Phase 4 POS
 		rr.Get("/v1/retailer/registers", d.Service.HandleRegisters)

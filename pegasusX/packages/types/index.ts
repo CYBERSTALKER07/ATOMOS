@@ -2845,6 +2845,30 @@ export interface RetailerHqSalesByLocationResponse {
   honest_empty?: boolean;
 }
 
+/** Wave C3.3 offline stock count version protocol. */
+export interface RetailerStockCountVersionResponse {
+  retailer_id: string;
+  location_id: string;
+  stock_bin: string;
+  version: number;
+}
+
+export interface RetailerStockCountCommitRequest {
+  location_id: string;
+  stock_bin?: string;
+  base_version: number;
+  lines: { sku_id?: string; sku?: string; counted_qty: number }[];
+  force?: boolean;
+  force_reason?: string;
+}
+
+export interface RetailerStockCountVersionConflict {
+  error: "COUNT_VERSION_CONFLICT";
+  server_version: number;
+  server_lines: { sku_id: string; counted_qty: number; on_hand: number }[];
+  message: string;
+}
+
 /** Retail OS Phase 3 store stock. */
 export type RetailerStockBin = "BACKROOM" | "FLOOR" | "QUARANTINE";
 

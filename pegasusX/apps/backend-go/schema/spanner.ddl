@@ -1823,6 +1823,31 @@ CREATE TABLE RetailerStockCounts (
 
 CREATE INDEX Idx_RetailerStockCounts_ByLocation ON RetailerStockCounts(LocationId, CreatedAt DESC);
 
+-- Wave C3.3: offline count version etag + force audit
+CREATE TABLE RetailerStockLocationVersions (
+  RetailerId  STRING(36)  NOT NULL,
+  LocationId  STRING(36)  NOT NULL,
+  StockBin    STRING(16)  NOT NULL,
+  Version     INT64       NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, LocationId, StockBin);
+
+CREATE TABLE RetailerStockCountForceAudit (
+  AuditId       STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  LocationId    STRING(36)  NOT NULL,
+  StockBin      STRING(16)  NOT NULL,
+  CountId       STRING(36)  NOT NULL,
+  ActorUserId   STRING(36)  NOT NULL,
+  BaseVersion   INT64       NOT NULL,
+  ServerVersion INT64       NOT NULL,
+  Reason        STRING(MAX),
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (AuditId);
+
+CREATE INDEX Idx_RetailerStockCountForceAudit_ByRetailer
+  ON RetailerStockCountForceAudit (RetailerId, CreatedAt DESC);
+
 -- Retail OS Phase 4: POS registers, sessions, sales
 CREATE TABLE RetailerRegisters (
   RegisterId  STRING(36)  NOT NULL,
@@ -2008,19 +2033,20 @@ CREATE INDEX Idx_RetailerStaffSections_BySection ON RetailerStaffSections(Sectio
 CREATE INDEX Idx_RetailerStaffSections_ByRetailer ON RetailerStaffSections(RetailerId, UserId);
 
 CREATE TABLE RetailerAssistanceTickets (
-  TicketId          STRING(36)  NOT NULL,
-  RetailerId        STRING(36)  NOT NULL,
-  LocationId        STRING(36)  NOT NULL,
-  SectionId         STRING(36)  NOT NULL,
-  Note              STRING(MAX) NOT NULL,
-  Status            STRING(16)  NOT NULL,
-  CreatedByUserId   STRING(36)  NOT NULL,
-  ClaimedByUserId   STRING(36),
-  CompletedByUserId STRING(36),
-  CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-  ClaimedAt         TIMESTAMP,
-  CompletedAt       TIMESTAMP,
-  SlaDueAt          TIMESTAMP,
+  TicketId              STRING(36)  NOT NULL,
+  RetailerId            STRING(36)  NOT NULL,
+  LocationId            STRING(36)  NOT NULL,
+  SectionId             STRING(36)  NOT NULL,
+  Note                  STRING(MAX) NOT NULL,
+  Status                STRING(16)  NOT NULL,
+  CreatedByUserId       STRING(36)  NOT NULL,
+  ClaimedByUserId       STRING(36),
+  CompletedByUserId     STRING(36),
+  CreatedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClaimedAt             TIMESTAMP,
+  CompletedAt           TIMESTAMP,
+  SlaDueAt              TIMESTAMP,
+  SlaBreachNotifiedAt   TIMESTAMP,
 ) PRIMARY KEY (TicketId);
 
 CREATE INDEX Idx_RetailerAssist_ByLocationStatus ON RetailerAssistanceTickets(LocationId, Status, CreatedAt DESC);

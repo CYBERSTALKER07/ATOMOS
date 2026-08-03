@@ -78,6 +78,8 @@ const (
 	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
 	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
 	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
+	// Wave C4.1: SLA breach (OPEN past SlaDueAt)
+	EventRetailerAssistSLABreached = "RETAILER_ASSIST_SLA_BREACHED"
 
 	// @Sync(DriverEvent)
 	EventDriverCreated             = "DRIVER_CREATED"

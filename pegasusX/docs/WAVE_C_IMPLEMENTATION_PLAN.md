@@ -50,8 +50,8 @@ This document is the runbook for agents and humans. Each PR has: goal, files, DD
 | ✅ | **C3.2** Hold UI + 24h sweeper | C3.1 | Low (done) |
 | ✅ | **C2.1** HQ daily tables + same-txn writers on sale/void | — | High (done) |
 | ✅ | **C2.2** HQ REST + desktop `/hq` | C2.1 | Med (done) |
-| 8 | **C3.3** Offline count `base_version` + 409 diff + force | C3.1 optional | High (stock) |
-| 9 | **C4.1** Assist SLA worker 15m + push/WS | assist CRUD exists | Med |
+| ✅ | **C3.3** Offline count `base_version` + 409 diff + force | — | High (done) |
+| ✅ | **C4.1** Assist SLA worker 15m + push/WS | assist CRUD exists | Med (done) |
 | 10 | **C0.gate** Marker gate + CORE single-org regression | all above flags off path | Gate |
 
 **Atomic RC:** Ship **C1.1 + C1.2** together. Do not enable `MULTI_ORG_LOGIN_ENABLED` until C1.3+C1.4 markers green.
@@ -485,7 +485,20 @@ Implemented in-tree:
 - Desktop `/hq` page + shell nav
 - Tests PASS
 
-**Next agent task:** **C3.3** offline count `base_version` + 409 protocol, **or C4** Assist SLA.
+### C3.3 status — DONE
+
+- Version etag per location+bin; 409 with server lines; force audit
+- Flag `OFFLINE_COUNT_ENABLED`
+- Tests PASS; DDL on SSMR when applied
+
+### C4.1 status — DONE
+
+- SLA sweep for OPEN tickets past `SlaDueAt`
+- Notif + outbox event once; `SlaBreachNotifiedAt` idempotency
+- Flag `ASSIST_SLA_ENABLED`; default SLA 15m
+- Worker wired in `runtime_workers.go`
+
+**Wave C code track (C1–C4.1) complete.** Next ops: commit + backend image roll; enable flags per pilot.
 
 ---
 

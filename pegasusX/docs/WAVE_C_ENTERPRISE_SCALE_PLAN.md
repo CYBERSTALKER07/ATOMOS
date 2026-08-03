@@ -342,4 +342,31 @@ C3 parked carts before full HQ UI: simpler, immediate operational value.
 | Property | `balanced`: sum(location net) = org net |
 | Tests | disabled 404, cashier forbidden, by-location balanced + local SKU |
 
-**Next:** C3.3 offline count protocol, or C4 Assist SLA.
+### C3.3 — Offline count version protocol (DONE 2026-08-13)
+
+| Item | Path / note |
+|------|-------------|
+| DDL | `20260813_retailer_stock_count_version.ddl` — location versions + force audit |
+| Version | Bumps on every `applyDelta` stock mutation |
+| APIs | `GET …/stock/counts/version`, `POST …/stock/counts/commit` |
+| 409 | `COUNT_VERSION_CONFLICT` + `server_version` + `server_lines` (on_hand) |
+| Force | MANAGER / OWNER / ADMIN only + audit row |
+| Flag | `OFFLINE_COUNT_ENABLED` default off → commit 404 |
+| Legacy | `POST /stock/counts` unchanged |
+| Tests | conflict, force deny/allow, matching version PASS |
+
+### C4.1 — Assist SLA worker (DONE 2026-08-14)
+
+| Item | Path / note |
+|------|-------------|
+| Worker | `SweepAssistSLA` + `RunAssistSLAWorker` (1m ticker) in `assist_sla.go` |
+| Wire | `runtime_workers.go` (no-op when flag off) |
+| SLA | Default **15 min** (`ASSIST_SLA_MINUTES` or pack `sla_minutes`) |
+| Channel | In-app notif (push+WS fabric); SMS stub if `ASSIST_SLA_SMS=1` |
+| Idempotent | `SlaBreachNotifiedAt` column + memory fallback |
+| Event | `RETAILER_ASSIST_SLA_BREACHED` |
+| Flag | `ASSIST_SLA_ENABLED` default off |
+| DDL | `20260814_assist_sla_notified.ddl` applied on SSMR |
+| Tests | disabled noop + notify once PASS |
+
+**Wave C implementation track complete for C1–C4.1.** Remaining: image roll, pilot flags, optional e2e markers gate.

@@ -874,6 +874,8 @@ func (s *Service) applyDelta(ctx context.Context, retailerID, locationID, bin, s
 			Qty: delta, MovementType: moveType, RefType: refType, RefID: refID,
 			ActorUserID: actor, Note: note, CreatedAt: s.now().UTC().Format(time.RFC3339Nano),
 		})
+		// C3.3: bump location inventory etag (caller holds s.mu)
+		s.bumpStockLocationVersionLocked(retailerID, locationID, bin)
 		return nil
 	}
 
@@ -945,6 +947,10 @@ func (s *Service) applyDelta(ctx context.Context, retailerID, locationID, bin, s
 		}
 		return buf.Flush(txn)
 	})
+	if err == nil {
+		// C3.3: location inventory etag (best-effort separate write if version table present)
+		s.bumpStockLocationVersion(ctx, retailerID, locationID, bin)
+	}
 	return err
 }
 

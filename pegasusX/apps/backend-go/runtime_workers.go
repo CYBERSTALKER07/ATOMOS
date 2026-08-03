@@ -102,6 +102,9 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.RetailerService != nil {
 		go app.RetailerService.RunPosHoldsSweeper(ctx, 15*time.Minute)
 		slog.Info("retailer pos holds sweeper started")
+		// Wave C4.1: assist SLA breach worker (no-op when ASSIST_SLA_ENABLED off).
+		go app.RetailerService.RunAssistSLAWorker(ctx, time.Minute)
+		slog.Info("retailer assist sla worker started")
 	}
 }
 
