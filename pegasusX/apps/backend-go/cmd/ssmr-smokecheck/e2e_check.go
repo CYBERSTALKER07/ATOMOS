@@ -190,8 +190,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
 			return fmt.Errorf("global-pay webhook: %w", err)
 		}
+		fmt.Println("PX_E2E_PAYMENT_CARD_SUCCESS_OK")
 	} else {
 		fmt.Println("PX_E2E_GLOBAL_PAY_WEBHOOK_SKIPPED")
+		fmt.Println("PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED")
 	}
 	if err := runWarehouseFleetLiveMapE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse fleet live map: %w", err)
@@ -266,9 +268,36 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runFleetReassignGuardE2E(ctx, client, base, cookie, dispatchHint); err != nil {
 		return fmt.Errorf("fleet reassign guard: %w", err)
 	}
-	// Quantity negotiation product-deferred — do not exercise propose/resolve.
-	// runNegotiationE2E remains in e2e_driver.go for a future re-enable.
-	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
+	// L4 quantity negotiations — env QUANTITY_NEGOTIATION_ENABLED (default off → skip).
+	if envTruthy("QUANTITY_NEGOTIATION_ENABLED") {
+		negOrderID, nerr := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+		if nerr != nil {
+			return fmt.Errorf("negotiation order create: %w", nerr)
+		}
+		if err := runNegotiationE2E(ctx, client, base, cfg, supplierID, cookie, negOrderID); err != nil {
+			return fmt.Errorf("negotiation e2e: %w", err)
+		}
+		fmt.Println("PX_E2E_NEGOTIATION_OK")
+	} else {
+		fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
+	}
+
+	// Wave C3.3 / C4.1 flag-gated markers
+	if err := runOfflineCountE2E(ctx, client, base, cfg, supplierID, retailerToken); err != nil {
+		return fmt.Errorf("offline count: %w", err)
+	}
+	if err := runAssistSLAE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("assist sla: %w", err)
+	}
+	if err := runAutoOrderDraftE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("auto-order draft: %w", err)
+	}
+	if err := runClaimStoreQuarantineE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie); err != nil {
+		return fmt.Errorf("claim store quarantine: %w", err)
+	}
+	if err := runSoliqSandboxE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("soliq sandbox: %w", err)
+	}
 
 	// Wave C1.4 multi-org auth markers (flag off = single-org + skip picker/switch)
 	if err := runMultiOrgAuthE2E(ctx, client, base, cfg, supplierID); err != nil {

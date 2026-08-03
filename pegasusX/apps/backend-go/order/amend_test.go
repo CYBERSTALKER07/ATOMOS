@@ -211,22 +211,20 @@ func TestConfirmOffloadEmitsOriginalAmountForAmendedOrder(t *testing.T) {
 
 func TestOrderAmendableStatusCompleted(t *testing.T) {
 	now := time.Now()
-	
-	// Within 24 hours
-	order := Order{Status: StatusCompleted, UpdatedAt: now.Add(-12 * time.Hour)}
-	if !orderAmendableRecord(order) {
-		t.Fatalf("expected order to be amendable within 24 hours of StatusCompleted")
+	reasons := []string{"DAMAGED"}
+
+	// Within window
+	if !orderPostDeliveryAmendable(StatusCompleted, now.Add(-12*time.Hour), now, reasons) {
+		t.Fatalf("expected order to be amendable within post-delivery window")
 	}
 
-	// Almost 24 hours
-	order = Order{Status: StatusCompleted, UpdatedAt: now.Add(-24 * time.Hour + time.Second)}
-	if !orderAmendableRecord(order) {
-		t.Fatalf("expected order to be amendable exactly 24 hours after StatusCompleted")
+	// Outside window
+	if orderPostDeliveryAmendable(StatusCompleted, now.Add(-72*time.Hour), now, reasons) {
+		t.Fatalf("expected order not to be amendable outside post-delivery window")
 	}
 
-	// More than 24 hours
-	order = Order{Status: StatusCompleted, UpdatedAt: now.Add(-24 * time.Hour - time.Second)}
-	if orderAmendableRecord(order) {
-		t.Fatalf("expected order not to be amendable >24 hours after StatusCompleted")
+	// Wrong reason
+	if orderPostDeliveryAmendable(StatusCompleted, now.Add(-1*time.Hour), now, []string{"PRICE"}) {
+		t.Fatalf("expected non-post-delivery reason to be rejected")
 	}
 }

@@ -105,6 +105,9 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		// Wave C4.1: assist SLA breach worker (no-op when ASSIST_SLA_ENABLED off).
 		go app.RetailerService.RunAssistSLAWorker(ctx, time.Minute)
 		slog.Info("retailer assist sla worker started")
+		// L2.4: auto-order draft worker (no-op when AUTO_ORDER_WORKER_ENABLED off).
+		go app.RetailerService.RunAutoOrderWorker(ctx, 15*time.Minute)
+		slog.Info("retailer auto-order worker started")
 	}
 }
 

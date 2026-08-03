@@ -71,6 +71,7 @@ import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
 import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
 import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
 import com.pegasusx.retailer.ui.screens.settings.AssistScreen
+import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
 import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
@@ -422,6 +423,7 @@ fun RetailerNavigation(
                             onTeamClick = { navController.navigate("TEAM") },
                             onLocationsClick = { navController.navigate("LOCATIONS") },
                             onStoreStockClick = { navController.navigate("STORE_STOCK") },
+                            onLocalSkusClick = { navController.navigate("LOCAL_SKUS") },
                             onPosClick = { navController.navigate("POS") },
                             onShiftsClick = { navController.navigate("SHIFTS") },
                             onSectionsClick = { navController.navigate("SECTIONS") },
@@ -463,6 +465,11 @@ fun RetailerNavigation(
                 composable("STORE_STOCK") {
                     Box(Modifier.fillMaxSize()) {
                         StoreStockScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("LOCAL_SKUS") {
+                    Box(Modifier.fillMaxSize()) {
+                        LocalSkusScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("SAVED_CARDS") {

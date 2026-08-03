@@ -808,10 +808,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		warehouseNodeID = "wh-demo-1"
 	}
 
-	// Fake H3 / network graph telemetry — off by default in SSMR/prod (honesty).
-	if strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true") {
+	// Fake H3 / network graph telemetry — never on SSMR/production even if flag set.
+	envName := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
+	ctSim := strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true")
+	if ctSim && envName != "ssmr" && envName != "production" && envName != "prod" {
 		simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
 		log.Info("control tower telemetry simulator enabled")
+	} else if ctSim {
+		log.Warn("control tower simulator ignored on non-dev env", "env", envName)
 	}
 
 	var driverRepo driver.Repository
