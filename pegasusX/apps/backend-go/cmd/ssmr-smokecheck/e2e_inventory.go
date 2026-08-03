@@ -270,6 +270,26 @@ func setOrderConfirmationStatus(ctx context.Context, cfg *bootstrap.Config, orde
 	return err
 }
 
+// ensureOrderDispatchable forces Status=PENDING so warehouse dispatch preview/execute
+// includes the order in undispatched_orders (long e2e runs can leave earlier creates out of pool).
+func ensureOrderDispatchable(ctx context.Context, cfg *bootstrap.Config, orderID string) error {
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":   orderID,
+				"Status":    "PENDING",
+				"UpdatedAt": spanner.CommitTimestamp,
+			}),
+		})
+	})
+	return err
+}
+
 func runOrderAcceptanceClosedE2E(
 	ctx context.Context,
 	client *http.Client,

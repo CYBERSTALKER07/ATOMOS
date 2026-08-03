@@ -159,6 +159,15 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse fleet mgmt: %w", err)
 	}
+	// Fresh dispatchable order immediately before optimizer/dispatch spine. The earlier
+	// checkout-path order can leave the undispatched pool during long e2e setup.
+	orderID, err = createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("dispatch-spine order create: %w", err)
+	}
+	if err := ensureOrderDispatchable(ctx, cfg, orderID); err != nil {
+		return fmt.Errorf("ensure order dispatchable: %w", err)
+	}
 	if err := runWarehouseOptimizerSourceE2E(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse optimizer preview: %w", err)
 	}
