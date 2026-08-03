@@ -8,6 +8,8 @@ export type CatalogProduct = {
   currency: string;
   unit: string;
   unit_volume_vu: number;
+  stackable?: boolean;
+  max_stack_height?: number;
   units_per_case?: number;
   sale_unit?: SaleUnit;
   barcode?: string;

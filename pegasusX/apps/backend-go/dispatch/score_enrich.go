@@ -33,10 +33,7 @@ func EnrichScoreSignals(ctx context.Context, client *spanner.Client, orders []Di
 		return ids
 	}())
 
-	scores, err := lookupDriverScores(ctx, client, driverIDs)
-	if err != nil {
-		return outOrders, outFleet, err
-	}
+	scores, _ := lookupDriverScores(ctx, client, driverIDs)
 	for i := range outFleet {
 		if s, ok := scores[outFleet[i].DriverID]; ok {
 			outFleet[i].DriverScore = s
@@ -44,10 +41,7 @@ func EnrichScoreSignals(ctx context.Context, client *spanner.Client, orders []Di
 	}
 
 	// Shop-closed risk: fraction of recent shop-closed outcomes per retailer (best-effort).
-	risk, err := lookupShopClosedRisk(ctx, client, retailerIDs)
-	if err != nil {
-		return outOrders, outFleet, err
-	}
+	risk, _ := lookupShopClosedRisk(ctx, client, retailerIDs)
 	// Priority: prefer higher TotalMinor as a stable proxy when segment PriorityScore unavailable.
 	for i := range outOrders {
 		if outOrders[i].PriorityScore <= 0 {

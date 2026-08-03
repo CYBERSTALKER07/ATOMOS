@@ -111,6 +111,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
 	}
+	if err := runDispatchScoreE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("dispatch score e2e: %w", err)
+	}
 	if err := runWarehouseDispatchSettingsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch settings: %w", err)
 	}

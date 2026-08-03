@@ -136,6 +136,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	volSources := dispatch.CountVolumeSources(dispatchRows)
 	response := map[string]any{
 		"preview_ready":               true,
 		"undispatched_orders":         undispatched,
@@ -143,6 +144,10 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		"unavailable_drivers":         unavailable,
 		"window_constrained_count":    windowConstrained,
 		"fleet_effective_capacity_vu": fleetEffectiveCapacityVU(solveDrivers, fleetCtx),
+		"volume_source": map[string]any{
+			"catalog":     volSources.Catalog,
+			"default_1_0": volSources.Default1_0,
+		},
 	}
 	if len(previewBody.OrderIDs) > 0 {
 		response["selected_orders_volume_vu"] = sumOrderVolumeVU(selectedRows)

@@ -26,6 +26,11 @@ func BuildSolveJob(ctx context.Context, supplierID, homeNodeID string, depot dis
 		Orders:     orders,
 		Fleet:      fleet,
 		CellLookup: dispatch.H3CellLookup,
+		Score: dispatch.ScoreContext{
+			DepotLat:   depot.Lat,
+			DepotLng:   depot.Lng,
+			CellLookup: dispatch.H3CellLookup,
+		},
 	}
 }
 

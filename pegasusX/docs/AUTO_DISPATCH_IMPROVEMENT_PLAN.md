@@ -1,9 +1,11 @@
 # Auto-dispatch — assessment + ordered improvement plan
 
-**Status:** Ready for next execution (not started)  
+**Status:** D1–D6 implemented (2026-08-04)  
 **Date:** 2026-08-04  
 **Scope:** PegasusX / ATOMOS dispatch engine (pure `dispatch` package, Smart Fit, freeze-lock, AI optimizer fallback)  
 **Related:** warehouse auto-dispatch worker, `optimizerclient` / `ai-worker`, H3 + VU binpack, continuous replan paths
+
+**Shipped corrections:** Pure path is H3 + scored BinPack + 2-opt (not K-Means). AI preferred for batches ≥12 (`DISPATCH_AI_MIN_STOPS`). `UnitVolumeVU` dual-read + `volume_source` preview honesty. Replan uses same local-search engine with freeze + cooldown. Hierarchical H3 behind `DISPATCH_HIERARCHICAL_H3`.
 
 This document freezes a design review of the current auto-dispatch feature and a concrete, ordered plan to close the honest weaknesses **without** breaking architectural invariants.
 

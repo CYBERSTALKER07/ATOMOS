@@ -628,6 +628,8 @@ CREATE TABLE Products (
   SaleUnit           STRING(16)    NOT NULL DEFAULT ('UNIT'),
   UnitsPerPack       INT64,
   UnitVolumeVU       FLOAT64       NOT NULL DEFAULT (1.0),
+  Stackable          BOOL          NOT NULL DEFAULT (TRUE),
+  MaxStackHeight     INT64         NOT NULL DEFAULT (0),
   Barcode            STRING(32),
   HandlingClass      STRING(20)    NOT NULL DEFAULT ('GENERAL'),
   RequiresColdChain  BOOL          NOT NULL DEFAULT (FALSE),

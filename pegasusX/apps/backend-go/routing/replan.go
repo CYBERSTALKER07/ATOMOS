@@ -3,18 +3,26 @@ package routing
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
+
+// ErrDispatchLocked is returned when warehouse freeze-lock blocks replan.
+var ErrDispatchLocked = errors.New("warehouse dispatch locked")
 
 // ReplanProblem represents the input to the solver.
 type ReplanProblem struct {
 	RouteID        string
 	RemainingStops []StopContext
+	DepotLat       float64
+	DepotLng       float64
 }
 
 // StopContext holds stop data for the solver.
@@ -23,9 +31,9 @@ type StopContext struct {
 	Lat           float64
 	Lng           float64
 	SequenceIndex int64
+	VolumeVU      float64
 }
 
-// sequenceUnchanged compares the old and new sequences.
 func sequenceUnchanged(stops []StopContext, newSeq []string) bool {
 	if len(stops) != len(newSeq) {
 		return false
@@ -38,7 +46,6 @@ func sequenceUnchanged(stops []StopContext, newSeq []string) bool {
 	return true
 }
 
-// spannerTxnBuffer implements outbox.TxnBuffer.
 type spannerTxnBuffer struct {
 	events []outbox.Event
 }
@@ -59,26 +66,46 @@ func outboxMutation(e outbox.Event) *spanner.Mutation {
 	})
 }
 
-// ReplanRoute performs continuous replan/dynamic resequencing of remaining stops.
+// ReplanRoute performs continuous replan of remaining stops using local search.
+// Respects warehouse freeze-lock, replan cooldown, and max replans/day.
 func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor string) error {
+	if s == nil || s.spannerClient == nil {
+		return fmt.Errorf("routing service unavailable")
+	}
+
+	whID, depotLat, depotLng := s.loadManifestMeta(ctx, routeID)
+	if whID != "" {
+		if frozen, why := s.isWarehouseFrozen(ctx, whID); frozen {
+			return fmt.Errorf("%w: %s", ErrDispatchLocked, why)
+		}
+	}
+
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// Load Route and remaining stops (using SupplierTruckManifests as Route table)
-		// For now we'll just read the route to ensure it exists.
-		row, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{routeID}, []string{"State", "ReplanCount"})
+		row, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{routeID},
+			[]string{"State", "ReplanCount", "LastReplannedAt"})
 		if err != nil {
 			return err
 		}
 		var state string
 		var replanCount int64
-		if err := row.Columns(&state, &replanCount); err != nil {
+		var lastReplanned spanner.NullTime
+		if err := row.Columns(&state, &replanCount, &lastReplanned); err != nil {
 			return err
 		}
 
 		if state == "COMPLETED" || state == "CANCELLED" {
 			return nil
 		}
+		if replanCount >= maxReplansPerDay() {
+			return nil
+		}
+		if lastReplanned.Valid {
+			cooldown := time.Duration(replanCooldownSeconds()) * time.Second
+			if time.Since(lastReplanned.Time) < cooldown {
+				return nil
+			}
+		}
 
-		// Read ManifestOrders (Remaining Stops)
 		stmt := spanner.Statement{
 			SQL: `SELECT mo.OrderId, mo.SequenceIndex, o.Lat, o.Lng
 			      FROM ManifestOrders mo
@@ -90,7 +117,7 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		iter := txn.Query(ctx, stmt)
 		var stops []StopContext
 		var oldSeq []string
-		
+
 		err = iter.Do(func(r *spanner.Row) error {
 			var sc StopContext
 			if err := r.Columns(&sc.OrderID, &sc.SequenceIndex, &sc.Lat, &sc.Lng); err != nil {
@@ -103,40 +130,41 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		if err != nil {
 			return err
 		}
-
 		if len(stops) <= 1 {
-			return nil // nothing to replan
+			return nil
 		}
 
-		// Build problem for OR-Tools / heuristic
 		problem := ReplanProblem{
 			RouteID:        routeID,
 			RemainingStops: stops,
+			DepotLat:       depotLat,
+			DepotLng:       depotLng,
+		}
+		solver := s.solver
+		if solver == nil {
+			solver = &DispatchLocalSearchSolver{DepotLat: depotLat, DepotLng: depotLng}
+		} else if _, ok := solver.(*DispatchLocalSearchSolver); ok {
+			solver = &DispatchLocalSearchSolver{DepotLat: depotLat, DepotLng: depotLng}
 		}
 
-		newSequence, err := s.solver.Solve(problem)
+		newSequence, err := solver.Solve(problem)
 		if err != nil {
 			return err
 		}
-
 		if sequenceUnchanged(stops, newSequence) {
 			return nil
 		}
 
 		now := time.Now().UTC()
 		var muts []*spanner.Mutation
-
-		// Apply new sequence numbers
 		for i, orderID := range newSequence {
 			muts = append(muts, spanner.UpdateMap("ManifestOrders", map[string]any{
 				"ManifestId":    routeID,
 				"OrderId":       orderID,
-				"SequenceIndex": int64(i + 1), // 1-based index or just sequential
+				"SequenceIndex": int64(i + 1),
 				"UpdatedAt":     spanner.CommitTimestamp,
 			}))
 		}
-
-		// Update Route.LastReplannedAt, ReplanCount, ReplanReason
 		muts = append(muts, spanner.UpdateMap("SupplierTruckManifests", map[string]any{
 			"ManifestId":      routeID,
 			"LastReplannedAt": spanner.CommitTimestamp,
@@ -145,17 +173,14 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 			"UpdatedAt":       spanner.CommitTimestamp,
 		}))
 
-		// Write RouteReplanLog
 		replanID := uuid.New().String()
 		oldBytes, _ := json.Marshal(oldSeq)
 		newBytes, _ := json.Marshal(newSequence)
-		
 		muts = append(muts, spanner.Insert("ManifestReplanLog",
 			[]string{"ManifestId", "ReplanId", "Reason", "OldSequenceJson", "NewSequenceJson", "TriggeredBy", "CreatedAt"},
 			[]any{routeID, replanID, reason, oldBytes, newBytes, actor, spanner.CommitTimestamp},
 		))
 
-		// Emit outbox: route.replanned
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateRoute, routeID, events.TopicMain, events.RouteEvent{
 			BaseEvent: events.BaseEvent{Type: "route.replanned", Timestamp: now.Format(time.RFC3339Nano)},
@@ -166,12 +191,62 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		for _, e := range buf.events {
 			muts = append(muts, outboxMutation(e))
 		}
-
 		return txn.BufferWrite(muts)
 	})
-	
-	// Trigger ETA recalculation for remaining stops
-	// After every successful replan -> call existing ETA recalculation.
-	// This would typically be an async job or outbox processor, but we can do it here if synchronous.
 	return err
+}
+
+func (s *Service) loadManifestMeta(ctx context.Context, routeID string) (warehouseID string, depotLat, depotLng float64) {
+	stmt := spanner.Statement{
+		SQL:    `SELECT WarehouseId FROM SupplierTruckManifests WHERE ManifestId = @rid`,
+		Params: map[string]any{"rid": routeID},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return "", 0, 0
+	}
+	_ = row.Columns(&warehouseID)
+	if warehouseID == "" {
+		return "", 0, 0
+	}
+	wstmt := spanner.Statement{
+		SQL:    `SELECT COALESCE(Lat, 0), COALESCE(Lng, 0) FROM Warehouses WHERE WarehouseId = @wid`,
+		Params: map[string]any{"wid": warehouseID},
+	}
+	witer := s.spannerClient.Single().Query(ctx, wstmt)
+	defer witer.Stop()
+	wrow, err := witer.Next()
+	if err != nil {
+		return warehouseID, 0, 0
+	}
+	_ = wrow.Columns(&depotLat, &depotLng)
+	return warehouseID, depotLat, depotLng
+}
+
+func (s *Service) isWarehouseFrozen(ctx context.Context, warehouseID string) (bool, string) {
+	stmt := spanner.Statement{
+		SQL: `SELECT EntityType, EntityId FROM WarehouseDispatchLocks
+		      WHERE WarehouseId = @wid`,
+		Params: map[string]any{"wid": warehouseID},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return false, ""
+		}
+		if err != nil {
+			return false, ""
+		}
+		var entityType, entityID string
+		if err := row.Columns(&entityType, &entityID); err != nil {
+			return false, ""
+		}
+		if entityType == "WAREHOUSE" && (entityID == warehouseID || entityID == "warehouse-scope") {
+			return true, "warehouse_dispatch_locked"
+		}
+	}
 }

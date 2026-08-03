@@ -28,9 +28,28 @@ func TestOrderVolumeVU_FallsBackToProductLookup(t *testing.T) {
 		t.Fatal(err)
 	}
 	lookup := map[string]float64{"prod-1": 4.0}
-	got := OrderVolumeVU(raw, lookup)
+	got, src := OrderVolumeVUWithSource(raw, lookup)
 	if got != 8.0 {
 		t.Fatalf("OrderVolumeVU = %v want 8", got)
+	}
+	if src != VolumeSourceCatalog {
+		t.Fatalf("source=%s want catalog", src)
+	}
+}
+
+func TestOrderVolumeVU_DefaultSource(t *testing.T) {
+	raw, err := json.Marshal([]map[string]any{
+		{"sku": "prod-1", "quantity": 2},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, src := OrderVolumeVUWithSource(raw, nil)
+	if got != 2.0 {
+		t.Fatalf("got %v", got)
+	}
+	if src != VolumeSourceDefault10 {
+		t.Fatalf("source=%s", src)
 	}
 }
 
