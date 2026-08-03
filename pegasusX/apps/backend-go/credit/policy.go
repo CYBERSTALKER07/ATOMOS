@@ -659,7 +659,6 @@ func (s *PolicyService) EnableRelationship(ctx context.Context, supplierID, reta
 			SupplierID:       supplierID,
 			CreditLimitMinor: limit,
 			Status:           StatusActive,
-			RiskTier:         RiskTierMedium,
 		}, actorUserID, "relationship_enable")
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{

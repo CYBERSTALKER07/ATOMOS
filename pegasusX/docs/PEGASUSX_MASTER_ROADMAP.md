@@ -49,7 +49,7 @@ flowchart TD
 | Work | Source | Exit |
 |------|--------|------|
 | Global Pay SUCCESS + Firebase real OTP | L1 | Card SUCCESS marker; OTP on device; no emulator in release |
-| Remove **all** credit risk scoring | Credit-score removal | No worker/table/RiskTier product use; CREDIT_LEAVE = status + available only |
+| Remove **all** credit risk scoring | Credit-score removal | **Done** — no worker / score desk; CREDIT_LEAVE = status + available only (`RetailerCreditScores` table orphaned, no writers) |
 | Kill supplier `sup-demo-1` CT/Compliance | E1 | Session-scoped supplier; honest empty |
 | Apply shop-closed Spanner DDL on SSMR | E3 | Parity-ledger not Pending; e2e grace fields |
 | GCS evidence fail-closed (no placehold.co in SSMR/prod) | G16/G21 | Media ticket OK hard-fail |
