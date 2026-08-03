@@ -52,7 +52,7 @@ flowchart TD
 | Remove **all** credit risk scoring | Credit-score removal | **Done** — no worker / score desk; CREDIT_LEAVE = status + available only (`RetailerCreditScores` table orphaned, no writers) |
 | Kill supplier `sup-demo-1` CT/Compliance | E1 | Session-scoped supplier; honest empty |
 | Apply shop-closed Spanner DDL on SSMR | E3 | Parity-ledger not Pending; e2e grace fields |
-| GCS evidence fail-closed (no placehold.co in SSMR/prod) | G16/G21 | Media ticket OK hard-fail |
+| GCS evidence fail-closed (no placehold.co in SSMR/prod) | G16/G21 | **Done** — fail-closed ticket + URI reject; `PX_E2E_CLAIM_MEDIA_GCS_OK` |
 
 **Parallel OK:** docs/plan link cleanup only.
 
@@ -64,9 +64,9 @@ flowchart TD
 
 | Work | Source | Exit |
 |------|--------|------|
-| TEAM claim auth (`retailer_org_id`) + `claim.file` | G6/G7 / RS0 | Staff can file; cashier cannot |
-| Claim → QUARANTINE hold + approve/reject dispositions | G8/G24 / RS3 | Spanner txn; sellable stock correct |
-| Receive excludes driver-excepted qty | G9 / RS2 | No putaway of withdrawn units |
+| TEAM claim auth (`retailer_org_id`) + `claim.file` | G6/G7 / RS0 | **Done** — org resolve + `claim.file`; cashier 403 |
+| Claim → QUARANTINE hold + approve/reject dispositions | G8/G24 / RS3 | **Done (fail-closed)** — hold error → compensate REJECTED; single-Apply txn follow-up |
+| Receive excludes driver-excepted qty | G9 / RS2 | **Done** — `ReceivableQty` caps delivered − residual − open claims |
 | Idempotency on file claim + client keys | G11/G25 | Double-submit same `claim_id` |
 | Stock “Request return” UX (3 clients) | G1 | Order picker + reasons + photo |
 | Supplier/WH claim window settings + order snapshot | G3/G10 / RS1 | 8/24/custom; retailer countdown |
@@ -83,7 +83,7 @@ Detail: [`RETAILER_RECEIVE_STOCK_CLAIMS_PLAN.md`](./RETAILER_RECEIVE_STOCK_CLAIM
 
 | Work | Source | Exit |
 |------|--------|------|
-| Per-supplier delivery perimeter Redis keys | E2 | Checkout uses order’s supplier key |
+| Per-supplier delivery perimeter Redis keys | E2 | **Design+helper ready** — see `E2_PER_SUPPLIER_PERIMETER_DESIGN.md`; prod still global key |
 | Zone publish API + supplier topology UI | E2 | Two suppliers, two perimeters, smoke green |
 | Control Tower playbooks staging (manual) | E12 | After E1; AUTO_EXECUTE off |
 | ConfigMap claim/CN/evidence flags explicit | G19 | No silent defaults |

@@ -1,11 +1,12 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-04 (Phase A: E1/E3 + credit-score removal)*
+*Last Updated: 2026-08-04 (Phase A GCS + Phase B RS0/G8/G9 + E2 design)*
 
 ## 1. Code completeness (this closure)
 
 Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
 
+- **2026-08-04 Phase A/B** GCS evidence fail-closed (`REQUIRE_INFRA_ADAPTERS` / prod|ssmr|staging — no `placehold.co`; `invalid_evidence_uri`; e2e `PX_E2E_CLAIM_MEDIA_GCS_OK`). RS0 `claim.file` + `ResolveRetailerOrgID`. G8 hold fail-closed + compensate REJECTED. G9 `ReceivableQty` excludes residual/open claims. E2 design doc + `PerimeterKeyForSupplier` (prod still global key). Ops: WI SA needs `roles/iam.serviceAccountTokenCreator` for signBlob — see owner secrets handoff.
 - **2026-08-04 Phase A** Credit risk scoring removed (no score worker / `RiskTier` gates / suggested-limit desk); CREDIT_LEAVE = status + available. E1 session-scoped CT/Compliance; E3 shop-closed DDL wired on SSMR+staging + CI schema-drift gate.
 - **P0** Shop-closed CANCELLED/RETURN paths release inventory in-txn
 - **P1** `LogisticsException` contracts + CLAIM_* WS/inbox fanout; gen-contracts strict green

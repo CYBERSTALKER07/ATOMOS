@@ -363,9 +363,6 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		req.ClaimType == ClaimTypeTemperature || req.ClaimType == ClaimTypeTamper
 	hasPhoto := false
 	for _, e := range req.Evidences {
-		if e.EvidenceType != EvidencePhoto {
-			continue
-		}
 		uri := strings.TrimSpace(e.URI)
 		if uri == "" {
 			continue
@@ -373,20 +370,16 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		if err := storage.ValidateEvidenceURI(uri); err != nil {
 			return Claim{}, ErrInvalidEvidenceURI
 		}
-		hasPhoto = true
+		et := e.EvidenceType
+		if et == "" {
+			et = EvidencePhoto
+		}
+		if et == EvidencePhoto {
+			hasPhoto = true
+		}
 	}
 	if needsPhoto && !hasPhoto {
 		return Claim{}, ErrEvidenceRequired
-	}
-	// Non-photo evidence URIs must also be real GCS objects (no placehold.co).
-	for _, e := range req.Evidences {
-		uri := strings.TrimSpace(e.URI)
-		if uri == "" || e.EvidenceType == EvidencePhoto {
-			continue
-		}
-		if err := storage.ValidateEvidenceURI(uri); err != nil {
-			return Claim{}, ErrInvalidEvidenceURI
-		}
 	}
 
 	o, ok, err := s.orders.GetOrder(ctx, orderID)

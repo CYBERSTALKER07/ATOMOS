@@ -1271,18 +1271,21 @@ func (s *Service) loadOrderLinesForReceive(ctx context.Context, retailerID, orde
 	return lines, nil
 }
 
-// ReceivableQty is delivered (else ordered) minus driver-excepted residual and open claim qty.
-// Never returns negative.
+// ReceivableQty caps putaway to units actually left with the retailer.
+// When delivered_qty is set it already excludes remaining/offload (Delivered+Remaining==Quantity).
+// Otherwise subtract remaining/offload from ordered. Always subtract open logistics claim qty.
 func ReceivableQty(ordered, delivered, remaining, offload, openClaimed int64) int64 {
-	base := ordered
+	var base int64
 	if delivered > 0 {
 		base = delivered
+	} else {
+		excepted := remaining
+		if offload > excepted {
+			excepted = offload
+		}
+		base = ordered - excepted
 	}
-	excepted := remaining
-	if offload > excepted {
-		excepted = offload
-	}
-	out := base - excepted - openClaimed
+	out := base - openClaimed
 	if out < 0 {
 		return 0
 	}
