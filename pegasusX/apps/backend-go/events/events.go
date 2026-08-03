@@ -23,10 +23,6 @@ var (
 	TopicFreezeLocks = topicFromEnv("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks")
 	// TopicInventoryImportEvents carries supplier bulk-import session lifecycle events.
 	TopicInventoryImportEvents = topicFromEnv("KAFKA_TOPIC_INVENTORY_IMPORT", "pegasusx-inventory-import")
-	// TopicLogisticsExceptions carries operations exceptions (missing items, damage).
-	TopicLogisticsExceptions = topicFromEnv("KAFKA_TOPIC_LOGISTICS_EXCEPTIONS", "logistics.exceptions.v1")
-	// TopicLogisticsTelemetry carries real-time driver tracking updates.
-	TopicLogisticsTelemetry = topicFromEnv("KAFKA_TOPIC_LOGISTICS_TELEMETRY", "logistics.telemetry.v1")
 	// TopicDemand carries STORE_POS flywheel DEMAND_SIGNAL events for supplier subscribers.
 	// Dual-write from TopicMain when KAFKA_TOPIC_DUAL_WRITE=true (see DomainTopicForEventType).
 	TopicDemand = topicFromEnv("KAFKA_TOPIC_DEMAND", "pegasusx-demand")
@@ -82,7 +78,8 @@ const (
 	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
 	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
 	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
-	EventRetailerAssistTicketSLABreached = "RETAILER_ASSIST_TICKET_SLA_BREACHED"
+	// Wave C4.1: SLA breach (OPEN past SlaDueAt)
+	EventRetailerAssistSLABreached = "RETAILER_ASSIST_SLA_BREACHED"
 
 	// @Sync(DriverEvent)
 	EventDriverCreated             = "DRIVER_CREATED"

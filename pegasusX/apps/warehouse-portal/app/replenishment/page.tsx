@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
-import { ReplenishmentList } from '@/components/replenishment/ReplenishmentList';
+import { parseForecastConfidence } from '@/lib/forecast-confidence';
+import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -62,11 +63,6 @@ export default function ReplenishmentPage() {
     }
   }, [load]);
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   const openInsights = insights.filter((i) => i.status === 'OPEN');
   const criticalCount = insights.filter((i) => i.urgency === 'CRITICAL').length;
   const warningCount = insights.filter((i) => i.urgency === 'WARNING' || i.urgency === 'HIGH').length;
@@ -118,23 +114,15 @@ export default function ReplenishmentPage() {
           />
         ) : (
           <PageSection title="Insight queue" description="Approve to create factory transfer rows; dismiss to clear." className="mt-6">
-<<<<<<< HEAD
-            <ReplenishmentList insights={insights} actingId={actingId} runAction={runAction} />
-=======
             <ReplenishmentList
               insights={insights}
               actingId={actingId}
               onApprove={(id) => void runAction(id, 'approve')}
               onDismiss={(id) => void runAction(id, 'dismiss')}
             />
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
           </PageSection>
         )}
       </PageChrome>
     </PageTransition>
   );
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

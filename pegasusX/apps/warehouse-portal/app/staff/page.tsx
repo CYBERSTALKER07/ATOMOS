@@ -8,11 +8,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
-<<<<<<< HEAD
-import { StaffList } from '@/components/staff/StaffList';
-=======
 import StaffList from '@/components/staff/StaffList';
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import type {
   CreateWarehouseStaffRequest,
   CreateWarehouseStaffResponse,

@@ -10,17 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-<<<<<<< HEAD
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
-import com.pegasusx.warehouse.data.model.DispatchPreview
-import com.pegasusx.warehouse.data.model.Vehicle
-=======
 import com.pegasusx.warehouse.data.model.DispatchPreview
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
 import com.pegasusx.warehouse.ui.components.OrderOpsCard
@@ -28,44 +21,6 @@ import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.screens.vehicles.FleetTruckDispatchCard
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
-<<<<<<< HEAD
-import java.util.Locale
-
-private const val DISPATCH_TETRIS_BUFFER = 0.95
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DispatchOrderList(
-    fleetVehicles: List<Vehicle>,
-    preview: DispatchPreview,
-    dispatchMode: String,
-    onDispatchModeChange: (String) -> Unit,
-    selectedDriverId: String,
-    onSelectedDriverIdChange: (String) -> Unit,
-    selectedOrderIds: Set<String>,
-    onSelectedOrderIdsChange: (Set<String>) -> Unit,
-    vehicleReasons: Map<String, String>,
-    onVehicleReasonsChange: (Map<String, String>) -> Unit,
-    vehicleNotes: Map<String, String>,
-    onVehicleNotesChange: (Map<String, String>) -> Unit,
-    mutatingFleetVehicleId: String?,
-    onMarkUnavailable: (Vehicle, String, String?) -> Unit,
-    onRestoreVehicle: (Vehicle) -> Unit,
-    onVehicleClick: (String) -> Unit,
-    driverMenuExpanded: Boolean,
-    onDriverMenuExpandedChange: (Boolean) -> Unit,
-    executing: Boolean,
-    onManualDispatch: () -> Unit,
-    onSmartDispatchConfirm: () -> Unit,
-    opsActingId: String?,
-    onOrderClick: (String) -> Unit,
-    onProposeDelay: (String) -> Unit,
-    onRejectOrder: (String) -> Unit
-) {
-    val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-=======
 
 private const val DISPATCH_TETRIS_BUFFER = 0.95
 
@@ -108,7 +63,6 @@ fun DispatchOrderList(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Fleet trucks grid ──
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         if (fleetVehicles.isNotEmpty()) {
             WarehouseSectionTitle(
                 title = "Fleet trucks (${fleetVehicles.size})",
@@ -133,16 +87,6 @@ fun DispatchOrderList(
                         customNote = customNote,
                         mutating = mutatingFleetVehicleId == vehicle.vehicleId,
                         onReasonChange = { reason ->
-<<<<<<< HEAD
-                            onVehicleReasonsChange(vehicleReasons + (vehicle.vehicleId to reason))
-                        },
-                        onNoteChange = { note ->
-                            onVehicleNotesChange(vehicleNotes + (vehicle.vehicleId to note))
-                        },
-                        onMarkUnavailable = {
-                            val note = if (selectedReason == "OTHER") customNote.trim().takeIf { it.isNotEmpty() } else null
-                            onMarkUnavailable(vehicle, selectedReason, note)
-=======
                             onVehicleReasonChange(vehicle.vehicleId, reason)
                         },
                         onNoteChange = { note ->
@@ -151,7 +95,6 @@ fun DispatchOrderList(
                         onMarkUnavailable = {
                             val note = if (selectedReason == "OTHER") customNote.trim().takeIf { it.isNotEmpty() } else null
                             onMarkVehicleUnavailable(vehicle, selectedReason, note ?: "")
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                         },
                         onRestore = { onRestoreVehicle(vehicle) },
                         onOpenDetail = { onVehicleClick(vehicle.vehicleId) },
@@ -159,11 +102,8 @@ fun DispatchOrderList(
                 }
             }
         }
-<<<<<<< HEAD
-=======
 
         // ── Empty state ──
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         if (preview.undispatchedOrders.isEmpty()) {
             PegasusStatePane(
                 kind = PegasusStateKind.Empty,
@@ -180,13 +120,9 @@ fun DispatchOrderList(
                     selectedDriver.freeVolumeVu * DISPATCH_TETRIS_BUFFER
                 else -> (selectedDriver?.maxVolumeVu ?: 0.0) * DISPATCH_TETRIS_BUFFER
             }
-<<<<<<< HEAD
-            Column(modifier = Modifier.fillMaxSize()) {
-=======
 
             Column(modifier = Modifier.fillMaxSize()) {
                 // ── Dispatch-mode selector & driver picker ──
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -211,65 +147,6 @@ fun DispatchOrderList(
                         )
                     }
                     if (dispatchMode == "manual") {
-<<<<<<< HEAD
-                        Box {
-                            OutlinedButton(
-                                onClick = { onDriverMenuExpandedChange(true) },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    selectedDriver?.let { "${it.name} · ${it.maxVolumeVu} VU max" }
-                                        ?: "Select truck / driver",
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = driverMenuExpanded,
-                                onDismissRequest = { onDriverMenuExpandedChange(false) },
-                            ) {
-                                preview.availableDrivers.forEach { driver ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "${driver.name} · ${driver.vehicleLabel.ifBlank { driver.truckStatus }}",
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        },
-                                        onClick = {
-                                            onSelectedDriverIdChange(driver.driverId)
-                                            onDriverMenuExpandedChange(false)
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                        if (selectedDriver != null) {
-                            Text(
-                                "Loaded ${"%.1f".format(selectedVolume)} / ${"%.1f".format(effectiveMax)} VU effective",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    if (dispatchMode == "manual") {
-                        Button(
-                            onClick = { onManualDispatch() },
-                            enabled = !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (executing) "Dispatching…" else "Manual (${selectedOrderIds.size})")
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = { onSmartDispatchConfirm() },
-                            enabled = !executing && preview.undispatchedOrders.isNotEmpty() && preview.availableDrivers.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Smart Dispatch")
-                        }
-=======
                     Box {
                         OutlinedButton(
                             onClick = { onDriverMenuExpandChange(true) },
@@ -327,7 +204,6 @@ fun DispatchOrderList(
                     ) {
                         Text("Smart Dispatch")
                     }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                     }
                     if (preview.fleetEffectiveCapacityVu > 0) {
                         Text(
@@ -337,96 +213,14 @@ fun DispatchOrderList(
                         )
                     }
                 }
-<<<<<<< HEAD
-=======
 
                 // ── Orders grid ──
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 340.dp),
                     contentPadding = PaddingValues(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 ) {
-<<<<<<< HEAD
-                    items(preview.undispatchedOrders, key = { it.orderId }) { o ->
-                        OrderOpsCard(
-                            retailerName = o.retailerName,
-                            orderId = o.orderId,
-                            state = "PENDING",
-                            amountLabel = fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
-                            showOpsMenu = true,
-                            detailOpenMode = OrderDetailOpenMode.Double,
-                            canDelay = true,
-                            canReject = true,
-                            enabled = opsActingId != o.orderId,
-                            onOpenDetail = { onOrderClick(o.orderId) },
-                            onDelay = { onProposeDelay(o.orderId) },
-                            onReject = { onRejectOrder(o.orderId) },
-                            leadingContent = {
-                                Checkbox(
-                                    checked = selectedOrderIds.contains(o.orderId),
-                                    onCheckedChange = { checked ->
-                                        onSelectedOrderIdsChange(
-                                            if (checked) {
-                                                selectedOrderIds + o.orderId
-                                            } else {
-                                                selectedOrderIds - o.orderId
-                                            }
-                                        )
-                                    },
-                                )
-                            },
-                        )
-                    }
-                    if (preview.windowConstrainedCount > 0 || preview.optimizerWarnings.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                WarehouseSectionTitle("Smart suggest preview")
-                                if (preview.windowConstrainedCount > 0) {
-                                    Text(
-                                        "${preview.windowConstrainedCount} order(s) constrained by receiving window",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                    )
-                                }
-                                preview.optimizerSource?.let { source ->
-                                    Text("Source: $source", style = MaterialTheme.typography.bodySmall)
-                                }
-                                preview.optimizerWarnings.forEach { warning ->
-                                    Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
-                                }
-                            }
-                        }
-                    }
-                    if (preview.proposedRoutes.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                WarehouseSectionTitle("Smart suggest routes (${preview.proposedRoutes.size})")
-                                DispatchPreviewMapLibre(routes = preview.proposedRoutes)
-                            }
-                        }
-                        items(preview.proposedRoutes.size) { index ->
-                            val route = preview.proposedRoutes[index]
-                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
-                                    Text(
-                                        route.driverName ?: route.driverId ?: "Driver",
-                                        style = MaterialTheme.typography.titleSmall,
-                                    )
-                                    Text(
-                                        "${route.stopCount ?: route.orderIds.size} stops · ${"%.1f".format(route.volumeVu ?: 0.0)} VU",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        route.orderIds.joinToString(" → "),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-=======
                 items(preview.undispatchedOrders, key = { it.orderId }) { o ->
                     OrderOpsCard(
                         retailerName = o.retailerName,
@@ -501,15 +295,11 @@ fun DispatchOrderList(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                             }
                         }
                     }
                 }
-<<<<<<< HEAD
-=======
                 }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             }
         }
     }

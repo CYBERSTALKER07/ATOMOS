@@ -2845,6 +2845,30 @@ export interface RetailerHqSalesByLocationResponse {
   honest_empty?: boolean;
 }
 
+/** Wave C3.3 offline stock count version protocol. */
+export interface RetailerStockCountVersionResponse {
+  retailer_id: string;
+  location_id: string;
+  stock_bin: string;
+  version: number;
+}
+
+export interface RetailerStockCountCommitRequest {
+  location_id: string;
+  stock_bin?: string;
+  base_version: number;
+  lines: { sku_id?: string; sku?: string; counted_qty: number }[];
+  force?: boolean;
+  force_reason?: string;
+}
+
+export interface RetailerStockCountVersionConflict {
+  error: "COUNT_VERSION_CONFLICT";
+  server_version: number;
+  server_lines: { sku_id: string; counted_qty: number; on_hand: number }[];
+  message: string;
+}
+
 /** Retail OS Phase 3 store stock. */
 export type RetailerStockBin = "BACKROOM" | "FLOOR" | "QUARANTINE";
 
@@ -2913,33 +2937,6 @@ export interface RetailerStockCountRequest {
   stock_bin?: RetailerStockBin | string;
   commit?: boolean;
   lines: { sku: string; counted_qty: number }[];
-}
-
-export interface RetailerStockCountVersionResponse {
-  location_id: string;
-  stock_bin: string;
-  version: number;
-}
-
-export interface RetailerStockCountCommitRequest {
-  location_id?: string;
-  stock_bin?: RetailerStockBin | string;
-  base_version: number;
-  force?: boolean;
-  lines: { sku_id?: string; sku?: string; counted_qty: number }[];
-}
-
-export interface RetailerStockCountConflictResponse {
-  error: "COUNT_VERSION_CONFLICT";
-  server_version: number;
-  server_lines: Array<{ sku_id: string; counted_qty: number; on_hand: number }>;
-  message: string;
-}
-
-export interface RetailerStockCountCommitResponse {
-  count_id: string;
-  status: string;
-  new_version: number;
 }
 
 /** Retail OS Phase 4 POS */
@@ -3125,7 +3122,6 @@ export interface RetailerAssistTicket {
   claimed_at?: string;
   completed_at?: string;
   sla_due_at?: string;
-  sla_breached_at?: string;
 }
 
 export interface RetailerAssistTicketsResponse {
@@ -4238,7 +4234,6 @@ export type WsEvent =
   | WsEventEnvelope<"COMMAND_DISPATCHED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_RECEIVED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_SETTLED", CommandLifecycle>
-  | WsEventEnvelope<"RETAILER_ASSIST_TICKET_SLA_BREACHED", { ticket_id: string; retailer_id?: string; location_id?: string; section_id?: string }>
   | WsEventEnvelope<"SYSTEM_APP_OUTDATED", { minimum_version: string }>;
 
 // ── Warehouse portal / desktop (fleet, supply detail, live WS) ──

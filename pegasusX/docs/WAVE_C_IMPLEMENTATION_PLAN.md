@@ -50,8 +50,8 @@ This document is the runbook for agents and humans. Each PR has: goal, files, DD
 | ✅ | **C3.2** Hold UI + 24h sweeper | C3.1 | Low (done) |
 | ✅ | **C2.1** HQ daily tables + same-txn writers on sale/void | — | High (done) |
 | ✅ | **C2.2** HQ REST + desktop `/hq` | C2.1 | Med (done) |
-| 8 | **C3.3** Offline count `base_version` + 409 diff + force | C3.1 optional | High (stock) | ✅ DONE |
-| 9 | **C4.1** Assist SLA worker 15m + push/WS | assist CRUD exists | Med | ✅ DONE |
+| ✅ | **C3.3** Offline count `base_version` + 409 diff + force | — | High (done) |
+| ✅ | **C4.1** Assist SLA worker 15m + push/WS | assist CRUD exists | Med (done) |
 | 10 | **C0.gate** Marker gate + CORE single-org regression | all above flags off path | Gate |
 
 **Atomic RC:** Ship **C1.1 + C1.2** together. Do not enable `MULTI_ORG_LOGIN_ENABLED` until C1.3+C1.4 markers green.
@@ -485,70 +485,20 @@ Implemented in-tree:
 - Desktop `/hq` page + shell nav
 - Tests PASS
 
-**Next agent task:** **C0.gate** marker gate + CORE single-org regression with all Wave C flags off.
+### C3.3 status — DONE
 
----
+- Version etag per location+bin; 409 with server lines; force audit
+- Flag `OFFLINE_COUNT_ENABLED`
+- Tests PASS; DDL on SSMR when applied
 
-## 17. Cloud / DevOps runbook (C3.3 + C4.1)
+### C4.1 status — DONE
 
-### Pre-flight
+- SLA sweep for OPEN tickets past `SlaDueAt`
+- Notif + outbox event once; `SlaBreachNotifiedAt` idempotency
+- Flag `ASSIST_SLA_ENABLED`; default SLA 15m
+- Worker wired in `runtime_workers.go`
 
-```bash
-cd apps/backend-go
-go test ./retailer/ -count=1 -run 'OfflineCount|AssistSLA'
-MULTI_ORG_LOGIN_ENABLED=false POS_HOLDS_ENABLED=false HQ_ANALYTICS_ENABLED=false \
-OFFLINE_COUNT_ENABLED=false ASSIST_SLA_ENABLED=false go test ./retailer/ -count=1
-```
-
-### DDL apply (SSMR)
-
-```bash
-export PHASE0_SPANNER_PROJECT=pegasus-503013
-export PHASE0_SPANNER_INSTANCE=pegasusx-ssmr-spanner
-export PHASE0_SPANNER_DATABASE=pegasusx-ssmr-db
-# Apply:
-#   20260813_wave_c_offline_count.ddl
-#   20260813_wave_c_assist_sla.ddl
-```
-
-### Image build + roll
-
-```bash
-TAG="ssmr-wave-c-$(git rev-parse --short HEAD)"
-gcloud builds submit --config=cloudbuild.backend.yaml \
-  --substitutions=_TAG="$TAG",_REPO=pegasusx-ssmr-images \
-  --project=pegasus-503013 .
-IMG="asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go:$TAG"
-kubectl -n pegasusx-ssmr set image deploy/backend-go backend-go="$IMG"
-kubectl -n pegasusx-ssmr set image deploy/backend-go-worker backend-go-worker="$IMG"
-kubectl -n pegasusx-ssmr rollout status deploy/backend-go
-```
-
-### Pilot flags (one at a time)
-
-| Order | Flag | Notes |
-|------:|------|-------|
-| 1 | `OFFLINE_COUNT_ENABLED=true` | 1–2 pilot locations |
-| 2 | `ASSIST_SLA_ENABLED=true` + `ASSIST_SLA_MINUTES=15` | CUSTOMER_ASSIST floors |
-| 3 | `HQ_ANALYTICS_ENABLED`, `POS_HOLDS_ENABLED` | per prior plan |
-| 4 | `MULTI_ORG_LOGIN_ENABLED` + allowlist | last |
-
-```bash
-kubectl -n pegasusx-ssmr set env deployment/backend-go OFFLINE_COUNT_ENABLED=true
-kubectl -n pegasusx-ssmr set env deployment/backend-go-worker OFFLINE_COUNT_ENABLED=true
-kubectl -n pegasusx-ssmr rollout status deployment/backend-go
-export PUBLIC_BASE_URL=https://api-ssmr.pegasusx.app
-cd apps/backend-go && go run ./cmd/ssmr-smokecheck
-```
-
-### C3.3 / C4.1 status — DONE
-
-- `offline_count.go` + routes `GET counts/version`, `POST counts/commit`
-- `assist_sla_worker.go` + `runtime_workers.go` ticker
-- Migrations `20260813_wave_c_offline_count.ddl`, `20260813_wave_c_assist_sla.ddl`
-- E2E: `e2e_offline_count.go`, `e2e_assist_sla.go`
-- Desktop: stock 409 UI + assist SLA display
-- Markers in `contracts/ssmr_ecosystem_markers.json` → `wave_c_stock_assist`
+**Wave C code track (C1–C4.1) complete.** Next ops: commit + backend image roll; enable flags per pilot.
 
 ---
 

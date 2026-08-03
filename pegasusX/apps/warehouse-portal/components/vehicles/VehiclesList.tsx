@@ -3,16 +3,12 @@ import type { WarehouseFleetVehicle } from '@pegasusx/types';
 import { formatUnavailableReason, vehicleStatusLabel } from '@/lib/vehicle-fleet';
 import Icon from '@/components/Icon';
 
-<<<<<<< HEAD
-export function VehiclesList({ vehicles, loading }: { vehicles: WarehouseFleetVehicle[]; loading: boolean }) {
-=======
 interface VehiclesListProps {
   vehicles: WarehouseFleetVehicle[];
   loading: boolean;
 }
 
 export function VehiclesList({ vehicles, loading }: VehiclesListProps) {
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   if (!loading && vehicles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-(--muted)">

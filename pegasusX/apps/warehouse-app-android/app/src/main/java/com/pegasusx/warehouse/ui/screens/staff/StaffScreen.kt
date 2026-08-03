@@ -71,25 +71,6 @@ fun StaffScreen(
             )
         },
     ) { innerPadding ->
-<<<<<<< HEAD
-        when {
-            loading && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("No staff members", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            else -> StaffList(
-                staff = staff,
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            )
-        }
-=======
         StaffList(
             staff = staff,
             loading = loading,
@@ -97,7 +78,6 @@ fun StaffScreen(
             onRetry = { load() },
             modifier = Modifier.padding(innerPadding)
         )
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     }
 
     if (showCreate) {

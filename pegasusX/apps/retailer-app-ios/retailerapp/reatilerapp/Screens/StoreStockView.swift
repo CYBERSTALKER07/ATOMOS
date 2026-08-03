@@ -7,10 +7,6 @@ struct StoreStockView: View {
     @State private var orderId = ""
     @State private var sku = ""
     @State private var qty = "1"
-    @State private var countSku = ""
-    @State private var countQty = "0"
-    @State private var countBin = "FLOOR"
-    @State private var countVersion: Int64 = 0
     @State private var busy = false
 
     private let api = APIClient.shared
@@ -39,19 +35,6 @@ struct StoreStockView: View {
                     .disabled(busy || sku.isEmpty)
                 Button("Adjust BACKROOM by qty") { Task { await adjust() } }
                     .disabled(busy || sku.isEmpty)
-            }
-            Section("Count (versioned)") {
-                TextField("SKU", text: $countSku)
-                TextField("Counted qty", text: $countQty)
-                Picker("Bin", selection: $countBin) {
-                    Text("FLOOR").tag("FLOOR")
-                    Text("BACKROOM").tag("BACKROOM")
-                }
-                Text("Base version: \(countVersion)")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Button("Commit count") { Task { await commitCount(force: false) } }
-                    .disabled(busy || countSku.isEmpty || locationId.isEmpty)
             }
             Section("Balances") {
                 ForEach(rows) { row in
@@ -85,11 +68,6 @@ struct StoreStockView: View {
                     onHand: $0.onHand,
                     available: $0.available ?? $0.onHand
                 )
-            }
-            if !locationId.isEmpty {
-                if let ver = try? await api.getStockCountVersion(locationId: locationId, stockBin: countBin) {
-                    countVersion = ver.version
-                }
             }
         } catch {
             banner = error.localizedDescription
@@ -135,25 +113,6 @@ struct StoreStockView: View {
                 qtyDelta: Int64(qty) ?? 0
             )
             banner = "Adjusted"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-
-    private func commitCount(force: Bool) async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.commitStockCount(
-                locationId: locationId,
-                stockBin: countBin,
-                baseVersion: countVersion,
-                sku: countSku,
-                countedQty: Int64(countQty) ?? 0,
-                force: force
-            )
-            banner = force ? "Count force-committed" : "Count committed"
             await load()
         } catch {
             banner = error.localizedDescription

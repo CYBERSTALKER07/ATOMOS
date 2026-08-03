@@ -36,11 +36,6 @@ struct AssistView: View {
                     ForEach(tickets) { t in
                         VStack(alignment: .leading, spacing: 6) {
                             Text("\(t.status) · \(t.note)")
-                            if let due = t.slaDueAt {
-                                Text("SLA due \(due.prefix(16))\(t.slaBreachedAt != nil ? " · breached" : "")")
-                                    .font(.caption)
-                                    .foregroundStyle(t.slaBreachedAt != nil ? .red : AppTheme.textSecondary)
-                            }
                             HStack {
                                 if t.status == "OPEN" {
                                     Button("Claim") { Task { await act(id: t.id, action: "claim") } }
@@ -66,13 +61,7 @@ struct AssistView: View {
             if sectionId == nil { sectionId = sections.first?.id }
             let list = try await api.getAssistTickets()
             tickets = list.items.map {
-                AssistRowIOS(
-                    id: $0.ticketId,
-                    note: $0.note,
-                    status: $0.status,
-                    slaDueAt: $0.slaDueAt,
-                    slaBreachedAt: $0.slaBreachedAt
-                )
+                AssistRowIOS(id: $0.ticketId, note: $0.note, status: $0.status)
             }
         } catch {
             banner = error.localizedDescription
@@ -111,6 +100,4 @@ struct AssistRowIOS: Identifiable {
     let id: String
     let note: String
     let status: String
-    let slaDueAt: String?
-    let slaBreachedAt: String?
 }

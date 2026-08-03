@@ -5,11 +5,8 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
-<<<<<<< HEAD
-=======
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import VelocityGauge from './VelocityGauge';
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import AnalyticsChartGrid from '@/components/analytics/AnalyticsChartGrid';
 
 interface AnalyticsData {
@@ -172,10 +169,7 @@ export default function AnalyticsPage() {
         ) : null}
       </div>
 
-<<<<<<< HEAD
-=======
       {/* Analytics Charts */}
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       <AnalyticsChartGrid dailySeries={dailySeries} fmtCurrency={fmtCurrency} />
 
       {/* Top Products */}

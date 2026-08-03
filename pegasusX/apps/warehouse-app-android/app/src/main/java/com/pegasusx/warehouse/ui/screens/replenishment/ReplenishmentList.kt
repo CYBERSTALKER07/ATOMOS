@@ -46,11 +46,7 @@ fun ReplenishmentList(
 }
 
 @Composable
-<<<<<<< HEAD
-private fun InsightCard(
-=======
 internal fun InsightCard(
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     insight: ReplenishmentInsight,
     busy: Boolean,
     onApprove: () -> Unit,
@@ -112,11 +108,7 @@ internal fun InsightCard(
     }
 }
 
-<<<<<<< HEAD
-private fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, reasonCode: String?): String {
-=======
 internal fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, reasonCode: String?): String {
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     if (breakdown == null || breakdown.isEmpty()) {
         return reasonCode?.replace('_', ' ') ?: "Threshold breach"
     }

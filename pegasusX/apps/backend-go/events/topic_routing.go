@@ -49,7 +49,7 @@ func DispatcherConsumerTopics() []string {
 	}
 	seen := make(map[string]struct{}, 4)
 	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime, TopicLogisticsExceptions, TopicLogisticsTelemetry} {
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -87,7 +87,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventNegotiationProposed,
 		EventNegotiationResolved, EventPaymentRequired, EventPaymentCleared, EventPaymentFailed,
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
-		EventSplitPaymentCreated,
+		EventMissingItemsReported, EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
 		EventOrderForceCompleted, EventCashShortfall, EventCashOverage:
 		return TopicOrders
@@ -102,8 +102,6 @@ func DomainTopicForEventType(eventType string) string {
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
-	case EventMissingItemsReported:
-		return TopicLogisticsExceptions
 	case EventClaimFiled, EventClaimResolved, EventLogisticsExceptionReported,
 		EventReverseLogisticsRequired:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions

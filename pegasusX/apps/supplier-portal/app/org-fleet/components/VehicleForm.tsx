@@ -1,26 +1,3 @@
-<<<<<<< HEAD
-"use client";
-
-import { useState } from "react";
-import { supplierFleetVehicleCreateKey } from "@pegasusx/api-client";
-import { createSupplierApi } from "@/lib/api";
-import { SupplierTopologyResponse, SupplierFleetVehicleCreateRequest, HomeNodeType } from "@pegasusx/types";
-import {
-  defaultVehicleForm,
-  VehicleFormState,
-  supplierScopeId,
-  toErrorMessage,
-  StatusText,
-  isErrorMessage,
-  nodeOptionsFor,
-} from "./utils";
-
-export function VehicleForm({
-  topology,
-  onCreated,
-}: {
-  topology: SupplierTopologyResponse;
-=======
 import { useState } from "react";
 import type { HomeNodeType, SupplierFleetVehicleCreateRequest } from "@pegasusx/types";
 import { supplierFleetVehicleCreateKey } from "@pegasusx/api-client";
@@ -43,7 +20,6 @@ export function VehicleForm({
 }: {
   state: ReadyState;
   api: ApiClient;
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   onCreated: () => void;
 }) {
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(defaultVehicleForm);
@@ -61,10 +37,6 @@ export function VehicleForm({
       home_node_id: vehicleForm.homeNodeID,
     };
     try {
-<<<<<<< HEAD
-      const api = createSupplierApi();
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       await api.createSupplierFleetVehicle(
         request,
         supplierFleetVehicleCreateKey(supplierScopeId(), request.license_plate),
@@ -119,11 +91,7 @@ export function VehicleForm({
           disabled={vehicleSubmitting}
         >
           <option value="">Select home node</option>
-<<<<<<< HEAD
-          {nodeOptionsFor(vehicleForm.homeNodeType, topology).map((option) => (
-=======
           {nodeOptionsFor(vehicleForm.homeNodeType, state.topology).map((option) => (
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

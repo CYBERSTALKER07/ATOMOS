@@ -511,30 +511,6 @@ final class APIClient {
         )
     }
 
-    func getStockCountVersion(locationId: String, stockBin: String) async throws -> StockCountVersionWire {
-        let path = "/v1/retailer/stock/counts/version?location_id=\(locationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? locationId)&stock_bin=\(stockBin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? stockBin)"
-        return try await get(path: path)
-    }
-
-    func commitStockCount(locationId: String, stockBin: String, baseVersion: Int64, sku: String, countedQty: Int64, force: Bool = false) async throws -> [String: AnyDecodable] {
-        struct Line: Encodable {
-            let sku_id: String
-            let counted_qty: Int64
-        }
-        struct Body: Encodable {
-            let location_id: String
-            let stock_bin: String
-            let base_version: Int64
-            let force: Bool
-            let lines: [Line]
-        }
-        return try await post(
-            path: "/v1/retailer/stock/counts/commit",
-            body: Body(location_id: locationId, stock_bin: stockBin, base_version: baseVersion, force: force, lines: [Line(sku_id: sku, counted_qty: countedQty)]),
-            headers: ["Idempotency-Key": "count-\(Int(Date().timeIntervalSince1970 * 1000))"]
-        )
-    }
-
     // Retail OS Phase 4 POS
     func getRegisters() async throws -> RetailerRegistersWire {
         try await get(path: "/v1/retailer/registers")
@@ -1176,32 +1152,16 @@ struct AssistTicketWire: Codable {
     let ticketId: String
     let note: String
     let status: String
-    let slaDueAt: String?
-    let slaBreachedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case note
         case status
         case ticketId = "ticket_id"
-        case slaDueAt = "sla_due_at"
-        case slaBreachedAt = "sla_breached_at"
     }
 }
 
 struct StoreStockListWire: Codable {
     let items: [StoreStockBalanceWire]
-}
-
-struct StockCountVersionWire: Codable {
-    let locationId: String?
-    let stockBin: String?
-    let version: Int64
-
-    enum CodingKeys: String, CodingKey {
-        case version
-        case locationId = "location_id"
-        case stockBin = "stock_bin"
-    }
 }
 
 struct StoreStockBalanceWire: Codable {

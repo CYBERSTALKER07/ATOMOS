@@ -3,21 +3,6 @@ import SwiftUI
 struct AnalyticsChartGrid: View {
     let daily: [DailyMetric]
 
-<<<<<<< HEAD
-    var body: some View {
-        VStack(spacing: LabTheme.spacingMD) {
-            if !daily.isEmpty {
-                DailyRevenueChart(daily: daily)
-            }
-        }
-    }
-}
-
-private struct DailyRevenueChart: View {
-    let daily: [DailyMetric]
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     private var maxRevenue: Int {
         max(daily.map(\.revenue).max() ?? 1, 1)
     }

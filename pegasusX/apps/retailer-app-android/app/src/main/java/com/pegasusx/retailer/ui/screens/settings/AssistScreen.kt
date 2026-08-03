@@ -39,13 +39,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class AssistTicketRow(
-    val id: String,
-    val note: String,
-    val status: String,
-    val slaDueAt: String? = null,
-    val slaBreachedAt: String? = null,
-)
+data class AssistTicketRow(val id: String, val note: String, val status: String)
 data class SectionPick(val id: String, val name: String)
 
 @HiltViewModel
@@ -93,8 +87,6 @@ fun AssistScreen(
                                 id = o.get("ticket_id")?.asString ?: continue,
                                 note = o.get("note")?.asString ?: "",
                                 status = o.get("status")?.asString ?: "",
-                                slaDueAt = o.get("sla_due_at")?.asString,
-                                slaBreachedAt = o.get("sla_breached_at")?.asString,
                             ),
                         )
                     }
@@ -173,17 +165,6 @@ fun AssistScreen(
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${t.status} · ${t.note}")
-                        t.slaDueAt?.let { due ->
-                            Text(
-                                "SLA due ${due.take(16)}${if (t.slaBreachedAt != null) " · breached" else ""}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (t.slaBreachedAt != null) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (t.status == "OPEN") {
                                 OutlinedButton(onClick = {

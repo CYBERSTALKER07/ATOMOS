@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, HandHelping } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
-import { useWsEvent, type WsMessage } from "@/lib/ws";
 
 type Section = { section_id: string; name: string };
 type Ticket = {
@@ -14,8 +13,6 @@ type Ticket = {
   status: string;
   created_at?: string;
   claimed_by_user_id?: string;
-  sla_due_at?: string;
-  sla_breached_at?: string;
 };
 
 export default function AssistPage() {
@@ -50,24 +47,6 @@ export default function AssistPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useWsEvent(
-    "RETAILER_ASSIST_TICKET_SLA_BREACHED",
-    useCallback((msg: WsMessage) => {
-      const ticketId = msg.ticket_id as string | undefined;
-      if (ticketId) {
-        setTickets((prev) =>
-          prev.map((t) =>
-            t.ticket_id === ticketId
-              ? { ...t, sla_breached_at: new Date().toISOString() }
-              : t,
-          ),
-        );
-      }
-      setBanner("Assist ticket SLA breached — refresh queue");
-      void load();
-    }, [load]),
-  );
 
   const create = async () => {
     if (!sectionId || !note.trim()) return;
@@ -176,12 +155,6 @@ export default function AssistPage() {
                     </span>
                   </div>
                   <p className="mt-1">{t.note}</p>
-                  {t.sla_due_at && (
-                    <p className={`mt-1 text-xs ${t.sla_breached_at ? "text-destructive" : "text-muted-foreground"}`}>
-                      SLA due {t.sla_due_at.slice(0, 16)}
-                      {t.sla_breached_at ? " · breached" : ""}
-                    </p>
-                  )}
                   <div className="mt-2 flex flex-wrap gap-2">
                     {t.status === "OPEN" && (
                       <button

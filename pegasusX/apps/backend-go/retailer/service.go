@@ -372,11 +372,13 @@ type Service struct {
 	hqStockSnap  map[hqStockKey]hqStockSnap
 	// C2.2 test override for HQ_ANALYTICS_ENABLED (nil = env)
 	hqAnalyticsOverride *bool
-	// C3.3 offline count version (memory when Spanner nil)
-	stockLocationVersions map[locationBinKey]int64
-	offlineCountOverride  *bool
+	// C3.3 offline count version etag + force audit (memory)
+	stockVersionByLoc    map[stockVersionKey]int64
+	countForceAudits     []map[string]any
+	offlineCountOverride *bool
 	// C4.1 assist SLA worker
 	assistSLAOverride *bool
+	assistSLANotified map[string]bool // ticketID → notified (pre-column fallback)
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -452,8 +454,9 @@ func NewService(c ServiceConfig) *Service {
 		hqStockSnap:           make(map[hqStockKey]hqStockSnap),
 		hqAnalyticsOverride:   c.HqAnalyticsEnabled,
 		offlineCountOverride:  c.OfflineCountEnabled,
+		stockVersionByLoc:     make(map[stockVersionKey]int64),
 		assistSLAOverride:     c.AssistSLAEnabled,
-		stockLocationVersions: make(map[locationBinKey]int64),
+		assistSLANotified:     make(map[string]bool),
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
 		familyWritesGone:    make(map[string]bool),

@@ -157,10 +157,6 @@ fun AnalyticsScreen(
     }
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
 @Composable
 private fun ImportMetaCard(

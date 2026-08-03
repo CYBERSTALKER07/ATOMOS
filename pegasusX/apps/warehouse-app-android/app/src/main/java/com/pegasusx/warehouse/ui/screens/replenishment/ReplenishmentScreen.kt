@@ -1,7 +1,10 @@
 package com.pegasusx.warehouse.ui.screens.replenishment
 
 import androidx.compose.foundation.layout.*
-
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -145,7 +148,3 @@ fun ReplenishmentScreen(
         }
     }
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

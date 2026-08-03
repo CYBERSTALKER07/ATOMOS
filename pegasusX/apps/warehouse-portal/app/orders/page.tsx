@@ -14,12 +14,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { ListToolbar } from '@/components/ListToolbar';
 import { PageChrome } from '@/components/PageChrome';
-<<<<<<< HEAD
-import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
-import { PreordersList } from '@/components/preorders/PreordersList';
-=======
 import { OrderActionDialog, OrderProposeDateDialog } from '@/components/orders';
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
 import { OrdersList, type OrderRow, type OrdersTab } from './components/OrdersList';
@@ -328,60 +323,6 @@ export default function OrdersPage() {
             onReject={handleReject}
           />
         ) : (
-<<<<<<< HEAD
-          <>
-            <ListToolbar
-              page={page}
-              pageCount={pageCount}
-              totalLabel={`${tab === 'preorders' ? preorders.length : orders.length} ${tab === 'preorders' ? 'pre-orders' : 'orders'}`}
-              onPrev={prev}
-              onNext={next}
-              onExport={exportCsv}
-            />
-            <div className="wh-ops-grid mt-4">
-              {tab === 'active'
-                ? activePageItems.map((order, index) => (
-                    <OrderOpsCard
-                      key={order.order_id}
-                      orderId={order.order_id}
-                      retailerName={order.retailer_name}
-                      state={order.state}
-                      amountLabel={`${fmt(order.total_uzs)} UZS`}
-                      meta={order.created_at ? new Date(order.created_at).toLocaleString() : undefined}
-                      index={index}
-                      disabled={actingId === order.order_id}
-                      detailOpenMode="single"
-                      onOpenDetail={() => openDetail(order.order_id)}
-                      onProposeDate={() => {
-                        setDialog({ orderId: order.order_id, kind: 'propose' });
-                        setReason('');
-                        setProposedDate(new Date().toISOString().slice(0, 10));
-                      }}
-                      onReject={() => {
-                        setDialog({ orderId: order.order_id, kind: 'reject' });
-                        setReason('');
-                      }}
-                    />
-                  ))
-                : (
-                    <PreordersList
-                      items={preorderPageItems}
-                      actingId={actingId}
-                      onOpenDetail={openDetail}
-                      onProposeDate={(row) => {
-                        setDialog({ orderId: row.order_id, kind: 'propose' });
-                        setReason('');
-                        setProposedDate((row.requested_delivery_date ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10));
-                      }}
-                      onReject={(row) => {
-                        setDialog({ orderId: row.order_id, kind: 'preorder-reject' });
-                        setReason('');
-                      }}
-                    />
-                  )}
-            </div>
-          </>
-=======
           <PreordersList
             loading={loading}
             items={preorderPageItems}
@@ -390,7 +331,6 @@ export default function OrdersPage() {
             onProposeDate={handleProposeDate}
             onReject={handleReject}
           />
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         )}
       </PageChrome>
 

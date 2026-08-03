@@ -2,11 +2,7 @@ import SwiftUI
 
 struct TreasuryTransactionList: View {
     let invoices: [Invoice]
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     var body: some View {
         if invoices.isEmpty {
             WarehouseEmptyView(title: "No Invoices", message: "No invoices found for this warehouse.")

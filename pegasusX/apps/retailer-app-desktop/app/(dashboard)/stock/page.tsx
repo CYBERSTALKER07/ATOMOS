@@ -45,24 +45,6 @@ export default function StockPage() {
   const [countSku, setCountSku] = useState("");
   const [countQty, setCountQty] = useState("0");
   const [countBin, setCountBin] = useState("FLOOR");
-  const [countVersion, setCountVersion] = useState(0);
-  const [countConflict, setCountConflict] = useState<string | null>(null);
-  const [retailerRole, setRetailerRole] = useState("");
-
-  const loadCountVersion = useCallback(async () => {
-    if (!locationId) return;
-    try {
-      const res = await apiFetch(
-        `/v1/retailer/stock/counts/version?location_id=${encodeURIComponent(locationId)}&stock_bin=${encodeURIComponent(countBin)}`,
-      );
-      if (res.status === 404) return;
-      if (!res.ok) return;
-      const json = (await res.json()) as { version?: number };
-      setCountVersion(json.version ?? 0);
-    } catch {
-      /* offline count flag off or network */
-    }
-  }, [locationId, countBin]);
 
   const loadLocations = useCallback(async () => {
     try {
@@ -104,23 +86,6 @@ export default function StockPage() {
   useEffect(() => {
     void loadStock();
   }, [loadStock]);
-
-  useEffect(() => {
-    void loadCountVersion();
-  }, [loadCountVersion]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await apiFetch("/v1/retailer/me");
-        if (!res.ok) return;
-        const json = (await res.json()) as { retailer_role?: string };
-        setRetailerRole(json.retailer_role ?? "");
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
 
   const receiveOrder = async () => {
     setBusy(true);
@@ -222,75 +187,31 @@ export default function StockPage() {
     }
   };
 
-  const count = async (force = false) => {
+  const count = async () => {
     setBusy(true);
     setBanner(null);
-    setCountConflict(null);
     try {
-      const commitRes = await apiFetch("/v1/retailer/stock/counts/commit", {
+      const res = await apiFetch("/v1/retailer/stock/counts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `cnt-${countSku}-${Date.now()}`,
+          "Idempotency-Key": `cnt-${Date.now()}`,
         },
         body: JSON.stringify({
           location_id: locationId,
           stock_bin: countBin,
-          base_version: countVersion,
-          force,
-          lines: [{ sku_id: countSku, counted_qty: Number(countQty) }],
+          commit: true,
+          lines: [{ sku: countSku, counted_qty: Number(countQty) }],
         }),
       });
-      if (commitRes.status === 404) {
-        const res = await apiFetch("/v1/retailer/stock/counts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": `cnt-${Date.now()}`,
-          },
-          body: JSON.stringify({
-            location_id: locationId,
-            stock_bin: countBin,
-            commit: true,
-            lines: [{ sku: countSku, counted_qty: Number(countQty) }],
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            (json as { error?: string }).error || `count_failed_${res.status}`,
-          );
-        }
-        setBanner("Cycle count committed");
-        await loadStock();
-        return;
-      }
-      const json = await commitRes.json().catch(() => ({}));
-      if (commitRes.status === 409) {
-        const conflict = json as {
-          server_version?: number;
-          server_lines?: Array<{ sku_id: string; on_hand: number }>;
-        };
-        if (conflict.server_version != null) {
-          setCountVersion(conflict.server_version);
-        }
-        const lines = (conflict.server_lines ?? [])
-          .map((l) => `${l.sku_id}: on hand ${l.on_hand}`)
-          .join("; ");
-        setCountConflict(lines || "Stock changed since draft — refresh and recount.");
-        setBanner("Count conflict — server stock differs from your draft");
-        return;
-      }
-      if (!commitRes.ok) {
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
         throw new Error(
-          (json as { error?: string }).error || `count_failed_${commitRes.status}`,
+          (json as { error?: string }).error || `count_failed_${res.status}`,
         );
       }
-      const ok = json as { new_version?: number };
-      if (ok.new_version != null) setCountVersion(ok.new_version);
-      setBanner(force ? "Cycle count force-applied" : "Cycle count committed");
+      setBanner("Cycle count committed");
       await loadStock();
-      await loadCountVersion();
     } catch (e) {
       setBanner(e instanceof Error ? e.message : "Count failed");
     } finally {
@@ -445,14 +366,6 @@ export default function StockPage() {
               <option value="FLOOR">FLOOR</option>
               <option value="BACKROOM">BACKROOM</option>
             </select>
-            <p className="text-xs text-muted-foreground">
-              Stock version: {countVersion} (refresh after other changes)
-            </p>
-            {countConflict && (
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                Conflict: {countConflict}
-              </p>
-            )}
             <button
               type="button"
               disabled={busy || !countSku}
@@ -461,17 +374,6 @@ export default function StockPage() {
             >
               Commit count
             </button>
-            {countConflict &&
-              (retailerRole === "MANAGER" || retailerRole === "OWNER") && (
-                <button
-                  type="button"
-                  disabled={busy || !countSku}
-                  onClick={() => void count(true)}
-                  className="rounded-lg border border-amber-600 px-3 py-2 text-sm text-amber-800 disabled:opacity-50"
-                >
-                  Force apply (manager)
-                </button>
-              )}
           </div>
         </section>
 

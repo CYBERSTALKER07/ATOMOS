@@ -35,11 +35,7 @@ struct PreordersView: View {
                 PreordersList(
                     rows: rows,
                     acting: acting,
-<<<<<<< HEAD
-                    onProposeDate: { row in
-=======
                     onPropose: { row in
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                         reasonInput = ""
                         proposeDate = initialProposeDate(for: row)
                         activeSheet = .propose(row)
@@ -49,10 +45,7 @@ struct PreordersView: View {
                         activeSheet = .reject(row)
                     }
                 )
-<<<<<<< HEAD
-=======
             }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         }
         .navigationTitle("Pre-orders")
         .onAppear {
@@ -170,10 +163,6 @@ struct PreordersView: View {
         }
     }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     private func initialProposeDate(for row: WarehousePreorderRow) -> Date {
         if let raw = row.requestedDeliveryDate?.prefix(10), !raw.isEmpty {
             let formatter = DateFormatter()

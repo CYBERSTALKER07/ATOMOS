@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { desktopPrint } from '@pegasusx/desktop-bridge';
+import { downloadCsv } from '@/lib/csv';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
@@ -17,11 +19,6 @@ interface TreasuryOverview {
   total_outstanding: number;
 }
 
-<<<<<<< HEAD
-import { TreasuryTransactionList } from '@/components/treasury/TreasuryTransactionList';
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 export interface Invoice {
   invoice_id: string;
   retailer_name: string;
@@ -90,7 +87,24 @@ export default function TreasuryPage() {
     return `${ownerType}:${ownerID.slice(0, 8)}`;
   };
 
+  const exportCsv = () => {
+    void downloadCsv(
+      `treasury_export_${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Invoice ID', 'Retailer', 'Amount', 'Currency', 'Status', 'Due Date'],
+      invoices.map((inv) => [
+        inv.invoice_id,
+        inv.retailer_name || '',
+        String(resolveAmount(inv)),
+        resolveCurrency(inv),
+        inv.status,
+        inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '',
+      ]),
+    );
+  };
 
+  const exportPdf = () => {
+    desktopPrint({ title: 'Warehouse Treasury' });
+  };
 
   const ov = overview || { total_invoiced: 0, total_paid: 0, total_outstanding: 0 };
 
@@ -141,8 +155,6 @@ export default function TreasuryPage() {
       </KpiStatGrid>
 
       {!loading && view === 'invoices' && (
-<<<<<<< HEAD
-=======
         <section className="desk-card overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--desk-border)' }}>
             <div>
@@ -160,7 +172,6 @@ export default function TreasuryPage() {
               </button>
             </div>
           </div>
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         <TreasuryTransactionList
           invoices={invoices}
           fmt={fmt}
@@ -168,10 +179,7 @@ export default function TreasuryPage() {
           resolveCurrency={resolveCurrency}
           formatPayoutOwner={formatPayoutOwner}
         />
-<<<<<<< HEAD
-=======
         </section>
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       )}
       </div>
       </PageChrome>

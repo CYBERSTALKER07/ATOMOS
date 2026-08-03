@@ -47,12 +47,8 @@ import HandoffTimelinePanel from '@/components/HandoffTimelinePanel';
 import EmptyState from '@/components/EmptyState';
 import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
-<<<<<<< HEAD
-import { DispatchOrderList } from '@/components/dispatch/DispatchOrderList';
-=======
 import DispatchOrderList from '@/components/dispatch/DispatchOrderList';
 import DispatchDriverList from '@/components/dispatch/DispatchDriverList';
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import { warehouseOps } from '@/lib/warehouse-ops';
 
 const TETRIS_BUFFER = 0.95;
@@ -850,14 +846,6 @@ export default function DispatchPage() {
             orders={orders}
             selectedOrderIds={selectedOrderIds}
             allSelected={allSelected}
-<<<<<<< HEAD
-            toggleSelectAll={toggleSelectAll}
-            toggleOrder={toggleOrder}
-            opsActingId={opsActingId}
-            setOpsDialog={setOpsDialog}
-            setOpsReason={setOpsReason}
-            setOpsProposedDate={setOpsProposedDate}
-=======
             opsActingId={opsActingId}
             toggleOrder={toggleOrder}
             toggleSelectAll={toggleSelectAll}
@@ -871,7 +859,6 @@ export default function DispatchPage() {
               setOpsDialog({ orderId, kind: 'reject' });
               setOpsReason('');
             }}
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
           />
 
           <DispatchDriverList

@@ -15,34 +15,6 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 @Composable
 fun StaffList(
     staff: List<StaffMember>,
-<<<<<<< HEAD
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        contentPadding = PaddingValues(PegasusSpacing.lg),
-        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        modifier = modifier,
-    ) {
-        items(staff, key = { it.workerId }) { s ->
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(s.name, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${s.role} · ${s.phone}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(if (s.isActive) "Active" else "Inactive", style = MaterialTheme.typography.labelSmall) },
-                        colors = if (s.isActive) AssistChipDefaults.assistChipColors()
-                        else AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    )
-=======
     loading: Boolean,
     error: String?,
     onRetry: () -> Unit,
@@ -85,7 +57,6 @@ fun StaffList(
                             else AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                         )
                     }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 }
             }
         }

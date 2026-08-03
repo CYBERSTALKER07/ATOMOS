@@ -3,7 +3,6 @@ package com.pegasusx.retailer.ui.screens.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -61,10 +59,6 @@ fun StoreStockScreen(
     var orderId by remember { mutableStateOf("") }
     var sku by remember { mutableStateOf("") }
     var qty by remember { mutableStateOf("1") }
-    var countSku by remember { mutableStateOf("") }
-    var countQty by remember { mutableStateOf("0") }
-    var countBin by remember { mutableStateOf("FLOOR") }
-    var countVersion by remember { mutableStateOf(0L) }
     var busy by remember { mutableStateOf(false) }
 
     fun reload() {
@@ -85,14 +79,6 @@ fun StoreStockScreen(
                         available = o.get("available")?.asLong ?: 0L,
                     )
                 }.orEmpty()
-                if (!locationId.isNullOrBlank()) {
-                    try {
-                        val ver = viewModel.api.getStockCountVersion(locationId!!, countBin).asJsonObject
-                        countVersion = ver.get("version")?.asLong ?: 0L
-                    } catch (_: Exception) {
-                        /* offline count flag off */
-                    }
-                }
             } catch (e: Exception) {
                 banner = e.message
             }
@@ -214,49 +200,6 @@ fun StoreStockScreen(
                                 }
                             }
                         }) { Text("Adjust BACKROOM by qty") }
-                    }
-                }
-            }
-            item {
-                Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Count (versioned)", style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(value = countSku, onValueChange = { countSku = it }, label = { Text("SKU") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = countQty, onValueChange = { countQty = it }, label = { Text("Counted qty") }, modifier = Modifier.fillMaxWidth())
-                        Text("Bin: $countBin · base version $countVersion", style = MaterialTheme.typography.bodySmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("FLOOR", "BACKROOM").forEach { bin ->
-                                OutlinedButton(onClick = { countBin = bin }) { Text(bin) }
-                            }
-                        }
-                        Button(enabled = !busy && countSku.isNotBlank() && locationId != null, onClick = {
-                            scope.launch {
-                                busy = true
-                                try {
-                                    viewModel.api.commitStockCount(
-                                        body = mapOf(
-                                            "location_id" to (locationId ?: ""),
-                                            "stock_bin" to countBin,
-                                            "base_version" to countVersion,
-                                            "force" to false,
-                                            "lines" to listOf(
-                                                mapOf(
-                                                    "sku_id" to countSku,
-                                                    "counted_qty" to (countQty.toLongOrNull() ?: 0L),
-                                                ),
-                                            ),
-                                        ),
-                                        idempotencyKey = "count-${System.currentTimeMillis()}",
-                                    )
-                                    banner = "Count committed"
-                                    reload()
-                                } catch (e: Exception) {
-                                    banner = e.message
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        }) { Text("Commit count") }
                     }
                 }
             }

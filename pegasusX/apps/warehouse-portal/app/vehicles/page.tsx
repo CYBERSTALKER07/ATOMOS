@@ -9,11 +9,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
-<<<<<<< HEAD
-import { VehiclesList } from '@/components/vehicles/VehiclesList';
-=======
 import { VehiclesList } from '../../components/vehicles/VehiclesList';
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
 export default function VehiclesPage() {
   const { vehicles, loading, error, liveMessage, reload } = useWarehouseVehiclesLive();
@@ -119,7 +115,3 @@ export default function VehiclesPage() {
     </PageTransition>
   );
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

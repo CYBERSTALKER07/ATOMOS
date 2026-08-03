@@ -18,7 +18,6 @@ import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.screens.orgfleet.components.*
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -255,8 +254,4 @@ fun OrgFleetScreen(
             )
         }
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

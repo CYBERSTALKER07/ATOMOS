@@ -275,15 +275,6 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("multi-org auth: %w", err)
 	}
 
-	// Wave C3.3 offline count conflict (flag-gated)
-	if err := runOfflineCountE2E(ctx, client, base, cfg, supplierID, retailerToken); err != nil {
-		return fmt.Errorf("offline count: %w", err)
-	}
-	// Wave C4.1 assist SLA (flag-gated)
-	if err := runAssistSLAE2E(ctx, client, base, retailerToken); err != nil {
-		return fmt.Errorf("assist sla: %w", err)
-	}
-
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("client policy e2e: %w", err)
 	}

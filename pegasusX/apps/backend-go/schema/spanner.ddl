@@ -1289,37 +1289,6 @@ ALTER TABLE Orders ADD COLUMN LatestFiscalReceiptId STRING(128);
 ALTER TABLE Orders ADD COLUMN FiscalizedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN LatestFiscalAttemptId STRING(36);
 
-<<<<<<< HEAD
-CREATE TABLE Claims (
-  ClaimId STRING(36) NOT NULL,
-  OrderId STRING(36) NOT NULL,
-  RetailerId STRING(36) NOT NULL,
-  SupplierId STRING(36) NOT NULL,
-  Status STRING(32) NOT NULL,
-  Reason STRING(64) NOT NULL,
-  RequestedAmountMinor INT64 NOT NULL,
-  ApprovedAmountMinor INT64,
-  Liability STRING(50),
-  Notes STRING(MAX),
-  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (ClaimId);
-
-CREATE INDEX Idx_Claims_ByOrder ON Claims(OrderId);
-CREATE INDEX Idx_Claims_BySupplier ON Claims(SupplierId, CreatedAt DESC);
-CREATE INDEX Idx_Claims_ByRetailer ON Claims(RetailerId, CreatedAt DESC);
-
-CREATE TABLE ClaimEvidences (
-  EvidenceId STRING(36) NOT NULL,
-  ClaimId STRING(36) NOT NULL,
-  FileUrl STRING(1024) NOT NULL,
-  ContentType STRING(128),
-  UploadedBy STRING(128) NOT NULL,
-  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (EvidenceId);
-
-CREATE INDEX Idx_ClaimEvidences_ByClaim ON ClaimEvidences(ClaimId);
-=======
 -- Enhanced shop-closed + proximity settlement + partial offload (2026-07-29).
 -- Wire status ARRIVED_SHOP_CLOSED ≡ design SHOP_CLOSED_PENDING.
 -- Partial line qty lives in LineItemsJson (DeliveredQty/RemainingQty/OffloadStatus).
@@ -1854,6 +1823,31 @@ CREATE TABLE RetailerStockCounts (
 
 CREATE INDEX Idx_RetailerStockCounts_ByLocation ON RetailerStockCounts(LocationId, CreatedAt DESC);
 
+-- Wave C3.3: offline count version etag + force audit
+CREATE TABLE RetailerStockLocationVersions (
+  RetailerId  STRING(36)  NOT NULL,
+  LocationId  STRING(36)  NOT NULL,
+  StockBin    STRING(16)  NOT NULL,
+  Version     INT64       NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, LocationId, StockBin);
+
+CREATE TABLE RetailerStockCountForceAudit (
+  AuditId       STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  LocationId    STRING(36)  NOT NULL,
+  StockBin      STRING(16)  NOT NULL,
+  CountId       STRING(36)  NOT NULL,
+  ActorUserId   STRING(36)  NOT NULL,
+  BaseVersion   INT64       NOT NULL,
+  ServerVersion INT64       NOT NULL,
+  Reason        STRING(MAX),
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (AuditId);
+
+CREATE INDEX Idx_RetailerStockCountForceAudit_ByRetailer
+  ON RetailerStockCountForceAudit (RetailerId, CreatedAt DESC);
+
 -- Retail OS Phase 4: POS registers, sessions, sales
 CREATE TABLE RetailerRegisters (
   RegisterId  STRING(36)  NOT NULL,
@@ -2039,47 +2033,22 @@ CREATE INDEX Idx_RetailerStaffSections_BySection ON RetailerStaffSections(Sectio
 CREATE INDEX Idx_RetailerStaffSections_ByRetailer ON RetailerStaffSections(RetailerId, UserId);
 
 CREATE TABLE RetailerAssistanceTickets (
-  TicketId          STRING(36)  NOT NULL,
-  RetailerId        STRING(36)  NOT NULL,
-  LocationId        STRING(36)  NOT NULL,
-  SectionId         STRING(36)  NOT NULL,
-  Note              STRING(MAX) NOT NULL,
-  Status            STRING(16)  NOT NULL,
-  CreatedByUserId   STRING(36)  NOT NULL,
-  ClaimedByUserId   STRING(36),
-  CompletedByUserId STRING(36),
-  CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-  ClaimedAt         TIMESTAMP,
-  CompletedAt       TIMESTAMP,
-  SlaDueAt          TIMESTAMP,
-  SlaBreachedAt     TIMESTAMP,
+  TicketId              STRING(36)  NOT NULL,
+  RetailerId            STRING(36)  NOT NULL,
+  LocationId            STRING(36)  NOT NULL,
+  SectionId             STRING(36)  NOT NULL,
+  Note                  STRING(MAX) NOT NULL,
+  Status                STRING(16)  NOT NULL,
+  CreatedByUserId       STRING(36)  NOT NULL,
+  ClaimedByUserId       STRING(36),
+  CompletedByUserId     STRING(36),
+  CreatedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClaimedAt             TIMESTAMP,
+  CompletedAt           TIMESTAMP,
+  SlaDueAt              TIMESTAMP,
+  SlaBreachNotifiedAt   TIMESTAMP,
 ) PRIMARY KEY (TicketId);
 
 CREATE INDEX Idx_RetailerAssist_ByLocationStatus ON RetailerAssistanceTickets(LocationId, Status, CreatedAt DESC);
 CREATE INDEX Idx_RetailerAssist_BySectionStatus ON RetailerAssistanceTickets(SectionId, Status, CreatedAt DESC);
 CREATE INDEX Idx_RetailerAssist_ByRetailer ON RetailerAssistanceTickets(RetailerId, CreatedAt DESC);
-
--- Wave C3.3: offline count version per location+bin
-CREATE TABLE RetailerStockLocationVersions (
-  LocationId  STRING(36) NOT NULL,
-  StockBin    STRING(16) NOT NULL,
-  Version     INT64       NOT NULL,
-  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (LocationId, StockBin);
-
--- Wave C3.3: force-commit audit (MANAGER/OWNER only)
-CREATE TABLE RetailerStockCountForceAudits (
-  AuditId       STRING(36) NOT NULL,
-  CountId       STRING(36) NOT NULL,
-  RetailerId    STRING(36) NOT NULL,
-  LocationId    STRING(36) NOT NULL,
-  StockBin      STRING(16) NOT NULL,
-  BaseVersion   INT64       NOT NULL,
-  ServerVersion INT64       NOT NULL,
-  ActorUserId   STRING(36) NOT NULL,
-  ActorRole     STRING(32) NOT NULL,
-  LinesJson     JSON        NOT NULL,
-  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (AuditId);
-
--- Wave C4.1: assist SLA breach tracking (column added via migration on RetailerAssistanceTickets)

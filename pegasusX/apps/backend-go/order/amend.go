@@ -46,17 +46,6 @@ func orderAmendable(status Status) bool {
 	}
 }
 
-// orderAmendableRecord includes the legacy 24h COMPLETED window used by driver amend tests.
-func orderAmendableRecord(order Order) bool {
-	if orderAmendable(order.Status) {
-		return true
-	}
-	if order.Status == StatusCompleted {
-		return time.Since(order.UpdatedAt) <= 24*time.Hour
-	}
-	return false
-}
-
 // orderPostDeliveryAmendable allows COMPLETED orders within the time window for damage/shortage.
 func orderPostDeliveryAmendable(status Status, completedAt, now time.Time, reasons []string) bool {
 	if status != StatusCompleted {

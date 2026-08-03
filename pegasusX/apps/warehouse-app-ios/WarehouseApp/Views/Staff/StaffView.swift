@@ -10,28 +10,7 @@ struct StaffView: View {
 
     var body: some View {
         NavigationStack {
-<<<<<<< HEAD
-            Group {
-                if loading && staff.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error, staff.isEmpty {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
-                    }
-                } else if staff.isEmpty {
-                    ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("Add staff members"))
-                } else {
-                    StaffList(staff: staff)
-                }
-            }
-=======
             StaffList(staff: staff, loading: loading, error: error, onRetry: { load() })
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             .background(LabTheme.background)
             .navigationTitle("Staff")
             .toolbar {

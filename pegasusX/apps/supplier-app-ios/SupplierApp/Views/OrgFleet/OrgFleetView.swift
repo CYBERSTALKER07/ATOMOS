@@ -40,16 +40,6 @@ struct OrgFleetView: View {
                     .padding()
 
                     switch tab {
-<<<<<<< HEAD
-                    case 0: DriverListView(drivers: drivers, topology: topology)
-                    case 1: VehicleListView(vehicles: vehicles, topology: topology)
-                    default: OrgMemberListView(orgMembers: orgMembers, onEdit: { member in
-                        editingMember = member
-                        showEditMemberSheet = true
-                    }, onDeactivate: { userId in
-                        await deactivateMember(userId)
-                    }, memberActionId: memberActionId)
-=======
                     case 0:
                         DriverListView(drivers: drivers, topology: topology)
                     case 1:
@@ -62,7 +52,6 @@ struct OrgFleetView: View {
                             memberActionId: $memberActionId,
                             deactivateAction: deactivateMember
                         )
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                     }
                 }
             }

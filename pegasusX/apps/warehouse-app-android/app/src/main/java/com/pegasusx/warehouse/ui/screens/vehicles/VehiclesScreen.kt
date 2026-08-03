@@ -100,11 +100,7 @@ fun VehiclesScreen(
             else -> VehiclesList(
                 vehicles = vehicles,
                 onVehicleClick = onVehicleClick,
-<<<<<<< HEAD
-                modifier = Modifier.padding(innerPadding),
-=======
                 modifier = Modifier.padding(innerPadding)
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             )
         }
     }
