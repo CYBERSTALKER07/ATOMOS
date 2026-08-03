@@ -19,13 +19,19 @@ echo "==> ddl $DDL"
 while IFS= read -r stmt; do
 	[[ -z "$stmt" ]] && continue
 	echo "==> $(echo "$stmt" | cut -c1-100)…"
-	if gcloud spanner databases ddl update "$DATABASE" \
+	if out=$(gcloud spanner databases ddl update "$DATABASE" \
 		--instance="$INSTANCE" \
 		--project="$PROJECT" \
-		--ddl="$stmt"; then
+		--ddl="$stmt" 2>&1); then
 		echo "  OK"
 	else
-		echo "  SKIP/ERR (likely already exists)"
+		if grep -qiE 'Duplicate|Already exists|already exists' <<<"$out"; then
+			echo "  SKIP (already applied)"
+		else
+			echo "$out" >&2
+			echo "  ERR" >&2
+			exit 1
+		fi
 	fi
 done < <(python3 - "$DDL" <<'PY'
 import sys
