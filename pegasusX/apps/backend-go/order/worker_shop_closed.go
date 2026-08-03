@@ -103,18 +103,11 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 		// For now hardcode cfg, this could come from Supplier or global config
 		cfg := TimeoutConfig{
-			MaxAutoCreditMinor:            50000000, // example: 500,000 max
-			MaxRiskTierForAutoCredit:      2,        // LOW/MEDIUM
-			AllowForceBypass:              false,
-			CreditScoreEnforcementEnabled: s.creditScoreEnforcement,
+			MaxAutoCreditMinor: 50000000,
+			AllowForceBypass:   false,
 		}
 
-		score, err := getRetailerCreditScore(ctx, txn, order.RetailerID)
-		if err != nil {
-			s.log.WarnContext(ctx, "failed to load credit score for timeout resolution", "err", err, "retailer_id", order.RetailerID)
-		}
-
-		decision := DecideShopClosedTimeout(order, profile, score, cfg, cfg.CreditScoreEnforcementEnabled)
+		decision := DecideShopClosedTimeout(order, profile, cfg)
 
 		buf := &spannerTxnBuffer{}
 		var mutations []*spanner.Mutation
@@ -229,15 +222,6 @@ func (s *Service) getProfileForUpdate(ctx context.Context, txn *spanner.ReadWrit
 	p.RetailerID = retailerID
 	p.SupplierID = supplierID
 	p.Status = credit.Status(status.StringVal)
-	// Re-derive RiskTier
-	p.RiskTier = credit.RiskTierLow // simplified for inline; normally deriveRiskTier is called
-	if p.DelinquencyCount >= 3 || p.CurrentBalanceMinor > p.CreditLimitMinor {
-		p.RiskTier = credit.RiskTierBlock
-	} else if p.DelinquencyCount >= 1 || (p.CreditLimitMinor > 0 && p.CurrentBalanceMinor > p.CreditLimitMinor/2) {
-		p.RiskTier = credit.RiskTierHigh
-	} else if p.CreditLimitMinor > 0 && p.CurrentBalanceMinor > p.CreditLimitMinor/4 {
-		p.RiskTier = credit.RiskTierMedium
-	}
 	return &p, nil
 }
 

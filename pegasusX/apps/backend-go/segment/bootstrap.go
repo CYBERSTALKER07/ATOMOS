@@ -2,8 +2,6 @@ package segment
 
 import (
 	"sort"
-
-	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 )
 
 const (
@@ -12,30 +10,27 @@ const (
 )
 
 // RetailerBootstrapInput aggregates signals for segment assignment.
+// CreditScore / RiskTier fields are retained for API compat but ignored (scoring removed).
 type RetailerBootstrapInput struct {
-	RetailerID   string
-	OrderCount   int64
-	ClaimCount   int64
-	CreditScore  int64
-	RiskTier     credit.RiskTier
-	InTopVolume  bool
+	RetailerID  string
+	OrderCount  int64
+	ClaimCount  int64
+	CreditScore int64 // deprecated — ignored
+	InTopVolume bool
 }
 
-// bootstrapSegment assigns A/B/C per O9-1 heuristics.
+// bootstrapSegment assigns A/B/C from volume / claims / order count only.
 func bootstrapSegment(in RetailerBootstrapInput) string {
-	if in.RiskTier == credit.RiskTierBlock || in.RiskTier == credit.RiskTierHigh {
-		return SegmentC
-	}
 	if in.ClaimCount >= 3 && in.OrderCount < 5 {
 		return SegmentC
 	}
-	if in.InTopVolume && in.CreditScore >= 70 && in.RiskTier == credit.RiskTierLow {
+	if in.InTopVolume && in.OrderCount >= 20 {
 		return SegmentA
 	}
-	if in.RiskTier == credit.RiskTierLow && in.OrderCount >= 20 {
+	if in.OrderCount >= 20 {
 		return SegmentA
 	}
-	if in.RiskTier == credit.RiskTierMedium {
+	if in.OrderCount >= 5 {
 		return SegmentB
 	}
 	return SegmentB

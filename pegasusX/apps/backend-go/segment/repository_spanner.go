@@ -133,26 +133,10 @@ func (r *SpannerRepository) queryPolicy(ctx context.Context, supplierID, retaile
 }
 
 func (r *SpannerRepository) GetRiskTier(ctx context.Context, retailerID string) (credit.RiskTier, error) {
-	retailerID = strings.TrimSpace(retailerID)
-	if retailerID == "" {
-		return credit.RiskTierMedium, nil
-	}
-	row, err := r.client.Single().ReadRow(ctx, "RetailerCreditScores", spanner.Key{retailerID}, []string{"RiskTier"})
-	if err != nil {
-		if spanner.ErrCode(err) == codes.NotFound {
-			return credit.RiskTierMedium, nil
-		}
-		return credit.RiskTierMedium, err
-	}
-	var tier string
-	if err := row.Column(0, &tier); err != nil {
-		return credit.RiskTierMedium, err
-	}
-	rt := credit.RiskTier(strings.TrimSpace(tier))
-	if !rt.Valid() {
-		return credit.RiskTierMedium, nil
-	}
-	return rt, nil
+	_ = ctx
+	_ = retailerID
+	// Credit scoring removed — neutral default for legacy call sites.
+	return credit.RiskTierMedium, nil
 }
 
 func (r *SpannerRepository) CountPolicies(ctx context.Context, supplierID string) (int64, error) {
@@ -247,28 +231,10 @@ func (r *SpannerRepository) ListRetailerOrderStats(ctx context.Context, supplier
 }
 
 func (r *SpannerRepository) ListRetailerRiskTiers(ctx context.Context, retailerIDs []string) (map[string]credit.RiskTier, error) {
+	_ = ctx
 	out := make(map[string]credit.RiskTier, len(retailerIDs))
-	if len(retailerIDs) == 0 {
-		return out, nil
-	}
-	iter := r.client.Single().Read(ctx, "RetailerCreditScores", spanner.KeySetFromKeys(keysFromStrings(retailerIDs)...), []string{"RetailerId", "RiskTier"})
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		var id, tier string
-		if err := row.Columns(&id, &tier); err != nil {
-			return nil, err
-		}
-		rt := credit.RiskTier(strings.TrimSpace(tier))
-		if rt.Valid() {
-			out[id] = rt
-		}
+	for _, id := range retailerIDs {
+		out[id] = credit.RiskTierMedium
 	}
 	return out, nil
 }
@@ -300,27 +266,10 @@ func (r *SpannerRepository) GetRetailerSegmentRecord(ctx context.Context, retail
 }
 
 func (r *SpannerRepository) ListRetailerCreditScores(ctx context.Context, retailerIDs []string) (map[string]int64, error) {
+	_ = ctx
 	out := make(map[string]int64, len(retailerIDs))
-	if len(retailerIDs) == 0 {
-		return out, nil
-	}
-	iter := r.client.Single().Read(ctx, "RetailerCreditScores", spanner.KeySetFromKeys(keysFromStrings(retailerIDs)...),
-		[]string{"RetailerId", "Score"})
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		var id string
-		var score int64
-		if err := row.Columns(&id, &score); err != nil {
-			return nil, err
-		}
-		out[id] = score
+	for _, id := range retailerIDs {
+		out[id] = 0
 	}
 	return out, nil
 }

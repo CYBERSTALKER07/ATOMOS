@@ -11,15 +11,10 @@ type CreditProfile = {
   credit_limit_minor: number;
   current_balance_minor: number;
   available_credit_minor: number;
-  risk_score?: number;
-  risk_tier?: string;
   delinquency_count?: number;
   status: string;
   utilization_bps?: number;
   needs_attention?: boolean;
-  computed_credit_score?: number;
-  suggested_limit_minor?: number;
-  credit_score_computed_at?: string;
   updated_at?: string;
 };
 
@@ -120,9 +115,6 @@ export default function CreditCollectionsPage() {
             <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
               <th className="py-2 pr-3">Retailer</th>
               <th className="py-2 pr-3">Status</th>
-              <th className="py-2 pr-3">Risk</th>
-              <th className="py-2 pr-3 text-right">Score</th>
-              <th className="py-2 pr-3 text-right">Suggested limit</th>
               <th className="py-2 pr-3 text-right">Limit</th>
               <th className="py-2 pr-3 text-right">Balance</th>
               <th className="py-2 pr-3 text-right">Available</th>
@@ -133,7 +125,7 @@ export default function CreditCollectionsPage() {
           <tbody>
             {profiles.length === 0 && !loading ? (
               <tr>
-                <td colSpan={10} className="py-8 text-center text-[var(--muted)]">
+                <td colSpan={7} className="py-8 text-center text-[var(--muted)]">
                   No credit profiles for this filter.
                 </td>
               </tr>
@@ -154,18 +146,9 @@ export default function CreditCollectionsPage() {
                     <td className="py-2.5 pr-3 font-mono text-xs">{p.retailer_id}</td>
                     <td className="py-2.5 pr-3">
                       <StatusBadge state={p.status} />
-                    </td>
-                    <td className="py-2.5 pr-3 text-xs">
-                      {p.risk_tier || "—"}
                       {p.delinquency_count ? (
-                        <span className="ml-1 text-red-600">· delinq {p.delinquency_count}</span>
+                        <span className="ml-1 text-xs text-red-600">delinq {p.delinquency_count}</span>
                       ) : null}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right font-mono text-xs">
-                      {p.computed_credit_score != null ? p.computed_credit_score : "—"}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right font-mono text-xs">
-                      {p.suggested_limit_minor != null ? formatMinor(p.suggested_limit_minor) : "—"}
                     </td>
                     <td className="py-2.5 pr-3 text-right font-mono">{formatMinor(p.credit_limit_minor)}</td>
                     <td className="py-2.5 pr-3 text-right font-mono font-medium">

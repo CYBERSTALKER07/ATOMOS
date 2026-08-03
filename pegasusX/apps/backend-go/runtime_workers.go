@@ -52,10 +52,6 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.LaborCapacityService.RunCapacitySnapshotWorker(ctx, 1*time.Hour)
 		slog.Info("labor capacity workers started")
 	}
-	if app.CreditScoreWorker != nil {
-		go app.CreditScoreWorker.RunNightlyWorker(ctx, 24*time.Hour)
-		slog.Info("retailer credit score worker started")
-	}
 	if app.RouteAnalyticsWorker != nil {
 		go app.RouteAnalyticsWorker.RunNightlyWorker(ctx, 24*time.Hour)
 		slog.Info("route analytics worker started")

@@ -1,13 +1,9 @@
 package segment
 
-import (
-	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
-)
-
-// ComputePriorityScore combines policy weight, credit tier boost, and strategic SKU flag.
-func ComputePriorityScore(policy ServicePolicy, riskTier credit.RiskTier, strategic bool) int64 {
+// ComputePriorityScore combines policy weight and strategic SKU flag.
+// Credit risk tier boosts were removed with the credit-score product.
+func ComputePriorityScore(policy ServicePolicy, _ any, strategic bool) int64 {
 	score := policy.PriorityWeight
-	score += riskTierBoost(riskTier, policy.CreditRiskBoost)
 	if strategic {
 		score += 10
 	}
@@ -15,20 +11,6 @@ func ComputePriorityScore(policy ServicePolicy, riskTier credit.RiskTier, strate
 		return 0
 	}
 	return score
-}
-
-func riskTierBoost(tier credit.RiskTier, boost int64) int64 {
-	if boost <= 0 {
-		return 0
-	}
-	switch tier {
-	case credit.RiskTierLow:
-		return boost
-	case credit.RiskTierMedium:
-		return boost / 2
-	default:
-		return 0
-	}
 }
 
 // NormalizeRetailerSegment returns a known segment or default C.
@@ -81,7 +63,7 @@ func DefaultPolicy(supplierID, retailerSegment, skuClass string) ServicePolicy {
 		TargetServiceLevelBps: 9500,
 		MaxFairShareBps:       4000,
 		MinFairShareBps:       500,
-		CreditRiskBoost:       15,
+		CreditRiskBoost:       0, // scoring product removed
 		Enabled:               true,
 	}
 }

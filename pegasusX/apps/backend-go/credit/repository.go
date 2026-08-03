@@ -85,7 +85,6 @@ func (r *SpannerRepository) getProfileLegacy(ctx context.Context, retailerID, su
 		return Profile{}, false, err
 	}
 	p.Status = Status(status.StringVal)
-	p.RiskTier = deriveRiskTier(p.DelinquencyCount, p.CurrentBalanceMinor, p.CreditLimitMinor)
 	p.AvailableCreditMinor = p.Available()
 	if lastEvaluated.Valid {
 		p.LastEvaluatedAt = lastEvaluated.Time
@@ -149,10 +148,6 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 	if !p.Status.Valid() {
 		return fmt.Errorf("invalid credit profile status: %s", p.Status)
 	}
-	if !p.RiskTier.Valid() {
-		p.RiskTier = RiskTierMedium
-	}
-
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{p.RetailerID, p.SupplierID}, []string{"Version", "ReservedMinor", "CurrentBalanceMinor"})
 		var expectedVersion, reserved, balance int64
@@ -548,25 +543,11 @@ func scanProfileRow(row *spanner.Row) (Profile, error) {
 		return Profile{}, fmt.Errorf("scan credit profile row: %w", err)
 	}
 	p.Status = Status(status.StringVal)
-	p.RiskTier = deriveRiskTier(p.DelinquencyCount, p.CurrentBalanceMinor, p.CreditLimitMinor)
 	p.AvailableCreditMinor = p.Available()
 	if lastEvaluated.Valid {
 		p.LastEvaluatedAt = lastEvaluated.Time
 	}
 	return p, nil
-}
-
-func deriveRiskTier(delinquencyCount, balanceMinor, limitMinor int64) RiskTier {
-	if delinquencyCount >= 3 || balanceMinor > limitMinor {
-		return RiskTierBlock
-	}
-	if delinquencyCount >= 1 || (limitMinor > 0 && balanceMinor > limitMinor/2) {
-		return RiskTierHigh
-	}
-	if limitMinor > 0 && balanceMinor > limitMinor/4 {
-		return RiskTierMedium
-	}
-	return RiskTierLow
 }
 
 type spannerTxnBuffer struct {
@@ -601,40 +582,10 @@ func bufferOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	return out
 }
 
-// GetScoresForRetailers loads latest RetailerCreditScores rows for enrichment.
+// GetScoresForRetailers is a no-op stub: credit risk scoring product was removed.
 func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error) {
-	out := make(map[string]RetailerCreditScore)
-	if r == nil || r.client == nil || len(retailerIDs) == 0 {
-		return out, nil
-	}
-	keys := make([]spanner.Key, 0, len(retailerIDs))
-	for _, id := range retailerIDs {
-		if strings.TrimSpace(id) == "" {
-			continue
-		}
-		keys = append(keys, spanner.Key{id})
-	}
-	if len(keys) == 0 {
-		return out, nil
-	}
-	iter := r.client.Single().Read(ctx, "RetailerCreditScores", spanner.KeySetFromKeys(keys...),
-		[]string{"RetailerId", "Score", "RiskTier", "SuggestedLimitMinor", "ComputedAt"})
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		var rcs RetailerCreditScore
-		var tier string
-		if err := row.Columns(&rcs.RetailerID, &rcs.Score, &tier, &rcs.SuggestedLimitMinor, &rcs.ComputedAt); err != nil {
-			return nil, err
-		}
-		rcs.RiskTier = RiskTier(tier)
-		out[rcs.RetailerID] = rcs
-	}
-	return out, nil
+	_ = ctx
+	_ = retailerIDs
+	return map[string]RetailerCreditScore{}, nil
 }
+

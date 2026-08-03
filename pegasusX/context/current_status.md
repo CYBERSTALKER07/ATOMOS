@@ -1,11 +1,12 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-02 (nomock4 + DNS/TLS + Firebase clients)*
+*Last Updated: 2026-08-04 (Phase A: E1/E3 + credit-score removal)*
 
 ## 1. Code completeness (this closure)
 
 Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
 
+- **2026-08-04 Phase A** Credit risk scoring removed (no score worker / `RiskTier` gates / suggested-limit desk); CREDIT_LEAVE = status + available. E1 session-scoped CT/Compliance; E3 shop-closed DDL wired on SSMR+staging + CI schema-drift gate.
 - **P0** Shop-closed CANCELLED/RETURN paths release inventory in-txn
 - **P1** `LogisticsException` contracts + CLAIM_* WS/inbox fanout; gen-contracts strict green
 - **P1/P2** Retailer credit mobile; supplier finance mutations; driver rescue/earnings/scan-qr; warehouse rescue URLs; factory staff create + exception resolve

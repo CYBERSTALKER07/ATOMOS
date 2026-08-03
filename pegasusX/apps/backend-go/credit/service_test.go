@@ -301,37 +301,14 @@ func TestUpsertProfile(t *testing.T) {
 	if repo.stored.Status != StatusInactive {
 		t.Fatalf("expected inactive status (pre-enable), got %s", repo.stored.Status)
 	}
-	if repo.stored.RiskTier != RiskTierMedium {
-		t.Fatalf("expected medium risk tier, got %s", repo.stored.RiskTier)
+	if repo.stored.RiskTier != "" {
+		t.Fatalf("expected empty risk tier after scoring removal, got %s", repo.stored.RiskTier)
 	}
 	if repo.stored.AvailableCreditMinor != 200000 {
 		t.Fatalf("expected available credit 200000, got %d", repo.stored.AvailableCreditMinor)
 	}
 	if repo.bufferedEvents != 1 {
 		t.Fatalf("expected 1 event, got %d", repo.bufferedEvents)
-	}
-}
-
-func TestEvaluateRisk(t *testing.T) {
-	svc := newTestService(&testCreditRepo{})
-	cases := []struct {
-		delinquency int64
-		balance     int64
-		limit       int64
-		want        RiskTier
-	}{
-		{0, 0, 100000, RiskTierLow},
-		{0, 30000, 100000, RiskTierMedium},
-		{0, 60000, 100000, RiskTierHigh},
-		{1, 0, 100000, RiskTierHigh},
-		{3, 0, 100000, RiskTierBlock},
-		{0, 110000, 100000, RiskTierBlock},
-	}
-	for _, tc := range cases {
-		got := svc.EvaluateRisk(tc.delinquency, tc.balance, tc.limit)
-		if got != tc.want {
-			t.Errorf("EvaluateRisk(%d,%d,%d) = %s, want %s", tc.delinquency, tc.balance, tc.limit, got, tc.want)
-		}
 	}
 }
 

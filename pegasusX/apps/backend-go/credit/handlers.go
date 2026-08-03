@@ -84,36 +84,20 @@ func (s *Service) HandleListSupplierProfiles(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	// Enrich with desk-friendly flags without schema change.
+	// Desk flags: status / delinquency / open balance only (no credit-score product).
 	type deskRow struct {
 		Profile
-		UtilizationBps        int64  `json:"utilization_bps"`
-		NeedsAttention        bool   `json:"needs_attention"`
-		ComputedCreditScore   *int64 `json:"computed_credit_score,omitempty"`
-		SuggestedLimitMinor   *int64 `json:"suggested_limit_minor,omitempty"`
-		CreditScoreComputedAt string `json:"credit_score_computed_at,omitempty"`
+		UtilizationBps int64 `json:"utilization_bps"`
+		NeedsAttention bool  `json:"needs_attention"`
 	}
 	rows := make([]deskRow, 0, len(list))
-	retailerIDs := make([]string, 0, len(list))
-	for _, p := range list {
-		retailerIDs = append(retailerIDs, p.RetailerID)
-	}
-	scores, _ := s.repo.GetScoresForRetailers(r.Context(), retailerIDs)
 	for _, p := range list {
 		row := deskRow{Profile: p}
 		if p.CreditLimitMinor > 0 {
 			row.UtilizationBps = (p.CurrentBalanceMinor * 10000) / p.CreditLimitMinor
 		}
 		row.NeedsAttention = p.Status == StatusFrozen || p.Status == StatusBlacklisted ||
-			p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0 ||
-			p.RiskTier == RiskTierHigh || p.RiskTier == RiskTierBlock
-		if sc, ok := scores[p.RetailerID]; ok {
-			row.ComputedCreditScore = &sc.Score
-			row.SuggestedLimitMinor = &sc.SuggestedLimitMinor
-			if !sc.ComputedAt.IsZero() {
-				row.CreditScoreComputedAt = sc.ComputedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
-			}
-		}
+			p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0
 		rows = append(rows, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -136,11 +120,10 @@ func (s *Service) HandleUpsertSupplierProfile(w http.ResponseWriter, r *http.Req
 	}
 
 	var req struct {
-		RetailerID       string   `json:"retailer_id"`
-		CreditLimitMinor int64    `json:"credit_limit_minor"`
-		RiskTier         RiskTier `json:"risk_tier,omitempty"`
-		Status           Status   `json:"status,omitempty"`
-		Reason           string   `json:"reason,omitempty"`
+		RetailerID       string `json:"retailer_id"`
+		CreditLimitMinor int64  `json:"credit_limit_minor"`
+		Status           Status `json:"status,omitempty"`
+		Reason           string `json:"reason,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -175,19 +158,14 @@ func (s *Service) HandleUpsertSupplierProfile(w http.ResponseWriter, r *http.Req
 		if req.Status != "" {
 			p.Status = req.Status
 		}
-		if req.RiskTier != "" {
-			p.RiskTier = req.RiskTier
-		}
 	} else {
 		p.Status = StatusActive
 		if req.Status != "" {
 			p.Status = req.Status
 		}
-		if req.RiskTier != "" {
-			p.RiskTier = req.RiskTier
-		}
 	}
-	p.RiskTier = s.EvaluateRisk(p.DelinquencyCount, p.CurrentBalanceMinor, p.CreditLimitMinor)
+	// Risk scoring removed — limit + status only.
+	p.RiskTier = ""
 
 	if err := s.UpsertProfile(r.Context(), p, claims.Subject, req.Reason); err != nil {
 		slog.ErrorContext(r.Context(), "upsert credit profile failed", "err", err, "retailer_id", req.RetailerID)

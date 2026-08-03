@@ -352,9 +352,8 @@ type Service struct {
 	spannerClient      *spanner.Client
 	manifestStore      *manifest.Store
 	idem               idempotency.Store
-	shopGrace                  time.Duration
-	creditScoreEnforcement     bool
-	log                *slog.Logger
+	shopGrace time.Duration
+	log       *slog.Logger
 	now                func() time.Time
 	newID              func() string
 	jwtSecret          string
@@ -398,7 +397,6 @@ type ServiceConfig struct {
 	DriverHub       *ws.Hub
 	SpannerClient   *spanner.Client
 	ShopClosedGrace time.Duration
-	CreditScoreEnforcementEnabled bool
 	Log             *slog.Logger
 	Now             func() time.Time
 	NewID           func() string
@@ -436,9 +434,8 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:        c.SupplierHub,
 		driverHub:          c.DriverHub,
 		spannerClient:      c.SpannerClient,
-		shopGrace:                  grace,
-		creditScoreEnforcement:     c.CreditScoreEnforcementEnabled,
-		log:                c.Log,
+		shopGrace: grace,
+		log:       c.Log,
 		now:                c.Now,
 		newID:              c.NewID,
 		jwtSecret:          c.JWTSecret,

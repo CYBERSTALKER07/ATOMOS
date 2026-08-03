@@ -13,16 +13,14 @@ const (
 
 // TimeoutConfig contains knobs for the timeout matrix.
 type TimeoutConfig struct {
-	MaxAutoCreditMinor            int64 // e.g. 5_000_000 tiyin
-	MaxRiskTierForAutoCredit      int   // 1 = low, 2 = medium, ...
-	AllowForceBypass              bool  // usually false in production
-	CreditScoreEnforcementEnabled bool
+	MaxAutoCreditMinor int64 // e.g. 5_000_000 tiyin; 0 = no extra cap
+	AllowForceBypass   bool  // usually false in production
 }
 
-// DecideShopClosedTimeout applies the decision matrix (exact specs).
-func DecideShopClosedTimeout(order *Order, profile *credit.Profile, score *credit.RetailerCreditScore, cfg TimeoutConfig, featureEnabled bool) TimeoutDecision {
-	// 1. Credit leave if possible
-	if err := CanLeaveOnCredit(order, profile, score, cfg, featureEnabled); err == nil {
+// DecideShopClosedTimeout applies the decision matrix.
+// CREDIT_LEAVE uses profile status + available only (no credit-score / RiskTier).
+func DecideShopClosedTimeout(order *Order, profile *credit.Profile, cfg TimeoutConfig) TimeoutDecision {
+	if err := CanLeaveOnCredit(order, profile, cfg); err == nil {
 		return DecisionCreditLeave
 	}
 
@@ -30,21 +28,7 @@ func DecideShopClosedTimeout(order *Order, profile *credit.Profile, score *credi
 		return DecisionForceBypass
 	}
 
-	// 2. Default: return to warehouse
 	return DecisionReturnToWarehouse
-}
-
-func riskTierLevel(rt credit.RiskTier) int {
-	switch rt {
-	case credit.RiskTierLow:
-		return 1
-	case credit.RiskTierMedium:
-		return 2
-	case credit.RiskTierHigh:
-		return 3
-	default:
-		return 99 // BLOCK or unknown
-	}
 }
 
 // ShopClosedReason codes for driver mark-closed (Orders.ShopClosedReason).

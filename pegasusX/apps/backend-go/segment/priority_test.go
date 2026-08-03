@@ -48,19 +48,16 @@ func TestNormalizeVelocityClass(t *testing.T) {
 func TestComputePriorityScore(t *testing.T) {
 	policy := ServicePolicy{
 		PriorityWeight:  100,
-		CreditRiskBoost: 20,
+		CreditRiskBoost: 20, // ignored after scoring removal
 	}
-	if got := ComputePriorityScore(policy, credit.RiskTierLow, false); got != 120 {
-		t.Fatalf("low tier boost: got %d want 120", got)
-	}
-	if got := ComputePriorityScore(policy, credit.RiskTierMedium, false); got != 110 {
-		t.Fatalf("medium tier boost: got %d want 110", got)
+	if got := ComputePriorityScore(policy, credit.RiskTierLow, false); got != 100 {
+		t.Fatalf("base weight: got %d want 100", got)
 	}
 	if got := ComputePriorityScore(policy, credit.RiskTierHigh, false); got != 100 {
-		t.Fatalf("high tier boost: got %d want 100", got)
+		t.Fatalf("risk tier must not boost: got %d want 100", got)
 	}
-	if got := ComputePriorityScore(policy, credit.RiskTierLow, true); got != 130 {
-		t.Fatalf("strategic flag: got %d want 130", got)
+	if got := ComputePriorityScore(policy, credit.RiskTierLow, true); got != 110 {
+		t.Fatalf("strategic flag: got %d want 110", got)
 	}
 	zeroBoost := ServicePolicy{PriorityWeight: 50, CreditRiskBoost: 0}
 	if got := ComputePriorityScore(zeroBoost, credit.RiskTierLow, false); got != 50 {

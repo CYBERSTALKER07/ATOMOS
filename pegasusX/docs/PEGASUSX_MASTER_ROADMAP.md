@@ -177,10 +177,10 @@ CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail
 
 ## Immediate next 5 engineering moves
 
-1. Execute **credit-score removal** (all risk scoring gone).  
-2. **E1** remove `sup-demo-1` + **E3** apply shop-closed DDL.  
+1. ~~Credit-score removal~~ **Done** (status + available only; worker/UI scoring gone).  
+2. ~~E1 `sup-demo-1` + E3 shop-closed DDL~~ **Done**.  
 3. **L1** owner secrets (GP password, Firebase Phone/SHA).  
-4. **RS0 + G8 + G9** claim org auth + quarantine + receive exclude.  
+4. **GCS evidence fail-closed** (G16/G21) then **RS0 + G8 + G9**.  
 5. Start **E2** perimeter key design before second supplier.
 
 ---

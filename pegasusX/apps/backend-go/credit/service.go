@@ -82,12 +82,6 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		return result, nil
 	}
 
-	if profile.RiskTier == RiskTierBlock {
-		result.Reason = "risk_tier_block"
-		result.Shortfall = amountMinor
-		return result, nil
-	}
-
 	if profile.CreditLimitMinor <= 0 {
 		result.Reason = "no_credit_limit"
 		result.Shortfall = amountMinor
@@ -159,7 +153,6 @@ func (s *Service) MarkBalance(ctx context.Context, retailerID, supplierID string
 			RetailerID:     retailerID,
 			SupplierID:     supplierID,
 			CurrentBalance: amountMinor,
-			RiskTier:       string(RiskTierMedium),
 			Reason:         fmt.Sprintf("credit_delivery:%s", orderID),
 		})
 	})
@@ -177,7 +170,6 @@ func (s *Service) ClearBalance(ctx context.Context, retailerID, supplierID strin
 			RetailerID:     retailerID,
 			SupplierID:     supplierID,
 			CurrentBalance: -amountMinor,
-			RiskTier:       string(RiskTierMedium),
 			Reason:         fmt.Sprintf("credit_payment:%s", orderID),
 		})
 	})
@@ -201,12 +193,10 @@ func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason 
 	if p.LastEvaluatedAt.IsZero() {
 		p.LastEvaluatedAt = now
 	}
-	if p.RiskTier == "" {
-		p.RiskTier = RiskTierMedium
-	}
 	if p.Status == "" {
 		p.Status = StatusInactive
 	}
+	p.RiskTier = "" // scoring product removed
 	p.AvailableCreditMinor = p.Available()
 
 	return s.repo.UpsertProfile(ctx, p, func(txn outbox.TxnBuffer) error {
@@ -217,16 +207,10 @@ func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason 
 			SupplierID:       p.SupplierID,
 			CreditLimitMinor: p.CreditLimitMinor,
 			CurrentBalance:   p.CurrentBalanceMinor,
-			RiskTier:         string(p.RiskTier),
 			Delinquent:       p.DelinquencyCount > 0,
 			Reason:           reason,
 		})
 	})
-}
-
-// EvaluateRisk recomputes risk tier from delinquency count and balance.
-func (s *Service) EvaluateRisk(delinquencyCount, balanceMinor, limitMinor int64) RiskTier {
-	return deriveRiskTier(delinquencyCount, balanceMinor, limitMinor)
 }
 
 // ListSupplierProfiles returns supplier-scoped credit profiles for the collections desk.

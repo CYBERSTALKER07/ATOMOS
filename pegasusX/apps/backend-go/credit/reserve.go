@@ -35,7 +35,6 @@ func (s *Service) Reserve(ctx context.Context, retailerID, supplierID, orderID s
 			RetailerID:     retailerID,
 			SupplierID:     supplierID,
 			CurrentBalance: 0,
-			RiskTier:       string(RiskTierMedium),
 			Reason:         fmt.Sprintf("credit_reserve:%s", orderID),
 		})
 	})

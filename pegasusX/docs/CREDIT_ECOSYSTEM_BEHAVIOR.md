@@ -40,6 +40,9 @@ creditLeave / reserve:
 else → reject CREDIT_*; allow cash/card/COD
 ```
 
+Credit **risk scoring** (`RetailerCreditScores`, score worker, `RiskTier` / suggested limit) is **removed**.
+CREDIT_LEAVE and shop-closed timeout use **status + available** only. Limits and freeze/ACTIVE remain.
+
 ## Role surfaces
 
 | Surface | Features |

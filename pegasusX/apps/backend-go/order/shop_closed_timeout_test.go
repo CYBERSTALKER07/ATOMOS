@@ -4,102 +4,73 @@ import (
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestDecideShopClosedTimeout_CreditLeaveLowRisk(t *testing.T) {
-	order := &Order{TotalMinor: 100_000}
+func TestDecideShopClosedTimeout_CreditLeaveWhenActiveAndAvailable(t *testing.T) {
+	order := &Order{TotalMinor: 1000}
 	profile := &credit.Profile{
-		Status:               "ACTIVE",
-		AvailableCreditMinor: 500_000,
-		RiskTier:             credit.RiskTierLow,
+		Status:               credit.StatusActive,
+		CreditLimitMinor:     10000,
+		CurrentBalanceMinor:  0,
+		AvailableCreditMinor: 10000,
 	}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       200_000,
-		MaxRiskTierForAutoCredit: 1, // Low is 1
+	cfg := TimeoutConfig{MaxAutoCreditMinor: 50000}
+	if d := DecideShopClosedTimeout(order, profile, cfg); d != DecisionCreditLeave {
+		t.Fatalf("want CREDIT_LEAVE, got %s", d)
 	}
-
-	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
-	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
-	assert.Equal(t, DecisionCreditLeave, d)
-}
-
-func TestDecideShopClosedTimeout_HighRiskReturns(t *testing.T) {
-	order := &Order{TotalMinor: 50_000}
-	profile := &credit.Profile{
-		Status:               "ACTIVE",
-		AvailableCreditMinor: 1_000_000,
-		RiskTier:             credit.RiskTierHigh,
-	}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       200_000,
-		MaxRiskTierForAutoCredit: 1,
-	}
-
-	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierHigh}
-	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
-	assert.Equal(t, DecisionReturnToWarehouse, d)
 }
 
 func TestDecideShopClosedTimeout_FrozenBlocksCredit(t *testing.T) {
-	order := &Order{TotalMinor: 10_000}
+	order := &Order{TotalMinor: 1000}
 	profile := &credit.Profile{
-		Status:               "FROZEN",
-		AvailableCreditMinor: 1_000_000,
-		RiskTier:             credit.RiskTierLow,
+		Status:               credit.StatusFrozen,
+		CreditLimitMinor:     10000,
+		AvailableCreditMinor: 10000,
 	}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       200_000,
-		MaxRiskTierForAutoCredit: 1,
+	cfg := TimeoutConfig{MaxAutoCreditMinor: 50000}
+	if d := DecideShopClosedTimeout(order, profile, cfg); d != DecisionReturnToWarehouse {
+		t.Fatalf("want RETURN_TO_WAREHOUSE, got %s", d)
 	}
-
-	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
-	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
-	assert.Equal(t, DecisionReturnToWarehouse, d, "frozen should return to warehouse")
 }
 
 func TestDecideShopClosedTimeout_ForceBypassWhenEnabled(t *testing.T) {
-	order := &Order{TotalMinor: 200_000}
-	profile := &credit.Profile{
-		Status:               "ACTIVE",
-		AvailableCreditMinor: 0,
-		RiskTier:             credit.RiskTierMedium,
+	order := &Order{TotalMinor: 1000}
+	profile := &credit.Profile{Status: credit.StatusFrozen}
+	cfg := TimeoutConfig{AllowForceBypass: true}
+	if d := DecideShopClosedTimeout(order, profile, cfg); d != DecisionForceBypass {
+		t.Fatalf("want FORCE_BYPASS, got %s", d)
 	}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       100_000,
-		MaxRiskTierForAutoCredit: 1,
-		AllowForceBypass:         true,
-	}
-
-	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierMedium}
-	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
-	assert.Equal(t, DecisionForceBypass, d)
 }
 
-func TestDecideShopClosedTimeout_NoProfileLowValueReturns(t *testing.T) {
-	order := &Order{TotalMinor: 10_000}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       100_000,
-		MaxRiskTierForAutoCredit: 1,
+func TestDecideShopClosedTimeout_NoProfileReturns(t *testing.T) {
+	order := &Order{TotalMinor: 1000}
+	cfg := TimeoutConfig{}
+	if d := DecideShopClosedTimeout(order, nil, cfg); d != DecisionReturnToWarehouse {
+		t.Fatalf("want RETURN_TO_WAREHOUSE, got %s", d)
 	}
-
-	d := DecideShopClosedTimeout(order, nil, nil, cfg, true)
-	assert.Equal(t, DecisionReturnToWarehouse, d, "no profile defaults to return to warehouse")
 }
 
 func TestDecideShopClosedTimeout_InsufficientCredit(t *testing.T) {
-	order := &Order{TotalMinor: 200_000}
+	order := &Order{TotalMinor: 5000}
 	profile := &credit.Profile{
-		Status:               "ACTIVE",
-		AvailableCreditMinor: 50_000, // less than order total
-		RiskTier:             credit.RiskTierLow,
+		Status:              credit.StatusActive,
+		CreditLimitMinor:    1000,
+		CurrentBalanceMinor: 0,
 	}
-	cfg := TimeoutConfig{
-		MaxAutoCreditMinor:       500_000,
-		MaxRiskTierForAutoCredit: 1,
+	cfg := TimeoutConfig{MaxAutoCreditMinor: 50000}
+	if d := DecideShopClosedTimeout(order, profile, cfg); d != DecisionReturnToWarehouse {
+		t.Fatalf("want RETURN_TO_WAREHOUSE, got %s", d)
 	}
+}
 
-	score := &credit.RetailerCreditScore{RiskTier: credit.RiskTierLow}
-	d := DecideShopClosedTimeout(order, profile, score, cfg, true)
-	assert.Equal(t, DecisionReturnToWarehouse, d)
+func TestCanLeaveOnCredit_IgnoresRiskTier(t *testing.T) {
+	order := &Order{TotalMinor: 1000}
+	profile := &credit.Profile{
+		Status:           credit.StatusActive,
+		CreditLimitMinor: 10000,
+		RiskTier:         credit.RiskTierBlock, // must not block after scoring removal
+	}
+	if err := CanLeaveOnCredit(order, profile, TimeoutConfig{}); err != nil {
+		t.Fatalf("RiskTier must not gate credit leave: %v", err)
+	}
 }

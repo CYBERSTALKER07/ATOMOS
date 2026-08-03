@@ -30,18 +30,6 @@ func (s *Service) BootstrapSegments(ctx context.Context, supplierID, actor strin
 	if err != nil {
 		return BootstrapResult{}, err
 	}
-	retailerIDs := make([]string, 0, len(stats))
-	for _, st := range stats {
-		retailerIDs = append(retailerIDs, st.RetailerID)
-	}
-	riskTiers, err := s.repo.ListRetailerRiskTiers(ctx, retailerIDs)
-	if err != nil {
-		return BootstrapResult{}, err
-	}
-	creditScores, err := s.repo.ListRetailerCreditScores(ctx, retailerIDs)
-	if err != nil {
-		return BootstrapResult{}, err
-	}
 	claimCounts, err := s.repo.ListRetailerClaimCounts(ctx, supplierID)
 	if err != nil {
 		return BootstrapResult{}, err
@@ -65,8 +53,6 @@ func (s *Service) BootstrapSegments(ctx context.Context, supplierID, actor strin
 			RetailerID:  st.RetailerID,
 			OrderCount:  st.OrderCount,
 			ClaimCount:  claimCounts[st.RetailerID],
-			CreditScore: creditScores[st.RetailerID],
-			RiskTier:    riskTiers[st.RetailerID],
 			InTopVolume: topVolume[st.RetailerID],
 		})
 		mutations = append(mutations, spanner.InsertOrUpdateMap("RetailerSegments", map[string]interface{}{

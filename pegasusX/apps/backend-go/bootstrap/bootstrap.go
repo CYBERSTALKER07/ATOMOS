@@ -191,7 +191,6 @@ type App struct {
 	CreditService          *credit.Service
 	CreditPolicyService    *credit.PolicyService
 	ARService              *ar.Service
-	CreditScoreWorker      *credit.Worker
 	CashReconHandlers      *cashrecon.Handlers
 	CashReconService       *cashrecon.Service
 	CashReconEscalation    *cashrecon.EscalationWorker
@@ -671,10 +670,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	creditPolicySvc := credit.NewPolicyService(creditPolicyRepo, creditSvc)
 	creditSvc.SetPolicyGate(creditPolicySvc)
 	arSvc := ar.NewService(arRepo)
-	var creditScoreWorker *credit.Worker
-	if spannerClient != nil {
-		creditScoreWorker = credit.NewWorker(spannerClient)
-	}
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -692,7 +687,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var creditNoteSvc *creditnote.Service
 	var creditNoteHandlers *creditnote.Handlers
 	cashReconRequired := strings.EqualFold(strings.TrimSpace(os.Getenv("CASH_RECONCILIATION_REQUIRED")), "true")
-	creditScoreEnforcement := strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_SCORE_ENFORCEMENT_ENABLED")), "true")
 	if spannerClient != nil {
 		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
 		taxSvc = tax.NewService(tax.NewSpannerRepository(spannerClient), cacheClient, slog.Default())
@@ -719,9 +713,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		SupplierHub:                   supplierHub,
 		DriverHub:                     driverHub,
 		SpannerClient:                 spannerClient,
-		ShopClosedGrace:               shopClosedGraceDuration(),
-		CreditScoreEnforcementEnabled: creditScoreEnforcement,
-		Log:                           log,
+		ShopClosedGrace: shopClosedGraceDuration(),
+		Log:             log,
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
 		Idem:            idemStore,
@@ -1394,7 +1387,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		CreditService:          creditSvc,
 		CreditPolicyService:    creditPolicySvc,
 		ARService:              arSvc,
-		CreditScoreWorker:      creditScoreWorker,
 		CashReconHandlers:      cashReconHandlers,
 		CashReconService:       cashReconSvc,
 		CashReconEscalation:    cashReconEscalation,

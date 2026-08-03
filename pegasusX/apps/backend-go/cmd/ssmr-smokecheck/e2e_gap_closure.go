@@ -106,7 +106,7 @@ func runGapClosureCreditProfilesE2E(ctx context.Context, client *http.Client, ba
 			return fmt.Errorf("decode credit-profiles: %w", err)
 		}
 	}
-	fmt.Println("PX_E2E_CREDIT_SCORE_NOTIFY_OK")
+	fmt.Println("PX_E2E_CREDIT_PROFILES_OK")
 	return nil
 }
 

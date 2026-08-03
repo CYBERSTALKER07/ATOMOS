@@ -277,19 +277,13 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("failed to load credit profile: %w", err)
 		}
-		score, err := getRetailerCreditScore(ctx, txn, current.RetailerID)
-		if err != nil {
-			s.log.WarnContext(ctx, "failed to load credit score for driver credit leave", "err", err, "retailer_id", current.RetailerID)
-		}
 
 		cfg := TimeoutConfig{
-			MaxAutoCreditMinor:            50000000,
-			MaxRiskTierForAutoCredit:      2,
-			AllowForceBypass:              false,
-			CreditScoreEnforcementEnabled: s.creditScoreEnforcement,
+			MaxAutoCreditMinor: 50000000,
+			AllowForceBypass:   false,
 		}
 
-		if err := CanLeaveOnCredit(&current, profile, score, cfg, cfg.CreditScoreEnforcementEnabled); err != nil {
+		if err := CanLeaveOnCredit(&current, profile, cfg); err != nil {
 			return err
 		}
 
