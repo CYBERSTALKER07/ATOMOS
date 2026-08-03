@@ -20,7 +20,7 @@
 ### Relationship to Retail OS
 
 | Retail OS phase | This plan may consume |
-|-----------------|------------------------|
+| ----------------- | ------------------------ |
 | P0 packs + JWT v2 + durable settings | GP card UX, notif fanout, Control Tower pulse |
 | P1 TEAM | Per-user FCM, multi-org staff (later), CUSTOMER_ASSIST |
 | P2 LOCATIONS | Franchise / HQ rollups |
@@ -33,7 +33,7 @@
 ### What this plan covers
 
 | Tier | IDs | Intent |
-|------|-----|--------|
+| ------ | ----- | -------- |
 | **Do next** | L1–L3 | Highest ecosystem leverage; unblock field reality + flywheel |
 | **Strong follow-ons** | L4–L7 | After Retail OS P0–P1 (and P3/P4 where noted) |
 | **Later scale** | L8–L11 | Mode L / network effects |
@@ -69,7 +69,7 @@
 ### Ops / money / auth
 
 | Area | Status | Anchors |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | Global Pay executor + webhook | Wired; credentials placeholder | `payment/global_pay_executor.go`, `payment/global_pay_webhook.go`, `POST /v1/webhooks/global-pay` |
 | GP env defaults | `doc-*` stubs; empty password → stub refs | `bootstrap/bootstrap.go` `GLOBAL_PAY_*` |
 | Card checkout at delivery | Wired; e2e cash fallback today | `payment/retailer_checkout.go`; `PX_E2E_PAYMENT_CASH_FALLBACK_OK` |
@@ -82,7 +82,7 @@
 ### Retailer CORE leftovers
 
 | Area | Status | Anchors |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | Auto-order settings | Durable Spanner (+ process cache) | `repository_settings_durable.go`, `auto_order.go` |
 | Favorites | Durable | `RetailerFavoriteSuppliers` |
 | Family members | **Team SoT + durable gone flag** | List RAM legacy; migrate → Team; `family_writes_gone` in `RetailerOrgFlags` |
@@ -97,7 +97,7 @@
 ### Flywheel / replenishment
 
 | Area | Status | Anchors |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `syncReorderCurrentStock` | Updates `ReorderSuggestions.CurrentStock` if row exists | `retailer/store_stock.go`, called from POS/stock |
 | `ReorderSuggestionWorker` | Batch from `DemandAdjustments`; prefers store OnHand | `replenishment/reorder_suggestion_batch.go` |
 | Demand sensing | Order-history / factors — **not POS lines** | `demand/worker_sensing.go` |
@@ -109,7 +109,7 @@
 ### Deferred / gated product
 
 | Area | Status | Anchors |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | Quantity negotiations | **Disabled** (`410` / empty list) | `quantityNegotiationDisabled = true`; code retained, product-deferred |
 | Negotiation schema | Present | `NegotiationProposals` in Spanner DDL |
 | Fiscal | `FISCAL_PROVIDER=PEGASUS` live | `order/fiscal_*.go` |
@@ -158,7 +158,7 @@ start(epic):
 ## 4. Tier catalog
 
 | ID | Name | Unlocks | Default priority |
-|----|------|---------|------------------|
+| ---- | ------ | --------- | ------------------ |
 | **L1** | Field unlock (GP + Firebase) | Real card SUCCESS; real SMS OTP | **P0 ops** |
 | **L2** | Retail OS CORE hardening | Family durability/migrate; CT de-demo; notif honesty; auto-order execution | **P0 product** |
 | **L3** | Sell-through → reorder bridge | POS/stock → DemandAdjustments → suggestions → supplier signals | **P0 flywheel** |
@@ -237,7 +237,7 @@ POST /v1/user/device-token
 #### Edge cases
 
 | Case | Expected |
-|------|----------|
+| ------ | ---------- |
 | Wrong GP password | Clear 401/merchant error; no stub SUCCESS in SSMR/prod |
 | Webhook replay | Idempotent settle (existing) |
 | SHA mismatch | Phone OTP fails on device; document per-app applicationId |
@@ -251,7 +251,7 @@ POST /v1/user/device-token
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L1.1** | Owner: GSM secrets + webhook portal + API restart |
 | **L1.2** | Smokecheck: assert GP SUCCESS marker (not only cash fallback) |
 | **L1.3** | Firebase Phone + SHA/APNs; enable `FIREBASE_AUTH_ENABLED` on SSMR |
@@ -362,7 +362,7 @@ GET /v1/retailer/control-tower/pulse
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L2.1** | Family durable **or** migrate → TEAM; kill RAM SoT |
 | **L2.2** | Client device-token → platform; remove false OK |
 | **L2.3** | Retailer CT de-demo + stop simulator outside dev |
@@ -435,7 +435,7 @@ RetailerSellThroughDaily
 #### Edge cases
 
 | Case | Expected |
-|------|----------|
+| ------ | ---------- |
 | POS without STORE_STOCK | Should be impossible (Retail OS hard dep); if legacy, skip sell-through |
 | Local SKU (L6) not in supplier catalog | Retailer reorder only; **no** supplier suggestion row |
 | Void after suggestion emitted | Reverse adjustment; recompute |
@@ -449,7 +449,7 @@ RetailerSellThroughDaily
 #### Phased PRs
 
 | PR | Scope | Depends |
-|----|-------|---------|
+| ---- | ------- | --------- |
 | **L3.1** | SellThroughDaily + writers from POS/stock events | Retail OS P3/P4 |
 | **L3.2** | DemandAdjustments SELL_THROUGH factor | L3.1 |
 | **L3.3** | ReorderSuggestionWorker velocity merge + source labels | L3.2 |
@@ -519,7 +519,7 @@ supplier POST /v1/supplier/negotiate/resolve { proposal_id, APPROVE|REJECT|COUNT
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L4.1** | Flip gate + backend tests green |
 | **L4.2** | Driver propose UX (Android + iOS) |
 | **L4.3** | Supplier resolve UX (portal + Android + iOS) |
@@ -578,7 +578,7 @@ FISCAL_MY_SOLIQ_TIN=
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L5.1** | Sandbox MY_SOLIQ delivery path on staging/SSMR flag |
 | **L5.2** | Clearance tracking + buyer reject handling |
 | **L5.3** | POS → FiscalProvider bridge (optional pack/config) |
@@ -651,7 +651,7 @@ POST       /v1/retailer/local-skus/{id}/barcode
 #### Phased PRs
 
 | PR | Scope | Depends |
-|----|-------|---------|
+| ---- | ------- | --------- |
 | **L6.1** | Schema + CRUD API | P3 |
 | **L6.2** | POS validation + search union | P4 |
 | **L6.3** | CSV import desktop + scan mobile | L6.1 |
@@ -709,7 +709,7 @@ GET  /v1/retailer/stock/movements?ref_type=CLAIM&ref_id=
 #### Edge cases
 
 | Case | Expected |
-|------|----------|
+| ------ | ---------- |
 | Claim before store receive | No store movement; WH reverse only |
 | Partial claim | Hold only claimed qty |
 | Negotiation (L4) then claim | Use post-negotiation qty as baseline |
@@ -718,7 +718,7 @@ GET  /v1/retailer/stock/movements?ref_type=CLAIM&ref_id=
 #### Phased PRs
 
 | PR | Scope | Depends |
-|----|-------|---------|
+| ---- | ------- | --------- |
 | **L7.1** | Claim filed → QUARANTINE movements | P3 |
 | **L7.2** | Approve/reject → RETURN/WASTE/restore | L7.1 |
 | **L7.3** | UI quarantine + parity | L7.2 |
@@ -754,7 +754,7 @@ Login:
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L8.1** | Membership schema + migration from single-row users |
 | **L8.2** | Login picker + select-org |
 | **L8.3** | Client org switcher (all three retailer clients) |
@@ -818,7 +818,7 @@ Retail OS P4 stable; driver offline patterns are **reference only** (do not reus
 #### Phased PRs
 
 | PR | Scope |
-|----|-------|
+| ---- | ------- |
 | **L10.1** | Parked carts API + cashier UI |
 | **L10.2** | Offline count queue + conflict |  
 | **L10.3** | Explicitly **no** offline card capture |
@@ -854,7 +854,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 6. Cross-role integration map
 
 | Next-layer feature | Other role impact |
-|--------------------|-------------------|
+| -------------------- | ------------------- |
 | L1 GP SUCCESS | Driver/retailer delivery pay; finance ledger |
 | L1 Firebase | All role logins |
 | L2 CT de-demo | Supplier CT flags unchanged; retailer pulse new |
@@ -870,7 +870,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 7. Real-world edge cases (must design tests)
 
 | Case | Expected |
-|------|----------|
+| ------ | ---------- |
 | GP password wrong in GSM | No stub SUCCESS; ops alert |
 | OTP works on emulator flag in release | Blocked by checklist / build config |
 | Family list empty after API restart | Fixed by L2.1 |
@@ -899,7 +899,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 9. Testing strategy
 
 | Layer | What |
-|-------|------|
+| ------- | ------ |
 | Ops smoke | `cloud_smoke_ssmr.sh`; GP SUCCESS marker; Firebase OTP manual matrix |
 | Unit | Sell-through rollup math; claim→quarantine qty; negotiation resolve |
 | Integration | Spanner: sale → DemandAdjustments → suggestion; claim → QUARANTINE |
@@ -914,7 +914,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ### Phase A — Field unlock + CORE (parallel with Retail OS P0)
 
 | Epic | Scope | Depends |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | **A1 / L1** | GP SUCCESS + Firebase OTP | Owner secrets |
 | **A2 / L2.1–L2.3** | Family, tokens, CT de-demo | Retail OS P0–P1 preferred |
 | **A3 / L2.4** | AutoOrderWorker (history-based OK) | Durable settings |
@@ -929,7 +929,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ### Phase C — Strong follow-ons
 
 | Epic | Scope | Depends |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | **C1 / L4** | Re-enable quantity negotiations | Retail OS P0–P1 scheduled (process gate) |
 | **C2 / L7** | Claim ↔ store quarantine bridge | P3 + claims |
 | **C3 / L6** | Local POS SKUs | P3/P4 |
@@ -938,7 +938,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ### Phase D — Later scale
 
 | Epic | Scope | Depends |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | **D1 / L8** | Multi-org phones | P1 + product decision |
 | **D2 / L9** | HQ analytics + Kafka BI | P2 + POS data |
 | **D3 / L10** | Parked carts + offline count | Stable P4 |
@@ -972,7 +972,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 12. Key decisions
 
 | Decision | Choice | Rationale |
-|----------|--------|-----------|
+| ---------- | -------- | ----------- |
 | Sequencing | Retail OS before big follow-ons | Avoid second competing epic |
 | Negotiations meaning | Delivery qty propose/resolve | Matches code; not RFQ pricing |
 | Sell-through sink | DemandAdjustments + SellThroughDaily | Reuse replenishment spine |
@@ -1001,7 +1001,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 14. Success metrics (rollup)
 
 | Epic | Metric |
-|------|--------|
+| ------ | -------- |
 | L1 | Card SUCCESS e2e; OTP on device; prod profile green |
 | L2 | Zero family data loss on restart; CT mock strings = 0 in release; auto-order run audit visible |
 | L3 | Sell-through moves suggestions within one tick; supplier source chip visible |
@@ -1032,7 +1032,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## 16. Risk register
 
 | Risk | Mitigation |
-|------|------------|
+| ------ | ------------ |
 | Scope steals focus from Retail OS | Hard process gate: no L4+ epic start before P0–P1 scheduled |
 | GP stub false confidence | Prod profile rejects doc-* / stub refs |
 | Sell-through double counts voids | Signed adjustments; tests |
@@ -1073,7 +1073,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## Appendix A — Epic × Retail OS dependency matrix
 
 | Epic | P0 | P1 TEAM | P2 LOC | P3 STOCK | P4 POS | P5 SHIFTS |
-|------|----|---------|--------|----------|--------|-----------|
+| ------ | ---- | --------- | -------- | ---------- | -------- | ----------- |
 | L1 GP/Firebase | — | — | — | — | — | — |
 | L2 CORE harden | soft | soft | — | — | — | — |
 | L3 sell-through | — | — | soft | **hard** | **hard** | — |
@@ -1111,7 +1111,7 @@ Detailed plan: [`docs/PLANOGRAM_VISION_PLAN.md`](./PLANOGRAM_VISION_PLAN.md) —
 ## Appendix C — Mapping from recommendation list
 
 | Recommendation | Plan ID |
-|----------------|---------|
+| ---------------- | --------- |
 | 1. Global Pay SUCCESS + Firebase real OTP | **L1** |
 | 2. Retail OS CORE hardening | **L2** |
 | 3. Sell-through → reorder bridge | **L3** |
