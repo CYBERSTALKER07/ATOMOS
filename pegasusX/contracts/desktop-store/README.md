@@ -1,5 +1,11 @@
 # Desktop store distribution (Microsoft Store + Mac App Store)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Website CDN keys live under `contracts/desktop-updater/`.  
 This folder documents **store-channel** env and config for Tauri shells.
 

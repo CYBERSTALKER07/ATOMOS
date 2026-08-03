@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: backend-go
     app.kubernetes.io/part-of: pegasusx
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: backend-go
@@ -27,7 +27,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: backend-go
-          image: pegasusx-backend:local
+          image: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go:staging
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -57,6 +57,53 @@ spec:
                 secretKeyRef:
                   name: backend-go-secrets
                   key: stripe-webhook-secret
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: redis-password
+            - name: PAYME_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: payme-webhook-secret
+            - name: CLICK_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: click-webhook-secret
+            - name: GLOBAL_PAY_SERVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-service-id
+            - name: GLOBAL_PAY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-username
+            - name: GLOBAL_PAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-password
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: internal-api-key
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: google-maps-api-key
+                  optional: true
+            - name: FIREBASE_CREDENTIALS_PATH
+              value: /var/secrets/firebase/service-account.json
+          volumeMounts:
+            - name: firebase-credentials
+              mountPath: /var/secrets/firebase
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -73,8 +120,13 @@ spec:
             failureThreshold: 3
           resources:
             requests:
-              cpu: 250m
-              memory: 256Mi
+              cpu: 10m
+              memory: 128Mi
             limits:
               cpu: "1000m"
               memory: 512Mi
+      volumes:
+        - name: firebase-credentials
+          secret:
+            secretName: backend-go-firebase
+            optional: true

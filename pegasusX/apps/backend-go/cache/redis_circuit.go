@@ -166,20 +166,20 @@ func (c *CircuitBreakerBackend) Close() error {
 }
 
 type perimeterSetPrimary interface {
-	ReplaceSet(ctx context.Context, key string, members []string) error
+	ReplaceSet(ctx context.Context, key string, members []string, ttl time.Duration) error
 	SIsMember(ctx context.Context, key string, member string) (bool, error)
 	Exists(ctx context.Context, key string) (bool, error)
 }
 
 // ReplaceSet delegates perimeter set writes to the primary Redis backend.
-func (c *CircuitBreakerBackend) ReplaceSet(ctx context.Context, key string, members []string) error {
+func (c *CircuitBreakerBackend) ReplaceSet(ctx context.Context, key string, members []string, ttl time.Duration) error {
 	primary, ok := c.primary.(perimeterSetPrimary)
 	if !ok {
 		return circuit.ErrUpstreamUnavailable
 	}
 	var setErr error
 	err := c.breaker.Do(ctx, func(ctx context.Context) error {
-		setErr = primary.ReplaceSet(ctx, key, members)
+		setErr = primary.ReplaceSet(ctx, key, members, ttl)
 		return setErr
 	})
 	if err == circuit.ErrUpstreamUnavailable {

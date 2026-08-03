@@ -1,5 +1,11 @@
 # pegasusX Load Test Profile (10k Retailer Concurrency)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Target envelope
 
 - 10,000 concurrent retailer sessions (read-heavy).

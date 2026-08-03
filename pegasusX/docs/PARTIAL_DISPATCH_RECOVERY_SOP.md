@@ -1,5 +1,11 @@
 # Partial Dispatch Recovery SOP
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 When warehouse dispatch execute commits some orders but fails on a later chunk, the backend **auto-compensates** (rolls back committed routes) and operators recover by retrying.
 
 **Backend signal:** HTTP `500` with body `{"error":"dispatch_partial_commit", "committed_routes", "failed_chunk", "total_chunks", "total_routes", "detail", "compensated"}`. The idempotency key is released on failure — a retry with the same or a new key is safe.  

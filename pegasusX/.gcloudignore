@@ -1,0 +1,17 @@
+.git/
+node_modules/
+.next/
+.cache/
+visuals/
+softwareengineercv-main/
+infra/
+apps/warehouse-app-ios/
+apps/retailer-app-desktop/
+apps/factory-portal/
+apps/warehouse-portal/
+apps/supplier-portal/
+apps/retailer-app-ios/
+apps/retailer-app-android/
+*.pdf
+*.zip
+*.tar.gz

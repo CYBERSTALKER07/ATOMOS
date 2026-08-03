@@ -1,5 +1,10 @@
 # Pegasus X — Warehouse Admin (iOS)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Native SwiftUI client wired to `pegasusX/apps/backend-go` and parity with `warehouse-portal`.
 
 ## Run

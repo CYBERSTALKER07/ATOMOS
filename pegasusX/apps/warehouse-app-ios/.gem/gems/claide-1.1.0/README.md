@@ -1,5 +1,11 @@
 # Hi, I’m Claide, your command-line tool aide.
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 [![Build Status](https://img.shields.io/github/workflow/status/CocoaPods/claide/ci)](https://github.com/CocoaPods/claide/actions)
 [![Gem Version](https://img.shields.io/gem/v/claide)](https://rubygems.org/gems/claide)
 

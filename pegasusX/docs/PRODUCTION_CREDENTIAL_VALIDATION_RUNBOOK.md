@@ -1,5 +1,11 @@
 # Production Credential Validation Runbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 > **Purpose:** pegasusX code and SSMR gates can be green without live cloud credentials. This runbook proves each external integration works against **staging** (then production) before `PEGASUSX_ENV=production` cutover.
 >
 > **Inventory reference:** [`CLOUD_CREDENTIALS_CHECKLIST.md`](./CLOUD_CREDENTIALS_CHECKLIST.md)  

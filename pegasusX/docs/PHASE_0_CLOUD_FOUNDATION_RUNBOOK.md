@@ -1,5 +1,11 @@
 # Phase 0 — Cloud Foundation (PX-PROD-0)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Goal:** Production-shaped staging with real Spanner, Memorystore Redis, managed Kafka, and GKE — no emulator fallbacks (`REQUIRE_INFRA_ADAPTERS=true`).
 
 **Authority:** [`context/plan_production_scale.md`](../context/plan_production_scale.md) Phase 0. Complements [`WIRE_READY_STAGING_RUNBOOK.md`](./WIRE_READY_STAGING_RUNBOOK.md).

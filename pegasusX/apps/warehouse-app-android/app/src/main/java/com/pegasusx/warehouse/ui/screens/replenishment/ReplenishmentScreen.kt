@@ -1,10 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.replenishment
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -138,106 +135,14 @@ fun ReplenishmentScreen(
                 body = "Open insights from the replenishment engine will appear here.",
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    WarehouseSectionTitle("Open insights (${insights.size})")
-                }
-                items(insights, key = { it.id }) { insight ->
-                    InsightCard(
-                        insight = insight,
-                        busy = actingId == insight.id,
-                        onApprove = { runAction(insight.id, "approve") },
-                        onDismiss = { runAction(insight.id, "dismiss") },
-                    )
-                }
-            }
+            else -> ReplenishmentList(
+                insights = insights,
+                actingId = actingId,
+                onApprove = { runAction(it, "approve") },
+                onDismiss = { runAction(it, "dismiss") },
+                modifier = Modifier.padding(padding)
+            )
         }
     }
 }
 
-@Composable
-private fun InsightCard(
-    insight: ReplenishmentInsight,
-    busy: Boolean,
-    onApprove: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Text(insight.productName, style = MaterialTheme.typography.titleMedium)
-                    if (insight.reasonCode == "PREDICTIVE_PUSH") {
-                        Spacer(Modifier.width(PegasusSpacing.xs))
-                        Surface(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    "AI PUSH",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = MaterialTheme.colorScheme.surface
-                                )
-                            }
-                        }
-                    }
-                }
-                WarehouseStatusChip(status = insight.urgency)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                WarehouseStatusChip(status = insight.status)
-            }
-            Text(
-                "Stock: ${insight.currentStock} · Reorder: ${insight.reorderQuantity}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            insight.demandBreakdown?.let { breakdown ->
-                Text(formatDemandWhy(breakdown, insight.reasonCode), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(
-                "Days until stockout: ${insight.daysUntilStockout}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (insight.status.equals("OPEN", ignoreCase = true)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Button(onClick = onApprove, enabled = !busy) { Text("Approve") }
-                    OutlinedButton(onClick = onDismiss, enabled = !busy) { Text("Dismiss") }
-                }
-            }
-        }
-    }
-}
-
-private fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, reasonCode: String?): String {
-    if (breakdown == null || breakdown.isEmpty()) {
-        return reasonCode?.replace('_', ' ') ?: "Threshold breach"
-    }
-    breakdown["blocked_reason"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }?.let { blocked ->
-        return if (blocked == "insufficient_history") {
-            "Insufficient history — forecast blocked"
-        } else {
-            blocked.replace('_', ' ')
-        }
-    }
-    val parts = mutableListOf<String>()
-    breakdown["burn_rate_7d"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("Burn ${"%.1f".format(it)}/d") }
-    breakdown["days_cover"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("${"%.1f".format(it)}d cover") }
-    if (breakdown.containsKey("mei_network")) parts.add("MEIO network transfer")
-    return parts.joinToString(" · ").ifBlank { reasonCode?.replace('_', ' ') ?: "Demand signal" }
-}

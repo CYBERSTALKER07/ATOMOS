@@ -1,5 +1,11 @@
 # ADR-003: Modular monolith with selective process splits
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-06-22  
 **Context:** ~100k LOC backend-go, single Spanner database, strong transactional boundaries. Microservices would add network partitions without relieving data coupling.

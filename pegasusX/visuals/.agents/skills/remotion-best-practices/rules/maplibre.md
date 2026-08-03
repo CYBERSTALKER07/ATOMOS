@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ---
 name: maps
 description: Make deterministic Remotion map animations with MapLibre GL JS and Turf. Use for animated routes, flyovers, map markers, labels, and camera movement.

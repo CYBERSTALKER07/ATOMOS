@@ -1,5 +1,11 @@
 # Native App Store / Play distribution
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Scope:** Public **Google Play** and **Apple App Store** builds of the six native role apps.  
 **Not this doc:** website / enterprise CDN sideload — see [`ENTERPRISE_WEBSITE_MOBILE_UPDATES.md`](./ENTERPRISE_WEBSITE_MOBILE_UPDATES.md).
 

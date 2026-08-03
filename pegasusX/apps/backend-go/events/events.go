@@ -23,6 +23,10 @@ var (
 	TopicFreezeLocks = topicFromEnv("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks")
 	// TopicInventoryImportEvents carries supplier bulk-import session lifecycle events.
 	TopicInventoryImportEvents = topicFromEnv("KAFKA_TOPIC_INVENTORY_IMPORT", "pegasusx-inventory-import")
+	// TopicLogisticsExceptions carries operations exceptions (missing items, damage).
+	TopicLogisticsExceptions = topicFromEnv("KAFKA_TOPIC_LOGISTICS_EXCEPTIONS", "logistics.exceptions.v1")
+	// TopicLogisticsTelemetry carries real-time driver tracking updates.
+	TopicLogisticsTelemetry = topicFromEnv("KAFKA_TOPIC_LOGISTICS_TELEMETRY", "logistics.telemetry.v1")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -81,6 +85,7 @@ const (
 	EventOrderReassigned       = "ORDER_REASSIGNED"
 	EventOrderFinalized        = "ORDER_FINALIZED"
 	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
+	EventReverseLogisticsRequired = "REVERSE_LOGISTICS_REQUIRED"
 	EventOrderAmended          = "ORDER_AMENDED"
 
 	// @Sync(AIRecommendationEvent)

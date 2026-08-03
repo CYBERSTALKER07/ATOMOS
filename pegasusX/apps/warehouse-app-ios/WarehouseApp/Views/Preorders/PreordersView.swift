@@ -32,48 +32,19 @@ struct PreordersView: View {
                     WarehouseEmptyView(title: "No scheduled pre-orders", message: "No future orders waiting for delivery scheduling.")
                 }
             } else {
-                ResponsiveGridContentWrapper {
-                    ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(row.orderId).font(.headline)
-                        Text("Status: \(row.status)").font(.caption)
-                        if let date = row.requestedDeliveryDate {
-                            Text("Delivery: \(date)").font(.caption2)
-                        }
-                        if let proposed = row.proposedDeliveryDate {
-                            Text("Proposed: \(proposed)")
-                                .font(.caption2)
-                                .foregroundStyle(.tint)
-                        }
-                        if let reason = row.deliveryProposalReason, !reason.isEmpty {
-                            Text("Reason: \(reason)").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        if showsReviewBadge(row) {
-                            Text("Awaiting retailer review")
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(.orange.opacity(0.15))
-                                .clipShape(Capsule())
-                        }
-                        HStack {
-                            Button("Propose date") {
-                                reasonInput = ""
-                                proposeDate = initialProposeDate(for: row)
-                                activeSheet = .propose(row)
-                            }
-                            .disabled(acting)
-                            Button("Reject", role: .destructive) {
-                                reasonInput = ""
-                                activeSheet = .reject(row)
-                            }
-                            .disabled(acting)
-                        }
-                        .font(.subheadline)
+                PreordersList(
+                    rows: rows,
+                    acting: acting,
+                    onProposeDate: { row in
+                        reasonInput = ""
+                        proposeDate = initialProposeDate(for: row)
+                        activeSheet = .propose(row)
+                    },
+                    onReject: { row in
+                        reasonInput = ""
+                        activeSheet = .reject(row)
                     }
-                    .padding(.vertical, 4)
-                }
-            }
+                )
         }
         .navigationTitle("Pre-orders")
         .onAppear {
@@ -191,9 +162,6 @@ struct PreordersView: View {
         }
     }
 
-    private func showsReviewBadge(_ row: WarehousePreorderRow) -> Bool {
-        row.confirmationStatus == "PENDING_WAREHOUSE" || row.preorderBadge == "REVIEW_DELIVERY"
-    }
 
     private func initialProposeDate(for row: WarehousePreorderRow) -> Date {
         if let raw = row.requestedDeliveryDate?.prefix(10), !raw.isEmpty {

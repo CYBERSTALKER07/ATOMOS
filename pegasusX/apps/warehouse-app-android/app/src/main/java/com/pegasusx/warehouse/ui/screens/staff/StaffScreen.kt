@@ -83,34 +83,10 @@ fun StaffScreen(
             staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Text("No staff members", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            else -> StaffList(
+                staff = staff,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(staff, key = { it.workerId }) { s ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "${s.role} · ${s.phone}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(if (s.isActive) "Active" else "Inactive", style = MaterialTheme.typography.labelSmall) },
-                                colors = if (s.isActive) AssistChipDefaults.assistChipColors()
-                                else AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            )
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 

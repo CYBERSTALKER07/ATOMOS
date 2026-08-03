@@ -1,5 +1,11 @@
 # ADR-006: Kafka consumer domain cutover
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-06-22  
 **Context:** ADR-005 dual-writes domain topics from the outbox relay. Consumers still read `pegasusx-main`.

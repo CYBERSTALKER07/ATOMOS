@@ -27,7 +27,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: ai-worker
-          image: pegasusx-ai-worker:local
+          image: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker:staging
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -36,10 +36,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: ai-worker-config
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: redis-password
           resources:
             requests:
-              cpu: "250m"
-              memory: "256Mi"
+              cpu: 10m
+              memory: 128Mi
             limits:
               cpu: "1000m"
               memory: "1Gi"

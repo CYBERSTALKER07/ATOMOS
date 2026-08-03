@@ -1,5 +1,11 @@
 # ADR-009: Fiscal hard-gate at delivery
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted (§9 product locks signed off 2026-07-20)  
 **Date:** 2026-07-20  
 **Context:** Uzbekistan delivery-time cash/card must produce a durable fiscal receipt (OFD / `my.soliq.uz` class). ADR-001 keeps **pay-at-delivery only**. Today `CollectCash` and card-clear paths can move orders to `COMPLETED` and emit `PAYMENT_CLEARED` / `ORDER_FINALIZED` **without** a reconstructible fiscal receipt ID.

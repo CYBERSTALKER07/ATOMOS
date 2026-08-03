@@ -1,5 +1,10 @@
 # pegasusX Design System
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ## Zero-Dependency Rule
 Do NOT use `@material/web` Lit web components. No `<md-button>`, no `<md-filled-text-field>`. Hand-rolled M3 only.
 

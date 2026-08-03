@@ -1,5 +1,11 @@
 # pegasusX Cloud Credentials Checklist (Boss Handoff)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 > Budget envelope: **$1,500/mo** — see [`CLOUD_BUDGET_MODEL.md`](./CLOUD_BUDGET_MODEL.md).  
 > Enterprise readiness plan: phased verification in [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md).
 

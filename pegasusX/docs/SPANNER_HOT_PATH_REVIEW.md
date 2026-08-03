@@ -1,5 +1,11 @@
 # Spanner Hot-Path Review — Pilot
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Review date: 2026-06-22. Re-run when retailer count &gt; 150 or dispatch preview &gt; 500 orders.
 
 ## Summary

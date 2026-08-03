@@ -1,5 +1,10 @@
 # pegasusX Enterprise Execution Plan
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Last updated: 2026-07-05 (PX-13 ecosystem audit remediation shipped; PX-14 four mature flow hardening in progress; all gates green)
 
 **See also (granular per-backend-feature + per-role/app breakdown with UI replication targets, cross-sync obligations, and phase mapping):** `VEGETABLE_PLAN.md` in this directory. It is the "VeggieTales" / feature-by-feature ledger Boss requested. Read it together with this file before any phase work. All status updates must propagate to both.

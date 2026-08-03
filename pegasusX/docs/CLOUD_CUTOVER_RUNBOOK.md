@@ -1,5 +1,11 @@
 # pegasusX Cloud Cutover Runbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Preconditions
 
 - `make test-ssmr-infra` green locally (`PX_E2E_ORDER_OK`, `PX_E2E_CLIENT_POLICY_OK`, `__SSMR_OK__`).

@@ -1,5 +1,11 @@
 # PX-12 Role-Row QA Sign-Off
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Production v1 capability matrix: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).  
 Ecosystem master spec: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](../FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md).  
 Manual test steps: [`PX12_MANUAL_QA_RUNBOOK.md`](./PX12_MANUAL_QA_RUNBOOK.md).  

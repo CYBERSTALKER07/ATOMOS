@@ -40,9 +40,9 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
     -o /planning-training-export \
     ./apps/backend-go/cmd/planning-training-export
 
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /runtime
 COPY --from=builder /pegasusx-backend /usr/local/bin/pegasusx-backend

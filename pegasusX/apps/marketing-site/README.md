@@ -1,5 +1,10 @@
 # @pegasusx/marketing-site
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Cinematic marketing site for PegasusX / ATOMOS — scroll-driven landing, component docs, and architecture narratives.
 
 ## Dev

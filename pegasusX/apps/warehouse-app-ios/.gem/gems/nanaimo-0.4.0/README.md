@@ -1,5 +1,11 @@
 # Nanaimo
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Nanaimo is a simple library that implements ASCII Plist serialization and
 deserialization, entirely with native Ruby code (and zero dependencies). It
 also comes with out-of-the-box support for serializing Xcode projects (complete

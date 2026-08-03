@@ -3004,7 +3004,7 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 
 func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req AmendOrderRequest, actorID string) (AmendOrderResponse, error) {
 	orderID := strings.TrimSpace(current.OrderID)
-	if !orderAmendable(current.Status) {
+	if !orderAmendable(current) {
 		return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
 	}
 

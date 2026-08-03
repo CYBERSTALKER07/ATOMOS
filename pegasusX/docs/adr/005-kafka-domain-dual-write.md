@@ -1,5 +1,11 @@
 # ADR-005: Kafka domain topic dual-write
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-06-22  
 **Context:** All business events fan into `pegasusx-main`, making consumer scaling and replay isolation difficult.

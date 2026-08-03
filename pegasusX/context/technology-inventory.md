@@ -1,5 +1,10 @@
 # pegasusX Technology Inventory
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ## Planning and governance
 
 - `context/plan.md` — canonical phased execution roadmap and reconciliation ledger for pegasusX; every non-trivial implementation batch maps to plan anchors there and updates status when execution reality changes.

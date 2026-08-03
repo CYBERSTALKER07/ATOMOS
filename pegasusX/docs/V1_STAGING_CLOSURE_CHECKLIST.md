@@ -1,5 +1,11 @@
 # pegasusX v1 Staging Closure Checklist
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Boss-operated checklist to move from **PROD_CANDIDATE (SSMR)** to **staging-signed** per the v1 closure plan.
 
 **Prerequisites (engineering):**

@@ -1,0 +1,76 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-main
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-orders
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-dispatch
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-realtime
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-webhooks
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: logistics.exceptions.v1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: logistics.telemetry.v1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 1
+  replicas: 1

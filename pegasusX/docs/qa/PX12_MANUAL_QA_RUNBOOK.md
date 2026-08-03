@@ -1,5 +1,11 @@
 # PX-12 Manual QA Runbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Operational checklist for Boss sign-off on production v1 role rows. Pair with [`PX12_ROLE_ROW_QA.md`](./PX12_ROLE_ROW_QA.md).
 
 Capability reference: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).  

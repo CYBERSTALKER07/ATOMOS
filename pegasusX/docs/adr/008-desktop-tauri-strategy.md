@@ -1,5 +1,11 @@
 # ADR-008: Desktop strategy — Next.js 15 + Tauri 2 role portals
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-07-02  
 **Context:** Four operator roles (supplier, retailer, warehouse, factory) need installable desktop shells with offline tolerance, OS integrations (keyring, CSV export, print, deep links), and parity with portal web UIs. Rewriting each role as a fully native desktop app (Electron-from-scratch, WPF, SwiftUI) would duplicate the Next.js surfaces already shared with static export + Tauri.

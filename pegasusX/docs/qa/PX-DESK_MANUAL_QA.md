@@ -1,5 +1,11 @@
 # PX-DESK manual QA — Windows desktop shells
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Last updated: 2026-07-02. Canonical tree: `pegasusX/`.
 
 Linked from [`PX12_MANUAL_QA_RUNBOOK.md`](./PX12_MANUAL_QA_RUNBOOK.md) (desktop section).

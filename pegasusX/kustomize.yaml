@@ -1,0 +1,932 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: pegasusx-deploy
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-staging
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    iam.gke.io/gcp-service-account: staging-backend@pegasus-503013.iam.gserviceaccount.com
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+---
+apiVersion: v1
+data:
+  GCS_BUCKET_NAME: pegasusx-prod-catalog
+  HEALTH_PORT: "8081"
+  IMPORT_LOCAL_FILE_ROOT: /var/pegasusx/import-local
+  KAFKA_BROKERS: kafka:9092
+  KAFKA_TOPIC_INVENTORY_IMPORT: pegasusx-inventory-import
+  LOG_LEVEL: info
+  SPANNER_DATABASE: pegasusx-db
+  SPANNER_INSTANCE: pegasusx-instance
+  SPANNER_PROJECT: pegasusx-local
+kind: ConfigMap
+metadata:
+  labels:
+    app: ai-worker
+    app.kubernetes.io/name: ai-worker
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: ai-worker-config
+  namespace: pegasusx-staging
+---
+apiVersion: v1
+data:
+  AIRWALLEX_DIRECT_EXECUTION_ENABLED: "false"
+  FIREBASE_AUTH_ENABLED: "true"
+  FIREBASE_PROJECT_ID: pegasusx-prod
+  GCS_BUCKET_NAME: pegasusx-prod-catalog
+  GLOBAL_PAY_ENV: staging
+  HTTP_PORT: "8080"
+  KAFKA_BROKERS: kafka.pegasusx.svc.cluster.local:9092
+  KAFKA_TOPIC_CONSUME_DOMAIN: "true"
+  KAFKA_TOPIC_DISPATCH: pegasusx-dispatch
+  KAFKA_TOPIC_DUAL_WRITE: "true"
+  KAFKA_TOPIC_FREEZE_LOCKS: pegasusx-freeze-locks
+  KAFKA_TOPIC_INVENTORY_IMPORT: pegasusx-inventory-import
+  KAFKA_TOPIC_MAIN: pegasusx-main
+  KAFKA_TOPIC_ORDERS: pegasusx-orders
+  KAFKA_TOPIC_REALTIME: pegasusx-realtime
+  KAFKA_TOPIC_WEBHOOKS: pegasusx-webhooks
+  LOG_FORMAT: json
+  LOG_LEVEL: info
+  OPTIMIZER_BASE_URL: http://optimizer-core:8082
+  PEGASUSX_ENV: staging
+  PEGASUSX_RUN_MODE: api
+  PUBLIC_BASE_URL: https://api.pegasusx.app
+  REDIS_ADDR: redis.pegasusx.svc.cluster.local:6379
+  RELIABILITY_MIDDLEWARE_ENABLED: "true"
+  REQUIRE_INFRA_ADAPTERS: "true"
+  ROUTING_OSRM_URL: http://osrm.pegasusx.svc.cluster.local:5000
+  SPANNER_DATABASE: pegasusx-db
+  SPANNER_INSTANCE: pegasusx-instance
+  SPANNER_PROJECT: pegasusx-prod
+  WS_ALLOWED_ORIGINS: https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app
+kind: ConfigMap
+metadata:
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-config
+  namespace: pegasusx-staging
+---
+apiVersion: v1
+data:
+  OPTIMIZER_HTTP_PORT: "8082"
+  OPTIMIZER_SOFT_TIMEOUT_SEC: "2"
+kind: ConfigMap
+metadata:
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/name: optimizer-core
+    pegasusx.io/environment: staging
+  name: optimizer-core-config
+  namespace: pegasusx-staging
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ai-worker
+    app.kubernetes.io/name: ai-worker
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: ai-worker
+  namespace: pegasusx-staging
+spec:
+  ports:
+  - name: http
+    port: 8081
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: ai-worker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-api-backendconfig"}'
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: backend-go
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: backend-go-worker
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-worker
+  namespace: pegasusx-staging
+spec:
+  ports:
+  - name: health
+    port: 8081
+    protocol: TCP
+    targetPort: health
+  selector:
+    app: backend-go-worker
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-ws-backendconfig"}'
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+    pegasusx.io/service-role: websocket
+  name: backend-go-ws
+  namespace: pegasusx-staging
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: backend-go
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/name: optimizer-core
+    pegasusx.io/environment: staging
+  name: optimizer-core
+  namespace: pegasusx-staging
+spec:
+  ports:
+  - name: http
+    port: 8082
+    targetPort: http
+  selector:
+    app: optimizer-core
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ai-worker
+    app.kubernetes.io/name: ai-worker
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: ai-worker
+  namespace: pegasusx-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+        app.kubernetes.io/name: ai-worker
+        app.kubernetes.io/part-of: pegasusx
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: ai-worker-config
+        image: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        name: ai-worker
+        ports:
+        - containerPort: 8081
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+      serviceAccountName: backend-go
+      terminationGracePeriodSeconds: 60
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-go
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: backend-go
+        app.kubernetes.io/name: backend-go
+        app.kubernetes.io/part-of: pegasusx
+    spec:
+      containers:
+      - env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: jwt-secret
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-webhook-secret
+              name: backend-go-secrets
+        - name: ADYEN_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: adyen-webhook-secret
+              name: backend-go-secrets
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: stripe-webhook-secret
+              name: backend-go-secrets
+        - name: PAYME_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: payme-webhook-secret
+              name: backend-go-secrets
+        - name: CLICK_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: click-webhook-secret
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_SERVICE_ID
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-service-id
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-username
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-password
+              name: backend-go-secrets
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: internal-api-key
+              name: backend-go-secrets
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: google-maps-api-key
+              name: backend-go-secrets
+              optional: true
+        - name: FIREBASE_CREDENTIALS_PATH
+          value: /var/secrets/firebase/service-account.json
+        envFrom:
+        - configMapRef:
+            name: backend-go-config
+        image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        name: backend-go
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/secrets/firebase
+          name: firebase-credentials
+          readOnly: true
+      serviceAccountName: backend-go
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: firebase-credentials
+        secret:
+          optional: true
+          secretName: backend-go-firebase
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: backend-go-worker
+    app.kubernetes.io/name: backend-go-worker
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-worker
+  namespace: pegasusx-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-go-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: backend-go-worker
+        app.kubernetes.io/name: backend-go-worker
+        app.kubernetes.io/part-of: pegasusx
+    spec:
+      containers:
+      - env:
+        - name: PEGASUSX_RUN_MODE
+          value: worker
+        - name: WORKER_HTTP_PORT
+          value: "8081"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: jwt-secret
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-webhook-secret
+              name: backend-go-secrets
+        - name: ADYEN_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: adyen-webhook-secret
+              name: backend-go-secrets
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: stripe-webhook-secret
+              name: backend-go-secrets
+        - name: PAYME_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: payme-webhook-secret
+              name: backend-go-secrets
+        - name: CLICK_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: click-webhook-secret
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_SERVICE_ID
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-service-id
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-username
+              name: backend-go-secrets
+        - name: GLOBAL_PAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: global-pay-password
+              name: backend-go-secrets
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: internal-api-key
+              name: backend-go-secrets
+        - name: FIREBASE_CREDENTIALS_PATH
+          value: /var/secrets/firebase/service-account.json
+        envFrom:
+        - configMapRef:
+            name: backend-go-config
+        image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: backend-go-worker
+        ports:
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          limits:
+            cpu: 1500m
+            memory: 768Mi
+          requests:
+            cpu: 300m
+            memory: 384Mi
+        volumeMounts:
+        - mountPath: /var/secrets/firebase
+          name: firebase-credentials
+          readOnly: true
+      serviceAccountName: backend-go
+      terminationGracePeriodSeconds: 45
+      volumes:
+      - name: firebase-credentials
+        secret:
+          optional: true
+          secretName: backend-go-firebase
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/name: optimizer-core
+    pegasusx.io/environment: staging
+  name: optimizer-core
+  namespace: pegasusx-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: optimizer-core
+  template:
+    metadata:
+      labels:
+        app: optimizer-core
+        app.kubernetes.io/name: optimizer-core
+    spec:
+      containers:
+      - env:
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: internal-api-key
+              name: backend-go-secrets
+        envFrom:
+        - configMapRef:
+            name: optimizer-core-config
+        image: pegasusx-optimizer-core:local
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: optimizer-core
+        ports:
+        - containerPort: 8082
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    pegasusx.io/environment: staging
+  name: pegasusx-planning-training-export
+  namespace: pegasusx-staging
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pegasusx-planning-training-export
+        spec:
+          containers:
+          - args:
+            - -days
+            - "30"
+            - -format
+            - jsonl
+            command:
+            - /usr/local/bin/planning-training-export
+            envFrom:
+            - secretRef:
+                name: backend-go-secrets
+            - configMapRef:
+                name: backend-go-config
+            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
+            name: planning-export
+            resources:
+              limits:
+                cpu: 500m
+                memory: 1Gi
+              requests:
+                cpu: 250m
+                memory: 512Mi
+          restartPolicy: OnFailure
+  schedule: 30 2 * * *
+  successfulJobsHistoryLimit: 7
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    pegasusx.io/environment: staging
+  name: pegasusx-predictive-push
+  namespace: pegasusx-staging
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: pegasusx-predictive-push
+        spec:
+          containers:
+          - command:
+            - /app/ai-worker
+            env:
+            - name: AI_WORKER_MODE
+              value: predictive-push-cron
+            envFrom:
+            - secretRef:
+                name: backend-go-secrets
+            - configMapRef:
+                name: backend-go-config
+            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
+            name: ai-worker
+            resources:
+              limits:
+                cpu: "1"
+                memory: 2Gi
+              requests:
+                cpu: 500m
+                memory: 1Gi
+          restartPolicy: OnFailure
+  schedule: 0 1 * * *
+  successfulJobsHistoryLimit: 3
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: backend-go
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+spec:
+  maxReplicas: 12
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 70
+        type: Utilization
+    type: Resource
+  minReplicas: 3
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-go
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: backend-go
+    app.kubernetes.io/component: migrate
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-migrate
+  namespace: pegasusx-staging
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: backend-go
+        app.kubernetes.io/component: migrate
+    spec:
+      containers:
+      - command:
+        - /usr/local/bin/pegasusx-setup
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: jwt-secret
+              name: backend-go-secrets
+        envFrom:
+        - configMapRef:
+            name: backend-go-config
+        image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        name: migrate
+        workingDir: /runtime
+      restartPolicy: OnFailure
+      serviceAccountName: backend-go
+  ttlSecondsAfterFinished: 86400
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-api-backendconfig
+  namespace: pegasusx-staging
+spec:
+  connectionDraining:
+    drainingTimeoutSec: 30
+  timeoutSec: 120
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-ws-backendconfig
+  namespace: pegasusx-staging
+spec:
+  connectionDraining:
+    drainingTimeoutSec: 60
+  sessionAffinity:
+    affinityCookieTtlSec: 3600
+    affinityType: GENERATED_COOKIE
+  timeoutSec: 3600
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-secrets
+  namespace: pegasusx-staging
+spec:
+  data:
+  - remoteRef:
+      key: pegasusx-ssmr-jwt-secret
+    secretKey: jwt-secret
+  - remoteRef:
+      key: pegasusx-ssmr-global-pay-webhook-secret
+    secretKey: global-pay-webhook-secret
+  - remoteRef:
+      key: pegasusx-ssmr-adyen-webhook-secret
+    secretKey: adyen-webhook-secret
+  - remoteRef:
+      key: pegasusx-ssmr-stripe-webhook-secret
+    secretKey: stripe-webhook-secret
+  - remoteRef:
+      key: pegasusx-ssmr-payme-webhook-secret
+    secretKey: payme-webhook-secret
+  - remoteRef:
+      key: pegasusx-ssmr-click-webhook-secret
+    secretKey: click-webhook-secret
+  - remoteRef:
+      key: pegasusx-ssmr-global-pay-service-id
+    secretKey: global-pay-service-id
+  - remoteRef:
+      key: pegasusx-ssmr-global-pay-username
+    secretKey: global-pay-username
+  - remoteRef:
+      key: pegasusx-ssmr-global-pay-password
+    secretKey: global-pay-password
+  - remoteRef:
+      key: pegasusx-ssmr-internal-api-key
+    secretKey: internal-api-key
+  - remoteRef:
+      key: pegasusx-ssmr-google-maps-api-key
+    secretKey: google-maps-api-key
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: pegasusx-gsm
+  target:
+    creationPolicy: Owner
+    name: backend-go-secrets
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-gsm
+  namespace: pegasusx-staging
+spec:
+  provider:
+    gcpsm:
+      auth:
+        workloadIdentity:
+          serviceAccountRef:
+            name: backend-go
+      projectID: pegasus-503013
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: ai-worker
+  namespace: pegasusx-staging
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: health
+  selector:
+    matchLabels:
+      app: ai-worker
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go
+  namespace: pegasusx-staging
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: http
+  selector:
+    matchLabels:
+      app: backend-go
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: backend-go-worker
+  namespace: pegasusx-staging
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: health
+  selector:
+    matchLabels:
+      app: backend-go-worker
+---
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-frontend
+  namespace: pegasusx-staging
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-api-backendconfig"}'
+    kubernetes.io/ingress.class: gce
+    networking.gke.io/v1beta1.FrontendConfig: pegasusx-frontend
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: staging
+  name: pegasusx-api
+  namespace: pegasusx-staging
+spec:
+  rules:
+  - host: api.pegasusx.app
+    http:
+      paths:
+      - backend:
+          service:
+            name: backend-go-ws
+            port:
+              number: 80
+        path: /v1/ws
+        pathType: Prefix
+      - backend:
+          service:
+            name: backend-go
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - api.pegasusx.app
+    secretName: pegasusx-api-tls

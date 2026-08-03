@@ -1,5 +1,11 @@
 # Wire-Ready Staging Runbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Automated loop before GCP wiring. See [COST_GOVERNANCE_RUNBOOK.md](./COST_GOVERNANCE_RUNBOOK.md) for year-1 pilot caps ($1,700/mo).
 
 ## Local gates (run until green)

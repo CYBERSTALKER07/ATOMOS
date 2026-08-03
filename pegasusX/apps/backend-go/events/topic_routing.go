@@ -45,7 +45,7 @@ func DispatcherConsumerTopics() []string {
 	}
 	seen := make(map[string]struct{}, 4)
 	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime, TopicLogisticsExceptions, TopicLogisticsTelemetry} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -80,7 +80,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventShopClosedEscalated, EventShopClosedResolved, EventNegotiationProposed,
 		EventNegotiationResolved, EventPaymentRequired, EventPaymentCleared, EventPaymentFailed,
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
-		EventMissingItemsReported, EventSplitPaymentCreated,
+		EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
 		EventOrderForceCompleted:
 		return TopicOrders
@@ -95,6 +95,8 @@ func DomainTopicForEventType(eventType string) string {
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
+	case EventMissingItemsReported, EventReverseLogisticsRequired:
+		return TopicLogisticsExceptions
 	default:
 		return ""
 	}

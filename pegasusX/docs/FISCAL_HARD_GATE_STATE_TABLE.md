@@ -1,5 +1,11 @@
 # Fiscal hard-gate — state transition table vs current SM
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Authority:** ADR-009 · **Live graph today:** `order/state_machine.go`  
 **Date:** 2026-07-20
 

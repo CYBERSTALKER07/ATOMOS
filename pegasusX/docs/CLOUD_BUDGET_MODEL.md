@@ -1,5 +1,11 @@
 # pegasusX Cloud Budget Model (Full-GCP-Minimal)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Canonical cost reference for the **full-GCP-minimal** deployment choice: real managed Spanner, Memorystore Redis, Kafka, and GKE with minimal replicas, trial/free-tier quotas where applicable, and strict monitoring. Target steady-state **$1,500–1,700/mo** for year-1 pilot (1 warehouse, thousands of retailers).
 
 Ops runbook: [COST_GOVERNANCE_RUNBOOK.md](./COST_GOVERNANCE_RUNBOOK.md).

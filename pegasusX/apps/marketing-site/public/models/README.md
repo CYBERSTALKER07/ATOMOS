@@ -1,5 +1,11 @@
 # Marketing asset delivery checklist
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Drop Phase 2 media into this tree. Phase 1 uses tech-icon SVG placeholders via `AssetSlot` — swap is one prop change per section.
 
 ## Directory layout

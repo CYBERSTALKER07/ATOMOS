@@ -1,5 +1,11 @@
 # Xcodeproj
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 [![Build Status](https://github.com/CocoaPods/Xcodeproj/workflows/Specs/badge.svg)](https://github.com/CocoaPods/Xcodeproj/actions/workflows/Specs.yml)
 [![Maintainability](https://api.codeclimate.com/v1/badges/40ae104586c859d3581e/maintainability)](https://codeclimate.com/github/CocoaPods/Xcodeproj/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/40ae104586c859d3581e/test_coverage)](https://codeclimate.com/github/CocoaPods/Xcodeproj/test_coverage)

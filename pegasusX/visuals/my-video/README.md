@@ -1,5 +1,11 @@
 # Remotion video
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 <p align="center">
   <a href="https://github.com/remotion-dev/logo">
     <picture>

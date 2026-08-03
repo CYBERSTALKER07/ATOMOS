@@ -1,5 +1,11 @@
 # Enterprise website-only desktop updates (Tauri)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Scope:** Users install desktop apps from the **official website / CDN** (`channel=enterprise`).  
 **Store builds (separate SKU):** Microsoft Store / Mac App Store — see [`DESKTOP_APP_STORE_DISTRIBUTION.md`](./DESKTOP_APP_STORE_DISTRIBUTION.md).  
 **Live shells:** Supplier Portal · Retailer Desktop · Warehouse Portal · Factory Portal.

@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import { ListToolbar } from '@/components/ListToolbar';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
+import { PreordersList } from '@/components/preorders/PreordersList';
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
 
@@ -358,36 +359,22 @@ export default function OrdersPage() {
                       }}
                     />
                   ))
-                : preorderPageItems.map((row, index) => (
-                    <OrderOpsCard
-                      key={row.order_id}
-                      orderId={row.order_id}
-                      retailerName={row.order_source || 'Manual pre-order'}
-                      state={row.status}
-                      amountLabel={`${fmt(Math.round((row.total_minor ?? 0) / 100))} ${row.currency || 'UZS'}`}
-                      meta={row.requested_delivery_date
-                        ? `Requested ${new Date(row.requested_delivery_date).toLocaleDateString()}`
-                        : undefined}
-                      badge={showsReviewBadge(row) ? 'Review delivery' : row.preorder_badge}
-                      index={index}
-                      disabled={actingId === row.order_id}
-                      detailOpenMode="single"
-                      onOpenDetail={() => openDetail(row.order_id)}
-                      onProposeDate={() => {
+                : (
+                    <PreordersList
+                      items={preorderPageItems}
+                      actingId={actingId}
+                      onOpenDetail={openDetail}
+                      onProposeDate={(row) => {
                         setDialog({ orderId: row.order_id, kind: 'propose' });
                         setReason('');
                         setProposedDate((row.requested_delivery_date ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10));
                       }}
-                      onReject={() => {
+                      onReject={(row) => {
                         setDialog({ orderId: row.order_id, kind: 'preorder-reject' });
                         setReason('');
                       }}
-                      proposeDateLabel="Propose date"
-                      rejectLabel="Reject pre-order"
-                      canProposeDateOverride
-                      canRejectOverride
                     />
-                  ))}
+                  )}
             </div>
           </>
         )}

@@ -1,5 +1,11 @@
 # ADR-002: Atomic whole-order dispatch
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-06-22  
 **Context:** Splitting one retailer order across multiple trucks causes operational chaos (partial deliveries, reconciliation, driver disputes).

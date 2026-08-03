@@ -1,5 +1,10 @@
 # Warehouse Analytics — Native vs Portal Parity Audit
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 **Scope:** pegasusX `warehouse-portal` · `warehouse-app-android` · `warehouse-app-ios`  
 **Date:** 2026-06-14 (updated)  
 **Parent:** `WAREHOUSE_PHASE.md` · `VEGETABLE_PLAN.md` §2.2

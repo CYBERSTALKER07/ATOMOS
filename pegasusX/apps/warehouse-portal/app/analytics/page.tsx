@@ -5,8 +5,7 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import VelocityGauge from './VelocityGauge';
+import AnalyticsChartGrid from '@/components/analytics/AnalyticsChartGrid';
 
 interface AnalyticsData {
   period: string;
@@ -168,35 +167,7 @@ export default function AnalyticsPage() {
         ) : null}
       </div>
 
-      {/* Daily Revenue Chart */}
-      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-        <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
-        {dailySeries.length > 0 ? (
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={dailySeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                stroke="var(--muted)"
-                tickFormatter={(value: string) => (value.length >= 10 ? value.slice(5, 10) : value)}
-              />
-              <YAxis tick={{ fontSize: 11 }} stroke="var(--muted)" />
-              <Tooltip formatter={(value) => [`${fmtCurrency(Number(value ?? 0))} UZS`, 'Revenue']} />
-              <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-sm text-[var(--muted)] py-8 text-center">
-            No completed-order revenue in this period. Daily breakdown populates from Spanner `daily_breakdown`.
-          </p>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-        <h2 className="text-sm font-semibold mb-4 text-center">Fulfillment Velocity (Time to Dispatch)</h2>
-        <VelocityGauge className="w-full" />
-      </div>
+      <AnalyticsChartGrid dailySeries={dailySeries} fmtCurrency={fmtCurrency} />
 
       {/* Top Products */}
       {d.top_products.length > 0 && (

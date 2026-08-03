@@ -1,5 +1,11 @@
 # Billing Recovery Script (B02)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Use this script when a supplier cannot complete `/setup/billing`.
 
 ## Operator script

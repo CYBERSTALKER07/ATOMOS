@@ -41,11 +41,11 @@ resource "google_container_cluster" "pegasusx" {
   name     = var.gke_cluster_name != "" ? var.gke_cluster_name : "${local.resource_prefix}-gke"
   location = var.region
 
-  enable_autopilot = true
-  networking_mode  = "VPC_NATIVE"
+  remove_default_node_pool = true
+  initial_node_count       = 1
+  networking_mode          = "VPC_NATIVE"
+  deletion_protection      = false
   ip_allocation_policy {
-    cluster_secondary_range_name  = "pods"
-    services_secondary_range_name = "services"
   }
   network    = google_compute_network.pegasusx_vpc.name
   subnetwork = google_compute_network.pegasusx_vpc.name
@@ -58,8 +58,31 @@ resource "google_container_cluster" "pegasusx" {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
 
+  node_config {
+    disk_type    = "pd-standard"
+    disk_size_gb = 50
+  }
+
   depends_on = [google_project_service.gke_apis]
 }
+
+resource "google_container_node_pool" "pegasusx_nodes" {
+  count      = var.enable_gke ? 1 : 0
+  name       = "${var.gke_cluster_name != "" ? var.gke_cluster_name : "${local.resource_prefix}-gke"}-pool"
+  cluster    = google_container_cluster.pegasusx[0].name
+  location   = var.region
+  node_count = 1
+
+  node_config {
+    machine_type = "e2-medium"
+    disk_type    = "pd-standard"
+    disk_size_gb = 50
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+  }
+
+  }
 
 resource "google_service_account" "backend_runtime" {
   count        = var.enable_gke ? 1 : 0

@@ -30,9 +30,9 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
     -o /pegasusx-ai-worker \
     ./apps/ai-worker
 
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /pegasusx-ai-worker /usr/local/bin/pegasusx-ai-worker
 

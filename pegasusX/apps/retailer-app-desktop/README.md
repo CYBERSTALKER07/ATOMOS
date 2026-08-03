@@ -1,5 +1,10 @@
 # retailer-app-desktop
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Next.js 15 + Tauri 2 retailer desktop for pegasusX. Parity target: `pegasus/apps/retailer-app-desktop` + mobile apps.
 
 ## Local dev

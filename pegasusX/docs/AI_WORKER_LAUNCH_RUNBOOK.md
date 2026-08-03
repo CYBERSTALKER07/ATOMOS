@@ -1,5 +1,11 @@
 # AI Worker Launch Runbook (PX7-A3)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Purpose
 Provide a concrete launch and hypercare procedure for the pegasusX ai-worker so support can prove worker health, detect consumer drift quickly, and escalate with the right evidence.
 

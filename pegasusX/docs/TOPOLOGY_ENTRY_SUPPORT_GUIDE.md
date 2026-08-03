@@ -1,5 +1,11 @@
 # Topology Entry Support Guide (B02)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Purpose
 Guide support and operations teams through safe entry and troubleshooting of supplier topology data.
 

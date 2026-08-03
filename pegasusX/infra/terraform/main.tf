@@ -53,7 +53,7 @@ resource "google_compute_network" "pegasusx_vpc" {
 
 resource "google_redis_instance" "cache" {
   name                    = local.redis_instance_name
-  tier                    = "STANDARD_HA"
+  tier                    = "BASIC"
   memory_size_gb          = var.redis_memory_size_gb
   region                  = var.region
   redis_version           = "REDIS_7_0"
@@ -354,6 +354,7 @@ resource "google_storage_bucket" "app_updates" {
   force_destroy = false
   
   uniform_bucket_level_access = true
+  public_access_prevention    = "inherited"
 
   cors {
     origin          = ["*"]
@@ -366,8 +367,8 @@ resource "google_storage_bucket" "app_updates" {
 }
 
 # Make the updates bucket publicly readable so apps can download the binaries without auth
-resource "google_storage_bucket_iam_member" "public_updates" {
-  bucket = google_storage_bucket.app_updates.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
+# resource "google_storage_bucket_iam_member" "public_updates" {
+#   bucket = google_storage_bucket.app_updates.name
+#   role   = "roles/storage.objectViewer"
+#   member = "allUsers"
+# }

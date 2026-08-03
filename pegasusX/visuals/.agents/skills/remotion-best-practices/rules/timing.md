@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ---
 name: timing
 description: Interpolation and timing in Remotion—prefer interpolate with Bézier easing; springs as a specialized option

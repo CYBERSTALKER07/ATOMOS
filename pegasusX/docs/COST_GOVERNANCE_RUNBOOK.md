@@ -1,5 +1,11 @@
 # pegasusX Cost Governance Runbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Year-1 target: **$1,500–1,700/mo** with **1 warehouse** and thousands of retailers (inactive retailers are cheap; **orders, Spanner reads, geocoding, dispatch CPU, and client polling** drive cost).
 
 See also: [CLOUD_BUDGET_MODEL.md](./CLOUD_BUDGET_MODEL.md), [SPANNER_HOT_PATH_REVIEW.md](./SPANNER_HOT_PATH_REVIEW.md), [CLOUD_CREDENTIALS_CHECKLIST.md](./CLOUD_CREDENTIALS_CHECKLIST.md).

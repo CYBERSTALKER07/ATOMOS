@@ -1,5 +1,11 @@
 # Observability Fire Drill — PX-PROD-4
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Staging exercise before production go-live. Goal: on-call resolves a simulated incident from alert → runbook → green dashboard in **≤ 30 minutes** without tribal knowledge.
 
 **Prerequisites:** staging cluster live, Cloud Monitoring dashboards imported, on-call roster assigned.

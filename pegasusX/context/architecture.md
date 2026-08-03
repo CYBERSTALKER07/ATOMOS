@@ -1,299 +1,76 @@
-# pegasusX Architecture
+# Real Codebase Infrastructure & Architecture
 
-## Execution Plan Authority
-- `context/plan.md` is the canonical phased roadmap for pegasusX.
-- Every meaningful implementation batch maps to one or more plan anchors in that file.
-- When architecture or delivery truth changes, update `context/plan.md` in the same change set as the related code and context docs.
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
 
-## Topology (logical)
-```
-                ┌──────────────────────────┐
-                │     Retailers (1..N)     │
-                │  Android / iOS / Desktop │
-                └────────────┬─────────────┘
-                             │ HTTPS / WSS
-                             ▼
-┌──────────────────────────────────────────────────────────┐
-│                     backend-go (chi)                     │
-│  retailerroutes · supplierroutes ·                       │
-│  driverroutes · warehouseroutes · factoryroutes ·        │
-│  payloaderroutes · orderroutes · paymentroutes ·         │
-│  webhookroutes · telemetryroutes · ws/{role,telemetry}   │
-│                                                          │
-│  bootstrap/  (composition root)                          │
-│  outbox/     (Spanner ⇄ Kafka atomicity)                 │
-│  cache/      (Redis + Pub/Sub invalidation)              │
-│  ws/         (per-role hubs, Pub/Sub fan-out)            │
-│  auth/       (cookie JWT + optional Firebase bearer)      │
-└─────┬───────────────┬───────────────┬────────────────────┘
-      │               │               │
-      ▼               ▼               ▼
-   Spanner          Redis           Kafka  ──►  ai-worker
-   (schema)        (cache/ps)       (outbox + telemetry)
-```
 
-## Backend Package Topology
-- **Composition root**: `bootstrap/` — owns all singletons (`*spanner.Client`, `*cache.Cache`, Kafka writers, GCS, hubs, services).
-- **Domain packages**: `auth/ order/ payment/ supplier/ warehouse/ factory/ driver/ retailer/ outbox/ cache/ kafka/ ws/ telemetry/ proximity/ replenishment/ vault/ countrycfg/`.
-- **Route composers**: `*routes/` packages own URL mounts + middleware stacking only. `Deps` is narrow per package; handlers live in domain packages.
-- **`main.go`** is lifecycle only (load config → `bootstrap.NewApp` → `chi.Router` → register routes → serve → shutdown). Target ≤200 lines.
+*Auto-generated from actual Terraform and infrastructure definitions.*
 
-## Mutating Handler Shape (canonical)
-```go
-// 1. method gate (chi handles)
-// 2. auth: claims := auth.MustClaims(r.Context())
-// 3. scope: supplierID := claims.ResolveSupplierID()  (single seeded supplier)
-// 4. decode + validate typed request
-// 5. service call → ReadWriteTransaction:
-//      read → validate → write rows → outbox.EmitJSON(txn, ...)
-// 6. post-commit: cache.Invalidate(ctx, keys...)
-// 7. structured slog with trace_id + identifiers
-// 8. respond with versioned DTO (additive only)
-```
-
-## Event Discipline
-
-- Realtime hardening is now additive in `bootstrap/bootstrap.go`, `kafka/{consumer.go,dlq_writer.go}`, `ws/connection.go`, and `payment/service.go`: websocket upgrades no longer accept arbitrary browser origins and instead enforce configurable `WS_ALLOWED_ORIGINS` with empty-origin native-client allowance plus localhost dev exceptions; notification-consumer bootstrap now provisions a dedicated DLQ writer on `KAFKA_TOPIC_MAIN_DLQ` (default `<main-topic>-dlq`) and either fails strict-mode startup or disables the consumer when the DLQ path cannot initialize; Kafka consumer retries now add bounded jitter, attach original topic/partition/offset + failure-reason headers to DLQ records, and never commit offsets when DLQ routing fails; and Adyen webhook handling now verifies raw signed notification items before business validation or persistence.
-- Ai-worker launch-readiness monitoring is now additive in `apps/ai-worker/main.go`: the worker exposes `/healthz`, `/ready`, and `/metrics`, publishes `void_ai_worker_up`, `void_ai_worker_ready`, and per-topic/partition `void_kafka_consumer_lag_seconds`, derives its monitoring bind from `AI_WORKER_HTTP_PORT` with `HEALTH_PORT` fallback, and flips readiness low before shutdown so probe-driven drains do not race in-flight Kafka work. The isolated SSMR stack exposes that surface through `infra/docker-compose.ssmr.yml` on host `8181` for local operator proof.
-- Ai-worker deployment packaging is now additive in `infra/k8s/ai-worker/{configmap,deployment,service}.yaml`: pegasusX now carries a minimal ClusterIP service, config-backed runtime env, and rollout-safe Deployment with `/healthz` and `/ready` probes on port `8081`. This is intentionally narrower than Pegasus production packaging because it does not yet introduce a sidecar optimizer, dedicated service account, or alert-policy stack.
-- Ai-worker local release gating is now additive in `scripts/validate_ai_worker_k8s.sh`, `Makefile`, and `package.json`: pegasusX can now parse and assert the worker manifest contract locally without relying on out-of-scope root CI wiring, using `make validate-ai-worker-k8s` or `pnpm infra:k8s:validate`.
-- Ai-worker observability automation is now additive in `infra/terraform/observability.tf`: pegasusX can now provision a launch dashboard, alert policies for worker-up / readiness / Kafka lag, and optional uptime checks against `/healthz` and `/ready` when a real monitoring host is supplied. `infra/terraform/main.tf` now enables `monitoring.googleapis.com`, and `variables.tf` carries explicit observability toggles rather than assuming every environment exposes the worker publicly.
-- Aggregate launch readiness is now additive in `scripts/validate_launch_readiness.py`, `docs/LAUNCH_READINESS_RUNBOOK.md`, `Makefile`, and `package.json`: release owners now have a repo-local guard that validates support runbooks, SSMR proof entrypoints, ai-worker Kubernetes validation, Terraform observability evidence, plan/context synchronization, and launch command wiring before approving the currently implemented pegasusX engine for launch/hypercare.
-- Supplier AI recommendation review is now additive in `apps/ai-worker/main.go`, `apps/backend-go/supplier/{ai_recommendations.go,repository_spanner_ai.go}`, `apps/backend-go/supplierroutes/routes.go`, and `apps/supplier-portal/app/ai/recommendations/page.tsx`: ai-worker order-created advisory writes now persist explainable `AIPredictions` payloads and emit `AI_RECOMMENDATION_CREATED`; supplier routes expose bounded indexed `GET|POST /v1/supplier/ai/recommendations`; operator decisions are idempotency-guarded, supplier-scoped, persisted into `decision_history`, and emitted as `AI_RECOMMENDATION_DECIDED`; and shared contracts in `contracts/events.schema.json` plus `packages/{types,api-client}` keep the supplier portal review surface typed.
-- Retailer AI preorder lifecycle is now additive in `apps/ai-worker/main.go`, `apps/backend-go/order/{service.go,repository_spanner.go}`, and `apps/backend-go/retailer/{service.go,core_handlers.go}`: ai-worker now turns manual-order history into replay-safe derived `AI_PREORDER` order rows keyed by `Orders.DerivedFromOrderId`, the order aggregate owns confirm/reject AI plus preorder edit/confirm transitions through additive lifecycle fields on `Orders`, and retailer routes expose `GET /v1/retailer/ai/predictions` on top of the same order-owned truth while minute-ticker auto-confirm sweeps eventually move due suggestions to `AUTO_CONFIRMED` through the existing order-event fanout path.
-
-- Warehouse role-row client parity is now additive in `apps/warehouse-portal`, `apps/warehouse-app-ios`, and `apps/warehouse-app-android`: all three surfaces now consume the existing `warehouseroutes` authority over a polling-first HTTP slice (`/v1/warehouse/ops/{dashboard,inventory,orders}`, `/v1/warehouse/demand/forecast`, `/v1/warehouse/supply-requests`, `/v1/warehouse/ops/dispatch/preview`, `/v1/warehouse/dispatch-locks`, `/v1/warehouse/dispatch-lock`) instead of remaining placeholder packages. The desktop surface now packages that slice through `apps/warehouse-portal/src-tauri` and a direct backend `ApiClient` base URL selected from `NEXT_PUBLIC_WAREHOUSE_BACKEND_BASE_URL` or `NEXT_PUBLIC_BACKEND_BASE_URL`, while iOS uses a direct `URLSession` client with an XcodeGen-backed SwiftUI shell and Android uses a direct HTTP client with a Compose Material 3 shell. Focused validation passed via `pnpm build`, successful `pnpm tauri build --debug`, and iOS `xcodebuild`; all six `*-android` apps ship `gradlew` (PX8-A4).
-
-- Driver telemetry ingress is now additive in `telemetryroutes/routes.go` + `ws/handler.go`: `POST /v1/telemetry/location` requires authenticated DRIVER claims, derives `driver_id` from claims instead of request bodies, validates coordinates/timestamps, emits typed `DRIVER_LOCATION_UPDATED` websocket envelopes with `trace_id`, and fans out through scoped telemetry rooms (`telemetry:driver:{driverID}`, `telemetry:supplier:{supplierID}`). WebSocket role subscriptions now bind driver and supplier-side callers to those telemetry rooms, and gorilla websocket writes are mutex-guarded with ping/pong deadlines for reconnect safety. `telemetry/location_store.go` also persists the latest claims-derived driver point in Redis-compatible cache with bounded TTL so retailer tracking can resolve live coordinates without subscribing retailers to raw telemetry rooms.
-- Order assignment authority is now additive in `order/service.go`, `order/repository_spanner.go`, `orderroutes/routes.go`, and `schema/spanner.ddl`: `Orders` carries nullable `DriverId`, `VehicleId`, `RouteId`, and `ManifestId` with driver/route/manifest indexes; `POST /v1/orders/{orderID}/assign` is ADMIN/WAREHOUSE_ADMIN/FACTORY_ADMIN scoped, writes assignment/reassignment through the transactional order repository, emits `ORDER_ASSIGNED`/`ORDER_REASSIGNED`, invalidates supplier/retailer order caches, and fans out supplier/retailer/driver websocket envelopes. Retailer `GET /v1/retailer/tracking` now returns active order projection rows with assignment fields and additive `driver_location` only when the cached driver point matches the order supplier and freshness budget; otherwise `live_location_available=false` remains truthful.
-- Supplier order oversight is now additive in `supplier/{repository_spanner.go,portal_handlers.go}` and `apps/supplier-portal/app/orders/page.tsx`: `GET /v1/supplier/orders` no longer needs to rely solely on the in-memory review queue and now reads recent durable `Orders` rows with supplier-scoped assignment identity, hydrates fresh driver location snapshots from the same cache-backed telemetry authority used by retailer tracking, and preserves scaffold-only review entries additively for local fallback. The supplier portal orders page now consumes that route through the same-origin `/api/*` proxy plus shared `packages/types` and `packages/api-client` contracts, surfacing assignment and live-vs-stale state as the first real supplier-facing PX5-A2 consumer in pegasusX.
-- Retailer desktop tracking consumption is now additive in `apps/retailer-app-desktop/app/{page.tsx,api/[...path]/route.ts}`: the previously empty retailer desktop package now boots as a minimal Next.js shell, proxies same-origin `/api/*` calls to backend-go, and consumes `GET /v1/retailer/tracking` through shared `packages/types` and `packages/api-client` contracts. The page renders retailer-facing order assignment identity, live-vs-stale driver location truth, and derived order timeline snapshots from the existing PX5-A2/PX5-A3 backend projections instead of leaving the desktop role-row entirely unwired.
-- Retailer iOS tracking consumption is now additive in `apps/retailer-app-ios/{project.yml,Sources/**}`: the previously README-only retailer iOS folder now carries an XcodeGen-backed SwiftUI app with a direct `URLSession` client for `GET /v1/retailer/tracking`, local Codable mirrors of the backend tracking DTO, and a stateful tracking dashboard that handles loading, empty, restricted, error, refreshing, and stale states. The app renders retailer-facing assignment identity, live-vs-stale driver location truth, and derived order timeline snapshots from the existing PX5-A2/PX5-A3 backend projections instead of leaving the first mobile consumer gap untouched.
-- Retailer Android tracking consumption is now additive in `apps/retailer-app-android/{settings.gradle.kts,build.gradle.kts,app/**}`: the previously README-only retailer Android folder now carries a real Android app module with Gradle metadata, a safe direct tracking client in `app/src/main/kotlin/com/pegasusx/retailerappandroid/network/RetailerTrackingApiClient.kt`, local Kotlin DTO mirrors, and a Compose Material 3 dashboard in `app/src/main/kotlin/com/pegasusx/retailerappandroid/ui/TrackingDashboardScreen.kt` that handles loading, empty, restricted, error, refreshing, and stale states. The Android surface renders retailer-facing assignment identity, live-vs-stale driver location truth, and derived order timeline snapshots from the existing PX5-A2/PX5-A3 backend projections instead of leaving the second retailer mobile consumer gap open.
-- Driver Android live-ops consumption is now additive in `apps/driver-app-android/{settings.gradle.kts,build.gradle.kts,app/**}`: the previously README-only driver Android folder now carries a real Android app module with Gradle metadata, a safe direct live-ops client in `app/src/main/kotlin/com/pegasusx/driver/network/DriverApiClient.kt`, authenticated `/v1/ws` consumption in `app/src/main/kotlin/com/pegasusx/driver/network/DriverLiveSocketClient.kt`, local Kotlin DTO mirrors in `app/src/main/kotlin/com/pegasusx/driver/model/DriverLiveOpsModels.kt`, and a Compose Material 3 dashboard in `app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveOpsScreen.kt` that now handles loading, restricted, error, refreshing, stale, manifest, telemetry, live websocket states, and a native Google Maps live-location card via `app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveLocationMap.kt`. The Android surface keeps a bounded recent-location breadcrumb in `DriverLiveOpsViewModel.kt` and loads planned route overlays from `GET /v1/fleet/route/{routeID}/geometry` (turn-by-turn steps, off-route reroute) while `GET /v1/driver/manifest` remains geometry-free by design.
-- Driver iOS live-ops consumption is now additive in `apps/driver-app-ios/driverappios/**`: XcodeGen-backed SwiftUI app with direct `URLSession` live-ops client, authenticated `/v1/ws`, MapKit live-location card, breadcrumb polyline, and planned route geometry from `GET /v1/fleet/route/{routeID}/geometry` with turn-by-turn and off-route reroute in `FleetViewModel.swift`; manifest detail still does not inline stop coordinates.
-- Manifest route geometry persistence is now additive in `manifest/{geometry.go,backfill.go}`, `routing/{geometry.go,builder.go,osrm.go,preview_geometry.go}`, and `schema/migrations/20250613_supplier_manifest_route_geometry.ddl`: `SupplierTruckManifests` stores `EncodedRoutePolyline` + `RouteGeometrySource` at seal/reorder, `cmd/backfill-route-geometry` backfills legacy rows, and `ROUTING_OSRM_URL` enables street-snapped polylines. Driver authority: `driver/route_geometry.go` `GET /v1/fleet/route/{routeID}/geometry`. Ops: `docs/MIGRATION_RUNBOOK_MANIFEST_ROUTE_GEOMETRY.md`.
-- Supplier fleet live map is now additive in `supplier/fleet_live_map.go`, `supplierroutes/routes.go`, `apps/supplier-portal/{components/FleetLiveMap.tsx,lib/use-fleet-live-map.ts,lib/use-animated-driver-markers.ts}`, `apps/supplier-app-ios/SupplierApp/Views/FleetLiveMapView.swift`, and `apps/supplier-app-android/.../FleetLiveMapScreen.kt` + `FleetLiveMapLibre.kt`: `GET /v1/supplier/fleet/live-map` returns active manifest routes with stored geometry and cache-backed driver locations; portal uses WS-accelerated refresh with polling fallback.
-- Warehouse fleet live map is additive in `warehouse/fleet_live_map.go`, `warehouseroutes/routes.go`, `apps/warehouse-portal/{components/FleetLiveMap.tsx,lib/use-warehouse-fleet-live-map.ts}`, and native `warehouse-app-android` / `warehouse-app-ios` (`FleetLiveMapSection`, `FleetLiveMapScreen` / `FleetLiveMapView`): `GET /v1/warehouse/ops/fleet/live-map` scopes live routes to warehouse ops; all three surfaces render MapLibre/MapKit overlays with animated driver markers and WS-accelerated refresh.
-- Retailer fulfillment and pending-payment visibility is now additive in `retailer/core_handlers.go`: `GET /v1/retailer/active-fulfillment` and `GET /v1/retailer/pending-payments` now read from the existing retailer tracking projection instead of returning empty scaffold arrays, reuse the same scoped live-location enrichment path, and surface retailer-visible delivery/payment state directly from durable order statuses. `active-fulfillment` returns `{status, fulfillments}` with assignment/location/status metadata, while `pending-payments` returns `{status, count, pending}` filtered to `AWAITING_PAYMENT` and `PENDING_CASH_COLLECTION`; shared contract parity now lives in `packages/types` and `packages/api-client`.
-- Retailer tracking events are now additive in `retailer/core_handlers.go`: `GET /v1/retailer/tracking` no longer hardcodes an empty `events` array and instead derives retailer-visible `ORDER_CREATED` plus `ORDER_STATUS_SNAPSHOT` items from durable order `created_at`, `updated_at`, and current `status`. The timeline is explicitly marked `derived=true` and `source=ORDER_ROW`, sorted newest-first, and keeps dispute-specific or full outbox-history detail deferred until a dedicated history read model exists.
-- Retailer receipt visibility is now additive on the same tracking seam in `retailer/{repository_spanner.go,core_handlers.go}`: `GET /v1/retailer/tracking` now also returns `recent_receipts` from recent `COMPLETED` `Orders` rows ordered by `updated_at`, while keeping the top-level `status` tied to active tracking rows so receipt-only snapshots remain explicitly non-live. Shared `packages/types` plus all three retailer consumers (`apps/retailer-app-desktop`, `apps/retailer-app-ios`, `apps/retailer-app-android`) now render those completed-order snapshots without pretending that immutable proof or dispute-grade history exists yet.
-- Retailer receipt dossier authority is now additive on the same tracking seam in `retailer/{service.go,repository_spanner.go}`: `ListRecentReceipts` now builds `receipt_dossier` from bounded immutable order/session `PaymentLedgerEntries` timeline reads, order-scoped `PaymentWebhooks`, immutable `OrderDeliveryProofs`, order-scoped `PaymentChargebacks`, and session-scoped `PaymentReversals`, exposing additive `payment_timeline`, `gateway_webhooks`, `delivery_proofs`, `chargebacks`, `reversals`, and `proof_status`. Legacy `payment_evidence` remains backward-compatible by deriving it from the newest dossier timeline entry, while `proof_status.delivery_proof_available` now reflects persisted artifacts instead of a placeholder gap. Shared `packages/types` plus all three retailer consumers (`apps/retailer-app-desktop`, `apps/retailer-app-ios`, `apps/retailer-app-android`) now render that richer receipt authority on receipt cards.
-- Driver delivery-state durability is now additive in `order/service.go` + `orderroutes/routes.go`: DRIVER-auth compatibility routes are mounted for `POST /v1/delivery/arrive` and `POST /v1/order/{deliver,confirm-offload,complete,collect-cash}`. Mutations enforce the order state machine, emit transactional outbox events (`ORDER_STATUS_CHANGED`, `SETTLEMENT_REQUIRED`, `PAYMENT_REQUIRED`, `PAYMENT_CLEARED`, `ORDER_FINALIZED`), invalidate supplier/retailer order caches post-commit, fan out supplier/retailer websocket envelopes, and enforce a 500m cash-collection geofence. `contracts/events.schema.json` + `packages/types` now include the new delivery states and payment/finalization payload shapes. Idempotent replay against the already-target state returns without extra side effects, and assigned orders require the authenticated driver to match `Orders.DriverId`.
-- Driver earnings compatibility is now additive in `driver/service.go`: `GET /v1/driver/earnings` returns the Pegasus mobile contract (`total_deliveries`, `total_volume`, `total_routes`, `last_30_days`) through an optional `EarningsLookup` seam with local scaffold fallback. The response adds currency/minor-unit aliases (`currency`, `today_minor`, `week_minor`, `month_minor`, daily `volume_minor`) while keeping money values as `int64`; because the route is read-only, it intentionally emits no outbox/cache/ws side effects until delivery-state durability provides an authoritative completed-delivery source.
-- Driver pending collections compatibility is now additive in `driver/service.go`: `GET /v1/driver/pending-collections` reads through an optional `PendingCollectionsLookup` seam with local scaffold fallback, normalizes legacy rows into Pegasus-style `pending_collections` items (`order_id`, `retailer_id`, `amount`, `state`, `updated_at`), and returns `{pending_collections, count}` while preserving the legacy `pending` wrapper plus `amount_minor`/`due_at` aliases. This route is read-only, so it intentionally emits no outbox/cache/ws side effects; authoritative order/payment sourcing remains deferred to the delivery-state durability tranche.
-- Driver manifest gate durability is now additive in `driver/service.go`: `GET /v1/driver/manifest-gate` now requires `manifest_id` and resolves Ghost Stop Prevention through a bootstrap-wired read-only lookup backed by `factory.Service.ManifestGateSnapshot`. `SEALED`/`DISPATCHED`/`COMPLETED` manifests return `200` with `cleared=true`, compatibility alias `allowed=true`, `stop_count`, and `volume_vu`; unknown manifests return `404 manifest_not_found`; and pre-seal states return `403 AWAITING_PAYLOAD_SEAL`. This is a read-only gate, so it intentionally emits no outbox/cache/ws side effects; focused branch coverage now lives in `driver/service_test.go`.
-- Driver manifest detail bridge is now additive in `driver/service.go`: `GET /v1/driver/manifest` and legacy `GET /v1/fleet/manifest` now resolve real manifest detail through a bootstrap-wired read-only lookup backed by `factory.Service.ManifestDetailSnapshotForDriver` instead of returning a fake demo hash list. The response now projects `manifest`, `transfers`, `transitions`, `reassignments`, `exceptions`, `route_id`, `stop_count`, and `order_count` for the authenticated driver, while keeping compatibility fields explicit with `hashes=[]` and `legacy_hashes_available=false`; focused coverage now lives in `driver/service_test.go` and `factory/service_test.go`.
-- Driver availability durability is now additive in `driver/service.go`: `PATCH /v1/driver/availability` runs through `repo.Apply`, emits `DRIVER_AVAILABILITY_CHANGED` via `outbox.EmitJSON(events.AggregateDriver, driverID, events.TopicMain, payload)`, invalidates `driver:availability:{driverID}` post-commit, and fans out the committed envelope to `driver:{driverID}` plus `supplier:{supplierID}` websocket rooms. The committed envelope now carries standard realtime metadata (`trace_id`, `timestamp`, `v`, optional `schema_version`) plus additive `available`, preserved `on_shift`, `supplier_id`, and home-node context so mobile websocket consumers can stay contract-accurate while older readers remain compatible. Idempotent no-op requests return `200` with `no_change=true` and skip outbox/cache/ws side effects when the requested on-shift state already matches persisted state; `bootstrap/bootstrap.go` wires cache, hubs, slog, and seeded supplier ID into `driver.NewService`, and focused seam coverage now lives in `driver/service_test.go`.
-- `events.TopicMain` now resolves from `KAFKA_TOPIC_MAIN` at process start so local/client sandboxes can keep transactional outbox traffic on tenant-specific Kafka topics without rewriting every emit call site.
-- Runtime adapter bridge is now additive in `bootstrap.NewApp`: cache selection attempts Redis backend (`cache/redis_backend.go`) and falls back to in-memory cache on init/ping failure; outbox publisher selection attempts Kafka writer transport (`outbox/kafka_publisher.go`) and falls back to logging publisher on init failure.
-- Runtime strict mode is now additive in `bootstrap.NewApp`: when `REQUIRE_INFRA_ADAPTERS=true`, bootstrap fails fast if Redis or Kafka adapters cannot be initialized, preventing degraded startup in production-like runs.
-- Outbox relay authority is now additive in `bootstrap.NewApp`: relay `Fetch`/`MarkPublished` binds to `OutboxEvents` through `outbox/spanner_store.go` when Spanner connectivity and table probe succeed; fallback remains the in-memory outbox store when Spanner is unavailable.
-- Request reliability middleware is now additive in `bootstrap/reliability_middleware.go`: fixed-window rate limiting, priority-based in-flight shedding, and per-class circuit-open responses are mounted from `main.go` immediately after trace middleware, gated by `RELIABILITY_MIDDLEWARE_ENABLED`.
-- Payment execution routing is now additive in `payment/execution.go`: checkout/chargeback/reversal actions flow through a provider execution router that applies bounded retry with exponential backoff+jitter on retryable provider failures and returns typed policy errors for unsupported/disabled gateway paths (for example AIRWALLEX direct execution when feature-gated off).
-- Checkout attempt execution persistence is now additive in `payment/service.go`: checkout now persists `PaymentSessions` + first `PaymentAttemptRecord` through repository `CreateSessionWithAttempt` in one atomic transaction path, and additive execution metadata (`attempt_id`, `execution_action`, `execution_mode`, `provider_reference`) is surfaced in checkout responses and payment-required event payloads.
-- Payment durability is now additive in `payment/repository_spanner.go`: payment mutation writes (`CreateSession`, `SaveAttempt`, `SaveChargeback`, `SaveReversal`, `SaveWebhook`) persist domain rows and emitted outbox events atomically inside one Spanner `ReadWriteTransaction`, and `bootstrap/bootstrap.go` now selects this repository when Spanner runtime wiring is available while preserving in-memory fallback for degraded/local bootstrap paths.
-- Settlement and ledger authority groundwork is now additive in `payment/{repository_spanner.go,service.go}` and `schema/spanner.ddl`: immutable `PaymentLedgerEntries` rows are persisted atomically alongside session/chargeback/reversal/webhook writes, repository now exposes bounded stale-read `ListLedgerEntries`, and admin payment routes now expose supplier-scoped `GET /v1/payment/ledger` for finance/support visibility.
-- Settlement and reconciliation authority is now additive in `payment/{service.go,repository_spanner.go}` and `paymentroutes/routes.go`: admin payment routes now expose supplier-scoped `GET /v1/payment/settlement/authority`, repository summaries group immutable ledger rows by `Gateway+EntryType+Currency` with bounded query filters (`gateway`, `entry_type`, `occurred_from`, `occurred_to`, `group_limit`), `bootstrap/bootstrap.go` maintains in-memory summary-query parity, and supplier-portal finance reads now consume this authority from `apps/supplier-portal/app/payments/page.tsx` with additive `/v1/payment/ledger` fallback.
-- Reconciliation mismatch authority is now additive in `payment/service.go`, `paymentroutes/routes.go`, and supplier finance contracts: admin payment routes now expose supplier-scoped `GET /v1/payment/reconciliation/mismatches` with bounded filters (`gateway`, `occurred_from`, `occurred_to`, `group_limit`, `mismatch_threshold_minor`), mismatch aggregation computes deterministic signed net deltas over immutable settlement summary rows, and supplier-portal finance reads now render mismatch telemetry from shared `packages/{types,api-client}` contracts.
-- PX3-A3 supplier finance and dispute operations are now additive in `supplier/{service.go,portal_handlers.go}`, `ws/handler.go`, `kafka/notification_dispatcher.go`, and supplier portal finance surfaces: backend now exposes `GET /v1/supplier/ws-session` for short-lived websocket token minting, `/v1/ws` accepts signed `?token=` fallback auth for browser-driven supplier sockets, supplier-scoped payment/dispute events (`PAYMENT_REQUIRED`, `PAYMENT_CLEARED`, `SETTLEMENT_REQUIRED`, `DELIVERY_DISPUTED`) now fan out over `supplier:{supplier_id}`, shared `packages/{types,api-client}` contracts now expose typed chargeback/reversal mutations, `apps/supplier-portal/app/payments/page.tsx` now live-refreshes finance authority from the websocket stream, `apps/supplier-portal/app/earnings/page.tsx` is a real treasury/dispute operations surface, and legacy `GET /v1/supplier/earnings` is now a ledger-backed compatibility bridge with explicit `authority_source` and `authoritative` fields instead of silent scaffold math.
-- Warehouse dispatch-lock release hardening is now additive in `warehouse/service.go`: `DELETE /v1/warehouse/dispatch-lock` now returns deterministic `404 dispatch_lock_not_found` when `lock_id` is unknown (instead of emitting a release envelope with empty entity context), preserving outbox/cache/ws side effects strictly for real lock state transitions; focused seam coverage now lives in `warehouse/service_test.go` for supply-request and dispatch-lock mutation parity.
-- Factory and payload node-durability hardening is now additive in `factory/service.go` and `payload/service.go`: repeated `POST /v1/factory/manifests/cancel-transfer` on an already-cancelled transfer now returns `status=already_cancelled` without duplicate exception-count/volume mutation or additional outbox/cache/ws side effects, and `POST /v1/payloader/reassign-order` now enforces target-manifest capacity with reassigned volume (`409 target_manifest_capacity_exceeded` on overflow) to prevent order-manifest drift; focused regression coverage now lives in `factory/service_test.go` and `payload/service_test.go`.
-- Factory and payload follow-on replay/target durability is now additive in `factory/service.go` and `payload/service.go`: `POST /v1/factory/manifests/rebalance` now returns idempotent `status=already_assigned` when requested driver/vehicle matches current transfer assignment and rejects any non-mutable transfer state with `409 transfer_not_mutable` (preventing no-op/non-mutable reassignment-depth increments and extra outbox/cache/ws side effects), and `POST /v1/payloader/reassign-order` now fails closed with deterministic `409 reassign_target_unavailable` or `409 target_route_mismatch` when no mutable/capacity-valid target manifest can be resolved while returning no-op `status=already_assigned` for same-target replay, explicit same-route requests, and mutable-source auto-resolution to eliminate fallback-route drift.
-- Factory and payload consistency hardening is now additive in `factory/service.go` and `payload/service.go`: rebalance now requires transfer presence in both manifest-local and global transfer ledgers (`404 transfer_not_found` on global-ledger drift) before applying transfer mutations to prevent split-brain transfer state, and explicit same-route payload reassignment now selects an alternate draft/loading manifest when the source manifest is non-mutable while preserving mutable-source no-op `status=already_assigned` semantics; focused regression coverage now includes `TestHandleManifestRebalance_GlobalTransferMissingConflict` and `TestHandleApplyReassign_ExplicitSameRouteSelectsAlternateManifestWhenSourceNotMutable`.
-- Factory and payload cross-entity ownership consistency is now additive in `factory/service.go` and `payload/service.go`: factory rebalance now fails closed with `409 transfer_ledger_mismatch` when manifest-local and global transfer rows diverge on order/state or assignment identity before mutation, and payload reassignment now validates source ownership before mutation (`409 source_manifest_not_found`, `409 source_route_manifest_mismatch`, `409 source_manifest_order_missing`) so source-drift paths cannot mutate state.
-- B05 negative-path event-contract assertion coverage is now additive (test-only): `warehouse/service_test.go` now validates `dispatch_lock_not_found` conflict after a successful lock acquire and asserts no additional outbox/cache/ws fanout envelopes, `factory/service_test.go` now asserts unchanged outbox/ws envelope-type sequences for `transfer_not_mutable` conflict, rebalance replay `already_assigned`, `transfer_route_mismatch` conflict-after-success, and `already_cancelled` no-op paths, and `payload/service_test.go` now asserts unchanged outbox/ws envelope sequences for replay no-op, `source_manifest_order_missing` conflict-after-success, and `target_route_mismatch` conflict-after-success with explicit websocket envelope field checks.
-- B05 node operations durability batch is now closed (`context/plan.md` status `implemented` as of 2026-05-22) after warehouse, factory, and payload anchors converged on runtime guards plus negative-path event-contract assertion coverage. B06 driver and live-delivery batch is implemented with support artifacts in `docs/DRIVER_SUPPORT_PLAYBOOK.md`, `docs/LIVE_TRACKING_EXPECTATIONS.md`, `docs/DELIVERY_ESCALATION_POLICY.md`, and `docs/MIGRATION_RUNBOOK_MANIFEST_ROUTE_GEOMETRY.md`; PX5-A1 through PX5-A3 are implemented including manifest route geometry persistence, driver planned overlays with turn-by-turn/reroute, supplier and warehouse fleet live maps, and supplier-portal WS-accelerated map refresh.
-- Factory and payload driver-manifest-route consistency plus replay-idempotency are now additive in `factory/service.go` and `payload/service.go`: factory rebalance now rejects inconsistent transfer linkage (`409 transfer_manifest_mismatch`) and route-vehicle divergence (`409 transfer_route_mismatch`) before mutation, and successful rebalance replay returns deterministic `status=already_assigned` without extra side effects; payload reassignment now rejects target driver/manifest divergence (`409 target_driver_manifest_mismatch`) and successful reassignment replay returns deterministic `status=already_assigned` without extra side effects. Focused regression coverage now includes `TestHandleManifestRebalance_TransferRouteMismatch`, `TestHandleManifestRebalance_ReplayAfterSuccessIdempotent`, `TestHandleApplyReassign_TargetDriverManifestMismatch`, and `TestHandleApplyReassign_ReplayAfterSuccessIdempotent`.
-- Payment webhook replay hardening is now additive in `payment/service.go`: Adyen multi-item webhook processing now performs non-writing idempotency replay checks inside the item loop so duplicate notifications do not emit concatenated multi-write JSON responses, while single-item webhook handlers retain replay-response short-circuit behavior.
-- Focused webhook durability coverage is now additive in `payment/service_webhook_handlers_test.go`: tests assert Global Pay replay dedupe persistence behavior, Stripe idempotency conflict handling (`409`), Adyen replay single-response behavior, and Adyen signature-first rejection (`401`).
-- Supplier durability is now additive in `supplier/repository_spanner.go`: supplier onboarding and billing persistence now split seeded identity in `Suppliers` from rich onboarding/billing fields in `SupplierProfiles`, and supplier topology read/write now persists through `Warehouses` and `Factories` with transactional outbox emission support.
-- Supplier org-and-fleet onboarding authority is now additive in `supplier/{onboarding_handlers.go,repository_spanner_onboarding.go,repository_spanner.go}`, `supplierroutes/routes.go`, and `schema/spanner.ddl`: `GET|POST /v1/supplier/org/members`, `/v1/supplier/fleet/drivers`, and `/v1/supplier/fleet/vehicles` now persist supplier-scoped org members, drivers, and vehicles through Spanner with home-node topology validation, optional idempotency replay persistence, and transactional outbox buffering; auth lookup stays narrowed to `SupplierRole='ADMIN'` so non-admin `SupplierUsers` rows do not collide with supplier-portal login, and supplier roster reads are index-backed through `Idx_SupplierUsers_BySupplierUpdated`.
-- Order durability is now additive in `order/repository_spanner.go`: order creation persists the `Orders` aggregate row and emitted outbox events inside one Spanner `ReadWriteTransaction`, and `bootstrap/bootstrap.go` now selects this repository when Spanner runtime wiring is available while preserving in-memory fallback for degraded/local bootstrap paths.
-- Order lifecycle mutation wiring is now additive in `order/service.go` + `orderroutes/routes.go`: `PATCH /v1/order/{orderID}/status` enforces canonical status transitions, emits `ORDER_STATUS_CHANGED` through transactional outbox, invalidates supplier/retailer order cache keys post-commit, and fans out realtime supplier/retailer websocket updates after commit.
-- Retailer spatial authority is now additive in `retailer/proximity_service.go`: supplier delivery perimeter coverage is computed with `h3.PolygonToCells` + `h3.CompactCells`, persisted to Redis sets (`ssmr:delivery_perimeter`, `ssmr:delivery_perimeter:compacted`) with TTL=0 semantics, and consumed as O(1) `SISMEMBER` checks from order creation fail-closed `zone_miss` handling.
-- WebSocket relay now uses typed `ws:<hub>:fanout` envelopes with `{source, room, payload}` and source-instance suppression to avoid self-echo duplication; `main.go` starts relay subscribers for every role hub.
-- WebSocket role-room mapping is now additive in `ws/handler.go`: canonical role constants (`ADMIN`, `RETAILER`, `DRIVER`, `PAYLOAD`, `FACTORY_ADMIN`, `WAREHOUSE_ADMIN`) resolve subscriptions for supplier and node-scoped rooms without legacy role-string drift.
-- Outbox trace propagation is now additive in `outbox/outbox.go`: `EmitJSON` injects `trace_id` for object payloads regardless of whether the caller supplied a map or a typed struct.
-- Additive contract coverage now includes advanced factory/payload manifest workflow event types: `MANIFEST_ORDER_INJECTED`, `MANIFEST_ORDER_EXCEPTION`, `MANIFEST_DLQ_ESCALATION`, `MANIFEST_REBALANCED`, and `MANIFEST_CANCELLED`.
-- Factory and payload manifest mutation handlers execute through repository `Apply` seams that pair mutation + outbox emit in one path, then perform post-commit cache invalidation and websocket fanout.
-- Manifest lifecycle and reassignment payloads are now additive-parity envelopes across factory/payload services: sealed-manifest events include `route_id`, `driver_id`, `vehicle_id`, and `order_count`; payload reassignment events include `from_manifest_id`, `to_manifest_id`, route metadata, and target driver metadata, and invalidate source + target manifest cache keys.
-- Supplier portal transport is now additive in `apps/supplier-portal/app/api/[...path]/route.ts`: same-origin `/api/*` requests are proxied to backend authority (`SUPPLIER_BACKEND_BASE_URL`), preserving `Set-Cookie` and idempotency headers for onboarding and billing flows.
-- Shared supplier contract bridge is now additive across `packages/types/index.ts` and `packages/api-client/index.ts`: typed DTOs now cover supplier register/login/configure/billing/profile/topology wire shapes and typed client methods now map to `/v1/auth/supplier/*` plus `/v1/supplier/{configure,billing/setup,profile,topology}` with structured `ApiError` handling.
-- Supplier portal org-and-fleet surface is now additive in `apps/supplier-portal/app/org-fleet/page.tsx`: the supplier portal now consumes typed topology, org-member, driver, and vehicle reads plus create flows through the same-origin proxy and shared `packages/{types,api-client}` contracts, giving PX1-A4 a real supplier-facing control surface rather than leaving the anchor as backend-only scaffolding.
-- Retailer identity and serviceability hardening is now additive: `retailer/core_handlers.go` resolves retailer identity from claims first and returns explicit `401`/`403` for missing or mismatched retailer scope, profile responses backfill `supplier_id` from service authority when repository records are missing linkage, and order capture in `order/{service.go,warehouse_resolver_spanner.go}` now fail-closes with `delivery_perimeter_unavailable` or `zone_miss` instead of nearest-outside-coverage fallback assignment.
-- Supplier pricing authority is now additive: `supplier/{service.go,portal_handlers.go,repository_spanner.go}` and `supplierroutes/routes.go` now expose `GET|PATCH /v1/supplier/pricing/rules`, persist authoritative pricing policy in Spanner `SupplierPricingRules`, and emit additive supplier-updated outbox events on rule changes.
-- Retailer pricing display bridge is now additive: `retailer/{service.go,core_handlers.go,repository_spanner.go}` now projects supplier pricing authority into retailer reads via additive `pricing` snapshots on `GET /v1/retailer/suppliers` plus dedicated `GET /v1/retailer/pricing/rules`, while shared consumption types/methods now live in `packages/{types,api-client}/index.ts`.
-
-## Auth Modes
-- Supplier portal onboarding/billing/org-fleet: `supplier_jwt` cookie (HS256 scaffold), `auth.CookieAuth` + `auth.RequireRole(ADMIN)`.
-- Retailer/mobile bearer mode (optional): Firebase ID token verification (`auth/firebase.go`) validates RS256 signature + `aud` + `iss` + `sub` with cert cache; route-level `auth.RequireRole(RETAILER)` remains enforcement gate.
-
-## Role-Row Capability and Ownership Ledger
-
-| Role row | Canonical surfaces | Primary business owner | Core operating responsibilities | Backend authority surfaces | Primary realtime authority |
-|---|---|---|---|---|---|
-| SUPPLIER (`ADMIN`) | `apps/supplier-portal` | Supplier leadership, finance, and support ops | company bootstrap, billing, topology, pricing authority, inventory oversight, earnings visibility, order oversight, live driver telemetry oversight | `supplierroutes`, supplier-owned domain packages, admin payment mutation oversight, `telemetryroutes` consumer rooms | `supplier:{supplier_id}`, `telemetry:supplier:{supplier_id}` |
-| RETAILER | `apps/retailer-app-android`, `apps/retailer-app-ios`, `apps/retailer-app-desktop` | Commercial operations and customer support | registration, supplier relationship, cart sync, checkout initiation, order decisions, tracking, pending-payment follow-up | `retailerroutes`, `orderroutes` create/status entrypoints, retailer checkout surfaces in `paymentroutes` | `retailer:{retailer_id}` |
-| DRIVER | `apps/driver-app-android`, `apps/driver-app-ios/driverappios` | Delivery execution and collections ops | availability, manifest execution, stop progression, pending collections, delivery completion, telemetry | `driverroutes`, `telemetryroutes`, driver-permitted order-state transitions | `driver:{driver_id}`, `telemetry:driver:{driver_id}` |
-| WAREHOUSE_ADMIN | `apps/warehouse-portal`, `apps/warehouse-app-android`, `apps/warehouse-app-ios` | Warehouse operations leadership | inventory, local order queue, dispatch preview, supply requests, dispatch locks | `warehouseroutes` and warehouse-scoped operational services | `warehouse:{home_node_id}`, `supplier:{supplier_id}` |
-| FACTORY_ADMIN | `apps/factory-portal`, `apps/factory-app-android`, `apps/factory-app-ios` | Factory and transfer operations leadership | transfers, manifest lifecycle, exception resolution, fleet/staff oversight, supply response | `factoryroutes` and factory-scoped manifest services | `factory:{home_node_id}`, `supplier:{supplier_id}` |
-| PAYLOAD | `apps/payload-terminal`, `apps/payload-app-ios`, `apps/payload-app-android` | Loading and dock operations leadership | truck readiness, load start, inject-before-seal, manifest exceptions, reassign support, seal confirmation | `payloaderroutes` and payload-scoped manifest mutation services | `payload:{subject}`, supplier and factory rooms as needed |
-| SYSTEM | `apps/backend-go`, `apps/ai-worker` | Platform engineering and SRE | auth, data durability, outbox relay, cache invalidation, worker execution, observability, infra proof | all domain and platform packages | all role hubs and internal event streams |
-
-### Role-row parity rules
-1. A capability is not considered delivered for a role until every supported client in that role row can represent the same business state, even if platform UI controls differ.
-2. If a capability is intentionally delayed on one client, it must be hidden or feature-flagged so the user cannot discover a broken partial rollout.
-3. Every capability ledger change must identify the owning backend route family, the shared contract authority, and the affected realtime room if live updates are expected.
-
-## Route Coverage (additive 2026-05-17)
-- `supplierroutes` mounts supplier role-row operational endpoints: `POST /v1/auth/supplier/register`, `POST /v1/auth/supplier/login`, `POST /v1/supplier/configure`, `POST /v1/supplier/billing/setup`, `GET|PUT /v1/supplier/profile`, `GET|PUT /v1/supplier/topology`, `GET /v1/supplier/ws-session`, `GET|PATCH /v1/supplier/pricing/rules`, `GET /v1/supplier/dashboard`, `GET /v1/supplier/earnings`, `GET|PATCH /v1/supplier/inventory`, `GET /v1/supplier/inventory/audit`, `GET /v1/supplier/orders`, `POST /v1/supplier/orders/vet`.
-- `retailerroutes` mounts retailer role-row operational endpoints: `GET|PUT /v1/retailer/profile`, `GET /v1/retailer/suppliers`, `POST /v1/retailer/suppliers/{supplierID}/{action}`, `GET /v1/retailer/pricing/rules`, `GET|POST /v1/retailer/cart/sync`, `GET /v1/retailer/ai/predictions`, `GET /v1/retailers/{retailerID}/orders`, `POST /v1/orders/request-cancel`, `POST /v1/order/cancel`, analytics, family-member, AI confirmation/rejection, preorder, pending-payments, active-fulfillment, and tracking surfaces.
-- Retailer protected routes are conditionally wrapped in Firebase bearer verification + `RequireRole(RETAILER)` when auth wiring is enabled; fallback open mounting remains for local scaffold development.
-- `driverroutes` mounts driver role-row operational endpoints: `GET /v1/driver/{profile,history,earnings,availability,pending-collections,manifest-gate,manifest}` plus legacy `GET /v1/fleet/manifest` alias.
-- `warehouseroutes` mounts warehouse role-row operational endpoints: `GET /v1/warehouse/ops/{dashboard,inventory,orders}`, `POST /v1/warehouse/ops/dispatch/preview`, order-backed `GET /v1/warehouse/demand/forecast`, `GET|POST /v1/warehouse/supply-requests`, `GET /v1/warehouse/dispatch-locks`, and `POST|DELETE /v1/warehouse/dispatch-lock`.
-- Driver routes are conditionally wrapped in Firebase bearer verification + `RequireRole(DRIVER)` when auth wiring is enabled; warehouse routes are conditionally wrapped in Firebase bearer verification + `RequireRole(WAREHOUSE_ADMIN|ADMIN)` when enabled, with cookie `ADMIN` fallback for local scaffold mode.
-- `factoryroutes` mounts factory role-row operational endpoints: `GET /v1/factory/analytics/overview`, `GET /v1/factory/dashboard`, `GET /v1/factory/profile`, `GET /v1/factory/transfers`, `POST /v1/factory/transfers/create`, `GET /v1/factory/manifests`, `GET /v1/factory/manifests/{manifestID}`, lifecycle transitions (`POST /v1/factory/manifests/{manifestID}/{start-loading,seal,dispatch,complete}`), rebalance/cancel surfaces (`POST /v1/factory/manifests/{rebalance,cancel-transfer,cancel}`), `GET /v1/factory/manifest-exceptions`, `GET /v1/factory/fleet/drivers`, `GET /v1/factory/fleet/vehicles`, `GET /v1/factory/staff`, `POST /v1/factory/dispatch`, and `GET /v1/factory/supply-requests`.
-- `payloaderroutes` mounts payload role-row operational endpoints: `GET /v1/payloader/trucks`, `GET /v1/payloader/orders`, `GET /v1/payloader/manifests`, `GET /v1/payloader/manifests/{manifestID}`, lifecycle transitions (`POST /v1/payloader/manifests/{manifestID}/{start-loading,inject-order,seal}`), exception surfaces (`POST /v1/payload/manifest-exception`, `GET /v1/payloader/manifest-exceptions`), reassignment surfaces (`POST /v1/payloader/recommend-reassign`, `POST /v1/payloader/reassign-order`), and compatibility `POST /v1/payload/seal`.
-- `orderroutes` now mounts order mutation surfaces: `POST /v1/order/create`, additive `PATCH /v1/order/{orderID}/status`, `POST /v1/orders/{orderID}/assign`, and driver delivery compatibility endpoints (`POST /v1/delivery/arrive`, `POST /v1/order/{deliver,confirm-offload,complete,collect-cash}`).
-- `telemetryroutes` mounts `POST /v1/telemetry/location` for authenticated DRIVER location ingress and emits typed `DRIVER_LOCATION_UPDATED` websocket envelopes to scoped telemetry rooms.
-- Factory routes are conditionally wrapped in Firebase bearer verification + `RequireRole(FACTORY_ADMIN|ADMIN)` when auth wiring is enabled; payload routes are conditionally wrapped in Firebase bearer verification + `RequireRole(PAYLOAD|ADMIN)` when enabled, with cookie `ADMIN` fallback for local scaffold mode.
-- `paymentroutes` mounts payment principal endpoints: `POST /v1/checkout/b2b`, `POST /v1/checkout/unified`, `POST /v1/payment/chargeback`, `POST /v1/payment/chargeback/reversal`, supplier-scoped `GET /v1/payment/ledger`, supplier-scoped `GET /v1/payment/settlement/authority`, supplier-scoped `GET /v1/payment/reconciliation/mismatches`, and deprecated `POST /v1/payment/global_pay/initiate`.
-- `webhookroutes` mounts gateway callbacks: `POST /v1/webhooks/global-pay`, `POST /v1/webhooks/adyen`, and `POST /v1/webhooks/stripe`.
-- Checkout routes are conditionally wrapped in Firebase bearer verification + `RequireRole(RETAILER)` when auth wiring is enabled; payment mutation routes are conditionally wrapped in Firebase bearer verification + `RequireRole(ADMIN)` when enabled, with cookie `ADMIN` fallback for local scaffold mode.
-- Webhook routes remain JWT-unauthenticated by design and enforce provider-exact verification before payload decode/mutation: Global Pay Basic auth credential check, Stripe `Stripe-Signature` (`t`,`v1`) verification over raw body, and Adyen item-level `additionalData.hmacSignature` verification.
-
-## Support vocabulary baseline
-1. Supplier Portal: the canonical supplier-facing web and desktop control surface. Do not describe it as a separate platform-admin console.
-2. Seeded supplier: the one live supplier tenant in pegasusX. This is a deployment rule, not a schema simplification.
-3. Zone miss: a fail-closed order-capture outcome when the retailer address falls outside the warmed delivery perimeter or perimeter authority is unavailable.
-4. Pending payment: the order intent exists, but fulfillment cannot advance until payment authority changes state.
-5. Payment cleared: the checkout or webhook path has confirmed the payment state required for fulfillment progress.
-6. Settlement required: delivery or payment handoff needs an explicit settlement action before the lifecycle can fully close.
-7. Dispatch lock: a temporary operator-owned freeze that prevents conflicting dispatch mutations while someone is actively controlling the plan.
-8. Manifest sealed: loading is closed; any further physical change must travel through an exception, rebalance, or reassignment path.
-9. Active fulfillment: the order is physically in progress and should appear in live tracking and exception surfaces.
-10. Scaffold mode: local fallback behavior when strict infrastructure adapters are not required; never describe scaffold mode as production-ready.
-11. SSMR proof: the isolated Docker validation loop that must pass before infra-sensitive behavior is treated as trustworthy.
-
-## Operational ownership and escalation baseline
-1. Supplier onboarding and billing failures: supplier support owns first response; backend or platform escalates when auth, persistence, or idempotency evidence shows system fault.
-2. Retailer pricing, zone, and cart issues: commercial or retailer support owns first response; supplier operations arbitrates business rules; backend escalates only when contract or routing authority is inconsistent.
-3. Payment incidents: finance and payment support own first response; payment engineering escalates for webhook, idempotency, provider policy, or settlement mismatches.
-4. Warehouse, factory, and payload execution incidents: node operations own first response; logistics engineering escalates when manifest events, reassignment, or dispatch authority drift from system truth.
-5. Driver telemetry or live-tracking incidents: delivery operations own first response; platform and mobile leads escalate when authenticated telemetry, websocket relay, or reconnect behavior are suspect.
-6. Release and launch evidence always includes: plan-anchor reconciliation, contract and doc sync, validation results, and a rollback path for any architecture-sensitive batch.
-
-## Infrastructure Baseline
-- Local dev: `infra/docker-compose.yml` runs Spanner emulator, Redis, Kafka, Kafka UI.
-- Core schema durability: `schema/spanner.ddl` now includes an `Orders` table (`line_items` JSON bytes, currency/amount, H3, version, timestamps) plus supplier/retailer created-at indexes, and `cmd/setup` applies these statements idempotently for emulator and local bootstrap flows.
-- Isolated SSMR sandbox: `infra/docker-compose.ssmr.yml` runs isolated Spanner/Redis/Kafka on non-overlapping host ports, explicit Kafka topic bootstrap (`ssmr.events.orders`, `ssmr.events.spatial`, `ssmr.events.realtime`, `ssmr.events.webhooks`), the local `apps/backend-go/cmd/setup` schema/seed bootstrap job, the Go backend + ai-worker against those isolated adapters, and ai-worker monitoring exposure on host `8181` mapped to container `HEALTH_PORT=8081`.
-- Kubernetes worker packaging: `infra/k8s/ai-worker/` now carries the first pegasusX cluster manifests for the worker seam only, exposing the worker monitoring surface through a ClusterIP service and probe-driven Deployment while broader release packaging remains in progress.
-- Validated smoke gate: `scripts/smoke_ssmr.sh` (also exposed as `make test-ssmr-infra` and `npm run infra:ssmr:test`) orchestrates isolated compose bring-up, reruns `kafka-init` and `backend-setup`, then uses `apps/backend-go/cmd/ssmr-smokecheck` to prove seeded supplier + `Retailers` schema state, Redis reachability, backend `/v1/health`, and Kafka topic isolation + round-trip delivery before teardown. `infra/docker-compose.ssmr.yml` uses `/usr/local/go/bin/go` explicitly for Go service commands so the official Go image does not depend on shell PATH resolution.
-- Spatial perimeter bootstrap and gate: `bootstrap/data.go` + `bootstrap/bootstrap.go` now precompute the Redis-backed supplier delivery perimeter at startup from supplier warehouse coordinates when present (deterministic fallback center/radius otherwise), and the smoke gate now runs `apps/backend-go/cmd/ssmr-smokecheck spatial` to assert perimeter-key existence and positive membership checks before Kafka round-trip validation.
-- Persistent iteration caches: `infra/docker-compose.ssmr.yml` now mounts named `pegasusx-ssmr-go-mod` and `pegasusx-ssmr-go-build` volumes into all Go services, and `scripts/smoke_ssmr.sh` now tears down without `-v` so container-side module/build caches persist across local SSMR smoke runs while infra containers still reset.
-- Permanent CI gate: repo-root `.github/workflows/ssmr-infra.yml` now runs `make test-ssmr-infra` for `pegasusX/**` changes and manual dispatches so pegasusX backend breathing is enforced before merge.
-- Cloud provisioning baseline: `infra/terraform/` provisions VPC, Spanner, Redis, and Secret Manager entries for Kafka/Firebase runtime wiring.
-- Terraform segregation: `tenant_slug` / `resource_prefix` now namespace cloud resources and Secret Manager entries so each SSMR tenant can keep isolated Spanner, Redis, and topic wiring without sharing state identifiers.
-- Phase-2 note: pegasusX does not yet carry a concrete optimizer-sidecar-rust implementation. The sandbox stack intentionally stops at backend-go + ai-worker rather than pretending a solver runtime exists.
-
-## Single-Supplier Enforcement
-- Bootstrap seeds exactly one `Suppliers` row.
-- `auth.ResolveSupplierID()` returns the seeded supplier when claim is missing (gracefully handles the single-tenant case).
-- Supplier discovery endpoints return the seeded supplier only.
-- Retailer ordering routes never expose a supplier selector in UI.
-
-## Home Node Model
-- `Drivers.HomeNodeType ∈ {WAREHOUSE, FACTORY}` + `HomeNodeId`.
-- `Vehicles.HomeNodeType` + `HomeNodeId`.
-- Supports: warehouse-only, factory-only, mixed local+remote topologies.
-
-## Onboarding (single-tenant company bootstrap)
-1. Account (company, contact, email, phone, password) — same as Pegasus step 1.
-2. Topology (factories, warehouses, capture mixed local/remote layout) — replaces single-warehouse-on-supplier-row pattern.
-3. Business (tax id, registration, fleet profile, cold chain, palletization).
-4. Categories (operating categories multi-select).
-5. → `/setup/billing` (payment gateway + bank) — same separation as Pegasus.
-6. → `/supplier/dashboard`.
-
-## Warehouse Dispatch Doctrine (WAREHOUSE_ADMIN — canonical product)
-
-**Primary operator flow is manual dispatch**, not background auto-commit. The dispatch page has **no agent mode toggle** on it. Optional `auto_dispatch_enabled` lives only under dispatch **settings** as a warehouse policy; it must never replace the manual truck + order selection UX.
-
-### Operator UX (warehouse portal / Android / iOS)
-
-1. **Prerequisites**: warehouse has registered **vehicles** (truck capacity in VU) and **drivers** each assigned to a truck.
-2. **Dispatch screen**:
-   - **Truck selector** (dropdown): lists available trucks for this warehouse (driver + vehicle + `max_volume_vu`).
-   - **Orders table**: undispatched orders with row checkboxes + select-all.
-   - **Dispatch** button: enabled only when **≥1 order** is selected; commits assignment to the selected truck.
-3. **After commit**: manifest state is **DRAFT**; **payloader** sees per-truck order list and seals at the loading gate (LEO). Driver departs only after manifest is **SEALED**.
-
-### Capacity math (VU)
-
-- Each **product** carries a volumetric unit (`UnitVolumeVU` on `Products` — additive DDL target).
-- **Order volume** = Σ (`line_item.quantity` × `product.UnitVolumeVU`) at checkout / dispatch read time.
-- Each **truck** carries `Vehicles.MaxVolumeVU` (class defaults: A=50, B=150, C=400 VU).
-- **Utilization cap**: 95% Tetris buffer (`dispatch.TetrisBuffer`) — same rule for auto-suggest and manual warn.
-- **Manual overflow**: if operator assigns orders exceeding truck capacity, UI must show **confirm dialog** (“insufficient space detected — continue?”); backend returns structured `capacity_warning` (target behavior).
-
-### Fleet availability cases
-
-A truck appears in the selector only when **all** hold:
-
-| Check | Source |
-|---|---|
-| Driver active | `Drivers.IsActive` |
-| Vehicle assigned | `Drivers.VehicleId` |
-| Vehicle active | `Vehicles.IsActive` |
-| Not on maintenance hold | vehicle `unavailable_reason` empty |
-| Driver on-shift | `Drivers.OnShift` / availability API (wire into ops query) |
-| Not fully loaded on open manifest | no active DRAFT/LOADING/SEALED manifest at capacity (wire into ops query) |
-
-Unavailable drivers/trucks surface with **reason** visible to warehouse admin and supplier.
-
-### Smart assignment (neighborhood / H3)
-
-Pure in-process math is the default; **ai-worker OR-Tools is optional acceleration**, not a hard dependency.
-
-1. **Neighborhood clustering**: group orders by H3 resolution-7 cell + ring-1 adjacency (“neighborhood”).
-2. **Bin-pack** (`dispatch/binpack.go`): consolidation → multi-stop same cell → split oversized orders → orphans if no truck space.
-3. **Stop sequencing**: nearest-neighbor / 2-opt TSP on retailer coordinates per truck route (recommended default order).
-4. **Outliers**: orders far from the main cluster assign to an empty truck, or best-fit truck with remaining VU — **never silently abandoned**; overflow stays **undispatched** with explicit list in response.
-5. **Operator smart assist** (future UI): “Suggest routes” runs preview only; operator confirms or edits before manual commit.
-
-### Driver execution (separate from warehouse dispatch)
-
-- Default **recommended stop order** from route optimizer; driver may **override** next stop (`POST /v1/fleet/route/reorder`).
-- **Navigation UX**: driver map uses camera lock, bearing, velocity-based zoom, 3D tilt (Uber-style follow mode) — see `driver-app-android` `MapScreen.kt`.
-- Route change should trigger **re-optimization notification** (voice/TTS target; partial today).
-
-### API contract (warehouse)
-
-- `POST /v1/warehouse/ops/dispatch/preview` — read-only; proposed routes + warnings.
-- `POST /v1/warehouse/ops/dispatch/execute` — `mode: "MANUAL"` + `{ driver_id, vehicle_id?, order_ids[] }` per truck (primary); `mode: "AUTO"` for batch smart-assign (settings worker or explicit button).
-- Supplier `/v1/supplier/manifests/*` dispatch is a **different role surface**; warehouse admins use **warehouse ops** routes only.
-
-### Implementation gap ledger (2026-06)
-
-| Item | Status |
-|---|---|
-| Supplier + warehouse fleet live map (`/fleet/live-map`) | **Implemented** (portal + supplier + warehouse native iOS/Android) |
-| Manifest route geometry (`EncodedRoutePolyline`) | **Implemented** (seal/reorder + backfill; OSRM optional via `ROUTING_OSRM_URL`) |
-| Manual truck + order selection UI | **Shipped** supplier portal + Android + iOS; warehouse row shipped |
-| Product `UnitVolumeVU` + order volume from catalog | **Shipped** — `dispatch/volume.go` reads catalog VU; preview wire includes `volume_vu` |
-| Manual capacity warning | **Shipped** warehouse + supplier portal MANUAL execute (`capacity_exceeded` / `force_capacity`) |
-| Driver on-shift / active-manifest in fleet query | **Shipped** supplier `fleet/live-map` filters `Drivers.OnShift = true` |
-| Auto-dispatch worker | **Exists** (settings opt-in; not primary UX) |
-
-## Documentation Sync Set
-Any architecturally meaningful change must update, in the same change set:
-- `.github/ACT.md`
-- `.github/copilot-instructions.md`
-- `.github/gemini-instructions.md`
-- `context/plan.md`
-- `context/architecture.md`
-- `context/architecture-graph.json`
-- `context/technology-inventory.md`
-- `context/technology-inventory.json`
-- `context/parity-ledger.md` (when behavior diverges from Pegasus)
+## Provisioned Resources
+- `google_artifact_registry_repository (pegasusx)`
+- `google_billing_budget (pegasusx_monthly)`
+- `google_compute_network (pegasusx_vpc)`
+- `google_container_cluster (pegasusx)`
+- `google_monitoring_alert_policy (ai_worker_consumer_lag)`
+- `google_monitoring_alert_policy (ai_worker_down)`
+- `google_monitoring_alert_policy (ai_worker_not_ready)`
+- `google_monitoring_alert_policy (backend_5xx_rate)`
+- `google_monitoring_alert_policy (backend_kafka_lag)`
+- `google_monitoring_alert_policy (optimizer_fallback_rate)`
+- `google_monitoring_alert_policy (outbox_backlog_high)`
+- `google_monitoring_alert_policy (spanner_cpu_high)`
+- `google_monitoring_dashboard (ai_worker_launch)`
+- `google_monitoring_dashboard (pilot_launch)`
+- `google_monitoring_uptime_check_config (ai_worker_health)`
+- `google_monitoring_uptime_check_config (ai_worker_ready)`
+- `google_project_iam_member (backend_redis)`
+- `google_project_iam_member (backend_secrets)`
+- `google_project_iam_member (backend_spanner)`
+- `google_project_service (gke_apis)`
+- `google_project_service (required_apis)`
+- `google_redis_instance (cache)`
+- `google_secret_manager_secret (adyen_webhook_secret)`
+- `google_secret_manager_secret (apple_notarize_app_password)`
+- `google_secret_manager_secret (apple_notarize_apple_id)`
+- `google_secret_manager_secret (apple_notarize_team_id)`
+- `google_secret_manager_secret (firebase_auth_enabled)`
+- `google_secret_manager_secret (firebase_project_id)`
+- `google_secret_manager_secret (global_pay_webhook_secret)`
+- `google_secret_manager_secret (google_maps_api_key)`
+- `google_secret_manager_secret (jwt_secret)`
+- `google_secret_manager_secret (kafka_bootstrap_servers)`
+- `google_secret_manager_secret (kafka_topic_main)`
+- `google_secret_manager_secret (kafka_topic_realtime)`
+- `google_secret_manager_secret (kafka_topic_spatial)`
+- `google_secret_manager_secret (kafka_topic_webhooks)`
+- `google_secret_manager_secret (stripe_webhook_secret)`
+- `google_secret_manager_secret (tauri_signing_private_key)`
+- `google_secret_manager_secret (tauri_updater_pubkey)`
+- `google_secret_manager_secret (windows_codesign_password)`
+- `google_secret_manager_secret (windows_codesign_pfx)`
+- `google_secret_manager_secret_version (adyen_webhook_secret)`
+- `google_secret_manager_secret_version (apple_notarize_app_password)`
+- `google_secret_manager_secret_version (apple_notarize_apple_id)`
+- `google_secret_manager_secret_version (apple_notarize_team_id)`
+- `google_secret_manager_secret_version (firebase_auth_enabled)`
+- `google_secret_manager_secret_version (firebase_project_id)`
+- `google_secret_manager_secret_version (global_pay_webhook_secret)`
+- `google_secret_manager_secret_version (google_maps_api_key)`
+- `google_secret_manager_secret_version (jwt_secret)`
+- `google_secret_manager_secret_version (kafka_bootstrap_servers)`
+- `google_secret_manager_secret_version (kafka_topic_main)`
+- `google_secret_manager_secret_version (kafka_topic_realtime)`
+- `google_secret_manager_secret_version (kafka_topic_spatial)`
+- `google_secret_manager_secret_version (kafka_topic_webhooks)`
+- `google_secret_manager_secret_version (stripe_webhook_secret)`
+- `google_secret_manager_secret_version (tauri_signing_private_key)`
+- `google_secret_manager_secret_version (tauri_updater_pubkey)`
+- `google_secret_manager_secret_version (windows_codesign_password)`
+- `google_secret_manager_secret_version (windows_codesign_pfx)`
+- `google_service_account (backend_runtime)`
+- `google_service_account_iam_member (backend_wi)`
+- `google_spanner_database (main)`
+- `google_spanner_instance (ledger)`
+- `google_storage_bucket (app_updates)`
+- `google_storage_bucket_iam_member (public_updates)`

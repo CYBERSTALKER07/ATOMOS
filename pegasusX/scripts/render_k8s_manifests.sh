@@ -85,6 +85,8 @@ render() {
     -e "s|SPANNER_DATABASE: \"pegasusx-db\"|SPANNER_DATABASE: \"${SPANNER_DATABASE_VAL}\"|g" \
     -e "s|REDIS_ADDR: \"redis.pegasusx.svc.cluster.local:6379\"|REDIS_ADDR: \"${REDIS_ADDR_VAL}\"|g" \
     -e "s|KAFKA_BROKERS: \"kafka.pegasusx.svc.cluster.local:9092\"|KAFKA_BROKERS: \"${KAFKA_BROKERS_VAL}\"|g" \
+    -e "s|PEGASUSX_ENV: \"production\"|PEGASUSX_ENV: \"staging\"|g" \
+    -e "s|GLOBAL_PAY_ENV: \"production\"|GLOBAL_PAY_ENV: \"staging\"|g" \
     "$src" >"$dest"
 }
 

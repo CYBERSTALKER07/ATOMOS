@@ -1,5 +1,11 @@
 # Zone-Miss Communication Policy (B03)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Purpose
 Standardize communication and escalation when retailer order attempts fail because the retailer location is outside active service coverage.
 

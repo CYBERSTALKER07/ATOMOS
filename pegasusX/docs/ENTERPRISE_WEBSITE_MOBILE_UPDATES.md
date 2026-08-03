@@ -1,5 +1,11 @@
 # Enterprise website-only mobile updates (native)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Scope:** Users install apps from the **official website** (not App Store / Play).  
 **Live:** Supplier + Driver + Payload + Warehouse + Retailer + Factory (Android + iOS).
 **Status:** All primary native roles covered for website-only enterprise OTA.

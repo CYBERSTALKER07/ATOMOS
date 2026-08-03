@@ -1,5 +1,10 @@
 # pegasusX Purpose
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ## Mission
 Operate a single-supplier logistics ecosystem at high reliability for thousands of retailers, while preserving full architectural compatibility with the Pegasus multi-supplier reference.
 

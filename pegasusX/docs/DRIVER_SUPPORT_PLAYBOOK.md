@@ -1,5 +1,11 @@
 # Driver support playbook
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Operational playbook for triaging driver execution issues across Android and iOS. Pairs with `LIVE_TRACKING_EXPECTATIONS.md` (visibility contract) and `DELIVERY_ESCALATION_POLICY.md` (when to escalate beyond first-line support).
 
 ## Scope

@@ -1,5 +1,11 @@
 # Driver App iOS (pegasusX)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 Native SwiftUI driver execution client for the pegasusX local stack.
 
 ## Backend

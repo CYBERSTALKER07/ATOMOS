@@ -22,6 +22,9 @@ type Deps struct {
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
+	ClaimsService interface {
+		HandleCreateClaim(http.ResponseWriter, *http.Request)
+	}
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 	AllowAuthBypass     bool
@@ -57,6 +60,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/retailers/{retailerID}/orders", d.Service.HandleOrders)
 		rr.Get("/v1/orders", d.Service.HandleOrdersAlias)
+		if d.ClaimsService != nil {
+			rr.Post("/v1/orders/{id}/claims", d.ClaimsService.HandleCreateClaim)
+		}
 
 		if d.OrderService != nil {
 			rr.Post("/v1/orders/request-cancel", d.OrderService.HandleRetailerRequestCancel)

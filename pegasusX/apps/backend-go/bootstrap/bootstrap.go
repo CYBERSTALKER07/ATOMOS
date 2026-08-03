@@ -293,9 +293,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		TLSEnabled:      cfg.RedisTLSEnabled,
 		MinIdleConns:    10,
 		MaxIdleTime:     5 * time.Minute,
-		DialTimeout:     5 * time.Second,
-		ReadTimeout:     3 * time.Second,
-		WriteTimeout:    3 * time.Second,
+		DialTimeout:     2 * time.Second,
+		ReadTimeout:     5 * time.Second,
+		WriteTimeout:    5 * time.Second,
 		MinRetryBackoff: 8 * time.Millisecond,
 		MaxRetryBackoff: 512 * time.Millisecond,
 	}

@@ -1,5 +1,11 @@
 # ADR-007: Dedicated WebSocket Service
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Status
 
 Proposed — implement when pilot WS load exceeds single-cluster comfort zone.

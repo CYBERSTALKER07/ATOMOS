@@ -1,5 +1,11 @@
 # ADR-004: Event triple-lock
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Status:** Accepted  
 **Date:** 2026-06-22  
 **Context:** Six role rows + web + native clients must agree on event names and payloads for WS refresh and Kafka fan-out.

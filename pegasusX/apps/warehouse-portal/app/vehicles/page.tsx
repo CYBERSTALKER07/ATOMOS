@@ -12,6 +12,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
+import { VehiclesList } from '@/components/vehicles/VehiclesList';
 
 export default function VehiclesPage() {
   const { vehicles, loading, error, liveMessage, reload } = useWarehouseVehiclesLive();
@@ -112,58 +113,9 @@ export default function VehiclesPage() {
           </form>
         )}
 
-        {!loading && vehicles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-(--muted)">
-            <Icon name="fleet" size={48} className="mb-3 opacity-40" />
-            <p className="text-sm">No trucks registered</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {vehicles.map(vehicle => (
-              <TruckCard key={vehicle.vehicle_id} vehicle={vehicle} />
-            ))}
-          </div>
-        )}
+        <VehiclesList vehicles={vehicles} loading={loading} />
       </PageChrome>
     </PageTransition>
   );
 }
 
-function TruckCard({ vehicle }: { vehicle: WarehouseFleetVehicle }) {
-  const capacity = vehicle.capacity_vu ?? vehicle.max_volume_vu ?? 0;
-  return (
-    <Link
-      href={`/vehicles/${vehicle.vehicle_id}`}
-      className="block rounded-xl border border-(--border) p-4 hover:border-(--foreground)/20 transition-colors"
-      style={{ background: 'var(--surface)' }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-base font-semibold">{vehicle.label || vehicle.license_plate}</div>
-          <div className="text-xs text-(--muted) mt-1">{vehicle.license_plate} · {vehicle.vehicle_class}</div>
-        </div>
-        <span className={`status-chip ${vehicle.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
-          {vehicleStatusLabel(vehicle.is_active)}
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div>
-          <div className="text-xs text-(--muted)">Capacity</div>
-          <div className="font-mono">{capacity} VU</div>
-        </div>
-        <div>
-          <div className="text-xs text-(--muted)">Driver</div>
-          <div>{vehicle.assigned_driver_name || 'Unassigned'}</div>
-        </div>
-      </div>
-      {!vehicle.is_active && (vehicle.unavailable_reason || vehicle.unavailable_note) && (
-        <p className="text-xs mt-3" style={{ color: 'var(--warning)' }}>
-          {formatUnavailableReason(vehicle.unavailable_reason, vehicle.unavailable_note)}
-        </p>
-      )}
-      <div className="mt-3 text-xs text-(--muted) inline-flex items-center gap-1">
-        View details <Icon name="chevron_right" size={14} />
-      </div>
-    </Link>
-  );
-}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // SupplierReturn is one quarantine row for rejected delivery quantity.
@@ -25,10 +26,13 @@ var validAmendReasons = map[string]struct{}{
 	"OTHER":       {},
 }
 
-func orderAmendable(status Status) bool {
-	switch status {
+func orderAmendable(orderRecord Order) bool {
+	switch orderRecord.Status {
 	case StatusInTransit, StatusArrived, StatusArrivedShopClosed:
 		return true
+	case StatusCompleted:
+		// 24-hour post-delivery time-gate for amendments (claims)
+		return time.Since(orderRecord.UpdatedAt) <= 24*time.Hour
 	default:
 		return false
 	}

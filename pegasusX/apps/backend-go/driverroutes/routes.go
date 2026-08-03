@@ -24,7 +24,7 @@ type Deps struct {
 		HandleFleetRouteReorder(http.ResponseWriter, *http.Request)
 		HandleBypassOffload(http.ResponseWriter, *http.Request)
 		HandleCreditDelivery(http.ResponseWriter, *http.Request)
-		HandleMissingItems(http.ResponseWriter, *http.Request)
+		HandleExceptionReport(http.ResponseWriter, *http.Request)
 		HandleSplitPayment(http.ResponseWriter, *http.Request)
 		HandleValidateQR(http.ResponseWriter, *http.Request)
 		HandleAmendOrder(http.ResponseWriter, *http.Request)
@@ -96,7 +96,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			// Quantity negotiation disabled — handler returns 410 feature_disabled.
 			rr.Post("/v1/delivery/negotiate", d.OrderService.HandleProposeNegotiation)
 			rr.Post("/v1/delivery/credit-delivery", d.OrderService.HandleCreditDelivery)
-			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)
+			rr.Post("/v1/delivery/exception-report", d.OrderService.HandleExceptionReport)
 			rr.Post("/v1/delivery/split-payment", d.OrderService.HandleSplitPayment)
 			rr.Post("/v1/delivery/confirm-payment-bypass", d.OrderService.HandleConfirmPaymentBypass)
 		} else {

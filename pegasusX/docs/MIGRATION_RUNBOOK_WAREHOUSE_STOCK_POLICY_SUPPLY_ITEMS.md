@@ -1,5 +1,11 @@
 # Migration Runbook — Warehouse Stock Policy & Supply Request Items
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Change ID:** `20250616-warehouse-stock-policy-supply-items`  
 **Owner:** Platform / Warehouse ops  
 **Blast radius:** Spanner `Warehouses`, `SupplierInventoryV2`, `WarehouseSupplyRequests`, new `WarehouseSupplyRequestItems`; warehouse/factory supply APIs; retailer catalog stock enrichment; checkout backorders  

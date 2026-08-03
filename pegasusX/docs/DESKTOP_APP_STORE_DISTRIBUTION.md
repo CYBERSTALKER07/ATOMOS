@@ -1,5 +1,11 @@
 # Desktop Microsoft Store & Mac App Store
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Scope:** Public store builds of the four Tauri role portals.  
 **Not this doc:** website CDN sideload OTA — see [`ENTERPRISE_WEBSITE_DESKTOP_UPDATES.md`](./ENTERPRISE_WEBSITE_DESKTOP_UPDATES.md).
 
