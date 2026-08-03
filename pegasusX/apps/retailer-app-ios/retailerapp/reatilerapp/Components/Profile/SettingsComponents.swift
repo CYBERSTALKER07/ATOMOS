@@ -83,6 +83,10 @@ struct SettingsRow: View {
                 NavigationLink(destination: StoreStockView()) {
                     SettingsRowContent(item: item)
                 }
+            } else if item.view == "LocalSkus" {
+                NavigationLink(destination: LocalSkusView()) {
+                    SettingsRowContent(item: item)
+                }
             } else if item.view == "POS" {
                 NavigationLink(destination: PosView()) {
                     SettingsRowContent(item: item)

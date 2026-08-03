@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -844,6 +845,92 @@ func (s *Service) supplierIDForRetailerSKU(ctx context.Context, orgID, sku strin
 	}
 	// SSMR / single-supplier seed fallback
 	return strings.TrimSpace(s.supplierID)
+}
+
+// autoOrderWorkerEnabled gates the background ticker (default off).
+func autoOrderWorkerEnabled() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("AUTO_ORDER_WORKER_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
+// RunAutoOrderWorker periodically drafts carts for retailers with auto-order enabled.
+// Default mode is draft; place mode requires AUTO_ORDER_PLACE_ENABLED separately.
+func (s *Service) RunAutoOrderWorker(ctx context.Context, interval time.Duration) {
+	if !autoOrderWorkerEnabled() {
+		return
+	}
+	if interval <= 0 {
+		interval = 15 * time.Minute
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.sweepAutoOrderEnabled(ctx)
+		}
+	}
+}
+
+func (s *Service) sweepAutoOrderEnabled(ctx context.Context) {
+	ids := s.listAutoOrderEnabledRetailerIDs(ctx)
+	for _, rid := range ids {
+		settings := s.loadAutoOrderDurable(ctx, rid)
+		mode := strings.ToLower(strings.TrimSpace(settings.ExecutionMode))
+		if mode == "" {
+			mode = AutoOrderModeDraft
+		}
+		if mode == AutoOrderModePlace && !s.autoOrderPlaceEnabled {
+			mode = AutoOrderModeDraft
+		}
+		_ = s.RunAutoOrderForRetailer(ctx, rid, mode)
+	}
+}
+
+func (s *Service) listAutoOrderEnabledRetailerIDs(ctx context.Context) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	add := func(id string) {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	s.autoOrderMu.RLock()
+	for rid, settings := range s.autoOrderByRetailer {
+		if settings != nil && (settings.GlobalEnabled || hasAnyScopedEnable(*settings)) {
+			add(rid)
+		}
+	}
+	s.autoOrderMu.RUnlock()
+	if s.spannerClient != nil {
+		iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT RetailerId FROM RetailerAutoOrderSettings
+			      WHERE GlobalEnabled = true LIMIT 200`,
+		})
+		defer iter.Stop()
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				break
+			}
+			var rid string
+			if err := row.Column(0, &rid); err == nil {
+				add(rid)
+			}
+		}
+	}
+	return out
 }
 
 func hasAnyScopedEnable(s AutoOrderSettings) bool {

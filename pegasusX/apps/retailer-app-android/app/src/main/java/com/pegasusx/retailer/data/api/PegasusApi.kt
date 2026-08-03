@@ -312,6 +312,33 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
 
+    @GET("/v1/retailer/stock/counts/version")
+    suspend fun getStockCountVersion(
+        @Query("location_id") locationId: String,
+        @Query("stock_bin") stockBin: String = "FLOOR",
+    ): JsonElement
+
+    @POST("/v1/retailer/stock/counts/commit")
+    suspend fun commitStockCount(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @GET("/v1/retailer/local-skus")
+    suspend fun getLocalSkus(@Query("q") q: String? = null): JsonElement
+
+    @POST("/v1/retailer/local-skus")
+    suspend fun createLocalSku(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @PATCH("/v1/retailer/local-skus/{localSkuID}")
+    suspend fun patchLocalSku(
+        @Path("localSkuID") localSkuId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
     // Retail OS Phase 4 POS
     @GET("/v1/retailer/registers")
     suspend fun getRegisters(@Query("location_id") locationId: String? = null): JsonElement

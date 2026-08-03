@@ -31,11 +31,13 @@ Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for deta
 
 ## 3. Remaining ops checklist (owner)
 
-See [`artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md`](../artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md):
+See [`artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md`](../artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md) and [`docs/L1_FIELD_UNLOCK_RELEASE_CHECKLIST.md`](../docs/L1_FIELD_UNLOCK_RELEASE_CHECKLIST.md):
 
-1. **Global Pay** — real staging merchant password → GSM → SUCCESS (not cash fallback); register webhook in GP portal  
+1. **Global Pay** — real staging merchant password → GSM → SUCCESS (`PX_E2E_PAYMENT_CARD_SUCCESS_OK`); register webhook in GP portal  
 2. **Firebase** — Phone SMS / Blaze; Android debug SHA-1; APNs for iOS push if required  
-3. Optional: Soliq/OFD; flag rollout; unused Spanner teardown  
+3. Optional: Soliq/OFD ([`docs/SOLIQ_SANDBOX_READINESS.md`](../docs/SOLIQ_SANDBOX_READINESS.md)); `QUANTITY_NEGOTIATION_ENABLED` after client UX; unused Spanner teardown  
+
+**Engineering (2026-08-04 next-layer remaining):** CT sim hard-blocked on ssmr/prod; auto-order worker flag; negotiation env gate; claim/local-sku docs; mobile local SKUs; e2e markers for card SUCCESS / auto-order / quarantine / Soliq skip.
 
 **Do not** flip `PEGASUSX_ENV=production` until GP SUCCESS and `ValidateProductionProfile` pass.
 

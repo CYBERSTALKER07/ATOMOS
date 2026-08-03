@@ -90,6 +90,26 @@
         "PX_E2E_ORG_SWITCH_SKIPPED",
         "PX_E2E_MULTI_ORG_AUTH_OK"
       ]
+    },
+    "next_layer": {
+      "description": "Next-layer L1–L7 markers (flag-gated; SKIPPED when off)",
+      "markers": [
+        "PX_E2E_PAYMENT_CARD_SUCCESS_OK",
+        "PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED",
+        "PX_E2E_PAYMENT_CASH_FALLBACK_OK",
+        "PX_E2E_AUTO_ORDER_DRAFT_OK",
+        "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED",
+        "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
+        "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED",
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_SKIPPED",
+        "PX_E2E_ASSIST_SLA_OK",
+        "PX_E2E_ASSIST_SLA_SKIPPED",
+        "PX_E2E_NEGOTIATION_OK",
+        "PX_E2E_NEGOTIATION_SKIPPED",
+        "PX_E2E_SOLIQ_SANDBOX_OK",
+        "PX_E2E_SOLIQ_SANDBOX_SKIPPED"
+      ]
     }
   },
   "required": [
@@ -168,6 +188,31 @@
   ],
   "alternatives": {
     "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"],
+    "payment_card": [
+      "PX_E2E_PAYMENT_CARD_SUCCESS_OK",
+      "PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED",
+      "PX_E2E_PAYMENT_CASH_FALLBACK_OK"
+    ],
+    "auto_order_draft": [
+      "PX_E2E_AUTO_ORDER_DRAFT_OK",
+      "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED"
+    ],
+    "claim_quarantine": [
+      "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
+      "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED"
+    ],
+    "offline_count": [
+      "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
+      "PX_E2E_OFFLINE_COUNT_CONFLICT_SKIPPED"
+    ],
+    "assist_sla": [
+      "PX_E2E_ASSIST_SLA_OK",
+      "PX_E2E_ASSIST_SLA_SKIPPED"
+    ],
+    "soliq_sandbox": [
+      "PX_E2E_SOLIQ_SANDBOX_OK",
+      "PX_E2E_SOLIQ_SANDBOX_SKIPPED"
+    ],
     "multi_org_picker": [
       "PX_E2E_MULTI_ORG_PICKER_OK",
       "PX_E2E_MULTI_ORG_PICKER_SKIPPED"

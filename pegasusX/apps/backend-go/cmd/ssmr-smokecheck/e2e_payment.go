@@ -148,6 +148,7 @@ func runPayAtDeliveryCheckout(ctx context.Context, client *http.Client, base, re
 	}
 	sessionID, err := runCardCheckoutAtDelivery(ctx, client, base, retailerToken, orderID, cfg)
 	if err == nil {
+		// Caller must replay webhook; CARD_SUCCESS marker printed after settle.
 		return sessionID, nil
 	}
 	// SSMR often has placeholder Global Pay password until owner rotates GSM secrets.
@@ -302,9 +303,15 @@ func runPaymentSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("checkout: %w", err)
 	}
+	if strings.TrimSpace(sessionID) == "" {
+		// Cash fallback already printed PAYMENT_OK markers.
+		fmt.Println("PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED")
+		return nil
+	}
 	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
 		return fmt.Errorf("webhook: %w", err)
 	}
+	fmt.Println("PX_E2E_PAYMENT_CARD_SUCCESS_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
 	return nil
 }

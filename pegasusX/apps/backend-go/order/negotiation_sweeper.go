@@ -13,7 +13,7 @@ import (
 // StartNegotiationSweeper starts a background loop to auto-reject expired negotiations.
 // No-op while quantity negotiation is product-disabled (see negotiation_disabled.go).
 func (s *Service) StartNegotiationSweeper(ctx context.Context) {
-	if quantityNegotiationDisabled {
+	if quantityNegotiationDisabled() {
 		if s.log != nil {
 			s.log.InfoContext(ctx, "negotiation sweeper not started: feature_disabled")
 		}
@@ -43,7 +43,7 @@ func (s *Service) StartNegotiationSweeper(ctx context.Context) {
 
 // NegotiationFeatureEnabled reports whether quantity negotiation APIs are live.
 func NegotiationFeatureEnabled() bool {
-	return !quantityNegotiationDisabled
+	return !quantityNegotiationDisabled()
 }
 
 // SweepExpiredNegotiations finds PENDING negotiations that have expired and AUTO_REJECTs them.

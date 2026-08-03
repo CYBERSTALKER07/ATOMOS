@@ -511,6 +511,29 @@ final class APIClient {
         )
     }
 
+    // L6 local / manual POS SKUs
+    func getLocalSkus() async throws -> LocalSkuListWire {
+        try await get(path: "/v1/retailer/local-skus")
+    }
+
+    func createLocalSku(name: String, barcode: String, priceMinor: Int64) async throws -> LocalSkuWire {
+        struct Body: Encodable {
+            let name: String
+            let barcode: String
+            let default_price_minor: Int64
+        }
+        return try await post(
+            path: "/v1/retailer/local-skus",
+            body: Body(name: name, barcode: barcode, default_price_minor: priceMinor),
+            headers: ["Idempotency-Key": "local-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func patchLocalSku(id: String, isActive: Bool) async throws -> LocalSkuWire {
+        struct Body: Encodable { let is_active: Bool }
+        return try await patch(path: "/v1/retailer/local-skus/\(id)", body: Body(is_active: isActive))
+    }
+
     // Retail OS Phase 4 POS
     func getRegisters() async throws -> RetailerRegistersWire {
         try await get(path: "/v1/retailer/registers")
@@ -1157,6 +1180,26 @@ struct AssistTicketWire: Codable {
         case note
         case status
         case ticketId = "ticket_id"
+    }
+}
+
+struct LocalSkuListWire: Codable {
+    let items: [LocalSkuWire]
+}
+
+struct LocalSkuWire: Codable {
+    let localSkuId: String
+    let name: String
+    let barcode: String?
+    let defaultPriceMinor: Int64?
+    let isActive: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case barcode
+        case localSkuId = "local_sku_id"
+        case defaultPriceMinor = "default_price_minor"
+        case isActive = "is_active"
     }
 }
 

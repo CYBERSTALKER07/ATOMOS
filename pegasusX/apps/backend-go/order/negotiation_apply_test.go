@@ -43,7 +43,7 @@ func TestNegotiationFeatureDisabled(t *testing.T) {
 	if NegotiationFeatureEnabled() {
 		t.Fatal("quantity negotiation must stay product-disabled")
 	}
-	if !quantityNegotiationDisabled {
-		t.Fatal("quantityNegotiationDisabled must be true")
+	if !quantityNegotiationDisabled() {
+		t.Fatal("quantityNegotiationDisabled() must be true")
 	}
 }

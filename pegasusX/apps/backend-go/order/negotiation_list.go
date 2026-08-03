@@ -23,7 +23,7 @@ type NegotiationProposalDTO struct {
 
 // HandleListPendingNegotiations serves GET /v1/supplier/negotiations/pending.
 func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.Request) {
-	if quantityNegotiationDisabled {
+	if quantityNegotiationDisabled() {
 		writeJSON(w, http.StatusOK, map[string]any{"data": []NegotiationProposalDTO{}})
 		return
 	}

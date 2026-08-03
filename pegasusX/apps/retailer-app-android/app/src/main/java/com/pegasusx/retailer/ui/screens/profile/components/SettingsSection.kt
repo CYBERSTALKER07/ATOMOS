@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.LocalMall
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -47,6 +48,7 @@ fun SettingsSection(
     onTeamClick: () -> Unit = {},
     onLocationsClick: () -> Unit = {},
     onStoreStockClick: () -> Unit = {},
+    onLocalSkusClick: () -> Unit = {},
     onPosClick: () -> Unit = {},
     onShiftsClick: () -> Unit = {},
     onSectionsClick: () -> Unit = {},
@@ -69,6 +71,7 @@ fun SettingsSection(
             SettingsListItem(icon = Icons.Outlined.LocationOn, title = "Locations", subtitle = "Branches and checkout store", onClick = onLocationsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.LocalMall, title = "Store stock", subtitle = "Receive, putaway, count", onClick = onStoreStockClick)
+            SettingsListItem(icon = Icons.Outlined.Category, title = "Local SKUs", subtitle = "Non-Pegasus POS goods", onClick = onLocalSkusClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.ShoppingCart, title = "POS", subtitle = "Cashier sales and voids", onClick = onPosClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
