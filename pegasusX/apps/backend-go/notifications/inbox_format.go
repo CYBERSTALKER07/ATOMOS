@@ -115,6 +115,41 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
 			return FormatShopClosedResponse(e.OrderID, e.Response)
 		}
+	case events.EventShopClosedTimeout:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosedTimeout(e.OrderID, e.Resolution)
+		}
+	case events.EventProximityUnlocked:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatProximityUnlocked(e.OrderID, e.Status)
+		}
+	case events.EventPartialOffload:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatPartialOffload(e.OrderID)
+		}
+	case events.EventCreditLeave:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatCreditLeave(e.OrderID)
+		}
+	case events.EventClaimFiled:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimFiled(e.ClaimID, e.OrderID, e.ClaimType)
+		}
+	case events.EventClaimResolved:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimResolved(e.ClaimID, e.OrderID, e.Status)
+		}
+	case events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && (e.OrderID != "" || e.ClaimID != "") {
+			return FormatLogisticsException(eventType, e.OrderID, e.ClaimID)
+		}
 	case events.EventDriverCreated:
 		var e events.DriverEvent
 		if json.Unmarshal(payload, &e) == nil && e.DriverID != "" {
@@ -169,6 +204,85 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 				DeepLink: "/orders/" + e.OrderID,
 				Priority: "high",
 			}
+		}
+	case "cash_reconciliation.created", "cash_reconciliation.accepted", "cash_reconciliation.written_off", "cash_reconciliation.escalation":
+		var e struct {
+			ReconciliationID string `json:"reconciliation_id"`
+			DriverID         string `json:"driver_id"`
+			DifferenceMinor  int64  `json:"difference_minor"`
+		}
+		_ = json.Unmarshal(payload, &e)
+		title := humanizeEventType(eventType)
+		body := title
+		if e.DifferenceMinor != 0 {
+			body = fmt.Sprintf("%s — difference %d minor", title, e.DifferenceMinor)
+		}
+		return FormattedNotification{
+			Title:    title,
+			Body:     body,
+			DeepLink: "/treasury/cash-reconciliations",
+			Priority: "high",
+		}
+	case "credit_note.created", "credit_note.issued":
+		var e struct {
+			CreditNoteID string `json:"credit_note_id"`
+			OrderID      string `json:"order_id"`
+		}
+		_ = json.Unmarshal(payload, &e)
+		return FormattedNotification{
+			Title:    humanizeEventType(eventType),
+			Body:     fmt.Sprintf("Credit note %s for order %s", e.CreditNoteID, e.OrderID),
+			DeepLink: "/finance/credit-notes",
+			Priority: "normal",
+		}
+	case "reverse_logistics.task_created", "reverse_logistics.task_received":
+		var e struct {
+			TaskID  string `json:"task_id"`
+			OrderID string `json:"order_id"`
+		}
+		_ = json.Unmarshal(payload, &e)
+		return FormattedNotification{
+			Title:    humanizeEventType(eventType),
+			Body:     fmt.Sprintf("Reverse logistics task %s — order %s", e.TaskID, e.OrderID),
+			DeepLink: "/exceptions",
+			Priority: "normal",
+		}
+	case "credit.score.updated":
+		var e struct {
+			RetailerID string `json:"retailer_id"`
+			Score      int64  `json:"score"`
+			RiskTier   string `json:"risk_tier"`
+		}
+		_ = json.Unmarshal(payload, &e)
+		return FormattedNotification{
+			Title:    "Credit score updated",
+			Body:     fmt.Sprintf("Retailer %s score %d (%s)", e.RetailerID, e.Score, e.RiskTier),
+			DeepLink: "/credit/collections",
+			Priority: "normal",
+		}
+	case "reorder.suggestion.updated":
+		var e struct {
+			RetailerID   string `json:"RetailerId"`
+			Sku          string `json:"Sku"`
+			SuggestedQty int64  `json:"SuggestedQty"`
+		}
+		_ = json.Unmarshal(payload, &e)
+		if e.RetailerID == "" {
+			var alt struct {
+				RetailerID   string `json:"retailer_id"`
+				Sku          string `json:"sku"`
+				SuggestedQty int64  `json:"suggested_qty"`
+			}
+			_ = json.Unmarshal(payload, &alt)
+			e.RetailerID = alt.RetailerID
+			e.Sku = alt.Sku
+			e.SuggestedQty = alt.SuggestedQty
+		}
+		return FormattedNotification{
+			Title:    "Reorder suggestion",
+			Body:     fmt.Sprintf("Suggest %d × %s for retailer %s", e.SuggestedQty, e.Sku, e.RetailerID),
+			DeepLink: "/replenishment/suggestions",
+			Priority: "normal",
 		}
 	}
 

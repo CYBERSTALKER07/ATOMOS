@@ -568,6 +568,10 @@ struct ShopClosedAttemptRow: Decodable, Identifiable {
     let driverId: String
     let retailerId: String
     let resolution: String
+    let shopClosedReason: String?
+    let shopClosedResolution: String?
+    let graceEndsAt: String?
+    let shopClosedAt: String?
     let createdAt: String
     let updatedAt: String?
 
@@ -577,6 +581,10 @@ struct ShopClosedAttemptRow: Decodable, Identifiable {
         case driverId = "driver_id"
         case retailerId = "retailer_id"
         case resolution
+        case shopClosedReason = "shop_closed_reason"
+        case shopClosedResolution = "shop_closed_resolution"
+        case graceEndsAt = "grace_ends_at"
+        case shopClosedAt = "shop_closed_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -977,23 +985,46 @@ struct SupplierWsSessionResponse: Decodable {
 }
 
 struct PaymentLedgerEntry: Decodable, Identifiable {
-    var id: String { ledgerEntryId }
+    var id: String { ledgerEntryId.isEmpty ? (referenceId ?? occurredAt) : ledgerEntryId }
     let ledgerEntryId: String
     let orderId: String?
+    let retailerId: String?
     let gateway: String
     let entryType: String
     let amountMinor: Int64
     let currency: String
+    let referenceId: String?
+    let source: String?
     let occurredAt: String
+    let createdAt: String?
 
     enum CodingKeys: String, CodingKey {
         case ledgerEntryId = "ledger_entry_id"
         case orderId = "order_id"
+        case retailerId = "retailer_id"
         case gateway
         case entryType = "entry_type"
         case amountMinor = "amount_minor"
         case currency
+        case referenceId = "reference_id"
+        case source
         case occurredAt = "occurred_at"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ledgerEntryId = try c.decodeIfPresent(String.self, forKey: .ledgerEntryId) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId)
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId)
+        gateway = try c.decodeIfPresent(String.self, forKey: .gateway) ?? ""
+        entryType = try c.decodeIfPresent(String.self, forKey: .entryType) ?? ""
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        referenceId = try c.decodeIfPresent(String.self, forKey: .referenceId)
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        occurredAt = try c.decodeIfPresent(String.self, forKey: .occurredAt) ?? ""
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
     }
 }
 
@@ -1735,6 +1766,165 @@ struct PaymentChargebackReversalResponse: Decodable {
     let status: String
 }
 
+// MARK: - Logistics claims
+
+struct SupplierClaimLine: Decodable {
+    let sku: String
+    let quantity: Int64
+    let reason: String?
+    let amountMinor: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case sku, quantity, reason
+        case amountMinor = "amount_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sku = try c.decodeIfPresent(String.self, forKey: .sku) ?? ""
+        quantity = try c.decodeIfPresent(Int64.self, forKey: .quantity) ?? 0
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor)
+    }
+}
+
+struct SupplierClaimEvidence: Decodable {
+    let evidenceType: String
+    let uri: String
+
+    enum CodingKeys: String, CodingKey {
+        case evidenceType = "evidence_type"
+        case uri
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        evidenceType = try c.decodeIfPresent(String.self, forKey: .evidenceType) ?? ""
+        uri = try c.decodeIfPresent(String.self, forKey: .uri) ?? ""
+    }
+}
+
+struct SupplierClaim: Decodable, Identifiable {
+    var id: String { claimId }
+    let claimId: String
+    let orderId: String
+    let retailerId: String
+    let claimType: String
+    let status: String
+    let amountMinor: Int64?
+    let currency: String?
+    let description: String?
+    let lineItems: [SupplierClaimLine]
+    let evidences: [SupplierClaimEvidence]
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case claimId = "claim_id"
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case claimType = "claim_type"
+        case status
+        case amountMinor = "amount_minor"
+        case currency, description
+        case lineItems = "line_items"
+        case evidences
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claimId = try c.decodeIfPresent(String.self, forKey: .claimId) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId) ?? ""
+        claimType = try c.decodeIfPresent(String.self, forKey: .claimType) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor)
+        currency = try c.decodeIfPresent(String.self, forKey: .currency)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        lineItems = try c.decodeIfPresent([SupplierClaimLine].self, forKey: .lineItems) ?? []
+        evidences = try c.decodeIfPresent([SupplierClaimEvidence].self, forKey: .evidences) ?? []
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+    }
+}
+
+struct SupplierClaimsListResponse: Decodable {
+    let claims: [SupplierClaim]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claims = try c.decodeIfPresent([SupplierClaim].self, forKey: .claims) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case claims }
+}
+
+struct ApproveClaimRequest: Encodable {
+    let resolutionNote: String
+    let settlementMode: String
+    let skipGatewayRefund: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case resolutionNote = "resolution_note"
+        case settlementMode = "settlement_mode"
+        case skipGatewayRefund = "skip_gateway_refund"
+    }
+}
+
+struct RejectClaimRequest: Encodable {
+    let resolutionNote: String
+
+    enum CodingKeys: String, CodingKey {
+        case resolutionNote = "resolution_note"
+    }
+}
+
+struct ClaimSettlementResult: Decodable {
+    let chargebackId: String?
+    let amountMinor: Int64
+    let mode: String
+    let gatewayRefunded: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case chargebackId = "chargeback_id"
+        case amountMinor = "amount_minor"
+        case mode
+        case gatewayRefunded = "gateway_refunded"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        chargebackId = try c.decodeIfPresent(String.self, forKey: .chargebackId)
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? ""
+        gatewayRefunded = try c.decodeIfPresent(Bool.self, forKey: .gatewayRefunded) ?? false
+    }
+}
+
+struct ApproveClaimResponse: Decodable {
+    let claim: SupplierClaim?
+    let settlement: ClaimSettlementResult?
+}
+
+struct ClaimChargebacksResponse: Decodable {
+    let items: [PaymentLedgerEntry]
+    let count: Int
+    let limit: Int
+    let supplierId: String
+
+    enum CodingKeys: String, CodingKey {
+        case items, count, limit
+        case supplierId = "supplier_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = try c.decodeIfPresent([PaymentLedgerEntry].self, forKey: .items) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+        limit = try c.decodeIfPresent(Int.self, forKey: .limit) ?? 0
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+    }
+}
+
 struct BusinessSetupRequest: Encodable {
     let taxId: String
     let registrationNumber: String
@@ -1817,5 +2007,330 @@ struct PromoSimulateResult: Decodable {
         case projectedMarginMinor = "projected_margin_minor"
         case marginDeltaPct = "margin_delta_pct"
         case sandboxOnly = "sandbox_only"
+    }
+}
+
+// MARK: - Compliance audit dashboard
+
+struct ComplianceSummary: Decodable {
+    let openFiscalCount: Int
+    let forceCompleteCount: Int
+    let claimMismatchCount: Int
+    let creditFreezeCount: Int
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case openFiscalCount = "open_fiscal_count"
+        case forceCompleteCount = "force_complete_count"
+        case claimMismatchCount = "claim_mismatch_count"
+        case creditFreezeCount = "credit_freeze_count"
+        case generatedAt = "generated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        openFiscalCount = try c.decodeIfPresent(Int.self, forKey: .openFiscalCount) ?? 0
+        forceCompleteCount = try c.decodeIfPresent(Int.self, forKey: .forceCompleteCount) ?? 0
+        claimMismatchCount = try c.decodeIfPresent(Int.self, forKey: .claimMismatchCount) ?? 0
+        creditFreezeCount = try c.decodeIfPresent(Int.self, forKey: .creditFreezeCount) ?? 0
+        generatedAt = try c.decodeIfPresent(String.self, forKey: .generatedAt) ?? ""
+    }
+}
+
+struct ComplianceFiscalOpenRow: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let status: String
+    let fiscalStatus: String
+    let totalMinor: Int64
+    let currency: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case status
+        case fiscalStatus = "fiscal_status"
+        case totalMinor = "total_minor"
+        case currency
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        fiscalStatus = try c.decodeIfPresent(String.self, forKey: .fiscalStatus) ?? ""
+        totalMinor = try c.decodeIfPresent(Int64.self, forKey: .totalMinor) ?? 0
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+    }
+}
+
+struct ComplianceForceCompleteRow: Decodable, Identifiable {
+    var id: String { orderId + completedAt }
+    let orderId: String
+    let reasonCode: String
+    let actorId: String
+    let completedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case reasonCode = "reason_code"
+        case actorId = "actor_id"
+        case completedAt = "completed_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        reasonCode = try c.decodeIfPresent(String.self, forKey: .reasonCode) ?? ""
+        actorId = try c.decodeIfPresent(String.self, forKey: .actorId) ?? ""
+        completedAt = try c.decodeIfPresent(String.self, forKey: .completedAt) ?? ""
+    }
+}
+
+struct ComplianceClaimMismatchRow: Decodable, Identifiable {
+    var id: String { claimId }
+    let claimId: String
+    let orderId: String
+    let mismatchReason: String
+
+    enum CodingKeys: String, CodingKey {
+        case claimId = "claim_id"
+        case orderId = "order_id"
+        case mismatchReason = "mismatch_reason"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        claimId = try c.decode(String.self, forKey: .claimId)
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        mismatchReason = try c.decodeIfPresent(String.self, forKey: .mismatchReason) ?? ""
+    }
+}
+
+struct ComplianceCreditFreezeRow: Decodable, Identifiable {
+    var id: String { retailerId + status }
+    let retailerId: String
+    let status: String
+    let currentBalanceMinor: Int64
+    let creditLimitMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case status
+        case currentBalanceMinor = "current_balance_minor"
+        case creditLimitMinor = "credit_limit_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decode(String.self, forKey: .retailerId)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        currentBalanceMinor = try c.decodeIfPresent(Int64.self, forKey: .currentBalanceMinor) ?? 0
+        creditLimitMinor = try c.decodeIfPresent(Int64.self, forKey: .creditLimitMinor) ?? 0
+    }
+}
+
+struct OrderReceiptMeta: Decodable {
+    let receiptId: String
+    let htmlUrl: String
+    let pdfUrl: String
+    let qrUrl: String
+    let partyCopy: String
+
+    enum CodingKeys: String, CodingKey {
+        case receiptId = "receipt_id"
+        case htmlUrl = "html_url"
+        case pdfUrl = "pdf_url"
+        case qrUrl = "qr_url"
+        case partyCopy = "party_copy"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        receiptId = try c.decodeIfPresent(String.self, forKey: .receiptId) ?? ""
+        htmlUrl = try c.decodeIfPresent(String.self, forKey: .htmlUrl) ?? ""
+        pdfUrl = try c.decodeIfPresent(String.self, forKey: .pdfUrl) ?? ""
+        qrUrl = try c.decodeIfPresent(String.self, forKey: .qrUrl) ?? ""
+        partyCopy = try c.decodeIfPresent(String.self, forKey: .partyCopy) ?? ""
+    }
+}
+
+struct ComplianceDashboardResponse: Decodable {
+    let summary: ComplianceSummary
+    let openFiscal: [ComplianceFiscalOpenRow]
+    let forceCompletes: [ComplianceForceCompleteRow]
+    let claimMismatches: [ComplianceClaimMismatchRow]
+    let creditFreezes: [ComplianceCreditFreezeRow]
+
+    enum CodingKeys: String, CodingKey {
+        case summary
+        case openFiscal = "open_fiscal"
+        case forceCompletes = "force_completes"
+        case claimMismatches = "claim_mismatches"
+        case creditFreezes = "credit_freezes"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        summary = try c.decodeIfPresent(ComplianceSummary.self, forKey: .summary)
+            ?? ComplianceSummary(from: try decoder.singleValueContainer() as! Decoder)
+        // Fallback empty if decode fails for optional arrays
+        openFiscal = (try? c.decode([ComplianceFiscalOpenRow].self, forKey: .openFiscal)) ?? []
+        forceCompletes = (try? c.decode([ComplianceForceCompleteRow].self, forKey: .forceCompletes)) ?? []
+        claimMismatches = (try? c.decode([ComplianceClaimMismatchRow].self, forKey: .claimMismatches)) ?? []
+        creditFreezes = (try? c.decode([ComplianceCreditFreezeRow].self, forKey: .creditFreezes)) ?? []
+    }
+}
+
+struct CashReconciliationRow: Decodable, Identifiable {
+    var id: String { reconciliationId }
+    let reconciliationId: String
+    let driverId: String
+    let status: String
+    let differenceMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case reconciliationId = "reconciliation_id"
+        case driverId = "driver_id"
+        case status
+        case differenceMinor = "difference_minor"
+    }
+}
+
+struct CashReconciliationsResponse: Decodable {
+    let reconciliations: [CashReconciliationRow]
+}
+
+struct CreditNoteRow: Decodable, Identifiable {
+    var id: String { creditNoteId }
+    let creditNoteId: String
+    let orderId: String
+    let status: String
+    let totalGrossMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case creditNoteId = "credit_note_id"
+        case orderId = "order_id"
+        case status
+        case totalGrossMinor = "total_gross_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        creditNoteId = try c.decode(String.self, forKey: .creditNoteId)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        status = (try? c.decode(String.self, forKey: .status)) ?? ""
+        totalGrossMinor = (try? c.decode(Int64.self, forKey: .totalGrossMinor)) ?? 0
+    }
+}
+
+struct CreditNotesResponse: Decodable {
+    let creditNotes: [CreditNoteRow]
+
+    enum CodingKeys: String, CodingKey {
+        case creditNotes = "credit_notes"
+    }
+}
+
+struct CreditProfileRow: Decodable, Identifiable {
+    var id: String { retailerId }
+    let retailerId: String
+    let supplierId: String
+    let creditLimitMinor: Int64
+    let currentBalanceMinor: Int64
+    let availableCreditMinor: Int64
+    let riskScore: Int64
+    let riskTier: String
+    let delinquencyCount: Int64
+    let status: String
+    let utilizationBps: Int64?
+    let needsAttention: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case supplierId = "supplier_id"
+        case creditLimitMinor = "credit_limit_minor"
+        case currentBalanceMinor = "current_balance_minor"
+        case availableCreditMinor = "available_credit_minor"
+        case riskScore = "risk_score"
+        case riskTier = "risk_tier"
+        case delinquencyCount = "delinquency_count"
+        case status
+        case utilizationBps = "utilization_bps"
+        case needsAttention = "needs_attention"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decode(String.self, forKey: .retailerId)
+        supplierId = (try? c.decode(String.self, forKey: .supplierId)) ?? ""
+        creditLimitMinor = (try? c.decode(Int64.self, forKey: .creditLimitMinor)) ?? 0
+        currentBalanceMinor = (try? c.decode(Int64.self, forKey: .currentBalanceMinor)) ?? 0
+        availableCreditMinor = (try? c.decode(Int64.self, forKey: .availableCreditMinor)) ?? 0
+        riskScore = (try? c.decode(Int64.self, forKey: .riskScore)) ?? 0
+        riskTier = (try? c.decode(String.self, forKey: .riskTier)) ?? ""
+        delinquencyCount = (try? c.decode(Int64.self, forKey: .delinquencyCount)) ?? 0
+        status = (try? c.decode(String.self, forKey: .status)) ?? ""
+        utilizationBps = try? c.decode(Int64.self, forKey: .utilizationBps)
+        needsAttention = (try? c.decode(Bool.self, forKey: .needsAttention)) ?? false
+    }
+}
+
+struct CreditProfilesResponse: Decodable {
+    let profiles: [CreditProfileRow]
+    let count: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case profiles, count
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        profiles = (try? c.decode([CreditProfileRow].self, forKey: .profiles)) ?? []
+        count = try? c.decode(Int.self, forKey: .count)
+    }
+}
+
+struct RetailerCreditProfilePatchRequest: Encodable {
+    let retailerId: String
+    let creditLimitMinor: Int64
+    let status: String
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case creditLimitMinor = "credit_limit_minor"
+        case status, reason
+    }
+}
+
+struct RoutePerformanceRow: Decodable, Identifiable {
+    var id: String { routeId }
+    let routeId: String
+    let driverId: String
+    let ordersCompleted: Int
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case driverId = "driver_id"
+        case ordersCompleted = "orders_completed"
+    }
+}
+
+struct RoutePerformanceResponse: Decodable {
+    let routes: [RoutePerformanceRow]
+}
+
+struct NotificationPreferencesResponse: Decodable {
+    let preferences: [NotificationPreferenceRow]
+}
+
+struct NotificationPreferenceRow: Codable {
+    let eventType: String
+    let channel: String
+    let enabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case eventType = "event_type"
+        case channel, enabled
     }
 }

@@ -28,6 +28,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var completedIds: Set<String> = []
     var completedMissions: [Mission] = []
     var completedOrders: [Order] = []
+    var historyRows: [DriverHistoryRow] = []
+    var earnings: DriverEarningsResponse?
     var showScanner = false
     var showCorrection = false
     var showOfflineVerifier = false
@@ -142,6 +144,21 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 10
         ProfileService.shared.startPolling()
+        Task { await loadEarningsAndHistory() }
+    }
+
+    func loadEarningsAndHistory() async {
+        do {
+            earnings = try await APIClient.shared.getEarnings()
+        } catch {
+            print("[FleetViewModel] earnings load failed: \(error)")
+        }
+        do {
+            let history = try await APIClient.shared.getDriverHistory()
+            historyRows = history.rows
+        } catch {
+            print("[FleetViewModel] history load failed: \(error)")
+        }
     }
 
     // MARK: - Actions
@@ -399,6 +416,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         Haptics.heavy()
 
         do {
+            // Phase 6 soft-freeze: block local UX when open fiscal exists.
+            if let snap = try? await APIClient.shared.getOpenFiscal(),
+               snap.cashBagFrozen || snap.openFiscalCount > 0 {
+                deliveryEdgeMessage = "Cash bag frozen: \(snap.openFiscalCount) order(s) still fiscalizing. Retry fiscal or call supervisor."
+                return
+            }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
             truckStatus = "AVAILABLE"
             isReturning = false
@@ -406,9 +429,44 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             returnGoodsTotalUnits = 0
             isTransitActive = false
             isTelemetryLive = false
+            deliveryEdgeMessage = nil
             await loadMissions()
         } catch {
-            // Silent — driver can retry
+            let msg = "\(error)"
+            if msg.localizedCaseInsensitiveContains("cash_reconciliation_required") {
+                showCashReconSheet = true
+                deliveryEdgeMessage = "Submit cash reconciliation before ending shift."
+                await loadCashReconciliations()
+            } else if msg.localizedCaseInsensitiveContains("open_fiscal_block") {
+                deliveryEdgeMessage = "Cash bag frozen: clear fiscalizing orders before ending shift."
+            }
+            // Driver can retry after clearing fiscal or cash recon.
+        }
+    }
+
+    var showCashReconSheet = false
+    var cashReconciliations: [APIClient.CashReconciliationRow] = []
+    var declaredCashText = ""
+
+    func loadCashReconciliations() async {
+        do {
+            let resp = try await APIClient.shared.listCashReconciliations()
+            cashReconciliations = resp.reconciliations
+        } catch {
+            cashReconciliations = []
+        }
+    }
+
+    func submitCashReconciliation() async {
+        let minor = Int64(declaredCashText.filter { $0.isNumber }) ?? 0
+        do {
+            _ = try await APIClient.shared.submitCashReconciliation(declaredCashMinor: minor, driverNote: nil)
+            showCashReconSheet = false
+            declaredCashText = ""
+            await loadCashReconciliations()
+            deliveryEdgeMessage = "Cash reconciliation submitted"
+        } catch {
+            deliveryEdgeMessage = "Cash reconciliation failed"
         }
     }
 
@@ -736,7 +794,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                             qrToken: o.qrToken, paymentGateway: o.paymentGateway,
                             createdAt: o.createdAt, updatedAt: o.updatedAt, items: o.items,
                             estimatedArrivalAt: o.estimatedArrivalAt, etaDurationSec: o.etaDurationSec,
-                            etaDistanceM: o.etaDistanceM, routeId: o.routeId, sequenceIndex: o.sequenceIndex
+                            etaDistanceM: o.etaDistanceM, routeId: o.routeId, sequenceIndex: o.sequenceIndex,
+                            isPartial: o.isPartial, splitGroupId: o.splitGroupId
                         )
                     }
                 } catch {

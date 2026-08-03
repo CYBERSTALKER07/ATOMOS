@@ -41,26 +41,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
-private data class WarehouseDraft(
-    val key: String,
-    val warehouseId: String?,
-    val name: String,
-    val lat: String,
-    val lng: String,
-    val coverageRadiusKm: String,
-    val isActive: Boolean,
-    val isOnShift: Boolean,
-    val transferMode: String,
-)
 
-private data class FactoryDraft(
-    val key: String,
-    val factoryId: String?,
-    val name: String,
-    val lat: String,
-    val lng: String,
-    val isActive: Boolean,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -326,32 +307,3 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     }
 }
 
-@Composable
-private fun DraftField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-@Composable
-private fun SectionLabel(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-private fun NodeCard(name: String, lat: Double, lng: Double, meta: String) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(PegasusSpacing.lg)) {
-            Text(name.ifEmpty { "Unnamed node" }, style = MaterialTheme.typography.titleMedium)
-            Text(
-                "%.4f, %.4f".format(lat, lng),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
-            Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-        }
-    }
-}

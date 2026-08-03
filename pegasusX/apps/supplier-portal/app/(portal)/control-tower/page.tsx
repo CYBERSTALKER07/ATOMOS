@@ -22,6 +22,8 @@ import {
   Legend,
 } from "recharts";
 import { cellToBoundary, latLngToCell } from "h3-js";
+import { ScoredExceptionsPanel } from "@/components/control-tower/ScoredExceptionsPanel";
+import { PlaybookRunsPanel } from "@/components/exceptions/PlaybookRunsPanel";
 
 // Removed Mock Data
 const mockNodes: NetworkNode[] = [];
@@ -133,6 +135,30 @@ export default function ControlTowerPage() {
                 <Bar dataKey="upside" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </GlassmorphismPanel>
+
+        <GlassmorphismPanel
+          className="absolute top-6 right-6 w-96 max-h-72 flex flex-col overflow-hidden"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">Top scored exceptions</h3>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <ScoredExceptionsPanel limit={8} />
+          </div>
+        </GlassmorphismPanel>
+
+        <GlassmorphismPanel
+          className="absolute bottom-6 left-6 w-96 max-h-64 flex flex-col overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">Playbook suggestions</h3>
+          <div className="flex-1 overflow-y-auto min-h-0 text-sm">
+            <PlaybookRunsPanel />
           </div>
         </GlassmorphismPanel>
 

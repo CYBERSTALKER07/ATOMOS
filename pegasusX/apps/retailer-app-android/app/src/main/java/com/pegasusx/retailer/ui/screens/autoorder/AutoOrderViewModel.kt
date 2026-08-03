@@ -3,8 +3,11 @@ package com.pegasusx.retailer.ui.screens.autoorder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.model.AutoOrderRun
+import com.pegasusx.retailer.data.model.AutoOrderRunsResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.RetailerReorderSuggestion
 import com.pegasusx.retailer.data.model.UpdateGlobalSettingsRequest
 import com.pegasusx.retailer.data.model.UpdateSettingsRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 import retrofit2.HttpException
 import javax.inject.Inject
 
@@ -36,18 +41,27 @@ data class AutoOrderUiState(
     val isLoading: Boolean = true,
     val settings: AutoOrderSettings? = null,
     val forecasts: List<DemandForecast> = emptyList(),
+    val reorderSuggestions: List<RetailerReorderSuggestion> = emptyList(),
     val globalEnabled: Boolean = false,
     /** Non-null when the "Use past history or start fresh?" dialog should be shown. */
     val pendingEnableTarget: EnableTarget? = null,
     val error: String? = null,
     val loadIssue: AutoOrderLoadIssue? = null,
+    val runs: List<AutoOrderRun> = emptyList(),
+    val runsLoading: Boolean = false,
+    val running: Boolean = false,
+    val runningMode: String? = null,
+    val lastRun: AutoOrderRun? = null,
+    val runBanner: String? = null,
+    val placeConfirmOpen: Boolean = false,
 ) {
     val syncMessage: String?
-        get() = when (loadIssue) {
-            AutoOrderLoadIssue.RESTRICTED -> "Auto-order access is restricted for this account"
-            AutoOrderLoadIssue.OFFLINE -> "Offline mode active. Showing latest auto-order settings"
-            AutoOrderLoadIssue.ERROR -> "Auto-order sync degraded. Retry is available"
-            null -> null
+        get() = when {
+            runBanner != null -> runBanner
+            loadIssue == AutoOrderLoadIssue.RESTRICTED -> "Auto-order access is restricted for this account"
+            loadIssue == AutoOrderLoadIssue.OFFLINE -> "Offline mode active. Showing latest auto-order settings"
+            loadIssue == AutoOrderLoadIssue.ERROR -> "Auto-order sync degraded. Retry is available"
+            else -> null
         }
 }
 
@@ -56,6 +70,8 @@ class AutoOrderViewModel @Inject constructor(
     private val api: PegasusApi,
     private val tokenManager: com.pegasusx.retailer.data.local.TokenManager,
 ) : ViewModel() {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val _uiState = MutableStateFlow(AutoOrderUiState())
     val uiState: StateFlow<AutoOrderUiState> = _uiState.asStateFlow()
@@ -90,17 +106,127 @@ class AutoOrderViewModel @Inject constructor(
                 _uiState.value.forecasts
             }
 
+            val nextRuns = loadRunsInternal()
+            val nextSuggestions = loadSuggestionsInternal()
+
             _uiState.update {
                 val effectiveSettings = nextSettings ?: it.settings
                 it.copy(
                     isLoading = false,
                     settings = effectiveSettings,
                     forecasts = nextForecasts,
+                    reorderSuggestions = nextSuggestions,
                     globalEnabled = effectiveSettings?.globalEnabled ?: it.globalEnabled,
                     error = nextError,
                     loadIssue = nextIssue,
+                    runs = nextRuns,
+                    runsLoading = false,
                 )
             }
+        }
+    }
+
+    fun openPlaceConfirm() {
+        _uiState.update { it.copy(placeConfirmOpen = true) }
+    }
+
+    fun dismissPlaceConfirm() {
+        _uiState.update { it.copy(placeConfirmOpen = false) }
+    }
+
+    fun runAutoOrderNow() = runAutoOrder(mode = "draft")
+
+    fun runAutoOrderPlace() = runAutoOrder(mode = "place")
+
+    fun runAutoOrder(mode: String) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    running = true,
+                    runningMode = mode,
+                    runBanner = null,
+                    error = null,
+                    placeConfirmOpen = false,
+                )
+            }
+            try {
+                val element = api.runAutoOrder(mode = mode)
+                val run = json.decodeFromJsonElement(AutoOrderRun.serializer(), element)
+                val banner = when {
+                    mode == "place" && run.placedLines > 0 ->
+                        "Place run: ${run.placedLines} line(s) in ${run.placedOrders.size} order(s)" +
+                            (run.message?.let { " — $it" } ?: "")
+                    mode == "place" ->
+                        "Place run ${run.status}${run.message?.let { ": $it" } ?: ""}"
+                    run.status == "OK" || run.status == "PARTIAL" ->
+                        "Draft run complete: ${run.draftLines} line(s)" +
+                            (run.message?.let { " — $it" } ?: "")
+                    else ->
+                        "Run ${run.status}${run.message?.let { ": $it" } ?: ""}"
+                }
+                val runs = loadRunsInternal()
+                val suggestions = loadSuggestionsInternal()
+                _uiState.update {
+                    it.copy(
+                        running = false,
+                        runningMode = null,
+                        lastRun = run,
+                        runBanner = banner,
+                        runs = runs,
+                        reorderSuggestions = suggestions,
+                    )
+                }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                val msg = resolvePlaceErrorMessage(e) ?: resolveErrorMessage(e, issue)
+                _uiState.update {
+                    it.copy(
+                        running = false,
+                        runningMode = null,
+                        error = msg,
+                        loadIssue = issue,
+                        runBanner = msg,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun resolvePlaceErrorMessage(e: Exception): String? {
+        if (e !is HttpException) return null
+        val body = try {
+            e.response()?.errorBody()?.string().orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+        return when {
+            body.contains("place_requires_manager") ->
+                "Place requires OWNER, ADMIN, or MANAGER"
+            body.contains("place_disabled") || body.contains("AUTO_ORDER_PLACE") ->
+                "Place is disabled on server (AUTO_ORDER_PLACE_ENABLED)"
+            body.contains("retailer_geo_missing") ->
+                "Set primary location geo (lat/lng + H3) before place"
+            body.contains("forbidden") ->
+                "Missing order.place permission"
+            else -> null
+        }
+    }
+
+    private suspend fun loadRunsInternal(): List<AutoOrderRun> {
+        return try {
+            val element = api.getAutoOrderRuns()
+            val parsed = json.decodeFromJsonElement(AutoOrderRunsResponse.serializer(), element)
+            parsed.items
+        } catch (_: Exception) {
+            _uiState.value.runs
+        }
+    }
+
+    private suspend fun loadSuggestionsInternal(): List<RetailerReorderSuggestion> {
+        return try {
+            api.getReorderSuggestions().items
+        } catch (_: Exception) {
+            _uiState.value.reorderSuggestions
         }
     }
 

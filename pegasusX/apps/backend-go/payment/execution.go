@@ -17,6 +17,7 @@ type ExecutionAction string
 const (
 	ExecutionActionCheckoutInit       ExecutionAction = "CHECKOUT_INIT"
 	ExecutionActionCheckoutCapture    ExecutionAction = "CHECKOUT_CAPTURE"
+	ExecutionActionRefund             ExecutionAction = "REFUND"
 	ExecutionActionChargebackRecord   ExecutionAction = "CHARGEBACK_RECORD"
 	ExecutionActionChargebackReversal ExecutionAction = "CHARGEBACK_REVERSAL"
 	ExecutionActionStatusCheck        ExecutionAction = "STATUS_CHECK"
@@ -156,6 +157,15 @@ func NewProviderExecutionRouter(cfg ProviderExecutionRouterConfig) *ProviderExec
 			},
 			"CASH": &staticProviderExecutor{
 				gateway:      "CASH",
+				checkoutMode: ExecutionModeManual,
+			},
+			// Cash-on-delivery / in-platform sessions with no card PSP.
+			"INTERNAL": &staticProviderExecutor{
+				gateway:      "INTERNAL",
+				checkoutMode: ExecutionModeManual,
+			},
+			"CREDIT": &staticProviderExecutor{
+				gateway:      "CREDIT",
 				checkoutMode: ExecutionModeManual,
 			},
 			"AIRWALLEX": &airwallexProviderExecutor{

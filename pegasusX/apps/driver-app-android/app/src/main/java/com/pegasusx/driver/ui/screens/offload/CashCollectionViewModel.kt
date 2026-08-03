@@ -14,6 +14,8 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.offline.DriverOfflineActionCatalog
+import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** ADR-009 cash path phases for driver UI. */
 enum class CashFiscalPhase {
@@ -35,6 +39,9 @@ enum class CashFiscalPhase {
 data class CashCollectionUiState(
     val orderId: String = "",
     val amount: Long = 0,
+    /** Cash actually taken (Tiyin). Editable; defaults to order total. */
+    val amountReceivedMinor: Long = 0,
+    val amountReceivedInput: String = "",
     val cashReceived: Boolean = false,
     val showConfirmDialog: Boolean = false,
     val isCompleting: Boolean = false,
@@ -43,10 +50,17 @@ data class CashCollectionUiState(
     val attemptId: String = "",
     val fiscalStatus: String = "",
     val splitPaymentRecorded: Boolean = false,
+    val shortfallMinor: Long = 0,
+    val overageMinor: Long = 0,
     val error: String? = null,
     val distanceM: Double? = null,
-    val locationAvailable: Boolean = true
-)
+    val locationAvailable: Boolean = true,
+    /** Settlement proximity status for UI badge. */
+    val proximityUnlocked: Boolean = false,
+    val proximityMethod: String? = null,
+) {
+    val varianceMinor: Long get() = amountReceivedMinor - amount
+}
 
 @HiltViewModel
 class CashCollectionViewModel @Inject constructor(
@@ -54,13 +68,36 @@ class CashCollectionViewModel @Inject constructor(
     private val api: DriverApi,
     private val app: Application,
     private val driverWebSocket: DriverWebSocket,
+    private val offlineQueue: DriverOfflineQueue,
+    private val json: Json,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
     private val amount: Long = savedStateHandle.get<Long>("amount") ?: 0L
 
-    private val _state = MutableStateFlow(CashCollectionUiState(orderId = orderId, amount = amount))
+    private val _state = MutableStateFlow(
+        CashCollectionUiState(
+            orderId = orderId,
+            amount = amount,
+            amountReceivedMinor = amount,
+            amountReceivedInput = if (amount > 0) amount.toString() else "",
+        )
+    )
     val state: StateFlow<CashCollectionUiState> = _state.asStateFlow()
+
+    fun onAmountReceivedChanged(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(15)
+        val parsed = digits.toLongOrNull() ?: 0L
+        _state.update {
+            it.copy(
+                amountReceivedInput = digits,
+                amountReceivedMinor = parsed,
+                shortfallMinor = if (it.amount > parsed) it.amount - parsed else 0L,
+                overageMinor = if (parsed > it.amount) parsed - it.amount else 0L,
+                error = null,
+            )
+        }
+    }
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
 
@@ -182,14 +219,83 @@ class CashCollectionViewModel @Inject constructor(
                     return@launch
                 }
 
-                val resp = api.collectCash(
-                    request = CollectCashRequest(
-                        orderId = orderId,
-                        latitude = location.latitude,
-                        longitude = location.longitude
-                    ),
-                    idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
+                val received = _state.value.amountReceivedMinor
+                if (received < 0L) {
+                    _state.update {
+                        it.copy(isCompleting = false, error = "Amount received cannot be negative.")
+                    }
+                    return@launch
+                }
+                val ts = offlineQueue.nowIso()
+                // Settlement proximity unlock (≤100 m / H3) before cash collect.
+                runCatching {
+                    api.proximityUnlock(
+                        mapOf(
+                            "order_id" to orderId,
+                            "latitude" to location.latitude,
+                            "longitude" to location.longitude,
+                            "client_timestamp" to ts,
+                        ),
+                        DriverIdempotencyKeys.proximityUnlock(orderId),
+                    )
+                }.onSuccess { unlock ->
+                    val unlocked = (unlock["proximity_unlocked"] as? Boolean) == true
+                        || unlock["proximity_unlocked"]?.toString() == "true"
+                    _state.update {
+                        it.copy(
+                            proximityUnlocked = unlocked,
+                            proximityMethod = unlock["proximity_method"]?.toString(),
+                        )
+                    }
+                }.onFailure { err ->
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(err)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_PROXIMITY,
+                            body = mapOf(
+                                "order_id" to orderId,
+                                "latitude" to location.latitude,
+                                "longitude" to location.longitude,
+                                "client_timestamp" to ts,
+                            ),
+                            idempotencyKey = DriverIdempotencyKeys.proximityUnlock(orderId),
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                    }
+                }
+                val cashReq = CollectCashRequest(
+                    orderId = orderId,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    amountReceivedMinor = received,
+                    note = when {
+                        received < amount -> "shortfall"
+                        received > amount -> "overage"
+                        else -> null
+                    },
                 )
+                val cashKey = DriverIdempotencyKeys.collectCash(orderId)
+                val resp = try {
+                    api.collectCash(request = cashReq, idempotencyKey = cashKey)
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueue(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_COLLECT_CASH,
+                            payloadJson = json.encodeToString(cashReq),
+                            idempotencyKey = cashKey,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isCompleting = false,
+                                error = "Offline — cash collect queued for sync",
+                            )
+                        }
+                        return@launch
+                    }
+                    throw e
+                }
                 val nextPhase = when (resp.state.uppercase()) {
                     "COMPLETED" -> CashFiscalPhase.DONE
                     "FISCAL_FAILED" -> CashFiscalPhase.FISCAL_FAILED
@@ -202,6 +308,8 @@ class CashCollectionViewModel @Inject constructor(
                         phase = nextPhase,
                         distanceM = resp.distanceM,
                         attemptId = resp.attemptId,
+                        shortfallMinor = resp.shortfallMinor,
+                        overageMinor = resp.overageMinor,
                         fiscalStatus = resp.fiscalStatus.ifBlank {
                             if (nextPhase == CashFiscalPhase.FISCALIZING) "PENDING" else resp.state
                         },

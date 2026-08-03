@@ -6,11 +6,14 @@
 //  Driver can exclude/mark damaged items, then confirm offload.
 //
 
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct OffloadReviewView: View {
 
     let response: ValidateQRResponse
+    let scannedToken: String
     let driverId: String
     let onConfirm: (ConfirmOffloadResponse) -> Void
     let onCancel: () -> Void
@@ -24,11 +27,24 @@ struct OffloadReviewView: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var driverSocketState = DriverSocketState.shared
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var previewImage: UIImage?
+    @State private var evidencePhotoURL = ""
+    @State private var isUploadingPhoto = false
 
     private let fleetService: FleetServiceProtocol = FleetServiceLive.shared
 
     private var hasRejections: Bool {
         rejectedQty.values.contains { $0 > 0 }
+    }
+
+    private var needsPhotoProof: Bool {
+        response.items.contains { item in
+            let rejected = rejectedQty[item.id] ?? 0
+            guard rejected > 0 else { return false }
+            let reason = selectedReason(for: item)
+            return reason == .DAMAGED || reason == .WRONG_ITEM
+        }
     }
 
     private func selectedReason(for item: OrderLineItem) -> RejectionReason {
@@ -66,17 +82,10 @@ struct OffloadReviewView: View {
             .padding(.bottom, LabTheme.s16)
 
             // MARK: - Retailer + Total
-            HStack {
-                Text(response.retailerName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(LabTheme.fg)
-                Spacer()
-                Text(response.totalAmount.formattedAmount)
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-            }
-            .padding(.horizontal, LabTheme.s24)
-            .padding(.bottom, LabTheme.s16)
+            OffloadSummaryCard(
+                retailerName: response.retailerName,
+                totalAmount: response.totalAmount
+            )
 
             // MARK: - Line Items
             ScrollView {
@@ -182,6 +191,45 @@ struct OffloadReviewView: View {
                 }
             }
 
+            // MARK: - Damage photo proof
+            if hasRejections && needsPhotoProof {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("DAMAGE PHOTO")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(LabTheme.fgTertiary)
+                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                        Label(
+                            evidencePhotoURL.isEmpty ? "Take or choose photo" : "Photo ready — change",
+                            systemImage: "camera.fill"
+                        )
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(LabTheme.fg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    }
+                    .onChange(of: pickedPhoto) { _, item in
+                        Task { await uploadPickedPhoto(item) }
+                    }
+                    if isUploadingPhoto {
+                        ProgressView("Uploading proof…")
+                            .tint(LabTheme.fg)
+                    }
+                    if let previewImage {
+                        Image(uiImage: previewImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 140)
+                            .clipShape(.rect(cornerRadius: 10))
+                    }
+                    Text("Required for damaged or wrong-item rejections.")
+                        .font(.caption2)
+                        .foregroundStyle(LabTheme.fgTertiary)
+                }
+                .padding(.horizontal, LabTheme.s24)
+                .padding(.bottom, LabTheme.s12)
+            }
+
             // MARK: - Error
             if let error = errorMessage {
                 Text(error)
@@ -191,100 +239,15 @@ struct OffloadReviewView: View {
                     .padding(.bottom, LabTheme.s8)
             }
 
-            // MARK: - Shop Closed Button
-            if let onShopClosed {
-                Button {
-                    onShopClosed(response.orderId)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "door.left.hand.closed")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Shop Closed / No Answer")
-                            .font(.system(size: 15, weight: .bold))
-                    }
-                    .foregroundStyle(Color.orange)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LabTheme.buttonRadius)
-                            .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                    )
-                }
-                .disabled(isSubmitting)
-                .padding(.horizontal, LabTheme.s24)
-                .padding(.bottom, LabTheme.s8)
-            }
-
-            // MARK: - Edge 32: Credit Delivery Button
-            if let onCreditDelivery {
-                Button {
-                    onCreditDelivery(response.orderId)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "creditcard.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Deliver on Credit")
-                            .font(.system(size: 15, weight: .bold))
-                    }
-                    .foregroundStyle(.blue)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.blue.opacity(0.12), in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LabTheme.buttonRadius)
-                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                    )
-                }
-                .disabled(isSubmitting)
-                .padding(.horizontal, LabTheme.s24)
-                .padding(.bottom, LabTheme.s8)
-            }
-
-            // MARK: - Edge 33: Missing Items Button
-            if let onReportMissing, hasRejections {
-                Button {
-                    onReportMissing(response.orderId)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Report Missing Items")
-                            .font(.system(size: 15, weight: .bold))
-                    }
-                    .foregroundStyle(LabTheme.destructive)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(LabTheme.destructive.opacity(0.12), in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LabTheme.buttonRadius)
-                            .stroke(LabTheme.destructive.opacity(0.3), lineWidth: 1)
-                    )
-                }
-                .disabled(isSubmitting)
-                .padding(.horizontal, LabTheme.s24)
-                .padding(.bottom, LabTheme.s8)
-            }
-
-            // MARK: - Confirm Offload Button
-            Button {
-                confirmOffload()
-            } label: {
-                HStack(spacing: 8) {
-                    if isSubmitting {
-                        ProgressView().tint(LabTheme.buttonFg)
-                    }
-                    Text("Confirm Offload")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundStyle(LabTheme.buttonFg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
-            }
-            .disabled(isSubmitting)
-            .padding(.horizontal, LabTheme.s24)
-            .padding(.bottom, LabTheme.s24)
+            OffloadActionFooter(
+                orderId: response.orderId,
+                hasRejections: hasRejections,
+                isSubmitting: isSubmitting,
+                onShopClosed: onShopClosed,
+                onCreditDelivery: onCreditDelivery,
+                onReportMissing: onReportMissing,
+                onConfirm: { confirmOffload() }
+            )
         }
         .background(LabTheme.bg)
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
@@ -299,12 +262,34 @@ struct OffloadReviewView: View {
         }
     }
 
+    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        isUploadingPhoto = true
+        errorMessage = nil
+        defer { isUploadingPhoto = false }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                errorMessage = "Could not read photo."
+                return
+            }
+            previewImage = image
+            evidencePhotoURL = try await MediaUploadService.uploadJPEG(
+                image: image,
+                purpose: "driver_exception",
+                orderId: response.orderId
+            )
+        } catch {
+            evidencePhotoURL = ""
+            errorMessage = "Photo upload failed: \(error.localizedDescription)"
+        }
+    }
+
     private func confirmOffload() {
         isSubmitting = true
         errorMessage = nil
 
         Task {
-            // Build amendment items from stepper state
             let hasRejections = rejectedQty.values.contains { $0 > 0 }
             if hasRejections {
                 let missingOther = response.items.first { item in
@@ -316,32 +301,63 @@ struct OffloadReviewView: View {
                     errorMessage = "Describe the issue for \(missingOther.productName)"
                     return
                 }
+                if needsPhotoProof && evidencePhotoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    isSubmitting = false
+                    errorMessage = "Photo required for damaged or wrong-item rejections."
+                    return
+                }
 
-                let amendItems: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String, customReason: String?)] = response.items.map { item in
+                // Route OS&D through exception-report so claims + photo_url are enforced.
+                let missingItems: [MissingItemRequest] = response.items.compactMap { item in
                     let rejected = rejectedQty[item.id] ?? 0
-                    let status: LineItemStatus = rejected == item.quantity ? .REJECTED_DAMAGED : .DELIVERED
-                    let reason = rejected > 0 ? selectedReason(for: item).rawValue : ""
-                    let customReason = rejected > 0 && selectedReason(for: item) == .OTHER
-                        ? customReasons[item.id]?.trimmingCharacters(in: .whitespacesAndNewlines)
-                        : nil
-                    return (lineItemId: item.productId, rejectedQty: rejected, status: status, reason: reason, customReason: customReason)
+                    guard rejected > 0 else { return nil }
+                    let reason = selectedReason(for: item)
+                    let needsLinePhoto = reason == .DAMAGED || reason == .WRONG_ITEM
+                    return MissingItemRequest(
+                        skuId: item.productId,
+                        missingQty: rejected,
+                        reason: reason.rawValue,
+                        photoURL: needsLinePhoto ? evidencePhotoURL : nil
+                    )
                 }
                 do {
-                    try await fleetService.amendOrder(
+                    _ = try await APIClient.shared.reportMissingItems(
                         orderId: response.orderId,
-                        driverId: driverId,
-                        items: amendItems
+                        missingItems: missingItems,
+                        photoURL: evidencePhotoURL.isEmpty ? nil : evidencePhotoURL
                     )
                 } catch {
                     isSubmitting = false
-                    errorMessage = "Amendment failed: \(error.localizedDescription)"
+                    errorMessage = "Exception report failed: \(error.localizedDescription)"
                     return
                 }
             }
 
-            // Confirm offload → ARRIVED → AWAITING_PAYMENT
+            // Canonical ARRIVED → AWAITING_PAYMENT via scan-qr (validate-qr already done).
             do {
-                let result = try await fleetService.confirmOffload(orderId: response.orderId)
+                let adjustedAmount = response.items.reduce(0) { partial, item in
+                    let rejected = rejectedQty[item.id] ?? 0
+                    let accepted = max(0, item.quantity - rejected)
+                    return partial + (item.unitPrice * accepted)
+                }
+                let result: ConfirmOffloadResponse
+                if !scannedToken.isEmpty {
+                    let scan = try await fleetService.scanDeliveryQR(
+                        orderId: response.orderId,
+                        qrToken: scannedToken
+                    )
+                    result = ConfirmOffloadResponse(
+                        orderId: scan.orderId.isEmpty ? response.orderId : scan.orderId,
+                        state: scan.state,
+                        paymentMethod: "",
+                        amount: adjustedAmount,
+                        invoiceId: nil,
+                        retailerId: "",
+                        message: "Collect payment"
+                    )
+                } else {
+                    result = try await fleetService.confirmOffload(orderId: response.orderId)
+                }
                 isSubmitting = false
                 onConfirm(result)
             } catch {

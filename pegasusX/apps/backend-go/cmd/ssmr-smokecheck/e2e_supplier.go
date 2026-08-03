@@ -223,6 +223,12 @@ func importLocalUploadRoot() string {
 }
 
 func runSupplierImportAsyncE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	// Cloud/SSMR: smokecheck writes CSV under a local path the in-cluster worker cannot read.
+	// Wizard path already covers apply; keep async for emulator/local backends only.
+	if strings.TrimSpace(os.Getenv("SSMR_FORCE_IMPORT_ASYNC")) != "1" && strings.TrimSpace(cfg.SpannerEmulatorHost) == "" {
+		fmt.Println("PX_E2E_SUPPLIER_IMPORT_ASYNC_SKIPPED")
+		return nil
+	}
 	csvBody := fmt.Sprintf(
 		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,82,9\n",
 		demoWarehouseID(),
@@ -508,7 +514,9 @@ func runSupplierTopologyEditE2E(ctx context.Context, client *http.Client, base, 
 		"warehouses": current.Warehouses,
 		"factories":  current.Factories,
 	})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", putBody, cookie, "ssmr-topology-edit")
+	// Unique key per run: fixed key collides when lat/lng payload differs from a prior attempt.
+	editKey := fmt.Sprintf("ssmr-topology-edit-%d", time.Now().UnixNano())
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", putBody, cookie, editKey)
 	if err != nil {
 		return err
 	}
@@ -566,8 +574,9 @@ func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cook
 	if err != nil {
 		return err
 	}
-	if status != http.StatusCreated && status != http.StatusOK && status != http.StatusConflict {
-		return fmt.Errorf("org member create status %d body %s", status, string(respBody))
+	createStatus := status
+	if createStatus != http.StatusCreated && createStatus != http.StatusOK && createStatus != http.StatusConflict {
+		return fmt.Errorf("org member create status %d body %s", createStatus, string(respBody))
 	}
 
 	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/org/members", nil, cookie, "")
@@ -577,7 +586,9 @@ func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cook
 	if status != http.StatusOK {
 		return fmt.Errorf("org members list status %d body %s", status, string(respBody))
 	}
-	if !strings.Contains(string(respBody), phone) && status != http.StatusConflict {
+	// Idempotent create returns Conflict with a fixed idempotency key — list may not
+	// contain this run's random phone; require phone only on fresh create.
+	if createStatus != http.StatusConflict && !strings.Contains(string(respBody), phone) {
 		return fmt.Errorf("org members missing created phone %s: %s", phone, string(respBody))
 	}
 	fmt.Println("PX_E2E_ORG_FLEET_OK")

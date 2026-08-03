@@ -1,18 +1,23 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasusx.driver.data.model.AmendItemPayload
-import com.pegasusx.driver.data.model.AmendOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
+import com.pegasusx.driver.data.model.DeliveryScanQRRequest
+import com.pegasusx.driver.data.model.MissingItemRequest
+import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.MediaUploadService
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.offline.DriverOfflineActionCatalog
+import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
 import javax.inject.Inject
 
 data class OffloadLineAudit(
@@ -43,11 +49,21 @@ data class OffloadReviewUiState(
     val error: String? = null,
     val offloadResult: ConfirmOffloadResponse? = null,
     val creditDeliveryRecorded: Boolean = false,
+    val evidencePhotoUrl: String = "",
+    val isUploadingPhoto: Boolean = false,
+    val photoPreviewUri: String? = null,
+    /** Settlement proximity: payment modes locked until unlock. */
+    val proximityUnlocked: Boolean = false,
+    val proximityMethod: String? = null,
+    val partialOffloadRecorded: Boolean = false,
 ) {
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
     val hasExclusions: Boolean get() = audits.any { it.excluded }
     val hasRejections: Boolean get() = audits.any { it.rejected > 0 }
+    val needsPhotoProof: Boolean get() = audits.any {
+        it.rejected > 0 && (it.reason == RejectionReason.DAMAGED || it.reason == RejectionReason.WRONG_ITEM)
+    }
 }
 
 @HiltViewModel
@@ -55,10 +71,16 @@ class OffloadReviewViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val api: DriverApi,
     private val driverWebSocket: DriverWebSocket,
+    private val mediaUpload: MediaUploadService,
+    private val offlineQueue: DriverOfflineQueue,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
     private val retailerName: String = savedStateHandle["retailerName"] ?: ""
+    private val scannedToken: String = (savedStateHandle.get<String>("scannedToken") ?: "")
+        .let { raw ->
+            runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw)
+        }
 
     private val _state = MutableStateFlow(OffloadReviewUiState(orderId = orderId, retailerName = retailerName))
     val state: StateFlow<OffloadReviewUiState> = _state.asStateFlow()
@@ -143,19 +165,197 @@ class OffloadReviewViewModel @Inject constructor(
         }
     }
 
-    fun markCreditDelivery(photoProofUrl: String? = null) {
+    fun markCreditDelivery(photoProofUrl: String? = null, forceBypassToken: String? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                val body = buildMap {
-                    put("order_id", orderId)
-                    photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
+                if (!_state.value.proximityUnlocked && forceBypassToken.isNullOrBlank()) {
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Proximity locked — unlock settlement at the stop before credit leave.",
+                        )
+                    }
+                    return@launch
                 }
-                api.markCreditDelivery(body, DriverIdempotencyKeys.creditDelivery(orderId))
-                _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+                val ts = offlineQueue.nowIso()
+                val body = buildMap<String, Any?> {
+                    put("order_id", orderId)
+                    put("client_timestamp", ts)
+                    photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
+                    forceBypassToken?.takeIf { it.isNotBlank() }?.let { put("force_bypass_token", it) }
+                }
+                val key = DriverIdempotencyKeys.creditDelivery(orderId)
+                try {
+                    api.markCreditDelivery(
+                        body.mapValues { it.value?.toString().orEmpty() },
+                        key,
+                    )
+                    _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_CREDIT,
+                            body = body,
+                            idempotencyKey = key,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                creditDeliveryRecorded = true,
+                                error = "Offline — credit leave queued for sync",
+                            )
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
+                }
+            }
+        }
+    }
+
+    /** Unlock cash/credit when GPS is at the stop (≤100 m or H3). */
+    fun unlockProximity(latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            val ts = offlineQueue.nowIso()
+            val body = mapOf(
+                "order_id" to orderId,
+                "latitude" to latitude,
+                "longitude" to longitude,
+                "client_timestamp" to ts,
+            )
+            val key = DriverIdempotencyKeys.proximityUnlock(orderId)
+            try {
+                val resp = api.proximityUnlock(body, key)
+                val unlocked = (resp["proximity_unlocked"] as? Boolean) == true
+                    || resp["proximity_unlocked"]?.toString() == "true"
+                val method = resp["proximity_method"]?.toString()
+                _state.update {
+                    it.copy(
+                        isSubmitting = false,
+                        proximityUnlocked = unlocked,
+                        proximityMethod = method,
+                        error = if (unlocked) null else (resp["message"]?.toString() ?: "Proximity still locked"),
+                    )
+                }
+            } catch (e: Exception) {
+                if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                    offlineQueue.enqueueMap(
+                        endpoint = DriverOfflineActionCatalog.ENDPOINT_PROXIMITY,
+                        body = body,
+                        idempotencyKey = key,
+                        orderId = orderId,
+                        clientTimestampIso = ts,
+                    )
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Offline — proximity unlock queued for sync",
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(isSubmitting = false, error = e.message ?: "Proximity unlock failed")
+                    }
+                }
+            }
+        }
+    }
+
+    /** Submit line-level partial offload (delivered + remaining = qty). */
+    fun submitPartialOffload() {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val current = _state.value
+                val lines = current.audits.map { audit ->
+                    mapOf(
+                        "sku" to audit.item.productId,
+                        "delivered_qty" to audit.accepted.toLong(),
+                        "remaining_qty" to audit.rejected.toLong(),
+                        "reason" to when (audit.reason) {
+                            RejectionReason.DAMAGED -> "DAMAGED"
+                            RejectionReason.MISSING -> "MISSING"
+                            RejectionReason.WRONG_ITEM -> "OTHER"
+                            RejectionReason.OTHER -> "OTHER"
+                        },
+                    )
+                }
+                val fingerprint = lines.joinToString("|") {
+                    "${it["sku"]}:${it["delivered_qty"]}:${it["remaining_qty"]}"
+                }
+                val ts = offlineQueue.nowIso()
+                val body = mapOf(
+                    "order_id" to orderId,
+                    "lines" to lines,
+                    "client_timestamp" to ts,
+                )
+                val key = DriverIdempotencyKeys.partialOffload(orderId, fingerprint)
+                try {
+                    api.partialOffload(body, key)
+                    _state.update {
+                        it.copy(isSubmitting = false, partialOffloadRecorded = true)
+                    }
+                } catch (e: Exception) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                        offlineQueue.enqueueMap(
+                            endpoint = DriverOfflineActionCatalog.ENDPOINT_PARTIAL,
+                            body = body,
+                            idempotencyKey = key,
+                            orderId = orderId,
+                            clientTimestampIso = ts,
+                        )
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                partialOffloadRecorded = true,
+                                error = "Offline — partial offload queued for sync",
+                            )
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(isSubmitting = false, error = e.message ?: "Partial offload failed")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Partial offload failed")
+                }
+            }
+        }
+    }
+
+    fun uploadEvidencePhoto(uri: Uri) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(isUploadingPhoto = true, error = null, photoPreviewUri = uri.toString())
+            }
+            try {
+                val publicUrl = mediaUpload.uploadJpegUri(
+                    uri = uri,
+                    purpose = "driver_exception",
+                    orderId = orderId,
+                )
+                _state.update {
+                    it.copy(isUploadingPhoto = false, evidencePhotoUrl = publicUrl)
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isUploadingPhoto = false,
+                        evidencePhotoUrl = "",
+                        error = e.message ?: "Photo upload failed",
+                    )
                 }
             }
         }
@@ -165,7 +365,6 @@ class OffloadReviewViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                // If items were excluded, amend first
                 val current = _state.value
                 if (current.hasRejections) {
                     val rejectedAudits = current.audits.filter { it.rejected > 0 }
@@ -181,33 +380,81 @@ class OffloadReviewViewModel @Inject constructor(
                         }
                         return@launch
                     }
-                    val amendPayload = AmendOrderRequest(
-                        orderId = orderId,
-                        items = rejectedAudits.map { audit ->
-                            AmendItemPayload(
-                                productId = audit.item.productId,
-                                acceptedQty = audit.accepted,
-                                rejectedQty = audit.rejected,
-                                reason = audit.reason.name,
-                                customReason = audit.customReason.takeIf { it.isNotBlank() },
+                    if (current.needsPhotoProof && current.evidencePhotoUrl.isBlank()) {
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                error = "Photo required for damaged or wrong-item rejections.",
                             )
                         }
-                    )
-                    val amendResp = api.amendOrder(
-                        amendPayload,
-                        DriverIdempotencyKeys.amendOrder(orderId, amendPayload.items),
-                    )
-                    if (!amendResp.success) {
-                        _state.update { it.copy(isSubmitting = false, error = amendResp.message) }
                         return@launch
+                    }
+                    // Prefer partial-offload contract (qty math + return path); keep exception-report for photo OS&D.
+                    val lines = current.audits.map { audit ->
+                        mapOf(
+                            "sku" to audit.item.productId,
+                            "delivered_qty" to audit.accepted.toLong(),
+                            "remaining_qty" to audit.rejected.toLong(),
+                            "reason" to when (audit.reason) {
+                                RejectionReason.DAMAGED -> "DAMAGED"
+                                RejectionReason.MISSING -> "MISSING"
+                                RejectionReason.WRONG_ITEM -> "OTHER"
+                                RejectionReason.OTHER -> "OTHER"
+                            },
+                        )
+                    }
+                    val fingerprint = lines.joinToString("|") {
+                        "${it["sku"]}:${it["delivered_qty"]}:${it["remaining_qty"]}"
+                    }
+                    api.partialOffload(
+                        mapOf("order_id" to orderId, "lines" to lines),
+                        DriverIdempotencyKeys.partialOffload(orderId, fingerprint),
+                    )
+                    val missingItems = rejectedAudits.map { audit ->
+                        val needsLinePhoto = audit.reason == RejectionReason.DAMAGED ||
+                            audit.reason == RejectionReason.WRONG_ITEM
+                        MissingItemRequest(
+                            skuId = audit.item.productId,
+                            missingQty = audit.rejected,
+                            reason = audit.reason.name,
+                            photoUrl = if (needsLinePhoto) current.evidencePhotoUrl else null,
+                        )
+                    }
+                    if (current.needsPhotoProof) {
+                        api.reportMissingItems(
+                            body = MissingItemsPayload(
+                                orderId = orderId,
+                                missingItems = missingItems,
+                                photoUrl = current.evidencePhotoUrl.takeIf { it.isNotBlank() },
+                                note = rejectedAudits
+                                    .mapNotNull { it.customReason.takeIf { r -> r.isNotBlank() } }
+                                    .joinToString("; ")
+                                    .ifBlank { null },
+                            ),
+                            idempotencyKey = DriverIdempotencyKeys.missingItems(orderId),
+                        )
                     }
                 }
 
-                // Now confirm offload
-                val response = api.confirmOffload(
-                    request = ConfirmOffloadRequest(orderId = orderId),
-                    idempotencyKey = DriverIdempotencyKeys.offload(orderId),
-                )
+                // Canonical ARRIVED → AWAITING_PAYMENT via scan-qr (validate-qr already done).
+                val response = if (scannedToken.isNotBlank()) {
+                    val scan = api.scanDeliveryQR(
+                        request = DeliveryScanQRRequest(orderId = orderId, qrToken = scannedToken),
+                        idempotencyKey = DriverIdempotencyKeys.offload(orderId),
+                    )
+                    ConfirmOffloadResponse(
+                        orderId = scan.orderId.ifBlank { orderId },
+                        state = scan.state,
+                        paymentMethod = "",
+                        amount = current.adjustedTotal,
+                        message = "Collect payment",
+                    )
+                } else {
+                    api.confirmOffload(
+                        request = ConfirmOffloadRequest(orderId = orderId),
+                        idempotencyKey = DriverIdempotencyKeys.offload(orderId),
+                    )
+                }
                 _state.update { it.copy(isSubmitting = false, offloadResult = response) }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Offload failed") }

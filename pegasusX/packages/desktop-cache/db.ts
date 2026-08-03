@@ -44,6 +44,22 @@ async function ensureMigrated(): Promise<SqlDatabase | null> {
           last_error TEXT
         )
       `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS pending_pos_sales (
+          id TEXT PRIMARY KEY NOT NULL,
+          client_sale_id TEXT NOT NULL,
+          client_receipt TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          idempotency_key TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'PENDING',
+          last_error TEXT,
+          server_sale_id TEXT,
+          server_receipt_number TEXT
+        )
+      `);
     })();
   }
   await migratePromise;

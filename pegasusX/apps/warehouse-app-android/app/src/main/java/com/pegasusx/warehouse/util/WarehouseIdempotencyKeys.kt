@@ -108,4 +108,7 @@ object WarehouseIdempotencyKeys {
 
     fun broadcastTemplateDelete(templateId: String): String =
         "warehouse-broadcast-template-delete:${warehouseId()}:$templateId"
+
+    fun rescuePropose(rescueId: String, brokenDriverId: String, rescueDriverId: String): String =
+        "warehouse-rescue-propose:${warehouseId()}:$rescueId:$brokenDriverId:$rescueDriverId"
 }

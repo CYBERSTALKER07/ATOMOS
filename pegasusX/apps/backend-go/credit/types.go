@@ -43,6 +43,18 @@ func (s Status) Valid() bool {
 	return false
 }
 
+// RetailerCreditScore represents the overall credit score and risk tier.
+type RetailerCreditScore struct {
+	RetailerID          string    `json:"retailer_id"`
+	Score               int64     `json:"score"`
+	RiskTier            RiskTier  `json:"risk_tier"`
+	SuggestedLimitMinor int64     `json:"suggested_limit_minor"`
+	FactorsJSON         string    `json:"factors_json"` // or json.RawMessage, but string is easy for Spanner JSON sometimes
+	WindowStart         time.Time `json:"window_start"`
+	WindowEnd           time.Time `json:"window_end"`
+	ComputedAt          time.Time `json:"computed_at"`
+}
+
 // Profile is the retailer credit profile aggregate per supplier.
 type Profile struct {
 	RetailerID           string    `json:"retailer_id"`

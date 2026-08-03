@@ -11,6 +11,9 @@ struct MoreHubView: View {
                 NavigationLink { DispatchView() } label: {
                     Label("Dispatch", systemImage: "paperplane")
                 }
+                NavigationLink { RescuesView() } label: {
+                    Label("Fleet rescues", systemImage: "wrench.and.screwdriver")
+                }
                 NavigationLink { DispatchSettingsView() } label: {
                     Label("Dispatch settings", systemImage: "slider.horizontal.3")
                 }
@@ -56,6 +59,12 @@ struct MoreHubView: View {
                 }
                 NavigationLink { ReturnsView() } label: {
                     Label("Returns", systemImage: "arrow.uturn.backward")
+                }
+                NavigationLink { ExceptionsView() } label: {
+                    Label("Exceptions", systemImage: "exclamationmark.triangle")
+                }
+                NavigationLink { ClaimsView() } label: {
+                    Label("Claims", systemImage: "doc.text")
                 }
                 NavigationLink { AnalyticsView() } label: {
                     Label("Analytics", systemImage: "chart.bar.xaxis")

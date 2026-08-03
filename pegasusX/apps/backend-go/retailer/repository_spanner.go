@@ -102,6 +102,40 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
+// Flush writes buffered outbox/audit rows into the active Spanner RW transaction.
+func (b *spannerTxnBuffer) Flush(txn *spanner.ReadWriteTransaction) error {
+	if b == nil || txn == nil {
+		return nil
+	}
+	var mutations []*spanner.Mutation
+	for _, e := range b.events {
+		createdAt := e.CreatedAt.UTC()
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		row := map[string]any{
+			"EventId":       e.EventID,
+			"AggregateType": e.AggregateType,
+			"AggregateId":   e.AggregateID,
+			"TopicName":     e.TopicName,
+			"Payload":       e.Payload,
+			"CreatedAt":     createdAt,
+			"PublishedAt":   nil,
+		}
+		if e.PublishedAt != nil {
+			row["PublishedAt"] = e.PublishedAt.UTC()
+		}
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	}
+	for _, a := range b.audits {
+		mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+	}
+	if len(mutations) == 0 {
+		return nil
+	}
+	return txn.BufferWrite(mutations)
+}
+
 // CreateRetailer writes the Retailers row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateRetailer(ctx context.Context, ret Retailer, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {

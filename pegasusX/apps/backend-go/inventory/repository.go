@@ -45,6 +45,7 @@ type Repository interface {
 	Upsert(ctx context.Context, l Level) error
 	AdjustStock(ctx context.Context, inventoryID string, delta int64, expectedVersion int64) error
 	ReserveForOrder(ctx context.Context, inventoryID string, quantity int64, expectedVersion int64) error
+	ReserveTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, quantity int64) error
 	ReleaseReservation(ctx context.Context, inventoryID string, quantity int64, expectedVersion int64) error
 }
 
@@ -211,6 +212,37 @@ func (r *SpannerRepository) ReserveForOrder(ctx context.Context, inventoryID str
 		return fmt.Errorf("reserve stock %s: %w", inventoryID, err)
 	}
 	return nil
+}
+
+// ReserveTxn reserves stock within an existing transaction.
+func (r *SpannerRepository) ReserveTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, quantity int64) error {
+	stmt := spanner.Statement{
+		SQL:    "SELECT InventoryId, QuantityOnHand, QuantityReserved FROM InventoryLevels@{FORCE_INDEX=Idx_InventoryLevels_ByWarehouseProduct} WHERE WarehouseId = @wid AND ProductId = @pid LIMIT 1",
+		Params: map[string]any{"wid": warehouseID, "pid": productID},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return fmt.Errorf("inventory not found for warehouse %s product %s", warehouseID, productID)
+	}
+	if err != nil {
+		return err
+	}
+	var inventoryID string
+	var onHand, reserved int64
+	if err := row.Columns(&inventoryID, &onHand, &reserved); err != nil {
+		return err
+	}
+	if (onHand - reserved) < quantity {
+		return fmt.Errorf("insufficient stock for product %s in warehouse %s", productID, warehouseID)
+	}
+	m := spanner.UpdateMap("InventoryLevels", map[string]any{
+		"InventoryId":      inventoryID,
+		"QuantityReserved": reserved + quantity,
+		"UpdatedAt":        spanner.CommitTimestamp,
+	})
+	return txn.BufferWrite([]*spanner.Mutation{m})
 }
 
 // ReleaseReservation moves quantity from reserved back to on-hand.

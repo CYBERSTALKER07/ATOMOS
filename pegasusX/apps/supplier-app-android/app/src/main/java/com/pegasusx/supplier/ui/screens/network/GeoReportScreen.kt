@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.network
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -70,39 +68,10 @@ fun GeoReportScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 body = "No active lanes to report on.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                item {
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(
-                                "Estimated H3 cells in service",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                            Text(
-                                lanes.sumOf { it.h3Cells }.toString(),
-                                style = MaterialTheme.typography.headlineMedium,
-                            )
-                        }
-                    }
-                }
-                items(lanes, key = { it.laneId }) { lane ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(lane.name.ifEmpty { lane.warehouseId }, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "%d cells · %.0f%% utilization today".format(lane.h3Cells, lane.utilizationPct),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        }
-                    }
-                }
-            }
+            else -> GeoReportLanesList(
+                lanes = lanes,
+                modifier = Modifier.padding(padding)
+            )
         }
     }
 }

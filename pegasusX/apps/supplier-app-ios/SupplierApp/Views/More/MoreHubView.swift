@@ -84,6 +84,9 @@ struct MoreHubView: View {
                 NavigationLink { NotificationInboxView() } label: {
                     Label("Notifications", systemImage: "bell")
                 }
+                NavigationLink { NotificationPreferencesView() } label: {
+                    Label("Notification preferences", systemImage: "bell.badge")
+                }
                 NavigationLink { CatalogView() } label: {
                     Label("Catalog", systemImage: "square.grid.2x2")
                 }

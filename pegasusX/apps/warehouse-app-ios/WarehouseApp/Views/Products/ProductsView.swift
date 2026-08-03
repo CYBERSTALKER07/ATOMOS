@@ -24,18 +24,19 @@ struct ProductsView: View {
                 } else {
                     ResponsiveGridContentWrapper {
                         ForEach(products) { product in
-                        HStack {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(product.name)
-                                    .font(.headline)
-                                Text(product.skuId) // changed from product.sku
-                                    .font(.caption)
+                            HStack {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(product.name)
+                                        .font(.headline)
+                                    Text(product.skuId)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text("\(product.priceUzs.formatted()) UZS")
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            Text("\(product.priceUzs.formatted()) UZS")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
                         }
                     }
                 }

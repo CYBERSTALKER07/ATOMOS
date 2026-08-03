@@ -22,6 +22,8 @@ import {
 import { Chip } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
+import { OrderFilters } from "../../../components/orders/OrderFilters";
+import { OrderList } from "../../../components/orders/OrderList";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
@@ -32,6 +34,7 @@ import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
+import { FileClaimPanel } from "../../../components/FileClaimPanel";
 import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder, acceptDeliveryProposal, rejectDeliveryProposal } from "../../../lib/api";
 import {
   retailerCancelKey,
@@ -439,6 +442,9 @@ function OrdersPageContent() {
     !!detail &&
     (cancellableStates.has(detail.state) ||
       requestCancelStates.has(detail.state));
+  const showFileClaim =
+    !!detail &&
+    (detail.state === "COMPLETED" || detail.state === "DELIVERED_ON_CREDIT");
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const message = actionError ?? ordersError?.message;
@@ -645,31 +651,12 @@ function OrdersPageContent() {
         </BentoCard>
       </BentoGrid>
 
-      <div className="flex items-center gap-3 mb-6 border-b border-[var(--desk-border)] pb-3">
-        {(["ALL", "ACTIVE", "COMPLETED"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
-              activeTab === tab
-                ? "bg-[var(--desk-text-primary)] text-white shadow-[var(--shadow-sm)]"
-                : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <button
-          type="button"
-          disabled={isOrdersRefreshing}
-          onClick={refreshAll}
-          className="portal-btn portal-btn--ghost desk-icon-btn text-[var(--desk-text-tertiary)]"
-          aria-label="Refresh orders"
-        >
-          <RefreshCw size={16} className={isOrdersRefreshing ? "animate-spin" : ""} />
-        </button>
-      </div>
+      <OrderFilters
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isOrdersRefreshing={isOrdersRefreshing}
+        refreshAll={refreshAll}
+      />
 
       {syncBanner && (
         <motion.div
@@ -711,79 +698,15 @@ function OrdersPageContent() {
             className="flex flex-col gap-2 overflow-y-auto pr-2 !mt-0 !p-0"
             style={{ maxHeight: "calc(100vh - 440px)" }}
           >
-          <AnimatePresence mode="popLayout">
-            {loading ? (
-              <div className="flex flex-col gap-2">
-                <ListRowSkeleton count={4} />
-              </div>
-            ) : filtered.length === 0 ? (
-              <EmptyState
-                headline={listEmptyState.headline}
-                body={listEmptyState.body}
-                variant={listEmptyState.variant}
-                action={listEmptyState.action}
-                onAction={listEmptyState.onAction}
-              />
-            ) : (
-              <VirtualScrollList
-                height="calc(100vh - 440px)"
-                items={filtered}
-                itemKey={(order) => order.order_id}
-                renderItem={(order) => {
-                  const isSelected =
-                    (selectedId ?? list[0]?.order_id) === order.order_id;
-                  const c = chipCfg[order.state] || chipCfg.PENDING;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(order.order_id)}
-                      className={`mb-2 flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all group ${
-                        isSelected
-                          ? "bg-[var(--desk-surface)] border-[var(--desk-accent)] shadow-md ring-2 ring-[var(--desk-accent-soft)]"
-                          : "bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
-                      }`}
-                    >
-                      <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${isSelected ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-secondary)]"}`}
-                      >
-                        <PackageOpen size={20} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center justify-between">
-                          <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                            #{order.order_id.slice(-8)}
-                          </span>
-                          <span
-                            className={`rounded-md px-2 py-0.5 text-[10px] font-light uppercase tracking-widest ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
-                          >
-                            {c.label}
-                          </span>
-                        </div>
-                        <p className="md-typescale-body-small truncate text-[var(--desk-text-tertiary)]">
-                          {order.payment_gateway || "UNSPECIFIED"}
-                        </p>
-                        {(order.preorder_badge === "REVIEW_DELIVERY" ||
-                          order.confirmation_status === "PENDING_WAREHOUSE") && (
-                          <Chip size="sm" color="warning" variant="soft" className="mt-1">
-                            Review Delivery
-                          </Chip>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                          {order.amount.toLocaleString()}
-                        </p>
-                        <ArrowUpRight
-                          size={14}
-                          className={`ml-auto transition-opacity ${isSelected ? "opacity-100 text-[var(--desk-accent)]" : "opacity-20 group-hover:opacity-100"}`}
-                        />
-                      </div>
-                    </button>
-                  );
-                }}
-              />
-            )}
-          </AnimatePresence>
+          <OrderList
+            loading={loading}
+            filtered={filtered}
+            listEmptyState={listEmptyState}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            chipCfg={chipCfg}
+            list={list}
+          />
           </div>
         </PageSection>
 
@@ -963,6 +886,12 @@ function OrdersPageContent() {
                       </>
                     )}
                   </button>
+                </div>
+              )}
+
+              {showFileClaim && (
+                <div className="mb-10">
+                  <FileClaimPanel order={detail} />
                 </div>
               )}
 

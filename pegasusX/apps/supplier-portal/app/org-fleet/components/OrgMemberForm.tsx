@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
@@ -22,13 +23,44 @@ export function OrgMemberForm({
   onCreated,
 }: {
   topology: SupplierTopologyResponse;
+=======
+import { useState } from "react";
+import type { Role, HomeNodeType } from "@pegasusx/types";
+import { supplierOrgMemberCreateKey } from "@pegasusx/api-client";
+import type { ApiClient } from "@pegasusx/api-client";
+import {
+  OrgFormState,
+  defaultOrgForm,
+  orgRoleOptions,
+  buildOrgMemberRequest,
+  StatusText,
+  isErrorMessage,
+  toErrorMessage,
+  supplierScopeId,
+  nodeOptionsFor,
+  orgEffectiveNodeType,
+  ReadyState,
+} from "./utils";
+
+export function OrgMemberForm({
+  state,
+  api,
+  onCreated,
+}: {
+  state: ReadyState;
+  api: ApiClient;
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   onCreated: () => void;
 }) {
   const [orgForm, setOrgForm] = useState<OrgFormState>(defaultOrgForm);
   const [orgSubmitting, setOrgSubmitting] = useState(false);
   const [orgMessage, setOrgMessage] = useState<string | null>(null);
 
+<<<<<<< HEAD
   const activeNodeOptions = nodeOptionsFor(orgEffectiveNodeType(orgForm), topology);
+=======
+  const activeNodeOptions = nodeOptionsFor(orgEffectiveNodeType(orgForm), state.topology);
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
   async function submitOrgMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +68,10 @@ export function OrgMemberForm({
     setOrgMessage(null);
     const request = buildOrgMemberRequest(orgForm);
     try {
+<<<<<<< HEAD
       const api = createSupplierApi();
+=======
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       await api.createSupplierOrgMember(
         request,
         supplierOrgMemberCreateKey(supplierScopeId(), request.phone),

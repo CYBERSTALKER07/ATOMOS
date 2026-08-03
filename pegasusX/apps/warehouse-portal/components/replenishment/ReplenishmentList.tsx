@@ -5,10 +5,18 @@ import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
 interface ReplenishmentListProps {
   insights: WarehouseReplenishmentInsight[];
   actingId: string | null;
+<<<<<<< HEAD
   runAction: (insightId: string, action: 'approve' | 'dismiss') => void;
 }
 
 export function ReplenishmentList({ insights, actingId, runAction }: ReplenishmentListProps) {
+=======
+  onApprove: (id: string) => void;
+  onDismiss: (id: string) => void;
+}
+
+export function ReplenishmentList({ insights, actingId, onApprove, onDismiss }: ReplenishmentListProps) {
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   const urgencyClass = (urgency: string) => {
     if (urgency === 'PROACTIVE') return 'status-chip--proactive';
     if (urgency === 'CRITICAL') return 'status-chip--critical';
@@ -74,7 +82,11 @@ export function ReplenishmentList({ insights, actingId, runAction }: Replenishme
                   <button
                     type="button"
                     disabled={actingId === insight.id}
+<<<<<<< HEAD
                     onClick={() => void runAction(insight.id, 'approve')}
+=======
+                    onClick={() => onApprove(insight.id)}
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                     className="button--primary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
                   >
                     Approve
@@ -82,7 +94,11 @@ export function ReplenishmentList({ insights, actingId, runAction }: Replenishme
                   <button
                     type="button"
                     disabled={actingId === insight.id}
+<<<<<<< HEAD
                     onClick={() => void runAction(insight.id, 'dismiss')}
+=======
+                    onClick={() => onDismiss(insight.id)}
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                     className="button--secondary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
                   >
                     Dismiss
@@ -101,7 +117,11 @@ export function ReplenishmentList({ insights, actingId, runAction }: Replenishme
   );
 }
 
+<<<<<<< HEAD
 function formatDemandWhy(
+=======
+export function formatDemandWhy(
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   breakdown: WarehouseReplenishmentInsight['demand_breakdown'],
   reasonCode?: string,
 ): string {

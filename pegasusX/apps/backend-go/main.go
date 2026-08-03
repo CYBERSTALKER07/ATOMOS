@@ -20,14 +20,21 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cashreconroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltowerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
+	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
@@ -38,6 +45,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
@@ -191,10 +199,22 @@ func main() {
 		OrderService:      app.OrderService,
 		PayloadService:    app.PayloadService,
 		NotificationInbox: app.NotificationInbox,
+		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
+		ExceptionResolve: supplier.ExceptionResolveDeps{
+			CashRecon:  app.CashReconService,
+			CreditNote: app.CreditNoteService,
+			Credit:     app.CreditService,
+		},
 		JWTSecret:         cfg.JWTSecret,
 		Spanner:           app.Spanner,
 		SupplierHub:       app.SupplierHub,
 		WarehouseHub:      app.WarehouseHub,
+	})
+	controltowerroutes.RegisterRoutes(r, controltowerroutes.Deps{
+		Handlers:            app.ControlTowerHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
 		Service:   app.PromotionService,
@@ -210,11 +230,26 @@ func main() {
 	webhookroutes.RegisterRoutes(r, webhookroutes.Deps{Service: app.PaymentService})
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Service:             app.OrderService,
+		ClaimsService:       app.ClaimsService,
+		TaxService:          app.TaxService,
+		ComplianceHandler:   compliance.NewHandler(app.ComplianceService),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	creditroutes.RegisterRoutes(r, creditroutes.Deps{Service: app.CreditService})
+	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
+		Handlers:            app.CashReconHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
+	creditnoteroutes.RegisterRoutes(r, creditnoteroutes.Deps{
+		Handlers:            app.CreditNoteHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
 		Service:             app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -242,6 +277,18 @@ func main() {
 	updateroutes.RegisterRoutes(r, updateroutes.Deps{
 		BaseURL:        updatesBase,
 		DefaultVersion: cfg.UpdatesDefaultVersion,
+	})
+
+	demandroutes.RegisterRoutes(r, demandroutes.Deps{
+		Service: app.DemandService,
+	})
+
+	laborcapacityroutes.RegisterRoutes(r, laborcapacityroutes.Deps{
+		Service: app.LaborCapacityService,
+	})
+
+	etaroutes.RegisterRoutes(r, etaroutes.Deps{
+		Service: app.ETAService,
 	})
 
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{
@@ -276,6 +323,15 @@ func main() {
 		r.Get("/v1/user/notifications", inbox.HandleList)
 		r.Post("/v1/user/notifications/read", inbox.HandleMarkRead)
 	}
+	if app.NotificationPreferences != nil {
+		prefs := app.NotificationPreferences
+		r.Get("/v1/user/notification-preferences", prefs.HandleGetPreferences)
+		r.Patch("/v1/user/notification-preferences", prefs.HandlePatchPreferences)
+	}
+	if app.AnalyticsHandlers != nil {
+		h := app.AnalyticsHandlers
+		r.Get("/v1/supplier/route-performance", h.HandleListRoutePerformance)
+	}
 
 	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".
 	// Provides a browser UI for end-to-end payment testing without hitting the real gateway.
@@ -291,6 +347,10 @@ func main() {
 		})
 		slog.Info("[simulator] Global Pay simulator mounted", "prefix", "/sim/globalpay", "env", gpEnv)
 	}
+
+	// Start background workers
+	go app.OrderService.RunShopClosedWorker(ctx, 30*time.Second)
+	go app.DemandService.RunDemandSensingWorker(ctx, 12*time.Hour)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

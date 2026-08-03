@@ -33,6 +33,14 @@ func (r *inboxMemoryRepo) MarkAllRead(context.Context, string) error { return ni
 
 func (r *inboxMemoryRepo) UnreadCount(context.Context, string) (int64, error) { return 0, nil }
 
+func (r *inboxMemoryRepo) GetPreference(context.Context, string, string, string) (*notifications.NotificationPreference, error) {
+	return nil, nil
+}
+
+func (r *inboxMemoryRepo) UpsertPreference(context.Context, notifications.NotificationPreference) error {
+	return nil
+}
+
 func (r *inboxMemoryRepo) created() []notifications.Notification {
 	r.mu.Lock()
 	defer r.mu.Unlock()

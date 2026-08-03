@@ -74,13 +74,15 @@ type SupplierDispatchPreview struct {
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
 type SupplierExceptionRow struct {
-	OrderID    string `json:"order_id"`
-	Kind       string `json:"kind"`
-	Status     string `json:"status"`
-	RetailerID string `json:"retailer_id,omitempty"`
-	Note       string `json:"note,omitempty"`
-	ManifestID string `json:"manifest_id,omitempty"`
-	UpdatedAt  string `json:"updated_at"`
+	OrderID         string `json:"order_id"`
+	Kind            string `json:"kind"`
+	Status          string `json:"status"`
+	RetailerID      string `json:"retailer_id,omitempty"`
+	Note            string `json:"note,omitempty"`
+	ManifestID      string `json:"manifest_id,omitempty"`
+	UpdatedAt       string `json:"updated_at"`
+	Score           *int64 `json:"score,omitempty"`
+	TopPlaybookName string `json:"top_playbook_name,omitempty"`
 }
 
 // SupplierManifestExceptionRow is a manifest loading-gate exception from ManifestExceptions.
@@ -197,6 +199,22 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 		s.log.WarnContext(r.Context(), "supplier exceptions load failed", "supplier_id", sid, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_exceptions_failed"})
 		return
+	}
+	financeRows, finErr := s.listFinanceExceptionRows(r.Context(), sid)
+	if finErr == nil && len(financeRows) > 0 {
+		rows = append(rows, financeRows...)
+	}
+	if s.controlTower != nil && s.controlTower.Enabled() {
+		byOrder, enrichErr := s.controlTower.ScoredByOrderID(r.Context(), sid)
+		if enrichErr == nil {
+			for i := range rows {
+				if scored, ok := byOrder[rows[i].OrderID]; ok {
+					score := scored.Score
+					rows[i].Score = &score
+					rows[i].TopPlaybookName = scored.TopPlaybookName
+				}
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
 }

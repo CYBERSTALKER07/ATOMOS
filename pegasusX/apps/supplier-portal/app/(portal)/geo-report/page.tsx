@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierSupplyLaneRow } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
-import { DataList, DataListRow, HubCard } from "@/components/portal";
+import { HubCard } from "@/components/portal";
+import { GeoReportLanesList } from "@/components/geo-report";
 
 const api = createSupplierApi();
 
@@ -21,7 +22,6 @@ export default function GeoReportPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalCells = lanes.reduce((sum, lane) => sum + lane.h3_cells, 0);
 
   return (
     <PageChrome
@@ -32,21 +32,7 @@ export default function GeoReportPage() {
       error={error}
       empty={!loading && lanes.length === 0}
     >
-      <p className="md-typescale-body-medium mb-4">
-        Estimated H3 cells in service: <strong>{totalCells}</strong>
-      </p>
-      <DataList>
-        {lanes.map((lane) => (
-          <DataListRow key={lane.lane_id}>
-            <div className="min-w-0 md-typescale-body-medium">
-              <div className="font-medium">{lane.name}</div>
-              <div className="text-[var(--color-md-outline)] text-sm mt-1">
-                {lane.h3_cells} cells · {lane.utilization_pct.toFixed(0)}% utilization today
-              </div>
-            </div>
-          </DataListRow>
-        ))}
-      </DataList>
+      <GeoReportLanesList lanes={lanes} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <HubCard
           href="/topology"

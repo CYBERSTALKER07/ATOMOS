@@ -7,6 +7,8 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.offline.DriverOfflineActionCatalog
+import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,13 +25,15 @@ data class ShopClosedUiState(
     val bypassToken: String? = null,
     val showBypassInput: Boolean = false,
     val bypassConfirmed: Boolean = false,
+    val queuedOffline: Boolean = false,
     val error: String? = null
 )
 
 @HiltViewModel
 class ShopClosedWaitingViewModel @Inject constructor(
     private val api: DriverApi,
-    private val webSocket: DriverWebSocket
+    private val webSocket: DriverWebSocket,
+    private val offlineQueue: DriverOfflineQueue,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShopClosedUiState())
@@ -89,18 +93,48 @@ class ShopClosedWaitingViewModel @Inject constructor(
         }
     }
 
-    fun reportShopClosed(orderId: String) {
+    fun reportShopClosed(
+        orderId: String,
+        reason: String = "CLOSED",
+        latitude: Double? = null,
+        longitude: Double? = null,
+        photoUrl: String? = null,
+    ) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
+            val ts = offlineQueue.nowIso()
+            val body = buildMap {
+                put("order_id", orderId)
+                put("reason", reason)
+                put("client_timestamp", ts)
+                latitude?.let { put("latitude", it.toString()) }
+                longitude?.let { put("longitude", it.toString()) }
+                photoUrl?.takeIf { it.isNotBlank() }?.let { put("photo_url", it) }
+            }
+            val key = DriverIdempotencyKeys.reportShopClosed(orderId)
             try {
-                api.reportShopClosed(
-                    mapOf("order_id" to orderId),
-                    DriverIdempotencyKeys.reportShopClosed(orderId),
-                )
+                api.reportShopClosed(body, key)
                 _state.update { it.copy(isSubmitting = false) }
             } catch (e: Exception) {
                 Log.e("ShopClosed", "Failed to report: ${e.message}")
-                _state.update { it.copy(isSubmitting = false, error = e.message) }
+                if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                    offlineQueue.enqueueMap(
+                        endpoint = DriverOfflineActionCatalog.ENDPOINT_SHOP_CLOSED,
+                        body = body,
+                        idempotencyKey = key,
+                        orderId = orderId,
+                        clientTimestampIso = ts,
+                    )
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            queuedOffline = true,
+                            error = "Offline — shop-closed queued for sync",
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(isSubmitting = false, error = e.message) }
+                }
             }
         }
     }

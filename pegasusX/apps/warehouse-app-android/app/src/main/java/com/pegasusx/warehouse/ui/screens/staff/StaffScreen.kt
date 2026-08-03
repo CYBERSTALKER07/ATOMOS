@@ -71,6 +71,7 @@ fun StaffScreen(
             )
         },
     ) { innerPadding ->
+<<<<<<< HEAD
         when {
             loading && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
@@ -88,6 +89,15 @@ fun StaffScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
         }
+=======
+        StaffList(
+            staff = staff,
+            loading = loading,
+            error = error,
+            onRetry = { load() },
+            modifier = Modifier.padding(innerPadding)
+        )
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     }
 
     if (showCreate) {

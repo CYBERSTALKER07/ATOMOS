@@ -210,6 +210,54 @@ func FormatShopClosedResponse(orderID, response string) FormattedNotification {
 	}
 }
 
+// FormatShopClosedTimeout produces a notification when grace expires and auto-decision runs.
+func FormatShopClosedTimeout(orderID, resolution string) FormattedNotification {
+	body := "Shop-closed grace ended for order " + orderID
+	if resolution != "" {
+		body = "Shop-closed timeout resolved as " + resolution + " for order " + orderID
+	}
+	return FormattedNotification{
+		Title:    "Shop Closed Timeout",
+		Body:     body,
+		DeepLink: "/exceptions/shop-closed",
+		Priority: "high",
+	}
+}
+
+// FormatProximityUnlocked produces a driver/supplier notice when payment modes unlock.
+func FormatProximityUnlocked(orderID, method string) FormattedNotification {
+	body := "Settlement proximity unlocked for order " + orderID
+	if method != "" {
+		body = "Settlement proximity unlocked (" + method + ") for order " + orderID
+	}
+	return FormattedNotification{
+		Title:    "Proximity Unlocked",
+		Body:     body,
+		DeepLink: "/orders/" + orderID,
+		Priority: "normal",
+	}
+}
+
+// FormatPartialOffload produces a notification when driver records partial delivery.
+func FormatPartialOffload(orderID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Partial Offload",
+		Body:     "Partial delivery recorded for order " + orderID + "; settlement uses delivered portion only",
+		DeepLink: "/orders/" + orderID,
+		Priority: "high",
+	}
+}
+
+// FormatCreditLeave produces a notification when goods are left on credit.
+func FormatCreditLeave(orderID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Credit Leave",
+		Body:     "Order " + orderID + " delivered on credit; fiscal path pending settlement",
+		DeepLink: "/orders/" + orderID,
+		Priority: "high",
+	}
+}
+
 // FormatDriverCreated produces a supplier notification when a driver is onboarded.
 func FormatDriverCreated(driverID, homeNodeID string) FormattedNotification {
 	body := "Driver " + driverID + " added to fleet"
@@ -301,6 +349,69 @@ func formatAvailabilityReason(reason, note string) string {
 		parts[i] = strings.ToUpper(part[:1]) + part[1:]
 	}
 	return strings.Join(parts, " ")
+}
+
+// FormatClaimFiled produces inbox copy when a retailer files a claim.
+func FormatClaimFiled(claimID, orderID, claimType string) FormattedNotification {
+	body := "Claim " + claimID + " filed"
+	if orderID != "" {
+		body = "Claim " + claimID + " filed on order " + orderID
+	}
+	if claimType != "" {
+		body += " (" + claimType + ")"
+	}
+	return FormattedNotification{
+		Title:    "Claim filed",
+		Body:     body,
+		DeepLink: "/claims/" + claimID,
+		Priority: "high",
+	}
+}
+
+// FormatClaimResolved produces inbox copy when a claim is approved/rejected.
+func FormatClaimResolved(claimID, orderID, status string) FormattedNotification {
+	body := "Claim " + claimID + " resolved"
+	if status != "" {
+		body = "Claim " + claimID + " is now " + status
+	}
+	if orderID != "" {
+		body += " (order " + orderID + ")"
+	}
+	return FormattedNotification{
+		Title:    "Claim update",
+		Body:     body,
+		DeepLink: "/claims/" + claimID,
+		Priority: "high",
+	}
+}
+
+// FormatLogisticsException produces inbox copy for OS&D / reverse-logistics events.
+func FormatLogisticsException(eventType, orderID, claimID string) FormattedNotification {
+	title := "Logistics exception"
+	switch eventType {
+	case "REVERSE_LOGISTICS_REQUIRED":
+		title = "Return required"
+	case "LOGISTICS_EXCEPTION_REPORTED":
+		title = "Exception reported"
+	}
+	body := title
+	if orderID != "" {
+		body = title + " for order " + orderID
+	} else if claimID != "" {
+		body = title + " for claim " + claimID
+	}
+	deep := "/exceptions"
+	if claimID != "" {
+		deep = "/claims/" + claimID
+	} else if orderID != "" {
+		deep = "/orders/" + orderID
+	}
+	return FormattedNotification{
+		Title:    title,
+		Body:     body,
+		DeepLink: deep,
+		Priority: "high",
+	}
 }
 
 // FormatRetailerPriceOverride produces retailer inbox copy for custom pricing changes.

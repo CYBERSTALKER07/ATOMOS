@@ -10,6 +10,7 @@ struct StaffView: View {
 
     var body: some View {
         NavigationStack {
+<<<<<<< HEAD
             Group {
                 if loading && staff.isEmpty {
                     ProgressView()
@@ -28,6 +29,9 @@ struct StaffView: View {
                     StaffList(staff: staff)
                 }
             }
+=======
+            StaffList(staff: staff, loading: loading, error: error, onRetry: { load() })
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             .background(LabTheme.background)
             .navigationTitle("Staff")
             .toolbar {

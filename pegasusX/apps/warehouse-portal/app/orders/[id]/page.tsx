@@ -11,6 +11,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
 import { useToast } from '@/components/Toast';
+import { OrderLineItems } from '@/components/orders/OrderLineItems';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
 import { orderActionFlags } from '@/lib/order-actions';
@@ -79,7 +80,7 @@ export default function OrderDetailPage() {
 
   async function runMutation(
     label: string,
-    fn: () => Promise<{ status?: string }>,
+    fn: () => Promise<unknown>,
     requiresReason = false,
   ) {
     if (requiresReason && !reason.trim()) {
@@ -88,8 +89,9 @@ export default function OrderDetailPage() {
     }
     setActing(true);
     try {
-      const resp = await fn();
-      toast(`${label} · ${resp.status ?? 'ok'}`, 'success');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resp: any = await fn();
+      toast(`${label} · ${resp?.status ?? resp?.state ?? 'ok'}`, 'success');
       setReason('');
       await load();
     } catch (err) {
@@ -145,6 +147,38 @@ export default function OrderDetailPage() {
                   <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Order ID</p>
                   <p className="wh-ops-card-id mt-1">{order.order_id}</p>
                 </div>
+                {(state === 'COMPLETED' || canForceFiscal) && (
+                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--outline text-sm"
+                      disabled={acting}
+                      onClick={() => {
+                        void import('@/lib/order-receipt').then((m) =>
+                          m.openWarehouseOrderReceipt(orderId, 'html').catch((err) =>
+                            toast(err instanceof Error ? err.message : 'Receipt unavailable', 'error'),
+                          ),
+                        );
+                      }}
+                    >
+                      View receipt
+                    </button>
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--outline text-sm"
+                      disabled={acting}
+                      onClick={() => {
+                        void import('@/lib/order-receipt').then((m) =>
+                          m.openWarehouseOrderReceipt(orderId, 'pdf').catch((err) =>
+                            toast(err instanceof Error ? err.message : 'PDF unavailable', 'error'),
+                          ),
+                        );
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -290,38 +324,7 @@ export default function OrderDetailPage() {
               <OrderTimelinePanel orderId={orderId} />
             </section>
 
-            {(order.line_items?.length ?? 0) > 0 ? (
-              <section className="wh-bay-panel wh-bay--inventory wh-order-bento-lines">
-                <div className="wh-section-head">
-                  <div>
-                    <h2 className="wh-section-title">Line items</h2>
-                    <p className="wh-section-desc">{order.line_items?.length ?? 0} products in this order.</p>
-                  </div>
-                </div>
-                <div className="desk-table-wrap">
-                  <table className="desk-table">
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th className="text-right">Qty</th>
-                        <th className="text-right">Unit (UZS)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.line_items?.map((item, idx) => (
-                        <tr key={`${item.product_id ?? idx}`}>
-                          <td>{item.product_name || item.product_id || '—'}</td>
-                          <td className="text-right font-mono tabular-nums">{item.quantity ?? '—'}</td>
-                          <td className="text-right font-mono tabular-nums">
-                            {item.unit_price != null ? fmt(item.unit_price) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
+            <OrderLineItems order={order} />
           </div>
         ) : null}
       </PageChrome>

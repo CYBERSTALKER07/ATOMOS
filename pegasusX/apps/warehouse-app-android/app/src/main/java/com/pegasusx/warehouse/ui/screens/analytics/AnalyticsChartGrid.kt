@@ -2,7 +2,12 @@ package com.pegasusx.warehouse.ui.screens.analytics
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+<<<<<<< HEAD
 import androidx.compose.material3.*
+=======
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +21,7 @@ fun AnalyticsChartGrid(
     daily: List<DailyMetric>,
     formatter: NumberFormat,
 ) {
+<<<<<<< HEAD
     if (daily.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
             DailyRevenueChart(daily = daily, formatter = formatter)
@@ -28,6 +34,8 @@ private fun DailyRevenueChart(
     daily: List<DailyMetric>,
     formatter: NumberFormat,
 ) {
+=======
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     val maxRevenue = daily.maxOfOrNull { it.revenue }?.coerceAtLeast(1L) ?: 1L
     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
         Text("Daily Revenue", style = MaterialTheme.typography.titleMedium)

@@ -38,8 +38,8 @@ type TxnBuffer interface {
 }
 
 // Publisher is the Kafka producer seam. Implementations MUST configure
-// RequiredAcks=all and MaxAttempts>=5 with backoff+jitter. The Relay treats a
-// nil error as durable success and clears PublishedAt accordingly.
+// RequiredAcks=all, high MaxAttempts, and a WriteTimeout (delivery bound).
+// The Relay treats a nil error as durable success and marks PublishedAt.
 type Publisher interface {
 	Publish(ctx context.Context, topic string, key []byte, value []byte) error
 }

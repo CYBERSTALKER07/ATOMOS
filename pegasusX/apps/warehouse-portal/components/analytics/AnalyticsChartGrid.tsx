@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import VelocityGauge from '../../app/analytics/VelocityGauge';
+=======
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import VelocityGauge from '@/app/analytics/VelocityGauge';
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
 interface AnalyticsChartGridProps {
   dailySeries: { date: string; revenue: number; orders: number }[];
@@ -9,7 +14,11 @@ interface AnalyticsChartGridProps {
 
 export default function AnalyticsChartGrid({ dailySeries, fmtCurrency }: AnalyticsChartGridProps) {
   return (
+<<<<<<< HEAD
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+=======
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       {/* Daily Revenue Chart */}
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
         <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>

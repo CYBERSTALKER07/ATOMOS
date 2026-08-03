@@ -117,7 +117,8 @@ struct SupplierAdaptiveShell: View {
         case .shopClosed:
             ShopClosedView()
         case .negotiations:
-            SupplierEmptyView(title: "Unavailable", message: "Quantity negotiation is disabled.")
+            // Product-disabled: empty state only (see NegotiationsView).
+            NegotiationsView()
         case .manifests:
             ManifestsView()
         case .dispatchPreview:
@@ -156,6 +157,8 @@ struct SupplierAdaptiveShell: View {
             ReturnsView()
         case .reconciliation:
             ReconciliationView()
+        case .compliance:
+            ComplianceAuditView()
         case .notifications:
             NotificationInboxView()
         case .earnings:
@@ -172,6 +175,10 @@ struct SupplierAdaptiveShell: View {
             RetailerOverridesView()
         case .chargebacks:
             ChargebacksView()
+        case .claims:
+            ClaimsView()
+        case .claimChargebacks:
+            ClaimChargebacksView()
         case .businessSetup:
             BusinessSetupView()
         case .inventoryImport:

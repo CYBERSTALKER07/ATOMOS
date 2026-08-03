@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -100,6 +101,9 @@ type Service struct {
 	earnings       EarningsLookup
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
+	openFiscal     OpenFiscalLookup
+	cashReconRequired bool
+	cashReconGate     CashReconciliationGateLookup
 	routeGeometry  RouteGeometryLookup
 	profileLookup  DriverProfileLookup
 	availReader    AvailabilityReader
@@ -138,6 +142,9 @@ type ServiceConfig struct {
 	Earnings                     EarningsLookup
 	Depart                       DepartFn
 	ReturnComplete               ReturnCompleteFn
+	OpenFiscal                   OpenFiscalLookup
+	CashReconciliationRequired   bool
+	CashReconciliationGate       CashReconciliationGateLookup
 	RouteGeometry                RouteGeometryLookup
 	ProfileLookup                DriverProfileLookup
 	AvailabilityReader           AvailabilityReader
@@ -195,6 +202,22 @@ type ReturnCompleteResult struct {
 // the driver as off-shift atomically. ok=false means no DISPATCHED manifest
 // found (idempotent no-op for double-tap return).
 type ReturnCompleteFn func(ctx context.Context, driverID string) (ReturnCompleteResult, bool, error)
+
+// OpenFiscalSnapshot is the Phase 6 soft-freeze signal (cash bag / shift-end).
+type OpenFiscalSnapshot struct {
+	Count    int64    `json:"open_fiscal_count"`
+	OrderIDs []string `json:"order_ids,omitempty"`
+	Frozen   bool     `json:"cash_bag_frozen"`
+}
+
+// OpenFiscalLookup counts orders still in FISCALIZING / FISCAL_FAILED for a driver.
+type OpenFiscalLookup func(ctx context.Context, driverID string) (OpenFiscalSnapshot, error)
+
+// CashReconciliationGateLookup returns true when the driver has an accepted cash reconciliation for today.
+type CashReconciliationGateLookup func(ctx context.Context, driverID string) (bool, error)
+
+// ErrOpenFiscalBlock is returned when shift-end is blocked by open fiscal attempts.
+var ErrOpenFiscalBlock = errors.New("open_fiscal_block")
 
 // DailyEarning is one day of driver delivery volume.
 type DailyEarning struct {
@@ -270,6 +293,9 @@ func NewService(c ServiceConfig) *Service {
 		earnings:           c.Earnings,
 		depart:             c.Depart,
 		returnComplete:     c.ReturnComplete,
+		openFiscal:         c.OpenFiscal,
+		cashReconRequired:  c.CashReconciliationRequired,
+		cashReconGate:      c.CashReconciliationGate,
 		routeGeometry:      c.RouteGeometry,
 		profileLookup:      c.ProfileLookup,
 		availReader:        c.AvailabilityReader,
@@ -783,7 +809,7 @@ func (s *Service) offlineManifestHashes(ctx context.Context, detail factory.Mani
 	if s.manifestTokens != nil && len(orderIDs) > 0 {
 		tokens = s.manifestTokens(ctx, orderIDs)
 	}
-	if len(tokens) == 0 {
+	if len(tokens) == 0 && allowDriverDemoFallback() {
 		tokens = demoOrderDeliveryTokens()
 	}
 

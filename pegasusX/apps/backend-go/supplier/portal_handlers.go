@@ -901,6 +901,16 @@ func (s *Service) HandleInventory(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleInventoryList(w http.ResponseWriter, r *http.Request) {
 	supplierID := s.scopedSupplierID(r)
+	if s.portalSpanner != nil {
+		levels, err := s.listSupplierInventoryV2(r.Context(), supplierID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "list supplier inventory v2 failed", "err", err, "supplier_id", supplierID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": levels})
+		return
+	}
 	if s.inventorySvc == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
 		return

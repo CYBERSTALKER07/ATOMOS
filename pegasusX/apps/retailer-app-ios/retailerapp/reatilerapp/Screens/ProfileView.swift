@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ProfileView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
@@ -11,6 +12,13 @@ struct ProfileView: View {
     @State private var profilePhone: String = ""
     @State private var profileLocation: String = ""
     @State private var pricingRulesSummary: String = ""
+    @State private var orderCount: Int = 0
+    @State private var totalSpent: Int64 = 0
+    @State private var totalSpentCurrency: String = "UZS"
+    @State private var creditProfile: CreditProfile?
+    @State private var creditLoading = true
+    @State private var creditMissing = false
+    @State private var creditError: String?
 
     @Environment(AuthManager.self) private var auth
 
@@ -23,16 +31,23 @@ struct ProfileView: View {
         ScrollView {
             VStack(spacing: AppTheme.spacingLG) {
                 // User Identity Card
-                userCard.slideIn(delay: 0)
+                UserCard(displayName: displayName, displayCompany: displayCompany, userEmail: user.email, profilePhone: profilePhone).slideIn(delay: 0)
 
                 // Stats row
-                statsRow.slideIn(delay: 0.05)
+                StatsRowView(orderCount: orderCount, totalSpent: totalSpent, totalSpentCurrency: totalSpentCurrency).slideIn(delay: 0.05)
+
+                CreditProfileSection(
+                    profile: creditProfile,
+                    isLoading: creditLoading,
+                    missing: creditMissing,
+                    error: creditError
+                ).slideIn(delay: 0.06)
 
                 // Order History link
-                orderHistoryLink.slideIn(delay: 0.07)
+                OrderHistoryLink(orderCount: orderCount).slideIn(delay: 0.07)
 
                 // Empathy Engine — Global Auto-Order
-                empathyEngineSection.slideIn(delay: 0.09)
+                EmpathyEngineSection(globalAutoOrder: $globalAutoOrder, showHistoryAlert: $showHistoryAlert, toggleAction: { enabled, useHistory in await toggleGlobalAutoOrder(enabled: enabled, useHistory: useHistory) }).slideIn(delay: 0.09)
 
                 if !pricingRulesSummary.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -47,16 +62,25 @@ struct ProfileView: View {
                 }
 
                 // Settings
-                settingsSection("Company", icon: "building.2.fill", items: [
+                SettingsSectionView(title: "Company", icon: "building.2.fill", items: [
                     SettingsItem(icon: "building.2", title: "Company Info", subtitle: user.company, view: "AccountProfile"),
+                    SettingsItem(icon: "square.stack.3d.up", title: "Store capabilities", subtitle: "Team, stock, POS packs", view: "Capabilities"),
+                    SettingsItem(icon: "mappin.and.ellipse", title: "Locations", subtitle: "Branches and checkout store", view: "Locations"),
+                    SettingsItem(icon: "shippingbox", title: "Store stock", subtitle: "Receive, putaway, count", view: "StoreStock"),
+                    SettingsItem(icon: "cart.fill", title: "POS", subtitle: "Cashier sales and voids", view: "POS"),
+                    SettingsItem(icon: "clock.fill", title: "Shifts", subtitle: "Clock in and cash recon", view: "Shifts"),
+                    SettingsItem(icon: "square.grid.2x2.fill", title: "Sections", subtitle: "Departments and SKU map", view: "Sections"),
+                    SettingsItem(icon: "chart.bar.doc.horizontal", title: "Reports Pro", subtitle: "Sales and inventory digest", view: "ReportsPro"),
+                    SettingsItem(icon: "hand.raised.fill", title: "Floor assist", subtitle: "Section help tickets", view: "Assist"),
+                    SettingsItem(icon: "person.3.fill", title: "Team", subtitle: "Staff roles and invites", view: "Team"),
                     SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods", view: "SavedCards"),
                     SettingsItem(icon: "key", title: "API Access", subtitle: "Developer settings"),
-                    SettingsItem(icon: "person.2.fill", title: "Family Members", subtitle: "Manage family/staff", view: "FamilyMembers"),
+                    SettingsItem(icon: "person.2.fill", title: "Family contacts", subtitle: "Legacy name/phone list", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
 
-                preferencesSection.slideIn(delay: 0.15)
+                PreferencesSection(aiAutoOrder: $aiAutoOrder, notificationsEnabled: $notificationsEnabled).slideIn(delay: 0.15)
 
-                settingsSection("Support", icon: "questionmark.circle.fill", items: [
+                SettingsSectionView(title: "Support", icon: "questionmark.circle.fill", items: [
                     SettingsItem(icon: "questionmark.circle", title: "Help Center", subtitle: nil),
                     SettingsItem(icon: "envelope", title: "Contact Support", subtitle: nil),
                     SettingsItem(icon: "doc.text", title: "Terms of Service", subtitle: nil),
@@ -74,355 +98,20 @@ struct ProfileView: View {
         .background(AppTheme.background)
         .task { await loadProfile() }
         .task { await loadStats() }
+        .task { await loadCreditProfile() }
         .task(id: refreshCenter.refreshToken) {
             await loadProfile()
             await loadStats()
+            await loadCreditProfile()
         }
         .refreshable {
             await loadProfile()
             await loadStats()
+            await loadCreditProfile()
         }
     }
 
     // MARK: - User Card
-
-    private var userCard: some View {
-        VStack(spacing: 0) {
-            // Gradient header
-            ZStack(alignment: .bottomLeading) {
-                AppTheme.heroGradient
-                    .frame(height: 80)
-
-                HStack(spacing: AppTheme.spacingLG) {
-                    ZStack {
-                        Circle()
-                            .fill(.white)
-                            .frame(width: 68, height: 68)
-                            .shadow(color: AppTheme.accent.opacity(0.2), radius: 8, y: 4)
-                        Text(String(user.name.prefix(1)))
-                            .font(.system(.title, design: .rounded, weight: .bold))
-                            .foregroundStyle(AppTheme.accent)
-                    }
-                    .offset(y: 34)
-
-                    Spacer()
-                }
-                .padding(.horizontal, AppTheme.spacingXL)
-            }
-
-            // Info
-            VStack(alignment: .leading, spacing: AppTheme.spacingXS) {
-                Text(displayName)
-                    .font(.system(.title3, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                Text(displayCompany)
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(AppTheme.textSecondary)
-
-                HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: "envelope")
-                        .font(.system(size: 12))
-                    Text(user.email ?? "—")
-                        .font(.system(.caption, design: .rounded))
-                }
-                .foregroundStyle(AppTheme.textTertiary)
-
-                if !profilePhone.isEmpty {
-                    HStack(spacing: AppTheme.spacingSM) {
-                        Image(systemName: "phone")
-                            .font(.system(size: 12))
-                        Text(profilePhone)
-                            .font(.system(.caption, design: .rounded))
-                    }
-                    .foregroundStyle(AppTheme.textTertiary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, AppTheme.spacingXL)
-            .padding(.top, AppTheme.spacingHuge)
-            .padding(.bottom, AppTheme.spacingLG)
-        }
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-        .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
-    }
-
-    // MARK: - Order History Link
-
-    private var orderHistoryLink: some View {
-        NavigationLink {
-            HistoryView()
-        } label: {
-            HStack(spacing: AppTheme.spacingMD) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                        .fill(AppTheme.surfaceElevated)
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-
-                Text("Order History")
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                Spacer()
-
-                Text("\(orderCount) orders")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
-            }
-            .padding(AppTheme.spacingLG)
-            .background(AppTheme.cardBackground)
-            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-            .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
-        }
-    }
-
-    // MARK: - Empathy Engine (Global Auto-Order)
-
-    private var empathyEngineSection: some View {
-        LabCard {
-            VStack(alignment: .leading, spacing: 0) {
-                sectionLabel("Empathy Engine", icon: "arrow.triangle.2.circlepath")
-
-                HStack(spacing: AppTheme.spacingMD) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                            .fill(AppTheme.surfaceElevated)
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Auto-Order Everything")
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text("Auto-order all previously ordered products")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: Binding(
-                        get: { globalAutoOrder },
-                        set: { newVal in
-                            globalAutoOrder = newVal
-                            if newVal {
-                                showHistoryAlert = true
-                            } else {
-                                Task { await toggleGlobalAutoOrder(enabled: false, useHistory: false) }
-                            }
-                        }
-                    ))
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                }
-                .padding(.horizontal, AppTheme.spacingLG)
-                .padding(.vertical, AppTheme.spacingMD)
-
-                if globalAutoOrder {
-                    HStack(spacing: AppTheme.spacingSM) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AppTheme.success)
-                        Text("Global auto-order is active. This overrides individual supplier and product settings.")
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-                    .padding(.horizontal, AppTheme.spacingLG)
-                    .padding(.bottom, AppTheme.spacingMD)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-        }
-        .animation(AnimationConstants.express, value: globalAutoOrder)
-        .alert("Use Previous Analytics?", isPresented: $showHistoryAlert, actions: {
-            Button("Use History") {
-                Task { await toggleGlobalAutoOrder(enabled: true, useHistory: true) }
-            }
-            Button("Start Fresh") {
-                Task { await toggleGlobalAutoOrder(enabled: true, useHistory: false) }
-            }
-            Button("Cancel", role: .cancel) {
-                globalAutoOrder = false
-            }
-        }, message: {
-            Text("Use existing order history for predictions, or start fresh? Starting fresh requires at least 2 orders per product.")
-        })
-    }
-
-    // MARK: - Stats
-
-    @State private var orderCount: Int = 0
-    @State private var totalSpent: Int64 = 0
-    @State private var totalSpentCurrency: String = "UZS"
-
-    private func formatSpent(_ amount: Int64, currency: String) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = " "
-        formatter.maximumFractionDigits = 0
-        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
-        return "\(formatted) \(currency.isEmpty ? "UZS" : currency)"
-    }
-
-    private var statsRow: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: AppTheme.spacingMD),
-                GridItem(.flexible(), spacing: AppTheme.spacingMD),
-                GridItem(.flexible(), spacing: AppTheme.spacingMD),
-            ],
-            spacing: AppTheme.spacingMD
-        ) {
-            KpiTile(title: "Orders", value: "\(orderCount)", systemImage: "shippingbox.fill", tint: AppTheme.accent)
-            KpiTile(title: "Spent", value: formatSpent(totalSpent, currency: totalSpentCurrency), systemImage: "dollarsign.circle.fill", tint: AppTheme.success)
-            KpiTile(title: "Rating", value: "4.9", systemImage: "star.fill", tint: AppTheme.warning)
-        }
-    }
-
-    // MARK: - Preferences
-
-    private var preferencesSection: some View {
-        LabCard {
-            VStack(alignment: .leading, spacing: 0) {
-                sectionLabel("Preferences", icon: "slider.horizontal.3")
-
-                settingsToggle(icon: "sparkles", title: "AI Auto-Order", subtitle: "Automatically place predicted orders", color: AppTheme.accent, isOn: $aiAutoOrder)
-
-                Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight).padding(.leading, 60)
-
-                settingsToggle(icon: "bell.fill", title: "Notifications", subtitle: "Push notification alerts", color: AppTheme.info, isOn: $notificationsEnabled)
-            }
-        }
-    }
-
-    // MARK: - Settings Section
-
-    private func settingsSection(_ title: String, icon: String, items: [SettingsItem]) -> some View {
-        LabCard {
-            VStack(alignment: .leading, spacing: 0) {
-                sectionLabel(title, icon: icon)
-
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    settingsRow(item)
-
-                    if index < items.count - 1 {
-                        Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight).padding(.leading, 60)
-                    }
-                }
-            }
-        }
-    }
-
-    private func sectionLabel(_ title: String, icon: String) -> some View {
-        HStack(spacing: AppTheme.spacingSM) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppTheme.accent)
-            Text(title)
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(AppTheme.textTertiary)
-                .textCase(.uppercase)
-        }
-        .padding(.horizontal, AppTheme.spacingLG)
-        .padding(.top, AppTheme.spacingMD)
-        .padding(.bottom, AppTheme.spacingSM)
-    }
-
-    private func settingsRow(_ item: SettingsItem) -> some View {
-        Group {
-            if item.view == "FamilyMembers" {
-                NavigationLink(destination: FamilyMembersView()) {
-                    settingsRowContent(item)
-                }
-            } else if item.view == "AccountProfile" {
-                NavigationLink(destination: AccountProfileView()) {
-                    settingsRowContent(item)
-                }
-            } else if item.view == "SavedCards" {
-                NavigationLink(destination: SavedCardsView()) {
-                    settingsRowContent(item)
-                }
-            } else {
-                settingsRowContent(item)
-            }
-        }
-    }
-    
-    private func settingsRowContent(_ item: SettingsItem) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                    .fill(AppTheme.accentSoft.opacity(0.4))
-                    .frame(width: 34, height: 34)
-                Image(systemName: item.icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.accent)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(AppTheme.textTertiary)
-                }
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
-        }
-        .padding(.horizontal, AppTheme.spacingLG)
-        .padding(.vertical, AppTheme.spacingMD)
-    }
-
-    private func settingsToggle(icon: String, title: String, subtitle: String, color: Color, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                    .fill(color.opacity(0.12))
-                    .frame(width: 34, height: 34)
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(color)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(subtitle)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
-
-            Spacer()
-
-            Toggle("", isOn: isOn)
-                .tint(AppTheme.accent)
-                .labelsHidden()
-        }
-        .padding(.horizontal, AppTheme.spacingLG)
-        .padding(.vertical, AppTheme.spacingMD)
-    }
-
-    // MARK: - API
 
     private func loadProfile() async {
         do {
@@ -466,6 +155,26 @@ struct ProfileView: View {
         } catch {}
     }
 
+    private func loadCreditProfile() async {
+        creditLoading = true
+        creditError = nil
+        creditMissing = false
+        do {
+            creditProfile = try await api.getCreditProfile()
+        } catch let apiError as APIError {
+            creditProfile = nil
+            if case .serverError(let statusCode, _) = apiError, statusCode == 404 {
+                creditMissing = true
+            } else {
+                creditError = "Credit unavailable"
+            }
+        } catch {
+            creditProfile = nil
+            creditError = "Credit unavailable"
+        }
+        creditLoading = false
+    }
+
     private func toggleGlobalAutoOrder(enabled: Bool, useHistory: Bool) async {
         do {
             let body: [String: Any] = ["global_auto_order_enabled": enabled, "use_history": useHistory]
@@ -475,14 +184,6 @@ struct ProfileView: View {
             )
         } catch {}
     }
-}
-
-private struct SettingsItem: Identifiable {
-    let id = UUID()
-    let icon: String
-    let title: String
-    let subtitle: String?
-    var view: String? = nil
 }
 
 #Preview {
@@ -499,74 +200,143 @@ struct FamilyMembersView: View {
     @State private var isLoading = false
     @State private var showAddSheet = false
     @State private var errorMessage: String? = nil
+    @State private var familyWrites: String = "open"
+    @State private var migrating = false
+    @State private var showMigrateConfirm = false
+    @State private var migrateResult: FamilyMigrateResult? = nil
+    @State private var banner: String? = nil
 
     private let api = APIClient.shared
+    private var familyGone: Bool { familyWrites == "gone" }
 
     var body: some View {
-        ResponsiveGridContentWrapper {
-            if isLoading && members.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowBackground(Color.clear)
-            } else if let errorMessage, members.isEmpty {
-                VStack(spacing: AppTheme.spacingMD) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.orange)
-                    Text("Family Members Unavailable")
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                    Label("Migrate Family → Team", systemImage: "arrow.left.arrow.right")
                         .font(.headline)
-                    Text(errorMessage)
-                        .font(.subheadline)
+                    Text("Contacts with a phone become Team RECEIVER accounts. Temp passwords show once.")
+                        .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .listRowBackground(Color.clear)
-            } else if members.isEmpty {
-                VStack(spacing: AppTheme.spacingMD) {
-                    Image(systemName: "person.2.badge.plus")
-                        .font(.system(size: 40))
-                        .foregroundStyle(AppTheme.textTertiary)
-                    Text("No Family Members")
-                        .font(.headline)
-                    Text("Add family members to allow them to place orders.")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(members) { member in
-                    HStack(spacing: AppTheme.spacingMD) {
-                        ZStack {
-                            Circle().fill(AppTheme.surfaceElevated).frame(width: 40, height: 40)
-                            Image(systemName: "person.fill").foregroundStyle(AppTheme.accent)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(member.nickname).font(.system(.body, design: .rounded, weight: .semibold))
-                            Text("Added \(member.createdAt.prefix(10))").font(.caption).foregroundStyle(AppTheme.textTertiary)
+                    Button {
+                        showMigrateConfirm = true
+                    } label: {
+                        if migrating {
+                            ProgressView()
+                        } else {
+                            Text(familyGone ? "Already migrated" : "Migrate to Team")
                         }
                     }
-                    .padding(.vertical, 4)
+                    .disabled(migrating || familyGone || members.isEmpty)
+                    .buttonStyle(.borderedProminent)
                 }
-                .onDelete { offsets in
-                    let membersToDelete = offsets.map { members[$0] }
-                    for m in membersToDelete {
-                        Task {
-                            do {
-                                try await api.removeFamilyMember(memberId: m.id)
-                                errorMessage = nil
-                                await loadMembers()
-                            } catch {
-                                errorMessage = RetailerErrorSupport.message(
-                                    for: error,
-                                    restricted: "Family member removal is restricted for this account.",
-                                    offline: "Offline mode active. Reconnect and retry family member removal.",
-                                    fallback: "Could not remove family member. Please try again.",
-                                )
+                .padding(.vertical, 4)
+            }
+
+            if let migrateResult {
+                Section("Migration result") {
+                    Text("\(migrateResult.migrated.count) migrated · \(migrateResult.skipped.count) skipped · \(migrateResult.familyRemaining) remaining")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    ForEach(migrateResult.migrated) { m in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.name).font(.body.weight(.semibold))
+                            Text("\(m.phone) · \(m.retailerRole)")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textTertiary)
+                            if let pw = m.tempPassword {
+                                HStack {
+                                    Text(pw).font(.system(.caption, design: .monospaced))
+                                    Spacer()
+                                    Button("Copy") {
+                                        UIPasteboard.general.string = pw
+                                    }
+                                    .font(.caption)
+                                }
+                            }
+                        }
+                    }
+                    ForEach(migrateResult.skipped) { s in
+                        Text("\(s.phone ?? s.memberId): \(s.reason)")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+
+            if let banner {
+                Section {
+                    Text(banner).font(.caption).foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            if let errorMessage {
+                Section {
+                    Text(errorMessage).font(.caption).foregroundStyle(.red)
+                }
+            }
+
+            Section("Members") {
+                if isLoading && members.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else if members.isEmpty {
+                    VStack(spacing: AppTheme.spacingMD) {
+                        Image(systemName: familyGone ? "person.3" : "person.2.badge.plus")
+                            .font(.system(size: 36))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Text(familyGone ? "Family list empty" : "No Family Members")
+                            .font(.headline)
+                        Text(familyGone
+                            ? "Use Team to manage staff."
+                            : "Add members with a phone, then migrate to Team.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else {
+                    ForEach(members) { member in
+                        HStack(spacing: AppTheme.spacingMD) {
+                            ZStack {
+                                Circle().fill(AppTheme.surfaceElevated).frame(width: 40, height: 40)
+                                Image(systemName: "person.fill").foregroundStyle(AppTheme.accent)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.name).font(.system(.body, design: .rounded, weight: .semibold))
+                                if let phone = member.phone, !phone.isEmpty {
+                                    Text(phone).font(.caption).foregroundStyle(AppTheme.textTertiary)
+                                } else {
+                                    Text("No phone — skipped on migrate")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                                if let created = member.createdAt {
+                                    Text("Added \(created.prefix(10))")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onDelete { offsets in
+                        let membersToDelete = offsets.map { members[$0] }
+                        for m in membersToDelete {
+                            Task {
+                                do {
+                                    try await api.removeFamilyMember(memberId: m.id)
+                                    errorMessage = nil
+                                    await loadMembers()
+                                } catch {
+                                    errorMessage = RetailerErrorSupport.message(
+                                        for: error,
+                                        restricted: "Family member removal is restricted for this account.",
+                                        offline: "Offline mode active. Reconnect and retry family member removal.",
+                                        fallback: "Could not remove family member. Please try again.",
+                                    )
+                                }
                             }
                         }
                     }
@@ -577,11 +347,21 @@ struct FamilyMembersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAddSheet = true } label: { Image(systemName: "plus") }
+                if !familyGone {
+                    Button { showAddSheet = true } label: { Image(systemName: "plus") }
+                }
             }
         }
         .task { await loadMembers() }
         .refreshable { await loadMembers() }
+        .confirmationDialog("Migrate to Team?", isPresented: $showMigrateConfirm, titleVisibility: .visible) {
+            Button("Migrate") {
+                Task { await migrateToTeam() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Temporary passwords appear once. Family add closes after migrate.")
+        }
         .sheet(isPresented: $showAddSheet) {
             NavigationStack {
                 AddFamilyMemberView { request in
@@ -592,12 +372,17 @@ struct FamilyMembersView: View {
                             await loadMembers()
                             showAddSheet = false
                         } catch {
-                            errorMessage = RetailerErrorSupport.message(
-                                for: error,
-                                restricted: "Family member creation is restricted for this account.",
-                                offline: "Offline mode active. Reconnect and retry family member creation.",
-                                fallback: "Could not add family member. Please try again.",
-                            )
+                            if case APIError.serverError(let code, _) = error, code == 410 {
+                                familyWrites = "gone"
+                                errorMessage = "Family writes closed. Use Team staff."
+                            } else {
+                                errorMessage = RetailerErrorSupport.message(
+                                    for: error,
+                                    restricted: "Family member creation is restricted for this account.",
+                                    offline: "Offline mode active. Reconnect and retry family member creation.",
+                                    fallback: "Could not add family member. Please try again.",
+                                )
+                            }
                         }
                     }
                 }
@@ -605,12 +390,14 @@ struct FamilyMembersView: View {
             .presentationDetents([.medium])
         }
     }
-    
+
     private func loadMembers() async {
         isLoading = true
         errorMessage = nil
         do {
-            members = try await api.getFamilyMembers()
+            let list = try await api.getFamilyMembersList()
+            members = list.members
+            familyWrites = list.familyWrites ?? "open"
         } catch {
             errorMessage = RetailerErrorSupport.message(
                 for: error,
@@ -621,17 +408,40 @@ struct FamilyMembersView: View {
         }
         isLoading = false
     }
+
+    private func migrateToTeam() async {
+        migrating = true
+        errorMessage = nil
+        do {
+            let result = try await api.migrateFamilyToTeam()
+            migrateResult = result
+            familyWrites = result.familyWrites
+            banner = "Migrated \(result.migrated.count). Copy temp passwords now."
+            await loadMembers()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Migration requires staff.manage permission.",
+                offline: "Offline mode active. Reconnect and retry migration.",
+                fallback: "Migration failed. Please try again.",
+            )
+        }
+        migrating = false
+    }
 }
 
 struct AddFamilyMemberView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var nickname = ""
+    @State private var name = ""
+    @State private var phone = ""
     var onAdd: (FamilyMemberRequest) -> Void
 
     var body: some View {
         Form {
             Section("Details") {
-                TextField("Nickname", text: $nickname)
+                TextField("Name", text: $name)
+                TextField("Phone (required for Team migrate)", text: $phone)
+                    .keyboardType(.phonePad)
             }
         }
         .navigationTitle("Add Member")
@@ -640,9 +450,15 @@ struct AddFamilyMemberView: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    onAdd(FamilyMemberRequest(nickname: nickname, photoUrl: nil))
+                    onAdd(FamilyMemberRequest(
+                        name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        phone: phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? nil
+                            : phone.trimmingCharacters(in: .whitespacesAndNewlines),
+                        photoUrl: nil
+                    ))
                 }
-                .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
     }

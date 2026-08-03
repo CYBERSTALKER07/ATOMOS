@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+'use client';
+
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import { useRouter } from 'next/navigation';
 import type { WarehouseDispatchOrder } from '@pegasusx/types';
 import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
@@ -5,16 +10,27 @@ import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
 
+<<<<<<< HEAD
 function formatVU(value: number) {
   return value.toFixed(1);
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
+=======
+function fmt(n: number) {
+  return new Intl.NumberFormat('uz-UZ').format(n);
+}
+
+function formatVU(vu: number) {
+  return vu.toFixed(1);
+}
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
 interface DispatchOrderListProps {
   orders: WarehouseDispatchOrder[];
   selectedOrderIds: Set<string>;
   allSelected: boolean;
+<<<<<<< HEAD
   toggleSelectAll: () => void;
   toggleOrder: (orderId: string) => void;
   opsActingId: string | null;
@@ -36,6 +52,33 @@ export function DispatchOrderList({
 }: DispatchOrderListProps) {
   const router = useRouter();
 
+=======
+  opsActingId: string | null;
+  toggleOrder: (orderId: string) => void;
+  toggleSelectAll: () => void;
+  onOpenDetail: (orderId: string) => void;
+  onProposeDate: (orderId: string) => void;
+  onReject: (orderId: string) => void;
+}
+
+/**
+ * Undispatched orders section of the Dispatch screen.
+ *
+ * Renders a VirtualScrollList of order cards with selection checkboxes,
+ * ops menu actions (propose date / reject), and a select-all toggle.
+ */
+export default function DispatchOrderList({
+  orders,
+  selectedOrderIds,
+  allSelected,
+  opsActingId,
+  toggleOrder,
+  toggleSelectAll,
+  onOpenDetail,
+  onProposeDate,
+  onReject,
+}: DispatchOrderListProps) {
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   return (
     <PageSection
       title={`Undispatched orders (${orders.length})`}
@@ -75,6 +118,7 @@ export function DispatchOrderList({
                   index={index}
                   disabled={opsActingId === order.order_id}
                   detailOpenMode="double"
+<<<<<<< HEAD
                   onOpenDetail={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
                   onProposeDate={() => {
                     setOpsDialog({ orderId: order.order_id, kind: 'propose' });
@@ -85,6 +129,11 @@ export function DispatchOrderList({
                     setOpsDialog({ orderId: order.order_id, kind: 'reject' });
                     setOpsReason('');
                   }}
+=======
+                  onOpenDetail={() => onOpenDetail(order.order_id)}
+                  onProposeDate={() => onProposeDate(order.order_id)}
+                  onReject={() => onReject(order.order_id)}
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 />
               </div>
             </div>

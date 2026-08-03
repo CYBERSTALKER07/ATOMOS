@@ -26,8 +26,13 @@ struct ReplenishmentView: View {
                 ReplenishmentList(
                     insights: insights,
                     actingId: actingId,
+<<<<<<< HEAD
                     onApprove: { insightId in runAction(insightId: insightId, action: "approve") },
                     onDismiss: { insightId in runAction(insightId: insightId, action: "dismiss") }
+=======
+                    onApprove: { id in runAction(insightId: id, action: "approve") },
+                    onDismiss: { id in runAction(insightId: id, action: "dismiss") }
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 )
             }
         }

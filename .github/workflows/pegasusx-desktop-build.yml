@@ -1,0 +1,182 @@
+# PegasusX Tauri desktop clients — Windows + Linux release bundles
+name: PegasusX Desktop Build (Windows + Linux)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+  push:
+    branches: [main, master]
+    paths:
+      - "pegasusX/apps/retailer-app-desktop/**"
+      - "pegasusX/apps/supplier-portal/**"
+      - "pegasusX/apps/warehouse-portal/**"
+      - "pegasusX/apps/factory-portal/**"
+      - "pegasusX/packages/desktop-*/**"
+      - "pegasusX/scripts/build_desktop_*.sh"
+      - "pegasusX/scripts/apply_desktop_updater_pubkey.sh"
+      - ".github/workflows/pegasusx-desktop-build.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "pegasusX/apps/retailer-app-desktop/**"
+      - "pegasusX/apps/supplier-portal/**"
+      - "pegasusX/apps/warehouse-portal/**"
+      - "pegasusX/apps/factory-portal/**"
+      - "pegasusX/packages/desktop-*/**"
+      - "pegasusX/scripts/build_desktop_*.sh"
+      - ".github/workflows/pegasusx-desktop-build.yml"
+
+defaults:
+  run:
+    working-directory: pegasusX
+
+jobs:
+  desktop:
+    name: ${{ matrix.app }} / ${{ matrix.os_label }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows
+          - app: retailer-app-desktop
+            filter: "@pegasusx/retailer-app-desktop"
+            runner: windows-latest
+            os_label: windows
+            rust_target: x86_64-pc-windows-msvc
+            build_script: scripts/build_desktop_windows.sh
+            artifact_glob: |
+              pegasusX/apps/retailer-app-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.msi
+              pegasusX/apps/retailer-app-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
+          - app: supplier-portal
+            filter: "@pegasusx/supplier-portal"
+            runner: windows-latest
+            os_label: windows
+            rust_target: x86_64-pc-windows-msvc
+            build_script: scripts/build_desktop_windows.sh
+            artifact_glob: |
+              pegasusX/apps/supplier-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.msi
+              pegasusX/apps/supplier-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
+          - app: warehouse-portal
+            filter: "@pegasusx/warehouse-portal"
+            runner: windows-latest
+            os_label: windows
+            rust_target: x86_64-pc-windows-msvc
+            build_script: scripts/build_desktop_windows.sh
+            artifact_glob: |
+              pegasusX/apps/warehouse-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.msi
+              pegasusX/apps/warehouse-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
+          - app: factory-portal
+            filter: "@pegasusx/factory-portal"
+            runner: windows-latest
+            os_label: windows
+            rust_target: x86_64-pc-windows-msvc
+            build_script: scripts/build_desktop_windows.sh
+            artifact_glob: |
+              pegasusX/apps/factory-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.msi
+              pegasusX/apps/factory-portal/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
+          # Linux
+          - app: retailer-app-desktop
+            filter: "@pegasusx/retailer-app-desktop"
+            runner: ubuntu-22.04
+            os_label: linux
+            rust_target: x86_64-unknown-linux-gnu
+            build_script: scripts/build_desktop_linux.sh
+            artifact_glob: |
+              pegasusX/apps/retailer-app-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
+              pegasusX/apps/retailer-app-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.AppImage
+              pegasusX/apps/retailer-app-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.rpm
+          - app: supplier-portal
+            filter: "@pegasusx/supplier-portal"
+            runner: ubuntu-22.04
+            os_label: linux
+            rust_target: x86_64-unknown-linux-gnu
+            build_script: scripts/build_desktop_linux.sh
+            artifact_glob: |
+              pegasusX/apps/supplier-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
+              pegasusX/apps/supplier-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.AppImage
+              pegasusX/apps/supplier-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.rpm
+          - app: warehouse-portal
+            filter: "@pegasusx/warehouse-portal"
+            runner: ubuntu-22.04
+            os_label: linux
+            rust_target: x86_64-unknown-linux-gnu
+            build_script: scripts/build_desktop_linux.sh
+            artifact_glob: |
+              pegasusX/apps/warehouse-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
+              pegasusX/apps/warehouse-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.AppImage
+              pegasusX/apps/warehouse-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.rpm
+          - app: factory-portal
+            filter: "@pegasusx/factory-portal"
+            runner: ubuntu-22.04
+            os_label: linux
+            rust_target: x86_64-unknown-linux-gnu
+            build_script: scripts/build_desktop_linux.sh
+            artifact_glob: |
+              pegasusX/apps/factory-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
+              pegasusX/apps/factory-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.AppImage
+              pegasusX/apps/factory-portal/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.rpm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install Linux WebKit / bundler deps
+        if: matrix.os_label == 'linux'
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libwebkit2gtk-4.0-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libfuse2
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Apply desktop updater pubkey
+        run: bash scripts/apply_desktop_updater_pubkey.sh
+        env:
+          TAURI_UPDATER_PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+
+      - name: Build desktop bundle
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bash ${{ matrix.build_script }} ${{ matrix.app }}
+
+      - name: Authenticode sign (Windows, optional)
+        if: matrix.os_label == 'windows'
+        shell: pwsh
+        working-directory: pegasusX
+        env:
+          WINDOWS_CODESIGN_PFX_B64: ${{ secrets.WINDOWS_CODESIGN_PFX_B64 }}
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          .\scripts\sign_desktop_windows.ps1 -Path "apps\${{ matrix.app }}\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.exe"
+          .\scripts\sign_desktop_windows.ps1 -Path "apps\${{ matrix.app }}\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\msi\*.msi"
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-${{ matrix.os_label }}-${{ matrix.rust_target }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: warn
+          retention-days: 14

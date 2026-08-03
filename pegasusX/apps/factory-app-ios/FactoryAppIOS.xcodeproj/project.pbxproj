@@ -8,39 +8,63 @@
 
 /* Begin PBXBuildFile section */
 		03674756C8EB9B91B0A41D0E /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4532C75C995D16EC05A335FB /* AddressLocationField.swift */; };
+		05EBA0061A619F4219859EFD /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */; };
 		0742290990B8EC6F43281C17 /* FactoryRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C5251859EFAFB4B2107D3E /* FactoryRealtimeClient.swift */; };
+		08CA1FF040E6E97CA34FA9E3 /* EnterpriseUpdateConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EFAF22F41199B41862A12A /* EnterpriseUpdateConfig.swift */; };
 		08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC51DD69BB5CCE42A117B38 /* InsightsView.swift */; };
+		0FC2DB7B71907C7989729F3E /* TransferRowMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF1633A7D1692E9F72AB086 /* TransferRowMetric.swift */; };
+		15EA2316D07DA5D0B024F98E /* SupplyRequestDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD60CC9FDEF70B9B7F313A74 /* SupplyRequestDetailView.swift */; };
 		1C15225A9927C93662296EB5 /* FactoryAdaptiveShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E957C90194CA73C5A59D1DAB /* FactoryAdaptiveShell.swift */; };
 		24A68A828099E87D954B471F /* CollapsibleSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B66EA8683D1FB78B47E227 /* CollapsibleSidebar.swift */; };
 		2C7F31F05954E438E2DC7A3C /* FactoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0231B3E4D7F77C26D58738 /* FactoryServiceTests.swift */; };
+		3068C7EEC80EA0580683D204 /* BaySection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AABD2CFE44FA64F21B8E21F /* BaySection.swift */; };
+		320035B954207FE7D323EB85 /* TransferListSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B3229E4C6014D81EF09964 /* TransferListSummary.swift */; };
+		322311FDB22F7DDAF9486251 /* ResponsiveGridContentWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080A6FC9BE75A113DE0F0080 /* ResponsiveGridContentWrapper.swift */; };
+		34D976A6813BA50531659E9F /* MoveTransferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F3142D413F648E09DB1FCD /* MoveTransferSheet.swift */; };
 		35CF7AC078CC5B2F0C963A22 /* FactorySection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961A01FF5CFDB45C17B99746 /* FactorySection.swift */; };
 		3D520BC90F58AF888DE91482 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C976EBBA1A5F4C902C31E35D /* FirebaseAuth */; };
 		3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */; };
 		40243DBF7537C30F6A47F0CF /* CreateTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B014D56219BFD89EA5B77D3A /* CreateTransferView.swift */; };
+		40CF2CF5A10151E919EEC804 /* LoadingBayOverviewCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5ED76FA14ED27DEC1DED38 /* LoadingBayOverviewCard.swift */; };
 		47459729F677F92B3ACA5B83 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB755B322A726A294EEC85F /* APIClient.swift */; };
+		48A9E38AED4162425BD810AA /* StaffRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41BF71EA9248309A067F606E /* StaffRow.swift */; };
 		48ED56F565717162B979873D /* StaffDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1247BC5863AD5F90858FA13 /* StaffDetailView.swift */; };
+		4C3A2AB1D9431435220AF08D /* OverrideTransferRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F5F0AA3BDB6F9127886F60 /* OverrideTransferRow.swift */; };
 		4D472A3686F8B5AA24148AD3 /* PegasusFactoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */; };
+		59873A84FCE9F72F01650AF1 /* TransferRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1601C7B4FD005454B7F8FD0B /* TransferRow.swift */; };
+		5B12F13B786C97D8F48BD5D2 /* OverrideManifestCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC901AC9F9D63F0E2848E60 /* OverrideManifestCard.swift */; };
 		5C6DEFE0CADFE38494C16FD8 /* PegasusTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A92A7EA5118A84F8F8C17FC /* PegasusTheme.swift */; };
+		5CA48325F4ABF639C0027376 /* DashboardMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8959918C1EC4BAAE02AC57EC /* DashboardMetric.swift */; };
 		5E6560B300D805AD82DACA18 /* FactoryModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0B1140D5798EB2516DB40F /* FactoryModelsTests.swift */; };
 		64B4242096746A8D7360D648 /* RealtimeRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682C014A715771016579623C /* RealtimeRefresh.swift */; };
 		66B16A17003A82215A8A2193 /* LocationSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A15E1B525243BA0F292DAC /* LocationSetupView.swift */; };
+		6898FC45CD105650F0B03355 /* MetricBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F243932568D925AFF333792F /* MetricBox.swift */; };
+		6B5F33957A5AD40E2211AFCE /* StaffListContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA186D19599F74294C966A1 /* StaffListContent.swift */; };
 		6BDF07C3CDC17ADF554752D1 /* TransferDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6C6EAAB02F80B564C9BCD /* TransferDetailView.swift */; };
 		6C998653E2E0B9ADCEB9EE48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65B6A7D0C790233CDAEDC888 /* Assets.xcassets */; };
+		7576339ED7961A29097CCCE5 /* ExceptionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B406528D62E0AF06273F07B1 /* ExceptionRow.swift */; };
+		760976497556C8B7AEE050A0 /* DashboardHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3A9BA40A75ADA7E48A09F3 /* DashboardHeroCard.swift */; };
 		7878D411C0DE41FF5577746F /* ManifestDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43EECD24BC340D74BB39421 /* ManifestDetailView.swift */; };
 		7A2B4D8201F5EDBF9DD69B8D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7885E90C63F0AA3F6A265967 /* MainTabView.swift */; };
 		7D095F0CD0E3535A6E8E066A /* LoadingBayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6239EC7C0CEFAD20C95B0B21 /* LoadingBayView.swift */; };
+		84027AF1B9845359746C5903 /* BayTransferCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A913424FD2BB0582DFA59F74 /* BayTransferCard.swift */; };
+		86795F6CFD97BB56FB672906 /* SupplyRequestRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C4AEFC033E6B129CF6F6B0 /* SupplyRequestRow.swift */; };
 		86EC4A98CD5B8DE8DBA508EA /* ManifestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0D273C0C67144AD1CAE459 /* ManifestsView.swift */; };
 		87D324445DB50EBDC5896BE4 /* FactoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2F6B034F3FD70146E20705 /* FactoryService.swift */; };
 		8811E3713399727115D7D3F5 /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67CC6AC4686F542B2B886DE4 /* GeocodeService.swift */; };
+		88B6D0AEBC70DECD5B6B1331 /* PayloadOverrideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF95C7DDB4727D22C2ABFABD /* PayloadOverrideView.swift */; };
 		8A05A5A20037C02B2C229750 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E97F7B92921F4EE83D7CCE /* DashboardView.swift */; };
 		8B07F1DD85FF5CFE08719AF3 /* FactoryIdempotency.swift in Sources */ = {isa = PBXBuildFile; fileRef = F170D2F36D0CD6B34B035020 /* FactoryIdempotency.swift */; };
 		8C2D42FE49BBD7DFD75B0BB6 /* TransferListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B35DC81A348996CF6CA9F9 /* TransferListView.swift */; };
+		8E048B81874F47CB9BBBFC16 /* FactoryHandoffTimelineSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B07A0455529C4DFD3B6D50 /* FactoryHandoffTimelineSection.swift */; };
 		918E61A6B116A4369184C7FA /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D0C54985077D6EE59FDE11 /* AnalyticsView.swift */; };
 		9711CE96449103BDD265AC98 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA69CE240E8A7A9EEB1F394 /* ClientPolicyBanner.swift */; };
 		A2BB10F2E52DABEC212FFE52 /* FactorySessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33ED2B17544B57C652ACB204 /* FactorySessionReconcile.swift */; };
 		A39DCB597D7CFBCC78AC9C1B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 61B0F722953FE7ECE8D8024D /* FirebaseCore */; };
+		A5CBABA02C0A687D0EB74C4C /* SupplyRequestsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8F94E4BF7F6819462D06DF /* SupplyRequestsHubView.swift */; };
 		A7B0578A7D77CCE2B46138AE /* FactoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ADEBA6CBEF2A106F4A3A041 /* FactoryModels.swift */; };
 		A93895EDB327FC7267A0FEA2 /* FactoryUiComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB95F15662A11A0F7871B6B3 /* FactoryUiComponents.swift */; };
+		B0C2D7B1CA0FD160389EAB5B /* WorkflowLaunchCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092721F5934FD35B0AE42A83 /* WorkflowLaunchCard.swift */; };
 		B167D4F46B13720EE92BC31A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E46867427863103A6E92A2D /* LoginView.swift */; };
 		B43DA2CD8424BD96F4DECB6D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA446365E92950FF385D6DBC /* StaffView.swift */; };
 		B81EE39843B98299185D7CAC /* FactoryMoreHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61913D058CA383C53FA61DBA /* FactoryMoreHubView.swift */; };
@@ -71,20 +95,31 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01B07A0455529C4DFD3B6D50 /* FactoryHandoffTimelineSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryHandoffTimelineSection.swift; sourceTree = "<group>"; };
 		02E09A1C7F6B99160D396909 /* FirebaseAuthHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthHelper.swift; sourceTree = "<group>"; };
+		080A6FC9BE75A113DE0F0080 /* ResponsiveGridContentWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsiveGridContentWrapper.swift; sourceTree = "<group>"; };
+		092721F5934FD35B0AE42A83 /* WorkflowLaunchCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowLaunchCard.swift; sourceTree = "<group>"; };
 		13B35DC81A348996CF6CA9F9 /* TransferListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferListView.swift; sourceTree = "<group>"; };
+		1601C7B4FD005454B7F8FD0B /* TransferRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferRow.swift; sourceTree = "<group>"; };
 		18FCEDB087C2895C22FE8E21 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater.swift; sourceTree = "<group>"; };
 		1ADEBA6CBEF2A106F4A3A041 /* FactoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryModels.swift; sourceTree = "<group>"; };
+		2D5ED76FA14ED27DEC1DED38 /* LoadingBayOverviewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingBayOverviewCard.swift; sourceTree = "<group>"; };
 		33ED2B17544B57C652ACB204 /* FactorySessionReconcile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactorySessionReconcile.swift; sourceTree = "<group>"; };
 		3503FBD9CF8F804F64FC8CE6 /* FactoryAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FactoryAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		35E97F7B92921F4EE83D7CCE /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		3AB755B322A726A294EEC85F /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3BA69CE240E8A7A9EEB1F394 /* ClientPolicyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientPolicyBanner.swift; sourceTree = "<group>"; };
+		3FF1633A7D1692E9F72AB086 /* TransferRowMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferRowMetric.swift; sourceTree = "<group>"; };
+		41BF71EA9248309A067F606E /* StaffRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffRow.swift; sourceTree = "<group>"; };
+		43F5F0AA3BDB6F9127886F60 /* OverrideTransferRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideTransferRow.swift; sourceTree = "<group>"; };
 		4532C75C995D16EC05A335FB /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
+		48C4AEFC033E6B129CF6F6B0 /* SupplyRequestRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestRow.swift; sourceTree = "<group>"; };
 		4A92A7EA5118A84F8F8C17FC /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
 		4A9A1DCD8B62A8C0A6585ECF /* JwtPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JwtPayload.swift; sourceTree = "<group>"; };
 		4BFFF694A3FEC6403672F067 /* LocationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSettingsView.swift; sourceTree = "<group>"; };
+		4EC901AC9F9D63F0E2848E60 /* OverrideManifestCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideManifestCard.swift; sourceTree = "<group>"; };
 		5A0B1140D5798EB2516DB40F /* FactoryModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryModelsTests.swift; sourceTree = "<group>"; };
+		5E3A9BA40A75ADA7E48A09F3 /* DashboardHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardHeroCard.swift; sourceTree = "<group>"; };
 		61913D058CA383C53FA61DBA /* FactoryMoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryMoreHubView.swift; sourceTree = "<group>"; };
 		6239EC7C0CEFAD20C95B0B21 /* LoadingBayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingBayView.swift; sourceTree = "<group>"; };
 		63B66EA8683D1FB78B47E227 /* CollapsibleSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollapsibleSidebar.swift; sourceTree = "<group>"; };
@@ -100,26 +135,39 @@
 		7B0D273C0C67144AD1CAE459 /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
 		8399214E79359CB730CE3176 /* FleetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetView.swift; sourceTree = "<group>"; };
 		8431996C7B34D41A52B1AD0E /* NotificationInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationInboxView.swift; sourceTree = "<group>"; };
+		8959918C1EC4BAAE02AC57EC /* DashboardMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardMetric.swift; sourceTree = "<group>"; };
 		8DC51DD69BB5CCE42A117B38 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		8E9D41DBEDB9C7FA0010A7F6 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		961A01FF5CFDB45C17B99746 /* FactorySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactorySection.swift; sourceTree = "<group>"; };
+		98B3229E4C6014D81EF09964 /* TransferListSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferListSummary.swift; sourceTree = "<group>"; };
+		9AABD2CFE44FA64F21B8E21F /* BaySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaySection.swift; sourceTree = "<group>"; };
 		9BB5114CE3489527DD42F57B /* PegasusMonochromeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMonochromeTheme.swift; sourceTree = "<group>"; };
 		9D2F6B034F3FD70146E20705 /* FactoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryService.swift; sourceTree = "<group>"; };
+		9DA186D19599F74294C966A1 /* StaffListContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffListContent.swift; sourceTree = "<group>"; };
 		9E46867427863103A6E92A2D /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A3D0C54985077D6EE59FDE11 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		A913424FD2BB0582DFA59F74 /* BayTransferCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BayTransferCard.swift; sourceTree = "<group>"; };
+		A9EFAF22F41199B41862A12A /* EnterpriseUpdateConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseUpdateConfig.swift; sourceTree = "<group>"; };
 		B014D56219BFD89EA5B77D3A /* CreateTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTransferView.swift; sourceTree = "<group>"; };
 		B1247BC5863AD5F90858FA13 /* StaffDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffDetailView.swift; sourceTree = "<group>"; };
+		B406528D62E0AF06273F07B1 /* ExceptionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionRow.swift; sourceTree = "<group>"; };
 		C30E30CF549BA9B629158C18 /* ManifestExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestExceptionsView.swift; sourceTree = "<group>"; };
 		C43EECD24BC340D74BB39421 /* ManifestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestDetailView.swift; sourceTree = "<group>"; };
 		CC0573ADB1ECAC9305E1C304 /* FactoryAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FactoryAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC63E30C1ECF5047F20B4DF6 /* PegasusStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusStateViews.swift; sourceTree = "<group>"; };
+		CD60CC9FDEF70B9B7F313A74 /* SupplyRequestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestDetailView.swift; sourceTree = "<group>"; };
 		D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryStateViews.swift; sourceTree = "<group>"; };
 		D3A15E1B525243BA0F292DAC /* LocationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSetupView.swift; sourceTree = "<group>"; };
 		D5E6C6EAAB02F80B564C9BCD /* TransferDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDetailView.swift; sourceTree = "<group>"; };
 		DB95F15662A11A0F7871B6B3 /* FactoryUiComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryUiComponents.swift; sourceTree = "<group>"; };
 		E5104E434E2B1B78926A3710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E957C90194CA73C5A59D1DAB /* FactoryAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryAdaptiveShell.swift; sourceTree = "<group>"; };
+		EE8F94E4BF7F6819462D06DF /* SupplyRequestsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestsHubView.swift; sourceTree = "<group>"; };
+		EF95C7DDB4727D22C2ABFABD /* PayloadOverrideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayloadOverrideView.swift; sourceTree = "<group>"; };
+		F0F3142D413F648E09DB1FCD /* MoveTransferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveTransferSheet.swift; sourceTree = "<group>"; };
 		F170D2F36D0CD6B34B035020 /* FactoryIdempotency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryIdempotency.swift; sourceTree = "<group>"; };
+		F243932568D925AFF333792F /* MetricBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricBox.swift; sourceTree = "<group>"; };
 		FA446365E92950FF385D6DBC /* StaffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffView.swift; sourceTree = "<group>"; };
 		FB0231B3E4D7F77C26D58738 /* FactoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryServiceTests.swift; sourceTree = "<group>"; };
 		FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusFactoryApp.swift; sourceTree = "<group>"; };
@@ -177,8 +225,23 @@
 				3BA69CE240E8A7A9EEB1F394 /* ClientPolicyBanner.swift */,
 				D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */,
 				DB95F15662A11A0F7871B6B3 /* FactoryUiComponents.swift */,
+				3AB3D47D2858F08292D87F37 /* Dashboard */,
+				9DBB59C2E222F71B190B6E7D /* LoadingBay */,
+				1E137B9857D2F388AB632265 /* ManifestExceptions */,
+				F045E8A83F2D18CCE63AF067 /* PayloadOverride */,
+				6F410BF49A08224AF5569F94 /* Staff */,
+				6E21981D28C21EF8FC8E8BC3 /* SupplyRequests */,
+				432FA53AC69BD16DE23F826E /* Transfers */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		1E137B9857D2F388AB632265 /* ManifestExceptions */ = {
+			isa = PBXGroup;
+			children = (
+				B406528D62E0AF06273F07B1 /* ExceptionRow.swift */,
+			);
+			path = ManifestExceptions;
 			sourceTree = "<group>";
 		};
 		1FAC582D54BEC88B653C3FAF /* Dashboard */ = {
@@ -194,6 +257,7 @@
 			children = (
 				E957C90194CA73C5A59D1DAB /* FactoryAdaptiveShell.swift */,
 				961A01FF5CFDB45C17B99746 /* FactorySection.swift */,
+				080A6FC9BE75A113DE0F0080 /* ResponsiveGridContentWrapper.swift */,
 			);
 			path = Layout;
 			sourceTree = "<group>";
@@ -211,8 +275,19 @@
 			isa = PBXGroup;
 			children = (
 				18FCEDB087C2895C22FE8E21 /* AutoUpdater.swift */,
+				A9EFAF22F41199B41862A12A /* EnterpriseUpdateConfig.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		3AB3D47D2858F08292D87F37 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				5E3A9BA40A75ADA7E48A09F3 /* DashboardHeroCard.swift */,
+				8959918C1EC4BAAE02AC57EC /* DashboardMetric.swift */,
+				092721F5934FD35B0AE42A83 /* WorkflowLaunchCard.swift */,
+			);
+			path = Dashboard;
 			sourceTree = "<group>";
 		};
 		3FEEA7F5F515A144C2E31EC0 /* Theme */ = {
@@ -221,6 +296,16 @@
 				4A92A7EA5118A84F8F8C17FC /* PegasusTheme.swift */,
 			);
 			path = Theme;
+			sourceTree = "<group>";
+		};
+		432FA53AC69BD16DE23F826E /* Transfers */ = {
+			isa = PBXGroup;
+			children = (
+				98B3229E4C6014D81EF09964 /* TransferListSummary.swift */,
+				1601C7B4FD005454B7F8FD0B /* TransferRow.swift */,
+				3FF1633A7D1692E9F72AB086 /* TransferRowMetric.swift */,
+			);
+			path = Transfers;
 			sourceTree = "<group>";
 		};
 		4BC5A08E50C4744D5B64BB91 /* Insights */ = {
@@ -255,6 +340,32 @@
 				1ADEBA6CBEF2A106F4A3A041 /* FactoryModels.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		62793B82BD9C5727A56A5899 /* SupplyRequests */ = {
+			isa = PBXGroup;
+			children = (
+				CD60CC9FDEF70B9B7F313A74 /* SupplyRequestDetailView.swift */,
+				EE8F94E4BF7F6819462D06DF /* SupplyRequestsHubView.swift */,
+			);
+			path = SupplyRequests;
+			sourceTree = "<group>";
+		};
+		6E21981D28C21EF8FC8E8BC3 /* SupplyRequests */ = {
+			isa = PBXGroup;
+			children = (
+				48C4AEFC033E6B129CF6F6B0 /* SupplyRequestRow.swift */,
+			);
+			path = SupplyRequests;
+			sourceTree = "<group>";
+		};
+		6F410BF49A08224AF5569F94 /* Staff */ = {
+			isa = PBXGroup;
+			children = (
+				9DA186D19599F74294C966A1 /* StaffListContent.swift */,
+				41BF71EA9248309A067F606E /* StaffRow.swift */,
+			);
+			path = Staff;
 			sourceTree = "<group>";
 		};
 		72A524EBB13980621E9FDF73 /* Location */ = {
@@ -292,6 +403,17 @@
 			);
 			name = pegasusX;
 			path = ../..;
+			sourceTree = "<group>";
+		};
+		9DBB59C2E222F71B190B6E7D /* LoadingBay */ = {
+			isa = PBXGroup;
+			children = (
+				9AABD2CFE44FA64F21B8E21F /* BaySection.swift */,
+				A913424FD2BB0582DFA59F74 /* BayTransferCard.swift */,
+				01B07A0455529C4DFD3B6D50 /* FactoryHandoffTimelineSection.swift */,
+				2D5ED76FA14ED27DEC1DED38 /* LoadingBayOverviewCard.swift */,
+			);
+			path = LoadingBay;
 			sourceTree = "<group>";
 		};
 		9FD25B01872666C1A563C2F1 /* Setup */ = {
@@ -335,8 +457,10 @@
 				72A524EBB13980621E9FDF73 /* Location */,
 				2A032413E6A7580D447A09BF /* Manifests */,
 				B0D0AD24CE193700E14C8C27 /* Notifications */,
+				D51A5EB72F4C3B3254DED0F5 /* PayloadOverride */,
 				9FD25B01872666C1A563C2F1 /* Setup */,
 				BA572E0E3239BD585E251832 /* Staff */,
+				62793B82BD9C5727A56A5899 /* SupplyRequests */,
 				FDB6D6F00D7F60F25F600BBA /* Transfers */,
 			);
 			path = Views;
@@ -359,6 +483,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D51A5EB72F4C3B3254DED0F5 /* PayloadOverride */ = {
+			isa = PBXGroup;
+			children = (
+				EF95C7DDB4727D22C2ABFABD /* PayloadOverrideView.swift */,
+			);
+			path = PayloadOverride;
+			sourceTree = "<group>";
+		};
 		E19806D630B2A5989C4DF47B /* Fleet */ = {
 			isa = PBXGroup;
 			children = (
@@ -375,10 +507,22 @@
 			path = factoryapp;
 			sourceTree = "<group>";
 		};
+		F045E8A83F2D18CCE63AF067 /* PayloadOverride */ = {
+			isa = PBXGroup;
+			children = (
+				F243932568D925AFF333792F /* MetricBox.swift */,
+				F0F3142D413F648E09DB1FCD /* MoveTransferSheet.swift */,
+				4EC901AC9F9D63F0E2848E60 /* OverrideManifestCard.swift */,
+				43F5F0AA3BDB6F9127886F60 /* OverrideTransferRow.swift */,
+			);
+			path = PayloadOverride;
+			sourceTree = "<group>";
+		};
 		F8BD2BE12E7AB96C8F7FAAE9 /* FactoryApp */ = {
 			isa = PBXGroup;
 			children = (
 				65B6A7D0C790233CDAEDC888 /* Assets.xcassets */,
+				A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */,
 				E5104E434E2B1B78926A3710 /* Info.plist */,
 				FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */,
 				7084A880E2936D26F7F2B4DC /* Preview Assets.xcassets */,
@@ -503,6 +647,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6C998653E2E0B9ADCEB9EE48 /* Assets.xcassets in Resources */,
+				05EBA0061A619F4219859EFD /* GoogleService-Info.plist in Resources */,
 				FAB0D145289DC722563FCF74 /* Preview Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -518,11 +663,18 @@
 				03674756C8EB9B91B0A41D0E /* AddressLocationField.swift in Sources */,
 				918E61A6B116A4369184C7FA /* AnalyticsView.swift in Sources */,
 				FD7166286B124FC8B3D9556A /* AutoUpdater.swift in Sources */,
+				3068C7EEC80EA0580683D204 /* BaySection.swift in Sources */,
+				84027AF1B9845359746C5903 /* BayTransferCard.swift in Sources */,
 				9711CE96449103BDD265AC98 /* ClientPolicyBanner.swift in Sources */,
 				24A68A828099E87D954B471F /* CollapsibleSidebar.swift in Sources */,
 				40243DBF7537C30F6A47F0CF /* CreateTransferView.swift in Sources */,
+				760976497556C8B7AEE050A0 /* DashboardHeroCard.swift in Sources */,
+				5CA48325F4ABF639C0027376 /* DashboardMetric.swift in Sources */,
 				8A05A5A20037C02B2C229750 /* DashboardView.swift in Sources */,
+				08CA1FF040E6E97CA34FA9E3 /* EnterpriseUpdateConfig.swift in Sources */,
+				7576339ED7961A29097CCCE5 /* ExceptionRow.swift in Sources */,
 				1C15225A9927C93662296EB5 /* FactoryAdaptiveShell.swift in Sources */,
+				8E048B81874F47CB9BBBFC16 /* FactoryHandoffTimelineSection.swift in Sources */,
 				8B07F1DD85FF5CFE08719AF3 /* FactoryIdempotency.swift in Sources */,
 				A7B0578A7D77CCE2B46138AE /* FactoryModels.swift in Sources */,
 				B81EE39843B98299185D7CAC /* FactoryMoreHubView.swift in Sources */,
@@ -538,6 +690,7 @@
 				8811E3713399727115D7D3F5 /* GeocodeService.swift in Sources */,
 				08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */,
 				E1A62D7ACC3E7EE121A6D75C /* JwtPayload.swift in Sources */,
+				40CF2CF5A10151E919EEC804 /* LoadingBayOverviewCard.swift in Sources */,
 				7D095F0CD0E3535A6E8E066A /* LoadingBayView.swift in Sources */,
 				BDDF15D54A7D434E049338C8 /* LocationSettingsView.swift in Sources */,
 				66B16A17003A82215A8A2193 /* LocationSetupView.swift in Sources */,
@@ -546,19 +699,34 @@
 				7878D411C0DE41FF5577746F /* ManifestDetailView.swift in Sources */,
 				DF47873BDFDE8A9B4BEDDCBC /* ManifestExceptionsView.swift in Sources */,
 				86EC4A98CD5B8DE8DBA508EA /* ManifestsView.swift in Sources */,
+				6898FC45CD105650F0B03355 /* MetricBox.swift in Sources */,
+				34D976A6813BA50531659E9F /* MoveTransferSheet.swift in Sources */,
 				BE9AD149B40A0CAE4835FB7F /* NotificationInboxView.swift in Sources */,
+				5B12F13B786C97D8F48BD5D2 /* OverrideManifestCard.swift in Sources */,
+				4C3A2AB1D9431435220AF08D /* OverrideTransferRow.swift in Sources */,
+				88B6D0AEBC70DECD5B6B1331 /* PayloadOverrideView.swift in Sources */,
 				4D472A3686F8B5AA24148AD3 /* PegasusFactoryApp.swift in Sources */,
 				DA8176591520EA97FDF0821E /* PegasusMonochromeTheme.swift in Sources */,
 				E30F205B3BF7F783ABA97029 /* PegasusMotion.swift in Sources */,
 				FF1C9DA30130215D2941CAB3 /* PegasusStateViews.swift in Sources */,
 				5C6DEFE0CADFE38494C16FD8 /* PegasusTheme.swift in Sources */,
 				64B4242096746A8D7360D648 /* RealtimeRefresh.swift in Sources */,
+				322311FDB22F7DDAF9486251 /* ResponsiveGridContentWrapper.swift in Sources */,
 				CFA728C85791EF98555053DA /* RootView.swift in Sources */,
 				48ED56F565717162B979873D /* StaffDetailView.swift in Sources */,
+				6B5F33957A5AD40E2211AFCE /* StaffListContent.swift in Sources */,
+				48A9E38AED4162425BD810AA /* StaffRow.swift in Sources */,
 				B43DA2CD8424BD96F4DECB6D /* StaffView.swift in Sources */,
+				15EA2316D07DA5D0B024F98E /* SupplyRequestDetailView.swift in Sources */,
+				86795F6CFD97BB56FB672906 /* SupplyRequestRow.swift in Sources */,
+				A5CBABA02C0A687D0EB74C4C /* SupplyRequestsHubView.swift in Sources */,
 				BECAD54B64577D55D0DA9ECE /* TokenStore.swift in Sources */,
 				6BDF07C3CDC17ADF554752D1 /* TransferDetailView.swift in Sources */,
+				320035B954207FE7D323EB85 /* TransferListSummary.swift in Sources */,
 				8C2D42FE49BBD7DFD75B0BB6 /* TransferListView.swift in Sources */,
+				59873A84FCE9F72F01650AF1 /* TransferRow.swift in Sources */,
+				0FC2DB7B71907C7989729F3E /* TransferRowMetric.swift in Sources */,
+				B0C2D7B1CA0FD160389EAB5B /* WorkflowLaunchCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -593,7 +761,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.factory;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pegasusx.factory-app";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -626,7 +794,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.factory;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pegasusx.factory-app";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

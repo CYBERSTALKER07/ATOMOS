@@ -9,6 +9,8 @@ import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
+import { OrderLineItems } from '@/components/orders/OrderLineItems';
+import { OrderOpsActions } from '@/components/orders/OrderOpsActions';
 import { useToast } from '@/components/Toast';
 import { createSupplierApi } from '@/lib/api';
 import { canAdminOrderOps } from '@/lib/admin-scope';
@@ -172,6 +174,38 @@ export default function SupplierOrderDetailPage() {
               Driver {listRow.driver_id} · Route {listRow.route_id || 'pending'}
             </p>
           ) : null}
+          {(state === 'COMPLETED' || state === 'FISCAL_FAILED' || state === 'FISCALIZING') && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                className="md-btn md-btn-tonal text-sm px-3 py-1.5"
+                disabled={acting}
+                onClick={() => {
+                  void import('@/lib/order-receipt').then((m) =>
+                    m.openSupplierOrderReceipt(orderId, 'html').catch((err) =>
+                      toast(err instanceof Error ? err.message : 'Receipt unavailable', 'error'),
+                    ),
+                  );
+                }}
+              >
+                View receipt
+              </button>
+              <button
+                type="button"
+                className="md-btn md-btn-outlined text-sm px-3 py-1.5"
+                disabled={acting}
+                onClick={() => {
+                  void import('@/lib/order-receipt').then((m) =>
+                    m.openSupplierOrderReceipt(orderId, 'pdf').catch((err) =>
+                      toast(err instanceof Error ? err.message : 'PDF unavailable', 'error'),
+                    ),
+                  );
+                }}
+              >
+                Download PDF
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="md-card p-5">
@@ -179,98 +213,36 @@ export default function SupplierOrderDetailPage() {
           <OrderTimelinePanel orderId={orderId} />
         </div>
 
-        {(detail?.line_items?.length ?? 0) > 0 ? (
-          <div className="md-card p-0 overflow-hidden">
-            <div className="px-5 py-3 border-b border-[var(--color-md-outline-variant)] text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)]">
-              Line items
-            </div>
-            <table className="desk-table w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-md-outline-variant)]">
-                  <th className="text-left py-2 px-4">Product</th>
-                  <th className="text-right py-2 px-4">Qty</th>
-                  <th className="text-right py-2 px-4">Unit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detail?.line_items?.map((item, idx) => (
-                  <tr key={`${item.product_id ?? idx}`} className="border-b border-[var(--color-md-outline-variant)] last:border-0">
-                    <td className="py-2 px-4">{item.product_name || item.product_id || '—'}</td>
-                    <td className="py-2 px-4 text-right font-mono tabular-nums">{item.quantity ?? '—'}</td>
-                    <td className="py-2 px-4 text-right font-mono tabular-nums">
-                      {item.unit_price != null ? new Intl.NumberFormat('uz-UZ').format(item.unit_price) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        {canWarehouseMutate && (flags.canDelay || flags.canReject) ? (
-          <div className="md-card p-5 space-y-4">
-            <p className="md-typescale-title-small">Warehouse admin actions</p>
-            {flags.canDelay ? (
-              <label className="block text-sm">
-                <span className="text-[var(--color-md-outline)]">New delivery date</span>
-                <input
-                  type="date"
-                  value={proposedDate}
-                  onChange={(e) => setProposedDate(e.target.value)}
-                  className="md-input-outlined w-full px-3 py-2 mt-1"
-                  disabled={acting}
-                />
-              </label>
-            ) : null}
-            <textarea
-              className="md-input-outlined w-full px-3 py-2 min-h-[80px]"
-              placeholder="Reason (required)"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={acting}
-            />
-            <div className="flex flex-wrap gap-2">
-              {flags.canDelay ? (
-                <button
-                  type="button"
-                  className="md-btn md-btn-tonal px-4 py-2"
-                  disabled={acting || !proposedDate || !reason.trim()}
-                  onClick={() =>
-                    void runMutation(
-                      'Delivery date proposed · retailer notified',
-                      () =>
-                        supplierWarehouseOps.proposeOrderDelivery(
-                          orderId,
-                          warehouseId!,
-                          isoDeliveryDate(proposedDate),
-                          reason.trim(),
-                        ),
-                      true,
-                    )
-                  }
-                >
-                  Delay delivery
-                </button>
-              ) : null}
-              {flags.canReject ? (
-                <button
-                  type="button"
-                  className="md-btn md-btn-outlined px-4 py-2 text-[var(--color-md-error)]"
-                  disabled={acting}
-                  onClick={() =>
-                    void runMutation(
-                      'Order cancelled · retailer notified',
-                      () => supplierWarehouseOps.rejectOrder(orderId, warehouseId!, reason.trim()),
-                      true,
-                    )
-                  }
-                >
-                  Cancel order
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        <OrderLineItems detail={detail} />
+        <OrderOpsActions
+          canWarehouseMutate={canWarehouseMutate}
+          flags={flags}
+          acting={acting}
+          proposedDate={proposedDate}
+          setProposedDate={setProposedDate}
+          reason={reason}
+          setReason={setReason}
+          onDelay={() =>
+            void runMutation(
+              'Delivery date proposed · retailer notified',
+              () =>
+                supplierWarehouseOps.proposeOrderDelivery(
+                  orderId,
+                  warehouseId!,
+                  isoDeliveryDate(proposedDate),
+                  reason.trim(),
+                ),
+              true,
+            )
+          }
+          onReject={() =>
+            void runMutation(
+              'Order cancelled · retailer notified',
+              () => supplierWarehouseOps.rejectOrder(orderId, warehouseId!, reason.trim()),
+              true,
+            )
+          }
+        />
       </div>
     </PageChrome>
   );

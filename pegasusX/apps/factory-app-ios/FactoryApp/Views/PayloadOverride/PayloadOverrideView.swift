@@ -1,15 +1,5 @@
 import SwiftUI
 
-private struct MoveCandidate {
-    let sourceManifestId: String
-    let transfer: ManifestTransfer
-}
-
-private struct CancelTransferCandidate {
-    let manifestId: String
-    let transfer: ManifestTransfer
-}
-
 struct PayloadOverrideView: View {
     @State private var manifests: [Manifest] = []
     @State private var loading = true
@@ -57,7 +47,20 @@ struct PayloadOverrideView: View {
                             }
                             
                             ForEach(manifests) { manifest in
-                                overrideManifestCard(manifest)
+                                OverrideManifestCard(
+                                    manifest: manifest,
+                                    isProcessing: isProcessing,
+                                    manifestsCount: manifests.count,
+                                    onCancelManifest: {
+                                        cancelManifestCandidate = manifest
+                                    },
+                                    onMoveTransfer: { transfer in
+                                        moveCandidate = MoveCandidate(sourceManifestId: manifest.id, transfer: transfer)
+                                    },
+                                    onReleaseTransfer: { transfer in
+                                        cancelTransferCandidate = CancelTransferCandidate(manifestId: manifest.id, transfer: transfer)
+                                    }
+                                )
                             }
                         }
                         .padding()
@@ -94,7 +97,16 @@ struct PayloadOverrideView: View {
                 get: { moveCandidate },
                 set: { moveCandidate = $0 }
             )) { candidate in
-                moveTransferSheet(candidate)
+                MoveTransferSheet(
+                    candidate: candidate,
+                    manifests: manifests,
+                    selectedTargetManifestId: $selectedTargetManifestId,
+                    isProcessing: isProcessing,
+                    onCancel: { moveCandidate = nil },
+                    onMove: { targetId in
+                        Task { await moveTransfer(candidate, targetManifestId: targetId) }
+                    }
+                )
             }
             // Release Transfer Confirmation
             .alert("Remove Transfer", isPresented: Binding(
@@ -127,143 +139,7 @@ struct PayloadOverrideView: View {
         }
     }
 
-    @ViewBuilder
-    private func overrideManifestCard(_ manifest: Manifest) -> some View {
-        VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-            HStack {
-                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
-                        .font(.headline)
-                    Text("Manifest \(manifest.id.prefix(8))")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Cancel Manifest", role: .destructive) {
-                    cancelManifestCandidate = manifest
-                }
-                .buttonStyle(.bordered)
-                .disabled(isProcessing)
-            }
 
-            let capacity = manifest.maxCapacityVU > 0 ? manifest.maxCapacityVU : 1.0
-            let progress = min(max(manifest.totalVolumeVU / capacity, 0.0), 1.0)
-            
-            ProgressView(value: progress)
-                .tint(progress > 0.95 ? .red : .blue)
-            
-            HStack {
-                metricBox("Volume", "\(Int(manifest.totalVolumeVU)) VU")
-                metricBox("Capacity", "\(Int(manifest.maxCapacityVU)) VU")
-                metricBox("Transfers", "\(manifest.transfers.count)")
-            }
-            
-            if manifest.transfers.isEmpty {
-                Text("No transfers are assigned to this manifest.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color(uiColor: .secondarySystemBackground))
-                    .cornerRadius(LabTheme.radiusSM)
-            } else {
-                ForEach(manifest.transfers) { transfer in
-                    transferRow(transfer: transfer, manifestId: manifest.id)
-                }
-            }
-        }
-        .padding()
-        .background(Color(uiColor: .secondarySystemBackground))
-        .cornerRadius(LabTheme.radiusLG)
-    }
-
-    @ViewBuilder
-    private func transferRow(transfer: ManifestTransfer, manifestId: String) -> some View {
-        VStack(spacing: LabTheme.spacingSM) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(transfer.productName.isEmpty ? "Transfer \(transfer.id.prefix(8))" : transfer.productName)
-                        .font(.subheadline.bold())
-                    Text(transfer.id.prefix(8))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                FactoryStatusBadge(text: transfer.state)
-            }
-            
-            HStack {
-                metricBox("Qty", "\(transfer.quantity)")
-                metricBox("Volume", "\(Int(transfer.volumeVU)) VU")
-            }
-            
-            HStack {
-                Button("Move") {
-                    moveCandidate = MoveCandidate(sourceManifestId: manifestId, transfer: transfer)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isProcessing || manifests.count <= 1)
-                
-                Button("Release") {
-                    cancelTransferCandidate = CancelTransferCandidate(manifestId: manifestId, transfer: transfer)
-                }
-                .buttonStyle(.bordered)
-                .disabled(isProcessing)
-            }
-        }
-        .padding()
-        .background(Color(uiColor: .systemBackground))
-        .cornerRadius(LabTheme.radiusMD)
-    }
-
-    @ViewBuilder
-    private func metricBox(_ label: String, _ value: String) -> some View {
-        VStack(spacing: LabTheme.spacingXXS) {
-            Text(value)
-                .font(.headline)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, LabTheme.spacingSM)
-        .background(Color(uiColor: .systemBackground))
-        .cornerRadius(LabTheme.radiusSM)
-    }
-
-    @ViewBuilder
-    private func moveTransferSheet(_ candidate: MoveCandidate) -> some View {
-        NavigationStack {
-            let targets = manifests.filter { $0.id != candidate.sourceManifestId }
-            ResponsiveGridContentWrapper {
-                ForEach(targets, selection: $selectedTargetManifestId) { target in
-                VStack(alignment: .leading) {
-                    Text(target.truckPlate.isEmpty ? String(target.truckId.prefix(8)) : target.truckPlate)
-                        .font(.headline)
-                    Text("\(Int(target.totalVolumeVU)) / \(Int(target.maxCapacityVU)) VU")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .tag(target.id)
-            }
-            .navigationTitle("Move Transfer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { moveCandidate = nil }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Move") {
-                        if let targetId = selectedTargetManifestId {
-                            Task { await moveTransfer(candidate, targetManifestId: targetId) }
-                        }
-                    }
-                    .disabled(selectedTargetManifestId == nil || isProcessing)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
 
     @MainActor
     private func load(silent: Bool = false) async {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	segmentkafka "github.com/segmentio/kafka-go"
 )
 
@@ -14,7 +15,12 @@ type kafkaDLQWriter struct {
 }
 
 func NewDLQWriterFromCSV(brokersCSV, topic string) (DLQWriter, error) {
-	brokers := splitAndTrimBrokers(brokersCSV)
+	return NewDLQWriterFromCSVWithAuth(brokersCSV, topic, kafkautil.ClientAuth{})
+}
+
+// NewDLQWriterFromCSVWithAuth builds a DLQ writer with optional GCP Managed Kafka auth.
+func NewDLQWriterFromCSVWithAuth(brokersCSV, topic string, auth kafkautil.ClientAuth) (DLQWriter, error) {
+	brokers := kafkautil.SplitBrokers(brokersCSV)
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka dlq writer: at least one broker required")
 	}
@@ -22,15 +28,23 @@ func NewDLQWriterFromCSV(brokersCSV, topic string) (DLQWriter, error) {
 	if trimmedTopic == "" {
 		return nil, fmt.Errorf("kafka dlq writer: topic required")
 	}
+	transport, err := kafkautil.Transport(auth)
+	if err != nil {
+		return nil, fmt.Errorf("kafka dlq writer: transport: %w", err)
+	}
 	return &kafkaDLQWriter{
 		writer: &segmentkafka.Writer{
-			Addr:         segmentkafka.TCP(brokers...),
-			Topic:        trimmedTopic,
-			RequiredAcks: segmentkafka.RequireAll,
-			BatchTimeout: 250 * time.Millisecond,
-			MaxAttempts:  5,
-			Balancer:     &segmentkafka.Hash{},
-			Async:        false,
+			Addr:                   segmentkafka.TCP(brokers...),
+			Topic:                  trimmedTopic,
+			RequiredAcks:           segmentkafka.RequireAll,
+			BatchTimeout:           250 * time.Millisecond,
+			MaxAttempts:            1 << 20, // high bound; WriteTimeout caps wait
+			WriteTimeout:           30 * time.Second,
+			ReadTimeout:            10 * time.Second,
+			Balancer:               &segmentkafka.Hash{},
+			Async:                  false,
+			AllowAutoTopicCreation: false,
+			Transport:              transport,
 		},
 	}, nil
 }
@@ -47,17 +61,4 @@ func (w *kafkaDLQWriter) Close() error {
 		return nil
 	}
 	return w.writer.Close()
-}
-
-func splitAndTrimBrokers(brokersCSV string) []string {
-	parts := strings.Split(brokersCSV, ",")
-	brokers := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		brokers = append(brokers, trimmed)
-	}
-	return brokers
 }

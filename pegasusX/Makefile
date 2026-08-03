@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -8,6 +8,7 @@ help:
 	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
 	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
 	@echo "  test-ssmr-lifecycle   Phase 6: create→dispatch→seal→complete vertical only"
+	@echo "  test-ssmr-fiscal      ADR-009 fiscal hard-gate markers (cash/fail/force/shortfall/shift-freeze)"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
 	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
 	@echo "  planning-export-local-cron  PX-LC-2 daily export+validate; appends artifacts/planning-export-audit.log"
@@ -71,6 +72,9 @@ test-ssmr-infra:
 
 test-ssmr-lifecycle:
 	bash scripts/smoke_ssmr_lifecycle.sh
+
+test-ssmr-fiscal:
+	bash scripts/smoke_ssmr_fiscal.sh
 
 planning-training-export:
 	bash scripts/planning_training_export.sh

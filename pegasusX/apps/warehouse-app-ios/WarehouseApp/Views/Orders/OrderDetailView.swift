@@ -1,6 +1,7 @@
 import SwiftUI
+import UIKit
 
-private enum OrderMutationAction: String, Identifiable {
+enum OrderMutationAction: String, Identifiable {
     case reject
     case overflow
 
@@ -38,6 +39,7 @@ struct OrderDetailView: View {
                     Button("Retry") { load() }
                 }
             } else if let order {
+                let showReceipt = ["COMPLETED", "FISCALIZING", "FISCAL_FAILED"].contains(order.state.uppercased())
                 ResponsiveGridContentWrapper {
                     Section("Summary") {
                         LabeledContent("State", value: order.state)
@@ -45,47 +47,22 @@ struct OrderDetailView: View {
                         LabeledContent("Retailer", value: order.retailerName.isEmpty ? "—" : order.retailerName)
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())
-                    }
-                    if showOps(for: order.state) {
-                        Section("Quick actions") {
-                            if canProposeDate(order.state) {
-                                DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
-                                Button("Propose new date") { showProposeSheet = true }
-                                    .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
-                            TextField("Reason (required for propose and cancel)", text: $reasonInput, axis: .vertical)
-                                .lineLimit(2...4)
-                            if canOverflow(order.state) {
-                                Button("Return to dispatch pool") { pendingAction = .overflow }
-                                    .disabled(mutating)
-                            }
-                            if canReject(order.state) {
-                                Button("Cancel order", role: .destructive) { pendingAction = .reject }
-                                    .disabled(mutating)
-                            }
-                            if canReassign(order.state) {
-                                Button("Reassign order") { loadRecommendations() }
-                                    .disabled(mutating)
+                        if showReceipt {
+                            Button("View Pegasus receipt") {
+                                Task { await openReceipt() }
                             }
                         }
                     }
-                    Section("Line Items (\(order.lineItems.count))") {
-                        ForEach(order.lineItems) { item in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(item.productName.isEmpty ? "Product" : item.productName)
-                                        .font(.headline)
-                                    Text("Qty: \(item.quantity)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text("\(item.unitPrice.formatted()) UZS")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                    OrderOpsActions(
+                        state: order.state,
+                        proposeDate: $proposeDate,
+                        reasonInput: $reasonInput,
+                        showProposeSheet: $showProposeSheet,
+                        pendingAction: $pendingAction,
+                        mutating: mutating,
+                        onLoadRecommendations: { loadRecommendations() }
+                    )
+                    OrderLineItems(lineItems: order.lineItems)
                 }
             }
         }
@@ -224,6 +201,25 @@ struct OrderDetailView: View {
         }
     }
 
+    private func openReceipt() async {
+        do {
+            let meta: OrderReceiptMeta = try await APIClient.shared.get(
+                "v1/warehouse/orders/\(orderId)/receipt",
+                query: ["format": "json"]
+            )
+            let raw = [meta.htmlUrl, meta.qrUrl, meta.pdfUrl]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first { !$0.isEmpty }
+            if let raw, let url = URL(string: raw) {
+                await MainActor.run { UIApplication.shared.open(url) }
+            } else {
+                await MainActor.run { statusMessage = "Receipt unavailable" }
+            }
+        } catch {
+            await MainActor.run { statusMessage = error.localizedDescription }
+        }
+    }
+
     private func runMutation(_ action: OrderMutationAction) {
         mutating = true
         statusMessage = nil
@@ -251,29 +247,7 @@ struct OrderDetailView: View {
         }
     }
 
-    private func showOps(for state: String) -> Bool {
-        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state)
-    }
 
-    private func canProposeDate(_ state: String) -> Bool {
-        let s = state.uppercased()
-        let terminal = s == "COMPLETED" || s == "CANCELLED"
-        let inFlight = s == "LOADED" || s == "IN_TRANSIT"
-        return !terminal && !inFlight
-    }
-
-    private func canReject(_ state: String) -> Bool {
-        let s = state.uppercased()
-        return ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(s)
-    }
-
-    private func canOverflow(_ state: String) -> Bool {
-        ["LOADED", "IN_TRANSIT"].contains(state.uppercased())
-    }
-
-    private func canReassign(_ state: String) -> Bool {
-        ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(state.uppercased())
-    }
 
     private func alertTitle(for action: OrderMutationAction) -> String {
         switch action {

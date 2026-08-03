@@ -26,6 +26,9 @@ struct CashCollectionView: View {
     @State private var errorMessage: String?
     @State private var phase: CashFiscalPhase = .collect
     @State private var driverSocketState = DriverSocketState.shared
+    /// Cash actually taken (tiyin string). Fiscal uses this amount.
+    @State private var amountReceivedText: String = ""
+    @State private var shortfallNote: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,64 +50,19 @@ struct CashCollectionView: View {
 
             switch phase {
             case .fiscalizing:
-                Image(systemName: "hourglass")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.warning)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Fiscalizing")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text(amount.formattedAmount)
-                    .font(.system(size: 36, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s16)
-                ProgressView()
-                    .scaleEffect(1.2)
-                    .padding(.bottom, LabTheme.s8)
-                Text("Cash captured. Waiting for fiscal receipt…")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
-
+                FiscalizingView(amount: amount)
             case .fiscalFailed:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.destructive)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Fiscal Failed")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text("Retry fiscal receipt or call supervisor for force-complete.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
-
+                FiscalFailedView()
             default:
-                Image(systemName: "banknote.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LabTheme.success)
-                    .padding(.bottom, LabTheme.s16)
-                Text("Collect Cash")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text(orderId)
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .padding(.bottom, LabTheme.s16)
-                Text(amount.formattedAmount)
-                    .font(.system(size: 42, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
-                Text("Collect this amount from the retailer before completing.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
+                CollectCashView(
+                    orderId: orderId,
+                    amount: amount,
+                    amountReceivedText: $amountReceivedText,
+                    shortfallNote: shortfallNote
+                )
+                .onChange(of: amountReceivedText) { _, _ in
+                    refreshShortfallNote()
+                }
             }
 
             Spacer()
@@ -174,6 +132,12 @@ struct CashCollectionView: View {
             }
         }
         .background(LabTheme.bg)
+        .onAppear {
+            if amountReceivedText.isEmpty {
+                amountReceivedText = "\(amount)"
+            }
+            refreshShortfallNote()
+        }
         .onChange(of: phase) { _, newPhase in
             if newPhase == .done { onCompleted() }
         }
@@ -217,12 +181,32 @@ struct CashCollectionView: View {
         }
     }
 
+    private var receivedAmountDisplay: Int {
+        Int(amountReceivedText.filter(\.isNumber)) ?? amount
+    }
+
+    private func refreshShortfallNote() {
+        let received = Int64(amountReceivedText.filter(\.isNumber)) ?? Int64(amount)
+        let expected = Int64(amount)
+        if received < expected {
+            shortfallNote = "Shortfall \(Int(expected - received).formattedAmount) — fiscal uses received amount"
+        } else if received > expected {
+            shortfallNote = "Overage \(Int(received - expected).formattedAmount) recorded"
+        } else {
+            shortfallNote = nil
+        }
+    }
+
     private func completeWithCash() {
         isCompleting = true
         errorMessage = nil
+        let received = Int64(amountReceivedText.filter(\.isNumber)) ?? Int64(amount)
         Task {
             do {
-                let resp = try await FleetServiceLive.shared.collectCash(orderId: orderId)
+                let resp = try await FleetServiceLive.shared.collectCash(
+                    orderId: orderId,
+                    amountReceivedMinor: received
+                )
                 Haptics.success()
                 let st = resp.state.uppercased()
                 if st == "COMPLETED" {

@@ -47,7 +47,7 @@ export default function RescuesPage() {
     setRescueOptions([]);
     try {
       const result = await warehouseApi.postWarehousePreviewRescue({
-        broken_driver_id: driver.id
+        broken_driver_id: driver.driver_id
       }, { warehouse_id: warehouseId });
       setRescueOptions(result.rescue_options || []);
     } catch (e: any) {
@@ -63,7 +63,7 @@ export default function RescuesPage() {
     setProposeLoading(true);
     try {
       await warehouseApi.postWarehouseProposeRescue({
-        broken_driver_id: selectedBrokenDriver.id,
+        broken_driver_id: selectedBrokenDriver.driver_id,
         rescue_driver_id: rescueDriverId,
         rescue_id: crypto.randomUUID()
       }, { warehouse_id: warehouseId });
@@ -78,7 +78,7 @@ export default function RescuesPage() {
     }
   }
 
-  const brokenDrivers = drivers.filter(d => d.status === 'NEEDS_RESCUE');
+  const brokenDrivers = drivers.filter(d => d.truck_status === 'NEEDS_RESCUE');
 
   return (
     <PageChrome
@@ -94,10 +94,10 @@ export default function RescuesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {brokenDrivers.map(d => (
-              <div key={d.id} className="border p-4 rounded-xl flex items-center justify-between bg-card text-card-foreground">
+              <div key={d.driver_id} className="border p-4 rounded-xl flex items-center justify-between bg-card text-card-foreground">
                 <div>
                   <div className="font-semibold">{d.name}</div>
-                  <div className="text-sm text-muted-foreground">{d.license_plate} · {d.status}</div>
+                  <div className="text-sm text-muted-foreground">{d.vehicle_label || d.vehicle_id || '—'} · {d.truck_status}</div>
                 </div>
                 <button
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium"

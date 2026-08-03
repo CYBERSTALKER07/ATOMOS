@@ -296,7 +296,7 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
-	s.applySupplierFavoriteMutation(rid, supplierID, action)
+	s.applySupplierFavoriteMutationCtx(r.Context(), rid, supplierID, action)
 	respBytes, err := s.supplierListResponseBytes(r.Context(), rid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_suppliers_failed"})
@@ -308,8 +308,8 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 }
 
 func (s *Service) applySupplierFavoriteMutation(retailerID, supplierID, action string) {
+	// Legacy sync path — prefer durable helper when request context is available.
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	prefs := s.favoriteSuppliers[retailerID]
 	if prefs == nil {
 		prefs = map[string]bool{}
@@ -320,16 +320,19 @@ func (s *Service) applySupplierFavoriteMutation(retailerID, supplierID, action s
 		delete(prefs, supplierID)
 	}
 	s.favoriteSuppliers[retailerID] = prefs
+	s.mu.Unlock()
+}
+
+func (s *Service) applySupplierFavoriteMutationCtx(ctx context.Context, retailerID, supplierID, action string) {
+	_ = s.setFavoriteSupplierDurable(ctx, retailerID, supplierID, action == "add")
 }
 
 func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID string) ([]byte, error) {
-	s.mu.RLock()
-	prefs := s.favoriteSuppliers[retailerID]
-	favorite := false
-	if prefs != nil {
-		favorite = prefs[s.supplierID]
+	prefs, err := s.loadFavoriteSuppliersDurable(ctx, retailerID)
+	if err != nil {
+		s.log.Warn("favorite suppliers load failed", "err", err)
 	}
-	s.mu.RUnlock()
+	favorite := prefs != nil && prefs[s.supplierID]
 
 	var pricing *retailerPricingSummary
 	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.supplierID)
@@ -526,9 +529,7 @@ func (s *Service) demoOrdersForRetailer(ctx context.Context, retailerID string) 
 	if err != nil {
 		return []map[string]any{}
 	}
-	if len(orders) == 0 {
-		orders = demoTrackingOrdersForRetailer(retailerID, s.supplierID)
-	}
+	// Empty list is authoritative — never inject demo tracking fixtures.
 	out := make([]map[string]any, 0, len(orders))
 	for i := range orders {
 		out = append(out, mobileTrackingOrder(orders[i]))
@@ -629,15 +630,33 @@ func (s *Service) HandleFamilyMembers(w http.ResponseWriter, r *http.Request) {
 		members := append([]FamilyMember(nil), s.familyByRetailer[rid]...)
 		s.mu.RUnlock()
 		sort.Slice(members, func(i, j int) bool { return members[i].CreatedAt > members[j].CreatedAt })
-		writeJSON(w, http.StatusOK, map[string]any{"members": members})
+		familyWrites := "open"
+		if s.isFamilyWritesGone(r.Context(), rid) {
+			familyWrites = "gone"
+			// Team is SoT after migrate — do not surface RAM residual list as live family.
+			members = []FamilyMember{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"members":       members,
+			"family_writes": familyWrites,
+			"migrate":       "/v1/retailer/family-members/migrate-to-team",
+		})
 	case http.MethodPost:
+		// After Family→Team migrate, family writes are gone — use Team invites.
+		if s.familyPostBlocked(w, r, rid) {
+			return
+		}
 		var payload map[string]string
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
 		defer r.Body.Close()
+		// Accept name (desktop) or nickname (mobile legacy).
 		name := strings.TrimSpace(payload["name"])
+		if name == "" {
+			name = strings.TrimSpace(payload["nickname"])
+		}
 		if name == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name required"})
 			return
@@ -651,7 +670,11 @@ func (s *Service) HandleFamilyMembers(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		s.familyByRetailer[rid] = append(s.familyByRetailer[rid], m)
 		s.mu.Unlock()
-		writeJSON(w, http.StatusCreated, m)
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"member":  m,
+			"warning": "legacy_family_ram_only_use_migrate_to_team",
+			"migrate": "/v1/retailer/family-members/migrate-to-team",
+		})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
@@ -1382,17 +1405,18 @@ func trackingLocationFromTelemetry(location telemetry.DriverLocation) *TrackingL
 
 func retailerIDFromRequest(r *http.Request) (string, error) {
 	if claims, ok := auth.FromContext(r.Context()); ok {
-		subject := strings.TrimSpace(claims.Subject)
-		if subject != "" {
+		// Retail OS v2: tenant id is RetailerOrgID; legacy v1 uses Subject as retailer id.
+		orgID := auth.ResolveRetailerOrgID(claims)
+		if orgID != "" {
 			pathRetailerID := strings.TrimSpace(chi.URLParam(r, "retailerID"))
-			if pathRetailerID != "" && pathRetailerID != subject {
+			if pathRetailerID != "" && pathRetailerID != orgID {
 				return "", errRetailerScopeMismatch
 			}
 			queryRetailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
-			if queryRetailerID != "" && queryRetailerID != subject {
+			if queryRetailerID != "" && queryRetailerID != orgID {
 				return "", errRetailerScopeMismatch
 			}
-			return subject, nil
+			return orgID, nil
 		}
 	}
 	if id := strings.TrimSpace(chi.URLParam(r, "retailerID")); id != "" {

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
@@ -23,12 +24,30 @@ export function OrgMemberTable({
   orgMembers: ReadyState["orgMembers"];
   topology: SupplierTopologyResponse;
   onUpdated: () => void;
+=======
+import { useState } from "react";
+import { ReadyState, orgRoleOptions, formatRole, describeMemberNode, toErrorMessage, isErrorMessage, supplierScopeId } from "./utils";
+import type { Role, HomeNodeType } from "@pegasusx/types";
+import { ApiClient } from "@pegasusx/api-client";
+import { supplierOrgMemberDeactivateKey, supplierOrgMemberUpdateKey } from "@pegasusx/api-client";
+import { StatusText } from "./utils";
+
+export function OrgMemberTable({ 
+  state, 
+  api, 
+  onUpdated 
+}: { 
+  state: ReadyState; 
+  api: ApiClient; 
+  onUpdated: (orgMembers: ReadyState["orgMembers"]) => void;
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 }) {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
   const [orgMessage, setOrgMessage] = useState<string | null>(null);
 
   async function deactivateOrgMember(userId: string) {
+<<<<<<< HEAD
     setMemberActionId(userId);
     setOrgMessage(null);
     try {
@@ -39,6 +58,20 @@ export function OrgMemberTable({
       );
       setOrgMessage("Org member deactivated.");
       onUpdated();
+=======
+    if (state.status !== "ready") {
+      return;
+    }
+    setMemberActionId(userId);
+    setOrgMessage(null);
+    try {
+      const response = await api.deactivateSupplierOrgMember(
+        userId,
+        supplierOrgMemberDeactivateKey(supplierScopeId(), userId),
+      );
+      onUpdated(response.items);
+      setOrgMessage("Org member deactivated.");
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     } catch (error) {
       setOrgMessage(toErrorMessage(error));
     } finally {
@@ -47,6 +80,12 @@ export function OrgMemberTable({
   }
 
   async function saveOrgMemberEdit(userId: string, role: Role, nodeType: HomeNodeType, nodeID: string) {
+<<<<<<< HEAD
+=======
+    if (state.status !== "ready") {
+      return;
+    }
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     setMemberActionId(userId);
     setOrgMessage(null);
     const request: import("@pegasusx/types").SupplierOrgMemberUpdateRequest = {
@@ -64,16 +103,27 @@ export function OrgMemberTable({
       }
     }
     try {
+<<<<<<< HEAD
       const api = createSupplierApi();
       const revision = `${role}:${nodeType}:${nodeID}`;
       await api.updateSupplierOrgMember(
+=======
+      const revision = `${role}:${nodeType}:${nodeID}`;
+      const response = await api.updateSupplierOrgMember(
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         userId,
         request,
         supplierOrgMemberUpdateKey(supplierScopeId(), userId, revision),
       );
+<<<<<<< HEAD
       setEditingMemberId(null);
       setOrgMessage("Org member updated.");
       onUpdated();
+=======
+      onUpdated(response.items);
+      setEditingMemberId(null);
+      setOrgMessage("Org member updated.");
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     } catch (error) {
       setOrgMessage(toErrorMessage(error));
     } finally {
@@ -84,12 +134,17 @@ export function OrgMemberTable({
   return (
     <article className="md-card md-shape-md p-6 overflow-x-auto">
       <h2 className="md-typescale-title-large">Current org roster</h2>
+<<<<<<< HEAD
       {orgMessage && (
         <div className="mb-2 mt-2">
             <StatusText message={orgMessage} isError={isErrorMessage(orgMessage)} />
         </div>
       )}
       {orgMembers.length === 0 ? (
+=======
+      {orgMessage && <StatusText message={orgMessage} isError={isErrorMessage(orgMessage)} />}
+      {state.orgMembers.length === 0 ? (
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
           No org members have been created yet.
         </p>
@@ -106,7 +161,11 @@ export function OrgMemberTable({
             </tr>
           </thead>
           <tbody>
+<<<<<<< HEAD
             {orgMembers.map((member) => (
+=======
+            {state.orgMembers.map((member) => (
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
               <tr key={member.user_id} className="md-typescale-body-medium">
                 <td className="py-2 pr-4">{member.name}</td>
                 <td className="py-2 pr-4">
@@ -126,7 +185,11 @@ export function OrgMemberTable({
                     formatRole(member.supplier_role)
                   )}
                 </td>
+<<<<<<< HEAD
                 <td className="py-2 pr-4">{describeMemberNode(member, topology)}</td>
+=======
+                <td className="py-2 pr-4">{describeMemberNode(member, state.topology)}</td>
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 <td className="py-2 pr-4">{member.phone}</td>
                 <td className="py-2 pr-4">{member.is_active ? "Active" : "Inactive"}</td>
                 <td className="py-2 pr-4">

@@ -71,7 +71,10 @@ import com.pegasus.design.PegasusRuntimeTone
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
-import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.ui.screens.override.components.CancelManifestDialog
+import com.pegasusx.factory.ui.screens.override.components.CancelTransferDialog
+import com.pegasusx.factory.ui.screens.override.components.MoveTransferDialog
+import com.pegasusx.factory.ui.screens.override.components.PayloadList
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import java.text.DateFormat
 import java.util.Date
@@ -327,357 +330,56 @@ fun PayloadOverrideScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
-    ) {
-                item {
-                    OverrideSummaryCard(
-                        manifests = manifests,
-                        runtimeStatus = runtimeStatus,
-                        runtimeTone = runtimeTone,
-                    )
-                }
-                items(manifests, key = { it.id }) { manifest ->
-                    OverrideManifestCard(
-                        manifest = manifest,
-                        hasMoveTargets = manifests.any { it.id != manifest.id },
-                        actingKey = actingKey,
-                        onMove = { transfer -> moveCandidate = MoveTransferCandidate(manifest.id, transfer) },
-                        onRemove = { transfer -> cancelTransferCandidate = CancelTransferCandidate(manifest.id, transfer) },
-                        onCancelManifest = { cancelManifestCandidate = manifest },
-                    )
-                }
-            }
+            else -> PayloadList(
+                manifests = manifests,
+                runtimeStatus = runtimeStatus,
+                runtimeTone = runtimeTone,
+                actingKey = actingKey,
+                onMove = { sourceManifestId, transfer ->
+                    moveCandidate = MoveTransferCandidate(sourceManifestId, transfer)
+                },
+                onRemove = { manifestId, transfer ->
+                    cancelTransferCandidate = CancelTransferCandidate(manifestId, transfer)
+                },
+                onCancelManifest = { manifest ->
+                    cancelManifestCandidate = manifest
+                },
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 
     moveCandidate?.let { candidate ->
-        val targetOptions = manifests.filter { it.id != candidate.sourceManifestId }
-        AlertDialog(
-            onDismissRequest = { moveCandidate = null },
-            title = { Text("Move transfer") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Text("Select the loading manifest that should receive transfer ${candidate.transfer.transferId.take(8)}.")
-                    targetOptions.forEach { manifest ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedTargetManifestId = manifest.id }
-                                .padding(vertical = PegasusSpacing.xs),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                        ) {
-                            RadioButton(
-                                selected = selectedTargetManifestId == manifest.id,
-                                onClick = { selectedTargetManifestId = manifest.id },
-                            )
-                            Column {
-                                Text(manifest.truckPlate.ifBlank { manifest.truckId.take(8) })
-                                Text(
-                                    text = "${trimDecimal(manifest.totalVolumeVU)} / ${trimDecimal(manifest.maxCapacityVU)} VU",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                    if (targetOptions.isEmpty()) {
-                        Text(
-                            text = "Create or keep another loading manifest active before moving this transfer.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { rebalance(candidate, selectedTargetManifestId) },
-                    enabled = selectedTargetManifestId.isNotBlank() && actingKey == null,
-                ) {
-                    Text("Move")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { moveCandidate = null }) { Text("Cancel") }
-            },
+        MoveTransferDialog(
+            sourceManifestId = candidate.sourceManifestId,
+            transfer = candidate.transfer,
+            manifests = manifests,
+            selectedTargetManifestId = selectedTargetManifestId,
+            onTargetSelected = { selectedTargetManifestId = it },
+            actingKey = actingKey,
+            onConfirm = { targetManifestId -> rebalance(candidate, targetManifestId) },
+            onDismiss = { moveCandidate = null }
         )
     }
 
     cancelTransferCandidate?.let { candidate ->
-        AlertDialog(
-            onDismissRequest = { cancelTransferCandidate = null },
-            title = { Text("Remove transfer") },
-            text = { Text("Release transfer ${candidate.transfer.transferId.take(8)} back to APPROVED so it can be reassigned.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { cancelTransfer(candidate) },
-                    enabled = actingKey == null,
-                ) { Text("Release") }
-            },
-            dismissButton = {
-                TextButton(onClick = { cancelTransferCandidate = null }) { Text("Keep") }
-            },
+        CancelTransferDialog(
+            transfer = candidate.transfer,
+            actingKey = actingKey,
+            onConfirm = { cancelTransfer(candidate) },
+            onDismiss = { cancelTransferCandidate = null }
         )
     }
 
     cancelManifestCandidate?.let { manifest ->
-        AlertDialog(
-            onDismissRequest = { cancelManifestCandidate = null },
-            title = { Text("Cancel manifest") },
-            text = { Text("Cancel manifest ${manifest.id.take(8)} and return all linked transfers to APPROVED.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { cancelManifest(manifest) },
-                    enabled = actingKey == null,
-                ) { Text("Cancel manifest") }
-            },
-            dismissButton = {
-                TextButton(onClick = { cancelManifestCandidate = null }) { Text("Keep") }
-            },
+        CancelManifestDialog(
+            manifest = manifest,
+            actingKey = actingKey,
+            onConfirm = { cancelManifest(manifest) },
+            onDismiss = { cancelManifestCandidate = null }
         )
     }
 }
-
-@Composable
-private fun OverrideSummaryCard(
-    manifests: List<Manifest>,
-    runtimeStatus: String,
-    runtimeTone: PegasusRuntimeTone,
-) {
-    val transferCount = manifests.sumOf { it.transfers.size }
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-        ) {
-            Text(
-                text = "Live manifest override",
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                text = "${manifests.size} loading manifests, $transferCount transfers available for rebalance or release.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            PegasusRuntimeBanner(
-                tone = runtimeTone,
-                message = runtimeStatus,
-            )
-        }
-    }
-}
-
-@Composable
-private fun OverrideManifestCard(
-    manifest: Manifest,
-    hasMoveTargets: Boolean,
-    actingKey: String?,
-    onMove: (ManifestTransfer) -> Unit,
-    onRemove: (ManifestTransfer) -> Unit,
-    onCancelManifest: () -> Unit,
-) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-                ) {
-                    Text(
-                        text = manifest.truckPlate.ifBlank { manifest.truckId.take(8) },
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = "Manifest ${manifest.id.take(8)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                FilledTonalButton(
-                    onClick = onCancelManifest,
-                    enabled = actingKey == null,
-                ) {
-                    Text("Cancel manifest")
-                }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                LinearProgressIndicator(
-                    progress = {
-                        val capacity = manifest.maxCapacityVU.takeIf { it > 0 } ?: 1.0
-                        (manifest.totalVolumeVU / capacity).coerceIn(0.0, 1.0).toFloat()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                ) {
-                    OverrideMetric("Volume", "${trimDecimal(manifest.totalVolumeVU)} VU", Modifier.weight(1f))
-                    OverrideMetric("Capacity", "${trimDecimal(manifest.maxCapacityVU)} VU", Modifier.weight(1f))
-                    OverrideMetric("Transfers", manifest.transfers.size.toString(), Modifier.weight(1f))
-                }
-            }
-
-            if (manifest.transfers.isEmpty()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                ) {
-                    Text(
-                        text = "No transfers are assigned to this manifest.",
-                        modifier = Modifier.padding(PegasusSpacing.lg),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                manifest.transfers.forEach { transfer ->
-                    OverrideTransferRow(
-                        transfer = transfer,
-                        canMove = hasMoveTargets,
-                        busy = actingKey == transfer.transferId,
-                        onMove = { onMove(transfer) },
-                        onRemove = { onRemove(transfer) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun OverrideTransferRow(
-    transfer: ManifestTransfer,
-    canMove: Boolean,
-    busy: Boolean,
-    onMove: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-                ) {
-                    Text(
-                        text = transfer.productName.ifBlank { "Transfer ${transfer.transferId.take(8)}" },
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        text = transfer.transferId.take(8),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                OverrideStateTag(transfer.state)
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            ) {
-                OverrideMetric("Qty", transfer.quantity.toString(), Modifier.weight(1f))
-                OverrideMetric("Volume", "${trimDecimal(transfer.volumeVU)} VU", Modifier.weight(1f))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            ) {
-                FilledTonalButton(
-                    onClick = onMove,
-                    enabled = canMove && !busy,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (busy) "Working…" else "Move")
-                }
-                Button(
-                    onClick = onRemove,
-                    enabled = !busy,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (busy) "Working…" else "Release")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun OverrideMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-        ) {
-            Text(value, style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun OverrideStateTag(
-    text: String,
-) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
-        )
-    }
-}
-
-private fun trimDecimal(value: Double): String =
-    if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
 
 private fun formatOverrideSyncTime(value: Long?): String {
     if (value == null) return "waiting"

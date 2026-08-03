@@ -49,7 +49,16 @@ data class RetailerWSMessage(
     @SerialName("options") val options: List<String> = emptyList(),
 )
 
-val defaultShopClosedOptions = listOf("OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY")
+val defaultShopClosedOptions = listOf(
+    "OPEN_NOW",
+    "5_MIN",
+    "CALL_ME",
+    "CLOSED_TODAY",
+    "RESCHEDULE",
+    "CREDIT_LEAVE",
+    "CANCEL",
+    "AUTHORIZE_BYPASS",
+)
 
 fun RetailerWSMessage.toShopClosedAlert(): ShopClosedAlert? {
     if (type != "SHOP_CLOSED" && type != "SHOP_CLOSED_ALERT") return null

@@ -19,6 +19,18 @@ func TestDomainTopicForEventType(t *testing.T) {
 	if got := DomainTopicForEventType(EventSupplierCreated); got != "" {
 		t.Fatalf("SUPPLIER_CREATED -> %q, want empty", got)
 	}
+	if got := DomainTopicForEventType(EventDemandSignal); got != TopicDemand {
+		t.Fatalf("DEMAND_SIGNAL -> %q, want %q", got, TopicDemand)
+	}
+}
+
+func TestRelayPublishTopics_demandSignalDualWrite(t *testing.T) {
+	t.Setenv("KAFKA_TOPIC_DUAL_WRITE", "true")
+	payload := []byte(`{"type":"DEMAND_SIGNAL","retailer_id":"r1","sku":"SKU-1","day":"2026-08-02","source":"STORE_POS"}`)
+	topics := RelayPublishTopics(TopicMain, payload)
+	if len(topics) != 2 || topics[0] != TopicMain || topics[1] != TopicDemand {
+		t.Fatalf("topics=%v want [%s %s]", topics, TopicMain, TopicDemand)
+	}
 }
 
 func TestRelayPublishTopics_dualWrite(t *testing.T) {

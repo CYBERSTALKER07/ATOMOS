@@ -72,6 +72,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/execute", d.Service.HandleDispatchExecute)
+		rr.Get("/v1/warehouse/dispatch/tracking", d.Service.HandleDispatchTracking)
 		
 		// Payload parity for reassignment without scanning
 		if d.PayloadService != nil {

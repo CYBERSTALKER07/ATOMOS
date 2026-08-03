@@ -1,0 +1,124 @@
+{
+  "project_info": {
+    "project_number": "1002695564567",
+    "project_id": "pegasus-503013",
+    "storage_bucket": "pegasus-503013.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:bac8db9a62316216546b52",
+        "android_client_info": {
+          "package_name": "com.pegasus.payload"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:6364381b168b0d1a546b52",
+        "android_client_info": {
+          "package_name": "com.pegasusx.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:6a82cd7e639e55f3546b52",
+        "android_client_info": {
+          "package_name": "com.pegasusx.factory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:ce9fe5b66e3d64c2546b52",
+        "android_client_info": {
+          "package_name": "com.pegasusx.retailer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:b17322c624e47427546b52",
+        "android_client_info": {
+          "package_name": "com.pegasusx.supplier"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002695564567:android:63c8f6a5f62c78d4546b52",
+        "android_client_info": {
+          "package_name": "com.pegasusx.warehouse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwnMpLfiyY-ManI1dDUes7cbwKSC6YsNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

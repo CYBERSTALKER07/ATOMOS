@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -38,13 +39,26 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 	if current.ConfirmationStatus != ConfirmationStatusPending {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
+	prevLines := append([]LineItem(nil), current.LineItems...)
 	if len(req.LineItems) > 0 {
-		lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
+		lineItems, _, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 		if err != nil {
 			return RetailerOrderLifecycleResponse{}, err
 		}
-		current.LineItems = lineItems
-		current.TotalMinor = total
+		requestedLines := lineItems
+		fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, current.LineItems, requestedLines)
+		if err != nil {
+			return RetailerOrderLifecycleResponse{}, err
+		}
+		current.LineItems = fulfillable
+		current.TotalMinor = totalMinorForLines(fulfillable)
+	} else if s.spannerClient != nil {
+		fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, current.LineItems, current.LineItems)
+		if err != nil {
+			return RetailerOrderLifecycleResponse{}, err
+		}
+		current.LineItems = fulfillable
+		current.TotalMinor = totalMinorForLines(fulfillable)
 	}
 	if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
 		requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
@@ -59,26 +73,33 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 	current.DecisionAt = &decisionAt
 	current.DecisionBy = strings.TrimSpace(retailerID)
 	current.UpdatedAt = decisionAt
-	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
-			OrderID:               current.OrderID,
-			SupplierID:            current.SupplierID,
-			RetailerID:            current.RetailerID,
-			PreviousStatus:        string(current.Status),
-			Status:                string(current.Status),
+	toConfirm := current
+	if err := s.repo.UpdateOrderWithTxn(ctx, toConfirm, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if s.spannerClient != nil {
+			return reconcilePreorderReservationsInTxn(ctx, txn, toConfirm.SupplierID, toConfirm.WarehouseID, toConfirm.Source, prevLines, toConfirm.LineItems)
+		}
+		return nil
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, toConfirm.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: toConfirm.UpdatedAt.Format(time.RFC3339Nano)},
+			OrderID:               toConfirm.OrderID,
+			SupplierID:            toConfirm.SupplierID,
+			RetailerID:            toConfirm.RetailerID,
+			PreviousStatus:        string(toConfirm.Status),
+			Status:                string(toConfirm.Status),
 			Reason:                "AI_CONFIRMED",
 			ActorRole:             string(auth.RoleRetailer),
 			ActorID:               retailerID,
-			OrderSource:           string(current.Source),
-			ConfirmationStatus:    string(current.ConfirmationStatus),
-			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
+			OrderSource:           string(toConfirm.Source),
+			ConfirmationStatus:    string(toConfirm.ConfirmationStatus),
+			RequestedDeliveryDate: formatOptionalRFC3339(toConfirm.RequestedDeliveryDate),
 		})
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm ai order %s: %w", orderID, err)
 	}
-	s.afterOrderMutation(ctx, current)
-	return lifecycleResponse(current, current.Version+1, false), nil
+	toConfirm.Version++
+	s.afterOrderMutation(ctx, toConfirm)
+	return lifecycleResponse(toConfirm, toConfirm.Version, false), nil
 }
 
 // RejectAIOrder rejects an AI-created future order.
@@ -135,7 +156,7 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if orderID == "" {
 		return RetailerOrderLifecycleResponse{}, errors.New("order_id required")
 	}
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
+	lineItems, _, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
@@ -171,17 +192,18 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if current.ConfirmationStatus == ConfirmationStatusRejected {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
-	current.LineItems = lineItems
-	current.TotalMinor = total
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
-	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, current, string(auth.RoleRetailer), retailerID)
-	}); err != nil {
+	toSave := current
+	updated, err := s.updatePreorderLines(ctx, toSave, lineItems, func(txn outbox.TxnBuffer) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, toSave, string(auth.RoleRetailer), retailerID)
+	})
+	if err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)
 	}
-	s.afterOrderMutation(ctx, current)
-	return lifecycleResponse(current, current.Version+1, false), nil
+	updated.Version++
+	s.afterOrderMutation(ctx, updated)
+	return lifecycleResponse(updated, updated.Version, false), nil
 }
 
 // ConfirmPreorder confirms a draft manual preorder.

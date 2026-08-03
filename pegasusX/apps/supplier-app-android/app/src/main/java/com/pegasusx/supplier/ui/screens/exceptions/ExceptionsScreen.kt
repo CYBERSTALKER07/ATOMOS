@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.exceptions
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,15 +11,19 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun ExceptionsScreen(
+    ops: SupplierOperationsRepository,
+    onBack: () -> Unit,
+    onOpenClaims: () -> Unit = {},
+) {
     var rows by remember { mutableStateOf<List<SupplierExceptionRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var busyKey by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -40,6 +42,33 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         }
     }
 
+    fun resolve(row: SupplierExceptionRow) {
+        scope.launch {
+            val kind = row.kind.uppercase()
+            val key = "$kind:${row.orderId}"
+            busyKey = key
+            try {
+                val resolveId = when (kind) {
+                    "CREDIT_NOTE_DRAFT" -> row.note?.takeIf { it.isNotBlank() } ?: row.orderId
+                    else -> row.orderId
+                }
+                val body = when (kind) {
+                    "CREDIT_NOTE_DRAFT" ->
+                        row.note?.takeIf { it.isNotBlank() }?.let { mapOf("credit_note_id" to it) }
+                            ?: emptyMap()
+                    else -> emptyMap()
+                }
+                val resp = ops.resolveException(kind, resolveId, body)
+                if (!resp.isSuccessful) error = "Resolve failed (${resp.code()})"
+                else load()
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                busyKey = null
+            }
+        }
+    }
+
     LaunchedEffect(Unit) { load() }
 
     Scaffold(
@@ -50,6 +79,9 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    TextButton(onClick = onOpenClaims) { Text("Claims") }
                 },
             )
         },
@@ -67,26 +99,13 @@ fun ExceptionsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             rows.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Empty,
                 headline = "No exceptions",
-                body = "Operational exceptions will appear here.",
+                body = "Operational exceptions will appear here. Use Claims for post-delivery OS&D.",
                 modifier = Modifier.padding(padding),
+                actionLabel = "Open claims",
+                onAction = onOpenClaims,
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-            ) {
-                items(rows, key = { it.orderId + it.kind }) { row ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(row.orderId, style = MaterialTheme.typography.titleMedium)
-                            Text("${row.kind} · ${row.status}", style = MaterialTheme.typography.bodyMedium)
-                            row.note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                            row.manifestId?.let {
-                                Text("Manifest $it", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
+            else -> Box(Modifier.padding(padding)) {
+                ExceptionsList(rows = rows, busyKey = busyKey, onResolve = ::resolve)
             }
         }
     }

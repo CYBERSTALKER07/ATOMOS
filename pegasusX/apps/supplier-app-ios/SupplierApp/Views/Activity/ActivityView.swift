@@ -16,10 +16,11 @@ struct ActivityView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.type).font(.headline)
-                        Text(row.description).font(.subheadline)
-                        Text(row.timestamp).font(.caption)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(row.type).font(.headline)
+                            Text(row.description).font(.subheadline)
+                            Text(row.timestamp).font(.caption)
+                        }
                     }
                 }
             }

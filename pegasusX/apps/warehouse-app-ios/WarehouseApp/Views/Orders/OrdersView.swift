@@ -1,11 +1,6 @@
 import SwiftUI
 
-private enum OrdersHubTab: String, CaseIterable, Identifiable {
-    case active = "Active orders"
-    case preorders = "Pre-orders"
 
-    var id: String { rawValue }
-}
 
 struct OrdersView: View {
     @State private var hubTab: OrdersHubTab = .active
@@ -34,60 +29,18 @@ struct OrdersView: View {
                 .padding(.horizontal)
                 .padding(.vertical, LabTheme.spacingSM)
 
-                Group {
-                    if loading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if let error {
-                        ContentUnavailableView {
-                            Label("Error", systemImage: "exclamationmark.triangle")
-                        } description: {
-                            Text(error)
-                        } actions: {
-                            Button("Retry") { load() }
-                        }
-                    } else if hubTab == .active && orders.isEmpty {
-                        ContentUnavailableView("No Orders", systemImage: "cart", description: Text("No orders found for this filter"))
-                    } else if hubTab == .preorders && preorders.isEmpty {
-                        ContentUnavailableView("No pre-orders", systemImage: "calendar")
-                    } else {
-                        ResponsiveGridContentWrapper {
-                            if hubTab == .active {
-                                ForEach(orders) { order in
-                                    NavigationLink(value: order.orderId) {
-                                        OrderOpsCardView(
-                                            title: order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName,
-                                            orderId: order.orderId,
-                                            state: order.state,
-                                            amountLabel: "\(order.totalUzs.formatted()) UZS",
-                                            canDelay: orderActionFlags(order.state).canDelay,
-                                            canReject: orderActionFlags(order.state).canReject,
-                                            onDelay: { proposeTarget = order.orderId; proposeDate = Date(); reasonInput = "" },
-                                            onReject: { rejectTarget = order.orderId; reasonInput = "" },
-                                        )
-                                    }
-                                }
-                            } else {
-                                ForEach(preorders) { row in
-                                    NavigationLink(value: row.orderId) {
-                                        OrderOpsCardView(
-                                            title: String(row.orderId.prefix(12)),
-                                            orderId: row.orderId,
-                                            state: row.status,
-                                            amountLabel: row.requestedDeliveryDate ?? "Pre-order",
-                                            badge: "Pre-order",
-                                            canDelay: true,
-                                            canReject: true,
-                                            delayLabel: "Propose delivery",
-                                            onDelay: nil,
-                                            onReject: nil,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                OrdersList(
+                    hubTab: hubTab,
+                    loading: loading,
+                    error: error,
+                    orders: orders,
+                    preorders: preorders,
+                    onRetry: { load() },
+                    onProposeActive: { proposeTarget = $0; proposeDate = Date(); reasonInput = "" },
+                    onRejectActive: { rejectTarget = $0; reasonInput = "" },
+                    onProposePreorder: { proposeTarget = $0; proposeDate = Date(); reasonInput = "" },
+                    onRejectPreorder: { rejectTarget = $0; reasonInput = "" }
+                )
             }
             .background(LabTheme.background)
             .navigationTitle("Orders")
@@ -157,7 +110,12 @@ struct OrdersView: View {
                     guard let orderId = rejectTarget, !reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                     Task {
                         do {
-                            _ = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reasonInput)
+                            let isPreorder = preorders.contains { $0.orderId == orderId }
+                            if isPreorder {
+                                _ = try await WarehouseOperationsService.rejectPreorder(orderId: orderId, reason: reasonInput)
+                            } else {
+                                _ = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reasonInput)
+                            }
                             statusMessage = "Order cancelled · retailer notified"
                             rejectTarget = nil
                             reasonInput = ""
@@ -191,11 +149,20 @@ struct OrdersView: View {
         let reason = reasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !reason.isEmpty else { return }
         do {
-            _ = try await WarehouseOperationsService.proposeOrderDelivery(
-                orderId: orderId,
-                proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
-                reason: reason,
-            )
+            let isPreorder = preorders.contains { $0.orderId == orderId }
+            if isPreorder {
+                _ = try await WarehouseOperationsService.proposePreorderDelivery(
+                    orderId: orderId,
+                    proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
+                    reason: reason
+                )
+            } else {
+                _ = try await WarehouseOperationsService.proposeOrderDelivery(
+                    orderId: orderId,
+                    proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
+                    reason: reason
+                )
+            }
             statusMessage = "New delivery date proposed · retailer notified"
             proposeTarget = nil
             reasonInput = ""
@@ -242,67 +209,4 @@ private struct ProposeSheetOrder: Identifiable {
     let id: String
 }
 
-private struct OrderActionFlags {
-    let canDelay: Bool
-    let canReject: Bool
-}
 
-private func orderActionFlags(_ state: String) -> OrderActionFlags {
-    let s = state.uppercased()
-    let terminal = s == "COMPLETED" || s == "CANCELLED"
-    let inFlight = s == "LOADED" || s == "IN_TRANSIT"
-    return OrderActionFlags(
-        canDelay: !terminal && !inFlight,
-        canReject: ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(s),
-    )
-}
-
-private struct OrderOpsCardView: View {
-    let title: String
-    let orderId: String
-    let state: String
-    let amountLabel: String
-    var badge: String?
-    var canDelay: Bool
-    var canReject: Bool
-    var delayLabel: String = "Propose date"
-    var onDelay: (() -> Void)?
-    var onReject: (() -> Void)?
-
-    var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                HStack {
-                    Text(title).font(.headline)
-                    Text(state)
-                        .font(.caption.bold())
-                        .padding(.horizontal, LabTheme.spacingSM)
-                        .padding(.vertical, LabTheme.spacingXS)
-                        .background(.quaternary, in: Capsule())
-                    if let badge {
-                        Text(badge)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.orange.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
-                }
-                Text(orderId).font(.caption.monospaced()).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text(amountLabel)
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .labCard()
-        .contextMenu {
-            if let onDelay, canDelay {
-                Button(delayLabel) { onDelay() }
-            }
-            if let onReject, canReject {
-                Button("Reject", role: .destructive) { onReject() }
-            }
-        }
-    }
-}

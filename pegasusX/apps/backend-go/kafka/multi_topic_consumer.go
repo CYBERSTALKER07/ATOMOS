@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -20,11 +21,19 @@ func NewMultiTopicConsumer(deps ConsumerDeps) *Consumer {
 	if deps.MaxAttempts <= 0 {
 		deps.MaxAttempts = 3
 	}
+	dialer, err := kafkautil.Dialer(deps.Auth)
+	if err != nil {
+		dialer = &kafka.Dialer{Timeout: 15 * time.Second, DualStack: true}
+	}
+	// CommitInterval=0: offsets advance only via explicit CommitMessages after
+	// handler success or DLQ (workerpool). Never background auto-commit.
 	cfg := kafka.ReaderConfig{
-		Brokers:        deps.Brokers,
-		GroupID:        deps.GroupID,
-		MaxBytes:       10e6,
-		CommitInterval: time.Second,
+		Brokers:               deps.Brokers,
+		GroupID:               deps.GroupID,
+		MaxBytes:              10e6,
+		CommitInterval:        0,
+		WatchPartitionChanges: true,
+		Dialer:                dialer,
 	}
 	if len(topics) == 1 {
 		cfg.Topic = topics[0]

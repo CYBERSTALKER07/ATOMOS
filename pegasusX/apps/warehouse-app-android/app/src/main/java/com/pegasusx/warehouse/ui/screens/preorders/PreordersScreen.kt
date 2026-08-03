@@ -212,8 +212,13 @@ fun PreordersScreen(
             )
             else -> PreordersList(
                 rows = rows,
+<<<<<<< HEAD
                 padding = padding,
                 onProposeDate = { proposeTarget = it },
+=======
+                modifier = Modifier.padding(padding),
+                onPropose = { proposeTarget = it },
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 onReject = { rejectTarget = it }
             )
         }

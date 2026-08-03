@@ -1,0 +1,15 @@
+--- apps/backend-go/bootstrap/bootstrap.go
++++ apps/backend-go/bootstrap/bootstrap.go
+@@ -852,7 +852,11 @@
+ 		}
+ 	}
+ 	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
+-	orderSvc.SetFiscalProvider(order.ProviderFromEnv())
++	fiscalProvider := order.ProviderFromEnv()
++	orderSvc.SetFiscalProvider(fiscalProvider)
++	if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil {
++		buyerPoller := order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log)
++		go buyerPoller.Run(context.Background())
++	}
+ 	driverSvc := driver.NewService(driver.ServiceConfig{
+ 		Repo:               driverRepo,

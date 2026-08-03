@@ -15,6 +15,12 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// RetailerPushActorLister expands a retailer org id to active staff user ids
+// for per-user FCM fanout (Retail OS Phase 1). Optional — nil falls back to org id.
+type RetailerPushActorLister interface {
+	ListActiveUserIDs(ctx context.Context, retailerID string) ([]string, error)
+}
+
 // DispatcherDeps provides the dependencies to the NotificationDispatcher.
 type DispatcherDeps struct {
 	SupplierHub     *ws.Hub
@@ -28,6 +34,8 @@ type DispatcherDeps struct {
 	EventDedup      EventDedupStore
 	ConsumerGroupID string
 	Cache           *cache.Cache
+	// RetailerActors optional: multi-user FCM targets under a retailer org.
+	RetailerActors RetailerPushActorLister
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
@@ -101,7 +109,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed,
 		events.EventFiscalReceiptRequested, events.EventFiscalReceiptSucceeded, events.EventFiscalReceiptFailed,
-		events.EventOrderForceCompleted:
+		events.EventOrderForceCompleted,
+		// ADR-009 cash variance — must not fall through to silent parity no-op.
+		events.EventCashShortfall, events.EventCashOverage:
 		return d.handleSupplierFinanceEvent(ctx, msg.Value, traceID)
 	case events.EventOrderCreated, events.EventOrderStatusChanged, events.EventOrderFinalized:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
@@ -112,7 +122,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	case events.EventSupplierUpdated, events.EventSupplierBillingConfigured,
 		events.EventSupplierProfileUpdated, events.EventSupplierBillingUpdated, events.EventSupplierMemberAdded:
 		return d.handleSupplierUpdated(ctx, msg.Value, traceID)
-	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated, events.EventShopClosedResolved, events.EventShopClosedBypassOffload:
+	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated,
+		events.EventShopClosedResolved, events.EventShopClosedBypassOffload, events.EventShopClosedTimeout,
+		events.EventProximityUnlocked, events.EventPartialOffload, events.EventCreditLeave:
 		return d.handleShopClosedEvent(ctx, msg.Value, traceID)
 	case events.EventCreditDeliveryMarked, events.EventCreditDeliveryResolved:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
@@ -121,6 +133,10 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	case events.EventRouteReordered, events.EventRouteCreated:
 		return d.handleRouteEvent(ctx, msg.Value, traceID)
 	case events.EventMissingItemsReported, events.EventSplitPaymentCreated:
+		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
+	case events.EventClaimFiled, events.EventClaimResolved,
+		events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired,
+		events.EventLogisticsTelemetry:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
 	case events.EventDriverAvailabilityChanged:
 		return d.handleDriverAvailabilityChanged(ctx, msg.Value, traceID)
@@ -648,6 +664,7 @@ func (d *NotificationDispatcher) broadcastSupplier(ctx context.Context, supplier
 	if d.deps.SupplierHub != nil {
 		d.deps.SupplierHub.Broadcast(ctx, "supplier:"+supplierID, payload)
 	}
+	d.pushFCM(ctx, supplierID, "ADMIN", payload)
 	d.persistInbox(ctx, supplierID, "ADMIN", payload)
 }
 
@@ -658,8 +675,43 @@ func (d *NotificationDispatcher) broadcastRetailer(ctx context.Context, retailer
 	if d.deps.RetailerHub != nil {
 		d.deps.RetailerHub.Broadcast(ctx, "retailer:"+retailerID, payload)
 	}
-	d.pushFCM(ctx, retailerID, "RETAILER", payload)
+	// Phase 1: FCM to each active staff user id (device tokens key on JWT subject).
+	// Also try org id for any legacy tokens registered pre multi-user.
+	actors := []string{retailerID}
+	if d.deps.RetailerActors != nil {
+		if ids, err := d.deps.RetailerActors.ListActiveUserIDs(ctx, retailerID); err == nil && len(ids) > 0 {
+			actors = uniqueStrings(append(ids, retailerID))
+		}
+	}
+	for _, actorID := range actors {
+		d.pushFCM(ctx, actorID, "RETAILER", payload)
+	}
+	// Dual-write inbox: org id (legacy + ResolveRetailerOrgID readers) + each staff subject
+	// so TEAM users whose JWT subject is user id still see network pulse / inbox rows.
 	d.persistInbox(ctx, retailerID, "RETAILER", payload)
+	for _, actorID := range actors {
+		if actorID == retailerID {
+			continue
+		}
+		d.persistInbox(ctx, actorID, "RETAILER", payload)
+	}
+}
+
+func uniqueStrings(in []string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
 }
 
 func (d *NotificationDispatcher) broadcastRetailerPromoSupplier(ctx context.Context, supplierID string, payload []byte) {
@@ -688,22 +740,37 @@ func (d *NotificationDispatcher) pushFCM(ctx context.Context, actorID, actorRole
 		Type string `json:"type"`
 	}
 	_ = json.Unmarshal(payload, &envelope)
-	data := map[string]string{"type": envelope.Type, "body": string(payload)}
+	formatted := notifications.FormatFromEvent(actorRole, payload)
+	data := map[string]string{
+		"type":      envelope.Type,
+		"title":     formatted.Title,
+		"body":      formatted.Body,
+		"deep_link": formatted.DeepLink,
+		"payload":   string(payload),
+	}
 	d.deps.Push.NotifyActor(ctx, actorID, actorRole, data)
 }
 
 func (d *NotificationDispatcher) broadcastWarehouse(ctx context.Context, warehouseID string, payload []byte) {
-	if warehouseID == "" || d.deps.WarehouseHub == nil {
+	if warehouseID == "" {
 		return
 	}
-	d.deps.WarehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, payload)
+	if d.deps.WarehouseHub != nil {
+		d.deps.WarehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, payload)
+	}
+	d.pushFCM(ctx, warehouseID, "WAREHOUSE", payload)
+	d.persistInbox(ctx, warehouseID, "WAREHOUSE", payload)
 }
 
 func (d *NotificationDispatcher) broadcastFactory(ctx context.Context, factoryID string, payload []byte) {
-	if factoryID == "" || d.deps.FactoryHub == nil {
+	if factoryID == "" {
 		return
 	}
-	d.deps.FactoryHub.Broadcast(ctx, "factory:"+factoryID, payload)
+	if d.deps.FactoryHub != nil {
+		d.deps.FactoryHub.Broadcast(ctx, "factory:"+factoryID, payload)
+	}
+	d.pushFCM(ctx, factoryID, "FACTORY", payload)
+	d.persistInbox(ctx, factoryID, "FACTORY", payload)
 }
 
 func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierID string, payload []byte) {
@@ -713,6 +780,7 @@ func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierI
 	if d.deps.PayloadHub != nil {
 		d.deps.PayloadHub.Broadcast(ctx, "payload:"+supplierID, payload)
 	}
+	d.pushFCM(ctx, supplierID, "PAYLOAD", payload)
 	d.persistInbox(ctx, supplierID, "PAYLOAD", payload)
 }
 

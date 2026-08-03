@@ -20,9 +20,10 @@ import (
 
 // Service implements PX90 planning read models and sandbox APIs.
 type Service struct {
-	Spanner *spanner.Client
-	Cache   *cache.Cache
-	Now     func() time.Time
+	Spanner             *spanner.Client
+	Cache               *cache.Cache
+	Now                 func() time.Time
+	TwinScenarioEnabled bool
 
 	scenarioCache sync.Map // fallback when Redis unavailable
 }
@@ -53,13 +54,16 @@ type ScenarioInput struct {
 
 // ScenarioResult is a read-only projection cached for 15 minutes.
 type ScenarioResult struct {
-	ScenarioID      string   `json:"scenario_id"`
-	SupplierID      string   `json:"supplier_id"`
-	SLARiskPct      float64  `json:"sla_risk_pct"`
-	FleetVolume     int64    `json:"fleet_volume_orders"`
-	StockoutSKUs    []string `json:"stockout_skus"`
-	CapacityBreach  bool     `json:"capacity_breach"`
-	CachedUntil     string   `json:"cached_until"`
+	ScenarioID           string   `json:"scenario_id"`
+	SupplierID           string   `json:"supplier_id"`
+	SLARiskPct           float64  `json:"sla_risk_pct"`
+	FleetVolume          int64    `json:"fleet_volume_orders"`
+	StockoutSKUs         []string `json:"stockout_skus"`
+	CapacityBreach       bool     `json:"capacity_breach"`
+	CachedUntil          string   `json:"cached_until"`
+	Mode                 string   `json:"mode,omitempty"`
+	BaselineSLARiskPct   float64  `json:"baseline_sla_risk_pct,omitempty"`
+	RevenueAtRiskMinor   int64    `json:"revenue_at_risk_minor,omitempty"`
 }
 
 type cachedScenario struct {
@@ -96,6 +100,28 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 	if err != nil {
 		return ScenarioResult{}, err
 	}
+
+	if s.TwinScenarioEnabled {
+		snap, snapErr := LoadNetworkSnapshot(ctx, s.Spanner, supplierID)
+		if snapErr == nil && !snap.TooLarge() {
+			projected := ProjectSnapshot(snap, in)
+			result := ScenarioResult{
+				ScenarioID:         uuid.NewString(),
+				SupplierID:         supplierID,
+				SLARiskPct:         projected.SLARiskPct,
+				BaselineSLARiskPct: projected.BaselineSLARiskPct,
+				FleetVolume:        projected.FleetVolume,
+				StockoutSKUs:       projected.StockoutSKUs,
+				CapacityBreach:     projected.CapacityBreach,
+				RevenueAtRiskMinor: projected.RevenueAtRiskMinor,
+				Mode:               projected.Mode,
+				CachedUntil:        s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
+			}
+			s.storeScenarioCache(cacheKey, redisKey, result)
+			return result, nil
+		}
+	}
+
 	downtimeFactor := 1.0 - math.Min(float64(in.FactoryDowntimeHours)/168.0, 0.9)
 	demandFactor := 1.0 + in.DemandDeltaPct/100.0
 	slaRisk := math.Min(95, (float64(criticalSKUs)*12+float64(in.FactoryDowntimeHours)*2)*demandFactor)
@@ -109,15 +135,21 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 		FleetVolume:    fleetVolume,
 		StockoutSKUs:   s.projectStockouts(criticalSKUs),
 		CapacityBreach: capacityBreach,
+		Mode:           "heuristic",
 		CachedUntil:    s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
 	}
+	s.storeScenarioCache(cacheKey, redisKey, result)
+	return result, nil
+}
+
+func (s *Service) storeScenarioCache(cacheKey, redisKey string, result ScenarioResult) {
+	ctx := context.Background()
 	s.scenarioCache.Store(cacheKey, cachedScenario{result: result, expiresAt: s.Now().Add(15 * time.Minute)})
 	if s.Cache != nil {
 		if raw, err := json.Marshal(result); err == nil {
 			_ = s.Cache.Set(ctx, redisKey, raw, time.Duration(scenarioCacheTTL)*time.Second)
 		}
 	}
-	return result, nil
 }
 
 func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizonDays int) (warehouseCount, orderVolume, criticalSKUs, deliveryVolume int, err error) {

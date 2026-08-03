@@ -5,7 +5,6 @@ import android.content.Context
 import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseException
-import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
@@ -19,7 +18,8 @@ import kotlin.coroutines.resumeWithException
 
 /**
  * Firebase Auth helper for dual-mode authentication.
- * Connects to Firebase Auth Emulator in debug builds.
+ * Uses google-services.json (project pegasus-503013). Auth emulator only when
+ * local.properties sets firebase.auth.emulator=true.
  * All methods degrade gracefully — legacy JWT still works when Firebase is unavailable.
  */
 object FirebaseAuthHelper {
@@ -36,18 +36,16 @@ object FirebaseAuthHelper {
         if (initialized) return
         try {
             if (FirebaseApp.getApps(context).isEmpty()) {
-                val options = FirebaseOptions.Builder()
-                    .setProjectId("demo-pegasus")
-                    .setApplicationId("1:000000000000:android:0000000000000000")
-                    .setApiKey("demo-key")
-                    .build()
-                FirebaseApp.initializeApp(context, options)
+                FirebaseApp.initializeApp(context)
             }
-            if (BuildConfig.DEBUG) {
-                FirebaseAuth.getInstance().useEmulator("10.0.2.2", 9099)
+            if (BuildConfig.FIREBASE_AUTH_EMULATOR) {
+                FirebaseAuth.getInstance().useEmulator(BuildConfig.FIREBASE_AUTH_EMULATOR_HOST, 9099)
             }
             initialized = true
-            Log.d(TAG, "Firebase Auth initialized (debug=${BuildConfig.DEBUG})")
+            Log.d(
+                TAG,
+                "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
+            )
         } catch (e: Exception) {
             Log.w(TAG, "Firebase Auth init failed (non-fatal): ${e.message}")
         }

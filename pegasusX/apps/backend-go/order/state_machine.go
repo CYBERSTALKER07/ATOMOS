@@ -2,8 +2,19 @@ package order
 
 import "fmt"
 
+type TransitionOpts struct {
+    Actor            string
+    Reason           string
+    PhotoURL         string    // for bypass / shop-closed evidence
+    SupervisorToken  string    // for force bypass
+    SkipProximity    bool      // only for supervised force
+}
+
 // ValidateStatusTransition enforces the canonical order lifecycle graph.
-func ValidateStatusTransition(current Status, next Status) error {
+func ValidateStatusTransition(from string, to string, opts TransitionOpts) error {
+	current := Status(from)
+	next := Status(to)
+
 	if current == next {
 		return nil
 	}
@@ -20,13 +31,15 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
 	case StatusArrived:
 		// ADR-009: no soft ARRIVED → COMPLETED (fiscal hard-gate).
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested
-	case StatusArrivedShopClosed:
-		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
+		// Shop-closed path: ARRIVED → SHOP_CLOSED_PENDING
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested || next == StatusShopClosedPending
+	case StatusShopClosedPending:
+		// Design SHOP_CLOSED_PENDING resolutions: payment, credit leave, cancel/return, reopen to ARRIVED.
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelled || next == StatusArrived || next == StatusCancelRequested
 	case StatusDeliveredOnCredit:
 		// §9.1: fiscal only when money received — settlement capture enters FISCALIZING.
-		// Force-complete (ADMIN/WAREHOUSE_ADMIN) may still land COMPLETED via service gate.
-		allowed = next == StatusFiscalizing || next == StatusCompleted
+		// Force-complete does not start from credit leave-behind (must settle money first).
+		allowed = next == StatusFiscalizing
 	case StatusAwaitingPayment:
 		// Card/cash capture → FISCALIZING; cash choice → PENDING_CASH_COLLECTION.
 		allowed = next == StatusFiscalizing || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit

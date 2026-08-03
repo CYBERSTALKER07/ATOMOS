@@ -37,6 +37,7 @@ struct PaymentConfigView: View {
                     }
                 }
             }
+            }
         }
         .task { load() }
     }

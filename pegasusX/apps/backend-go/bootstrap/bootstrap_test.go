@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/redis/go-redis/v9"
 	segmentkafka "github.com/segmentio/kafka-go"
@@ -136,7 +137,7 @@ func TestNewApp_StrictModeFailsWhenRedisUnavailable(t *testing.T) {
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return &fakeKafkaPublisher{}, nil
 	}
-	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
 		return &fakeKafkaDLQWriter{}, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
@@ -168,7 +169,7 @@ func TestNewApp_StrictModeFailsWhenKafkaUnavailable(t *testing.T) {
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return nil, errors.New("kafka unavailable")
 	}
-	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
 		return &fakeKafkaDLQWriter{}, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
@@ -206,7 +207,7 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return kafka, nil
 	}
-	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
 		return dlq, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
@@ -253,7 +254,7 @@ func TestNewApp_StrictModeFailsWhenNotificationDLQUnavailable(t *testing.T) {
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return &fakeKafkaPublisher{}, nil
 	}
-	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
 		return nil, errors.New("dlq unavailable")
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
@@ -285,7 +286,7 @@ func TestNewApp_StrictModeFailsWhenIdempotencyRedisClientUnavailable(t *testing.
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return &fakeKafkaPublisher{}, nil
 	}
-	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
 		return &fakeKafkaDLQWriter{}, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {

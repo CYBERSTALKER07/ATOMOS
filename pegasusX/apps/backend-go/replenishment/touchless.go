@@ -72,14 +72,14 @@ func tryTouchlessApprove(
 			}),
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId":      transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    supplierID,
-				"WarehouseId":   wh.WarehouseId,
+				"FactoryId":       factoryID,
+				"SupplierId":      supplierID,
+				"WarehouseId":     wh.WarehouseId,
 				"SourceInsightId": insightID,
-				"State":         "APPROVED",
-				"TotalVolumeVU": totalVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
+				"State":           "APPROVED",
+				"TotalVolumeVU":   totalVU,
+				"CreatedAt":       spanner.CommitTimestamp,
+				"UpdatedAt":       spanner.CommitTimestamp,
 			}),
 		}
 		buf := &spannerTxnBuffer{}
@@ -161,14 +161,14 @@ func FulfillApprovedInsight(ctx context.Context, client *spanner.Client, insight
 			}),
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId":      transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    row.SupplierID,
-				"WarehouseId":   row.WarehouseID,
+				"FactoryId":       factoryID,
+				"SupplierId":      row.SupplierID,
+				"WarehouseId":     row.WarehouseID,
 				"SourceInsightId": insightID,
-				"State":         "APPROVED",
-				"TotalVolumeVU": totalVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
+				"State":           "APPROVED",
+				"TotalVolumeVU":   totalVU,
+				"CreatedAt":       spanner.CommitTimestamp,
+				"UpdatedAt":       spanner.CommitTimestamp,
 			}),
 		}
 		buf := &spannerTxnBuffer{}

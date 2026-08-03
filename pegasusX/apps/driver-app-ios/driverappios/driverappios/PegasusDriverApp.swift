@@ -16,7 +16,7 @@ struct LabDriverApp: App {
             RootView()
                 .environment(tokenStore)
         }
-        .modelContainer(for: OfflineDelivery.self)
+        .modelContainer(for: [OfflineDelivery.self, QueuedDriverAction.self])
     }
 }
 

@@ -81,8 +81,28 @@ configMapGenerator:
       - PEGASUSX_ENV=staging
       - REQUIRE_INFRA_ADAPTERS=true
       - GLOBAL_PAY_ENV=staging
-      - KAFKA_TOPIC_DUAL_WRITE=true
-      - KAFKA_TOPIC_CONSUME_DOMAIN=true
+      - FISCAL_PROVIDER=PEGASUS
+      - SPANNER_PROJECT=pegasus-503013
+      - SPANNER_INSTANCE=pegasusx-staging-spanner
+      - SPANNER_DATABASE=pegasusx-staging-db
+      - REDIS_ADDR=10.175.232.20:6378
+      - REDIS_TLS_ENABLED=true
+      - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
+      - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
+      - KAFKA_SASL_USERNAME=staging-backend@pegasus-503013.iam.gserviceaccount.com
+      - KAFKA_TOPIC_MAIN=staging.events.orders
+      - KAFKA_TOPIC_MAIN_DLQ=staging.events.orders-dlq
+      - KAFKA_TOPIC_ORDERS=staging.events.orders
+      - KAFKA_TOPIC_DISPATCH=staging.events.orders
+      - KAFKA_TOPIC_REALTIME=staging.events.realtime
+      - KAFKA_TOPIC_WEBHOOKS=staging.events.webhooks
+      - KAFKA_TOPIC_FREEZE_LOCKS=staging.events.freeze-locks
+      - KAFKA_TOPIC_INVENTORY_IMPORT=staging.events.inventory-import
+      - KAFKA_TOPIC_DUAL_WRITE=false
+      # Must stay false unless dual-write is true; otherwise order mutator
+      # listens on empty domain topics and fiscal stays PENDING forever.
+      - KAFKA_TOPIC_CONSUME_DOMAIN=false
+      - FIREBASE_AUTH_ENABLED=false
       - OPTIMIZER_BASE_URL=http://optimizer-core:8082
 
 labels:

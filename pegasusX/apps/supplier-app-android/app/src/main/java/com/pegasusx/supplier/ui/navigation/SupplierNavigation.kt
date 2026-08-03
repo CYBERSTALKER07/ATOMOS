@@ -50,15 +50,18 @@ import com.pegasusx.supplier.ui.screens.inventory.InventoryScreen
 import com.pegasusx.supplier.ui.screens.inventory.InventoryImportScreen
 import com.pegasusx.supplier.ui.screens.activity.ActivityScreen
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
+import com.pegasusx.supplier.ui.screens.exceptions.ClaimsScreen
 import com.pegasusx.supplier.ui.screens.exceptions.EarlyCompleteScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
-// NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
+// NegotiationsScreen product-disabled — quantity negotiation gated off.
+// import com.pegasusx.supplier.ui.screens.exceptions.NegotiationsScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ShopClosedScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetOrdersScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestDetailScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
+import com.pegasusx.supplier.ui.screens.settings.NotificationPreferencesScreen
 import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrderDetailScreen
@@ -68,6 +71,12 @@ import com.pegasusx.supplier.ui.screens.orgfleet.OrgFleetScreen
 import com.pegasusx.supplier.ui.screens.pricing.PricingScreen
 import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
 import com.pegasusx.supplier.ui.screens.returns.ReturnsScreen
+import com.pegasusx.supplier.ui.screens.treasury.ClaimChargebacksScreen
+import com.pegasusx.supplier.ui.screens.analytics.RoutePerformanceScreen
+import com.pegasusx.supplier.ui.screens.treasury.CashReconciliationsScreen
+import com.pegasusx.supplier.ui.screens.treasury.CreditNotesScreen
+import com.pegasusx.supplier.ui.screens.treasury.CreditProfilesScreen
+import com.pegasusx.supplier.ui.screens.treasury.ComplianceScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
@@ -106,6 +115,8 @@ object SupplierRoutes {
     const val RETURNS = "returns"
     const val RECONCILIATION = "reconciliation"
     const val CHARGEBACKS = "chargebacks"
+    const val CLAIMS = "claims"
+    const val CLAIM_CHARGEBACKS = "claim_chargebacks"
     const val RETAILER_OVERRIDES = "retailer_overrides"
     const val INVENTORY_IMPORT = "inventory_import"
     const val TREASURY_HUB = "treasury_hub"
@@ -143,6 +154,12 @@ object SupplierRoutes {
     const val DELIVERY_ZONES = "delivery_zones"
     const val SUPPLY_LANES = "supply_lanes"
     const val PAYMENTS = "payments"
+    const val COMPLIANCE = "compliance"
+    const val CASH_RECONCILIATIONS = "cash_reconciliations"
+    const val CREDIT_NOTES = "credit_notes"
+    const val CREDIT_PROFILES = "credit_profiles"
+    const val ROUTE_PERFORMANCE = "route_performance"
+    const val NOTIFICATION_PREFS = "notification_prefs"
     const val NOTIFICATIONS = "notifications"
 }
 
@@ -359,9 +376,12 @@ fun SupplierNavigation(
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
+                    onNotificationPrefs = { navController.navigate(SupplierRoutes.NOTIFICATION_PREFS) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
                     onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                    onClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
+                    onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
                     onRetailerOverrides = { navController.navigate(SupplierRoutes.RETAILER_OVERRIDES) },
                     onInventoryImport = { navController.navigate(SupplierRoutes.INVENTORY_IMPORT) },
                     onTreasuryHub = { navController.navigate(SupplierRoutes.TREASURY_HUB) },
@@ -376,13 +396,30 @@ fun SupplierNavigation(
                 )
             }
             composable(SupplierRoutes.EXCEPTIONS) {
-                 ExceptionsScreen(ops) { navController.popBackStack() } 
+                 ExceptionsScreen(
+                     ops = ops,
+                     onBack = { navController.popBackStack() },
+                     onOpenClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
+                 )
+            }
+            composable(SupplierRoutes.CLAIMS) {
+                ClaimsScreen(
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                    onOpenClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
+                )
+            }
+            composable(SupplierRoutes.CLAIM_CHARGEBACKS) {
+                ClaimChargebacksScreen(
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(SupplierRoutes.SHOP_CLOSED) {
                  ShopClosedScreen(ops, realtimeSignals) { navController.popBackStack() } 
             }
-            // Quantity negotiation disabled ecosystem-wide.
-            // composable(SupplierRoutes.NEGOTIATIONS) { ... }
+            // Quantity negotiation product-disabled — no NegotiationsScreen route.
+            // const NEGOTIATIONS remains for deep-link stability but is unused.
             composable(SupplierRoutes.MANIFESTS) {
                 ManifestsScreen(
                     ops = ops,
@@ -460,7 +497,8 @@ fun SupplierNavigation(
                     onOpenPlanningBrain = { navController.navigate(SupplierRoutes.PLANNING_BRAIN) },
                     onOpenKnowledgeGraph = { navController.navigate(SupplierRoutes.KNOWLEDGE_GRAPH) },
                     onOpenPlanningSettings = { navController.navigate(SupplierRoutes.PLANNING_SETTINGS) },
-                 ) 
+                    onOpenRoutePerformance = { navController.navigate(SupplierRoutes.ROUTE_PERFORMANCE) },
+                 )
             }
             composable(SupplierRoutes.AI_RECOMMENDATIONS) {
                  AIRecommendationsScreen(ops) { navController.popBackStack() } 
@@ -511,6 +549,24 @@ fun SupplierNavigation(
             composable(SupplierRoutes.RECONCILIATION) {
                  ReconciliationScreen(ops) { navController.popBackStack() } 
             }
+            composable(SupplierRoutes.COMPLIANCE) {
+                ComplianceScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CASH_RECONCILIATIONS) {
+                CashReconciliationsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CREDIT_NOTES) {
+                CreditNotesScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CREDIT_PROFILES) {
+                CreditProfilesScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.ROUTE_PERFORMANCE) {
+                RoutePerformanceScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.NOTIFICATION_PREFS) {
+                NotificationPreferencesScreen(ops) { navController.popBackStack() }
+            }
             composable(SupplierRoutes.CHARGEBACKS) {
                 
                     ChargebacksScreen(onBack = { navController.popBackStack() })
@@ -523,8 +579,14 @@ fun SupplierNavigation(
                         onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                         onPayments = { navController.navigate(SupplierRoutes.PAYMENTS) },
                         onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
+                        onCompliance = { navController.navigate(SupplierRoutes.COMPLIANCE) },
+                        onCashReconciliations = { navController.navigate(SupplierRoutes.CASH_RECONCILIATIONS) },
+                        onCreditNotes = { navController.navigate(SupplierRoutes.CREDIT_NOTES) },
+                        onCreditProfiles = { navController.navigate(SupplierRoutes.CREDIT_PROFILES) },
                         onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                         onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                        onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
+                        onClaims = { navController.navigate(SupplierRoutes.CLAIMS) },
                     )
                 
             }

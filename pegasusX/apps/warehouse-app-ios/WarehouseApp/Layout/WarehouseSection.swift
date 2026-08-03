@@ -23,6 +23,9 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case demandForecast = "Demand forecast"
     case retailers = "Retailers"
     case returns = "Returns"
+    case exceptions = "Exceptions"
+    case claims = "Claims"
+    case rescues = "Rescues"
     case paymentConfig = "Payment config"
     case opsSettings = "Ops settings"
     case notifications = "Notifications"
@@ -56,6 +59,9 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .demandForecast: "chart.line.uptrend.xyaxis"
         case .retailers: "person.crop.rectangle"
         case .returns: "arrow.uturn.backward"
+        case .exceptions: "exclamationmark.triangle"
+        case .claims: "doc.text"
+        case .rescues: "wrench.and.screwdriver"
         case .paymentConfig: "creditcard"
         case .opsSettings: "gearshape"
         case .notifications: "bell"
@@ -83,7 +89,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     }
 
     static var operationsSections: [WarehouseSection] {
-        [.retailers, .returns, .paymentConfig, .notifications]
+        [.retailers, .returns, .exceptions, .claims, .rescues, .paymentConfig, .notifications]
     }
 
     static var portalSections: [WarehouseSection] {

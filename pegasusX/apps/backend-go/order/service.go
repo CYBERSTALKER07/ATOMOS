@@ -24,6 +24,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
@@ -31,9 +32,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -48,7 +51,7 @@ const (
 	StatusLoaded                 Status = "LOADED"
 	StatusInTransit              Status = "IN_TRANSIT"
 	StatusArrived                Status = "ARRIVED"
-	StatusArrivedShopClosed      Status = "ARRIVED_SHOP_CLOSED"
+	StatusShopClosedPending      Status = "SHOP_CLOSED_PENDING"
 	StatusAwaitingPayment        Status = "AWAITING_PAYMENT"
 	StatusPendingCashCollection  Status = "PENDING_CASH_COLLECTION"
 	StatusDeliveredOnCredit      Status = "DELIVERED_ON_CREDIT"
@@ -74,6 +77,7 @@ const (
 	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
 	OrderSourceBackorder      OrderSource = "BACKORDER"
+	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER" // L3.5 place mode
 )
 
 // ConfirmationStatus captures whether a future-dated order still needs a
@@ -105,9 +109,15 @@ var (
 	ErrFiscalNotFailed           = errors.New("fiscal_not_failed")
 	ErrForceCompleteForbidden    = errors.New("force_complete_forbidden")
 	ErrForceReasonRequired       = errors.New("force_reason_required")
+	ErrForceReasonInvalid        = errors.New("force_reason_invalid")
+	ErrFiscalAlreadySucceeded    = errors.New("fiscal_already_succeeded")
+	ErrCashAmountRequired        = errors.New("cash_amount_required")
+	ErrCashAmountNegative        = errors.New("cash_amount_negative")
+	ErrProximityRequired         = errors.New("proximity_required")
 )
 
 // LineItem is one line on an order.
+// Partial offload fields are additive JSON on LineItemsJson (no OrderLines table).
 type LineItem struct {
 	SKU               string   `json:"sku"`
 	Name              string   `json:"name"`
@@ -121,6 +131,11 @@ type LineItem struct {
 	IsPerishable      bool     `json:"is_perishable,omitempty"`
 	StorageTempMinC   *float64 `json:"storage_temp_min_c,omitempty"`
 	StorageTempMaxC   *float64 `json:"storage_temp_max_c,omitempty"`
+	// Partial offload (doorstep): DeliveredQty + RemainingQty == Quantity when set.
+	DeliveredQty  int64  `json:"delivered_qty,omitempty"`
+	RemainingQty  int64  `json:"remaining_qty,omitempty"`
+	OffloadStatus string `json:"offload_status,omitempty"` // FULL|PARTIAL|NONE|RETURNED
+	OffloadReason string `json:"offload_reason,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -176,6 +191,18 @@ type Order struct {
 	LatestFiscalAttemptID  string
 	FiscalizedAt           *time.Time
 
+	// Shop-closed / proximity / partial (additive Orders columns; 2026-07-29).
+	ShopClosedAt         *time.Time
+	ShopClosedReason     string
+	ShopClosedGraceEndsAt *time.Time
+	ShopClosedResolution string
+	PartialDelivery      bool
+	ProximityUnlockedAt  *time.Time
+	ProximityMethod      string
+
+	BuyerAcceptanceStatus   string
+	BuyerAcceptanceDeadline *time.Time
+
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
 	// ConditionReports is written in the same UpdateOrder transaction and not stored on Orders.
@@ -184,6 +211,25 @@ type Order struct {
 	PendingFiscalReceipts []FiscalReceiptRow `json:"-"`
 	// FiscalReceiptUpdate updates an existing attempt row (PENDING → SUCCESS|FAILED).
 	FiscalReceiptUpdate *FiscalReceiptRow `json:"-"`
+	// PendingFiscalSnapshots are inserted in the same UpdateOrder transaction at COMPLETED time.
+	PendingFiscalSnapshots []tax.OrderLineFiscalSnapshot `json:"-"`
+	// PendingExceptionTicket is written in the same UpdateOrder transaction.
+	PendingExceptionTicket *ExceptionTicket `json:"-"`
+}
+
+type ExceptionTicket struct {
+	TicketID     string
+	Type         string
+	OrderID      string
+	EhfID        string
+	Severity     string
+	Status       string
+	Title        string
+	Description  string
+	AssignedRole string
+	CreatedAt    time.Time
+	CreatedBy    string
+	Payload      json.RawMessage
 }
 
 // DeliveryProofType classifies one immutable delivery handoff proof row.
@@ -216,9 +262,19 @@ type DeliveryProofArtifact struct {
 // callback receives a TxnBuffer scoped to the same RW transaction so the row
 // + outbox event commit atomically.
 type Repository interface {
-	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error
+	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
 	UpdateOrder(ctx context.Context, o Order, proofs []DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error
+	UpdateOrderWithTxn(ctx context.Context, o Order, proofs []DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
+	GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error)
+	// GetFiscalAttempt loads one OrderFiscalReceipts row (ADR-009 worker idempotency).
+	GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error)
+	// GetFiscalByReceiptID loads a successful attempt by public FiscalReceiptId.
+	GetFiscalByReceiptID(ctx context.Context, receiptID string) (FiscalReceiptRow, bool, error)
+	// FindPendingBuyerAcceptance returns orders in SUCCESS fiscal state waiting for buyer acceptance.
+	FindPendingBuyerAcceptance(ctx context.Context, limit int) ([]*Order, error)
+	// CountFiscalAttemptsByStatus counts attempts for retry-budget decisions.
+	CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error)
 	ListRetailerOrders(ctx context.Context, retailerID string, limit int) ([]Order, error)
 	ListWarehouseOrdersByDeliveryWindow(ctx context.Context, warehouseID string, from, to time.Time, limit int) ([]Order, error)
 	ListDueAutoConfirmOrders(ctx context.Context, before time.Time, limit int) ([]Order, error)
@@ -226,7 +282,7 @@ type Repository interface {
 	ListWarehousePreorders(ctx context.Context, warehouseID string, limit, offset int) ([]Order, error)
 	ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error)
 	ListBackorderedOrders(ctx context.Context, limit int) ([]Order, error)
-	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
+	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
 	ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]Order, error)
 	CreateConditionReport(ctx context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error
 	ListConditionReports(ctx context.Context, orderID string) ([]ConditionReport, error)
@@ -282,6 +338,7 @@ type Service struct {
 	paymentCapturer PaymentCapturer
 	promotions      *promotion.Service
 	credit          *credit.Service
+	replanner       RouteReplanner
 
 	supplierID         string
 	supplierName       string
@@ -292,7 +349,8 @@ type Service struct {
 	spannerClient      *spanner.Client
 	manifestStore      *manifest.Store
 	idem               idempotency.Store
-	shopGrace          time.Duration
+	shopGrace                  time.Duration
+	creditScoreEnforcement     bool
 	log                *slog.Logger
 	now                func() time.Time
 	newID              func() string
@@ -301,6 +359,23 @@ type Service struct {
 	gatewayPolicy      GatewayPolicyReader
 	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
 	previewRateLimiter RateLimiter
+	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
+	claimsBridge       claimsBridge   // optional logistics claims domain
+	taxSvc             *tax.Service   // optional tax regime service
+	pricingSvc         pricing.Service // optional pricing engine
+	proximityCfg       ProximityConfig
+	allocator          Allocator
+	allocationRequired bool
+}
+
+// RouteReplanner handles continuous dynamic resequencing.
+type RouteReplanner interface {
+	ReplanRoute(ctx context.Context, routeID, reason, actor string) error
+}
+
+type Allocator interface {
+	AllocateOrder(ctx context.Context, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
+	AllocateOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
 }
 
 // ServiceConfig is the constructor input.
@@ -310,20 +385,24 @@ type ServiceConfig struct {
 	Warehouse       WarehouseResolver
 	Promotions      *promotion.Service
 	Credit          *credit.Service
+	Replanner       RouteReplanner
 	SupplierID      string
 	SupplierName    string
 	Currency        string
+	ProximityCfg    ProximityConfig
 	RetailerHub     *ws.Hub
 	SupplierHub     *ws.Hub
 	DriverHub       *ws.Hub
 	SpannerClient   *spanner.Client
 	ShopClosedGrace time.Duration
+	CreditScoreEnforcementEnabled bool
 	Log             *slog.Logger
 	Now             func() time.Time
 	NewID           func() string
 	JWTSecret       string
 	Handoff         *handoff.Engine
 	Idem            idempotency.Store
+	Allocator       Allocator
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -346,6 +425,7 @@ func NewService(c ServiceConfig) *Service {
 		cache:              c.Cache,
 		warehouse:          c.Warehouse,
 		promotions:         c.Promotions,
+		replanner:          c.Replanner,
 		supplierID:         c.SupplierID,
 		supplierName:       strings.TrimSpace(c.SupplierName),
 		currency:           c.Currency,
@@ -353,7 +433,8 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:        c.SupplierHub,
 		driverHub:          c.DriverHub,
 		spannerClient:      c.SpannerClient,
-		shopGrace:          grace,
+		shopGrace:                  grace,
+		creditScoreEnforcement:     c.CreditScoreEnforcementEnabled,
 		log:                c.Log,
 		now:                c.Now,
 		newID:              c.NewID,
@@ -362,6 +443,8 @@ func NewService(c ServiceConfig) *Service {
 		idem:               c.Idem,
 		credit:             c.Credit,
 		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
+		allocator:          c.Allocator,
+		allocationRequired: false,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -385,9 +468,34 @@ func (s *Service) SetCreditService(svc *credit.Service) {
 	s.credit = svc
 }
 
+// SetTaxService wires the tax domain (optional).
+func (s *Service) SetTaxService(t *tax.Service) {
+	s.taxSvc = t
+}
+
+func (s *Service) SetAllocator(a Allocator) {
+	s.allocator = a
+}
+
+func (s *Service) SetPricingService(p pricing.Service) {
+	s.pricingSvc = p
+}
+
 // SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
 func (s *Service) SetGatewayPolicyReader(reader GatewayPolicyReader) {
 	s.gatewayPolicy = reader
+}
+
+func (s *Service) SetAllocationRequired(req bool) {
+	s.allocationRequired = req
+}
+
+// GetOrder returns a single order payload.pshot by ID (used by claims and other domains).
+func (s *Service) GetOrder(ctx context.Context, orderID string) (Order, bool, error) {
+	if s == nil || s.repo == nil {
+		return Order{}, false, fmt.Errorf("order service unavailable")
+	}
+	return s.repo.GetOrder(ctx, strings.TrimSpace(orderID))
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.
@@ -401,6 +509,15 @@ type CreateRequest struct {
 	DeliverBefore         string     `json:"deliver_before,omitempty"`
 	DeliveryPriority      string     `json:"delivery_priority,omitempty"`
 	CheckoutPolicyToken   string     `json:"checkout_policy_token,omitempty"`
+	// Retail OS Phase 2: optional store branch; clients may send active location.
+	// Server still uses lat/lng/h3 for routing — location_id is correlation metadata
+	// until Orders.LocationId column ships in a later migration.
+	LocationID string `json:"location_id,omitempty"`
+	// SupplierID overrides the service default supplier (auto-order multi-supplier place).
+	SupplierID string `json:"supplier_id,omitempty"`
+	// Source forces order provenance when set (e.g. AUTO_ORDER from auto-order place).
+	// When empty, ClassifyDelivery assigns MANUAL / preorder sources.
+	Source OrderSource `json:"order_source,omitempty"`
 }
 
 // CreateResponse is what callers get back.
@@ -498,6 +615,7 @@ type RetailerOrderLifecycleResponse struct {
 // RetailerAIPrediction projects a pending AI preorder for retailer review.
 type RetailerAIPrediction struct {
 	OrderID               string             `json:"order_id"`
+	SupplierID            string             `json:"supplier_id,omitempty"`
 	Source                OrderSource        `json:"order_source"`
 	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
 	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
@@ -617,24 +735,31 @@ type CompleteOrderRequest struct {
 }
 
 // CollectCashRequest is the wire shape for POST /v1/order/collect-cash.
+// amount_received_minor is the cash actually taken (Tiyin). Fiscal uses this amount.
+// When omitted, expected order total is used (compat); shortfall/overage still computed when provided.
 type CollectCashRequest struct {
-	OrderID         string     `json:"order_id"`
-	Latitude        float64    `json:"latitude"`
-	Longitude       float64    `json:"longitude"`
-	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
+	OrderID              string     `json:"order_id"`
+	Latitude             float64    `json:"latitude"`
+	Longitude            float64    `json:"longitude"`
+	AmountReceivedMinor  *int64     `json:"amount_received_minor,omitempty"`
+	Note                 string     `json:"note,omitempty"`
+	ClientTimestamp      *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // CollectCashResponse matches the driver mobile cash-collection contract.
 // ADR-009: State is FISCALIZING after capture (not COMPLETED until fiscal SUCCESS).
 type CollectCashResponse struct {
-	OrderID       string  `json:"order_id"`
-	State         Status  `json:"state"`
-	Amount        int64   `json:"amount"`
-	Currency      string  `json:"currency"`
-	DistanceM     float64 `json:"distance_m"`
-	Message       string  `json:"message"`
-	AttemptID     string  `json:"attempt_id,omitempty"`
-	FiscalStatus  string  `json:"fiscal_status,omitempty"`
+	OrderID             string  `json:"order_id"`
+	State               Status  `json:"state"`
+	Amount              int64   `json:"amount"` // expected order total
+	AmountReceivedMinor int64   `json:"amount_received_minor,omitempty"`
+	ShortfallMinor      int64   `json:"shortfall_minor,omitempty"`
+	OverageMinor        int64   `json:"overage_minor,omitempty"`
+	Currency            string  `json:"currency"`
+	DistanceM           float64 `json:"distance_m"`
+	Message             string  `json:"message"`
+	AttemptID           string  `json:"attempt_id,omitempty"`
+	FiscalStatus        string  `json:"fiscal_status,omitempty"`
 }
 
 // DriverOrderLineItem is a driver-mobile compatible line-item snapshot.
@@ -676,6 +801,7 @@ type driverTransitionRequest struct {
 	PrepareOrder func(*Order, Status) // previousStatus
 	BuildProofs  func(Order) []DeliveryProofArtifact
 	EmitExtra    func(outbox.TxnBuffer, Order, Status) error
+	InTxn        func(context.Context, *spanner.ReadWriteTransaction) error
 }
 
 type driverTransitionResult struct {
@@ -764,7 +890,7 @@ func (r AssignOrderRequest) Validate() (AssignOrderRequest, error) {
 	return normalized, nil
 }
 
-func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem) ([]LineItem, int64, error) {
+func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem, reqDate *time.Time) ([]LineItem, int64, error) {
 	if len(items) == 0 {
 		return nil, 0, errors.New("line_items required")
 	}
@@ -862,9 +988,25 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 			return nil, 0, fmt.Errorf("line_items[%d].quantity must be > 0", i)
 		}
 
-		serverPrice, ok := prices[sku]
-		if !ok {
-			return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
+		var serverPrice int64
+		if s.pricingSvc != nil {
+			var effectiveDate time.Time
+			if reqDate != nil {
+				effectiveDate = *reqDate
+			} else {
+				effectiveDate = s.now()
+			}
+			p, err := s.pricingSvc.ResolvePrice(ctx, s.supplierID, sku, effectiveDate)
+			if err != nil {
+				return nil, 0, fmt.Errorf("line_items[%d].sku %s failed to resolve price: %w", i, sku, err)
+			}
+			serverPrice = p
+		} else {
+			sp, ok := prices[sku]
+			if !ok {
+				return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
+			}
+			serverPrice = sp
 		}
 
 		snap := snapshots[sku]
@@ -936,6 +1078,7 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 func retailerPrediction(orderRecord Order) RetailerAIPrediction {
 	return RetailerAIPrediction{
 		OrderID:               orderRecord.OrderID,
+		SupplierID:            orderRecord.SupplierID,
 		Source:                orderRecord.Source,
 		ConfirmationStatus:    orderRecord.ConfirmationStatus,
 		RequestedDeliveryDate: formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
@@ -959,13 +1102,19 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
-	if err != nil {
-		return CreateResponse{}, err
+	supplierID := strings.TrimSpace(req.SupplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
 	}
+
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("parse requested_delivery_date: %w", err)
+	}
+
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, requestedDeliveryDate)
+	if err != nil {
+		return CreateResponse{}, err
 	}
 	deliverBefore, err := parseOptionalRFC3339(req.DeliverBefore)
 	if err != nil {
@@ -978,7 +1127,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
 
-	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.supplierID, req.Lat, req.Lng)
+	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, req.Lat, req.Lng)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
 	}
@@ -1020,11 +1169,15 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	if classifyErr != nil {
 		return CreateResponse{}, classifyErr
 	}
+	// Auto-order place (and other explicit sources) override ClassifyDelivery provenance.
+	if req.Source != "" {
+		source = req.Source
+	}
 
 	var invPlan InventoryPlan
 	if s.spannerClient != nil {
 		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
-		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems, policyOverride)
+		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, supplierID, warehouseID, lineItems, policyOverride)
 		if err != nil {
 			return CreateResponse{}, err
 		}
@@ -1040,7 +1193,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	}
 
 	if s.credit != nil && total > 0 {
-		check, err := s.credit.CheckOrder(ctx, retailerID, s.supplierID, total)
+		check, err := s.credit.CheckOrder(ctx, retailerID, supplierID, total)
 		if err != nil {
 			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
 		}
@@ -1086,7 +1239,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 
 	o := Order{
 		OrderID:               s.newID(),
-		SupplierID:            s.supplierID,
+		SupplierID:            supplierID,
 		RetailerID:            retailerID,
 		WarehouseID:           warehouseID,
 		Status:                status,
@@ -1105,6 +1258,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		Version:               1,
 		CreatedAt:             now,
 		UpdatedAt:             now,
+	}
+
+	stockOpts := StockReservationOpts{
+		Skip: deferStockReservationAtCreate(s.allocationRequired, status, source, warehouseID, len(lineItems)),
 	}
 
 	err = s.repo.CreateOrder(ctx, &o, func(txn outbox.TxnBuffer) error {
@@ -1141,9 +1298,19 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			})
 		}
 		return nil
-	})
+	}, stockOpts)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
+	}
+
+	if stockOpts.Skip && o.Status == StatusPending {
+		if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
+			if _, cancelErr := s.cancelOrderWithReason(ctx, &o, "system", "SYSTEM", "allocation_failed", ""); cancelErr != nil {
+				s.log.Warn("failed to cancel order after allocation failure", "order_id", o.OrderID, "err", cancelErr)
+			}
+			return CreateResponse{}, fmt.Errorf("allocation failed: %w", err)
+		}
+		o, _, _ = s.repo.GetOrder(ctx, o.OrderID)
 	}
 
 	var backorderOrderID string
@@ -1242,7 +1409,7 @@ func (s *Service) createBackorderOrder(
 			Currency:           bo.Currency,
 			LineItems:          bo.LineItems,
 		})
-	})
+	}, StockReservationOpts{})
 	if err != nil {
 		return "", err
 	}
@@ -1285,8 +1452,21 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		}
 	}
 
-	if err := ValidateStatusTransition(current.Status, nextStatus); err != nil {
+	if err := ValidateStatusTransition(string(current.Status), string(nextStatus), TransitionOpts{}); err != nil {
 		return UpdateStatusResponse{}, err
+	}
+
+	// ADR-009 hard-gate: no COMPLETED without reconstructible fiscal SUCCESS or audited FORCE.
+	// Force-complete and fiscal worker set FiscalStatus in the same mutation as COMPLETED;
+	// generic status patches (incl. reconciliation resolve) must not soft-complete.
+	if nextStatus == StatusCompleted {
+		fs := strings.TrimSpace(current.FiscalStatus)
+		if fs != FiscalStatusSuccess && fs != FiscalStatusForceSkipped {
+			return UpdateStatusResponse{}, fmt.Errorf(
+				"%w: COMPLETED requires fiscal SUCCESS or FORCE_SKIPPED (use force-complete with reason_code); fiscal_status=%s",
+				ErrInvalidStatusTransition, fs,
+			)
+		}
 	}
 
 	if current.Status == nextStatus {
@@ -1393,6 +1573,7 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 
 	previousDriverID := strings.TrimSpace(current.DriverID)
 	previousRouteID := strings.TrimSpace(current.RouteID)
+	previousManifestID := strings.TrimSpace(current.ManifestID)
 	if current.DriverID == normalized.DriverID && current.VehicleID == normalized.VehicleID && current.RouteID == normalized.RouteID && current.ManifestID == normalized.ManifestID {
 		return assignmentResponse(current, assignmentEventType(previousDriverID), current.Version, true), nil
 	}
@@ -1417,6 +1598,19 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 	}
 
 	s.afterOrderMutation(ctx, current)
+	
+	if s.replanner != nil {
+		if previousManifestID != "" && previousManifestID != current.ManifestID {
+			go func(rID, act string) {
+				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_removed", act)
+			}(previousManifestID, claims.Subject)
+		}
+		if current.ManifestID != "" {
+			go func(rID, act string) {
+				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_assigned", act)
+			}(current.ManifestID, claims.Subject)
+		}
+	}
 	s.log.Info("order assignment updated",
 		"order_id", current.OrderID,
 		"supplier_id", current.SupplierID,
@@ -1587,7 +1781,7 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 			return err
 		},
 		PrepareOrder: func(o *Order, _ Status) {
-			row := s.newFiscalPendingRow(*o, "CARD", s.newID())
+			row := s.newFiscalPendingRow(*o, "CARD", s.newID(), o.TotalMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -1623,6 +1817,26 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 			row := orderRecord.PendingFiscalReceipts[0]
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CARD")
 		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, delivered, 0); err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCard,
+				AmountMinor:    delivered,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("card-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
+		},
 	})
 	if err != nil {
 		return DriverOrderResponse{}, err
@@ -1652,10 +1866,18 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 }
 
 // CollectCash geofence-confirms cash collection, captures payment, and starts fiscal hard-gate (ADR-009).
-// Order becomes FISCALIZING; COMPLETED only after fiscal SUCCESS (or audited force-complete).
+// Fiscal amount = amount_received_minor when provided (P0 T3); shortfall/overage emitted as audit events.
+// Proximity settlement: requires ProximityUnlockedAt (or existing geofence within settlement radius).
 func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req CollectCashRequest) (CollectCashResponse, error) {
 	var distanceM float64
 	var attemptID string
+	var receivedMinor, shortfallMinor, overageMinor int64
+	// Settlement proximity gate (design §4.1) — unlock or live 100 m / H3.
+	if err := s.requireProximityUnlocked(ctx, req.OrderID, ""); err != nil {
+		// Fallback: accept if request coords satisfy settlement proximity against order.
+		// (Unlock endpoint is preferred; this keeps single-shot cash collect working offline-sync.)
+		// Full check deferred to Precheck where order coords are available.
+	}
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
 		NextStatus:      StatusFiscalizing,
@@ -1670,15 +1892,44 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
 			}
-			computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
-			if err != nil {
-				return err
+			// Proximity: prior unlock OR live settlement radius / H3 (anti-spoof + doorstep).
+			if err := s.requireProximityUnlocked(ctx, orderRecord.OrderID, ""); err != nil {
+				method, dist, ok := EvaluateSettlementProximity(req.Latitude, req.Longitude, orderRecord.Lat, orderRecord.Lng, orderRecord.H3Cell)
+				if !ok {
+					return fmt.Errorf("%w: unlock required or within %.0fm (dist=%.0f)", ErrProximityLocked, SettlementProximityRadiusM, dist)
+				}
+				_ = method
+				distanceM = dist
 			}
-			distanceM = computedDistance
+			if req.AmountReceivedMinor != nil {
+				if *req.AmountReceivedMinor < 0 {
+					return ErrCashAmountNegative
+				}
+				receivedMinor = *req.AmountReceivedMinor
+			} else {
+				// Compat: default to expected total when driver omits received amount.
+				receivedMinor = orderRecord.TotalMinor
+			}
+			if orderRecord.TotalMinor > receivedMinor {
+				shortfallMinor = orderRecord.TotalMinor - receivedMinor
+			} else if receivedMinor > orderRecord.TotalMinor {
+				overageMinor = receivedMinor - orderRecord.TotalMinor
+			}
+			// Keep approach geofence as outer bound (500 m) when settlement already satisfied.
+			if distanceM == 0 {
+				computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
+				if err != nil {
+					return err
+				}
+				distanceM = computedDistance
+			}
 			return nil
 		},
 		PrepareOrder: func(o *Order, _ Status) {
-			row := s.newFiscalPendingRow(*o, "CASH", s.newID())
+			if receivedMinor == 0 && req.AmountReceivedMinor == nil {
+				receivedMinor = o.TotalMinor
+			}
+			row := s.newFiscalPendingRow(*o, "CASH", s.newID(), receivedMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -1711,8 +1962,62 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 					return err
 				}
 			}
+			if err := emitCashVariance(ctx, txn, orderRecord, claims.Subject, orderRecord.TotalMinor, receivedMinor, req.Note); err != nil {
+				return err
+			}
 			row := orderRecord.PendingFiscalReceipts[0]
 			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CASH")
+		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			orderRecord, ok, err := s.repo.GetOrderTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
+				return fmt.Errorf("failed to get order: %w", err)
+			}
+			if !ok {
+				return fmt.Errorf("order not found: %s", req.OrderID)
+			}
+			delivered := deliveredGrossFromOrder(orderRecord)
+			captured, err := s.getCapturedPaymentMinorTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
+				return err
+			}
+			exceptions, err := s.getExceptionsTotalMinorTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
+				return err
+			}
+			totalPaid := captured + exceptions + receivedMinor
+
+			var shortfall int64
+			if totalPaid < delivered {
+				shortfall = delivered - totalPaid
+				ex := SettlementException{
+					OrderID:     req.OrderID,
+					ExceptionID: s.newID(),
+					Type:        "CASH_SHORTFALL",
+					AmountMinor: shortfall,
+					Status:      "OPEN",
+					CreatedBy:   claims.Subject,
+					CreatedAt:   s.now(),
+				}
+				if writeErr := s.RecordSettlementException(txnCtx, txn, ex); writeErr != nil {
+					return writeErr
+				}
+			}
+
+			if err := s.AssertMoneyCoversDeliveryTxn(txnCtx, txn, req.OrderID, receivedMinor, shortfall); err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCash,
+				AmountMinor:    receivedMinor,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("cash-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
 		},
 	})
 	if err != nil {
@@ -1721,26 +2026,37 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	if result.NoChange {
 		distanceM = 0
 		return CollectCashResponse{
-			OrderID:      result.Order.OrderID,
-			State:        result.Order.Status,
-			Amount:       result.Order.TotalMinor,
-			Currency:     result.Order.Currency,
-			DistanceM:    distanceM,
-			Message:      "Cash collection already fiscalizing.",
-			AttemptID:    result.Order.LatestFiscalAttemptID,
-			FiscalStatus: result.Order.FiscalStatus,
+			OrderID:             result.Order.OrderID,
+			State:               result.Order.Status,
+			Amount:              result.Order.TotalMinor,
+			AmountReceivedMinor: receivedMinor,
+			Currency:            result.Order.Currency,
+			DistanceM:           distanceM,
+			Message:             "Cash collection already fiscalizing.",
+			AttemptID:           result.Order.LatestFiscalAttemptID,
+			FiscalStatus:        result.Order.FiscalStatus,
 		}, nil
 	}
 
+	msg := "Cash collected. Waiting for fiscal receipt."
+	if shortfallMinor > 0 {
+		msg = fmt.Sprintf("Cash collected with shortfall %d. Fiscalizing received amount.", shortfallMinor)
+	} else if overageMinor > 0 {
+		msg = fmt.Sprintf("Cash collected with overage %d. Fiscalizing received amount.", overageMinor)
+	}
+
 	return CollectCashResponse{
-		OrderID:      result.Order.OrderID,
-		State:        result.Order.Status,
-		Amount:       result.Order.TotalMinor,
-		Currency:     result.Order.Currency,
-		DistanceM:    distanceM,
-		Message:      "Cash collected. Waiting for fiscal receipt.",
-		AttemptID:    attemptID,
-		FiscalStatus: FiscalStatusPending,
+		OrderID:             result.Order.OrderID,
+		State:               result.Order.Status,
+		Amount:              result.Order.TotalMinor,
+		AmountReceivedMinor: receivedMinor,
+		ShortfallMinor:      shortfallMinor,
+		OverageMinor:        overageMinor,
+		Currency:            result.Order.Currency,
+		DistanceM:           distanceM,
+		Message:             msg,
+		AttemptID:           attemptID,
+		FiscalStatus:        FiscalStatusPending,
 	}, nil
 }
 
@@ -1763,7 +2079,7 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 			NoChange:       true,
 		}, nil
 	}
-	if err := ValidateStatusTransition(current.Status, req.NextStatus); err != nil {
+	if err := ValidateStatusTransition(string(current.Status), string(req.NextStatus), TransitionOpts{}); err != nil {
 		return driverTransitionResult{}, err
 	}
 	if req.Precheck != nil {
@@ -1839,27 +2155,52 @@ func (s *Service) persistDriverTransition(ctx context.Context, claims auth.Claim
 	if req.BuildProofs != nil {
 		proofs = req.BuildProofs(current)
 	}
-	err := s.repo.UpdateOrder(ctx, current, proofs, func(txn outbox.TxnBuffer) error {
-		params := orderStatusEmitParams{
-			Claims:         claims,
-			Order:          current,
-			PreviousStatus: previousStatus,
-			Reason:         req.Reason,
-			ActorID:        actorID,
-		}
-		if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
-			return err
-		}
-		if req.EmitExtra != nil {
-			if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+	var err error
+	if req.InTxn != nil {
+		err = s.repo.UpdateOrderWithTxn(ctx, current, proofs, req.InTxn, func(txn outbox.TxnBuffer) error {
+			params := orderStatusEmitParams{
+				Claims:         claims,
+				Order:          current,
+				PreviousStatus: previousStatus,
+				Reason:         req.Reason,
+				ActorID:        actorID,
+			}
+			if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
 				return err
 			}
-		}
-		if ab, ok := txn.(outbox.AuditBuffer); ok {
-			return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
-		}
-		return nil
-	})
+			if req.EmitExtra != nil {
+				if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+					return err
+				}
+			}
+			if ab, ok := txn.(outbox.AuditBuffer); ok {
+				return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
+			}
+			return nil
+		})
+	} else {
+		err = s.repo.UpdateOrder(ctx, current, proofs, func(txn outbox.TxnBuffer) error {
+			params := orderStatusEmitParams{
+				Claims:         claims,
+				Order:          current,
+				PreviousStatus: previousStatus,
+				Reason:         req.Reason,
+				ActorID:        actorID,
+			}
+			if err := emitOrderStatusChanged(ctx, txn, params); err != nil {
+				return err
+			}
+			if req.EmitExtra != nil {
+				if err := req.EmitExtra(txn, current, previousStatus); err != nil {
+					return err
+				}
+			}
+			if ab, ok := txn.(outbox.AuditBuffer); ok {
+				return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(previousStatus), "to": string(current.Status)})
+			}
+			return nil
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("transition driver order %s: %w", current.OrderID, err)
 	}
@@ -2488,7 +2829,10 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 	case errors.Is(err, ErrOrderForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, ErrInvalidStatusTransition):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_transition"})
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "invalid_status_transition",
+			"message": err.Error(),
+		})
 	case errors.Is(err, ErrGeofenceViolation):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "geofence_violation"})
 	case errors.Is(err, ErrAssignmentRequired):
@@ -2501,6 +2845,12 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "force_complete_forbidden"})
 	case errors.Is(err, ErrForceReasonRequired):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "force_reason_required"})
+	case errors.Is(err, ErrForceReasonInvalid):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "force_reason_invalid"})
+	case errors.Is(err, ErrFiscalAlreadySucceeded):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "fiscal_already_succeeded"})
+	case errors.Is(err, ErrCashAmountNegative):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cash_amount_negative"})
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
@@ -3004,20 +3354,30 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 
 func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req AmendOrderRequest, actorID string) (AmendOrderResponse, error) {
 	orderID := strings.TrimSpace(current.OrderID)
-	if !orderAmendable(current) {
-		return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
-	}
 
 	amendByProduct := make(map[string]AmendItemRequest, len(req.Items))
+	reasons := make([]string, 0, len(req.Items))
 	for _, item := range req.Items {
 		key := strings.TrimSpace(item.ProductID)
 		if key == "" {
 			continue
 		}
 		amendByProduct[key] = item
+		if r := normalizeAmendReason(item.Reason); r != "" {
+			reasons = append(reasons, r)
+		}
 	}
 	if len(amendByProduct) == 0 {
 		return AmendOrderResponse{}, errors.New("items required")
+	}
+
+	now := s.now()
+	if !orderAmendable(current.Status) {
+		// Post-delivery concealed damage / shortage: COMPLETED within claim window.
+		completedAt := current.UpdatedAt
+		if !orderPostDeliveryAmendable(current.Status, completedAt, now, reasons) {
+			return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
+		}
 	}
 
 	origQtyBySKU := make(map[string]int64, len(current.LineItems))
@@ -3445,4 +3805,29 @@ func resolveRetailerDisplayName(ctx context.Context, client *spanner.Client, ret
 		return retailerID
 	}
 	return strings.TrimSpace(name.StringVal)
+}
+
+// ConfirmAndAllocate runs multi-warehouse allocation and reserves stock inside one Spanner RW txn.
+func (s *Service) ConfirmAndAllocate(ctx context.Context, orderID string) error {
+	if !s.allocationRequired {
+		return nil
+	}
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner client unavailable for allocation")
+	}
+	orderID = strings.TrimSpace(orderID)
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		current, found, err := s.repo.GetOrderTxn(ctx, txn, orderID)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return fmt.Errorf("order %s not found", orderID)
+		}
+		if current.Status != StatusPending {
+			return fmt.Errorf("order %s in status %s cannot be allocated", orderID, current.Status)
+		}
+		return s.allocateAndReserveInTxn(ctx, txn, &current)
+	})
+	return err
 }

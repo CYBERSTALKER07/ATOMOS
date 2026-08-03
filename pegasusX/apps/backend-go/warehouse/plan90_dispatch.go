@@ -88,14 +88,19 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 		return
 	}
 	insights := s.replenishmentInsightsByProduct(ctx, warehouseID)
-	if len(insights) == 0 {
+	adjustments := s.demandAdjustmentsByProduct(ctx, warehouseID)
+	if len(insights) == 0 && len(adjustments) == 0 {
 		return
 	}
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	for productID, insight := range insights {
 		qty := insight.ReorderQuantity
+		burn := insight.AvgDailyVelocity
+		if adj, hasAdj := adjustments[productID]; hasAdj && adj > 0 {
+			burn = adj
+		}
 		if qty <= 0 {
-			qty = int64(insight.AvgDailyVelocity * 7)
+			qty = int64(burn * 7)
 		}
 		_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{

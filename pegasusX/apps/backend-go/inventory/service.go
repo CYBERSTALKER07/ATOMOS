@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 )
 
@@ -65,6 +66,11 @@ func (s *Service) ReserveForOrder(ctx context.Context, inventoryID string, quant
 		s.cache.Invalidate(ctx, "inventory:"+inventoryID)
 	}
 	return nil
+}
+
+// ReserveTxn holds stock within an existing Spanner transaction.
+func (s *Service) ReserveTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, quantity int64) error {
+	return s.repo.ReserveTxn(ctx, txn, warehouseID, productID, quantity)
 }
 
 // ReleaseReservation returns reserved stock on order cancellation.

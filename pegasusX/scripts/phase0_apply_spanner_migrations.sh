@@ -4,7 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIG_DIR="$ROOT/apps/backend-go/schema/migrations"
-LAST_MIGRATION="20260702_supplier_promotions_redemption_caps.ddl"
+# Through fiscal hard-gate receipts (D3 / ADR-009). Keep newest required migration here.
+LAST_MIGRATION="20260804_phase_d_notifications.ddl"
 
 if [[ -f "$ROOT/.env.k8s.generated" ]]; then
 	set -a
@@ -18,10 +19,24 @@ elif [[ -f "$ROOT/.env.k8s" ]]; then
 	set +a
 fi
 
-if [[ -n "${SPANNER_EMULATOR_HOST:-}" ]]; then
-	echo "FAIL: SPANNER_EMULATOR_HOST is set — Phase 0 targets cloud Spanner" >&2
-	exit 1
+# Allow operators to target SSMR Spanner without editing generated env files.
+if [[ -n "${PHASE0_SPANNER_PROJECT:-}" ]]; then
+	export SPANNER_PROJECT="$PHASE0_SPANNER_PROJECT"
 fi
+if [[ -n "${PHASE0_SPANNER_INSTANCE:-}" ]]; then
+	export SPANNER_INSTANCE="$PHASE0_SPANNER_INSTANCE"
+fi
+if [[ -n "${PHASE0_SPANNER_DATABASE:-}" ]]; then
+	export SPANNER_DATABASE="$PHASE0_SPANNER_DATABASE"
+fi
+
+# Force cloud Spanner client (LoadConfig would otherwise default emulator for local projects).
+# Explicit empty host + non-local SPANNER_PROJECT both select real GCP ADC.
+if [[ -n "${SPANNER_EMULATOR_HOST:-}" ]]; then
+	echo "WARN: unsetting SPANNER_EMULATOR_HOST=${SPANNER_EMULATOR_HOST} for cloud migrate" >&2
+fi
+unset SPANNER_EMULATOR_HOST
+export SPANNER_EMULATOR_HOST=""
 
 require_env() {
 	if [[ -z "${!1:-}" ]]; then
@@ -34,7 +49,13 @@ require_env SPANNER_PROJECT
 require_env SPANNER_INSTANCE
 require_env SPANNER_DATABASE
 
-echo "==> Spanner: projects/${SPANNER_PROJECT}/instances/${SPANNER_INSTANCE}/databases/${SPANNER_DATABASE}"
+if [[ "${SPANNER_PROJECT}" == "pegasusx-local" ]]; then
+	echo "FAIL: SPANNER_PROJECT=pegasusx-local looks like emulator — set cloud project id" >&2
+	exit 1
+fi
+
+echo "==> Spanner (cloud): projects/${SPANNER_PROJECT}/instances/${SPANNER_INSTANCE}/databases/${SPANNER_DATABASE}"
+echo "==> SPANNER_EMULATOR_HOST empty (real GCP)"
 
 cd "$ROOT/apps/backend-go"
 echo "==> Base schema convergence (cmd/setup)"

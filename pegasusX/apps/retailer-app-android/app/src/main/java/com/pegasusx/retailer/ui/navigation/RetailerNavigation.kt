@@ -47,6 +47,7 @@ import com.pegasusx.retailer.ui.components.ShopClosedSheet
 import com.pegasusx.retailer.ui.components.PegasusBottomBar
 import com.pegasusx.retailer.ui.components.PegasusTab
 import com.pegasusx.retailer.ui.components.PegasusTopBar
+import com.pegasusx.retailer.ui.components.FileClaimHost
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.PaymentPhase
 import com.pegasusx.retailer.ui.components.QROverlay
@@ -61,6 +62,15 @@ import com.pegasusx.retailer.ui.screens.profile.AccountProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.ProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.FamilyMembersScreen
 import com.pegasusx.retailer.ui.screens.profile.SavedCardsScreen
+import com.pegasusx.retailer.ui.screens.settings.CapabilitiesScreen
+import com.pegasusx.retailer.ui.screens.settings.TeamScreen
+import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
+import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
+import com.pegasusx.retailer.ui.screens.settings.PosScreen
+import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
+import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
+import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
@@ -101,6 +111,7 @@ fun RetailerNavigation(
     // Global detail/QR state (hoisted so overlays render above sheets)
     var globalDetailOrder by remember { mutableStateOf<Order?>(null) }
     var globalQROrder by remember { mutableStateOf<Order?>(null) }
+    var claimOrder by remember { mutableStateOf<Order?>(null) }
 
     // Payment sheet state
     var paymentPhase by remember { mutableStateOf(PaymentPhase.CHOOSE) }
@@ -407,12 +418,66 @@ fun RetailerNavigation(
                             onAccountClick = { navController.navigate("ACCOUNT_PROFILE") },
                             onSavedCardsClick = { navController.navigate("SAVED_CARDS") },
                             onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
+                            onCapabilitiesClick = { navController.navigate("CAPABILITIES") },
+                            onTeamClick = { navController.navigate("TEAM") },
+                            onLocationsClick = { navController.navigate("LOCATIONS") },
+                            onStoreStockClick = { navController.navigate("STORE_STOCK") },
+                            onPosClick = { navController.navigate("POS") },
+                            onShiftsClick = { navController.navigate("SHIFTS") },
+                            onSectionsClick = { navController.navigate("SECTIONS") },
+                            onReportsClick = { navController.navigate("REPORTS_PRO") },
+                            onAssistClick = { navController.navigate("ASSIST") },
                         )
+                    }
+                }
+                composable("POS") {
+                    Box(Modifier.fillMaxSize()) {
+                        PosScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("SHIFTS") {
+                    Box(Modifier.fillMaxSize()) {
+                        ShiftsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("SECTIONS") {
+                    Box(Modifier.fillMaxSize()) {
+                        SectionsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("REPORTS_PRO") {
+                    Box(Modifier.fillMaxSize()) {
+                        ReportsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("ASSIST") {
+                    Box(Modifier.fillMaxSize()) {
+                        AssistScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("LOCATIONS") {
+                    Box(Modifier.fillMaxSize()) {
+                        LocationsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("STORE_STOCK") {
+                    Box(Modifier.fillMaxSize()) {
+                        StoreStockScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("SAVED_CARDS") {
                     Box(Modifier.fillMaxSize()) {
                         SavedCardsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("CAPABILITIES") {
+                    Box(Modifier.fillMaxSize()) {
+                        CapabilitiesScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("TEAM") {
+                    Box(Modifier.fillMaxSize()) {
+                        TeamScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("FAMILY_MEMBERS") {
@@ -548,6 +613,16 @@ fun RetailerNavigation(
                     globalDetailOrder = null
                 },
                 isCompact = isCompact,
+                onFileClaim = {
+                    claimOrder = order
+                    globalDetailOrder = null
+                },
+            )
+        }
+        claimOrder?.let { order ->
+            FileClaimHost(
+                order = order,
+                onDismiss = { claimOrder = null },
             )
         }
 

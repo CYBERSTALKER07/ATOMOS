@@ -9,8 +9,11 @@ import "./global.css";
 import ConnectionStrip from './components/ConnectionStrip';
 import ManifestKpiGrid from './components/ManifestKpiGrid';
 import PayloadStatePanel from './components/PayloadStatePanel';
+import TruckSidebar from './components/TruckSidebar';
+import OrderChecklist from './components/OrderChecklist';
 import { SkeletonList } from './components/SkeletonPulse';
 import StatusBadge, { exceptionReasonTone } from './components/StatusBadge';
+import ExceptionsSheet, { type ManifestExceptionItem } from './components/ExceptionsSheet';
 import WorkflowSectionHeader from './components/WorkflowSectionHeader';
 import { useT, isIOS } from './theme';
 import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
@@ -34,6 +37,9 @@ import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from './firebaseAuth'
 import { reconcilePayloadSession } from './session-reconcile';
 import { registerPayloadPushTokens } from './pushRegistration';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
+import NotificationsSheet, { type NotifItem } from './components/NotificationsSheet';
+import RecommendationCard, { type TruckRecommendation } from './components/RecommendationCard';
+import { ManifestDetailPane } from './components/ManifestDetailPane';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 // Resolution order for the backend base URL:
@@ -253,19 +259,10 @@ export default function App() {
   const activeToastIdRef = useRef<number | null>(null);
 
   // Notification state
-  type NotifItem = { id: string; type: string; title: string; body: string; read_at: string | null; created_at: string };
   const [notifications, setNotifications] = useState<NotifItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  type ManifestExceptionItem = {
-    exception_id: string;
-    manifest_id: string;
-    order_id: string;
-    reason: string;
-    attempt_count: number;
-    escalated: boolean;
-    created_at: string;
-  };
+
   const [showExceptionsPanel, setShowExceptionsPanel] = useState(false);
   const [manifestExceptions, setManifestExceptions] = useState<ManifestExceptionItem[]>([]);
   const [loadingExceptions, setLoadingExceptions] = useState(false);
@@ -275,21 +272,6 @@ export default function App() {
   const [clientPolicyMessage, setClientPolicyMessage] = useState<string | null>(null);
 
   // Re-dispatch state
-  type TruckRecommendation = {
-    driver_id: string;
-    driver_name: string;
-    vehicle_id: string;
-    vehicle_class: string;
-    license_plate: string;
-    max_volume_vu: number;
-    used_volume_vu: number;
-    free_volume_vu: number;
-    distance_km: number;
-    order_count: number;
-    truck_status: string;
-    score: number;
-    recommendation: string;
-  };
   const [showReDispatch, setShowReDispatch] = useState(false);
   const [reDispatchOrderId, setReDispatchOrderId] = useState<string | null>(null);
   const [reDispatchRetailer, setReDispatchRetailer] = useState('');
@@ -1248,10 +1230,10 @@ export default function App() {
           body: action.body,
         });
         if (res.ok || res.status === 409) continue;
-        if (res.status === 408 || res.status === 429 || res.status >= 500) {
+        if (res.status === 401 || res.status === 403 || res.status === 408 || res.status === 429 || res.status >= 500) {
           remaining.push(action); // retryable
         }
-        // Non-retryable 4xx are dropped so poison-pill entries cannot block queue drain.
+        // Non-retryable 4xx (like 400 or 404) are dropped so poison-pill entries cannot block queue drain.
       } catch {
         remaining.push(action);
       }
@@ -1818,65 +1800,14 @@ export default function App() {
         </View>
 
         {/* Truck selector */}
-        <View className="flex-1 items-center justify-center p-12">
-          {isLoadingTrucks ? (
-            <PayloadStatePanel
-              theme={T}
-              variant="truck"
-              title={isIOS ? 'Loading vehicles...' : 'LOADING VEHICLES...'}
-              message={isIOS ? 'Refreshing supplier fleet availability for this shift.' : 'REFRESHING SUPPLIER FLEET AVAILABILITY FOR THIS SHIFT.'}
-            />
-          ) : trucks.length === 0 ? (
-            <PayloadStatePanel
-              theme={T}
-              variant="truck"
-              title={tx('payload.vehicle.none_available')}
-              message={isIOS ? 'No payload vehicle is currently ready for assignment.' : 'NO PAYLOAD VEHICLE IS CURRENTLY READY FOR ASSIGNMENT.'}
-              tone="warning"
-            />
-          ) : (
-            <>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
-                {tx('payload.vehicle.select_target')}
-              </Text>
-              <View className="flex-row gap-4">
-                {trucks.map(truck => (
-                  <Pressable
-                    key={truck.id}
-                    onPress={() => handleTruckSelect(truck.id)}
-                    style={({ pressed }) => ({
-                      borderWidth: isIOS ? 0.33 : 1,
-                      borderColor: T.colors.separator,
-                      backgroundColor: T.colors.cardBackground,
-                      paddingHorizontal: 40,
-                      paddingVertical: 32,
-                      alignItems: 'center' as const,
-                      borderRadius: T.radius.card,
-                      ...T.shadow.card,
-                      opacity: pressed ? 0.82 : 1,
-                      transform: [{ scale: pressed ? 0.96 : 1 }],
-                    })}
-                  >
-                    <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 1 }}>
-                      {truck.label}
-                    </Text>
-                    {truck.license_plate ? (
-                      <Text style={{ fontSize: 11, fontFamily: T.typography.mono.fontFamily, color: T.colors.tertiaryLabel, marginTop: 6, letterSpacing: 0.5 }}>
-                        {truck.license_plate}
-                      </Text>
-                    ) : null}
-                    <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
-                      {truck.vehicle_class}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 40, letterSpacing: 0.3 }}>
-                {isIOS ? 'Select target vehicle' : 'SELECT TARGET VEHICLE'}
-              </Text>
-            </>
-          )}
-        </View>
+        <TruckSidebar
+          variant="selector"
+          trucks={trucks}
+          activeTruck={activeTruck}
+          setActiveTruck={handleTruckSelect}
+          isLoadingTrucks={isLoadingTrucks}
+          tx={tx}
+        />
         {renderUiToast()}
       </View>
     );
@@ -1946,31 +1877,14 @@ export default function App() {
         </View>
 
         {/* Truck toggle bar */}
-        <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-          {trucks.map(truck => (
-            <Pressable
-              key={truck.id}
-              onPress={() => handleTruckSelect(truck.id)}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                alignItems: 'center',
-                backgroundColor: activeTruck === truck.id ? T.colors.sidebarActive : 'transparent',
-                borderRadius: activeTruck === truck.id ? 8 : 0,
-                margin: activeTruck === truck.id ? 4 : 0,
-              }}
-            >
-              <Text style={{
-                fontWeight: '700',
-                fontSize: 11,
-                letterSpacing: 0.5,
-                color: activeTruck === truck.id ? T.colors.sidebarActiveText : T.colors.sidebarSecondary,
-              }}>
-                {truck.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <TruckSidebar
+          variant="sidebar"
+          trucks={trucks}
+          activeTruck={activeTruck}
+          setActiveTruck={handleTruckSelect}
+          isLoadingTrucks={isLoadingTrucks}
+          tx={tx}
+        />
 
         {batchReadyManifestIds.length > 1 && (
           <View style={{
@@ -2114,6 +2028,30 @@ export default function App() {
       </View>
 
       {/* ── Right pane: Manifest detail ──────────────────────────────────── */}
+      <ManifestDetailPane
+        selectedOrder={selectedOrder}
+        selectedOrderId={selectedOrderId}
+        isIOS={isIOS}
+        theme={T}
+        activeTruck={activeTruck}
+        openReDispatch={openReDispatch}
+        manifestState={manifestState}
+        handleException={handleException}
+        exceptionLoading={exceptionLoading}
+        setShowProductScanner={setShowProductScanner}
+        selectedManifest={selectedManifest}
+        toggleCheck={toggleCheck}
+        manifestId={manifestId}
+        handleSeal={handleSeal}
+        allChecked={allChecked}
+        isSealing={isSealing}
+        setShowInjectOrder={setShowInjectOrder}
+        sealExplain={sealExplain}
+        handleManifestSeal={handleManifestSeal}
+        isSealingManifest={isSealingManifest}
+        isLoading={isLoading}
+      />
+      {false && (
       <View className="flex-1 flex-col">
         {/* Order header */}
         {selectedOrder ? (
@@ -2227,53 +2165,11 @@ export default function App() {
                 </Text>
               </Pressable>
             </View>
-            <ScrollView className="flex-1 px-8 py-2">
-              {selectedManifest.map(item => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => toggleCheck(item.id)}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row' as const,
-                    alignItems: 'center' as const,
-                    paddingVertical: 16,
-                    borderBottomWidth: isIOS ? 0.33 : 1,
-                    borderBottomColor: T.colors.separator,
-                    opacity: item.scanned ? 0.4 : pressed ? 0.75 : 1,
-                    transform: [{ scale: pressed ? 0.99 : 1 }],
-                  })}
-                >
-                  {/* Checkbox */}
-                  <View style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: T.radius.checkbox,
-                    borderWidth: item.scanned ? 0 : (isIOS ? 1.5 : 2),
-                    borderColor: item.scanned ? 'transparent' : T.colors.tertiaryLabel,
-                    backgroundColor: item.scanned ? T.colors.accent : 'transparent',
-                    marginRight: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {item.scanned && (
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>✓</Text>
-                    )}
-                  </View>
-                  <View>
-                    <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, color: T.colors.tertiaryLabel, letterSpacing: 0.5 }}>
-                      {item.brand}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                      <Text style={{ fontWeight: '600', fontSize: 15, color: T.colors.label }}>
-                        {item.label}
-                      </Text>
-                      <Text style={{ fontWeight: '500', fontSize: 13, color: item.scanned ? '#16A34A' : T.colors.secondaryLabel, marginLeft: 8 }}>
-                        ({item.verifiedQuantity}/{item.quantity} scanned)
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <OrderChecklist 
+              selectedManifest={selectedManifest} 
+              theme={T} 
+              toggleCheck={toggleCheck} 
+            />
 
             {/* Seal button — per-order (legacy) + manifest-level (LEO) */}
             <View style={{ paddingHorizontal: 32, paddingVertical: 20, borderTopWidth: isIOS ? 0.33 : 1, borderTopColor: T.colors.separator }}>
@@ -2384,6 +2280,7 @@ export default function App() {
           </View>
         )}
       </View>
+      )}
 
       {/* ── Inject Order Modal ────────────────────────────────────────── */}
       <Modal visible={showInjectOrder} transparent animationType="fade" onRequestClose={() => setShowInjectOrder(false)}>
@@ -2559,87 +2456,16 @@ export default function App() {
                 data={recommendations}
                 keyExtractor={item => item.driver_id}
                 style={{ maxHeight: 400 }}
-                renderItem={({ item, index }) => {
-                  const isBest = index === 0;
-                  const fits = item.free_volume_vu >= reDispatchVolume;
-                  const isMaintenance = item.truck_status === 'MAINTENANCE';
-                  return (
-                    <Pressable
-                      onPress={() => { if (!isMaintenance && !isReassigning) handleReassign(item.driver_id, item.vehicle_id); }}
-                      disabled={isMaintenance || isReassigning}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: 24,
-                        paddingVertical: 16,
-                        borderBottomWidth: isIOS ? 0.33 : 1,
-                        borderBottomColor: T.colors.separator,
-                        opacity: isMaintenance ? 0.4 : 1,
-                        backgroundColor: isBest ? `${T.colors.accent}08` : 'transparent',
-                      }}
-                    >
-                      {/* Rank badge */}
-                      <View style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: isBest ? T.colors.accent : T.colors.fillTertiary,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 16,
-                      }}>
-                        <Text style={{ fontWeight: '700', fontSize: 12, color: isBest ? '#FFFFFF' : T.colors.secondaryLabel }}>
-                          {index + 1}
-                        </Text>
-                      </View>
-
-                      {/* Truck info */}
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={{ fontWeight: '600', fontSize: 14, color: T.colors.label }}>
-                            {item.driver_name}
-                          </Text>
-                          {isBest && (
-                            <StatusBadge compact label={isIOS ? 'Best' : 'BEST'} theme={T} tone="accent" />
-                          )}
-                          {isMaintenance && (
-                            <StatusBadge compact label={isIOS ? 'Maintenance' : 'MAINTENANCE'} theme={T} tone="danger" />
-                          )}
-                        </View>
-                        <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, color: T.colors.tertiaryLabel, marginTop: 3, letterSpacing: 0.3 }}>
-                          {item.license_plate} · {item.vehicle_class}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: T.colors.secondaryLabel, marginTop: 2 }}>
-                          {item.recommendation}
-                        </Text>
-                      </View>
-
-                      {/* Metrics */}
-                      <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
-                        {item.distance_km >= 0 ? (
-                          <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 13, fontWeight: '600', color: T.colors.label }}>
-                            {item.distance_km < 1 ? `${(item.distance_km * 1000).toFixed(0)}m` : `${item.distance_km.toFixed(1)}km`}
-                          </Text>
-                        ) : (
-                          <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, color: T.colors.tertiaryLabel }}>
-                            {isIOS ? 'No GPS' : 'NO GPS'}
-                          </Text>
-                        )}
-                        <Text style={{
-                          fontFamily: T.typography.mono.fontFamily,
-                          fontSize: 11,
-                          marginTop: 2,
-                          color: fits ? T.colors.success : T.colors.destructive,
-                        }}>
-                          {item.free_volume_vu.toFixed(1)} VU free
-                        </Text>
-                        <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 1 }}>
-                          {item.order_count} orders
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                }}
+                renderItem={({ item, index }) => (
+                  <RecommendationCard
+                    item={item}
+                    index={index}
+                    reDispatchVolume={reDispatchVolume}
+                    isReassigning={isReassigning}
+                    theme={T}
+                    onReassign={handleReassign}
+                  />
+                )}
               />
             )}
 
@@ -2654,128 +2480,25 @@ export default function App() {
       </Modal>
 
       {/* ── Notification Panel Modal ─────────────────────────────────────── */}
-      <Modal visible={showNotifPanel} transparent animationType="fade" onRequestClose={() => setShowNotifPanel(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: 420, maxHeight: '80%', backgroundColor: T.colors.sidebarBackground, borderRadius: 12, overflow: 'hidden' }}>
-            {/* Modal header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-              <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: T.colors.sidebarLabel, letterSpacing: 0.3 }}>
-                {isIOS ? 'Notifications' : 'NOTIFICATIONS'}
-              </Text>
-              {unreadCount > 0 && (
-                <Pressable onPress={markAllNotifsRead} style={{ marginRight: 12 }}>
-                  <Text style={{ fontSize: 12, color: T.colors.accent, fontWeight: '600' }}>Mark all read</Text>
-                </Pressable>
-              )}
-              <Pressable onPress={() => setShowNotifPanel(false)}>
-                <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
-              </Pressable>
-            </View>
-            {/* Notification list */}
-            <FlatList
-              data={notifications}
-              keyExtractor={item => item.id}
-              ListEmptyComponent={
-                <View style={{ padding: 40, alignItems: 'center' }}>
-                  <PayloadStatePanel
-                    theme={T}
-                    variant="notifications"
-                    title={isIOS ? 'No notifications' : 'NO NOTIFICATIONS'}
-                    message={isIOS ? 'Payload alerts and sync events will appear here.' : 'PAYLOAD ALERTS AND SYNC EVENTS WILL APPEAR HERE.'}
-                    compact
-                  />
-                </View>
-              }
-              renderItem={({ item }) => {
-                const isUnread = !item.read_at;
-                const iconName: keyof typeof MaterialIcons.glyphMap =
-                  item.type === 'PAYLOAD_READY_TO_SEAL' ? 'inventory' :
-                  item.type === 'PAYLOAD_SEALED' ? 'verified' :
-                  item.type === 'ORDER_DISPATCHED' ? 'local-shipping' :
-                  item.type === 'ORDER_COMPLETED' ? 'check-circle' :
-                  item.type === 'PAYMENT_SETTLED' ? 'payments' :
-                  item.type === 'PAYMENT_FAILED' ? 'error' :
-                  'notifications';
-                return (
-                  <Pressable
-                    onPress={() => { if (isUnread) markNotifRead(item.id); }}
-                    style={{
-                      flexDirection: 'row',
-                      paddingHorizontal: 20,
-                      paddingVertical: 12,
-                      borderBottomWidth: 0.5,
-                      borderBottomColor: T.colors.sidebarSeparator,
-                      backgroundColor: isUnread ? `${T.colors.accent}10` : 'transparent',
-                    }}
-                  >
-                    <MaterialIcons name={iconName} size={18} color={isUnread ? T.colors.accent : T.colors.sidebarSecondary} style={{ marginRight: 12, marginTop: 2 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: isUnread ? '700' : '500', fontSize: 13, color: T.colors.sidebarLabel, marginBottom: 2 }}>{item.title}</Text>
-                      <Text style={{ fontSize: 12, color: T.colors.sidebarSecondary }} numberOfLines={2}>{item.body}</Text>
-                      <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4 }}>{new Date(item.created_at).toLocaleString()}</Text>
-                    </View>
-                    {isUnread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: T.colors.accent, alignSelf: 'center', marginLeft: 8 }} />}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
+      <NotificationsSheet
+        visible={showNotifPanel}
+        onClose={() => setShowNotifPanel(false)}
+        theme={T}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkAllRead={markAllNotifsRead}
+        onMarkRead={markNotifRead}
+      />
 
       {/* ── Manifest Exceptions Panel Modal ──────────────────────────────── */}
-      <Modal visible={showExceptionsPanel} transparent animationType="fade" onRequestClose={() => setShowExceptionsPanel(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: 420, maxHeight: '80%', backgroundColor: T.colors.sidebarBackground, borderRadius: 12, overflow: 'hidden' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-              <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: T.colors.sidebarLabel, letterSpacing: 0.3 }}>
-                {isIOS ? 'Manifest exceptions' : 'MANIFEST EXCEPTIONS'}
-              </Text>
-              <Pressable onPress={() => void loadManifestExceptions()} style={{ marginRight: 12 }}>
-                <MaterialIcons name="refresh" size={20} color={T.colors.accent} />
-              </Pressable>
-              <Pressable onPress={() => setShowExceptionsPanel(false)}>
-                <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
-              </Pressable>
-            </View>
-            {loadingExceptions && manifestExceptions.length === 0 ? (
-              <SkeletonList count={4} theme={T} />
-            ) : (
-              <FlatList
-                data={manifestExceptions}
-                keyExtractor={item => item.exception_id}
-                ListEmptyComponent={
-                  <View style={{ padding: 40, alignItems: 'center' }}>
-                    <PayloadStatePanel
-                      theme={T}
-                      variant="manifest"
-                      title={isIOS ? 'No exceptions' : 'NO EXCEPTIONS'}
-                      message={isIOS ? 'Overflow, damaged, and manual removals appear here.' : 'OVERFLOW, DAMAGED, AND MANUAL REMOVALS APPEAR HERE.'}
-                      compact
-                    />
-                  </View>
-                }
-                renderItem={({ item }) => (
-                  <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
-                      <StatusBadge compact label={item.reason} theme={T} tone={exceptionReasonTone(item.reason)} />
-                      {item.escalated ? (
-                        <StatusBadge compact label={isIOS ? 'Escalated' : 'ESCALATED'} theme={T} tone="danger" />
-                      ) : null}
-                    </View>
-                    <Text style={{ fontSize: 12, color: T.colors.sidebarSecondary }}>
-                      {isIOS ? 'Order' : 'ORDER'} {item.order_id.slice(0, 8)} · {isIOS ? 'Manifest' : 'MANIFEST'} {item.manifest_id.slice(0, 8)}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4 }}>
-                      {isIOS ? 'Attempts' : 'ATTEMPTS'} {item.attempt_count}
-                    </Text>
-                  </View>
-                )}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+      <ExceptionsSheet
+        visible={showExceptionsPanel}
+        onClose={() => setShowExceptionsPanel(false)}
+        onRefresh={() => void loadManifestExceptions()}
+        loading={loadingExceptions}
+        exceptions={manifestExceptions}
+        theme={T}
+      />
 
       {renderUiToast()}
       </View>

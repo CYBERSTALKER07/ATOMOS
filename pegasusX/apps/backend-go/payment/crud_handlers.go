@@ -7,11 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
 )
 
 // HandleCreatePayer serves POST /v1/payers
 func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.FromContext(r.Context())
 	var req Payer
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -24,7 +26,11 @@ func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PayerID == "" {
-		req.PayerID = uuid.New().String()
+		if ok && claims.Subject != "" {
+			req.PayerID = claims.Subject
+		} else {
+			req.PayerID = uuid.New().String()
+		}
 	}
 
 	if err := s.repo.CreatePayer(r.Context(), req); err != nil {
@@ -43,6 +49,13 @@ func (s *Service) HandleGetPayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+			web.JSONError(w, "forbidden: cannot access another payer profile", http.StatusForbidden)
+			return
+		}
+	}
+
 	p, err := s.repo.GetPayer(r.Context(), payerID)
 	if err != nil {
 		web.JSONError(w, "failed to get payer: "+err.Error(), http.StatusInternalServerError)
@@ -58,6 +71,13 @@ func (s *Service) HandleUpdatePayer(w http.ResponseWriter, r *http.Request) {
 	if payerID == "" {
 		web.JSONError(w, "missing payerId", http.StatusBadRequest)
 		return
+	}
+
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+			web.JSONError(w, "forbidden: cannot update another payer profile", http.StatusForbidden)
+			return
+		}
 	}
 
 	var req Payer

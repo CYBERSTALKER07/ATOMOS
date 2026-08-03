@@ -103,3 +103,63 @@ func TestFormatFromEvent_RetailerPriceOverride(t *testing.T) {
 		t.Fatalf("deep_link=%q", got.DeepLink)
 	}
 }
+
+func TestFormatFromEvent_CashReconciliationCreated(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":               "cash_reconciliation.created",
+		"reconciliation_id":  "cr-1",
+		"driver_id":          "drv-1",
+		"difference_minor":   500,
+	})
+	got := FormatFromEvent("cash_reconciliation.created", payload)
+	if got.DeepLink != "/treasury/cash-reconciliations" {
+		t.Fatalf("deep_link=%q", got.DeepLink)
+	}
+	if got.Priority != "high" {
+		t.Fatalf("priority=%q", got.Priority)
+	}
+}
+
+func TestFormatFromEvent_CreditNoteIssued(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":           "credit_note.issued",
+		"credit_note_id": "cn-9",
+		"order_id":       "ord-9",
+	})
+	got := FormatFromEvent("credit_note.issued", payload)
+	if got.DeepLink != "/finance/credit-notes" {
+		t.Fatalf("deep_link=%q", got.DeepLink)
+	}
+}
+
+func TestFormatFromEvent_CreditScoreUpdated(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":        "credit.score.updated",
+		"retailer_id": "ret-1",
+		"score":       720,
+		"risk_tier":   "LOW",
+	})
+	got := FormatFromEvent("credit.score.updated", payload)
+	if got.Title != "Credit score updated" {
+		t.Fatalf("title=%q", got.Title)
+	}
+	if got.DeepLink != "/credit/collections" {
+		t.Fatalf("deep_link=%q", got.DeepLink)
+	}
+}
+
+func TestFormatFromEvent_ReorderSuggestionUpdated(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":          "reorder.suggestion.updated",
+		"retailer_id":   "ret-2",
+		"sku":           "SKU-1",
+		"suggested_qty": 12,
+	})
+	got := FormatFromEvent("reorder.suggestion.updated", payload)
+	if got.Title != "Reorder suggestion" {
+		t.Fatalf("title=%q", got.Title)
+	}
+	if got.DeepLink != "/replenishment/suggestions" {
+		t.Fatalf("deep_link=%q", got.DeepLink)
+	}
+}

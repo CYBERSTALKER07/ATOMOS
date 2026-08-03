@@ -5,8 +5,9 @@ import type { Route } from "next";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierExceptionRow } from "@pegasusx/types";
-import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { ExceptionsList } from "@/components/exceptions/ExceptionsList";
+import { PlaybookRunsPanel } from "@/components/exceptions/PlaybookRunsPanel";
 
 const api = createSupplierApi();
 
@@ -33,22 +34,20 @@ export default function ExceptionsPage() {
       empty={!loading && exceptions.length === 0}
       emptyMessage="No open exceptions. Escalations appear here when operators raise them."
     >
-      <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
-        {exceptions.map((row) => (
-          <li key={row.order_id} className="p-4 md-typescale-body-medium">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="md-chip h-6 text-xs">{row.kind}</span>
-              <span className="font-mono text-[var(--color-md-primary)]">{row.order_id}</span>
-              <StatusBadge state={row.status} />
-            </div>
-            {row.note ? <p className="mt-2 text-[var(--color-md-outline)]">{row.note}</p> : null}
-            <p className="mt-1 text-sm text-[var(--color-md-outline)]">
-              Updated {new Date(row.updated_at).toLocaleString()}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <section className="mb-6">
+        <h2 className="mb-2 md-typescale-title-medium">Recommended playbooks</h2>
+        <PlaybookRunsPanel />
+      </section>
+      <ExceptionsList
+        exceptions={exceptions}
+        onResolved={() => {
+          api.getSupplierExceptions().then((resp) => setExceptions(resp.exceptions));
+        }}
+      />
       <div className="flex flex-wrap gap-4 md-typescale-body-medium">
+        <Link href={"/exceptions/claims" as Route} className="text-[var(--color-md-primary)] underline">
+          Claims / chargebacks
+        </Link>
         <Link href={"/exceptions/shop-closed" as Route} className="text-[var(--color-md-primary)] underline">
           Shop closed queue
         </Link>
@@ -57,6 +56,12 @@ export default function ExceptionsPage() {
         </Link>
         <Link href="/manifest-exceptions" className="text-[var(--color-md-primary)] underline">
           Manifest gate exceptions
+        </Link>
+        <Link href="/treasury/cash-reconciliations" className="text-[var(--color-md-primary)] underline">
+          Cash discrepancies
+        </Link>
+        <Link href="/finance/credit-notes" className="text-[var(--color-md-primary)] underline">
+          Credit notes
         </Link>
         <Link href={"/operations" as Route} className="text-[var(--color-md-primary)] underline">
           Operations

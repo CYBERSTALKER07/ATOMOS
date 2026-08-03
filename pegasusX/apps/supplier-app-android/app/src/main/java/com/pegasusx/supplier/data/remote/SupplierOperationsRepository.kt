@@ -18,6 +18,60 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getShopClosedActive(): Response<ShopClosedActiveResponse> = api.getShopClosedActive()
 
+    suspend fun getComplianceDashboard(limit: Int = 100): Response<ComplianceDashboardResponse> =
+        api.getComplianceDashboard(limit)
+
+    suspend fun getOrderReceipt(orderId: String): Response<OrderReceiptMeta> =
+        api.getOrderReceipt(orderId)
+
+    suspend fun getCashReconciliations(): Response<CashReconciliationsResponse> =
+        api.getCashReconciliations()
+
+    suspend fun acceptCashReconciliation(
+        id: String,
+        idempotencyKey: String,
+        note: String? = null,
+    ): Response<StatusResponse> =
+        api.acceptCashReconciliation(
+            id = id,
+            idempotencyKey = idempotencyKey,
+            body = if (note.isNullOrBlank()) emptyMap() else mapOf("note" to note),
+        )
+
+    suspend fun getCreditNotes(): Response<CreditNotesResponse> =
+        api.getCreditNotes()
+
+    suspend fun issueCreditNote(id: String, idempotencyKey: String): Response<StatusResponse> =
+        api.issueCreditNote(id, idempotencyKey)
+
+    suspend fun getCreditProfiles(
+        status: String? = null,
+        limit: Int = 100,
+    ): Response<CreditProfilesResponse> =
+        api.getCreditProfiles(status = status?.ifBlank { null }, limit = limit)
+
+    suspend fun patchRetailerCreditProfile(
+        body: RetailerCreditProfilePatchRequest,
+        idempotencyKey: String,
+    ): Response<StatusResponse> =
+        api.patchRetailerCreditProfile(body, idempotencyKey)
+
+    suspend fun resolveException(
+        kind: String,
+        id: String,
+        body: Map<String, String> = emptyMap(),
+    ): Response<StatusResponse> =
+        api.resolveException(kind, id, body)
+
+    suspend fun getRoutePerformance(): Response<RoutePerformanceResponse> =
+        api.getRoutePerformance()
+
+    suspend fun getNotificationPreferences(): Response<NotificationPreferencesResponse> =
+        api.getNotificationPreferences()
+
+    suspend fun patchNotificationPreferences(body: NotificationPreferencesPatchRequest): Response<StatusResponse> =
+        api.patchNotificationPreferences(body)
+
     suspend fun getNegotiationsPending(): Response<NegotiationPendingResponse> = api.getNegotiationsPending()
 
     suspend fun resolveShopClosed(
@@ -318,6 +372,18 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun recordChargebackReversal(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
         api.recordChargebackReversal(idempotencyKey, body)
+
+    suspend fun listSupplierClaims(status: String? = null, limit: Int = 50): Response<SupplierClaimsListResponse> =
+        api.listSupplierClaims(status = status?.ifBlank { null }, limit = limit)
+
+    suspend fun approveClaim(claimId: String, body: ApproveClaimRequest): Response<ApproveClaimResponse> =
+        api.approveClaim(claimId, body)
+
+    suspend fun rejectClaim(claimId: String, body: RejectClaimRequest): Response<SupplierClaim> =
+        api.rejectClaim(claimId, body)
+
+    suspend fun listClaimChargebacks(limit: Int = 100, orderId: String? = null): Response<ClaimChargebacksResponse> =
+        api.listClaimChargebacks(limit = limit, orderId = orderId?.ifBlank { null })
 
     suspend fun createImportSession(
         idempotencyKey: String,

@@ -56,6 +56,10 @@ func (s *Service) sweepDeferredPayments(ctx context.Context) error {
 		}
 
 		// Payment succeeded, convert backorder to active order.
+		stockOpts := StockReservationOpts{}
+		if s.allocationRequired {
+			stockOpts.Skip = true
+		}
 		if err := s.repo.ClearBackorder(ctx, o.OrderID, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
 				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
@@ -69,11 +73,17 @@ func (s *Service) sweepDeferredPayments(ctx context.Context) error {
 				ActorRole:      "system",
 				OrderSource:    string(o.Source),
 			})
-		}); err != nil {
+		}, stockOpts); err != nil {
 			s.log.ErrorContext(ctx, "failed to clear backorder", "order_id", o.OrderID, "err", err)
-		} else {
-			s.log.Info("backordered order payment captured and activated", "order_id", o.OrderID)
+			continue
 		}
+		if s.allocationRequired {
+			if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
+				s.log.ErrorContext(ctx, "failed to allocate cleared backorder", "order_id", o.OrderID, "err", err)
+				continue
+			}
+		}
+		s.log.Info("backordered order payment captured and activated", "order_id", o.OrderID)
 	}
 	return nil
 }

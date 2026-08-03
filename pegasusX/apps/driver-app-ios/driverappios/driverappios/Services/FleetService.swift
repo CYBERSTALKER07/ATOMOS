@@ -14,17 +14,20 @@ protocol FleetServiceProtocol {
     /// POST /v1/order/deliver { "order_id", "scanned_token" } — LEGACY
     func deliverOrder(orderId: String, scannedToken: String) async throws
 
-    /// POST /v1/order/validate-qr — Validates QR token, returns order info
+    /// POST /v1/order/validate-qr — Validates QR token, returns order info (no state change)
     func validateQR(orderId: String, scannedToken: String) async throws -> ValidateQRResponse
 
-    /// POST /v1/order/confirm-offload — ARRIVED → AWAITING_PAYMENT
+    /// POST /v1/order/confirm-offload — ARRIVED → AWAITING_PAYMENT (legacy fallback)
     func confirmOffload(orderId: String) async throws -> ConfirmOffloadResponse
+
+    /// POST /v1/delivery/scan-qr — ARRIVED → AWAITING_PAYMENT (canonical)
+    func scanDeliveryQR(orderId: String, qrToken: String) async throws -> DeliveryScanQRResponse
 
     /// POST /v1/order/complete — capture → FISCALIZING (ADR-009)
     func completeOrder(orderId: String) async throws
 
     /// POST /v1/order/collect-cash — cash capture → FISCALIZING (ADR-009)
-    func collectCash(orderId: String) async throws -> CollectCashResponse
+    func collectCash(orderId: String, amountReceivedMinor: Int64?) async throws -> CollectCashResponse
 
     /// POST /v1/order/{id}/fiscal/retry
     func retryFiscal(orderId: String) async throws -> CollectCashResponse

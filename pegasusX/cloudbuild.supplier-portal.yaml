@@ -1,0 +1,22 @@
+# Static supplier-portal nginx image for SSMR
+# Usage: gcloud builds submit --config=cloudbuild.supplier-portal.yaml \
+#   --substitutions=_TAG=ssmr-portal,_REPO=pegasusx-ssmr-images --project=pegasus-503013 apps/supplier-portal
+substitutions:
+  _TAG: ssmr-supplier-portal
+  _REGION: asia-south1
+  _REPO: pegasusx-ssmr-images
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/supplier-portal:${_TAG}
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --platform=linux/amd64
+      - -f
+      - deploy/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/supplier-portal:${_TAG}
+      - .
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

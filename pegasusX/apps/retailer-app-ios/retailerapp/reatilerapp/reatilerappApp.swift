@@ -20,7 +20,9 @@ struct reatilerappApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authManager.isLoggedIn {
+                if authManager.needsOrgSelect {
+                    SelectOrgView(auth: authManager)
+                } else if authManager.isLoggedIn {
                     if authManager.needsSetup {
                         SetupView()
                     } else {

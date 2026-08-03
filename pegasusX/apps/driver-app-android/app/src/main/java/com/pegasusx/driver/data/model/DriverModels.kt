@@ -1,6 +1,7 @@
 package com.pegasusx.driver.data.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -215,7 +216,10 @@ data class CompleteOrderRequest(
 data class CollectCashRequest(
     @SerialName("order_id") val orderId: String,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    /** Cash actually taken (Tiyin). Fiscal hard-gate uses this amount (ADR-009 Phase 3). */
+    @SerialName("amount_received_minor") val amountReceivedMinor: Long? = null,
+    val note: String? = null,
 )
 
 @Serializable
@@ -223,6 +227,9 @@ data class CollectCashResponse(
     @SerialName("order_id") val orderId: String,
     val state: String = "",
     @SerialName("amount") val amount: Long = 0,
+    @SerialName("amount_received_minor") val amountReceivedMinor: Long = 0,
+    @SerialName("shortfall_minor") val shortfallMinor: Long = 0,
+    @SerialName("overage_minor") val overageMinor: Long = 0,
     @SerialName("distance_m") val distanceM: Double = 0.0,
     val message: String = "",
     @SerialName("attempt_id") val attemptId: String = "",
@@ -237,8 +244,35 @@ data class DepartRequest(
 )
 
 @Serializable
+data class OpenFiscalResponse(
+    @SerialName("open_fiscal_count") val openFiscalCount: Long = 0,
+    @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    @SerialName("cash_bag_frozen") val cashBagFrozen: Boolean = false,
+)
+
+@Serializable
 data class ReturnCompleteRequest(
     @SerialName("truck_id") val truckId: String
+)
+
+@Serializable
+data class CashReconciliationRow(
+    @SerialName("reconciliation_id") val reconciliationId: String = "",
+    @SerialName("expected_cash_minor") val expectedCashMinor: Long = 0,
+    @SerialName("declared_cash_minor") val declaredCashMinor: Long = 0,
+    @SerialName("difference_minor") val differenceMinor: Long = 0,
+    val status: String = "",
+)
+
+@Serializable
+data class CashReconciliationsResponse(
+    val reconciliations: List<CashReconciliationRow> = emptyList(),
+)
+
+@Serializable
+data class SubmitCashReconciliationRequest(
+    @SerialName("declared_cash_minor") val declaredCashMinor: Long,
+    @SerialName("driver_note") val driverNote: String? = null,
 )
 
 @Serializable
@@ -392,6 +426,26 @@ data class EarlyCompleteRequestResponse(
     @SerialName("order_ids") val orderIds: List<String>
 )
 
+/** Edge 28: POST /v1/delivery/negotiate line item. */
+@Serializable
+data class NegotiationItemRequest(
+    @SerialName("sku_id") val skuId: String,
+    @SerialName("original_qty") val originalQty: Long,
+    @SerialName("proposed_qty") val proposedQty: Long,
+)
+
+@Serializable
+data class NegotiationPayload(
+    @SerialName("order_id") val orderId: String,
+    val items: List<NegotiationItemRequest>,
+)
+
+@Serializable
+data class NegotiationProposalResponse(
+    val status: String = "",
+    @SerialName("proposal_id") val proposalId: String = "",
+)
+
 @Serializable
 data class RouteReorderResponse(
     val status: String,
@@ -402,13 +456,17 @@ data class RouteReorderResponse(
 @Serializable
 data class MissingItemRequest(
     @SerialName("sku_id") val skuId: String,
-    @SerialName("missing_qty") val missingQty: Int
+    @SerialName("missing_qty") val missingQty: Int,
+    val reason: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
 )
 
 @Serializable
 data class MissingItemsPayload(
     @SerialName("order_id") val orderId: String,
-    @SerialName("missing_items") val missingItems: List<MissingItemRequest>
+    @SerialName("missing_items") val missingItems: List<MissingItemRequest>,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    val note: String? = null,
 )
 
 @Serializable
@@ -472,7 +530,39 @@ data class DriverEarningsResponse(
     @SerialName("total_deliveries") val totalDeliveries: Long = 0,
     @SerialName("total_volume") val totalVolume: Long = 0,
     @SerialName("total_routes") val totalRoutes: Long = 0,
-    @SerialName("last_30_days") val last30Days: List<DailyEarning> = emptyList()
+    @SerialName("last_30_days") val last30Days: List<DailyEarning> = emptyList(),
+    @SerialName("today_minor") val todayMinor: Long = 0,
+    @SerialName("week_minor") val weekMinor: Long = 0,
+    @SerialName("month_minor") val monthMinor: Long = 0,
+)
+
+@Serializable
+data class DriverHistoryRow(
+    @SerialName("order_id") val orderId: String,
+    val status: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "",
+    @SerialName("completed_at") val completedAt: String = "",
+)
+
+@Serializable
+data class DriverHistoryResponse(
+    val rows: List<DriverHistoryRow> = emptyList(),
+)
+
+@Serializable
+data class DeliveryScanQRRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("qr_token") val qrToken: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+@Serializable
+data class DeliveryScanQRResponse(
+    val valid: Boolean = false,
+    @SerialName("order_id") val orderId: String = "",
+    val state: OrderState = OrderState.AWAITING_PAYMENT,
 )
 
 // ── Pending Cash Collections (mirror of backend-go/order/service.go::PendingCollection) ──
@@ -518,13 +608,23 @@ data class RouteManifestEntity(
     val fetchedAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "pending_mutations")
+@Entity(
+    tableName = "pending_mutations",
+    indices = [Index(value = ["status"]), Index(value = ["orderId"]), Index(value = ["idempotencyKey"], unique = true)],
+)
 data class PendingMutationEntity(
-    @PrimaryKey val id: String,          // UUID generated client-side
+    @PrimaryKey val id: String,          // UUID or deterministic key
     val endpoint: String,                 // e.g. "v1/order/deliver"
     val payloadJson: String,              // serialized request body
     val idempotencyKey: String,           // deterministic Idempotency-Key header
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val method: String = "POST",
+    val priority: Int = 40,
+    val clientTimestampIso: String = "",
+    val attemptCount: Int = 0,
+    val lastError: String = "",
+    val status: String = "PENDING",       // PENDING | DEAD
+    val orderId: String = "",
 )
 
 @Serializable

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { SupplierTopologyResponse } from "@pegasusx/types";
@@ -16,6 +17,15 @@ export function DriverTable({
     <article className="md-card md-shape-md p-6 overflow-x-auto">
       <h2 className="md-typescale-title-large">Driver roster</h2>
       {drivers.length === 0 ? (
+=======
+import { describeHomeNode, describeVehicle, ReadyState } from "./utils";
+
+export function DriverTable({ state }: { state: ReadyState }) {
+  return (
+    <article className="md-card md-shape-md p-6 overflow-x-auto">
+      <h2 className="md-typescale-title-large">Driver roster</h2>
+      {state.drivers.length === 0 ? (
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
           No drivers have been created yet.
         </p>
@@ -30,6 +40,7 @@ export function DriverTable({
             </tr>
           </thead>
           <tbody>
+<<<<<<< HEAD
             {drivers.map((driver) => (
               <tr key={driver.driver_id} className="md-typescale-body-medium">
                 <td className="py-2 pr-4">{driver.name}</td>
@@ -37,6 +48,13 @@ export function DriverTable({
                   {describeHomeNode(driver.home_node_type, driver.home_node_id, topology)}
                 </td>
                 <td className="py-2 pr-4">{describeVehicle(driver.vehicle_id, vehicles)}</td>
+=======
+            {state.drivers.map((driver) => (
+              <tr key={driver.driver_id} className="md-typescale-body-medium">
+                <td className="py-2 pr-4">{driver.name}</td>
+                <td className="py-2 pr-4">{describeHomeNode(driver.home_node_type, driver.home_node_id, state.topology)}</td>
+                <td className="py-2 pr-4">{describeVehicle(driver.vehicle_id, state.vehicles)}</td>
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 <td className="py-2 pr-4">{driver.phone}</td>
               </tr>
             ))}

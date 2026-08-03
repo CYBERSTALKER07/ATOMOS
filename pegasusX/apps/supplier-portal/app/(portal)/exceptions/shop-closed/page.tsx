@@ -77,11 +77,18 @@ export default function ShopClosedExceptionsPage() {
           <li key={row.attempt_id} className="p-4 space-y-3">
             <div className="flex flex-wrap gap-2 items-center">
               <span className="md-chip h-6 text-xs">{row.resolution || "ESCALATED"}</span>
+              {row.shop_closed_resolution ? (
+                <span className="md-chip h-6 text-xs">order: {row.shop_closed_resolution}</span>
+              ) : null}
+              {row.shop_closed_reason ? (
+                <span className="md-chip h-6 text-xs">{row.shop_closed_reason}</span>
+              ) : null}
               <span className="font-mono text-[var(--color-md-primary)]">{row.order_id}</span>
             </div>
             <p className="md-typescale-body-small text-[var(--color-md-outline)]">
               Driver {row.driver_id}
               {row.original_route_id ? ` · Route ${row.original_route_id}` : ""}
+              {row.grace_ends_at ? ` · Grace ends ${row.grace_ends_at}` : ""}
             </p>
             <div className="flex flex-wrap gap-2">
               <button

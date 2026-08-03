@@ -40,10 +40,10 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
-func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
+func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner order repository: nil client")
 	}
@@ -65,7 +65,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		}
 
 		// Reserve on-hand stock for fulfillable quantities (all non-backorder orders, including scheduled pre-orders).
-		if len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
+		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
 			if err := ReserveLineItemsInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.LineItems); err != nil {
 				return err
 			}
@@ -304,6 +304,34 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		if o.FiscalizedAt != nil {
 			orderMap["FiscalizedAt"] = *o.FiscalizedAt
 		}
+		if strings.TrimSpace(o.BuyerAcceptanceStatus) != "" {
+			orderMap["BuyerAcceptanceStatus"] = o.BuyerAcceptanceStatus
+		}
+		if o.BuyerAcceptanceDeadline != nil {
+			orderMap["BuyerAcceptanceDeadline"] = *o.BuyerAcceptanceDeadline
+		}
+		// Shop-closed / proximity / partial (2026-07-29 additive columns).
+		if strings.TrimSpace(o.ShopClosedResolution) != "" {
+			orderMap["ShopClosedResolution"] = o.ShopClosedResolution
+		}
+		if o.ShopClosedAt != nil {
+			orderMap["ShopClosedAt"] = *o.ShopClosedAt
+		}
+		if strings.TrimSpace(o.ShopClosedReason) != "" {
+			orderMap["ShopClosedReason"] = o.ShopClosedReason
+		}
+		if o.ShopClosedGraceEndsAt != nil {
+			orderMap["ShopClosedGraceEndsAt"] = *o.ShopClosedGraceEndsAt
+		}
+		if o.PartialDelivery {
+			orderMap["PartialDelivery"] = true
+		}
+		if o.ProximityUnlockedAt != nil {
+			orderMap["ProximityUnlockedAt"] = *o.ProximityUnlockedAt
+		}
+		if strings.TrimSpace(o.ProximityMethod) != "" {
+			orderMap["ProximityMethod"] = o.ProximityMethod
+		}
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", orderMap),
 		}
@@ -363,6 +391,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}))
 		}
 
+
 		for _, ret := range o.PendingSupplierReturns {
 			returnID := strings.TrimSpace(ret.ReturnID)
 			if returnID == "" {
@@ -383,6 +412,28 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"ReceivedQty":    int64(0),
 				"PhysicalStatus": "PENDING",
 				"CreatedAt":      spanner.CommitTimestamp,
+			}))
+		}
+
+		if o.PendingExceptionTicket != nil {
+			t := o.PendingExceptionTicket
+			createdAt := t.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.InsertMap("ExceptionTickets", map[string]any{
+				"TicketId":     t.TicketID,
+				"Type":         t.Type,
+				"OrderId":      t.OrderID,
+				"EhfId":        nullableString(t.EhfID),
+				"Severity":     t.Severity,
+				"Status":       t.Status,
+				"Title":        t.Title,
+				"Description":  nullableString(t.Description),
+				"AssignedRole": nullableString(t.AssignedRole),
+				"CreatedAt":    createdAt,
+				"CreatedBy":    nullableString(t.CreatedBy),
+				"Payload":      spanner.NullJSON{Value: t.Payload, Valid: t.Payload != nil},
 			}))
 		}
 
@@ -499,6 +550,197 @@ func (r *SpannerRepository) GetOrder(ctx context.Context, orderID string) (Order
 		return Order{}, false, fmt.Errorf("scan order %s: %w", orderID, err)
 	}
 	return o, true, nil
+}
+
+// GetOrderTxn fetches one order aggregate by id within a transaction.
+func (r *SpannerRepository) GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	if r == nil || r.client == nil {
+		return Order{}, false, fmt.Errorf("spanner order repository: nil client")
+	}
+
+	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, strings.Split(orderSelectColumns, ", "))
+	if err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			return Order{}, false, nil
+		}
+		return Order{}, false, fmt.Errorf("read order txn %s: %w", orderID, err)
+	}
+
+	o, err := scanOrderRowRow(row)
+	if err != nil {
+		return Order{}, false, fmt.Errorf("scan order txn %s: %w", orderID, err)
+	}
+	return o, true, nil
+}
+
+
+// GetFiscalAttempt loads one OrderFiscalReceipts row for worker idempotency (ADR-009).
+func (r *SpannerRepository) GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error) {
+	if r == nil || r.client == nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("spanner order repository: nil client")
+	}
+	orderID = strings.TrimSpace(orderID)
+	attemptID = strings.TrimSpace(attemptID)
+	if orderID == "" || attemptID == "" {
+		return FiscalReceiptRow{}, false, nil
+	}
+	row, err := r.client.Single().ReadRow(ctx, "OrderFiscalReceipts", spanner.Key{orderID, attemptID}, []string{
+		"OrderId", "AttemptId", "SupplierId", "RetailerId", "Provider", "Status",
+		"FiscalReceiptId", "FiscalQR", "AmountMinor", "Currency", "PaymentMethod",
+		"ErrorCode", "ErrorMessage", "ReasonCode", "ActorId", "TraceId", "CreatedAt", "UpdatedAt",
+	})
+	if err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			return FiscalReceiptRow{}, false, nil
+		}
+		// Table may not exist pre-migration.
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+			return FiscalReceiptRow{}, false, nil
+		}
+		return FiscalReceiptRow{}, false, fmt.Errorf("read fiscal attempt %s/%s: %w", orderID, attemptID, err)
+	}
+	var fr FiscalReceiptRow
+	var retailer, fiscalID, fiscalQR, payMethod, errCode, errMsg, reason, actor, trace spanner.NullString
+	var created, updated time.Time
+	if err := row.Columns(
+		&fr.OrderID, &fr.AttemptID, &fr.SupplierID, &retailer, &fr.Provider, &fr.Status,
+		&fiscalID, &fiscalQR, &fr.AmountMinor, &fr.Currency, &payMethod,
+		&errCode, &errMsg, &reason, &actor, &trace, &created, &updated,
+	); err != nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("scan fiscal attempt: %w", err)
+	}
+	if retailer.Valid {
+		fr.RetailerID = retailer.StringVal
+	}
+	if fiscalID.Valid {
+		fr.FiscalReceiptID = fiscalID.StringVal
+	}
+	if fiscalQR.Valid {
+		fr.FiscalQR = fiscalQR.StringVal
+	}
+	if payMethod.Valid {
+		fr.PaymentMethod = payMethod.StringVal
+	}
+	if errCode.Valid {
+		fr.ErrorCode = errCode.StringVal
+	}
+	if errMsg.Valid {
+		fr.ErrorMessage = errMsg.StringVal
+	}
+	if reason.Valid {
+		fr.ReasonCode = reason.StringVal
+	}
+	if actor.Valid {
+		fr.ActorID = actor.StringVal
+	}
+	if trace.Valid {
+		fr.TraceID = trace.StringVal
+	}
+	fr.CreatedAt = created.UTC()
+	fr.UpdatedAt = updated.UTC()
+	return fr, true, nil
+}
+
+// GetFiscalByReceiptID loads a fiscal attempt by public receipt id (Idx_OrderFiscalReceipts_ByReceiptId).
+func (r *SpannerRepository) GetFiscalByReceiptID(ctx context.Context, receiptID string) (FiscalReceiptRow, bool, error) {
+	if r == nil || r.client == nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("spanner order repository: nil client")
+	}
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return FiscalReceiptRow{}, false, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, AttemptId, SupplierId, RetailerId, Provider, Status,
+			FiscalReceiptId, FiscalQR, AmountMinor, Currency, PaymentMethod,
+			ErrorCode, ErrorMessage, ReasonCode, ActorId, TraceId, CreatedAt, UpdatedAt
+			FROM OrderFiscalReceipts@{FORCE_INDEX=Idx_OrderFiscalReceipts_ByReceiptId}
+			WHERE FiscalReceiptId = @rid
+			LIMIT 1`,
+		Params: map[string]any{"rid": receiptID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done || errors.Is(err, spanner.ErrRowNotFound) {
+			return FiscalReceiptRow{}, false, nil
+		}
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+			return FiscalReceiptRow{}, false, nil
+		}
+		return FiscalReceiptRow{}, false, fmt.Errorf("read fiscal by receipt_id %s: %w", receiptID, err)
+	}
+	var fr FiscalReceiptRow
+	var retailer, fiscalID, fiscalQR, payMethod, errCode, errMsg, reason, actor, trace spanner.NullString
+	var created, updated time.Time
+	if err := row.Columns(
+		&fr.OrderID, &fr.AttemptID, &fr.SupplierID, &retailer, &fr.Provider, &fr.Status,
+		&fiscalID, &fiscalQR, &fr.AmountMinor, &fr.Currency, &payMethod,
+		&errCode, &errMsg, &reason, &actor, &trace, &created, &updated,
+	); err != nil {
+		return FiscalReceiptRow{}, false, fmt.Errorf("scan fiscal by receipt_id: %w", err)
+	}
+	if retailer.Valid {
+		fr.RetailerID = retailer.StringVal
+	}
+	if fiscalID.Valid {
+		fr.FiscalReceiptID = fiscalID.StringVal
+	}
+	if fiscalQR.Valid {
+		fr.FiscalQR = fiscalQR.StringVal
+	}
+	if payMethod.Valid {
+		fr.PaymentMethod = payMethod.StringVal
+	}
+	if errCode.Valid {
+		fr.ErrorCode = errCode.StringVal
+	}
+	if errMsg.Valid {
+		fr.ErrorMessage = errMsg.StringVal
+	}
+	if reason.Valid {
+		fr.ReasonCode = reason.StringVal
+	}
+	if actor.Valid {
+		fr.ActorID = actor.StringVal
+	}
+	if trace.Valid {
+		fr.TraceID = trace.StringVal
+	}
+	fr.CreatedAt = created.UTC()
+	fr.UpdatedAt = updated.UTC()
+	return fr, true, nil
+}
+
+// CountFiscalAttemptsByStatus counts OrderFiscalReceipts rows for an order/status.
+func (r *SpannerRepository) CountFiscalAttemptsByStatus(ctx context.Context, orderID, status string) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, fmt.Errorf("spanner order repository: nil client")
+	}
+	orderID = strings.TrimSpace(orderID)
+	status = strings.TrimSpace(status)
+	if orderID == "" || status == "" {
+		return 0, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT COUNT(*) FROM OrderFiscalReceipts WHERE OrderId = @oid AND Status = @st`,
+		Params: map[string]any{"oid": orderID, "st": status},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("count fiscal attempts: %w", err)
+	}
+	var n int64
+	if err := row.Columns(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 // ListRetailerOrders returns recent retailer-scoped orders newest first.
@@ -630,6 +872,20 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		deliveryProposalReason spanner.NullString
 		deliveryFeeMinor       int64
 		orderRecord            Order
+
+		fiscalStatus            spanner.NullString
+		latestFiscalReceiptID   spanner.NullString
+		latestFiscalAttemptID   spanner.NullString
+		fiscalizedAt            spanner.NullTime
+		shopClosedAt            spanner.NullTime
+		shopClosedReason        spanner.NullString
+		shopClosedGraceEndsAt   spanner.NullTime
+		shopClosedResolution    spanner.NullString
+		partialDelivery         spanner.NullBool
+		proximityUnlockedAt     spanner.NullTime
+		proximityMethod         spanner.NullString
+		buyerAcceptanceStatus   spanner.NullString
+		buyerAcceptanceDeadline spanner.NullTime
 	)
 	if err := row.Columns(
 		&orderRecord.OrderID,
@@ -676,6 +932,19 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&orderRecord.Version,
 		&orderRecord.CreatedAt,
 		&orderRecord.UpdatedAt,
+		&fiscalStatus,
+		&latestFiscalReceiptID,
+		&latestFiscalAttemptID,
+		&fiscalizedAt,
+		&shopClosedAt,
+		&shopClosedReason,
+		&shopClosedGraceEndsAt,
+		&shopClosedResolution,
+		&partialDelivery,
+		&proximityUnlockedAt,
+		&proximityMethod,
+		&buyerAcceptanceStatus,
+		&buyerAcceptanceDeadline,
 	); err != nil {
 		return Order{}, err
 	}
@@ -747,6 +1016,36 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	if orderRecord.OriginalTotalMinor == 0 {
 		orderRecord.OriginalTotalMinor = orderRecord.TotalMinor
 	}
+	
+	orderRecord.FiscalStatus = fiscalStatus.StringVal
+	orderRecord.LatestFiscalReceiptID = latestFiscalReceiptID.StringVal
+	orderRecord.LatestFiscalAttemptID = latestFiscalAttemptID.StringVal
+	if fiscalizedAt.Valid {
+		t := fiscalizedAt.Time.UTC()
+		orderRecord.FiscalizedAt = &t
+	}
+	if shopClosedAt.Valid {
+		t := shopClosedAt.Time.UTC()
+		orderRecord.ShopClosedAt = &t
+	}
+	orderRecord.ShopClosedReason = shopClosedReason.StringVal
+	if shopClosedGraceEndsAt.Valid {
+		t := shopClosedGraceEndsAt.Time.UTC()
+		orderRecord.ShopClosedGraceEndsAt = &t
+	}
+	orderRecord.ShopClosedResolution = shopClosedResolution.StringVal
+	orderRecord.PartialDelivery = partialDelivery.Valid && partialDelivery.Bool
+	if proximityUnlockedAt.Valid {
+		t := proximityUnlockedAt.Time.UTC()
+		orderRecord.ProximityUnlockedAt = &t
+	}
+	orderRecord.ProximityMethod = proximityMethod.StringVal
+	orderRecord.BuyerAcceptanceStatus = buyerAcceptanceStatus.StringVal
+	if buyerAcceptanceDeadline.Valid {
+		t := buyerAcceptanceDeadline.Time.UTC()
+		orderRecord.BuyerAcceptanceDeadline = &t
+	}
+
 	if len(lineItemsRaw) > 0 {
 		if err := json.Unmarshal(lineItemsRaw, &orderRecord.LineItems); err != nil {
 			return Order{}, err
@@ -883,7 +1182,7 @@ func (r *SpannerRepository) ListBackorderedOrders(ctx context.Context, limit int
 }
 
 // ClearBackorder converts a BACKORDERED order to PENDING and reserves inventory.
-func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error {
+func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Status", "SupplierId", "WarehouseId", "Version"})
 		if err != nil {
@@ -904,11 +1203,13 @@ func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, 
 			return err
 		}
 
-		if err := ReserveLineItemsInTxn(ctx, txn, supplierID, warehouseID, orderRecord.LineItems); err != nil {
-			return err
-		}
-		if err := insertStockReservationMarkerInTxn(txn, orderID); err != nil {
-			return err
+		if !stockOpts.Skip {
+			if err := ReserveLineItemsInTxn(ctx, txn, supplierID, warehouseID, orderRecord.LineItems); err != nil {
+				return err
+			}
+			if err := insertStockReservationMarkerInTxn(txn, orderID); err != nil {
+				return err
+			}
 		}
 
 		if emit != nil {
@@ -1129,4 +1430,380 @@ func (r *SpannerRepository) FindSiblingDriversForOrder(ctx context.Context, orde
 		driverIDs = append(driverIDs, driverID)
 	}
 	return driverIDs, nil
+}
+
+func (r *SpannerRepository) FindPendingBuyerAcceptance(ctx context.Context, limit int) ([]*Order, error) {
+	stmt := spanner.Statement{
+		SQL: fmt.Sprintf("SELECT %s FROM Orders WHERE BuyerAcceptanceStatus = 'PENDING' LIMIT @limit", orderSelectColumns),
+		Params: map[string]interface{}{
+			"limit": int64(limit),
+		},
+	}
+	var res []*Order
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		o, err := scanOrderRowRow(row)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, &o)
+	}
+	return res, nil
+}
+
+// UpdateOrderWithTxn overrides an order state, persists immutable delivery proof rows,
+// executes a custom Spanner transaction callback, and emits outbox events atomically.
+func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, proofs []DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner order repository: nil client")
+	}
+
+	lineItemsRaw, err := json.Marshal(o.LineItems)
+	if err != nil {
+		return fmt.Errorf("marshal order line items: %w", err)
+	}
+
+	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{
+			"Version", "Status", "OrderSource", "LineItemsJson", "SupplierId", "WarehouseId",
+		})
+		if err != nil {
+			return err
+		}
+		var (
+			version     int64
+			prevStatus  string
+			orderSource string
+			prevLineRaw []byte
+			supplierID  string
+			warehouseID string
+		)
+		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
+			return err
+		}
+		if version != o.Version {
+			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", o.Version, version)
+		}
+
+		if o.Status == StatusCancelled && !strings.EqualFold(strings.TrimSpace(prevStatus), string(StatusCancelled)) {
+			var prevLineItems []LineItem
+			if len(prevLineRaw) > 0 {
+				if err := json.Unmarshal(prevLineRaw, &prevLineItems); err != nil {
+					return fmt.Errorf("parse line items for release %s: %w", o.OrderID, err)
+				}
+			}
+			wh := strings.TrimSpace(o.WarehouseID)
+			if wh == "" {
+				wh = strings.TrimSpace(warehouseID)
+			}
+			sid := strings.TrimSpace(o.SupplierID)
+			if sid == "" {
+				sid = strings.TrimSpace(supplierID)
+			}
+			if err := ReleaseReservationsInTxn(ctx, txn, sid, wh, OrderSource(orderSource), prevLineItems); err != nil {
+				return fmt.Errorf("release reservations in txn %s: %w", o.OrderID, err)
+			}
+		}
+
+		o.Version++
+		o.UpdatedAt = time.Now().UTC()
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
+		if inTxn != nil {
+			if err := inTxn(ctx, txn); err != nil {
+				return err
+			}
+		}
+
+		orderMap := map[string]any{
+			"OrderId":                o.OrderID,
+			"WarehouseId":            o.WarehouseID,
+			"DriverId":               nullableString(o.DriverID),
+			"VehicleId":              nullableString(o.VehicleID),
+			"RouteId":                nullableString(o.RouteID),
+			"ManifestId":             nullableString(o.ManifestID),
+			"DeliveryToken":          nullableString(o.QRToken),
+			"Status":                 string(o.Status),
+			"OrderSource":            string(o.Source),
+			"ConfirmationStatus":     string(o.ConfirmationStatus),
+			"LineItemsJson":          lineItemsRaw,
+			"TotalMinor":             o.TotalMinor,
+			"OriginalTotalMinor":     originalTotalMinorForUpdate(o),
+			"Currency":               o.Currency,
+			"H3Cell":                 o.H3Cell,
+			"Lat":                    o.Lat,
+			"Lng":                    o.Lng,
+			"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
+			"DeliverBefore":          nullableTime(o.DeliverBefore),
+			"DeliveryPriority":       string(o.DeliveryPriority),
+			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
+			"WarehouseNotes":         nullableString(o.WarehouseNotes),
+			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+			"DecisionAt":             nullableTime(o.DecisionAt),
+			"DecisionBy":             nullableString(o.DecisionBy),
+			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
+			"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
+			"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
+			"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
+			"CancelLockedAt":         nullableTime(o.CancelLockedAt),
+			"CancelLockReason":       nullableString(o.CancelLockReason),
+			"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
+			"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
+			"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
+			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
+			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
+			"Version":                o.Version,
+			"UpdatedAt":              o.UpdatedAt,
+		}
+		// ADR-009 denorm fiscal rollup (columns additive; tolerate missing until migrate).
+		if strings.TrimSpace(o.FiscalStatus) != "" {
+			orderMap["FiscalStatus"] = o.FiscalStatus
+		}
+		if strings.TrimSpace(o.LatestFiscalReceiptID) != "" {
+			orderMap["LatestFiscalReceiptId"] = o.LatestFiscalReceiptID
+		}
+		if strings.TrimSpace(o.LatestFiscalAttemptID) != "" {
+			orderMap["LatestFiscalAttemptId"] = o.LatestFiscalAttemptID
+		}
+		if o.FiscalizedAt != nil {
+			orderMap["FiscalizedAt"] = *o.FiscalizedAt
+		}
+		if strings.TrimSpace(o.BuyerAcceptanceStatus) != "" {
+			orderMap["BuyerAcceptanceStatus"] = o.BuyerAcceptanceStatus
+		}
+		if o.BuyerAcceptanceDeadline != nil {
+			orderMap["BuyerAcceptanceDeadline"] = *o.BuyerAcceptanceDeadline
+		}
+		// Shop-closed / proximity / partial (2026-07-29 additive columns).
+		if strings.TrimSpace(o.ShopClosedResolution) != "" {
+			orderMap["ShopClosedResolution"] = o.ShopClosedResolution
+		}
+		if o.ShopClosedAt != nil {
+			orderMap["ShopClosedAt"] = *o.ShopClosedAt
+		}
+		if strings.TrimSpace(o.ShopClosedReason) != "" {
+			orderMap["ShopClosedReason"] = o.ShopClosedReason
+		}
+		if o.ShopClosedGraceEndsAt != nil {
+			orderMap["ShopClosedGraceEndsAt"] = *o.ShopClosedGraceEndsAt
+		}
+		if o.PartialDelivery {
+			orderMap["PartialDelivery"] = true
+		}
+		if o.ProximityUnlockedAt != nil {
+			orderMap["ProximityUnlockedAt"] = *o.ProximityUnlockedAt
+		}
+		if strings.TrimSpace(o.ProximityMethod) != "" {
+			orderMap["ProximityMethod"] = o.ProximityMethod
+		}
+		mutations := []*spanner.Mutation{
+			spanner.UpdateMap("Orders", orderMap),
+		}
+
+		for _, fr := range o.PendingFiscalReceipts {
+			if strings.TrimSpace(fr.AttemptID) == "" || strings.TrimSpace(fr.OrderID) == "" {
+				continue
+			}
+			createdAt := fr.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			updatedAt := fr.UpdatedAt.UTC()
+			if updatedAt.IsZero() {
+				updatedAt = createdAt
+			}
+			mutations = append(mutations, spanner.InsertMap("OrderFiscalReceipts", map[string]any{
+				"OrderId":             fr.OrderID,
+				"AttemptId":           fr.AttemptID,
+				"SupplierId":          fr.SupplierID,
+				"RetailerId":          nullableString(fr.RetailerID),
+				"Provider":            fr.Provider,
+				"Status":              fr.Status,
+				"FiscalReceiptId":     nullableString(fr.FiscalReceiptID),
+				"FiscalQR":            nullableString(fr.FiscalQR),
+				"AmountMinor":         fr.AmountMinor,
+				"Currency":            fr.Currency,
+				"PaymentMethod":       nullableString(fr.PaymentMethod),
+				"ProviderPayloadJSON": fr.ProviderPayload,
+				"ErrorCode":           nullableString(fr.ErrorCode),
+				"ErrorMessage":        nullableString(fr.ErrorMessage),
+				"ReasonCode":          nullableString(fr.ReasonCode),
+				"ActorId":             nullableString(fr.ActorID),
+				"TraceId":             nullableString(fr.TraceID),
+				"CreatedAt":           createdAt,
+				"UpdatedAt":           updatedAt,
+			}))
+		}
+		if o.FiscalReceiptUpdate != nil {
+			fr := *o.FiscalReceiptUpdate
+			updatedAt := fr.UpdatedAt.UTC()
+			if updatedAt.IsZero() {
+				updatedAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.UpdateMap("OrderFiscalReceipts", map[string]any{
+				"OrderId":             fr.OrderID,
+				"AttemptId":           fr.AttemptID,
+				"Status":              fr.Status,
+				"FiscalReceiptId":     nullableString(fr.FiscalReceiptID),
+				"FiscalQR":            nullableString(fr.FiscalQR),
+				"ProviderPayloadJSON": fr.ProviderPayload,
+				"ErrorCode":           nullableString(fr.ErrorCode),
+				"ErrorMessage":        nullableString(fr.ErrorMessage),
+				"ReasonCode":          nullableString(fr.ReasonCode),
+				"ActorId":             nullableString(fr.ActorID),
+				"UpdatedAt":           updatedAt,
+			}))
+		}
+
+		for _, ret := range o.PendingSupplierReturns {
+			returnID := strings.TrimSpace(ret.ReturnID)
+			if returnID == "" {
+				continue
+			}
+			mutations = append(mutations, spanner.InsertMap("SupplierReturns", map[string]any{
+				"ReturnId":       returnID,
+				"OrderId":        o.OrderID,
+				"SkuId":          strings.TrimSpace(ret.SKU),
+				"RejectedQty":    ret.RejectedQty,
+				"Reason":         strings.TrimSpace(ret.Reason),
+				"DriverNotes":    nullableString(ret.DriverNotes),
+				"Status":         "PENDING",
+				"ManifestId":     nullableString(ret.ManifestID),
+				"DriverId":       nullableString(ret.DriverID),
+				"WarehouseId":    nullableString(ret.WarehouseID),
+				"ExpectedQty":    ret.RejectedQty,
+				"ReceivedQty":    int64(0),
+				"PhysicalStatus": "PENDING",
+				"CreatedAt":      spanner.CommitTimestamp,
+			}))
+		}
+
+		if o.PendingExceptionTicket != nil {
+			t := o.PendingExceptionTicket
+			createdAt := t.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.InsertMap("ExceptionTickets", map[string]any{
+				"TicketId":     t.TicketID,
+				"Type":         t.Type,
+				"OrderId":      t.OrderID,
+				"EhfId":        nullableString(t.EhfID),
+				"Severity":     t.Severity,
+				"Status":       t.Status,
+				"Title":        t.Title,
+				"Description":  nullableString(t.Description),
+				"AssignedRole": nullableString(t.AssignedRole),
+				"CreatedAt":    createdAt,
+				"CreatedBy":    nullableString(t.CreatedBy),
+				"Payload":      spanner.NullJSON{Value: t.Payload, Valid: t.Payload != nil},
+			}))
+		}
+
+		for _, proof := range proofs {
+			proofID := strings.TrimSpace(proof.ProofID)
+			if proofID == "" {
+				continue
+			}
+			capturedAt := proof.CapturedAt.UTC()
+			if capturedAt.IsZero() {
+				capturedAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.InsertMap("OrderDeliveryProofs", map[string]any{
+				"ProofId":          proofID,
+				"OrderId":          o.OrderID,
+				"SupplierId":       o.SupplierID,
+				"RetailerId":       o.RetailerID,
+				"DriverId":         strings.TrimSpace(proof.DriverID),
+				"ProofType":        string(proof.ProofType),
+				"QRTokenHash":      nullableString(proof.QRTokenHash),
+				"ScannedTokenHash": nullableString(proof.ScannedTokenHash),
+				"Latitude":         nullableFloat64(proof.Latitude),
+				"Longitude":        nullableFloat64(proof.Longitude),
+				"DistanceM":        nullableFloat64(proof.DistanceM),
+				"CapturedAt":       capturedAt,
+			}))
+		}
+
+		for _, cr := range o.ConditionReports {
+			if strings.TrimSpace(cr.ReportID) == "" {
+				continue
+			}
+			photoURLs, err := json.Marshal(cr.PhotoURLs)
+			if err != nil {
+				return fmt.Errorf("marshal condition report photo urls: %w", err)
+			}
+			proofIDs, err := json.Marshal(cr.ProofIDs)
+			if err != nil {
+				return fmt.Errorf("marshal condition report proof ids: %w", err)
+			}
+			mutations = append(mutations, spanner.InsertMap("OrderConditionReports", map[string]any{
+				"ReportId":         cr.ReportID,
+				"OrderId":          cr.OrderID,
+				"SupplierId":       cr.SupplierID,
+				"RetailerId":       cr.RetailerID,
+				"LineItemIndex":    nullableInt64(cr.LineItemIndex),
+				"SKU":              nullableString(cr.SKU),
+				"ConditionType":    string(cr.ConditionType),
+				"Severity":         string(cr.Severity),
+				"Description":      nullableString(cr.Description),
+				"PhotoURLsJson":    photoURLs,
+				"ProofIdsJson":     proofIDs,
+				"ReportedBy":       cr.ReportedBy,
+				"ReportedByRole":   cr.ReportedByRole,
+				"ResolutionStatus": string(cr.ResolutionStatus),
+				"ResolvedBy":       nullableString(cr.ResolvedBy),
+				"ResolvedAt":       nullableTime(cr.ResolvedAt),
+				"ResolutionNotes":  nullableString(cr.ResolutionNotes),
+				"CreatedAt":        cr.CreatedAt.UTC(),
+			}))
+		}
+
+		for _, e := range buf.events {
+			createdAt := e.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+
+			row := map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     createdAt,
+				"PublishedAt":   nil,
+			}
+			if e.PublishedAt != nil {
+				row["PublishedAt"] = e.PublishedAt.UTC()
+			}
+
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		}
+
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("update order transaction: %w", err)
+	}
+
+	return nil
 }

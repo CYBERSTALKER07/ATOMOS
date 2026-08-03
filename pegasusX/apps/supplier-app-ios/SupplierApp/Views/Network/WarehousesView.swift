@@ -21,16 +21,7 @@ struct WarehousesView: View {
                     showAdd = true
                 }
             } else {
-                ResponsiveGridContentWrapper {
-                    ForEach(warehouses) { warehouse in
-                    VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
-                        Text(warehouse.name).font(.headline)
-                        Text(warehouse.address.isEmpty ? "Coordinates on file" : warehouse.address)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                        SupplierStatusBadge(text: warehouse.isOnShift ? "ON_SHIFT" : "OFF_SHIFT")
-                    }
-                }
+                WarehouseList(warehouses: warehouses)
             }
         }
         .background(SupplierTheme.background)

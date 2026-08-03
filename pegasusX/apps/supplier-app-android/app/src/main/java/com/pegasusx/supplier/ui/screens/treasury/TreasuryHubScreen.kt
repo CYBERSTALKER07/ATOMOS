@@ -38,6 +38,12 @@ fun TreasuryHubScreen(
     onReconciliation: () -> Unit,
     onEarnings: () -> Unit,
     onChargebacks: () -> Unit,
+    onClaimChargebacks: () -> Unit = {},
+    onClaims: () -> Unit = {},
+    onCompliance: () -> Unit = {},
+    onCashReconciliations: () -> Unit = {},
+    onCreditNotes: () -> Unit = {},
+    onCreditProfiles: () -> Unit = {},
     viewModel: TreasuryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.hubState.collectAsStateWithLifecycle()
@@ -48,8 +54,14 @@ fun TreasuryHubScreen(
         TreasuryLink("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
         TreasuryLink("Payments", "Settlement authority", Icons.Default.CreditCard, onPayments),
         TreasuryLink("Reconciliation", "Settlement mismatches", Icons.Default.Balance, onReconciliation),
+        TreasuryLink("Compliance audit", "Open fiscal, force-completes, freezes", Icons.Default.Gavel, onCompliance),
+        TreasuryLink("Cash reconciliations", "Driver shift cash discrepancies", Icons.Default.Money, onCashReconciliations),
+        TreasuryLink("Credit notes", "Draft and issue credit notes", Icons.Default.Description, onCreditNotes),
+        TreasuryLink("Credit profiles", "Limits, balances, freeze / unfreeze", Icons.Default.AccountBox, onCreditProfiles),
         TreasuryLink("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         TreasuryLink("Chargebacks", "Record chargeback or reversal", Icons.Default.Undo, onChargebacks),
+        TreasuryLink("Claim chargebacks", "Logistics claim settlements", Icons.Default.Description, onClaimChargebacks),
+        TreasuryLink("Claims queue", "Approve / reject OS&D claims", Icons.Default.Warning, onClaims),
     )
 
     Scaffold(

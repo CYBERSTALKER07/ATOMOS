@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
+	
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
@@ -52,7 +54,7 @@ func (a *RetailerReceivingWindowAdapter) GetReceivingWindows(ctx context.Context
 	return ret.ReceivingWindowOpen, ret.ReceivingWindowClose, nil
 }
 
-func (r *inMemoryOrderRepo) CreateOrder(ctx context.Context, o *order.Order, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryOrderRepo) CreateOrder(ctx context.Context, o *order.Order, emit func(outbox.TxnBuffer) error, _ order.StockReservationOpts) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if o == nil {
@@ -90,6 +92,76 @@ func (r *inMemoryOrderRepo) GetOrder(_ context.Context, orderID string) (order.O
 	defer r.mu.RUnlock()
 	o, ok := r.byID[orderID]
 	return o, ok, nil
+}
+
+func (r *inMemoryOrderRepo) GetOrderTxn(_ context.Context, _ *spanner.ReadWriteTransaction, orderID string) (order.Order, bool, error) {
+	return r.GetOrder(context.Background(), orderID)
+}
+
+func (r *inMemoryOrderRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (order.FiscalReceiptRow, bool, error) {
+	if r == nil {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, o := range r.byID {
+		if strings.TrimSpace(o.LatestFiscalReceiptID) != receiptID {
+			continue
+		}
+		return order.FiscalReceiptRow{
+			OrderID:         o.OrderID,
+			AttemptID:       o.LatestFiscalAttemptID,
+			SupplierID:      o.SupplierID,
+			RetailerID:      o.RetailerID,
+			Provider:        order.FiscalProviderPegasus,
+			Status:          order.FiscalAttemptSuccess,
+			FiscalReceiptID: receiptID,
+			AmountMinor:     o.TotalMinor,
+			Currency:        o.Currency,
+		}, true, nil
+	}
+	return order.FiscalReceiptRow{}, false, nil
+}
+
+func (r *inMemoryOrderRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (order.FiscalReceiptRow, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	o, ok := r.byID[orderID]
+	if !ok {
+		return order.FiscalReceiptRow{}, false, nil
+	}
+	for _, fr := range o.PendingFiscalReceipts {
+		if fr.AttemptID == attemptID {
+			return fr, true, nil
+		}
+	}
+	if o.FiscalReceiptUpdate != nil && o.FiscalReceiptUpdate.AttemptID == attemptID {
+		return *o.FiscalReceiptUpdate, true, nil
+	}
+	return order.FiscalReceiptRow{}, false, nil
+}
+
+func (r *inMemoryOrderRepo) CountFiscalAttemptsByStatus(_ context.Context, orderID, status string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	o, ok := r.byID[orderID]
+	if !ok {
+		return 0, nil
+	}
+	var n int64
+	for _, fr := range o.PendingFiscalReceipts {
+		if fr.Status == status {
+			n++
+		}
+	}
+	if o.FiscalReceiptUpdate != nil && o.FiscalReceiptUpdate.Status == status {
+		n++
+	}
+	return n, nil
 }
 
 func (r *inMemoryOrderRepo) ListRetailerOrders(_ context.Context, retailerID string, limit int) ([]order.Order, error) {
@@ -243,7 +315,7 @@ func (r *inMemoryOrderRepo) ListOrdersForStockCommitment(_ context.Context, ware
 	return out, nil
 }
 
-func (r *inMemoryOrderRepo) ClearBackorder(ctx context.Context, id string, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryOrderRepo) ClearBackorder(ctx context.Context, id string, emit func(outbox.TxnBuffer) error, _ order.StockReservationOpts) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	o, exists := r.byID[id]
@@ -329,6 +401,55 @@ func (r *inMemoryOrderRepo) UpdateOrder(ctx context.Context, o order.Order, _ []
 	return nil
 }
 
+func (r *inMemoryOrderRepo) UpdateOrderWithTxn(ctx context.Context, o order.Order, proofs []order.DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.byID[o.OrderID]; !exists {
+		return fmt.Errorf("order not found: %s", o.OrderID)
+	}
+
+	o.UpdatedAt = time.Now().UTC()
+	r.byID[o.OrderID] = o
+
+	if emit != nil {
+		txn := &inMemoryTxnBuffer{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+		if r.outboxAppender != nil {
+			if err := r.outboxAppender.Append(ctx, txn.events); err != nil {
+				return err
+			}
+		}
+	}
+	
+	if inTxn != nil {
+		if err := inTxn(ctx, nil); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *inMemoryOrderRepo) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
 	return nil, nil
+}
+
+func (r *inMemoryOrderRepo) FindPendingBuyerAcceptance(ctx context.Context, limit int) ([]*order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	
+	var res []*order.Order
+	for _, o := range r.byID {
+		if o.BuyerAcceptanceStatus == "PENDING" {
+			copy := o
+			res = append(res, &copy)
+			if len(res) >= limit {
+				break
+			}
+		}
+	}
+	return res, nil
 }

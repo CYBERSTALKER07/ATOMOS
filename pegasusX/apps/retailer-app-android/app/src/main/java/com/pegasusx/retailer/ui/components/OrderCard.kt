@@ -178,6 +178,8 @@ private fun OrderStatus.badgeColors(): Pair<Color, Color> = when (this) {
     OrderStatus.NO_CAPACITY -> StatusRedSoft to StatusRed
     OrderStatus.AWAITING_PAYMENT -> StatusOrangeSoft to StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrangeSoft to StatusOrange
+    OrderStatus.FISCALIZING -> StatusOrangeSoft to StatusOrange
+    OrderStatus.FISCAL_FAILED -> StatusRedSoft to StatusRed
     OrderStatus.QUARANTINE -> StatusOrangeSoft to StatusOrange
     OrderStatus.DELIVERED_ON_CREDIT -> StatusGreenSoft to StatusGreen
     OrderStatus.RECONCILIATION_REQUIRED -> StatusOrangeSoft to StatusOrange

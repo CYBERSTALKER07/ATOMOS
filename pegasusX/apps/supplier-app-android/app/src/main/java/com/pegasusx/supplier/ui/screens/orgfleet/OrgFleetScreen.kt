@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.orgfleet
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -121,6 +119,14 @@ fun OrgFleetScreen(
                 fleetActionMessage?.let { msg ->
                     Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm))
                 }
+                
+                MetricsOverview(
+                    driversCount = drivers.size,
+                    vehiclesCount = vehicles.size,
+                    orgMembersCount = orgMembers.size,
+                    topology = topology
+                )
+
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Drivers (${drivers.size})") })
                     Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
@@ -249,4 +255,8 @@ fun OrgFleetScreen(
             )
         }
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

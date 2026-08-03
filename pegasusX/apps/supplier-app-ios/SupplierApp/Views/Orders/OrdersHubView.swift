@@ -89,16 +89,17 @@ struct OrdersQueueView: View {
           SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
         } else {
           ResponsiveGridContentWrapper {
-              ForEach(vm.orders) { order in
-            NavigationLink {
-              OrderDetailPanel(order: order, vm: vm)
-            } label: {
-              OrderRow(
-                order: order,
-                showWarehouseMenu: vm.canWarehouseOps(for: order),
-                onDelay: nil,
-                onReject: nil,
-              )
+            ForEach(vm.orders) { order in
+              NavigationLink {
+                OrderDetailPanel(order: order, vm: vm)
+              } label: {
+                OrderRow(
+                  order: order,
+                  showWarehouseMenu: vm.canWarehouseOps(for: order),
+                  onDelay: nil,
+                  onReject: nil,
+                )
+              }
             }
           }
         }
@@ -163,8 +164,7 @@ struct OrdersQueueView: View {
       } else if vm.orders.isEmpty {
         SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
       } else {
-        ResponsiveGridContentWrapper {
-            ForEach(vm.orders, selection: $vm.selection) { order in
+        List(vm.orders, selection: $vm.selection) { order in
           OrderRow(order: order)
             .tag(order)
         }

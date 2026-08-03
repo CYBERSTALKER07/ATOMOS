@@ -36,6 +36,7 @@ import com.pegasusx.warehouse.ui.screens.supply.CreateSupplyRequestDialog
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestFormResult
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
+import com.pegasusx.warehouse.ui.components.DispatchDriverList
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
 import com.pegasus.design.PegasusLoadingState
@@ -706,290 +707,53 @@ fun DispatchScreen(
 
                 when (tab) {
                     0 -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            if (fleetVehicles.isNotEmpty()) {
-                                WarehouseSectionTitle(
-                                    title = "Fleet trucks (${fleetVehicles.size})",
-                                    modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
-                                )
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 340.dp),
-                                    modifier = Modifier.heightIn(max = 320.dp),
-                                    contentPadding = PaddingValues(horizontal = PegasusSpacing.lg),
-                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                ) {
-                                    items(fleetVehicles, key = { it.vehicleId }) { vehicle ->
-                                        val selectedReason = vehicleReasons[vehicle.vehicleId]
-                                            ?: vehicle.unavailableReason?.takeIf { it.isNotBlank() }
-                                            ?: "MANUAL_HOLD"
-                                        val customNote = vehicleNotes[vehicle.vehicleId]
-                                            ?: vehicle.unavailableNote.orEmpty()
-                                        FleetTruckDispatchCard(
-                                            vehicle = vehicle,
-                                            selectedReason = selectedReason,
-                                            customNote = customNote,
-                                            mutating = mutatingFleetVehicleId == vehicle.vehicleId,
-                                            onReasonChange = { reason ->
-                                                vehicleReasons = vehicleReasons + (vehicle.vehicleId to reason)
-                                            },
-                                            onNoteChange = { note ->
-                                                vehicleNotes = vehicleNotes + (vehicle.vehicleId to note)
-                                            },
-                                            onMarkUnavailable = {
-                                                val note = if (selectedReason == "OTHER") customNote.trim().takeIf { it.isNotEmpty() } else null
-                                                updateFleetVehicle(vehicle, false, selectedReason, note)
-                                            },
-                                            onRestore = { updateFleetVehicle(vehicle, true) },
-                                            onOpenDetail = { onVehicleClick(vehicle.vehicleId) },
-                                        )
-                                    }
+                        DispatchOrderList(
+                            preview = preview!!,
+                            fleetVehicles = fleetVehicles,
+                            vehicleReasons = vehicleReasons,
+                            vehicleNotes = vehicleNotes,
+                            mutatingFleetVehicleId = mutatingFleetVehicleId,
+                            dispatchMode = dispatchMode,
+                            selectedDriverId = selectedDriverId,
+                            selectedOrderIds = selectedOrderIds,
+                            executing = executing,
+                            opsActingId = opsActingId,
+                            driverMenuExpanded = driverMenuExpanded,
+                            fmt = fmt,
+                            onDispatchModeChange = { dispatchMode = it },
+                            onDriverSelect = { selectedDriverId = it },
+                            onDriverMenuExpandChange = { driverMenuExpanded = it },
+                            onToggleOrder = { orderId, checked ->
+                                selectedOrderIds = if (checked) {
+                                    selectedOrderIds + orderId
+                                } else {
+                                    selectedOrderIds - orderId
                                 }
-                            }
-                        if (preview!!.undispatchedOrders.isEmpty()) {
-                            PegasusStatePane(
-                                kind = PegasusStateKind.Empty,
-                                headline = "All orders dispatched",
-                                body = "No undispatched orders remain in the preview queue.",
-                            )
-                        } else {
-                            val selectedDriver = preview!!.availableDrivers.firstOrNull { it.driverId == selectedDriverId }
-                            val selectedVolume = preview!!.undispatchedOrders
-                                .filter { selectedOrderIds.contains(it.orderId) }
-                                .sumOf { it.volumeVu }
-                            val effectiveMax = when {
-                                selectedDriver?.freeVolumeVu != null && selectedDriver.freeVolumeVu > 0 ->
-                                    selectedDriver.freeVolumeVu * DISPATCH_TETRIS_BUFFER
-                                else -> (selectedDriver?.maxVolumeVu ?: 0.0) * DISPATCH_TETRIS_BUFFER
-                            }
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
-                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                    ) {
-                                        FilterChip(
-                                            selected = dispatchMode == "smart",
-                                            onClick = { dispatchMode = "smart" },
-                                            label = { Text("Smart fleet") },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        FilterChip(
-                                            selected = dispatchMode == "manual",
-                                            onClick = { dispatchMode = "manual" },
-                                            label = { Text("Manual truck") },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                    }
-                                    if (dispatchMode == "manual") {
-                                    Box {
-                                        OutlinedButton(
-                                            onClick = { driverMenuExpanded = true },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text(
-                                                selectedDriver?.let { "${it.name} · ${it.maxVolumeVu} VU max" }
-                                                    ?: "Select truck / driver",
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                        DropdownMenu(
-                                            expanded = driverMenuExpanded,
-                                            onDismissRequest = { driverMenuExpanded = false },
-                                        ) {
-                                            preview!!.availableDrivers.forEach { driver ->
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text(
-                                                            "${driver.name} · ${driver.vehicleLabel.ifBlank { driver.truckStatus }}",
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        selectedDriverId = driver.driverId
-                                                        driverMenuExpanded = false
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    }
-                                    if (selectedDriver != null) {
-                                        Text(
-                                            "Loaded ${"%.1f".format(selectedVolume)} / ${"%.1f".format(effectiveMax)} VU effective",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    }
-                                    if (dispatchMode == "manual") {
-                                    Button(
-                                        onClick = { runManualDispatch(false) },
-                                        enabled = !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
-                                        modifier = Modifier.fillMaxWidth(),
-                                    ) {
-                                        Text(if (executing) "Dispatching…" else "Manual (${selectedOrderIds.size})")
-                                    }
-                                    } else {
-                                    OutlinedButton(
-                                        onClick = { showSmartConfirm = true },
-                                        enabled = !executing && preview!!.undispatchedOrders.isNotEmpty() && preview!!.availableDrivers.isNotEmpty(),
-                                        modifier = Modifier.fillMaxWidth(),
-                                    ) {
-                                        Text("Smart Dispatch")
-                                    }
-                                    }
-                                    if (preview!!.fleetEffectiveCapacityVu > 0) {
-                                        Text(
-                                            "Fleet ${"%.1f".format(preview!!.fleetEffectiveCapacityVu)} VU effective",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 340.dp),
-                                    contentPadding = PaddingValues(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
-                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                                ) {
-                                items(preview!!.undispatchedOrders, key = { it.orderId }) { o ->
-                                    OrderOpsCard(
-                                        retailerName = o.retailerName,
-                                        orderId = o.orderId,
-                                        state = "PENDING",
-                                        amountLabel = fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
-                                        showOpsMenu = true,
-                                        detailOpenMode = OrderDetailOpenMode.Double,
-                                        canDelay = true,
-                                        canReject = true,
-                                        enabled = opsActingId != o.orderId,
-                                        onOpenDetail = { onOrderClick(o.orderId) },
-                                        onDelay = { proposeTarget = o.orderId; opsReasonInput = "" },
-                                        onReject = { rejectTarget = o.orderId; opsReasonInput = "" },
-                                        leadingContent = {
-                                            Checkbox(
-                                                checked = selectedOrderIds.contains(o.orderId),
-                                                onCheckedChange = { checked ->
-                                                    selectedOrderIds = if (checked) {
-                                                        selectedOrderIds + o.orderId
-                                                    } else {
-                                                        selectedOrderIds - o.orderId
-                                                    }
-                                                },
-                                            )
-                                        },
-                                    )
-                                }
-                                if (preview!!.windowConstrainedCount > 0 || preview!!.optimizerWarnings.isNotEmpty()) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                            WarehouseSectionTitle("Smart suggest preview")
-                                            if (preview!!.windowConstrainedCount > 0) {
-                                                Text(
-                                                    "${preview!!.windowConstrainedCount} order(s) constrained by receiving window",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.tertiary,
-                                                )
-                                            }
-                                            preview!!.optimizerSource?.let { source ->
-                                                Text("Source: $source", style = MaterialTheme.typography.bodySmall)
-                                            }
-                                            preview!!.optimizerWarnings.forEach { warning ->
-                                                Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
-                                            }
-                                        }
-                                    }
-                                }
-                                if (preview!!.proposedRoutes.isNotEmpty()) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                            WarehouseSectionTitle("Smart suggest routes (${preview!!.proposedRoutes.size})")
-                                            DispatchPreviewMapLibre(routes = preview!!.proposedRoutes)
-                                        }
-                                    }
-                                    items(preview!!.proposedRoutes.size) { index ->
-                                        val route = preview!!.proposedRoutes[index]
-                                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                            Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
-                                                Text(
-                                                    route.driverName ?: route.driverId ?: "Driver",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                )
-                                                Text(
-                                                    "${route.stopCount ?: route.orderIds.size} stops · ${"%.1f".format(route.volumeVu ?: 0.0)} VU",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                                Text(
-                                                    route.orderIds.joinToString(" → "),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                }
-                            }
-                        }
-                        }
+                            },
+                            onManualDispatch = { runManualDispatch(false) },
+                            onSmartDispatch = { showSmartConfirm = true },
+                            onProposeDate = { orderId -> proposeTarget = orderId; opsReasonInput = "" },
+                            onReject = { orderId -> rejectTarget = orderId; opsReasonInput = "" },
+                            onOrderClick = onOrderClick,
+                            onVehicleClick = onVehicleClick,
+                            onVehicleReasonChange = { vehicleId, reason ->
+                                vehicleReasons = vehicleReasons + (vehicleId to reason)
+                            },
+                            onVehicleNoteChange = { vehicleId, note ->
+                                vehicleNotes = vehicleNotes + (vehicleId to note)
+                            },
+                            onMarkVehicleUnavailable = { vehicle, reason, note ->
+                                val finalNote = if (reason == "OTHER") note.trim().takeIf { it.isNotEmpty() } else null
+                                updateFleetVehicle(vehicle, false, reason, finalNote)
+                            },
+                            onRestoreVehicle = { vehicle -> updateFleetVehicle(vehicle, true) },
+                        )
                     }
                     1 -> {
-                        if (preview!!.availableDrivers.isEmpty() && preview!!.unavailableDrivers.isEmpty()) {
-                            PegasusStatePane(
-                                kind = PegasusStateKind.Empty,
-                                headline = "No drivers",
-                                body = "Available and unavailable drivers will appear here.",
-                            )
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 340.dp),
-                                contentPadding = PaddingValues(PegasusSpacing.lg),
-                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                            ) {
-                                if (preview!!.availableDrivers.isNotEmpty()) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) { WarehouseSectionTitle("Available") }
-                                }
-                                items(preview!!.availableDrivers, key = { it.driverId }) { d ->
-                                    val supporting = buildString {
-                                        append(d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } })
-                                        if (d.freeVolumeVu != null && d.freeVolumeVu > 0) {
-                                            append(" · ${"%.1f".format(d.freeVolumeVu)} VU free")
-                                        }
-                                    }
-                                    WarehouseOpsListCard(
-                                        headline = d.name,
-                                        supporting = supporting,
-                                        status = d.truckStatus.ifBlank { "IDLE" },
-                                    )
-                                }
-                                if (preview!!.unavailableDrivers.isNotEmpty()) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) { WarehouseSectionTitle("Vehicle unavailable") }
-                                }
-                                items(preview!!.unavailableDrivers, key = { "unavailable-${it.driverId}" }) { d ->
-                                    WarehouseOpsListCard(
-                                        headline = d.name,
-                                        supporting = buildString {
-                                            append(d.vehicleLabel.ifBlank { d.phone.ifBlank { "Assigned vehicle unavailable" } })
-                                            if (!d.unavailableReason.isNullOrBlank()) {
-                                                append(" · ")
-                                                append(vehicleUnavailableReasonLabel(d.unavailableReason))
-                                            }
-                                        },
-                                        status = d.truckStatus.ifBlank { "UNAVAILABLE" },
-                                    )
-                                }
-                            }
-                        }
+                        DispatchDriverList(
+                            availableDrivers = preview!!.availableDrivers,
+                            unavailableDrivers = preview!!.unavailableDrivers,
+                        )
                     }
                     2 -> {
                         if (supplyRequests.isEmpty()) {

@@ -2,10 +2,44 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
+
+func TestReleaseReservationsFromOrderFields_parsesAndSkipsEmptyWarehouse(t *testing.T) {
+	raw, err := json.Marshal([]LineItem{{SKU: "sku_1", Quantity: 2}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Empty warehouse → no Spanner calls (safe with nil txn).
+	if err := ReleaseReservationsFromOrderFields(t.Context(), nil, "sup_1", "", string(OrderSourceManual), raw); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReleaseReservationsFromOrderFields_invalidJSON(t *testing.T) {
+	err := ReleaseReservationsFromOrderFields(t.Context(), nil, "sup_1", "wh_1", string(OrderSourceManual), []byte("{"))
+	if err == nil {
+		t.Fatal("expected parse error")
+	}
+}
+
+func TestReleaseOrderReservationsInTxn_nilAndBackorder(t *testing.T) {
+	if err := releaseOrderReservationsInTxn(t.Context(), nil, nil); err != nil {
+		t.Fatalf("nil order: %v", err)
+	}
+	o := &Order{
+		SupplierID:  "sup_1",
+		WarehouseID: "wh_1",
+		Source:      OrderSourceBackorder,
+		LineItems:   []LineItem{{SKU: "sku_1", Quantity: 1}},
+	}
+	if err := releaseOrderReservationsInTxn(t.Context(), nil, o); err != nil {
+		t.Fatalf("backorder skip: %v", err)
+	}
+}
 
 func TestReleaseReservationsInTxn_skipsWhenNoReleaseNeeded(t *testing.T) {
 	cases := []struct {

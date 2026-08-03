@@ -18,11 +18,19 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cashrecon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
+	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
+	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
+	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
@@ -30,15 +38,22 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
+	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
@@ -46,6 +61,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
+	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
@@ -67,15 +83,19 @@ type Config struct {
 	SpannerInstance     string
 	SpannerDatabase     string
 
-	RedisAddr       string
-	RedisPassword   string
-	RedisPoolSize   int
-	RedisMaxRetries int
-	RedisTLSEnabled bool
+	RedisAddr         string
+	RedisPassword     string
+	RedisPoolSize     int
+	RedisMaxRetries   int
+	RedisTLSEnabled   bool
+	RedisCACertPEM    string // Memorystore server CA PEM (optional)
+	RedisTLSInsecure  bool   // skip TLS verify (staging only; prefer RedisCACertPEM)
 
 	KafkaBrokers            string
 	KafkaTopicMain          string
 	KafkaTopicMainDLQ       string
+	KafkaAuthMode           string // empty | GCP_MANAGED_OAUTH
+	KafkaSASLUsername       string // service account email for GCP Managed Kafka
 	WebSocketAllowedOrigins []string
 
 	JWTSecret string
@@ -129,6 +149,9 @@ type Config struct {
 	UpdatesBaseURL string
 	// UpdatesDefaultVersion is the fallback app version advertised by updater routes.
 	UpdatesDefaultVersion string
+
+	WeatherWorkerEnabled bool
+	WeatherBaseURL       string
 }
 
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
@@ -154,8 +177,23 @@ type App struct {
 	WebhookInbox           *payment.WebhookInboxStore
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
+	TaxService             *tax.Service
+	ComplianceService      *compliance.Service
+	ControlTowerService    *controltower.Service
+	ControlTowerHandlers   *controltower.Handlers
+	ControlTowerWorker     *controltower.Worker
+	DemandService          *demand.Service
+	LaborCapacityService   *laborcapacity.Service
+	ETAService             *eta.Service
 	OrderService           *order.Service
+	ClaimsService          *claims.Service
 	CreditService          *credit.Service
+	CreditScoreWorker      *credit.Worker
+	CashReconHandlers      *cashrecon.Handlers
+	CashReconService       *cashrecon.Service
+	CashReconEscalation    *cashrecon.EscalationWorker
+	CreditNoteHandlers     *creditnote.Handlers
+	CreditNoteService      *creditnote.Service
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
@@ -169,6 +207,7 @@ type App struct {
 	NotificationConsumer   *kafka.Consumer
 	OrderEventConsumer     *kafka.Consumer
 	WarehouseEventConsumer *kafka.Consumer
+	BillingTierConsumer    *kafka.Consumer
 	Reliability            *ReliabilityMiddleware
 	InfraHealth            infraroutes.Deps
 	OutboundCircuits       *OutboundCircuits
@@ -180,6 +219,10 @@ type App struct {
 	OptimizerClient        *optimizerclient.Client
 	DispatchPlanCounters   *plan.SourceCounters
 	ReplenishmentEngine    *replenishment.Engine
+	ReorderSuggestionWorker *replenishment.ReorderSuggestionWorker
+	RouteAnalyticsWorker  *analytics.RouteAnalyticsWorker
+	AnalyticsHandlers     *analytics.Handlers
+	NotificationPreferences *notifications.PreferenceHandlers
 	cleanup                []func()
 	// Spanner *spanner.Client (added when the Spanner client lands)
 	// Kafka   *kafka.SyncWriter
@@ -193,7 +236,9 @@ func LoadConfig() (*Config, error) {
 		HTTPPort:                        envOr("HTTP_PORT", "8080"),
 		WorkerHTTPPort:                  envOr("WORKER_HTTP_PORT", "8081"),
 		RunMode:                         envOr("PEGASUSX_RUN_MODE", RunModeAll),
-		SpannerEmulatorHost:             envOr("SPANNER_EMULATOR_HOST", "localhost:9010"),
+		// Empty emulator host = real GCP. Local SSMR defaults to emulator only when
+		// SPANNER_PROJECT is the local sandbox (or SPANNER_EMULATOR_HOST is set).
+		SpannerEmulatorHost:             resolveSpannerEmulatorHost(),
 		SpannerProject:                  envOr("SPANNER_PROJECT", "pegasusx-local"),
 		SpannerInstance:                 envOr("SPANNER_INSTANCE", "pegasusx-instance"),
 		SpannerDatabase:                 envOr("SPANNER_DATABASE", "pegasusx-db"),
@@ -202,9 +247,14 @@ func LoadConfig() (*Config, error) {
 		RedisPoolSize:                   envInt("REDIS_POOL_SIZE", 50),
 		RedisMaxRetries:                 envInt("REDIS_MAX_RETRIES", 3),
 		RedisTLSEnabled:                 envBool("REDIS_TLS_ENABLED", false),
+		RedisCACertPEM:                  envOr("REDIS_CA_CERT", ""),
+		RedisTLSInsecure:                envBool("REDIS_TLS_INSECURE", false),
 		KafkaBrokers:                    envOr("KAFKA_BROKERS", "localhost:9092"),
 		KafkaTopicMain:                  envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
 		KafkaTopicMainDLQ:               envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
+		// GCP_MANAGED_OAUTH = Managed Service for Apache Kafka (SASL_SSL + access token).
+		KafkaAuthMode:                   envOr("KAFKA_AUTH_MODE", ""),
+		KafkaSASLUsername:               envOr("KAFKA_SASL_USERNAME", ""),
 		WebSocketAllowedOrigins:         splitAndTrimCSV(envOr("WS_ALLOWED_ORIGINS", "")),
 		JWTSecret:                       envOr("JWT_SECRET", "dev-only-change-me"),
 		JWTIssuer:                       envOr("JWT_ISSUER", "pegasusx-dev"),
@@ -243,6 +293,8 @@ func LoadConfig() (*Config, error) {
 		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
 		UpdatesBaseURL:                  strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
 		UpdatesDefaultVersion:           envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
+		WeatherWorkerEnabled:            envBool("WEATHER_WORKER_ENABLED", true),
+		WeatherBaseURL:                  envOr("WEATHER_BASE_URL", "https://api.open-meteo.com/v1/forecast"),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")
@@ -291,6 +343,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PoolSize:        cfg.RedisPoolSize,
 		MaxRetries:      cfg.RedisMaxRetries,
 		TLSEnabled:      cfg.RedisTLSEnabled,
+		CACertPEM:       cfg.RedisCACertPEM,
+		TLSInsecure:     cfg.RedisTLSInsecure,
 		MinIdleConns:    10,
 		MaxIdleTime:     5 * time.Minute,
 		DialTimeout:     2 * time.Second,
@@ -382,7 +436,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 	}
 	kafkaEnabled := false
-	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{}); err != nil {
+	kafkaAuth := kafkautil.ClientAuth{Mode: cfg.KafkaAuthMode, Username: cfg.KafkaSASLUsername}
+	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{
+		Auth: kafkaAuth,
+	}); err != nil {
 		if cfg.RequireInfraAdapters {
 			return nil, fmt.Errorf("kafka publisher init failed (REQUIRE_INFRA_ADAPTERS): %w", err)
 		}
@@ -495,11 +552,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	var notifSvc *notifications.Service
 	var notifInbox *notifications.InboxHandlers
+	var notifPrefHandlers *notifications.PreferenceHandlers
 	var notifAdapter *notificationReaderAdapter
 	if spannerClient != nil {
 		notifRepo := notifications.NewSpannerRepository(spannerClient)
 		notifSvc = notifications.NewService(notifRepo, cacheClient, log)
 		notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
+		notifPrefHandlers = &notifications.PreferenceHandlers{Repo: notifRepo}
 		notifAdapter = &notificationReaderAdapter{svc: notifSvc}
 		log.Info("notification service enabled", "backend", "spanner")
 	}
@@ -517,6 +576,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:   cfg.JWTSecret,
 		JWTIssuer:   cfg.JWTIssuer,
 		Log:         log,
+		// Required for sell-through, reorder suggestions, auto-order bucket/runs, locations Spanner path.
+		Spanner: spannerClient,
 	})
 
 	var supplierInventory supplier.InventoryServicer
@@ -595,6 +656,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Warn("credit repository fallback enabled", "backend", "in-memory")
 	}
 	creditSvc := credit.NewService(creditRepo)
+	var creditScoreWorker *credit.Worker
+	if spannerClient != nil {
+		creditScoreWorker = credit.NewWorker(spannerClient)
+	}
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -603,29 +668,83 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		gatewayPolicyReader = payment.NewSpannerPolicyResolver(spannerClient)
 	}
+	var complianceSvc *compliance.Service
+	var taxSvc *tax.Service
+	var routingSvc *routing.Service
+	var pricingSvc pricing.Service
+	var cashReconSvc *cashrecon.Service
+	var cashReconHandlers *cashrecon.Handlers
+	var creditNoteSvc *creditnote.Service
+	var creditNoteHandlers *creditnote.Handlers
+	cashReconRequired := strings.EqualFold(strings.TrimSpace(os.Getenv("CASH_RECONCILIATION_REQUIRED")), "true")
+	creditScoreEnforcement := strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_SCORE_ENFORCEMENT_ENABLED")), "true")
+	if spannerClient != nil {
+		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
+		taxSvc = tax.NewService(tax.NewSpannerRepository(spannerClient), cacheClient, slog.Default())
+		routingSvc = routing.NewService(spannerClient)
+		pricingSvc = pricing.NewService(pricing.NewSpannerRepository(spannerClient))
+		cashReconRepo := cashrecon.NewSpannerRepository(spannerClient)
+		cashReconSvc = cashrecon.NewService(cashReconRepo, cashReconRepo)
+		cashReconHandlers = &cashrecon.Handlers{Svc: cashReconSvc}
+		creditNoteRepo := creditnote.NewSpannerRepository(spannerClient)
+		creditNoteSvc = creditnote.NewService(creditNoteRepo)
+		creditNoteHandlers = &creditnote.Handlers{Svc: creditNoteSvc, SupplierID: func() string { return supplierSeed.SupplierID }}
+	}
+
 	orderSvc := order.NewService(order.ServiceConfig{
-		Repo:            orderRepo,
-		Cache:           cacheClient,
-		Warehouse:       orderWarehouseResolver,
-		Promotions:      promotionSvc,
-		Credit:          creditSvc,
-		SupplierID:      supplierSeed.SupplierID,
-		SupplierName:    cfg.SeedSupplierName,
-		Currency:        cfg.SeedSupplierCurrency,
-		RetailerHub:     retailerHub,
-		SupplierHub:     supplierHub,
-		DriverHub:       driverHub,
-		SpannerClient:   spannerClient,
-		ShopClosedGrace: shopClosedGraceDuration(),
-		Log:             log,
+		Repo:                          orderRepo,
+		Cache:                         cacheClient,
+		Warehouse:                     orderWarehouseResolver,
+		Promotions:                    promotionSvc,
+		Credit:                        creditSvc,
+		SupplierID:                    supplierSeed.SupplierID,
+		SupplierName:                  cfg.SeedSupplierName,
+		Currency:                      cfg.SeedSupplierCurrency,
+		RetailerHub:                   retailerHub,
+		SupplierHub:                   supplierHub,
+		DriverHub:                     driverHub,
+		SpannerClient:                 spannerClient,
+		ShopClosedGrace:               shopClosedGraceDuration(),
+		CreditScoreEnforcementEnabled: creditScoreEnforcement,
+		Log:                           log,
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
 		Idem:            idemStore,
+		Replanner:       routingSvc,
 	})
 	orderSvc.SetManifestStore(manifestStore)
+	if spannerClient != nil {
+		segmentSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
+		allocSvc := allocation.NewAllocationService(spannerClient)
+		allocSvc.SetSegmentService(segmentSvc)
+		allocSvc.SetConstrainedAllocationEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("CONSTRAINED_ALLOCATION_ENABLED")), "true"))
+		orderSvc.SetAllocator(allocSvc)
+	}
+	orderSvc.SetAllocationRequired(strings.EqualFold(strings.TrimSpace(os.Getenv("ALLOCATION_REQUIRED")), "true"))
+	if pricingSvc != nil {
+		orderSvc.SetPricingService(pricingSvc)
+	}
 	if gatewayPolicyReader != nil {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
+	// Logistics claims domain (post-delivery damage / driver OS&D). Additive; optional bridge.
+	var claimsRepo claims.Repository
+	if spannerClient != nil {
+		claimsRepo = claims.NewSpannerRepository(spannerClient)
+		log.Info("claims repository enabled", "backend", "spanner")
+	} else {
+		claimsRepo = claims.NewMemoryRepository()
+		log.Warn("claims repository fallback enabled", "backend", "in-memory")
+	}
+	claimsSvc := claims.NewService(claims.Config{
+		Repo:   claimsRepo,
+		Orders: orderClaimsLookup{svc: orderSvc},
+		Log:    log,
+	})
+	if creditNoteSvc != nil {
+		claimsSvc.SetCreditNotes(creditnote.ClaimsBridge{Svc: creditNoteSvc})
+	}
+	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
 	order.StartPreorderSweeper(orderSvc)
 	go orderSvc.StartNegotiationSweeper(context.Background())
 	go orderSvc.StartDeferredPaymentSweeper(context.Background(), 5*time.Minute)
@@ -644,8 +763,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	dispatchCounters := &plan.SourceCounters{}
 
 	var replenishmentEngine *replenishment.Engine
+	var reorderSuggestionWorker *replenishment.ReorderSuggestionWorker
+	var routeAnalyticsWorker *analytics.RouteAnalyticsWorker
+	var analyticsHandlers *analytics.Handlers
 	if spannerClient != nil {
 		replenishmentEngine = replenishment.NewEngine(spannerClient, log)
+		replenishmentEngine.EchelonTargetsEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("MEIO_ECHELON_TARGETS_ENABLED")), "true")
+		reorderSuggestionWorker = replenishment.NewReorderSuggestionWorker(spannerClient)
+		reorderSuggestionWorker.EchelonTargetsEnabled = replenishmentEngine.EchelonTargetsEnabled
+		routeAnalyticsWorker = analytics.NewRouteAnalyticsWorkerFromClient(spannerClient)
+		analyticsHandlers = &analytics.Handlers{Client: spannerClient, SupplierID: func() string { return supplierSeed.SupplierID }}
 	}
 
 	supplierSvc.SetPortalOps(supplier.PortalOpsConfig{
@@ -665,6 +792,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ReplenishmentEngine:  replenishmentEngine,
 	})
 	retailerSvc.SetOrderLifecycle(orderSvc)
+	// Auto-order place mode: real order.Create (never mobile_compat). Flag default off.
+	retailerSvc.SetOrderCreator(orderSvc)
+	retailerSvc.SetAutoOrderPlaceEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("AUTO_ORDER_PLACE_ENABLED")), "true"))
 
 	factoryNodeID := strings.TrimSpace(os.Getenv("FACTORY_DEMO_ID"))
 	if factoryNodeID == "" {
@@ -678,8 +808,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		warehouseNodeID = "wh-demo-1"
 	}
 
-	// Start Control Tower telemetry simulator
-	simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+	// Fake H3 / network graph telemetry — off by default in SSMR/prod (honesty).
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true") {
+		simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+		log.Info("control tower telemetry simulator enabled")
+	}
 
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
@@ -745,6 +878,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Log:          log,
 		Idem:         idemStore,
 	})
+	// Claim / OS&D → warehouse inbound tickets (deduped with amend-created returns).
+	claimsSvc.SetReverseLogistics(&returnsClaimsBridge{svc: returnsSvc})
+	// Store QUARANTINE hold on physical claims (FLOOR/BACKROOM → QUARANTINE).
+	claimsSvc.SetStoreStock(&retailerClaimStockBridge{svc: retailerSvc})
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
 	var driverProfileLookup driver.DriverProfileLookup
@@ -784,6 +921,31 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			}, true, nil
 		}
 	}
+	var driverOpenFiscal driver.OpenFiscalLookup
+	if spannerClient != nil {
+		driverOpenFiscal = func(ctx context.Context, driverID string) (driver.OpenFiscalSnapshot, error) {
+			snap, err := order.CountOpenFiscalForDriver(ctx, spannerClient, driverID)
+			if err != nil {
+				return driver.OpenFiscalSnapshot{}, err
+			}
+			return driver.OpenFiscalSnapshot{
+				Count:    snap.Count,
+				OrderIDs: snap.OrderIDs,
+				Frozen:   snap.Frozen,
+			}, nil
+		}
+	}
+	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
+	fiscalProvider := order.ProviderFromEnv()
+	orderSvc.SetFiscalProvider(fiscalProvider)
+	if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
+		buyerPoller := order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")), "true") {
+			buyerPoller.SetAutoCreditNoteOnBuyerReject(true)
+		}
+		go buyerPoller.Run(context.Background())
+		log.Info("buyer acceptance poller started")
+	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:               driverRepo,
 		Cache:              cacheClient,
@@ -795,6 +957,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		RouteGeometry:      driverRouteGeometry,
 		Depart:             driverDepart,
 		ReturnComplete:     driverReturnComplete,
+		OpenFiscal:         driverOpenFiscal,
+		CashReconciliationRequired: cashReconRequired,
+		CashReconciliationGate: func(ctx context.Context, driverID string) (bool, error) {
+			if cashReconSvc == nil {
+				return true, nil
+			}
+			return cashReconSvc.HasAcceptedReconciliation(ctx, driverID, time.Now().UTC())
+		},
 		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
 			tokens := make(map[string]string, len(orderIDs))
 			for _, orderID := range orderIDs {
@@ -877,6 +1047,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
+	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
+	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
+	claimsSvc.SetStoreCredit(creditSvc)
 	var warehouseRepo warehouse.Repository
 	if spannerClient != nil {
 		warehouseRepo = warehouse.NewSpannerRepository(spannerClient)
@@ -968,8 +1141,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 
 	var fcmClient *notifications.FCMClient
-	if strings.TrimSpace(cfg.FirebaseCredentialsPath) != "" {
-		fcmClient, err = notifications.InitFCM(cfg.FirebaseCredentialsPath, spannerClient, log)
+	// Prefer real FCM when project id or credentials path is configured.
+	// Empty/stub credentials JSON falls through to Workload Identity ADC.
+	if strings.TrimSpace(cfg.FirebaseProjectID) != "" || strings.TrimSpace(cfg.FirebaseCredentialsPath) != "" {
+		fcmClient, err = notifications.InitFCM(cfg.FirebaseCredentialsPath, cfg.FirebaseProjectID, spannerClient, log)
 		if err != nil {
 			log.Warn("FCM init failed; using no-op", "err", err)
 			fcmClient = notifications.NewNoOpFCMClient(log)
@@ -982,8 +1157,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var notificationConsumer *kafka.Consumer
 	var orderEventConsumer *kafka.Consumer
 	var warehouseEventConsumer *kafka.Consumer
+	var billingTierConsumer *kafka.Consumer
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
-		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ)
+		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
 		if err != nil {
 			if cfg.RequireInfraAdapters {
 				return nil, fmt.Errorf("init notification dlq writer: %w", err)
@@ -1015,6 +1191,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				EventDedup:      kafkaEventDedup,
 				ConsumerGroupID: notificationConsumerGroup,
 				Cache:           cacheClient,
+				RetailerActors:  retailerSvc, // Phase 1 multi-user FCM fanout
 			})
 			dispatcherTopics := events.DispatcherConsumerTopics()
 			notificationConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
@@ -1023,6 +1200,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topics:    dispatcherTopics,
 				Handler:   dispatcher.HandleEvent,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
 			orderHandler := kafka.WithEventDedup(kafkaEventDedup, orderConsumerGroup, order.NewEventConsumer(orderSvc, log).HandleEvent)
 			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouseConsumerGroup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
@@ -1032,6 +1210,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topic:     events.OrderConsumerTopic(),
 				Handler:   orderHandler,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
 			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
@@ -1039,7 +1218,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Topic:     events.DispatchConsumerTopic(),
 				Handler:   warehouseHandler,
 				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
 			})
+			if spannerClient != nil {
+				const billingConsumerGroup = "void-billing-tier"
+				meterWorker := billing.NewMeterWorker(spannerClient)
+				billingWorker := kafka.NewBillingTierWorker(meterWorker)
+				billingHandler := kafka.WithEventDedup(kafkaEventDedup, billingConsumerGroup, billingWorker.HandleEvent)
+				billingTierConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
+					Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+					GroupID:   billingConsumerGroup,
+					Topic:     events.OrderConsumerTopic(),
+					Handler:   billingHandler,
+					DLQWriter: dlqWriter,
+					Auth:      kafkaAuth,
+				})
+			}
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {
 					log.Warn("notification consumer close failed", "err", err)
@@ -1049,6 +1243,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				}
 				if err := warehouseEventConsumer.Close(); err != nil {
 					log.Warn("warehouse event consumer close failed", "err", err)
+				}
+				if billingTierConsumer != nil {
+					if err := billingTierConsumer.Close(); err != nil {
+						log.Warn("billing tier consumer close failed", "err", err)
+					}
 				}
 				if err := dlqWriter.Close(); err != nil {
 					log.Warn("notification dlq writer close failed", "err", err)
@@ -1061,6 +1260,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				"dlq_topic", cfg.KafkaTopicMainDLQ,
 				"consume_domain", events.ConsumeDomainTopics(),
 				"dual_write", events.DualWriteDomainTopics(),
+				"billing_tier", billingTierConsumer != nil,
 			)
 		}
 	}
@@ -1088,6 +1288,59 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	pulseHandlers := &pulse.Handlers{Service: pulseSvc}
 
+	var controlTowerSvc *controltower.Service
+	var controlTowerHandlers *controltower.Handlers
+	var controlTowerWorker *controltower.Worker
+	if spannerClient != nil {
+		ctCfg := controltower.ConfigFromEnv()
+		ctRepo := controltower.NewSpannerRepository(spannerClient)
+		cnSvc := creditNoteSvc
+		if cnSvc == nil {
+			cnSvc = creditnote.NewService(creditnote.NewSpannerRepository(spannerClient))
+		}
+		planSvc := planning.NewService(spannerClient).WithCache(cacheClient)
+		planSvc.TwinScenarioEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("TWIN_SCENARIO_ENABLED")), "true")
+		segSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
+		ctExecutor := controltower.NewActionExecutor(ctRepo, controltower.ExecutorDeps{
+			CreditNotes:   cnSvc,
+			Credit:        creditSvc,
+			Planning:      planSvc,
+			Routing:       routingSvc,
+			Notifications: notifSvc,
+			Returns:       returnsSvc,
+			Segment:       segSvc,
+			Log:           log,
+		})
+		ctEngine := controltower.NewEngine(ctRepo, ctExecutor, segSvc, ctCfg, log)
+		controlTowerSvc = controltower.NewService(ctRepo, ctEngine, ctCfg)
+		controlTowerHandlers = controltower.NewHandlers(controlTowerSvc, supplierSvc.ScopedSupplierID)
+		controlTowerWorker = controltower.NewWorker(controlTowerSvc, log, 3*time.Minute)
+		if ctCfg.Enabled {
+			log.Info("control tower playbooks enabled", "auto_execute", ctCfg.AutoExecute)
+		}
+		supplierSvc.SetControlTower(controlTowerSvc)
+		if replenishmentEngine != nil {
+			replenishmentEngine.SegmentSvc = segSvc
+		}
+	}
+
+	demandSvc := demand.NewService(spannerClient)
+	if demandSvc != nil && reorderSuggestionWorker != nil {
+		demandSvc.SetAfterSensingHook(func(ctx context.Context) error {
+			return reorderSuggestionWorker.RunBatchAllSuppliers(ctx)
+		})
+	}
+
+	var cashReconEscalation *cashrecon.EscalationWorker
+	if spannerClient != nil && cashReconSvc != nil && notifSvc != nil {
+		cashReconEscalation = &cashrecon.EscalationWorker{
+			Spanner:    spannerClient,
+			Notifier:   notifSvc,
+			SupplierID: supplierSeed.SupplierID,
+			Now:        func() time.Time { return time.Now().UTC() },
+		}
+	}
+
 	return &App{
 		Config:                 cfg,
 		Cache:                  cacheClient,
@@ -1108,8 +1361,23 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WebhookInbox:           webhookInbox,
 		WarehouseService:       warehouseSvc,
 		ReturnsService:         returnsSvc,
+		TaxService:             taxSvc,
+		ComplianceService:      complianceSvc,
+		ControlTowerService:    controlTowerSvc,
+		ControlTowerHandlers:   controlTowerHandlers,
+		ControlTowerWorker:     controlTowerWorker,
+		DemandService:          demandSvc,
+		LaborCapacityService:   laborcapacity.NewService(spannerClient),
+		ETAService:             eta.NewService(spannerClient),
 		OrderService:           orderSvc,
+		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,
+		CreditScoreWorker:      creditScoreWorker,
+		CashReconHandlers:      cashReconHandlers,
+		CashReconService:       cashReconSvc,
+		CashReconEscalation:    cashReconEscalation,
+		CreditNoteHandlers:     creditNoteHandlers,
+		CreditNoteService:      creditNoteSvc,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,
 		RetailerHub:            retailerHub,
@@ -1122,6 +1390,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotificationConsumer:   notificationConsumer,
 		OrderEventConsumer:     orderEventConsumer,
 		WarehouseEventConsumer: warehouseEventConsumer,
+		BillingTierConsumer:    billingTierConsumer,
 		OutboxRelay:            outboxRelay,
 		Reliability:            reliabilityMiddleware,
 		InfraHealth:            infraHealth,
@@ -1133,8 +1402,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Spanner:                spannerClient,
 		OptimizerClient:        optimizerCli,
 		DispatchPlanCounters:   dispatchCounters,
-		ReplenishmentEngine:    replenishmentEngine,
-		cleanup:                cleanup,
+		ReplenishmentEngine:     replenishmentEngine,
+		ReorderSuggestionWorker: reorderSuggestionWorker,
+		RouteAnalyticsWorker:    routeAnalyticsWorker,
+		AnalyticsHandlers:       analyticsHandlers,
+		NotificationPreferences: notifPrefHandlers,
+		cleanup:                 cleanup,
 	}, nil
 }
 
@@ -1737,6 +2010,14 @@ func (a *notificationReaderAdapter) UnreadCount(ctx context.Context, recipientID
 	return a.svc.UnreadCount(ctx, recipientID)
 }
 
+// CreateNotification implements retailer.NotificationWriter for variance alerts.
+func (a *notificationReaderAdapter) CreateNotification(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error {
+	if a == nil || a.svc == nil {
+		return nil
+	}
+	return a.svc.CreateNotification(ctx, recipientID, recipientRole, eventType, title, body, deepLink)
+}
+
 // supplierDashboardCountQuery returns a DashboardCountQuery backed by stale
 // Spanner reads for aggregate dashboard KPIs.
 func supplierDashboardCountQuery(client *spanner.Client) supplier.DashboardCountQuery {
@@ -1840,6 +2121,24 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// resolveSpannerEmulatorHost returns the emulator endpoint for local SSMR, or
+// empty string for real Cloud Spanner (ADC + public API).
+//
+// Priority:
+//  1. SPANNER_EMULATOR_HOST if set (including empty → force cloud)
+//  2. Non-local SPANNER_PROJECT → cloud (no emulator)
+//  3. Default localhost:9010 for pegasusx-local / unset project
+func resolveSpannerEmulatorHost() string {
+	if v, ok := os.LookupEnv("SPANNER_EMULATOR_HOST"); ok {
+		return v
+	}
+	project := strings.TrimSpace(os.Getenv("SPANNER_PROJECT"))
+	if project != "" && project != "pegasusx-local" {
+		return ""
+	}
+	return "localhost:9010"
 }
 
 func envBool(key string, fallback bool) bool {

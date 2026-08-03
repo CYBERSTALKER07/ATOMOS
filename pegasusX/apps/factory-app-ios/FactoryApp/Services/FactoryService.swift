@@ -209,6 +209,13 @@ enum FactoryService {
         try await api.get("v1/factory/staff")
     }
 
+    static func createStaff(name: String, role: String) async throws -> StaffMember {
+        try await api.post(
+            "v1/factory/staff",
+            body: CreateStaffRequest(name: name, role: role)
+        )
+    }
+
     static func staffDetail(id: String) async throws -> StaffMember {
         try await api.get("v1/factory/staff/\(id)")
     }
@@ -225,6 +232,17 @@ enum FactoryService {
             query["escalated"] = "true"
         }
         return try await api.get("v1/factory/manifest-exceptions", query: query)
+    }
+
+    static func resolveManifestException(
+        exceptionId: String,
+        resolution: String = "RESOLVED",
+        note: String = ""
+    ) async throws -> ResolveManifestExceptionResponse {
+        try await api.post(
+            "v1/factory/manifest-exceptions/\(exceptionId)/resolve",
+            body: ResolveManifestExceptionRequest(resolution: resolution, note: note)
+        )
     }
 
     // MARK: - Location (all factory-scoped staff may read/write)

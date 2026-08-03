@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
@@ -11,24 +12,50 @@ import {
   toErrorMessage,
   StatusText,
   isErrorMessage,
+=======
+import { useState } from "react";
+import type { HomeNodeType, SupplierFleetDriverCreateRequest } from "@pegasusx/types";
+import { supplierFleetDriverCreateKey } from "@pegasusx/api-client";
+import type { ApiClient } from "@pegasusx/api-client";
+import {
+  DriverFormState,
+  defaultDriverForm,
+  StatusText,
+  isErrorMessage,
+  toErrorMessage,
+  supplierScopeId,
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   nodeOptionsFor,
   ReadyState,
 } from "./utils";
 
 export function DriverForm({
+<<<<<<< HEAD
   topology,
   vehicles,
   onCreated,
 }: {
   topology: SupplierTopologyResponse;
   vehicles: ReadyState["vehicles"];
+=======
+  state,
+  api,
+  onCreated,
+}: {
+  state: ReadyState;
+  api: ApiClient;
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   onCreated: () => void;
 }) {
   const [driverForm, setDriverForm] = useState<DriverFormState>(defaultDriverForm);
   const [driverSubmitting, setDriverSubmitting] = useState(false);
   const [driverMessage, setDriverMessage] = useState<string | null>(null);
 
+<<<<<<< HEAD
   const driverVehicleOptions = vehicles.filter(
+=======
+  const driverVehicleOptions = state.vehicles.filter(
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     (vehicle) =>
       vehicle.home_node_type === driverForm.homeNodeType &&
       vehicle.home_node_id === driverForm.homeNodeID,
@@ -47,7 +74,10 @@ export function DriverForm({
       vehicle_id: driverForm.vehicleID || undefined,
     };
     try {
+<<<<<<< HEAD
       const api = createSupplierApi();
+=======
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
       await api.createSupplierFleetDriver(
         request,
         supplierFleetDriverCreateKey(supplierScopeId(), request.phone),
@@ -113,7 +143,11 @@ export function DriverForm({
           disabled={driverSubmitting}
         >
           <option value="">Select home node</option>
+<<<<<<< HEAD
           {nodeOptionsFor(driverForm.homeNodeType, topology).map((option) => (
+=======
+          {nodeOptionsFor(driverForm.homeNodeType, state.topology).map((option) => (
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

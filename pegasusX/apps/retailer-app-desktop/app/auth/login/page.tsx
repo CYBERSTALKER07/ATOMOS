@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
-import { storeToken } from "@/lib/bridge";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
@@ -70,16 +69,19 @@ export default function RetailerLoginPage() {
       const data = await res.json();
       if (!data?.token) throw new Error("Login response is missing token");
 
-      document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
-      if (data.refresh_token) {
-        document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
-      }
-      await storeToken(data.token, data.refresh_token || "");
-      if (data.user) {
-        const { setRetailerProfile } = await import("@/lib/retailer-profile");
-        await setRetailerProfile(data.user);
+      // C1.3 multi-org: intermediate token → org picker (flag on server only).
+      const { isPendingOrgSelectResponse, persistPendingOrgToken, stashPendingMemberships, applyFullAuthResponse } =
+        await import("@/lib/multi-org-auth");
+      if (isPendingOrgSelectResponse(data)) {
+        persistPendingOrgToken(data.token, data.expires_in_sec ?? 420);
+        if (Array.isArray(data.memberships)) {
+          stashPendingMemberships(data.memberships);
+        }
+        router.replace("/auth/select-org");
+        return;
       }
 
+      await applyFullAuthResponse(data, { clearScoped: false });
       router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

@@ -9,6 +9,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 // Read dev.host from local.properties (falls back to emulator address)
@@ -27,6 +28,8 @@ val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasusx/driver/generated/contracts/PegasusWSEventEnvelope.kt"
 )
 val wsCodegenEnabled = localProps.getProperty("driver.ws.codegen", "false") == "true"
+val firebaseAuthEmulator = localProps.getProperty("firebase.auth.emulator", "false") == "true"
+val firebaseAuthEmulatorHost = localProps.getProperty("firebase.auth.emulator.host", "10.0.2.2")
 
 fun assertCommandAvailable(command: String) {
     val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
@@ -109,6 +112,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
+        buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
+        buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 

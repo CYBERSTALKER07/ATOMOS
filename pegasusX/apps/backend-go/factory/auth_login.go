@@ -167,16 +167,26 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 
 	factoryName, _ := s.lookupFactoryName(r.Context(), factoryID)
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token":          token,
-		"refresh_token":  refresh,
-		"factory_id":     factoryID,
-		"factory_name":   factoryName,
-		"role":           string(jwtClaims.Role),
-		"factory_role":   string(jwtClaims.SupplierRole),
-		"name":           staff.Name,
-		"is_configured":  isConfigured,
-	})
+	resp := map[string]any{
+		"token":         token,
+		"refresh_token": refresh,
+		"factory_id":    factoryID,
+		"factory_name":  factoryName,
+		"role":          string(jwtClaims.Role),
+		"factory_role":  string(jwtClaims.SupplierRole),
+		"name":          staff.Name,
+		"is_configured": isConfigured,
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), staff.UserID, map[string]interface{}{
+		"role":        string(jwtClaims.Role),
+		"factory_id":  factoryID,
+		"supplier_id": staff.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp["firebase_token"] = fbToken
+		resp["firebaseToken"] = fbToken
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (factoryStaffRecord, bool, error) {

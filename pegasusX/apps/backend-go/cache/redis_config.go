@@ -17,4 +17,9 @@ type RedisConfig struct {
 	MinRetryBackoff time.Duration // Retry floor (default: 8ms)
 	MaxRetryBackoff time.Duration // Retry ceiling (default: 512ms)
 	TLSEnabled      bool          // Enforce TLS for production
+	// CACertPEM is an optional PEM-encoded CA (e.g. Memorystore server CA).
+	// When set with TLSEnabled, the client trusts this CA instead of the system pool.
+	CACertPEM string
+	// TLSInsecure skips certificate verification (staging only; prefer CACertPEM).
+	TLSInsecure bool
 }

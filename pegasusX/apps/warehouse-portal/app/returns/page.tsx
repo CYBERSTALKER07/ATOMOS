@@ -9,18 +9,8 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 
-type InboundRow = {
-  return_id: string;
-  order_id: string;
-  product_name: string;
-  expected_qty: number;
-  received_qty: number;
-  reason: string;
-  physical_status: string;
-  driver_name?: string;
-  suggested_disposition: string;
-  barcode?: string;
-};
+import { ReturnsList, type InboundRow, isClaimTicket } from '@/components/returns/ReturnsList';
+import { ReverseLogisticsPanel } from '@/components/returns/ReverseLogisticsPanel';
 
 export default function ReturnsPage() {
   const [rows, setRows] = useState<InboundRow[]>([]);
@@ -33,7 +23,8 @@ export default function ReturnsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadInbound = useCallback(async () => {
-    const res = await apiFetch('/v1/returns/inbound?physical_status=ARRIVED&limit=100');
+    // OPEN = PENDING|ON_TRUCK|ARRIVED|RECEIVING — includes claim reverse-logistics tickets.
+    const res = await apiFetch('/v1/returns/inbound?physical_status=OPEN&limit=100');
     if (!res.ok) throw new Error('load_inbound_failed');
     const data = await res.json();
     setRows(data.data ?? []);
@@ -138,7 +129,7 @@ export default function ReturnsPage() {
       <PageChrome
         icon="returns"
         title="Inbound Returns"
-        description="Scan driver-returned goods at the warehouse gate — restock or write off."
+        description="Dock queue for truck returns and claim reverse-logistics tickets — restock or write off."
         actions={
           <button type="button" onClick={() => void load()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -177,47 +168,22 @@ export default function ReturnsPage() {
 
         {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-        {loading ? (
-          <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}</div>
-        ) : list.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[var(--muted)]">
-            <Icon name="returns" size={48} className="mb-3 opacity-40" />
-            <p className="text-sm">{tab === 'inbound' ? 'No trucks awaiting receive' : 'No completed receives yet'}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="desk-table w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  {tab === 'inbound' && <th className="w-8" />}
-                  <th className="text-left py-2 px-3">Product</th>
-                  <th className="text-left py-2 px-3">EAN</th>
-                  <th className="text-left py-2 px-3">Driver</th>
-                  <th className="text-right py-2 px-3">Qty</th>
-                  <th className="text-left py-2 px-3">Reason</th>
-                  <th className="text-left py-2 px-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map(item => (
-                  <tr key={item.return_id} className="border-b border-[var(--border)]">
-                    {tab === 'inbound' && (
-                      <td className="py-2 px-2">
-                        <input type="checkbox" checked={selected.has(item.return_id)} onChange={() => setSelected(prev => { const n = new Set(prev); if (n.has(item.return_id)) n.delete(item.return_id); else n.add(item.return_id); return n; })} />
-                      </td>
-                    )}
-                    <td className="py-2.5 px-3 font-medium">{item.product_name}</td>
-                    <td className="py-2.5 px-3 font-mono text-xs text-[var(--muted)]">{item.barcode || '—'}</td>
-                    <td className="py-2.5 px-3 text-[var(--muted)]">{item.driver_name || '—'}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{item.received_qty}/{item.expected_qty}</td>
-                    <td className="py-2.5 px-3">{item.reason}</td>
-                    <td className="py-2.5 px-3"><span className="status-chip">{item.physical_status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ReturnsList
+          tab={tab}
+          loading={loading}
+          list={list}
+          selected={selected}
+          onToggleSelect={(id) => setSelected(prev => {
+            const n = new Set(prev);
+            if (n.has(id)) n.delete(id);
+            else n.add(id);
+            return n;
+          })}
+        />
+        <section className="mt-8 p-4 border rounded-lg bg-white">
+          <h2 className="text-lg font-semibold mb-2">Credit note reverse logistics</h2>
+          <ReverseLogisticsPanel />
+        </section>
       </PageChrome>
     </PageTransition>
   );

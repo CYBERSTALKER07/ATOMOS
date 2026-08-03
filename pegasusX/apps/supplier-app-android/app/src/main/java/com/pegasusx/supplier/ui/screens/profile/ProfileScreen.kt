@@ -50,14 +50,10 @@ fun ProfileScreen(api: SupplierApi) {
                 )
                 else -> {
                     val p = profile!!
-                    Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                        Text(p.legalName, style = MaterialTheme.typography.headlineSmall)
-                        Text(p.contactName)
-                        Text(p.email)
-                        Text(p.phone)
-                        Text("${p.country} · ${p.currency}")
-                        Text("Configured: ${p.isConfigured}")
-                    }
+                    SupplierIdentityCard(
+                        p = p,
+                        modifier = Modifier.padding(PegasusSpacing.lg),
+                    )
                 }
             }
         }

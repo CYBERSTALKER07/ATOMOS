@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Chip, Skeleton } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
+import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
@@ -42,6 +43,8 @@ import {
   normalizeReceivingWindow,
   validateReceivingWindowField,
 } from "../../../lib/receiving-window";
+import { Toggle, OverrideRow, OverrideSection } from "../../../components/settings/OverrideComponents";
+import { ProfileField, ProfileTimeField } from "../../../components/settings/ProfileFields";
 
 function getBrowserStorage(): Storage | null {
   if (
@@ -101,188 +104,6 @@ function validateProfileFields(
   if (closeError) errors.receivingWindowClose = closeError;
 
   return errors;
-}
-
-/* ── Toggle Switch ── */
-function Toggle({
-  on,
-  onToggle,
-  disabled = false,
-}: {
-  on: boolean;
-  onToggle: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onToggle}
-      disabled={disabled}
-      className="w-11 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all duration-200 disabled:opacity-50 shrink-0"
-      style={{ background: on ? "var(--desk-accent)" : "var(--desk-border)" }}
-    >
-      {disabled ? (
-        <Loader2 size={14} className="animate-spin mx-auto text-white" />
-      ) : (
-        <motion.div
-          layout
-          className="w-4 h-4 rounded-full bg-white shadow-sm"
-          initial={false}
-          animate={{ x: on ? 20 : 0 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        />
-      )}
-    </button>
-  );
-}
-
-/* ── Override Row ── */
-function OverrideRow({
-  label,
-  enabled,
-  hasHistory,
-  analyticsDate,
-  icon: Icon,
-  onToggle,
-  saving,
-}: {
-  id: string;
-  label: string;
-  enabled: boolean;
-  hasHistory?: boolean;
-  analyticsDate?: string;
-  icon: React.ElementType;
-  onToggle: () => void;
-  saving: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-[var(--desk-border)] last:border-0 gap-4">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]">
-          <Icon size={16} className="text-[var(--desk-text-tertiary)]" />
-        </div>
-        <div className="min-w-0">
-          <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block truncate">
-            {label}
-          </span>
-          <div className="flex items-center gap-2 mt-0.5">
-            {hasHistory && (
-              <span className="md-typescale-label-small text-[var(--desk-success)] flex items-center gap-1 font-light uppercase tracking-tighter">
-                <CheckCircle2 size={10} /> Active History
-              </span>
-            )}
-            {analyticsDate && (
-              <span className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-tighter">
-                Since {new Date(analyticsDate).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-      <Toggle on={enabled} onToggle={onToggle} disabled={saving} />
-    </div>
-  );
-}
-
-/* ── Collapsible Section ── */
-function OverrideSection<T extends { enabled: boolean }>({
-  title,
-  icon: Icon,
-  items,
-  getId,
-  getLabel,
-  getHasHistory,
-  getAnalyticsDate,
-  rowIcon,
-  onToggle,
-  savingId,
-  storageKey,
-}: {
-  title: string;
-  icon: React.ElementType;
-  items: T[];
-  getId: (item: T) => string;
-  getLabel: (item: T) => string;
-  getHasHistory?: (item: T) => boolean;
-  getAnalyticsDate?: (item: T) => string | undefined;
-  rowIcon: React.ElementType;
-  onToggle: (id: string, enabled: boolean) => void;
-  savingId: string | null;
-  storageKey?: string;
-}) {
-  const [open, setOpen] = useState(() => {
-    if (!storageKey) return items.length <= 6;
-    const saved = getBrowserStorage()?.getItem(storageKey);
-    if (saved === "1") return true;
-    if (saved === "0") return false;
-    return items.length <= 6;
-  });
-
-  useEffect(() => {
-    if (!storageKey) return;
-    getBrowserStorage()?.setItem(storageKey, open ? "1" : "0");
-  }, [open, storageKey]);
-
-  if (items.length === 0) return null;
-
-  const enabledCount = items.filter((i) => i.enabled).length;
-
-  return (
-    <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-6 shadow-[var(--shadow-sm)]">
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="flex items-center justify-between w-full cursor-pointer group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center">
-            <Icon size={20} />
-          </div>
-          <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-            {title}
-          </span>
-          <Chip
-            size="sm"
-            variant="secondary"
-            className="font-light text-[10px] ml-1"
-          >
-            {enabledCount}/{items.length} ACTIVE
-          </Chip>
-        </div>
-        <div className="text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)] transition-colors">
-          {open ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-        </div>
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="mt-6 overflow-hidden"
-          >
-            <div className="space-y-1">
-              {items.map((item) => {
-                const id = getId(item);
-                return (
-                  <OverrideRow
-                    key={id}
-                    id={id}
-                    label={getLabel(item)}
-                    enabled={item.enabled}
-                    hasHistory={getHasHistory?.(item)}
-                    analyticsDate={getAnalyticsDate?.(item)}
-                    icon={rowIcon}
-                    onToggle={() => onToggle(id, !item.enabled)}
-                    saving={savingId === id}
-                  />
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
 }
 
 /* ── Main Page ── */
@@ -805,6 +626,7 @@ export default function SettingsPage() {
                   />{" "}
                   Billing & Access
                 </h2>
+                <CreditProfileCard className="mb-1" />
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-4 shadow-[var(--shadow-sm)] mb-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
                     Pricing rules (read-only)
@@ -840,6 +662,66 @@ export default function SettingsPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => router.push("/settings/capabilities")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <Layers size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Store capabilities
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Team, stock, POS packs (Retail OS)
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/locations")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <MapPin size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Locations
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Branches, primary store, checkout branch
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/team")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                          Team
+                        </span>
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Staff roles, invites, deactivate
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => router.push("/settings/family")}
                     className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
                   >
@@ -849,10 +731,10 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
-                          Family Members
+                          Family contacts
                         </span>
                         <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                          Staff and delegated ordering
+                          Legacy name/phone list (use Team for logins)
                         </span>
                       </div>
                     </div>
@@ -1003,107 +885,3 @@ export default function SettingsPage() {
   );
 }
 
-function ProfileField({
-  label,
-  value,
-  icon: Icon,
-  editing,
-  errorMessage,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  editing: boolean;
-  errorMessage?: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
-        <Icon size={14} />
-        <span className="md-typescale-label-small font-light uppercase tracking-widest">
-          {label}
-        </span>
-      </div>
-      {editing ? (
-        <>
-          <input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            aria-invalid={Boolean(errorMessage)}
-            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-light text-[var(--desk-text-primary)] ${
-              errorMessage
-                ? "ring-2 ring-red-200 border border-red-300"
-                : "focus:ring-2 focus:ring-[var(--desk-accent-soft)]"
-            }`}
-          />
-          {errorMessage && (
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-light text-red-600 uppercase tracking-wide">
-              <AlertTriangle size={10} />
-              {errorMessage}
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="md-typescale-body-large font-light text-[var(--desk-text-primary)] pl-0.5">
-          {value || "UNSET"}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ProfileTimeField({
-  label,
-  value,
-  icon: Icon,
-  editing,
-  errorMessage,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  editing: boolean;
-  errorMessage?: string;
-  onChange: (v: string) => void;
-}) {
-  const displayValue = normalizeReceivingWindow(value);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
-        <Icon size={14} />
-        <span className="md-typescale-label-small font-light uppercase tracking-widest">
-          {label}
-        </span>
-      </div>
-      {editing ? (
-        <>
-          <input
-            type="time"
-            value={displayValue}
-            onChange={(e) => onChange(e.target.value)}
-            aria-invalid={Boolean(errorMessage)}
-            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-light text-[var(--desk-text-primary)] ${
-              errorMessage
-                ? "ring-2 ring-red-200 border border-red-300"
-                : "focus:ring-2 focus:ring-[var(--desk-accent-soft)]"
-            }`}
-          />
-          {errorMessage && (
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-light text-red-600 uppercase tracking-wide">
-              <AlertTriangle size={10} />
-              {errorMessage}
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="md-typescale-body-large font-light text-[var(--desk-text-primary)] pl-0.5">
-          {displayValue || "UNSET"}
-        </p>
-      )}
-    </div>
-  );
-}

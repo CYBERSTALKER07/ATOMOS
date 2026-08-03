@@ -144,14 +144,24 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token":          token,
-		"refresh_token":  refresh,
-		"warehouse_id":   warehouseID,
-		"role":           string(jwtClaims.Role),
-		"name":           staff.Name,
-		"is_configured":  isConfigured,
-	})
+	resp := map[string]any{
+		"token":         token,
+		"refresh_token": refresh,
+		"warehouse_id":  warehouseID,
+		"role":          string(jwtClaims.Role),
+		"name":          staff.Name,
+		"is_configured": isConfigured,
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), staff.UserID, map[string]interface{}{
+		"role":         string(jwtClaims.Role),
+		"warehouse_id": warehouseID,
+		"supplier_id":  staff.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp["firebase_token"] = fbToken
+		resp["firebaseToken"] = fbToken
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Service) lookupWarehouseStaffByPhone(ctx context.Context, phone string) (warehouseStaffRecord, bool, error) {

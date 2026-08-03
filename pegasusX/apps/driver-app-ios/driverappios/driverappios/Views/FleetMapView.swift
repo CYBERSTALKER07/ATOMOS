@@ -58,6 +58,7 @@ struct FleetMapView: View {
     @State private var selectedMission: Mission?
     @State private var zoomFocus: ZoomFocus = .both
     @State private var validatedQR: ValidateQRResponse?
+    @State private var scannedQRToken: String = ""
     @State private var offloadResponse: ConfirmOffloadResponse?
     @State private var showRescueSheet = false
 
@@ -69,8 +70,9 @@ struct FleetMapView: View {
                     switch route {
                     case "scanner":
                         QRScannerView(
-                            onValidated: { response in
+                            onValidated: { response, token in
                                 validatedQR = response
+                                scannedQRToken = token
                                 navPath.append("offload-review")
                             },
                             onCancel: { navPath = NavigationPath() }
@@ -80,6 +82,7 @@ struct FleetMapView: View {
                         if let qr = validatedQR {
                             OffloadReviewView(
                                 response: qr,
+                                scannedToken: scannedQRToken,
                                 driverId: vm.driverId,
                                 onConfirm: { result in
                                     offloadResponse = result
@@ -225,7 +228,19 @@ struct FleetMapView: View {
             .animation(Anim.snappy, value: vm.gpsError)
 
             // Top bar
-            topOverlay
+            MapTopOverlay(
+                phase: $phase,
+                selectedMission: $selectedMission,
+                isCameraLocked: $isCameraLocked,
+                userPannedAt: $userPannedAt,
+                cameraPosition: $cameraPosition,
+                zoomFocus: $zoomFocus,
+                currentTarget: currentTarget,
+                vm: vm,
+                isLive: telemetryVM.isLive,
+                goBack: goBack,
+                cycleZoom: cycleZoom
+            )
 
             // Bottom sheet
             VStack {
@@ -323,579 +338,44 @@ struct FleetMapView: View {
         selectedMission ?? vm.activeMission
     }
 
-    // MARK: - Top Overlay
-
-    private var topOverlay: some View {
-        VStack {
-            HStack(spacing: 10) {
-                Button {
-                    Haptics.light()
-                    if phase == .previewingOrder {
-                        withAnimation(Anim.snappy) { selectedMission = nil; phase = .pickingOrder }
-                    } else {
-                        goBack()
-                    }
-                } label: {
-                    Image(systemName: phase == .previewingOrder ? "chevron.left" : "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(LabTheme.fg)
-                        .frame(width: 38, height: 38)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(Circle().stroke(LabTheme.separator, lineWidth: 0.5))
-                        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                }
-                .accessibilityLabel(phase == .previewingOrder ? "Back" : "Close map")
-
-                Spacer()
-
-                if phase != .pickingOrder, currentTarget != nil {
-                    HStack(spacing: 8) {
-                        Button {
-                            withAnimation(.easeInOut(duration: MapCameraConfig.cameraAnimationSeconds)) {
-                                isCameraLocked = true
-                                userPannedAt = nil
-                                if let coordinate = vm.displayLocation ?? vm.location {
-                                    cameraPosition = .camera(
-                                        MapCameraMath.trackingCamera(
-                                            coordinate: coordinate,
-                                            bearing: vm.displayBearing,
-                                            speedMps: vm.displaySpeedMps
-                                        )
-                                    )
-                                } else {
-                                    cameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
-                                }
-                            }
-                        } label: {
-                            Image(systemName: isCameraLocked ? "location.north.line.fill" : "location.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .padding(12)
-                                .background(isCameraLocked ? AnyShapeStyle(LabTheme.fg) : AnyShapeStyle(.ultraThinMaterial))
-                                .foregroundStyle(isCameraLocked ? LabTheme.buttonFg : LabTheme.fg)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(LabTheme.separator, lineWidth: 0.5))
-                                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                        }
-
-                        Button {
-                            Haptics.light()
-                            cycleZoom()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: zoomFocus.icon)
-                                    .font(.system(size: 10, weight: .bold))
-                                Text(zoomFocus.label)
-                                    .font(.system(size: 10, weight: .bold))
-                            }
-                            .foregroundStyle(LabTheme.fg)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 8)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().stroke(LabTheme.separator, lineWidth: 0.5))
-                            .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                        }
-                        .accessibilityLabel("Zoom focus: \(zoomFocus.label)")
-                        .transition(.fadeScale)
-                    }
-                }
-
-                if vm.activeMission != nil {
-                    TelemetryBadge(isLive: telemetryVM.isLive)
-                        .transition(.fadeScale)
-                }
-            }
-            .padding(.horizontal, LabTheme.s16)
-            .padding(.top, 60)
-            .animation(Anim.snappy, value: phase)
-            .animation(Anim.snappy, value: zoomFocus)
-
-            if phase == .activeDelivery, let cue = vm.navigationCue {
-                navigationCueBanner(cue)
-                    .padding(.horizontal, LabTheme.s16)
-                    .padding(.top, 10)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
-            Spacer()
-        }
-    }
-
-    private func navigationCueBanner(_ cue: NavigationCue) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "location.north.line.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(RouteNavigation.formatDistance(cue.distanceM))
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                Text(cue.instruction)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(LabTheme.fg.opacity(0.85))
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LabTheme.separator, lineWidth: 0.5))
-    }
-
     // MARK: - Bottom Sheet Router
 
     @ViewBuilder
     private var bottomSheet: some View {
         switch phase {
         case .pickingOrder:
-            orderPickerSheet.transition(.move(edge: .bottom).combined(with: .opacity))
+            OrderPickerSheet(
+                vm: vm,
+                selectedMission: $selectedMission,
+                phase: $phase,
+                zoomFocus: $zoomFocus,
+                bottomInset: bottomInset,
+                zoomTo: zoomTo
+            ).transition(.move(edge: .bottom).combined(with: .opacity))
         case .previewingOrder:
             if let m = selectedMission {
-                orderPreviewSheet(m).transition(.move(edge: .bottom).combined(with: .opacity))
+                OrderPreviewSheet(
+                    mission: m,
+                    vm: vm,
+                    bottomInset: bottomInset,
+                    phase: $phase,
+                    selectedMission: $selectedMission,
+                    isCameraLocked: $isCameraLocked,
+                    userPannedAt: $userPannedAt,
+                    startTelemetry: { Task { await telemetryVM.start() } }
+                ).transition(.move(edge: .bottom).combined(with: .opacity))
             }
         case .activeDelivery:
             if let m = vm.activeMission {
-                activeSheet(m).transition(.move(edge: .bottom).combined(with: .opacity))
+                ActiveDeliverySheet(
+                    mission: m,
+                    vm: vm,
+                    bottomInset: bottomInset,
+                    navPath: $navPath,
+                    showRescueSheet: $showRescueSheet
+                ).transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-    }
-
-    // MARK: - 1. Order Picker
-
-    private var orderPickerSheet: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sheetHandle
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("SELECT ORDER")
-                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .tracking(1)
-                Text("Choose a delivery")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-            }
-            .padding(.horizontal, LabTheme.s20)
-            .padding(.bottom, LabTheme.s12)
-
-            if vm.isLoadingMissions {
-                loadingRow
-            } else if vm.pendingMissions.isEmpty {
-                emptyRow
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 6) {
-                        ForEach(Array(vm.pendingMissions.enumerated()), id: \.element.id) { i, m in
-                            pickerRow(m, index: i)
-                        }
-                    }
-                    .padding(.horizontal, LabTheme.s16)
-                    .padding(.bottom, LabTheme.s8)
-                }
-                .scrollIndicators(.hidden)
-                .frame(maxHeight: 260)
-            }
-        }
-        .padding(.bottom, bottomInset + LabTheme.s4)
-        .background(glassSheet)
-
-
-    }
-
-    private func pickerRow(_ mission: Mission, index: Int) -> some View {
-        Button {
-            Haptics.medium()
-            withAnimation(Anim.sheetReveal) {
-                selectedMission = mission
-                phase = .previewingOrder
-                zoomFocus = .both
-            }
-            zoomTo(.both, mission: mission)
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(LabTheme.fg.opacity(0.06))
-                        .frame(width: 38, height: 38)
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(LabTheme.fg)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("ORD-\(mission.order_id.suffix(4).uppercased())")
-                        .font(.system(size: 13, weight: .black, design: .monospaced)) // Black mono
-                        .foregroundStyle(LabTheme.fg)
-                    HStack(spacing: 4) {
-                        Text(mission.gateway.uppercased())
-                        Text("—")
-                        Text(mission.amount.formattedAmount)
-                    }
-                    .font(.system(size: 10, weight: .bold, design: .monospaced)) // Bold mono
-                    .foregroundStyle(LabTheme.fgSecondary)
-                }
-
-                Spacer()
-
-                if let loc = vm.location {
-                    let d = haversineDistance(from: loc, to: CLLocationCoordinate2D(latitude: mission.target_lat, longitude: mission.target_lng))
-                    Text(formattedDistance(d))
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
-            .padding(LabTheme.s16)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(LabTheme.fg.opacity(0.04))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
-                    }
-            }
-        }
-        .buttonStyle(.pressable)
-        .staggeredAppear(index: index)
-    }
-
-    // MARK: - 2. Order Preview
-
-    private func orderPreviewSheet(_ mission: Mission) -> some View {
-        let dist = vm.distanceToMission(mission)
-        let inRange = vm.isInRange(mission)
-        let order = vm.orders.first { $0.id == mission.order_id }
-
-        return VStack(alignment: .leading, spacing: 16) {
-            sheetHandle
-
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())")
-                        .font(.system(size: 20, weight: .black, design: .monospaced))
-                        .foregroundStyle(LabTheme.fg)
-                        .tracking(1.2)
-                    HStack(spacing: 6) {
-                        Text(mission.gateway.uppercased())
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(LabTheme.fg.opacity(0.1), in: Capsule())
-                        Text(mission.amount.formattedAmount)
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(LabTheme.fgSecondary)
-                        if let feeLabel = order?.deliveryFeeLabel {
-                            Text(feeLabel)
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundStyle(LabTheme.warning)
-                        }
-                    }
-                }
-                Spacer()
-                StatusPill(label: mission.state.uppercased(), color: LabTheme.fg)
-            }
-            .padding(.horizontal, LabTheme.s20)
-
-            VStack(alignment: .leading, spacing: 7) {
-                Text("STRATEGIC_ENDPOINT")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .foregroundStyle(LabTheme.fgTertiary)
-                    .tracking(1.4)
-                Text(String(format: "%.5f, %.5f", mission.target_lat, mission.target_lng))
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundStyle(LabTheme.fg)
-                if let d = dist {
-                    HStack(spacing: 5) {
-                        Circle().fill(inRange ? LabTheme.success : LabTheme.warning).frame(width: 6, height: 6)
-                        Text(formattedDistance(d))
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgSecondary)
-                        Text(inRange ? "GEOFENCE_ACTIVE" : "APPROACHING_TARGET")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(inRange ? LabTheme.success : LabTheme.warning)
-                    }
-                }
-
-                // ETA Row
-                if let order, let eta = order.estimatedArrivalAt {
-                    HStack(spacing: 5) {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                        Text("ETA \(formatETATime(eta))")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(LabTheme.fg)
-                        if let dur = order.etaDurationSec {
-                            Text("· \(formatDuration(dur))")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(LabTheme.fgSecondary)
-                        }
-                        if let distM = order.etaDistanceM {
-                            Text("· \(formatETADistance(distM))")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(LabTheme.fgSecondary)
-                        }
-                    }
-                }
-            }
-            .padding(LabTheme.s16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(LabTheme.fg.opacity(0.03), in: .rect(cornerRadius: 14))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(LabTheme.separator, lineWidth: 0.5)
-            }
-            .padding(.horizontal, LabTheme.s20)
-
-            VStack(spacing: 8) {
-                Button {
-                    Haptics.heavy()
-                    vm.activeMission = mission
-                    vm.refreshPlannedRoute()
-                    withAnimation(Anim.sheetReveal) { phase = .activeDelivery; isCameraLocked = true; userPannedAt = nil }
-                    Task { await telemetryVM.start() }
-                } label: {
-                    Text("START_OPERATIONAL_FLOW")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .tracking(1.2)
-                        .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity).padding(.vertical, 18)
-                        .background(LabTheme.fg)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.pressable)
-
-                // Navigate in Apple Maps
-                Button {
-                    Haptics.light()
-                    openDestinationInMaps(lat: mission.target_lat, lng: mission.target_lng, name: mission.order_id)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("EXTERNAL_NAVIGATION")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .tracking(1.2)
-                    }
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(LabTheme.fg.opacity(0.06))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
-                            }
-                    }
-                }
-                .buttonStyle(.pressable)
-
-                Button {
-                    Haptics.light()
-                    withAnimation(Anim.snappy) { selectedMission = nil; phase = .pickingOrder }
-                } label: {
-                    Text("Choose Another")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(LabTheme.fgSecondary)
-                        .frame(maxWidth: .infinity).padding(.vertical, 11)
-                }
-                .buttonStyle(.pressable)
-            }
-            .padding(.horizontal, LabTheme.s20)
-        }
-        .padding(.bottom, bottomInset + LabTheme.s4)
-        .background(glassSheet)
-
-
-    }
-
-    // MARK: - 3. Active Delivery Sheet
-
-    private func activeSheet(_ mission: Mission) -> some View {
-        let dist = vm.distanceToMission(mission)
-        let inRange = vm.isInRange(mission)
-        let order = vm.orders.first { $0.id == mission.order_id }
-
-        return VStack(alignment: .leading, spacing: 12) {
-            sheetHandle
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Circle().fill(LabTheme.live).frame(width: 7, height: 7)
-                        Text("ACTIVE")
-                            .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                            .foregroundStyle(LabTheme.live)
-                    }
-                    Text(mission.order_id)
-                        .font(.system(size: 17, weight: .bold, design: .monospaced))
-                        .foregroundStyle(LabTheme.fg)
-                }
-                Spacer()
-                Text(mission.gateway)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(LabTheme.separator, lineWidth: 0.5))
-            }
-            .padding(.horizontal, LabTheme.s20)
-
-            Rectangle().fill(LabTheme.separator).frame(height: 0.5)
-                .padding(.horizontal, LabTheme.s20)
-
-            HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "banknote").font(.system(size: 10))
-                    Text(mission.amount.formattedAmount).font(.system(size: 12, weight: .semibold))
-                }
-                .foregroundStyle(LabTheme.fgSecondary)
-                Spacer()
-                if let d = dist {
-                    HStack(spacing: 4) {
-                        Circle().fill(inRange ? LabTheme.success : LabTheme.warning).frame(width: 5, height: 5)
-                        Text(formattedDistance(d))
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgSecondary)
-                    }
-                }
-            }
-            .padding(.horizontal, LabTheme.s20)
-
-            // ETA Row
-            if let order, let eta = order.estimatedArrivalAt {
-                HStack(spacing: 5) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                    Text("ETA \(formatETATime(eta))")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(LabTheme.fg)
-                    if let dur = order.etaDurationSec {
-                        Text("· \(formatDuration(dur))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(LabTheme.fgSecondary)
-                    }
-                    if let distM = order.etaDistanceM {
-                        Text("· \(formatETADistance(distM))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(LabTheme.fgSecondary)
-                    }
-                }
-                .padding(.horizontal, LabTheme.s20)
-            }
-
-            VStack(spacing: 8) {
-                // Navigate button
-                Button {
-                    Haptics.light()
-                    openDestinationInMaps(lat: mission.target_lat, lng: mission.target_lng, name: mission.order_id)
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("Navigate in Maps")
-                            .font(.system(size: 14, weight: .bold))
-                    }
-                    .foregroundStyle(LabTheme.buttonFg)
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(LabTheme.fg, in: .rect(cornerRadius: 14))
-                }
-                .buttonStyle(.pressable)
-
-                Button {
-                    Haptics.medium()
-                    if inRange { navPath.append("scanner") }
-                    else { Haptics.warning() }
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: inRange ? "qrcode.viewfinder" : "location.north.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(inRange ? "Scan Proof of Delivery" : "Approach Target")
-                            .font(.system(size: 14, weight: .bold))
-                    }
-                    .foregroundStyle(inRange ? LabTheme.fg : LabTheme.fgSecondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(
-                        inRange ? LabTheme.fg.opacity(0.08) : LabTheme.fg.opacity(0.04),
-                        in: .rect(cornerRadius: 14)
-                    )
-                }
-                .buttonStyle(.pressable)
-
-                HStack(spacing: 8) {
-                    Button {
-                        Haptics.light()
-                        navPath.append("correction")
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pencil.and.list.clipboard").font(.system(size: 11))
-                            Text("Delivery Correction").font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(LabTheme.fgSecondary)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(LabTheme.fg.opacity(0.04), in: .rect(cornerRadius: 12))
-                    }
-                    .buttonStyle(.pressable)
-                    
-                    Button {
-                        Haptics.light()
-                        showRescueSheet = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
-                            Text("Rescue").font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(LabTheme.warning)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(LabTheme.fg.opacity(0.04), in: .rect(cornerRadius: 12))
-                    }
-                    .buttonStyle(.pressable)
-                }
-            }
-            .padding(.horizontal, LabTheme.s20)
-        }
-        .padding(.bottom, bottomInset + LabTheme.s4)
-        .background(glassSheet)
-
-
-    }
-
-    // MARK: - Shared Components
-
-    private var sheetHandle: some View {
-        Capsule()
-            .fill(LabTheme.fgTertiary.opacity(0.4))
-            .frame(width: 32, height: 4)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 10).padding(.bottom, 12)
-    }
-
-    private var glassSheet: some View {
-        ZStack {
-            UnevenRoundedRectangle(topLeadingRadius: LabTheme.cardRadius, topTrailingRadius: LabTheme.cardRadius, style: .continuous).fill(.ultraThinMaterial)
-            UnevenRoundedRectangle(topLeadingRadius: LabTheme.cardRadius, topTrailingRadius: LabTheme.cardRadius, style: .continuous).fill(LabTheme.card.opacity(0.6))
-            UnevenRoundedRectangle(topLeadingRadius: LabTheme.cardRadius, topTrailingRadius: LabTheme.cardRadius, style: .continuous).stroke(LabTheme.separator, lineWidth: 0.5)
-        }
-        .shadow(color: .black.opacity(cs == .dark ? 0.6 : 0.1), radius: 30, y: -8)
-    }
-
-    private var loadingRow: some View {
-        HStack(spacing: 8) {
-            ProgressView().tint(LabTheme.fg)
-            Text("Loading...").font(.subheadline).foregroundStyle(LabTheme.fgSecondary)
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 40)
-    }
-
-    private var emptyRow: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "shippingbox").font(.system(size: 24)).foregroundStyle(LabTheme.fgTertiary)
-            Text("No pending deliveries").font(.subheadline.weight(.medium)).foregroundStyle(LabTheme.fgSecondary)
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
 
     // MARK: - 3-State Zoom
@@ -977,45 +457,6 @@ struct FleetMapView: View {
                     .offset(y: -3)
             }
         }
-    }
-
-    // MARK: - ETA Helpers
-
-    private func formatETATime(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
-            let tf = DateFormatter()
-            tf.dateFormat = "HH:mm"
-            return tf.string(from: date)
-        }
-        return iso.suffix(8).prefix(5).description
-    }
-
-    private func formatDuration(_ totalSec: Int) -> String {
-        let m = totalSec / 60
-        if m < 60 { return "\(m)m" }
-        let h = m / 60
-        let rem = m % 60
-        return rem > 0 ? "\(h)h \(rem)m" : "\(h)h"
-    }
-
-    private func formatETADistance(_ meters: Int) -> String {
-        if meters < 1000 { return "\(meters)m" }
-        let km = Double(meters) / 1000.0
-        return String(format: "%.1f km", km)
-    }
-
-    // MARK: - Apple Maps Navigation
-
-    private func openDestinationInMaps(lat: Double, lng: Double, name: String) {
-        let coord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
-        let placemark = MKPlacemark(coordinate: coord)
-        let mapItem = MKMapItem(placemark: placemark)
-        mapItem.name = name
-        mapItem.openInMaps(launchOptions: [
-            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
-        ])
     }
 }
 

@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"cloud.google.com/go/spanner"
 	"encoding/json"
 	"log/slog"
 	"testing"
@@ -17,7 +18,7 @@ type consumerRepoStub struct {
 	updated []Order
 }
 
-func (s *consumerRepoStub) CreateOrder(context.Context, *Order, func(outbox.TxnBuffer) error) error {
+func (s *consumerRepoStub) CreateOrder(context.Context, *Order, func(outbox.TxnBuffer) error, StockReservationOpts) error {
 	return nil
 }
 func (s *consumerRepoStub) UpdateOrder(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(outbox.TxnBuffer) error) error {
@@ -27,6 +28,20 @@ func (s *consumerRepoStub) UpdateOrder(_ context.Context, o Order, _ []DeliveryP
 func (s *consumerRepoStub) GetOrder(_ context.Context, orderID string) (Order, bool, error) {
 	o, ok := s.orders[orderID]
 	return o, ok, nil
+}
+
+func (s *consumerRepoStub) GetOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	return s.GetOrder(ctx, orderID)
+}
+
+func (s *consumerRepoStub) GetFiscalAttempt(context.Context, string, string) (FiscalReceiptRow, bool, error) {
+	return FiscalReceiptRow{}, false, nil
+}
+func (s *consumerRepoStub) GetFiscalByReceiptID(context.Context, string) (FiscalReceiptRow, bool, error) {
+	return FiscalReceiptRow{}, false, nil
+}
+func (s *consumerRepoStub) CountFiscalAttemptsByStatus(context.Context, string, string) (int64, error) {
+	return 0, nil
 }
 func (s *consumerRepoStub) ListRetailerOrders(context.Context, string, int) ([]Order, error) {
 	return nil, nil
@@ -49,7 +64,7 @@ func (s *consumerRepoStub) ListOrdersForStockCommitment(context.Context, string,
 func (s *consumerRepoStub) ListBackorderedOrders(context.Context, int) ([]Order, error) {
 	return nil, nil
 }
-func (s *consumerRepoStub) ClearBackorder(context.Context, string, func(outbox.TxnBuffer) error) error {
+func (s *consumerRepoStub) ClearBackorder(context.Context, string, func(outbox.TxnBuffer) error, StockReservationOpts) error {
 	return nil
 }
 func (s *consumerRepoStub) ListOrdersByStatus(context.Context, string, string, int) ([]Order, error) {
@@ -164,4 +179,12 @@ func TestEventConsumer_DeliveryDisputed(t *testing.T) {
 	if err := consumer.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
 		t.Fatalf("HandleEvent: %v", err)
 	}
+}
+
+func (r *consumerRepoStub) FindPendingBuyerAcceptance(_ context.Context, _ int) ([]*Order, error) {
+	return nil, nil
+}
+
+func (r *consumerRepoStub) UpdateOrderWithTxn(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, _ func(outbox.TxnBuffer) error) error {
+	return nil
 }

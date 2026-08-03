@@ -48,6 +48,16 @@ type jwtPayload struct {
 	HomeNodeID   string `json:"home_node_id,omitempty"`
 	IsRegistered bool   `json:"is_registered"`
 	IsConfigured bool   `json:"is_configured"`
+	PhoneNumber  string `json:"phone_number,omitempty"`
+	TokenUse     string `json:"token_use,omitempty"`
+
+	// Retail OS multi-user (optional; additive for backward compatibility).
+	RetailerOrgID    string   `json:"retailer_org_id,omitempty"`
+	RetailerRole     string   `json:"retailer_role,omitempty"`
+	RetailerUserID   string   `json:"retailer_user_id,omitempty"`
+	LocationIDs      []string `json:"location_ids,omitempty"`
+	ActiveLocationID string   `json:"active_location_id,omitempty"`
+	CapabilityPacks  []string `json:"capability_packs,omitempty"`
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
@@ -64,17 +74,25 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 	now := opts.Now()
 	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT"})
 	p, _ := json.Marshal(jwtPayload{
-		Sub:          c.Subject,
-		Iss:          opts.Issuer,
-		Iat:          now.Unix(),
-		Exp:          now.Add(opts.TTL).Unix(),
-		Role:         string(c.Role),
-		SupplierID:   c.SupplierID,
-		SupplierRole: string(c.SupplierRole),
-		HomeNodeType: string(c.HomeNodeType),
-		HomeNodeID:   c.HomeNodeID,
-		IsRegistered: c.IsRegistered,
-		IsConfigured: c.IsConfigured,
+		Sub:              c.Subject,
+		Iss:              opts.Issuer,
+		Iat:              now.Unix(),
+		Exp:              now.Add(opts.TTL).Unix(),
+		Role:             string(c.Role),
+		SupplierID:       c.SupplierID,
+		SupplierRole:     string(c.SupplierRole),
+		HomeNodeType:     string(c.HomeNodeType),
+		HomeNodeID:       c.HomeNodeID,
+		IsRegistered:     c.IsRegistered,
+		IsConfigured:     c.IsConfigured,
+		PhoneNumber:      c.PhoneNumber,
+		TokenUse:         c.TokenUse,
+		RetailerOrgID:    c.RetailerOrgID,
+		RetailerRole:     c.RetailerRole,
+		RetailerUserID:   c.RetailerUserID,
+		LocationIDs:      c.LocationIDs,
+		ActiveLocationID: c.ActiveLocationID,
+		CapabilityPacks:  c.CapabilityPacks,
 	})
 	head := b64(h) + "." + b64(p)
 	sig := sign(head, opts.Secret)
@@ -103,14 +121,22 @@ func Parse(token, secret string) (Claims, error) {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
 	return Claims{
-		Subject:      p.Sub,
-		Role:         Role(p.Role),
-		SupplierID:   p.SupplierID,
-		SupplierRole: Role(p.SupplierRole),
-		HomeNodeType: HomeNodeType(p.HomeNodeType),
-		HomeNodeID:   p.HomeNodeID,
-		IsRegistered: p.IsRegistered,
-		IsConfigured: p.IsConfigured,
+		Subject:          p.Sub,
+		Role:             Role(p.Role),
+		SupplierID:       p.SupplierID,
+		SupplierRole:     Role(p.SupplierRole),
+		HomeNodeType:     HomeNodeType(p.HomeNodeType),
+		HomeNodeID:       p.HomeNodeID,
+		IsRegistered:     p.IsRegistered,
+		IsConfigured:     p.IsConfigured,
+		PhoneNumber:      p.PhoneNumber,
+		TokenUse:         p.TokenUse,
+		RetailerOrgID:    p.RetailerOrgID,
+		RetailerRole:     p.RetailerRole,
+		RetailerUserID:   p.RetailerUserID,
+		LocationIDs:      p.LocationIDs,
+		ActiveLocationID: p.ActiveLocationID,
+		CapabilityPacks:  p.CapabilityPacks,
 	}, nil
 }
 

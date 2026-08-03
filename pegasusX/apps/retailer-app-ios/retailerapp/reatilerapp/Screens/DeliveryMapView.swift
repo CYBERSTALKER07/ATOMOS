@@ -211,7 +211,7 @@ struct DeliveryMapView: View {
         .sheet(item: $fiscalQRReceipt) { receipt in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
-                    Text("Fiscal receipt")
+                    Text("Pegasus receipt")
                         .font(.system(.title3, design: .rounded, weight: .bold))
                     Text(receipt.fiscalReceiptLabel)
                         .font(.system(.subheadline, design: .rounded))
@@ -223,6 +223,16 @@ struct DeliveryMapView: View {
                         Text("ID · \(receipt.latestFiscalReceiptId)")
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    HStack(spacing: AppTheme.spacingMD) {
+                        if let html = receiptHTMLURL(for: receipt) {
+                            Link("Open receipt", destination: html)
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        }
+                        if let pdf = receiptPDFURL(for: receipt) {
+                            Link("PDF", destination: pdf)
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        }
                     }
                     Spacer()
                 }
@@ -236,6 +246,30 @@ struct DeliveryMapView: View {
             }
             .presentationDetents([.medium])
         }
+    }
+
+    // MARK: - Receipt links
+
+    private func receiptHTMLURL(for receipt: TrackingOrder) -> URL? {
+        let qr = receipt.fiscalQr.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !qr.isEmpty {
+            if qr.contains("format=") { return URL(string: qr) }
+            let sep = qr.contains("?") ? "&" : "?"
+            return URL(string: qr + sep + "format=html")
+        }
+        let id = receipt.latestFiscalReceiptId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return nil }
+        let base = api.baseURL.hasSuffix("/") ? api.baseURL : api.baseURL + "/"
+        return URL(string: "\(base)v1/platform/receipts/\(id)?format=html")
+    }
+
+    private func receiptPDFURL(for receipt: TrackingOrder) -> URL? {
+        let id = receipt.latestFiscalReceiptId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = api.baseURL.hasSuffix("/") ? api.baseURL : api.baseURL + "/"
+        if !id.isEmpty {
+            return URL(string: "\(base)v1/platform/receipts/\(id)?format=pdf")
+        }
+        return nil
     }
 
     // MARK: - Data
@@ -373,115 +407,6 @@ struct DeliveryMapView: View {
 private struct SupplierFilter: Identifiable {
     let id: String
     let name: String
-}
-
-// MARK: - Driver Marker
-
-private struct DriverMarker: View {
-    let isGreen: Bool
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(isGreen ? AppTheme.success : AppTheme.accent)
-                .frame(width: 32, height: 32)
-            Image(systemName: "box.truck.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
-    }
-}
-
-// MARK: - Supplier Chip
-
-private struct SupplierChip: View {
-    let name: String
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            Text(name)
-                .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
-                .padding(.horizontal, AppTheme.spacingMD)
-                .padding(.vertical, AppTheme.spacingSM)
-                .background(isSelected ? AppTheme.accent : AppTheme.surfaceElevated)
-                .clipShape(.capsule)
-        }
-    }
-}
-
-// MARK: - Active Count Badge
-
-private struct ActiveCountBadge: View {
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "box.truck.fill")
-                .font(.system(size: 12, weight: .semibold))
-            Text("\(count) active")
-                .font(.system(.caption, design: .rounded, weight: .bold))
-        }
-        .foregroundStyle(AppTheme.textPrimary)
-        .padding(.horizontal, AppTheme.spacingMD)
-        .padding(.vertical, AppTheme.spacingSM)
-        .background(.ultraThinMaterial, in: .capsule)
-    }
-}
-
-// MARK: - Order Info Card
-
-private struct OrderInfoCard: View {
-    let order: TrackingOrder
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            // Header
-            HStack {
-                Circle()
-                    .fill(order.isGreen ? AppTheme.success : AppTheme.accent)
-                    .frame(width: 8, height: 8)
-                Text(order.supplierName.isEmpty ? "Unknown Supplier" : order.supplierName)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(1)
-                Spacer()
-                HStack(spacing: 4) {
-                    Circle().fill(order.isGreen ? AppTheme.success : AppTheme.textTertiary).frame(width: 6, height: 6)
-                    Text(order.state.replacingOccurrences(of: "_", with: " "))
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(order.isGreen ? AppTheme.success : AppTheme.textTertiary)
-                }
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(AppTheme.surfaceElevated)
-                .clipShape(.capsule)
-            }
-
-            // Items
-            Text(order.items.map { "\($0.productName) ×\($0.quantity)" }.joined(separator: ", "))
-                .font(.system(.caption, design: .rounded))
-                .foregroundStyle(AppTheme.textSecondary)
-                .lineLimit(2)
-
-            // Total
-            Text(order.displayTotal)
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
-        }
-        .padding(AppTheme.spacingLG)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-        .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
-        .onTapGesture {} // Prevent pass-through
-        .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .local)
-            .onEnded { value in
-                if value.translation.height > 50 { onDismiss() }
-            })
-    }
 }
 
 // TrackingOrder uses its synthesized memberwise init

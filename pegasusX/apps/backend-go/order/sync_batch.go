@@ -130,6 +130,16 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 		return "", ErrOrderNotFound
 	}
 
+	// P0 T4: offline sync never invents terminal money completion.
+	// Only handoff → AWAITING_PAYMENT is allowed; fiscal stays server-side async.
+	statusHint := strings.ToUpper(strings.TrimSpace(delivery.Status))
+	if statusHint == "COMPLETED" || statusHint == "FORCE_COMPLETED" || statusHint == "FISCALIZING" {
+		return "", errors.New("offline_status_forbidden: fiscal/complete must be server-side")
+	}
+	if isTerminalMoneyStatus(orderRecord.Status) {
+		return orderID, nil // already terminal — idempotent skip
+	}
+
 	publicToken := s.publicDeliveryToken(orderRecord)
 	if s.handoff == nil {
 		s.handoff = handoff.FromEnv()

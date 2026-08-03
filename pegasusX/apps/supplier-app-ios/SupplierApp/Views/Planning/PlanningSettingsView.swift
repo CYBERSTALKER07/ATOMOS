@@ -23,47 +23,21 @@ struct PlanningSettingsView: View {
                 }
             } else {
                 Section("Create override") {
-                    if let templates = data?.builtinTemplates, !templates.isEmpty {
-                        Picker("Template", selection: $templateId) {
-                            Text("Custom").tag("")
-                            ForEach(templates) { template in
-                                Text(template.name).tag(template.id)
-                            }
+                    CreateOverrideForm(
+                        templates: data?.builtinTemplates ?? [],
+                        templateId: $templateId,
+                        name: $name,
+                        startDate: $startDate,
+                        endDate: $endDate,
+                        formError: formError,
+                        saving: saving,
+                        onSubmit: {
+                            Task { await createOverride() }
                         }
-                    }
-                    TextField("Name (optional)", text: $name)
-                    TextField("Start (YYYY-MM-DD)", text: $startDate)
-                        .textInputAutocapitalization(.never)
-                    TextField("End (YYYY-MM-DD)", text: $endDate)
-                        .textInputAutocapitalization(.never)
-                    if let formError {
-                        Text(formError)
-                            .font(.caption)
-                            .foregroundStyle(SupplierTheme.destructive)
-                    }
-                    Button(saving ? "Saving…" : "Create override") {
-                        Task { await createOverride() }
-                    }
-                    .disabled(saving)
+                    )
                 }
                 Section("Active overrides") {
-                    if let overrides = data?.overrides, !overrides.isEmpty {
-                        ForEach(overrides) { row in
-                            VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
-                                Text(row.name?.isEmpty == false ? row.name! : row.templateId)
-                                    .font(.headline)
-                                Text("\(row.startDate) → \(row.endDate)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(row.isActive ? "Active" : "Inactive")
-                                    .font(.caption2)
-                                    .foregroundStyle(row.isActive ? SupplierTheme.success : SupplierTheme.secondaryLabel)
-                            }
-                        }
-                    } else {
-                        Text("No custom seasonal overrides yet.")
-                            .foregroundStyle(.secondary)
-                    }
+                    SeasonalOverridesList(overrides: data?.overrides ?? [])
                 }
             }
         }

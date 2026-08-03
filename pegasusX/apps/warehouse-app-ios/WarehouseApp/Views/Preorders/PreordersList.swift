@@ -3,7 +3,11 @@ import SwiftUI
 struct PreordersList: View {
     let rows: [WarehousePreorderRow]
     let acting: Bool
+<<<<<<< HEAD
     let onProposeDate: (WarehousePreorderRow) -> Void
+=======
+    let onPropose: (WarehousePreorderRow) -> Void
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
     let onReject: (WarehousePreorderRow) -> Void
 
     var body: some View {
@@ -33,7 +37,11 @@ struct PreordersList: View {
                     }
                     HStack {
                         Button("Propose date") {
+<<<<<<< HEAD
                             onProposeDate(row)
+=======
+                            onPropose(row)
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                         }
                         .disabled(acting)
                         Button("Reject", role: .destructive) {

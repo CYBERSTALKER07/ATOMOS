@@ -176,11 +176,24 @@ struct CollectCashRequest: Codable {
     let orderId: String
     let latitude: Double
     let longitude: Double
+    /// Cash actually taken (Tiyin). Fiscal hard-gate uses this amount (ADR-009 Phase 3).
+    let amountReceivedMinor: Int64?
+    let note: String?
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
         case latitude
         case longitude
+        case amountReceivedMinor = "amount_received_minor"
+        case note
+    }
+
+    init(orderId: String, latitude: Double, longitude: Double, amountReceivedMinor: Int64? = nil, note: String? = nil) {
+        self.orderId = orderId
+        self.latitude = latitude
+        self.longitude = longitude
+        self.amountReceivedMinor = amountReceivedMinor
+        self.note = note
     }
 }
 
@@ -285,12 +298,36 @@ struct ConfirmOffloadResponse: Codable {
     }
 }
 
+// MARK: - Delivery Scan QR Response
+
+struct DeliveryScanQRResponse: Codable {
+    let valid: Bool
+    let orderId: String
+    let state: String
+
+    enum CodingKeys: String, CodingKey {
+        case valid
+        case orderId = "order_id"
+        case state
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        valid = (try? c.decode(Bool.self, forKey: .valid)) ?? false
+        orderId = (try? c.decode(String.self, forKey: .orderId)) ?? ""
+        state = (try? c.decode(String.self, forKey: .state)) ?? "AWAITING_PAYMENT"
+    }
+}
+
 // MARK: - Collect Cash Response
 
 struct CollectCashResponse: Codable {
     let orderId: String
     let state: String
     let amount: Int
+    let amountReceivedMinor: Int?
+    let shortfallMinor: Int?
+    let overageMinor: Int?
     let distanceM: Double
     let message: String
     let attemptId: String?
@@ -301,6 +338,9 @@ struct CollectCashResponse: Codable {
         case orderId = "order_id"
         case state
         case amount = "amount"
+        case amountReceivedMinor = "amount_received_minor"
+        case shortfallMinor = "shortfall_minor"
+        case overageMinor = "overage_minor"
         case distanceM = "distance_m"
         case message
         case attemptId = "attempt_id"
@@ -350,10 +390,21 @@ struct UpdateOrderDuringDeliveryResponse: Codable {
 struct MissingItemRequest: Codable {
     let skuId: String
     let missingQty: Int
+    let reason: String?
+    let photoURL: String?
 
     enum CodingKeys: String, CodingKey {
         case skuId = "sku_id"
         case missingQty = "missing_qty"
+        case reason
+        case photoURL = "photo_url"
+    }
+
+    init(skuId: String, missingQty: Int, reason: String? = nil, photoURL: String? = nil) {
+        self.skuId = skuId
+        self.missingQty = missingQty
+        self.reason = reason
+        self.photoURL = photoURL
     }
 }
 

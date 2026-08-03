@@ -20,10 +20,20 @@ func readLimitedBody(r *http.Request, limit int64) ([]byte, error) {
 	return body, err
 }
 
-func idempotencyKeyFromRequest(r *http.Request) string {
+func idempotencyKeyFromRequest(r *http.Request, body []byte) string {
 	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 	if key == "" {
 		key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+	}
+	if key == "" && len(body) > 0 {
+		var partial struct {
+			IdempotencyKey string `json:"idempotencyKey"`
+		}
+		_ = json.Unmarshal(body, &partial)
+		key = partial.IdempotencyKey
+		if key != "" {
+			r.Header.Set("Idempotency-Key", key)
+		}
 	}
 	return key
 }
@@ -36,10 +46,31 @@ func sha256HexBytes(body []byte) string {
 // guardIdempotency replays a prior response when the key was seen with the same body.
 // Returns true when the handler should stop.
 func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body []byte) bool {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, body)
 	if key == "" || s.idem == nil {
 		return false
 	}
+
+	// Boss rule: Telemetry timestamp skewed > 5 min -> Reject (unless offline queued)
+	if len(body) > 0 {
+		var partial struct {
+			ClientTimestamp *time.Time `json:"clientTimestamp"`
+			OfflineQueuedAt *time.Time `json:"offlineQueuedAt"`
+		}
+		if err := json.Unmarshal(body, &partial); err == nil && partial.ClientTimestamp != nil {
+			if partial.OfflineQueuedAt == nil {
+				skew := s.now().Sub(*partial.ClientTimestamp)
+				if skew < 0 {
+					skew = -skew
+				}
+				if skew > 5*time.Minute {
+					writeJSON(w, http.StatusBadRequest, map[string]string{"error": "client_timestamp_skewed"})
+					return true
+				}
+			}
+		}
+	}
+
 	hash := sha256HexBytes(body)
 	rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
 	switch {
@@ -62,8 +93,18 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 	return false
 }
 
+// guardIdempotencyStrict requires Idempotency-Key header on mutating endpoints.
+func (s *Service) guardIdempotencyStrict(w http.ResponseWriter, r *http.Request, body []byte) bool {
+	key := idempotencyKeyFromRequest(r, body)
+	if key == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "idempotency_key_required"})
+		return true
+	}
+	return s.guardIdempotency(w, r, body)
+}
+
 func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []byte, status int, resp []byte) {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, nil)
 	if key == "" || s.idem == nil {
 		return
 	}
@@ -72,11 +113,11 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 		StatusCode: status,
 		Response:   resp,
 		StoredAt:   time.Now().UTC(),
-	}, 24*time.Hour)
+	}, 72*time.Hour)
 }
 
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
-	key := idempotencyKeyFromRequest(r)
+	key := idempotencyKeyFromRequest(r, nil)
 	if key == "" || s.idem == nil {
 		return
 	}

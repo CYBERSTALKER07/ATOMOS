@@ -28,16 +28,17 @@ struct PricingView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(filtered) { product in
-                    NavigationLink {
-                        ProductPricingDetailView(product: product) {
-                            Task { await load(silent: true) }
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(product.name).font(.headline)
-                            Text(formatPrice(product))
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
+                        NavigationLink {
+                            ProductPricingDetailView(product: product) {
+                                Task { await load(silent: true) }
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(product.name).font(.headline)
+                                Text(formatPrice(product))
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

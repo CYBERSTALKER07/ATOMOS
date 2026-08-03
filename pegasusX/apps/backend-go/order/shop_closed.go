@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -18,21 +19,45 @@ import (
 )
 
 type shopClosedReportRequest struct {
-	OrderID   string  `json:"order_id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Reason    string  `json:"reason,omitempty"`
+	Reason   string          `json:"reason"`
+	Note     string          `json:"note,omitempty"`
+	PhotoURL string          `json:"photoUrl,omitempty"`
+	Location DriverTelemetry `json:"location"`
+}
+
+type driverEndpointResponse struct {
+	OrderID           string `json:"orderId"`
+	Status            string `json:"status"`
+	ProximityUnlocked bool   `json:"proximityUnlocked"`
+	ProximityMethod   string `json:"proximityMethod"`
 }
 
 type shopClosedResponseRequest struct {
 	OrderID  string `json:"order_id"`
 	Response string `json:"response"`
+	// NewSlot optional ISO date for RESCHEDULE.
+	NewSlot string `json:"new_slot,omitempty"`
+	// PhotoURL required for AUTHORIZE_BYPASS.
+	PhotoURL string `json:"photo_url,omitempty"`
 }
 
 type shopClosedResolveRequest struct {
 	AttemptID string `json:"attempt_id"`
 	Action    string `json:"action"`
 }
+
+// Retailer response codes (enhanced protocol).
+// Legacy OPEN_NOW / 5_MIN / CALL_ME / CLOSED_TODAY remain accepted.
+const (
+	RetailerRespOpenNow         = "OPEN_NOW"
+	RetailerResp5Min            = "5_MIN"
+	RetailerRespCallMe          = "CALL_ME"
+	RetailerRespClosedToday     = "CLOSED_TODAY"
+	RetailerRespReschedule      = "RESCHEDULE"
+	RetailerRespCreditLeave     = "CREDIT_LEAVE"
+	RetailerRespCancel          = "CANCEL"
+	RetailerRespAuthorizeBypass = "AUTHORIZE_BYPASS"
+)
 
 // HandleReportShopClosed is POST /v1/delivery/shop-closed.
 func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request) {
@@ -70,38 +95,51 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
-	if req.OrderID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
+	orderID := chi.URLParam(r, "orderId")
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required in path"})
+		return
+	}
+	if err := req.Location.Validate(100.0); err != nil {
+		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
 		return
 	}
 
+	reason := NormalizeShopClosedReason(req.Reason)
+
 	driverID := strings.TrimSpace(claims.Subject)
 	attemptID := s.newID()
+	logEventID := s.newID()
 	now := s.now()
+	// Client timestamp was removed, just use now
+
+	graceEnds := now.Add(s.shopGrace)
 	ctx := r.Context()
 
 	var retailerID, supplierID string
 	var gpsLat, gpsLng float64
+	var finalProxUnlocked bool
+	var finalProxMethod string
 
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Status", "Version", "RetailerId", "SupplierId", "DriverId", "Lat", "Lng"})
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
+			[]string{"Status", "Version", "RetailerId", "SupplierId", "DriverId", "Lat", "Lng", "H3Cell", "ProximityUnlockedAt", "ProximityMethod"})
 		if err != nil {
-			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
+			return fmt.Errorf("order %s not found: %w", orderID, err)
 		}
 		var status string
 		var version int64
-		var driverCol, retailerCol, supplierCol spanner.NullString
+		var driverCol, retailerCol, supplierCol, h3Cell, proxMethod spanner.NullString
+		var proxUnlockedAt spanner.NullTime
 		var orderLat, orderLng float64
-		if err := row.Columns(&status, &version, &retailerCol, &supplierCol, &driverCol, &orderLat, &orderLng); err != nil {
+		if err := row.Columns(&status, &version, &retailerCol, &supplierCol, &driverCol, &orderLat, &orderLng, &h3Cell, &proxUnlockedAt, &proxMethod); err != nil {
 			return err
 		}
 		if status != string(StatusArrived) {
-			return fmt.Errorf("order must be ARRIVED to report shop closed (current: %s)", status)
+			return fmt.Errorf("%w: order must be ARRIVED to report shop closed (current: %s)", ErrInvalidStatusTransition, status)
 		}
 		if !driverCol.Valid || driverCol.StringVal != driverID {
-			return fmt.Errorf("driver is not assigned to order %s", req.OrderID)
+			return fmt.Errorf("driver is not assigned to order %s", orderID)
 		}
 		if retailerCol.Valid {
 			retailerID = retailerCol.StringVal
@@ -109,15 +147,48 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
 		}
-		gpsLat, gpsLng = req.Latitude, req.Longitude
+		gpsLat, gpsLng = req.Location.Lat, req.Location.Lng
 		if gpsLat == 0 && gpsLng == 0 {
 			gpsLat, gpsLng = orderLat, orderLng
+		}
+
+		// Ensure proximity is unlocked before allowing shop closed report
+		var proxUnlockedAtPtr *time.Time
+		if proxUnlockedAt.Valid {
+			t := proxUnlockedAt.Time
+			proxUnlockedAtPtr = &t
+		}
+		
+		var h3 string
+		if h3Cell.Valid {
+			h3 = h3Cell.StringVal
+		}
+
+		orderRecord := &Order{
+			OrderID:             orderID,
+			Lat:                 orderLat,
+			Lng:                 orderLng,
+			H3Cell:              h3,
+			ProximityUnlockedAt: proxUnlockedAtPtr,
+			ProximityMethod:     proxMethod.StringVal,
+		}
+
+		// Soft proximity check for shop closed: we don't return an error if it fails.
+		_ = s.ensureProximityUnlocked(ctx, txn, orderRecord, req.Location.ToLocation(), TransitionOpts{
+			Actor:  driverID,
+			Reason: "report_shop_closed",
+		})
+		
+		// Ensure we capture if it was unlocked (maybe by this call)
+		if orderRecord.ProximityUnlockedAt != nil {
+			finalProxUnlocked = true
+			finalProxMethod = orderRecord.ProximityMethod
 		}
 
 		// Check for max retries
 		countStmt := spanner.Statement{
 			SQL:    `SELECT COUNT(*) FROM ShopClosedAttempts WHERE OrderId = @oid`,
-			Params: map[string]any{"oid": req.OrderID},
+			Params: map[string]any{"oid": orderID},
 		}
 		countIter := txn.Query(ctx, countStmt)
 		countRow, countErr := countIter.Next()
@@ -132,9 +203,9 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
-			OrderID:    req.OrderID,
+			OrderID:    orderID,
 			DriverID:   driverID,
 			RetailerID: retailerID,
 			SupplierID: supplierID,
@@ -145,21 +216,42 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			return err
 		}
 
+		logPayload := map[string]any{
+			"reason":        reason,
+			"note":          strings.TrimSpace(req.Note),
+			"photo_url":     strings.TrimSpace(req.PhotoURL),
+			"gps_lat":       gpsLat,
+			"gps_lng":       gpsLng,
+			"attempt_id":    attemptID,
+			"grace_ends_at": graceEnds.UTC().Format(time.RFC3339Nano),
+		}
+
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":   req.OrderID,
-				"Status":    string(StatusArrivedShopClosed),
-				"Version":   version + 1,
-				"UpdatedAt": now.UTC(),
+				"OrderId":               orderID,
+				"Status":                string(StatusShopClosedPending), // ≡ SHOP_CLOSED_PENDING
+				"Version":               version + 1,
+				"UpdatedAt":             now.UTC(),
+				"ShopClosedAt":          now.UTC(),
+				"ShopClosedReason":      reason,
+				"ShopClosedGraceEndsAt": graceEnds.UTC(),
 			}),
 			spanner.InsertMap("ShopClosedAttempts", map[string]any{
 				"AttemptId":  attemptID,
-				"OrderId":    req.OrderID,
+				"OrderId":    orderID,
 				"DriverId":   driverID,
 				"RetailerId": retailerID,
 				"ReportedAt": now.UTC(),
 				"GPSLat":     gpsLat,
 				"GPSLng":     gpsLng,
+			}),
+			spanner.InsertMap("OrderShopClosedLog", map[string]any{
+				"OrderId":   orderID,
+				"EventId":   logEventID,
+				"Actor":     driverID,
+				"Action":    "MARKED_CLOSED",
+				"Payload":   spanner.NullJSON{Value: logPayload, Valid: true},
+				"CreatedAt": now.UTC(),
 			}),
 		}
 		for _, e := range buf.events {
@@ -171,30 +263,39 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if err.Error() == "shop_closed_max_retries" {
 			updateClaims := auth.Claims{Role: auth.RoleAdmin, Subject: "system"}
 			updateReq := UpdateStatusRequest{Status: string(StatusCancelled), Reason: "shop_closed_max_retries"}
-			s.UpdateStatus(ctx, updateClaims, req.OrderID, updateReq)
-			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", req.OrderID)
+			s.UpdateStatus(ctx, updateClaims, orderID, updateReq)
+			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", orderID)
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "max_retries_reached_order_cancelled"})
 			return
 		}
-		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", req.OrderID, "err", err)
+		if errors.Is(err, ErrInvalidStatusTransition) {
+			s.log.ErrorContext(ctx, "shop closed report failed (invalid status)", "order_id", orderID, "err", err)
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": "invalid_status_transition",
+				"message": err.Error(),
+			})
+			return
+		}
+		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", orderID, "err", err)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
 
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
-		OrderID:    req.OrderID,
+		OrderID:    orderID,
 		DriverID:   driverID,
 		RetailerID: retailerID,
 		SupplierID: supplierID,
 		AttemptID:  attemptID,
 	})
-	s.invalidateOrderCache(ctx, req.OrderID)
-	go s.scheduleShopClosedEscalation(context.WithoutCancel(ctx), attemptID, req.OrderID, retailerID, supplierID, driverID)
+	s.invalidateOrderCache(ctx, orderID)
 
-	resp := map[string]any{
-		"status":     string(StatusArrivedShopClosed),
-		"attempt_id": attemptID,
+	resp := driverEndpointResponse{
+		OrderID:           orderID,
+		Status:            string(StatusShopClosedPending),
+		ProximityUnlocked: finalProxUnlocked,
+		ProximityMethod:   finalProxMethod,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
@@ -223,16 +324,6 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-
 	var req shopClosedResponseRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -244,19 +335,43 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id and response required"})
 		return
 	}
-	valid := map[string]bool{"OPEN_NOW": true, "5_MIN": true, "CALL_ME": true, "CLOSED_TODAY": true}
+	req.Response = strings.ToUpper(req.Response)
+	valid := map[string]bool{
+		RetailerRespOpenNow: true, RetailerResp5Min: true, RetailerRespCallMe: true, RetailerRespClosedToday: true,
+		RetailerRespReschedule: true, RetailerRespCreditLeave: true, RetailerRespCancel: true, RetailerRespAuthorizeBypass: true,
+	}
 	if !valid[req.Response] {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid response value"})
 		return
 	}
+	if req.Response == RetailerRespAuthorizeBypass && strings.TrimSpace(req.PhotoURL) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_url_required_for_bypass"})
+		return
+	}
 
 	retailerID := strings.TrimSpace(claims.Subject)
+	s.executeShopClosedRetailerResponse(w, r, body, req, retailerID)
+}
+
+func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *http.Request, rawBody []byte, req shopClosedResponseRequest, retailerID string) {
+	if s.guardIdempotency(w, r, rawBody) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	ctx := r.Context()
 	now := s.now()
-	newStatus := string(StatusArrivedShopClosed)
-	var attemptID, driverID, supplierID string
+	newStatus := string(StatusShopClosedPending)
+	var attemptID, driverID, supplierID, manifestID string
+	logEventID := s.newID()
+	resolution := ""
 
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `SELECT AttemptId, DriverId FROM ShopClosedAttempts
 			      WHERE OrderId = @oid AND RetailerId = @rid AND Resolution IS NULL
@@ -274,17 +389,34 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Version", "SupplierId"})
+			[]string{"Version", "SupplierId", "Status", "ManifestId", "WarehouseId", "OrderSource", "LineItemsJson"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol spanner.NullString
-		if err := orderRow.Columns(&version, &supplierCol); err != nil {
+		var supplierCol, manifestCol, warehouseCol, orderSourceCol spanner.NullString
+		var orderStatus string
+		var lineItemsRaw []byte
+		if err := orderRow.Columns(&version, &supplierCol, &orderStatus, &manifestCol, &warehouseCol, &orderSourceCol, &lineItemsRaw); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
+		}
+		if manifestCol.Valid {
+			manifestID = manifestCol.StringVal
+		}
+		warehouseID := ""
+		if warehouseCol.Valid {
+			warehouseID = warehouseCol.StringVal
+		}
+		orderSource := ""
+		if orderSourceCol.Valid {
+			orderSource = orderSourceCol.StringVal
+		}
+		// Retailer response wins if still PENDING (ARRIVED_SHOP_CLOSED), even after grace clock.
+		if orderStatus != string(StatusShopClosedPending) {
+			return fmt.Errorf("shop_closed_already_resolved status=%s", orderStatus)
 		}
 
 		mutations := []*spanner.Mutation{
@@ -294,22 +426,111 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 				"RetailerRespondedAt": now.UTC(),
 			}),
 		}
-		if req.Response == "OPEN_NOW" {
+
+		switch req.Response {
+		case RetailerRespOpenNow:
 			newStatus = string(StatusArrived)
+			resolution = "RETAILER_OPENED"
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":   req.OrderID,
-					"Status":    newStatus,
-					"Version":   version + 1,
-					"UpdatedAt": now.UTC(),
+					"OrderId":              req.OrderID,
+					"Status":               newStatus,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
+					"ShopClosedResolution": resolution,
 				}),
 				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
 					"AttemptId":  attemptID,
-					"Resolution": "RETAILER_OPENED",
+					"Resolution": resolution,
 					"ResolvedAt": now.UTC(),
 				}),
 			)
+		case RetailerRespReschedule:
+			resolution = ShopClosedResolutionRescheduled
+			mutations = append(mutations,
+				spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":              req.OrderID,
+					"ShopClosedResolution": resolution,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
+				}),
+				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
+					"AttemptId":  attemptID,
+					"Resolution": resolution,
+					"ResolvedAt": now.UTC(),
+				}),
+			)
+		case RetailerRespCreditLeave:
+			// Intent only — driver still executes credit-delivery with proximity.
+			resolution = ShopClosedResolutionCreditLeave
+			mutations = append(mutations,
+				spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":              req.OrderID,
+					"ShopClosedResolution": resolution,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
+				}),
+				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
+					"AttemptId":  attemptID,
+					"Resolution": "RETAILER_CREDIT_LEAVE",
+					"ResolvedAt": now.UTC(),
+				}),
+			)
+		case RetailerRespCancel:
+			newStatus = string(StatusCancelled)
+			resolution = ShopClosedResolutionCancelled
+			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+				return err
+			}
+			mutations = append(mutations,
+				spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":              req.OrderID,
+					"Status":               newStatus,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
+					"ShopClosedResolution": resolution,
+				}),
+				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
+					"AttemptId":  attemptID,
+					"Resolution": resolution,
+					"ResolvedAt": now.UTC(),
+				}),
+			)
+		case RetailerRespAuthorizeBypass:
+			resolution = ShopClosedResolutionBypass
+			bypassToken := generateShopClosedBypassToken()
+			mutations = append(mutations,
+				spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":              req.OrderID,
+					"ShopClosedResolution": resolution,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
+				}),
+				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
+					"AttemptId":   attemptID,
+					"Resolution":  "BYPASS_ISSUED",
+					"BypassToken": bypassToken,
+					"ResolvedAt":  now.UTC(),
+				}),
+			)
+		// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
 		}
+
+		logPayload := map[string]any{
+			"response":   req.Response,
+			"new_slot":   strings.TrimSpace(req.NewSlot),
+			"photo_url":  strings.TrimSpace(req.PhotoURL),
+			"attempt_id": attemptID,
+			"resolution": resolution,
+		}
+		mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
+			"OrderId":   req.OrderID,
+			"EventId":   logEventID,
+			"Actor":     retailerID,
+			"Action":    "RESPONDED",
+			"Payload":   spanner.NullJSON{Value: logPayload, Valid: true},
+			"CreatedAt": now.UTC(),
+		}))
 
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
@@ -333,6 +554,12 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if s.replanner != nil && manifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
+		}(manifestID, retailerID)
+	}
+
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResponse, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    req.OrderID,
@@ -343,7 +570,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]string{"status": newStatus}
 	respBytes, _ := json.Marshal(resp)
-	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	s.saveIdempotency(ctx, r, rawBody, http.StatusOK, respBytes)
 	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
@@ -399,7 +626,7 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	adminID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 	now := s.now()
-	var orderID, driverID, retailerID, supplierID, bypassToken, resolution string
+	var orderID, driverID, retailerID, supplierID, bypassToken, resolution, manifestID string
 	resolution = "WAITING"
 
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -413,17 +640,29 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"Version", "SupplierId"})
+			[]string{"Version", "SupplierId", "ManifestId", "WarehouseId", "OrderSource", "LineItemsJson"})
 		if err != nil {
 			return err
 		}
 		var version int64
-		var supplierCol spanner.NullString
-		if err := orderRow.Columns(&version, &supplierCol); err != nil {
+		var supplierCol, manifestCol, warehouseCol, orderSourceCol spanner.NullString
+		var lineItemsRaw []byte
+		if err := orderRow.Columns(&version, &supplierCol, &manifestCol, &warehouseCol, &orderSourceCol, &lineItemsRaw); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
+		}
+		if manifestCol.Valid {
+			manifestID = manifestCol.StringVal
+		}
+		warehouseID := ""
+		if warehouseCol.Valid {
+			warehouseID = warehouseCol.StringVal
+		}
+		orderSource := ""
+		if orderSourceCol.Valid {
+			orderSource = orderSourceCol.StringVal
 		}
 		if strings.TrimSpace(claims.SupplierID) != "" && supplierID != "" && claims.SupplierID != supplierID {
 			return ErrOrderForbidden
@@ -443,12 +682,16 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 			}))
 		case "RETURN_TO_DEPOT":
 			resolution = "RETURN_TO_DEPOT"
+			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+				return err
+			}
 			mutations = append(mutations,
 				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":   orderID,
-					"Status":    string(StatusCancelled),
-					"Version":   version + 1,
-					"UpdatedAt": now.UTC(),
+					"OrderId":              orderID,
+					"Status":               string(StatusCancelled),
+					"ShopClosedResolution": ShopClosedResolutionReturned,
+					"Version":              version + 1,
+					"UpdatedAt":            now.UTC(),
 				}),
 				spanner.UpdateMap("ShopClosedAttempts", map[string]any{
 					"AttemptId":  req.AttemptID,
@@ -490,6 +733,12 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if s.replanner != nil && manifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
+		}(manifestID, adminID)
+	}
+
 	payload := events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResolved, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    orderID,
@@ -510,78 +759,9 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, orderID, retailerID, supplierID, driverID string) {
-	timer := time.NewTimer(s.shopGrace)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-timer.C:
-	}
 
-	if s.spannerClient == nil {
-		return
-	}
-	now := s.now()
-	escalatedTo := supplierID
-	if escalatedTo == "" {
-		escalatedTo = s.supplierID
-	}
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL:    `SELECT Resolution, RetailerRespondedAt FROM ShopClosedAttempts WHERE AttemptId = @aid`,
-			Params: map[string]any{"aid": attemptID},
-		}
-		iter := txn.Query(ctx, stmt)
-		row, err := iter.Next()
-		iter.Stop()
-		if err != nil {
-			return err
-		}
-		var resolution spanner.NullString
-		var responded spanner.NullTime
-		if err := row.Columns(&resolution, &responded); err != nil {
-			return err
-		}
-		if resolution.Valid || responded.Valid {
-			return nil
-		}
 
-		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:   events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
-			OrderID:     orderID,
-			AttemptID:   attemptID,
-			SupplierID:  supplierID,
-			EscalatedTo: escalatedTo,
-		}); err != nil {
-			return err
-		}
-		mutations := []*spanner.Mutation{
-			spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-				"AttemptId":   attemptID,
-				"EscalatedAt": now.UTC(),
-				"EscalatedTo": escalatedTo,
-			}),
-		}
-		for _, e := range buf.events {
-			mutations = append(mutations, outboxMutation(e))
-		}
-		return txn.BufferWrite(mutations)
-	})
-	if err != nil {
-		s.log.WarnContext(ctx, "shop closed escalation skipped", "attempt_id", attemptID, "err", err)
-		return
-	}
-
-	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
-		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
-		OrderID:    orderID,
-		AttemptID:  attemptID,
-		SupplierID: supplierID,
-	})
-}
 
 func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)

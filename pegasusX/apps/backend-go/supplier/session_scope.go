@@ -21,3 +21,8 @@ func (s *Service) scopedSupplierID(r *http.Request) string {
 	}
 	return s.supplierID
 }
+
+// ScopedSupplierID exposes scopedSupplierID for other route packages.
+func (s *Service) ScopedSupplierID(r *http.Request) string {
+	return s.scopedSupplierID(r)
+}

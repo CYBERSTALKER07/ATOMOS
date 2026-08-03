@@ -133,6 +133,14 @@ func (s *Service) ClearBalance(ctx context.Context, retailerID, supplierID strin
 	})
 }
 
+// GetProfile loads a retailer credit profile for a supplier.
+func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string) (Profile, bool, error) {
+	if s == nil || s.repo == nil {
+		return Profile{}, false, fmt.Errorf("credit service unavailable")
+	}
+	return s.repo.GetProfile(ctx, retailerID, supplierID)
+}
+
 // UpsertProfile creates or updates a credit profile.
 func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason string) error {
 	now := s.now()
@@ -171,16 +179,51 @@ func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason 
 
 // EvaluateRisk recomputes risk tier from delinquency count and balance.
 func (s *Service) EvaluateRisk(delinquencyCount, balanceMinor, limitMinor int64) RiskTier {
-	if delinquencyCount >= 3 || balanceMinor > limitMinor {
-		return RiskTierBlock
+	return deriveRiskTier(delinquencyCount, balanceMinor, limitMinor)
+}
+
+// ListSupplierProfiles returns supplier-scoped credit profiles for the collections desk.
+func (s *Service) ListSupplierProfiles(ctx context.Context, supplierID, status string, limit int) ([]Profile, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("credit service unavailable")
 	}
-	if delinquencyCount >= 1 || (limitMinor > 0 && balanceMinor > limitMinor/2) {
-		return RiskTierHigh
+	list, err := s.repo.ListBySupplier(ctx, supplierID, status, limit)
+	if err != nil {
+		return nil, err
 	}
-	if limitMinor > 0 && balanceMinor > limitMinor/4 {
-		return RiskTierMedium
+	// Collections-first ordering: open balance / frozen / high risk before idle active lines.
+	sortProfilesForCollections(list)
+	return list, nil
+}
+
+func sortProfilesForCollections(list []Profile) {
+	// Stable priority: BLACKLISTED/FROZEN first, then balance desc, then updated desc.
+	for i := 0; i < len(list); i++ {
+		for j := i + 1; j < len(list); j++ {
+			if profilePriority(list[j]) < profilePriority(list[i]) {
+				list[i], list[j] = list[j], list[i]
+			} else if profilePriority(list[j]) == profilePriority(list[i]) &&
+				list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
+				list[i], list[j] = list[j], list[i]
+			}
+		}
 	}
-	return RiskTierLow
+}
+
+func profilePriority(p Profile) int {
+	switch p.Status {
+	case StatusBlacklisted:
+		return 0
+	case StatusFrozen:
+		return 1
+	case StatusClosed:
+		return 4
+	default:
+		if p.CurrentBalanceMinor > 0 {
+			return 2
+		}
+		return 3
+	}
 }
 
 func profileID(retailerID, supplierID string) string {

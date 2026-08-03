@@ -29,7 +29,26 @@ class AuthTests {
         assertEquals("jwt_token_123", response.token)
         assertEquals("fb_token_123", response.firebaseToken)
         assertNotNull(response.user)
-        assertEquals("usr_123", response.user.id)
+        assertEquals("usr_123", response.user!!.id)
+    }
+
+    @Test
+    fun testPendingOrgSelectSerialization() {
+        val rawJson = """
+            {
+                "token": "pending_jwt",
+                "token_type": "pending_org_select",
+                "memberships": [
+                  {"user_id":"u1","retailer_id":"org-a","retailer_role":"OWNER","name":"Shop A","is_active":true},
+                  {"user_id":"u2","retailer_id":"org-b","retailer_role":"MANAGER","name":"Shop B","is_active":true}
+                ],
+                "expires_in_sec": 420
+            }
+        """.trimIndent()
+        val response = json.decodeFromString<AuthResponse>(rawJson)
+        assertTrue(response.isPendingOrgSelect)
+        assertEquals(2, response.memberships.size)
+        assertEquals("org-a", response.memberships[0].retailerId)
     }
 
     @Test

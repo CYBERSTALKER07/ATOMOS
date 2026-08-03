@@ -12,31 +12,22 @@ import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconc
 import { useWarehouseWsRefresh } from '@/lib/use-warehouse-ws-refresh';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import EmptyState from '@/components/EmptyState';
 import { ListToolbar } from '@/components/ListToolbar';
 import { PageChrome } from '@/components/PageChrome';
+<<<<<<< HEAD
 import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
 import { PreordersList } from '@/components/preorders/PreordersList';
+=======
+import { OrderActionDialog, OrderProposeDateDialog } from '@/components/orders';
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
-
-type OrdersTab = 'active' | 'preorders';
-
-interface OrderRow {
-  order_id: string;
-  retailer_name: string;
-  state: string;
-  total_uzs: number;
-  created_at: string;
-}
+import { OrdersList, type OrderRow, type OrdersTab } from './components/OrdersList';
+import { PreordersList } from '@/components/preorders/PreordersList';
 
 function isoDeliveryDate(dateInput: string): string {
   const dateOnly = dateInput.slice(0, 10);
   return `${dateOnly}T12:00:00+05:00`;
-}
-
-function showsReviewBadge(row: RetailerOrderLifecycleResponse): boolean {
-  return String(row.confirmation_status) === 'PENDING_WAREHOUSE' || row.preorder_badge === 'REVIEW_DELIVERY';
 }
 
 export default function OrdersPage() {
@@ -134,14 +125,23 @@ export default function OrdersPage() {
     reset();
   }, [filter, tab, reset]);
 
-  const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
-
   const setTab = (nextTab: OrdersTab) => {
     router.replace(nextTab === 'preorders' ? '/orders?tab=preorders' : '/orders');
   };
 
   const openDetail = (orderId: string) => {
     router.push(`/orders/${orderId}${tab === 'preorders' ? '?from=preorders' : ''}`);
+  };
+
+  const handleProposeDate = (orderId: string, isPreorder: boolean, currentDate?: string) => {
+    setDialog({ orderId, kind: 'propose' });
+    setReason('');
+    setProposedDate(currentDate ? currentDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
+  };
+
+  const handleReject = (orderId: string, isPreorder: boolean) => {
+    setDialog({ orderId, kind: isPreorder ? 'preorder-reject' : 'reject' });
+    setReason('');
   };
 
   const closeDialog = () => {
@@ -306,25 +306,29 @@ export default function OrdersPage() {
           </button>
         </div>
 
-        {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="md-skeleton h-28 rounded-xl" />
-            ))}
-          </div>
-        ) : (tab === 'preorders' ? preorders : orders).length === 0 ? (
-          <EmptyState
-            variant={filter ? 'no-results' : 'no-data'}
-            headline={tab === 'preorders' ? 'No pre-orders' : 'No orders found'}
-            body={
-              tab === 'preorders'
-                ? 'Scheduled manual pre-orders will appear here.'
-                : filter
-                  ? `No orders found with state "${filter}".`
-                  : 'There are no orders recorded in this warehouse yet.'
-            }
+        <ListToolbar
+          page={page}
+          pageCount={pageCount}
+          totalLabel={`${tab === 'preorders' ? preorders.length : orders.length} ${tab === 'preorders' ? 'pre-orders' : 'orders'}`}
+          onPrev={prev}
+          onNext={next}
+          onExport={exportCsv}
+        />
+        
+        {tab === 'active' ? (
+          <OrdersList
+            tab={tab}
+            loading={loading}
+            filter={filter}
+            activeItems={activePageItems}
+            preorderItems={preorderPageItems}
+            actingId={actingId}
+            onOpenDetail={openDetail}
+            onProposeDate={handleProposeDate}
+            onReject={handleReject}
           />
         ) : (
+<<<<<<< HEAD
           <>
             <ListToolbar
               page={page}
@@ -377,6 +381,16 @@ export default function OrdersPage() {
                   )}
             </div>
           </>
+=======
+          <PreordersList
+            loading={loading}
+            items={preorderPageItems}
+            actingId={actingId}
+            onOpenDetail={openDetail}
+            onProposeDate={handleProposeDate}
+            onReject={handleReject}
+          />
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         )}
       </PageChrome>
 

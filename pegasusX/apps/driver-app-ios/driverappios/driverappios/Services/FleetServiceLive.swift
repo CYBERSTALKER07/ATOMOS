@@ -74,18 +74,23 @@ final class FleetServiceLive: FleetServiceProtocol {
         try await api.confirmOffload(orderId: orderId)
     }
 
+    func scanDeliveryQR(orderId: String, qrToken: String) async throws -> DeliveryScanQRResponse {
+        try await api.scanDeliveryQR(orderId: orderId, qrToken: qrToken)
+    }
+
     func completeOrder(orderId: String) async throws {
         try await api.completeOrder(orderId: orderId)
     }
 
     /// Collect cash from retailer with geofence validation.
     /// Sends driver GPS coords; backend rejects if > 500m from retailer.
-    func collectCash(orderId: String) async throws -> CollectCashResponse {
+    func collectCash(orderId: String, amountReceivedMinor: Int64? = nil) async throws -> CollectCashResponse {
         let location = await currentLocation()
         return try await api.collectCash(
             orderId: orderId,
             latitude: location.latitude,
-            longitude: location.longitude
+            longitude: location.longitude,
+            amountReceivedMinor: amountReceivedMinor
         )
     }
 
@@ -192,73 +197,36 @@ final class FleetServiceLive: FleetServiceProtocol {
 
     @MainActor
     private func enqueueOfflineDelivery(orderId: String, scannedToken: String) {
-        guard let context = modelContainer?.mainContext else { return }
-        let store = OfflineDeliveryStore(modelContext: context)
-        store.enqueue(orderId: orderId, signature: scannedToken, status: "DELIVERED")
+        if let container = modelContainer {
+            DriverOfflineQueue.shared.attach(container: container)
+        }
+        let body: [String: Any] = [
+            "order_id": orderId,
+            "scanned_token": scannedToken,
+            "signature": scannedToken,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: body),
+              let json = String(data: data, encoding: .utf8) else { return }
+        DriverOfflineQueue.shared.enqueue(
+            endpoint: DriverOfflineActionCatalog.deliver,
+            bodyJSON: json,
+            idempotencyKey: DriverIdempotency.deliver(orderId: orderId),
+            orderId: orderId
+        )
+        // Keep legacy store in sync for OfflineVerifier until fully migrated.
+        if let context = modelContainer?.mainContext {
+            OfflineDeliveryStore(modelContext: context)
+                .enqueue(orderId: orderId, signature: scannedToken, status: "DELIVERED")
+        }
     }
 
-    /// Attempt to flush all pending offline deliveries to the server.
-    /// Call this when network connectivity is restored.
+    /// Flush durable offline action queue (protocol-ordered).
     func flushOfflineQueue() async {
-        await DriverSessionReconcile.run()
-        guard let container = modelContainer else { return }
-
-        let pending: [OfflineDelivery] = await MainActor.run {
-            let store = OfflineDeliveryStore(modelContext: container.mainContext)
-            return store.fetchPending()
+        if let container = modelContainer {
+            await MainActor.run { DriverOfflineQueue.shared.attach(container: container) }
         }
-        guard !pending.isEmpty else { return }
-
-        let driverId = TokenStore.shared.userId ?? ""
-        let bearer = TokenStore.shared.token ?? ""
-        let dtos = pending.map {
-            SyncDeliveryDTO(
-                orderId: $0.orderId,
-                signature: $0.signature,
-                timestamp: $0.timestamp,
-                status: $0.status
-            )
-        }
-
-        if !driverId.isEmpty, !bearer.isEmpty {
-            if let result = try? await SyncServiceLive.shared.uploadBatch(
-                driverId: driverId,
-                deliveries: dtos,
-                bearerToken: bearer
-            ) {
-                await MainActor.run {
-                    let store = OfflineDeliveryStore(modelContext: container.mainContext)
-                    store.deleteSynced(orderIds: result.processed)
-                }
-            }
-        }
-
-        let remaining: [OfflineDelivery] = await MainActor.run {
-            let store = OfflineDeliveryStore(modelContext: container.mainContext)
-            return store.fetchPending()
-        }
-
-        for delivery in remaining {
-            do {
-                let location = await currentLocation()
-                let response = try await api.submitDelivery(
-                    orderId: delivery.orderId,
-                    qrToken: delivery.signature,
-                    latitude: location.latitude,
-                    longitude: location.longitude
-                )
-                if response.success {
-                    await MainActor.run {
-                        let store = OfflineDeliveryStore(modelContext: container.mainContext)
-                        store.delete(delivery)
-                    }
-                    print("[FleetServiceLive] Flushed offline delivery: \(delivery.orderId)")
-                }
-            } catch {
-                print("[FleetServiceLive] Flush failed for \(delivery.orderId), will retry later")
-                break
-            }
-        }
+        let result = await DriverOfflineQueue.shared.flush(api: api)
+        print("[FleetServiceLive] Flush sent=\(result.sent) remaining=\(result.remaining)")
     }
 
     // MARK: - GPS Helper

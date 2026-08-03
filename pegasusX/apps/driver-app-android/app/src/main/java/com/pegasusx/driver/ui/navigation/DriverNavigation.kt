@@ -75,6 +75,8 @@ import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
 import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
+import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
+import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
 
@@ -84,11 +86,12 @@ object DriverRoutes {
     const val SCANNER = "scanner"
     const val NOTIFICATIONS = "notifications"
     const val CORRECTION = "correction/{orderId}/{retailerName}"
-    const val OFFLOAD_REVIEW = "offload_review/{orderId}/{retailerName}"
+    const val OFFLOAD_REVIEW = "offload_review/{orderId}/{retailerName}?scannedToken={scannedToken}"
     const val PAYMENT_WAITING = "payment_waiting/{orderId}/{amount}"
     const val CASH_COLLECTION = "cash_collection/{orderId}/{amount}"
     const val SHOP_CLOSED_WAITING = "shop_closed_waiting/{orderId}"
     const val OFFLINE_VERIFIER = "offline_verifier"
+    const val SYNC_QUEUE = "sync_queue"
     const val SUPPLY_TRANSFERS = "supply_transfers"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
@@ -96,9 +99,10 @@ object DriverRoutes {
         return "correction/$orderId/$encodedName"
     }
 
-    fun offloadReviewRoute(orderId: String, retailerName: String): String {
+    fun offloadReviewRoute(orderId: String, retailerName: String, scannedToken: String = ""): String {
         val encodedName = URLEncoder.encode(retailerName.ifBlank { "_" }, "UTF-8")
-        return "offload_review/$orderId/$encodedName"
+        val encodedToken = URLEncoder.encode(scannedToken, "UTF-8")
+        return "offload_review/$orderId/$encodedName?scannedToken=$encodedToken"
     }
 
     fun paymentWaitingRoute(orderId: String, amount: Long): String =
@@ -292,6 +296,7 @@ fun DriverNavigation(
                 },
                 mapContent = {
                     MapScreen(
+                        api = api,
                         viewModel = manifestViewModel,
                         onOpenScanner = { navController.navigate(DriverRoutes.SCANNER) },
                         onOpenCorrection = { orderId, retailerName ->
@@ -313,7 +318,14 @@ fun DriverNavigation(
                     )
                 },
                 profileContent = {
-                    ProfileScreen(viewModel = manifestViewModel)
+                    val pendingVm: PendingSyncCountViewModel = hiltViewModel()
+                    val pendingCount by pendingVm.pendingCount.collectAsState()
+                    ProfileScreen(
+                        viewModel = manifestViewModel,
+                        onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
+                        onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        pendingCount = pendingCount,
+                    )
                 },
                 activeRideBar = { onOpenMap ->
                     ActiveRideBar(
@@ -330,6 +342,10 @@ fun DriverNavigation(
             OfflineVerifierScreen(onBack = { navController.popBackStack() })
         }
 
+        composable(DriverRoutes.SYNC_QUEUE) {
+            SyncQueueScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(DriverRoutes.SUPPLY_TRANSFERS) {
             SupplyTransfersScreen(onBack = { navController.popBackStack() })
         }
@@ -337,10 +353,14 @@ fun DriverNavigation(
         composable(DriverRoutes.SCANNER) {
             ScannerScreen(
                 onClose = { navController.popBackStack() },
-                onValidated = { validated ->
+                onValidated = { validated, scannedToken ->
                     navController.popBackStack()
                     navController.navigate(
-                        DriverRoutes.offloadReviewRoute(validated.orderId, validated.retailerName)
+                        DriverRoutes.offloadReviewRoute(
+                            validated.orderId,
+                            validated.retailerName,
+                            scannedToken,
+                        )
                     )
                 }
             )
@@ -390,7 +410,11 @@ fun DriverNavigation(
             route = DriverRoutes.OFFLOAD_REVIEW,
             arguments = listOf(
                 navArgument("orderId") { type = NavType.StringType },
-                navArgument("retailerName") { type = NavType.StringType }
+                navArgument("retailerName") { type = NavType.StringType },
+                navArgument("scannedToken") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             )
         ) {
             OffloadReviewScreen(

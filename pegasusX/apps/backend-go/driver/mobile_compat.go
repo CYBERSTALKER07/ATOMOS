@@ -159,10 +159,41 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
+// HandleOpenFiscal serves GET /v1/driver/open-fiscal — Phase 6 cash-bag soft-freeze banner.
+func (s *Service) HandleOpenFiscal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	driverID := driverIDFromRequest(r)
+	if driverID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	snap := OpenFiscalSnapshot{}
+	if s.openFiscal != nil {
+		var err error
+		snap, err = s.openFiscal(r.Context(), driverID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "open fiscal lookup failed", "err", err, "driver_id", driverID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "open_fiscal_lookup_failed"})
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"open_fiscal_count": snap.Count,
+		"order_ids":         snap.OrderIDs,
+		"cash_bag_frozen":   snap.Frozen || snap.Count > 0,
+	})
+}
+
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.
 // It flips the driver's DISPATCHED manifest to COMPLETED and marks the driver
 // as off-shift. Without ReturnCompleteFn wired, it degrades gracefully to the
 // prior no-op stub so mobile clients never receive a hard error.
+//
+// Phase 6 / T10: blocks when any assigned order is still FISCALIZING or FISCAL_FAILED
+// (cash bag soft-freeze until fiscal SUCCESS or audited force-complete).
 func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -181,6 +212,44 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 	}
 	if s.guardIdempotency(w, r, body) {
 		return
+	}
+
+	// Soft-freeze cash bag / block shift-end while fiscal is open.
+	if s.openFiscal != nil {
+		snap, fErr := s.openFiscal(r.Context(), driverID)
+		if fErr != nil {
+			s.log.ErrorContext(r.Context(), "open fiscal lookup failed", "err", fErr, "driver_id", driverID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "open_fiscal_lookup_failed"})
+			return
+		}
+		if snap.Frozen || snap.Count > 0 {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"status":            "open_fiscal_block",
+				"error":             "open_fiscal_block",
+				"open_fiscal_count": snap.Count,
+				"order_ids":         snap.OrderIDs,
+				"cash_bag_frozen":   true,
+				"message":           "Clear fiscalizing / fiscal-failed orders before ending shift.",
+			})
+			return
+		}
+	}
+
+	if s.cashReconRequired && s.cashReconGate != nil {
+		ok, gateErr := s.cashReconGate(r.Context(), driverID)
+		if gateErr != nil {
+			s.log.ErrorContext(r.Context(), "cash reconciliation gate failed", "err", gateErr, "driver_id", driverID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cash_reconciliation_lookup_failed"})
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"status":  "cash_reconciliation_required",
+				"error":   "cash_reconciliation_required",
+				"message": "Submit and reconcile declared cash before ending shift.",
+			})
+			return
+		}
 	}
 
 	if s.returnComplete == nil {
@@ -471,10 +540,12 @@ func (s *Service) HandleOrderGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	for _, row := range demoFleetOrders("") {
-		if row["id"] == orderID {
-			writeJSON(w, http.StatusOK, row)
-			return
+	if allowDriverDemoFallback() {
+		for _, row := range demoFleetOrders("") {
+			if row["id"] == orderID {
+				writeJSON(w, http.StatusOK, row)
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})

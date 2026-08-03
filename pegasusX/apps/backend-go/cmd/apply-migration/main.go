@@ -36,7 +36,8 @@ func main() {
 		ddlPath = defaultMigrationPath()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Cloud Spanner DDL ops on 100 PU can exceed 5m for large index creates.
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 
 	cfg, err := bootstrap.LoadConfig()

@@ -1,0 +1,100 @@
+# Strimzi KafkaTopic inventory for SSMR (cluster: pegasusx, ns: kafka).
+# Single-node broker → replicas: 1 (matches default.replication.factor).
+# Partitions: 3 for parallel consumer workers; safe to increase on live topics.
+# Apply: kubectl apply -f infra/k8s/kafka/kafka-topics.yaml
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-main
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "604800000" # 7d
+    retention.bytes: "1073741824" # 1Gi soft cap per partition
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-main-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "1209600000" # 14d — keep poison longer for replay
+    retention.bytes: "536870912"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-orders
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "604800000"
+    retention.bytes: "1073741824"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-dispatch
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "604800000"
+    retention.bytes: "1073741824"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-realtime
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "259200000" # 3d — high-volume location telemetry
+    retention.bytes: "2147483648"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-webhooks
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: "604800000"
+    retention.bytes: "536870912"

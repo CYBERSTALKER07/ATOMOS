@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
-import { DataList, DataListRow } from "@/components/portal";
+import { DeliveryZonesList } from "@/components/delivery-zones";
 
 const api = createSupplierApi();
 
@@ -32,19 +32,7 @@ export default function DeliveryZonesPage() {
       empty={!topology || topology.warehouses.length === 0}
       emptyMessage="No warehouse coverage configured."
     >
-      <DataList>
-        {topology?.warehouses.map((warehouse) => (
-          <DataListRow key={warehouse.warehouse_id || warehouse.name}>
-            <div className="min-w-0 md-typescale-body-medium">
-              <div className="font-medium">{warehouse.name}</div>
-              <div className="text-[var(--color-md-outline)] text-sm mt-1">
-                Radius {warehouse.coverage_radius_km} km · {warehouse.lat.toFixed(4)}, {warehouse.lng.toFixed(4)} ·{" "}
-                {warehouse.is_active ? "Active" : "Inactive"}
-              </div>
-            </div>
-          </DataListRow>
-        ))}
-      </DataList>
+      <DeliveryZonesList warehouses={topology?.warehouses ?? []} />
       <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
         Edit coverage on{" "}
         <Link href="/topology" className="text-[var(--color-md-primary)] underline">

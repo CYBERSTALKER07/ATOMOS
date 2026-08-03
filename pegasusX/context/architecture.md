@@ -1,5 +1,6 @@
 # Real Codebase Infrastructure & Architecture
 
+<<<<<<< HEAD
 > [!NOTE]
 > **Current Project State:** GCP Migration (Phase 2)
 > *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
@@ -7,6 +8,10 @@
 
 *Auto-generated from actual Terraform and infrastructure definitions.*
 
+=======
+*Auto-generated from actual Terraform and infrastructure definitions.*
+
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 ## Provisioned Resources
 - `google_artifact_registry_repository (pegasusx)`
 - `google_billing_budget (pegasusx_monthly)`
@@ -22,6 +27,10 @@
 - `google_monitoring_alert_policy (spanner_cpu_high)`
 - `google_monitoring_dashboard (ai_worker_launch)`
 - `google_monitoring_dashboard (pilot_launch)`
+<<<<<<< HEAD
+=======
+- `google_monitoring_notification_channel (budget_email)`
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 - `google_monitoring_uptime_check_config (ai_worker_health)`
 - `google_monitoring_uptime_check_config (ai_worker_ready)`
 - `google_project_iam_member (backend_redis)`

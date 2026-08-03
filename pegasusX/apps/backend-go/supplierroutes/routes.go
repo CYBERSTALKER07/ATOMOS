@@ -11,6 +11,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 )
 
 // Deps is the narrow dependency contract for this routes package.
@@ -19,6 +23,8 @@ type Deps struct {
 	OrderService      *order.Service
 	PayloadService    *payload.Service
 	NotificationInbox *notifications.InboxHandlers
+	ComplianceHandler *compliance.Handler
+	ExceptionResolve  supplier.ExceptionResolveDeps
 	JWTSecret         string
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
@@ -102,14 +108,17 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(warehouseScope).Get("/v1/supplier/dispatch/preview", d.Service.HandleDispatchPreview)
 		gr.With(warehouseScope).Post("/v1/supplier/dispatch/preview", d.Service.HandleDispatchPreview)
 		gr.With(warehouseScope).Post("/v1/supplier/dispatch/execute", d.Service.HandleDispatchExecute)
+		gr.Get("/v1/supplier/dispatch/tracking", d.Service.HandleDispatchTracking)
 		gr.Get("/v1/supplier/activity", d.Service.HandleActivity)
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)
+		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(d.ExceptionResolve))
 		gr.Get("/v1/supplier/ops/exception-map", d.Service.HandleExceptionMap)
 		gr.Get("/v1/supplier/manifest-exceptions", d.Service.HandleManifestExceptions)
 		gr.Get("/v1/supplier/earnings", d.Service.HandleEarnings)
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory", d.Service.HandleInventory)
+		gr.Patch("/v1/supplier/inventory/policy", d.Service.HandleInventoryPolicy)
 		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
 		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
 			Spanner:      d.Spanner,
@@ -122,6 +131,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/analytics/revenue", d.Service.HandleAnalyticsRevenue)
 		gr.Get("/v1/supplier/analytics/demand/today", d.Service.HandleAnalyticsDemandToday)
 		gr.Get("/v1/supplier/analytics/demand/history", d.Service.HandleAnalyticsDemandHistory)
+		// B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (distinct from planning DemandSignals).
+		gr.Get("/v1/supplier/analytics/demand/flywheel", d.Service.HandleAnalyticsDemandFlywheel)
 		gr.Get("/v1/supplier/orders", d.Service.HandleOrders)
 		gr.Post("/v1/supplier/orders/vet", d.Service.HandleVetOrder)
 		gr.Get("/v1/supplier/ai/recommendations", d.Service.HandleAIRecommendations)
@@ -131,10 +142,19 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/supplier/shop-closed/active", d.OrderService.HandleListActiveShopClosedAttempts)
 			gr.Post("/v1/supplier/shop-closed/resolve", d.OrderService.HandleResolveShopClosed)
 			gr.Post("/v1/supplier/orders/payment-bypass", d.OrderService.HandleIssuePaymentBypass)
-			// Quantity negotiation disabled — handlers return empty list or 410.
+			// Quantity negotiation product-disabled → empty pending list / 410 resolve.
 			gr.Get("/v1/supplier/negotiations/pending", d.OrderService.HandleListPendingNegotiations)
 			gr.Post("/v1/supplier/negotiate/resolve", d.OrderService.HandleResolveNegotiation)
 			gr.Post("/v1/supplier/route/approve-early-complete", d.OrderService.HandleApproveEarlyComplete)
+			gr.Get("/v1/compliance/fiscal-open", d.OrderService.HandleComplianceFiscalOpen)
+			gr.Get("/v1/compliance/force-completes", d.OrderService.HandleComplianceForceCompletes)
+			gr.Get("/v1/compliance/claim-mismatches", d.OrderService.HandleComplianceClaimMismatches)
+			gr.Get("/v1/compliance/credit-freezes", d.OrderService.HandleComplianceCreditFreezes)
+		}
+
+		if d.ComplianceHandler != nil {
+			gr.Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)
+			gr.Get("/v1/compliance/export", d.ComplianceHandler.ExportCSV)
 		}
 		
 		if d.PayloadService != nil {
@@ -147,6 +167,32 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
 		gr.Get("/v1/supplier/replenishment/traceability", d.Service.HandleReplenishmentTraceability)
+
+		if d.Spanner != nil && d.OrderService != nil {
+			suggestionsAPI := replenishment.NewSuggestionsAPI(d.Spanner, d.OrderService, d.Service.ScopedSupplierID)
+			gr.Get("/v1/replenishment/suggestions", suggestionsAPI.HandleList)
+			gr.Post("/v1/replenishment/suggestions/dismiss", suggestionsAPI.HandleDismiss)
+			gr.Post("/v1/replenishment/suggestions/create-draft", suggestionsAPI.HandleCreateDraft)
+			gr.Post("/v1/replenishment/suggestions/create-drafts", suggestionsAPI.HandleBulkCreateDrafts)
+		}
+
+		if d.Spanner != nil {
+			twinHandler := twin.NewSupplierHTTPHandler(twin.NewSpannerRepository(d.Spanner), d.Service.ScopedSupplierID)
+			gr.Get("/v1/twin/routes/active", twinHandler.ListActiveRoutes)
+			gr.Get("/v1/twin/routes/{routeID}", twinHandler.GetRoute)
+			gr.Get("/v1/twin/routes/{routeID}/inventory", twinHandler.GetRouteInventory)
+
+			segmentHandlers := &segment.Handlers{
+				Service:    segment.NewService(segment.NewSpannerRepository(d.Spanner)),
+				SupplierID: d.Service.ScopedSupplierID,
+			}
+			gr.Post("/v1/supplier/segmentation/bootstrap", segmentHandlers.HandleBootstrap)
+			gr.Get("/v1/supplier/segmentation/retailers", segmentHandlers.HandleRetailerSegments)
+			gr.Patch("/v1/supplier/segmentation/retailers/{retailerID}", segmentHandlers.HandleRetailerSegmentByID)
+			gr.Get("/v1/supplier/segmentation/sku-classes", segmentHandlers.HandleSkuClasses)
+			gr.Patch("/v1/supplier/segmentation/sku-classes/{sku}", segmentHandlers.HandleSkuClassBySKU)
+		}
+
 		gr.Get("/v1/supplier/meio/network-summary", d.Service.HandleMEIONetworkSummary)
 		gr.Get("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)
 		gr.Post("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)

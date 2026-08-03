@@ -36,6 +36,7 @@ struct ManifestsView: View {
                         }
                     }
                 }
+                }
             }
             .background(LabTheme.background)
             .navigationTitle("Manifests")

@@ -108,7 +108,7 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"token":          token,
 		"user_id":        driverID,
 		"driver_id":      driverID,
@@ -131,5 +131,17 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 		"factory_name":   "PegasusX Demo Factory",
 		"factory_lat":    41.311,
 		"factory_lng":    69.241,
-	})
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), driverID, map[string]interface{}{
+		"role":           string(auth.RoleDriver),
+		"driver_id":      driverID,
+		"supplier_id":    s.supplierID,
+		"home_node_type": homeNodeType,
+		"home_node_id":   homeNodeID,
+	}); err == nil && fbToken != "" {
+		resp["firebase_token"] = fbToken
+		resp["firebaseToken"] = fbToken
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }

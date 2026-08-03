@@ -4,11 +4,13 @@ struct ReturnsView: View {
     private enum Tab: String, CaseIterable {
         case queue = "Gate queue"
         case history = "History"
+        case reverse = "Credit-note"
     }
 
     @State private var tab: Tab = .queue
     @State private var returns: [InboundReturnRow] = []
     @State private var history: [InboundReturnRow] = []
+    @State private var reverseTasks: [ReverseLogisticsTask] = []
     @State private var loading = true
     @State private var error: String?
     @State private var barcode = ""
@@ -17,6 +19,7 @@ struct ReturnsView: View {
     @State private var selected = Set<String>()
     @State private var statusMessage: String?
     @State private var scannerEnabled = true
+    @State private var receivingTaskId: String?
 
     var body: some View {
         NavigationStack {
@@ -33,6 +36,14 @@ struct ReturnsView: View {
                 .padding(.horizontal, LabTheme.spacingMD)
                 .padding(.vertical, LabTheme.spacingSM)
 
+                if let statusMessage, tab != .queue {
+                    Text(statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, LabTheme.spacingMD)
+                }
+
                 Group {
                     if loading {
                         ProgressView()
@@ -45,10 +56,15 @@ struct ReturnsView: View {
                         } actions: {
                             Button("Retry") { Task { await load() } }
                         }
-                    } else if tab == .queue {
-                        queueList
                     } else {
-                        historyList
+                        switch tab {
+                        case .queue:
+                            queueList
+                        case .history:
+                            historyList
+                        case .reverse:
+                            reverseList
+                        }
                     }
                 }
             }
@@ -101,67 +117,41 @@ struct ReturnsView: View {
     }
 
     private var queueList: some View {
-        Group {
-            if returns.isEmpty {
-                ContentUnavailableView("No inbound returns", systemImage: "arrow.uturn.backward.circle")
-            } else {
-                ResponsiveGridContentWrapper {
-                    Section("Arrived at gate") {
-                        ForEach(returns) { item in
-                            returnRow(item, selectable: true)
-                        }
-                    }
-                }
-            }
-        }
+        ReturnsList(items: returns, isQueueTab: true, selected: $selected)
     }
 
     private var historyList: some View {
+        ReturnsList(items: history, isQueueTab: false, selected: $selected)
+    }
+
+    private var reverseList: some View {
         Group {
-            if history.isEmpty {
-                ContentUnavailableView("No history", systemImage: "clock.arrow.circlepath")
+            if reverseTasks.isEmpty {
+                ContentUnavailableView(
+                    "No open credit-note reverse tasks",
+                    systemImage: "arrow.uturn.backward.circle"
+                )
             } else {
-                ResponsiveGridContentWrapper {
-                    Section("Completed receives") {
-                        ForEach(history) { item in
-                            returnRow(item, selectable: false)
+                List {
+                    ForEach(reverseTasks) { task in
+                        HStack {
+                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                Text(task.taskId)
+                                    .font(.headline.monospaced())
+                                Text("Order \(task.orderId) · \(task.status)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(receivingTaskId == task.taskId ? "…" : "Receive") {
+                                Task { await receive(task) }
+                            }
+                            .disabled(receivingTaskId != nil)
+                            .buttonStyle(.borderedProminent)
                         }
                     }
                 }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func returnRow(_ item: InboundReturnRow, selectable: Bool) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text(item.productName)
-                    .font(.headline)
-                Text("Qty \(item.receivedQty)/\(item.expectedQty) · \(item.reason)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if !item.driverName.isEmpty {
-                    Text("Driver: \(item.driverName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let code = item.barcode, !code.isEmpty {
-                    Text("EAN \(code)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if selectable {
-                Toggle("", isOn: Binding(
-                    get: { selected.contains(item.returnId) },
-                    set: { on in
-                        if on { selected.insert(item.returnId) }
-                        else { selected.remove(item.returnId) }
-                    }
-                ))
-                .labelsHidden()
+                .listStyle(.plain)
             }
         }
     }
@@ -171,11 +161,14 @@ struct ReturnsView: View {
         error = nil
         defer { loading = false }
         do {
-            async let inbound = WarehouseService.inboundReturns()
+            let wh = TokenStore.shared.warehouseId
+            async let inbound = WarehouseService.inboundReturns(physicalStatus: "OPEN")
             async let hist = WarehouseService.returnsHistory(limit: 50)
-            let (inboundResp, histResp) = try await (inbound, hist)
+            async let reverse = WarehouseService.reverseLogistics(status: "OPEN", warehouseId: wh)
+            let (inboundResp, histResp, reverseResp) = try await (inbound, hist, reverse)
             returns = inboundResp.data
             history = histResp.data
+            reverseTasks = reverseResp.tasks
         } catch {
             self.error = error.localizedDescription
         }
@@ -229,5 +222,38 @@ struct ReturnsView: View {
         } catch {
             statusMessage = error.localizedDescription
         }
+    }
+
+    private func receive(_ task: ReverseLogisticsTask) async {
+        guard !task.taskId.isEmpty else { return }
+        receivingTaskId = task.taskId
+        defer { receivingTaskId = nil }
+        do {
+            let wh = TokenStore.shared.warehouseId?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let warehouseId = (wh?.isEmpty == false ? wh! : nil)
+                ?? (task.warehouseId.isEmpty ? "warehouse" : task.warehouseId)
+            let qty = Self.parseReceivedQty(task.expectedQtyJson)
+            _ = try await WarehouseService.receiveReverseLogistics(
+                taskId: task.taskId,
+                warehouseId: warehouseId,
+                receivedQty: qty
+            )
+            statusMessage = "Received \(task.taskId)"
+            await load()
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private static func parseReceivedQty(_ raw: String?) -> [String: Int] {
+        guard let raw, let data = raw.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [:] }
+        var out: [String: Int] = [:]
+        for (k, v) in obj {
+            if let n = v as? Int { out[k] = n }
+            else if let n = v as? NSNumber { out[k] = n.intValue }
+        }
+        return out
     }
 }

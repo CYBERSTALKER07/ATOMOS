@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -29,13 +30,13 @@ func (s *Service) CreateNotification(ctx context.Context, recipientID, recipient
 // CreateNotificationWithMetadata persists a notification with optional handoff metadata.
 func (s *Service) CreateNotificationWithMetadata(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string, handoff *HandoffCardMetadata) error {
 	n := Notification{
-		NotificationID: uuid.NewString(),
-		RecipientID:    recipientID,
-		RecipientRole:  recipientRole,
-		EventType:      eventType,
-		Title:          title,
-		Body:           body,
-		DeepLink:       deepLink,
+		NotificationID:  uuid.NewString(),
+		RecipientID:     recipientID,
+		RecipientRole:   recipientRole,
+		EventType:       eventType,
+		Title:           title,
+		Body:            body,
+		DeepLink:        deepLink,
 		HandoffMetadata: handoff,
 	}
 	if err := s.repo.Create(ctx, n); err != nil {
@@ -84,4 +85,65 @@ func (s *Service) MarkAllRead(ctx context.Context, recipientID string) error {
 // UnreadCount returns the unread notification count for a recipient.
 func (s *Service) UnreadCount(ctx context.Context, recipientID string) (int64, error) {
 	return s.repo.UnreadCount(ctx, recipientID)
+}
+
+// IsQuietHour checks if the given time falls within the quiet hours [quietFrom, quietTo).
+func IsQuietHour(now time.Time, quietFrom, quietTo string) bool {
+	if quietFrom == "" || quietTo == "" {
+		return false
+	}
+
+	layout := "15:04:05"
+	if len(quietFrom) == 5 {
+		layout = "15:04"
+	}
+
+	from, err := time.Parse(layout, quietFrom)
+	if err != nil {
+		return false
+	}
+
+	layoutTo := "15:04:05"
+	if len(quietTo) == 5 {
+		layoutTo = "15:04"
+	}
+
+	to, err := time.Parse(layoutTo, quietTo)
+	if err != nil {
+		return false
+	}
+
+	nowSecs := now.Hour()*3600 + now.Minute()*60 + now.Second()
+	fromSecs := from.Hour()*3600 + from.Minute()*60 + from.Second()
+	toSecs := to.Hour()*3600 + to.Minute()*60 + to.Second()
+
+	if fromSecs > toSecs {
+		// Crosses midnight
+		return nowSecs >= fromSecs || nowSecs < toSecs
+	}
+	// Same day
+	return nowSecs >= fromSecs && nowSecs < toSecs
+}
+
+// ShouldSendNotification evaluates if a notification should be sent based on preferences and current time.
+func (s *Service) ShouldSendNotification(ctx context.Context, principalID, eventType, channel string, now time.Time) (bool, error) {
+	pref, err := s.repo.GetPreference(ctx, principalID, eventType, channel)
+	if err != nil {
+		return false, fmt.Errorf("get preference: %w", err)
+	}
+
+	// Default to sending if no preference is configured
+	if pref == nil {
+		return true, nil
+	}
+
+	if !pref.Enabled {
+		return false, nil
+	}
+
+	if IsQuietHour(now, pref.QuietFrom, pref.QuietTo) {
+		return false, nil
+	}
+
+	return true, nil
 }

@@ -6,11 +6,14 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // AutoOrderSettings is the retailer auto-order configuration DTO.
 type AutoOrderSettings struct {
 	GlobalEnabled      bool               `json:"global_enabled"`
+	// ExecutionMode: draft (default) | place — place creates real orders when OrderCreator is wired.
+	ExecutionMode      string             `json:"execution_mode,omitempty"`
 	AnalyticsStartDate *string            `json:"analytics_start_date,omitempty"`
 	HasAnyHistory      bool               `json:"has_any_history"`
 	SupplierOverrides  []SupplierOverride `json:"supplier_overrides"`
@@ -89,7 +92,7 @@ func (s *Service) HandleAutoOrderSettings(w http.ResponseWriter, r *http.Request
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, s.getAutoOrderSettings(retailerID))
+	writeJSON(w, http.StatusOK, s.loadAutoOrderDurable(r.Context(), retailerID))
 }
 
 // HandleAutoOrderPatch serves PATCH auto-order settings endpoints.
@@ -104,20 +107,48 @@ func (s *Service) HandleAutoOrderPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings := s.getAutoOrderSettings(retailerID)
+	settings := s.loadAutoOrderDurable(r.Context(), retailerID)
 	path := r.URL.Path
 
 	switch {
 	case strings.HasSuffix(path, "/global"):
 		var req struct {
-			GlobalAutoOrderEnabled bool  `json:"global_auto_order_enabled"`
-			UseHistory             *bool `json:"use_history"`
+			GlobalAutoOrderEnabled *bool   `json:"global_auto_order_enabled"`
+			GlobalEnabled          *bool   `json:"global_enabled"`
+			ExecutionMode          *string `json:"execution_mode"`
+			UseHistory             *bool   `json:"use_history"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		settings.GlobalEnabled = req.GlobalAutoOrderEnabled
+		if req.GlobalAutoOrderEnabled != nil {
+			settings.GlobalEnabled = *req.GlobalAutoOrderEnabled
+		}
+		if req.GlobalEnabled != nil {
+			settings.GlobalEnabled = *req.GlobalEnabled
+		}
+		if req.ExecutionMode != nil {
+			mode := strings.ToLower(strings.TrimSpace(*req.ExecutionMode))
+			if mode != "" && mode != AutoOrderModeDraft && mode != AutoOrderModePlace {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "invalid_execution_mode", "allowed": "draft,place"})
+				return
+			}
+			// Place requires elevated role
+			if mode == AutoOrderModePlace {
+				claims, ok := auth.FromContext(r.Context())
+				if !ok || !auth.HasRetailerPerm(claims, auth.PermOrderPlace) {
+					writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "permission": auth.PermOrderPlace})
+					return
+				}
+				role := auth.EffectiveRetailerRole(claims)
+				if role != "OWNER" && role != "ADMIN" && role != "MANAGER" {
+					writeJSON(w, http.StatusForbidden, map[string]string{"error": "place_requires_manager"})
+					return
+				}
+			}
+			settings.ExecutionMode = mode
+		}
 		if req.UseHistory != nil && *req.UseHistory {
 			settings.HasAnyHistory = true
 		}
@@ -174,7 +205,14 @@ func (s *Service) HandleAutoOrderPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.saveAutoOrderSettings(retailerID, settings)
+	actor := ""
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		actor = auth.ResolveRetailerUserID(claims)
+	}
+	if err := s.saveAutoOrderDurable(r.Context(), retailerID, actor, settings); err != nil {
+		s.log.Warn("auto-order durable save failed", "err", err, "retailer_id", retailerID)
+		// memory already updated inside saveAutoOrderDurable before Spanner write
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

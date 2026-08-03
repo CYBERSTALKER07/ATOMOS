@@ -1,8 +1,6 @@
 package com.pegasusx.supplier.ui.screens.network
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -12,13 +10,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.AddressLocationField
-import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,18 +87,8 @@ fun FactoriesScreen(
                     onAction = { showAdd = true },
                 )
             }
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                items(factories, key = { it.factoryId }) { factory ->
-                    SupplierOpsListCard(
-                        headline = factory.name.ifBlank { factory.factoryId },
-                        supporting = factory.address.ifBlank { "Coordinates on file" },
-                        status = if (factory.isActive) "ACTIVE" else "INACTIVE",
-                    )
-                }
+            else -> Box(modifier = Modifier.padding(padding)) {
+                FactoryList(factories = factories)
             }
         }
     }
@@ -125,41 +109,4 @@ fun FactoriesScreen(
             },
         )
     }
-}
-
-@Composable
-private fun AddFactoryDialog(
-    geocodeApi: GeocodeApi,
-    onDismiss: () -> Unit,
-    onSave: (String, AddressLocationValue) -> Unit,
-) {
-    var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf(AddressLocationValue(lat = 41.3111, lng = 69.2797)) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add factory") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
-                AddressLocationField(
-                    geocodeApi = geocodeApi,
-                    value = location,
-                    onValueChange = { location = it },
-                    label = "Factory address",
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank() && location.address.isNotBlank() && location.lat != 0.0 && location.lng != 0.0) {
-                        onSave(name, location)
-                    }
-                },
-                enabled = name.isNotBlank() && location.address.isNotBlank(),
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }

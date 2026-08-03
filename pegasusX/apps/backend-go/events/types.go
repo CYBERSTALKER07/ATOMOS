@@ -296,6 +296,24 @@ type AIRecommendationEvent struct {
 	Note             string `json:"note,omitempty"`
 }
 
+// DemandSignalEvent is the flywheel broadcast from retailer POS sell-through.
+// Suppliers subscribe on TopicDemand (or TopicMain when dual-write is off).
+// Deliberately omits POS session/register/tender internals.
+type DemandSignalEvent struct {
+	BaseEvent
+	RetailerID string `json:"retailer_id"`
+	LocationID string `json:"location_id,omitempty"`
+	SKU        string `json:"sku"`
+	Day        string `json:"day"` // YYYY-MM-DD UTC
+	// QtyDelta is signed: sale +qty, void −qty.
+	QtyDelta int64 `json:"qty_delta"`
+	// NetSold is day cumulative net (sold − voided) after this update.
+	NetSold    int64  `json:"net_sold"`
+	Source     string `json:"source"` // always STORE_POS for this path
+	Kind       string `json:"kind"`   // sale | void
+	SupplierID string `json:"supplier_id,omitempty"`
+}
+
 // PromotionEvent signals supplier promotion create, update, or deactivation.
 type PromotionEvent struct {
 	BaseEvent
@@ -513,6 +531,28 @@ type ConditionEvent struct {
 	Notes         string   `json:"notes,omitempty"`
 }
 
+// @Sync(LogisticsException)
+// LogisticsException is the payload for CLAIM_* / OS&D / reverse-logistics events.
+type LogisticsException struct {
+	BaseEvent
+	ClaimID        string   `json:"claim_id,omitempty"`
+	OrderID        string   `json:"order_id,omitempty"`
+	SupplierID     string   `json:"supplier_id,omitempty"`
+	RetailerID     string   `json:"retailer_id,omitempty"`
+	DriverID       string   `json:"driver_id,omitempty"`
+	WarehouseID    string   `json:"warehouse_id,omitempty"`
+	ClaimType      string   `json:"claim_type,omitempty"`
+	Status         string   `json:"status,omitempty"`
+	Source         string   `json:"source,omitempty"`
+	AmountMinor    int64    `json:"amount_minor,omitempty"`
+	Currency       string   `json:"currency,omitempty"`
+	Note           string   `json:"note,omitempty"`
+	ResolutionNote string   `json:"resolution_note,omitempty"`
+	SettlementMode string   `json:"settlement_mode,omitempty"`
+	ChargebackID   string   `json:"chargeback_id,omitempty"`
+	PhotoURLs      []string `json:"photo_urls,omitempty"`
+}
+
 // @Sync(CreditEvent)
 // CreditProfileEvent handles retailer credit profile changes.
 type CreditProfileEvent struct {
@@ -578,4 +618,20 @@ type OrderForceCompletedEvent struct {
 	ReasonCode string `json:"reason_code"`
 	ActorID    string `json:"actor_id"`
 	TraceID    string `json:"trace_id,omitempty"`
+}
+
+// CashVarianceEvent records cash shortfall or overage at collection (integer Tiyin).
+type CashVarianceEvent struct {
+	BaseEvent
+	OrderID             string `json:"order_id"`
+	SupplierID          string `json:"supplier_id"`
+	RetailerID          string `json:"retailer_id,omitempty"`
+	DriverID            string `json:"driver_id,omitempty"`
+	ExpectedMinor       int64  `json:"expected_minor"`
+	ReceivedMinor       int64  `json:"received_minor"`
+	ShortfallMinor      int64  `json:"shortfall_minor,omitempty"`
+	OverageMinor        int64  `json:"overage_minor,omitempty"`
+	Currency            string `json:"currency"`
+	Note                string `json:"note,omitempty"`
+	TraceID             string `json:"trace_id,omitempty"`
 }

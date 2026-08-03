@@ -10,6 +10,8 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.DepartRequest
+import com.pegasusx.driver.data.model.DriverEarningsResponse
+import com.pegasusx.driver.data.model.DriverHistoryRow
 import com.pegasusx.driver.data.model.EarlyCompletePayload
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderEntity
@@ -28,6 +30,7 @@ import com.pegasusx.driver.data.telemetry.advanceNavigationStepIndex
 import com.pegasusx.driver.data.telemetry.resolveNavigationCue
 import com.pegasusx.driver.data.telemetry.shouldAnnounceManeuverAdvance
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
+import com.pegasusx.driver.data.model.SubmitCashReconciliationRequest
 import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.data.remote.DriverApi
@@ -72,11 +75,18 @@ data class ManifestUiState(
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
     val pendingCollections: List<PendingCollection> = emptyList(),
+    /** Phase 6: open fiscal soft-freezes cash bag / return-complete. */
+    val openFiscalCount: Long = 0,
+    val cashBagFrozen: Boolean = false,
+    val showCashRecon: Boolean = false,
+    val declaredCashMinor: String = "",
     val routeGeometry: List<RouteCoordinate> = emptyList(),
     val routeSteps: List<RouteStep> = emptyList(),
     val navigationCue: NavigationCue? = null,
     val deliveryEdgeMessage: String? = null,
     val isRequestingEarlyComplete: Boolean = false,
+    val historyRows: List<DriverHistoryRow> = emptyList(),
+    val earnings: DriverEarningsResponse? = null,
 )
 
 @HiltViewModel
@@ -102,6 +112,20 @@ class ManifestViewModel @Inject constructor(
         loadManifest()
         startProfilePolling()
         observeRealtime()
+        loadEarningsAndHistory()
+    }
+
+    fun loadEarningsAndHistory() {
+        viewModelScope.launch {
+            try {
+                val earnings = api.getEarnings()
+                _state.update { it.copy(earnings = earnings) }
+            } catch (_: Exception) { }
+            try {
+                val history = api.getHistory()
+                _state.update { it.copy(historyRows = history.rows) }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun observeRealtime() {
@@ -360,20 +384,91 @@ class ManifestViewModel @Inject constructor(
         }
     }
 
+    fun refreshOpenFiscal() {
+        viewModelScope.launch {
+            try {
+                val snap = api.getOpenFiscal()
+                _state.update {
+                    it.copy(
+                        openFiscalCount = snap.openFiscalCount,
+                        cashBagFrozen = snap.cashBagFrozen || snap.openFiscalCount > 0,
+                    )
+                }
+            } catch (_: Exception) {
+                // non-fatal — return-complete still enforces server-side
+            }
+        }
+    }
+
     fun returnComplete() {
         val truckId = TokenHolder.vehicleId ?: return
         viewModelScope.launch {
             try {
+                // Soft-freeze: surface open fiscal before hitting the server.
+                try {
+                    val snap = api.getOpenFiscal()
+                    if (snap.cashBagFrozen || snap.openFiscalCount > 0) {
+                        _state.update {
+                            it.copy(
+                                openFiscalCount = snap.openFiscalCount,
+                                cashBagFrozen = true,
+                                error = "Cash bag frozen: ${snap.openFiscalCount} order(s) still fiscalizing. Retry fiscal or call supervisor.",
+                            )
+                        }
+                        return@launch
+                    }
+                } catch (_: Exception) { /* proceed; server is source of truth */ }
+
                 api.returnComplete(
                     ReturnCompleteRequest(truckId = truckId),
                     DriverIdempotencyKeys.returnComplete(truckId),
                 )
-                _state.value = _state.value.copy(truckStatus = "AVAILABLE", isReturning = false)
+                _state.value = _state.value.copy(
+                    truckStatus = "AVAILABLE",
+                    isReturning = false,
+                    cashBagFrozen = false,
+                    openFiscalCount = 0,
+                )
                 loadManifest(silent = true)
+            } catch (e: Exception) {
+                val msg = e.message.orEmpty()
+                val frozen = msg.contains("open_fiscal_block", ignoreCase = true)
+                val cashRecon = msg.contains("cash_reconciliation_required", ignoreCase = true)
+                _state.value = _state.value.copy(
+                    error = when {
+                        frozen -> "Cash bag frozen: clear fiscalizing orders before ending shift."
+                        cashRecon -> "Submit cash reconciliation before ending shift."
+                        else -> e.message
+                    },
+                    cashBagFrozen = frozen || _state.value.cashBagFrozen,
+                    showCashRecon = cashRecon || _state.value.showCashRecon,
+                )
+            }
+        }
+    }
+
+    fun submitCashReconciliation() {
+        viewModelScope.launch {
+            val minor = _state.value.declaredCashMinor.filter { it.isDigit() }.toLongOrNull() ?: 0L
+            try {
+                api.submitCashReconciliation(
+                    SubmitCashReconciliationRequest(declaredCashMinor = minor),
+                    DriverIdempotencyKeys.cashReconciliation(minor),
+                )
+                _state.value = _state.value.copy(
+                    showCashRecon = false,
+                    declaredCashMinor = "",
+                    deliveryEdgeMessage = "Cash reconciliation submitted",
+                    error = null,
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
         }
+    }
+
+    fun updateDeclaredCash(value: String) {
+        _state.value = _state.value.copy(declaredCashMinor = value)
     }
 
     fun moveOrder(fromIndex: Int, toIndex: Int) {

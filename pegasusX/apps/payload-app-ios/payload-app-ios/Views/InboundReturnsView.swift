@@ -126,14 +126,7 @@ struct InboundReturnsView: View {
             if rows.isEmpty {
                 ContentUnavailableView("No trucks at gate", systemImage: "arrow.uturn.backward.circle")
             } else {
-                ScrollView {
-                    LazyVStack(spacing: TermTheme.s12) {
-                        ForEach(rows) { row in
-                            inboundCard(row)
-                        }
-                    }
-                    .padding(TermTheme.s16)
-                }
+                InboundReturnsList(rows: rows, selectable: true, selected: $selected)
             }
         }
     }
@@ -143,52 +136,12 @@ struct InboundReturnsView: View {
             if history.isEmpty {
                 ContentUnavailableView("No history", systemImage: "clock.arrow.circlepath")
             } else {
-                ScrollView {
-                    LazyVStack(spacing: TermTheme.s12) {
-                        ForEach(history) { row in
-                            inboundCard(row, selectable: false)
-                        }
-                    }
-                    .padding(TermTheme.s16)
-                }
+                InboundReturnsList(rows: history, selectable: false, selected: $selected)
             }
         }
     }
 
-    private func inboundCard(_ row: InboundReturnRow, selectable: Bool = true) -> some View {
-        let isSelected = selected.contains(row.returnId)
-        return Button {
-            guard selectable else { return }
-            if isSelected { selected.remove(row.returnId) }
-            else { selected.insert(row.returnId) }
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(row.productName)
-                    .font(.headline)
-                    .foregroundStyle(TermTheme.accent)
-                Text("\(row.driverName.isEmpty ? "Driver" : row.driverName) · \(row.reason) · \(row.receivedQty)/\(row.expectedQty)")
-                    .font(.subheadline)
-                    .foregroundStyle(TermTheme.secondary)
-                Text("\(row.returnId.prefix(8)) · suggest \(row.suggestedDisposition)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(TermTheme.tertiary)
-                if let barcode = row.barcode, !barcode.isEmpty {
-                    Text("EAN \(barcode)")
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(TermTheme.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(TermTheme.s16)
-            .background(isSelected ? TermTheme.accent.opacity(0.12) : TermTheme.card)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? TermTheme.accent : TermTheme.separator, lineWidth: 1)
-            )
-            .clipShape(.rect(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-    }
+
 
     private func load() async {
         loading = true

@@ -105,6 +105,12 @@ struct AutoOrderView: View {
     @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @State private var pendingTarget: EnableTarget?
     @State private var localToggleStates: [String: Bool] = [:]
+    @State private var runs: [AutoOrderRun] = []
+    @State private var lastRun: AutoOrderRun?
+    @State private var running = false
+    @State private var runningMode: String?
+    @State private var placeConfirmOpen = false
+    @State private var reorderSuggestions: [RetailerReorderSuggestion] = []
 
     private enum EnableTarget {
         case global
@@ -139,52 +145,84 @@ struct AutoOrderView: View {
                                 .slideIn(delay: 0)
                         }
 
-                        headerCard.slideIn(delay: 0)
-                        globalToggleCard.slideIn(delay: 0.05)
+                        AutoOrderHeaderCard(
+                            supplierCount: settings?.supplierOverrides.count ?? 0,
+                            categoryCount: settings?.categoryOverrides.count ?? 0,
+                            productCount: settings?.productOverrides.count ?? 0,
+                            predictionCount: forecasts.count
+                        ).slideIn(delay: 0)
+
+                        autoOrderWorkerCard.slideIn(delay: 0.02)
+
+                        reorderSuggestionsCard.slideIn(delay: 0.03)
+                        
+                        AutoOrderGlobalToggleCard(
+                            globalAutoOrder: $globalAutoOrder,
+                            analyticsStartDate: settings?.analyticsStartDate,
+                            onToggle: { newVal in
+                                if newVal {
+                                    if settings?.hasAnyHistory == true {
+                                        pendingTarget = .global
+                                    } else {
+                                        Task { await enableGlobal(useHistory: false) }
+                                    }
+                                } else {
+                                    Task { await disableGlobal() }
+                                }
+                            }
+                        ).slideIn(delay: 0.05)
 
                         if let s = settings {
                             if !s.supplierOverrides.isEmpty {
-                                overridesSection(
+                                AutoOrderOverridesSection(
                                     title: "Supplier Overrides",
                                     icon: "building.2",
-                                    items: s.supplierOverrides.map { OverrideItem(id: $0.supplierID, label: $0.supplierName ?? $0.supplierID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .supplier) }
+                                    items: s.supplierOverrides.map { OverrideItem(id: $0.supplierID, label: $0.supplierName ?? $0.supplierID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .supplier) },
+                                    localToggleStates: $localToggleStates,
+                                    onToggle: handleOverrideToggle
                                 )
                                 .slideIn(delay: 0.1)
                             }
 
                             if !s.categoryOverrides.isEmpty {
-                                overridesSection(
+                                AutoOrderOverridesSection(
                                     title: "Category Overrides",
                                     icon: "square.grid.2x2",
-                                    items: s.categoryOverrides.map { OverrideItem(id: $0.categoryID, label: $0.categoryID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .category) }
+                                    items: s.categoryOverrides.map { OverrideItem(id: $0.categoryID, label: $0.categoryID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .category) },
+                                    localToggleStates: $localToggleStates,
+                                    onToggle: handleOverrideToggle
                                 )
                                 .slideIn(delay: 0.125)
                             }
 
                             if !s.productOverrides.isEmpty {
-                                overridesSection(
+                                AutoOrderOverridesSection(
                                     title: "Product Overrides",
                                     icon: "leaf",
-                                    items: s.productOverrides.map { OverrideItem(id: $0.productID, label: $0.productName ?? $0.productID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .product) }
+                                    items: s.productOverrides.map { OverrideItem(id: $0.productID, label: $0.productName ?? $0.productID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .product) },
+                                    localToggleStates: $localToggleStates,
+                                    onToggle: handleOverrideToggle
                                 )
                                 .slideIn(delay: 0.15)
                             }
 
                             if !s.variantOverrides.isEmpty {
-                                overridesSection(
+                                AutoOrderOverridesSection(
                                     title: "Variant / SKU Overrides",
                                     icon: "cube",
-                                    items: s.variantOverrides.map { OverrideItem(id: $0.skuID, label: $0.skuLabel ?? $0.skuID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .variant) }
+                                    items: s.variantOverrides.map { OverrideItem(id: $0.skuID, label: $0.skuLabel ?? $0.skuID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .variant) },
+                                    localToggleStates: $localToggleStates,
+                                    onToggle: handleOverrideToggle
                                 )
                                 .slideIn(delay: 0.2)
                             }
                         }
 
                         if !forecasts.isEmpty {
-                            predictionsSection.slideIn(delay: 0.25)
+                            AutoOrderPredictionsSection(forecasts: forecasts).slideIn(delay: 0.25)
                         }
 
-                        engineExplainerCard.slideIn(delay: 0.3)
+                        AutoOrderExplainerCard().slideIn(delay: 0.3)
                     }
                     .padding(AppTheme.spacingLG)
                     .padding(.bottom, AppTheme.spacingXXL)
@@ -264,6 +302,140 @@ struct AutoOrderView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var autoOrderWorkerCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            HStack {
+                Image(systemName: "play.circle.fill")
+                    .foregroundStyle(AppTheme.accent)
+                Text("Auto-order worker")
+                    .font(.system(.headline, design: .rounded))
+                Spacer()
+            }
+            Text("Draft stages cart lines (idempotent per SKU/day). Place creates real supplier orders when the server flag is on.")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: AppTheme.spacingSM) {
+                Button {
+                    Task { await runAutoOrder(mode: "draft") }
+                } label: {
+                    HStack {
+                        if running && runningMode == "draft" {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "play.fill")
+                        }
+                        Text(running && runningMode == "draft" ? "Drafting…" : "Draft now")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(running)
+
+                Button {
+                    placeConfirmOpen = true
+                } label: {
+                    HStack {
+                        if running && runningMode == "place" {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "cart.fill")
+                        }
+                        Text(running && runningMode == "place" ? "Placing…" : "Place now")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(running)
+            }
+            .confirmationDialog(
+                "Create real supplier orders?",
+                isPresented: $placeConfirmOpen,
+                titleVisibility: .visible
+            ) {
+                Button("Confirm place", role: .destructive) {
+                    Task { await runAutoOrder(mode: "place") }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Place mode creates real procurement orders (AUTO_ORDER). Requires primary location geo, place permission, and AUTO_ORDER_PLACE_ENABLED.")
+            }
+
+            if let lastRun {
+                let placed = lastRun.placedLines ?? 0
+                let via = lastRun.candidateSource.map { " · via \($0)" } ?? ""
+                Text("Latest: \(lastRun.mode) · draft \(lastRun.draftLines)\(placed > 0 ? " · placed \(placed)" : "") · \(lastRun.status)\(via)")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                if let message = lastRun.message {
+                    Text(message)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                ForEach(lastRun.placedOrders ?? []) { po in
+                    Text("\(po.orderId)\(po.supplierId.map { " · \($0)" } ?? "") · \(po.lineCount) lines")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            if runs.isEmpty {
+                Text("No runs yet. Enable auto-order and use Draft or Place.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                Text("Last runs")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                ForEach(runs.prefix(8)) { run in
+                    let p = run.placedLines ?? 0
+                    HStack {
+                        Text("\(run.scheduleBucket ?? String(run.startedAt.prefix(10))) · \(run.mode) · d\(run.draftLines)\(p > 0 ? " p\(p)" : "")")
+                            .font(.system(.caption2, design: .rounded))
+                        Spacer()
+                        Text(run.status)
+                            .font(.system(.caption2, design: .rounded, weight: .semibold))
+                            .foregroundStyle((run.status == "OK" || run.status == "PARTIAL") ? AppTheme.accent : AppTheme.warning)
+                    }
+                }
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
+    }
+
+    private var reorderSuggestionsCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            Text("Reorder suggestions")
+                .font(.system(.headline, design: .rounded))
+            Text("Sell-through aware OPEN suggestions (Store POS / Wholesale)")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+            if reorderSuggestions.isEmpty {
+                Text("No OPEN suggestions yet. POS sell-through and demand batch populate this list.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                ForEach(reorderSuggestions.prefix(12)) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(row.sku) · qty \(row.suggestedQty)\(row.currentStock.map { " · stock \($0)" } ?? "")")
+                            .font(.system(.subheadline, design: .rounded))
+                        DemandSourceChips(sources: row.sources)
+                        if let vel = row.sellThroughVelocity, vel > 0 {
+                            Text(String(format: "POS vel %.1f/d", vel))
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(AppTheme.textTertiary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    Divider()
+                }
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
+    }
+
     private func syncStatusBanner(_ message: String) -> some View {
         HStack(spacing: AppTheme.spacingSM) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -286,255 +458,16 @@ struct AutoOrderView: View {
         .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
     }
 
-    // MARK: - Header
-
-    private var headerCard: some View {
-        GradientHeaderCard(title: "Empathy Engine", subtitle: "Auto-order intelligence with 5-level control", icon: "wand.and.stars") {
-            HStack(spacing: AppTheme.spacingXL) {
-                miniStat(value: "\(settings?.supplierOverrides.count ?? 0)", label: "Suppliers")
-                miniStat(value: "\(settings?.categoryOverrides.count ?? 0)", label: "Categories")
-                miniStat(value: "\(settings?.productOverrides.count ?? 0)", label: "Products")
-                miniStat(value: "\(forecasts.count)", label: "Predictions")
+    private func handleOverrideToggle(item: OverrideItem, newVal: Bool) {
+        if newVal && item.hasHistory {
+            switch item.level {
+            case .supplier: pendingTarget = .supplier(item.id)
+            case .category: pendingTarget = .category(item.id)
+            case .product:  pendingTarget = .product(item.id)
+            case .variant:  pendingTarget = .variant(item.id)
             }
-        }
-    }
-
-    private func miniStat(value: String, label: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value)
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
-            Text(label)
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(AppTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Global Toggle
-
-    private var globalToggleCard: some View {
-        LabCard {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: AppTheme.spacingMD) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                            .fill(globalAutoOrder ? AppTheme.accent.opacity(0.15) : AppTheme.surfaceElevated)
-                            .frame(width: 40, height: 40)
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(globalAutoOrder ? AppTheme.accent : AppTheme.textSecondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Global Auto-Order")
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text("Auto-order everything from all suppliers")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: Binding(
-                        get: { globalAutoOrder },
-                        set: { newVal in
-                            globalAutoOrder = newVal
-                            if newVal {
-                                if settings?.hasAnyHistory == true {
-                                    pendingTarget = .global
-                                } else {
-                                    Task { await enableGlobal(useHistory: false) }
-                                }
-                            } else {
-                                Task { await disableGlobal() }
-                            }
-                        }
-                    ))
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                }
-                .padding(AppTheme.spacingLG)
-
-                if globalAutoOrder {
-                    HStack(spacing: AppTheme.spacingSM) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AppTheme.success)
-                        Text("Global auto-order active. Overrides all supplier/product settings.")
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-                    .padding(.horizontal, AppTheme.spacingLG)
-                    .padding(.bottom, AppTheme.spacingMD)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                if let dateStr = settings?.analyticsStartDate {
-                    HStack(spacing: AppTheme.spacingSM) {
-                        Image(systemName: "calendar.badge.clock")
-                            .font(.system(size: 12))
-                            .foregroundStyle(AppTheme.accent)
-                        Text("Analytics since: \(dateStr)")
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-                    .padding(.horizontal, AppTheme.spacingLG)
-                    .padding(.bottom, AppTheme.spacingMD)
-                }
-            }
-        }
-        .animation(AnimationConstants.express, value: globalAutoOrder)
-    }
-
-    // MARK: - Override Section
-
-    private func overridesSection(title: String, icon: String, items: [OverrideItem]) -> some View {
-        LabCardWithHeader(title: title, icon: icon) {
-            VStack(spacing: 0) {
-                ForEach(items) { item in
-                    HStack(spacing: AppTheme.spacingMD) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.label)
-                                .font(.system(.subheadline, design: .rounded, weight: .medium))
-                                .foregroundStyle(AppTheme.textPrimary)
-                                .lineLimit(1)
-                            Text(item.level.subtitle)
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundStyle(AppTheme.textTertiary)
-                        }
-
-                        Spacer()
-
-                        Toggle("", isOn: Binding(
-                            get: { localToggleStates[item.id] ?? item.enabled },
-                            set: { newVal in
-                                localToggleStates[item.id] = newVal
-                                if newVal && item.hasHistory {
-                                    switch item.level {
-                                    case .supplier: pendingTarget = .supplier(item.id)
-                                    case .category: pendingTarget = .category(item.id)
-                                    case .product:  pendingTarget = .product(item.id)
-                                    case .variant:  pendingTarget = .variant(item.id)
-                                    }
-                                } else {
-                                    Task { await toggleOverride(item: item, enabled: newVal, useHistory: false) }
-                                }
-                            }
-                        ))
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                        .scaleEffect(0.85)
-                    }
-                    .padding(.vertical, AppTheme.spacingSM)
-                    .padding(.horizontal, AppTheme.spacingXS)
-
-                    if item.id != items.last?.id {
-                        Rectangle()
-                            .fill(AppTheme.separator.opacity(0.2))
-                            .frame(height: AppTheme.separatorHeight)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Predictions
-
-    private var predictionsSection: some View {
-        LabCardWithHeader(title: "Active Predictions", icon: "sparkles") {
-            VStack(spacing: AppTheme.spacingMD) {
-                ForEach(forecasts) { forecast in
-                    HStack(spacing: AppTheme.spacingMD) {
-                        ZStack {
-                            Circle()
-                                .stroke(AppTheme.separator.opacity(0.3), lineWidth: 2)
-                                .frame(width: 36, height: 36)
-                            Circle()
-                                .trim(from: 0, to: forecast.confidence)
-                                .stroke(confidenceColor(forecast.confidence), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                                .frame(width: 36, height: 36)
-                                .rotationEffect(.degrees(-90))
-                            Text(forecast.confidencePercent)
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundStyle(confidenceColor(forecast.confidence))
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(forecast.productName)
-                                .font(.system(.subheadline, design: .rounded, weight: .medium))
-                                .foregroundStyle(AppTheme.textPrimary)
-                                .lineLimit(1)
-                            Text("Order by \(forecast.suggestedOrderDate)")
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundStyle(AppTheme.textTertiary)
-                        }
-
-                        Spacer()
-
-                        VStack(spacing: 1) {
-                            Text("\(forecast.predictedQuantity)")
-                                .font(.system(.headline, design: .rounded, weight: .bold))
-                                .foregroundStyle(AppTheme.accent)
-                            Text("units")
-                                .font(.system(size: 8, weight: .medium, design: .rounded))
-                                .foregroundStyle(AppTheme.textTertiary)
-                        }
-                    }
-
-                    if forecast.id != forecasts.last?.id {
-                        Rectangle()
-                            .fill(AppTheme.separator.opacity(0.15))
-                            .frame(height: AppTheme.separatorHeight)
-                    }
-                }
-            }
-        }
-    }
-
-    private func confidenceColor(_ confidence: Double) -> Color {
-        if confidence >= 0.8 { return AppTheme.success }
-        if confidence >= 0.6 { return AppTheme.warning }
-        return AppTheme.destructive
-    }
-
-    // MARK: - Engine Explainer
-
-    private var engineExplainerCard: some View {
-        LabCard {
-            VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-                HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(AppTheme.accent)
-                    Text("How It Works")
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                }
-
-                VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                    explainerRow(num: "1", text: "The AI analyzes your purchase patterns even when auto-order is off")
-                    explainerRow(num: "2", text: "When you enable, choose to use your history or start fresh")
-                    explainerRow(num: "3", text: "Starting fresh requires at least 2 orders per product")
-                    explainerRow(num: "4", text: "Overrides: Variant > Product > Category > Supplier > Global")
-                }
-            }
-            .padding(AppTheme.spacingLG)
-        }
-    }
-
-    private func explainerRow(num: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: AppTheme.spacingSM) {
-            Text(num)
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
-                .background(AppTheme.accent)
-                .clipShape(.circle)
-            Text(text)
-                .font(.system(.caption, design: .rounded))
-                .foregroundStyle(AppTheme.textSecondary)
+        } else {
+            Task { await toggleOverride(item: item, enabled: newVal, useHistory: false) }
         }
     }
 
@@ -544,18 +477,73 @@ struct AutoOrderView: View {
         if settings == nil { isLoading = true }
         async let settingsReq: (AutoOrderSettings?, String?) = loadSettings()
         async let forecastsReq: ([DemandForecast], String?) = loadForecasts()
-        
+        async let runsReq: [AutoOrderRun] = loadRuns()
+        async let suggestionsReq: [RetailerReorderSuggestion] = loadSuggestions()
+
         let (fetchedSettings, settingsSyncMessage) = await settingsReq
         let (fetchedForecasts, forecastSyncMessage) = await forecastsReq
-        
+        let fetchedRuns = await runsReq
+        let fetchedSuggestions = await suggestionsReq
+
         withAnimation(AnimationConstants.fluid) {
             settings = fetchedSettings
             forecasts = fetchedForecasts
+            runs = fetchedRuns
+            reorderSuggestions = fetchedSuggestions
             globalAutoOrder = fetchedSettings?.globalEnabled ?? false
             localToggleStates.removeAll()
             syncMessage = settingsSyncMessage ?? forecastSyncMessage
             isLoading = false
         }
+    }
+
+    private func loadRuns() async -> [AutoOrderRun] {
+        do {
+            return try await api.getAutoOrderRuns().items
+        } catch {
+            return runs
+        }
+    }
+
+    private func loadSuggestions() async -> [RetailerReorderSuggestion] {
+        do {
+            return try await api.getReorderSuggestions().items
+        } catch {
+            return reorderSuggestions
+        }
+    }
+
+    private func runAutoOrder(mode: String) async {
+        running = true
+        runningMode = mode
+        do {
+            let run = try await api.runAutoOrder(mode: mode)
+            lastRun = run
+            let placed = run.placedLines ?? 0
+            if mode == "place" {
+                if placed > 0 {
+                    let orders = run.placedOrders?.count ?? 0
+                    syncMessage = "Place run: \(placed) line(s) in \(orders) order(s)" + (run.message.map { " — \($0)" } ?? "")
+                } else {
+                    syncMessage = "Place run \(run.status)\(run.message.map { ": \($0)" } ?? "")"
+                }
+            } else if run.status == "OK" || run.status == "PARTIAL" {
+                syncMessage = "Draft run complete: \(run.draftLines) line(s)" + (run.message.map { " — \($0)" } ?? "")
+            } else {
+                syncMessage = "Run \(run.status)\(run.message.map { ": \($0)" } ?? "")"
+            }
+            runs = await loadRuns()
+            reorderSuggestions = await loadSuggestions()
+        } catch {
+            syncMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Auto-order requires order.place (and manager role for place).",
+                offline: "Offline mode active. Reconnect and retry auto-order run.",
+                fallback: "Auto-order run failed. Check geo, flag, and permissions.",
+            )
+        }
+        running = false
+        runningMode = nil
     }
 
     private func loadSettings() async -> (AutoOrderSettings?, String?) {
@@ -673,28 +661,6 @@ struct AutoOrderView: View {
     }
 }
 
-// MARK: - Override Item Model
-
-private struct OverrideItem: Identifiable {
-    let id: String
-    let label: String
-    let enabled: Bool
-    let hasHistory: Bool
-    let level: OverrideLevel
-}
-
-private enum OverrideLevel {
-    case supplier, category, product, variant
-
-    var subtitle: String {
-        switch self {
-        case .supplier: "Supplier-level override"
-        case .category: "Category-level override"
-        case .product: "Product-level override"
-        case .variant: "Variant / SKU override"
-        }
-    }
-}
 
 // MARK: - AnyCodable Helper
 

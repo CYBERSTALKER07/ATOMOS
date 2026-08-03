@@ -4,16 +4,12 @@ import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory, SupplierTopologyUpdateRequest, SupplierTopologyWarehouse } from "@pegasusx/types";
-import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { type LocationValue } from "@/components/LocationPicker";
 import { PageChrome } from "@/components/PageChrome";
+import { FactoryForm } from "./components/FactoryForm";
+import { FactoryList } from "./components/FactoryList";
 
 const api = createSupplierApi();
-
-const DEFAULT_LOCATION: LocationValue = {
-  address: "",
-  lat: "41.3111",
-  lng: "69.2797",
-};
 
 export default function FactoriesPage() {
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
@@ -23,9 +19,6 @@ export default function FactoriesPage() {
   useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
 
   const load = () => {
     setLoading(true);
@@ -42,66 +35,50 @@ export default function FactoriesPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [refreshTick]);
 
-  const addFactory = async () => {
-    const trimmed = name.trim();
-    const latValue = Number.parseFloat(location.lat);
-    const lngValue = Number.parseFloat(location.lng);
-    if (!trimmed || !location.address.trim() || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
-      setError("Name and address are required.");
-      return;
-    }
+  const addFactory = async (name: string, location: LocationValue) => {
     if (warehouses.length === 0) {
-      setError("Add at least one warehouse before creating factories.");
-      return;
+      throw new Error("Add at least one warehouse before creating factories.");
     }
-    setSaving(true);
-    setError(null);
-    try {
-      const body: SupplierTopologyUpdateRequest = {
-        warehouses: warehouses.map((w) => ({
-          warehouse_id: w.warehouse_id,
-          name: w.name,
-          address: w.address,
-          place_id: w.place_id,
-          lat: w.lat,
-          lng: w.lng,
-          coverage_radius_km: w.coverage_radius_km,
-          is_active: w.is_active,
-          is_on_shift: w.is_on_shift,
-          transfer_mode: w.transfer_mode,
+    
+    const body: SupplierTopologyUpdateRequest = {
+      warehouses: warehouses.map((w) => ({
+        warehouse_id: w.warehouse_id,
+        name: w.name,
+        address: w.address,
+        place_id: w.place_id,
+        lat: w.lat,
+        lng: w.lng,
+        coverage_radius_km: w.coverage_radius_km,
+        is_active: w.is_active,
+        is_on_shift: w.is_on_shift,
+        transfer_mode: w.transfer_mode,
+      })),
+      factories: [
+        ...factories.map((f) => ({
+          factory_id: f.factory_id,
+          name: f.name,
+          address: f.address,
+          place_id: f.place_id,
+          lat: f.lat,
+          lng: f.lng,
+          is_active: f.is_active,
         })),
-        factories: [
-          ...factories.map((f) => ({
-            factory_id: f.factory_id,
-            name: f.name,
-            address: f.address,
-            place_id: f.place_id,
-            lat: f.lat,
-            lng: f.lng,
-            is_active: f.is_active,
-          })),
-          {
-            name: trimmed,
-            address: location.address.trim(),
-            place_id: location.place_id,
-            lat: latValue,
-            lng: lngValue,
-            is_active: true,
-          },
-        ],
-      };
-      await api.updateSupplierTopology(body);
-      setShowForm(false);
-      setName("");
-      setLocation(DEFAULT_LOCATION);
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "save_factory_failed");
-    } finally {
-      setSaving(false);
-    }
+        {
+          name,
+          address: location.address.trim(),
+          place_id: location.place_id,
+          lat: Number.parseFloat(location.lat),
+          lng: Number.parseFloat(location.lng),
+          is_active: true,
+        },
+      ],
+    };
+    
+    await api.updateSupplierTopology(body);
+    setShowForm(false);
+    load();
   };
 
   return (
@@ -119,43 +96,18 @@ export default function FactoriesPage() {
         </button>
       }
     >
-      {showForm ? (
-        <div className="md-card p-6 space-y-4 mb-6">
-          <h2 className="md-typescale-title-medium">Add factory</h2>
-          <label className="block space-y-1">
-            <span className="md-typescale-label-medium">Name</span>
-            <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Main factory" />
-          </label>
-          <LocationPicker value={location} onChange={setLocation} label="Factory address" />
-          <div className="flex gap-2">
-            <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void addFactory()}>
-              {saving ? "Saving…" : "Save factory"}
-            </button>
-            <button type="button" className="md-btn md-btn-text px-4 py-2" onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {showForm && (
+        <FactoryForm
+          onSave={addFactory}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
 
-      {factories.length === 0 && !showForm ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <p className="md-typescale-body-medium text-[var(--color-md-outline)]">Add your first factory to link production to warehouses.</p>
-          <button type="button" className="md-btn md-btn-filled px-6 py-3" onClick={() => setShowForm(true)}>
-            Add first factory
-          </button>
-        </div>
-      ) : (
-        <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
-          {factories.map((f) => (
-            <li key={f.factory_id || f.name} className="p-4 md-typescale-body-medium">
-              <div className="font-medium">{f.name}</div>
-              <div className="text-[var(--color-md-outline)] text-sm mt-1">
-                {(f.address || "Coordinates on file").toString()} · {f.is_active ? "Active" : "Inactive"}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {!showForm && (
+        <FactoryList 
+          factories={factories} 
+          onAddFirst={() => setShowForm(true)} 
+        />
       )}
     </PageChrome>
   );

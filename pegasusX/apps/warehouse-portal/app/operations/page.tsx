@@ -8,10 +8,10 @@ import {
 } from '@pegasusx/api-client';
 import type { BroadcastTemplate, RetailerOverridePreview } from '@pegasusx/types';
 import { PageChrome } from '@/components/PageChrome';
-import { PageSection } from '@/components/PageSection';
-import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId, warehouseScopeQuery } from '@/lib/warehouse-scope';
+import { OperationsBroadcastForm } from '@/components/operations/OperationsBroadcastForm';
+import { OperationsPricingPreview } from '@/components/operations/OperationsPricingPreview';
 
 const broadcastRoles = ['DRIVER', 'RETAILER', 'ALL'] as const;
 
@@ -179,111 +179,38 @@ export default function WarehouseOperationsPage() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
 
-      <PageSection title="Broadcast templates" description="Built-in depot starters plus your saved custom messages.">
-        {loading ? (
-          <p className="text-sm text-muted">Loading templates…</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {templates.map((template) => (
-              <div key={template.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="rounded-full border px-3 py-1 text-sm hover:bg-surface-elevated"
-                  onClick={() => onSelectTemplate(template)}
-                >
-                  {template.title}
-                  {template.source === 'custom' ? ' · saved' : ''}
-                </button>
-                {template.source === 'custom' ? (
-                  <button
-                    type="button"
-                    className="text-xs text-red-600"
-                    onClick={() => void onDeleteTemplate(template)}
-                    aria-label={`Delete ${template.title}`}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </PageSection>
+      <OperationsBroadcastForm
+        templates={templates}
+        loading={loading}
+        title={title}
+        setTitle={setTitle}
+        body={body}
+        setBody={setBody}
+        broadcastRole={broadcastRole}
+        setBroadcastRole={setBroadcastRole}
+        templateDate={templateDate}
+        setTemplateDate={setTemplateDate}
+        customReason={customReason}
+        setCustomReason={setCustomReason}
+        saveAsTemplate={saveAsTemplate}
+        setSaveAsTemplate={setSaveAsTemplate}
+        broadcasting={broadcasting}
+        savingTemplate={savingTemplate}
+        onSelectTemplate={onSelectTemplate}
+        onDeleteTemplate={onDeleteTemplate}
+        onBroadcast={onBroadcast}
+      />
 
-      <PortalSection title="Send depot broadcast">
-        <div className="grid gap-4 md:grid-cols-2">
-          <PortalField id="templateDate" label="Effective date (optional)">
-            <PortalInput value={templateDate} onChange={(e) => setTemplateDate(e.target.value)} placeholder="2026-07-01" />
-          </PortalField>
-          <PortalField id="customReason" label="Custom reason (optional)">
-            <PortalInput value={customReason} onChange={(e) => setCustomReason(e.target.value)} placeholder="Bay 2 closed" />
-          </PortalField>
-          <PortalField id="broadcastTitle" label="Title">
-            <PortalInput value={title} onChange={(e) => setTitle(e.target.value)} />
-          </PortalField>
-          <PortalField id="broadcastRole" label="Target role">
-            <select
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              value={broadcastRole}
-              onChange={(e) => setBroadcastRole(e.target.value as (typeof broadcastRoles)[number])}
-            >
-              {broadcastRoles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </PortalField>
-        </div>
-        <PortalField id="broadcastBody" label="Message">
-          <textarea
-            id="broadcastBody"
-            className="min-h-[120px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-        </PortalField>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
-          Save as custom template for this depot
-        </label>
-        <button
-          type="button"
-          className="rounded-md bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
-          disabled={broadcasting || savingTemplate}
-          onClick={() => void onBroadcast()}
-        >
-          {broadcasting || savingTemplate ? 'Sending…' : 'Send broadcast'}
-        </button>
-      </PortalSection>
-
-      <PortalSection title="Pricing impact preview (read-only)">
-        <p className="mb-3 text-sm text-muted">
-          Preview how a proposed retailer price would compare to catalog list price for SKUs touching this depot. Does not create overrides.
-        </p>
-        <div className="grid gap-4 md:grid-cols-3">
-          <PortalField id="pricingProductId" label="Product / SKU ID">
-            <PortalInput value={productId} onChange={(e) => setProductId(e.target.value)} />
-          </PortalField>
-          <PortalField id="pricingRetailerId" label="Retailer ID (optional)">
-            <PortalInput value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
-          </PortalField>
-          <PortalField id="pricingProposedPrice" label="Proposed price (minor units)">
-            <PortalInput value={proposedPrice} onChange={(e) => setProposedPrice(e.target.value)} inputMode="numeric" />
-          </PortalField>
-        </div>
-        {previewLoading ? <p className="text-sm text-muted">Loading preview…</p> : null}
-        {preview ? (
-          <div className="mt-3 grid gap-2 rounded-md border p-4 text-sm md:grid-cols-2">
-            <div>Retailers on SKU: {preview.retailers_on_sku_count}</div>
-            <div>Active overrides: {preview.active_override_count}</div>
-            <div>Catalog list price: {preview.catalog_list_price}</div>
-            <div>Margin delta / unit: {preview.margin_delta_per_unit}</div>
-            <div className="md:col-span-2 text-muted">{preview.margin_estimate_label}</div>
-            {preview.read_only ? <div className="md:col-span-2 font-medium">Read-only — contact supplier to apply overrides.</div> : null}
-          </div>
-        ) : null}
-      </PortalSection>
+      <OperationsPricingPreview
+        productId={productId}
+        setProductId={setProductId}
+        retailerId={retailerId}
+        setRetailerId={setRetailerId}
+        proposedPrice={proposedPrice}
+        setProposedPrice={setProposedPrice}
+        previewLoading={previewLoading}
+        preview={preview}
+      />
     </PageChrome>
   );
 }

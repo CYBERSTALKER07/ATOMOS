@@ -39,6 +39,26 @@ func (r *testCreditRepo) GetProfile(_ context.Context, _, _ string) (Profile, bo
 	return r.profile, r.found, nil
 }
 
+func (r *testCreditRepo) ListBySupplier(_ context.Context, supplierID, status string, limit int) ([]Profile, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	if r.profile.SupplierID != "" && r.profile.SupplierID != supplierID {
+		return nil, nil
+	}
+	if status != "" && string(r.profile.Status) != status {
+		return nil, nil
+	}
+	out := []Profile{r.profile}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (r *testCreditRepo) UpsertProfile(_ context.Context, p Profile, emit func(outbox.TxnBuffer) error) error {
 	if r.upsertErr != nil {
 		return r.upsertErr
@@ -71,11 +91,48 @@ func (r *testCreditRepo) AdjustBalance(_ context.Context, _, _ string, deltaMino
 	return nil
 }
 
+func (r *testCreditRepo) GetScoresForRetailers(_ context.Context, _ []string) (map[string]RetailerCreditScore, error) {
+	return map[string]RetailerCreditScore{}, nil
+}
+
 func newTestService(repo Repository) *Service {
 	s := NewService(repo)
 	s.SetNow(func() time.Time { return time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC) })
 	s.SetNewID(func() string { return "test-id" })
 	return s
+}
+
+func TestListSupplierProfiles_SortsCollectionsFirst(t *testing.T) {
+	list := []Profile{
+		{RetailerID: "r-idle", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 0},
+		{RetailerID: "r-bal", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 50_000},
+		{RetailerID: "r-frozen", SupplierID: "s1", Status: StatusFrozen, CurrentBalanceMinor: 10_000},
+		{RetailerID: "r-bl", SupplierID: "s1", Status: StatusBlacklisted, CurrentBalanceMinor: 1},
+	}
+	sortProfilesForCollections(list)
+	if list[0].RetailerID != "r-bl" || list[1].RetailerID != "r-frozen" || list[2].RetailerID != "r-bal" {
+		t.Fatalf("order=%v %v %v %v", list[0].RetailerID, list[1].RetailerID, list[2].RetailerID, list[3].RetailerID)
+	}
+}
+
+func TestListSupplierProfiles_ScopedViaRepo(t *testing.T) {
+	repo := &testCreditRepo{
+		found: true,
+		profile: Profile{
+			RetailerID: "ret-1", SupplierID: "sup-1",
+			CreditLimitMinor: 100_000, CurrentBalanceMinor: 40_000,
+			Status: StatusActive,
+		},
+	}
+	svc := newTestService(repo)
+	list, err := svc.ListSupplierProfiles(context.Background(), "sup-1", "", 50)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list: %v len=%d", err, len(list))
+	}
+	list, err = svc.ListSupplierProfiles(context.Background(), "sup-OTHER", "", 50)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("other supplier: %v len=%d", err, len(list))
+	}
 }
 
 func TestCheckOrder_Allowed(t *testing.T) {

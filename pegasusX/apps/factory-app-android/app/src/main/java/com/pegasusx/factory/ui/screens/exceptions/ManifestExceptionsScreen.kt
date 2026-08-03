@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.pegasusx.factory.ui.screens.exceptions.components.ExceptionsList
 import androidx.compose.ui.text.font.FontFamily
 import com.pegasusx.factory.data.model.ManifestException
 import com.pegasusx.factory.data.remote.FactoryApi
@@ -62,6 +63,7 @@ fun ManifestExceptionsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var escalatedOnly by remember { mutableStateOf(false) }
+    var resolvingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load(silent: Boolean = false) {
@@ -85,6 +87,24 @@ fun ManifestExceptionsScreen(
                 if (!silent) {
                     loading = false
                 }
+            }
+        }
+    }
+
+    fun resolve(exceptionId: String) {
+        resolvingId = exceptionId
+        scope.launch {
+            try {
+                val resp = api.resolveManifestException(exceptionId)
+                if (resp.isSuccessful) {
+                    load(silent = true)
+                } else {
+                    error = "Resolve failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                resolvingId = null
             }
         }
     }
@@ -135,116 +155,16 @@ fun ManifestExceptionsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
-    ) {
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                        FilterChip(
-                            selected = !escalatedOnly,
-                            onClick = { escalatedOnly = false },
-                            label = { Text("All") },
-                        )
-                        FilterChip(
-                            selected = escalatedOnly,
-                            onClick = { escalatedOnly = true },
-                            label = { Text("Escalated only") },
-                        )
-                    }
-                }
-                if (exceptions.isEmpty()) {
-                    item {
-                        PegasusStatePane(
-                            kind = PegasusStateKind.Empty,
-                            headline = if (escalatedOnly) "No escalated exceptions" else "No exceptions",
-                            body = if (escalatedOnly) {
-                                "No transfers have hit the DLQ threshold (3+ overflows)."
-                            } else {
-                                "All manifest loading operations completed without exceptions."
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                } else {
-                    items(exceptions, key = { it.exceptionId }) { exception ->
-                        ExceptionCard(exception = exception)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExceptionCard(exception: ManifestException) {
-    val isDlq = exception.attemptCount >= 3
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isDlq) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            },
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(exception.reason, style = MaterialTheme.typography.titleSmall)
-                if (exception.escalated) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.error,
-                    ) {
-                        Text(
-                            text = "Escalated",
-                            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onError,
-                        )
-                    }
-                }
-            }
-            Text(
-                text = "Transfer ${shortId(exception.transferId)} · Manifest ${shortId(exception.manifestId)}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = FontFamily.Monospace,
-            )
-            Text(
-                text = buildString {
-                    append("Attempts: ${exception.attemptCount}")
-                    if (isDlq) append(" — DLQ")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isDlq) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = formatTimestamp(exception.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            else -> ExceptionsList(
+                exceptions = exceptions,
+                escalatedOnly = escalatedOnly,
+                onEscalatedOnlyChange = { escalatedOnly = it },
+                resolvingId = resolvingId,
+                onResolve = { resolve(it) },
+                modifier = Modifier.padding(innerPadding),
             )
         }
     }
 }
 
-private fun shortId(id: String): String = if (id.length > 12) "${id.take(8)}…" else id
 
-private fun formatTimestamp(raw: String): String {
-    if (raw.isBlank()) return "—"
-    return runCatching {
-        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date.from(java.time.Instant.parse(raw)))
-    }.getOrDefault(raw)
-}

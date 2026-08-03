@@ -3,34 +3,16 @@ package com.pegasusx.supplier.ui.screens.catalog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,11 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import com.pegasus.design.RealtimeRefreshEffect
 import com.pegasus.design.showFullScreenLoading
 import com.pegasus.barcode.EanBarcode
@@ -58,7 +37,6 @@ import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -76,10 +54,12 @@ fun CatalogScreen(
     var products by remember { mutableStateOf(emptyList<CatalogProduct>()) }
     var categories by remember { mutableStateOf(emptyList<CatalogCategory>()) }
     var currency by remember { mutableStateOf("UZS") }
+    
     val draftVU = remember { mutableStateMapOf<String, String>() }
     val draftBarcode = remember { mutableStateMapOf<String, String>() }
     val draftUnitsPerCase = remember { mutableStateMapOf<String, String>() }
     val draftSaleUnit = remember { mutableStateMapOf<String, String>() }
+    
     var savingId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
@@ -95,10 +75,10 @@ fun CatalogScreen(
     var createError by remember { mutableStateOf<String?>(null) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var saleUnitMenuExpanded by remember { mutableStateOf(false) }
+    
     var imageEditTargetId by remember { mutableStateOf<String?>(null) }
     var imageSavingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val fmt = remember { NumberFormat.getIntegerInstance(Locale.US) }
 
     val createImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         createImageUri = uri
@@ -373,272 +353,54 @@ fun CatalogScreen(
                     headline = "No products",
                     body = "Tap + to create a product and set unit volume.",
                 )
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 340.dp),
-                    contentPadding = PaddingValues(PegasusSpacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                ) {
-                    if (error != null) {
-                        item {
-                            Text(
-                                error!!,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(bottom = PegasusSpacing.sm),
-                            )
-                        }
+                else -> CatalogList(
+                    products = products,
+                    draftVU = draftVU,
+                    draftBarcode = draftBarcode,
+                    draftUnitsPerCase = draftUnitsPerCase,
+                    draftSaleUnit = draftSaleUnit,
+                    savingId = savingId,
+                    imageSavingId = imageSavingId,
+                    error = error,
+                    onSaveUnitVolume = ::saveUnitVolume,
+                    onOpenProduct = onOpenProduct,
+                    onChangeImage = { 
+                        imageEditTargetId = it
+                        editImagePicker.launch("image/*") 
                     }
-                    items(products, key = { it.productId }) { product ->
-                        val vuValue = draftVU[product.productId] ?: product.unitVolumeVu.toString()
-                        val barcodeValue = draftBarcode[product.productId]
-                            ?: product.barcode.orEmpty()
-                        val saleUnit = draftSaleUnit[product.productId] ?: product.saleUnit
-                        val unitsPerCaseValue = draftUnitsPerCase[product.productId]
-                            ?: product.unitsPerCase?.toString().orEmpty()
-                        val vuDirty = vuValue != product.unitVolumeVu.toString()
-                        val barcodeDirty = barcodeValue != product.barcode.orEmpty()
-                        val saleUnitDirty = saleUnit != product.saleUnit
-                        val unitsPerCaseDirty = unitsPerCaseValue != product.unitsPerCase?.toString().orEmpty()
-                        val dirty = vuDirty || barcodeDirty || saleUnitDirty || unitsPerCaseDirty
-                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier.padding(PegasusSpacing.lg),
-                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                            ) {
-                                Text(product.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                                TextButton(onClick = { onOpenProduct(product.productId) }) {
-                                    Text("View details")
-                                }
-                                Text(
-                                    "${fmt.format(product.priceMinor)} ${product.currency} · ${product.unit}",
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    "Sale: ${saleUnit.lowercase()}${if (saleUnit == "CASE" && unitsPerCaseValue.isNotBlank()) " ($unitsPerCaseValue/case)" else ""}",
-                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (!product.imageUrl.isNullOrBlank()) {
-                                    Text(
-                                        "Image attached",
-                                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                                    )
-                                }
-                                TextButton(
-                                    onClick = {
-                                        imageEditTargetId = product.productId
-                                        editImagePicker.launch("image/*")
-                                    },
-                                    enabled = imageSavingId != product.productId,
-                                ) {
-                                    Text(
-                                        when {
-                                            imageSavingId == product.productId -> "Uploading…"
-                                            product.imageUrl.isNullOrBlank() -> "Add image"
-                                            else -> "Change image"
-                                        },
-                                    )
-                                }
-                                CatalogBarcodeField(
-                                    value = barcodeValue,
-                                    onValueChange = { draftBarcode[product.productId] = it },
-                                    enabled = savingId != product.productId,
-                                )
-                                var rowSaleUnitExpanded by remember(product.productId) { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = rowSaleUnitExpanded,
-                                    onExpandedChange = { rowSaleUnitExpanded = it },
-                                ) {
-                                    OutlinedTextField(
-                                        value = if (saleUnit == "CASE") "Case" else "Unit",
-                                        onValueChange = {},
-                                        readOnly = true,
-                                        label = { Text("Sale unit") },
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rowSaleUnitExpanded) },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                    )
-                                    ExposedDropdownMenu(
-                                        expanded = rowSaleUnitExpanded,
-                                        onDismissRequest = { rowSaleUnitExpanded = false },
-                                    ) {
-                                        listOf("UNIT" to "Unit", "CASE" to "Case").forEach { (value, label) ->
-                                            DropdownMenuItem(
-                                                text = { Text(label) },
-                                                onClick = {
-                                                    draftSaleUnit[product.productId] = value
-                                                    rowSaleUnitExpanded = false
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                                if (saleUnit == "CASE") {
-                                    OutlinedTextField(
-                                        value = unitsPerCaseValue,
-                                        onValueChange = { draftUnitsPerCase[product.productId] = it },
-                                        label = { Text("Units per case") },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                                ) {
-                                    OutlinedTextField(
-                                        value = vuValue,
-                                        onValueChange = { draftVU[product.productId] = it },
-                                        label = { Text("Unit VU") },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                        singleLine = true,
-                                        modifier = Modifier.widthIn(min = 120.dp, max = 160.dp),
-                                    )
-                                    Button(
-                                        onClick = { saveUnitVolume(product) },
-                                        enabled = dirty && savingId != product.productId,
-                                    ) {
-                                        Text(if (savingId == product.productId) "…" else "Save")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                )
             }
         }
     }
 
     if (showCreate) {
-        AlertDialog(
-            onDismissRequest = { if (!creating) showCreate = false },
-            title = { Text("Add product") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    OutlinedTextField(
-                        value = createName,
-                        onValueChange = { createName = it },
-                        label = { Text("Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    ExposedDropdownMenuBox(
-                        expanded = categoryMenuExpanded,
-                        onExpandedChange = { categoryMenuExpanded = it },
-                    ) {
-                        OutlinedTextField(
-                            value = categories.find { it.categoryId == createCategoryId }?.name ?: "Select category",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Category") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                        )
-                        ExposedDropdownMenu(
-                            expanded = categoryMenuExpanded,
-                            onDismissRequest = { categoryMenuExpanded = false },
-                        ) {
-                            categories.forEach { category ->
-                                DropdownMenuItem(
-                                    text = { Text(category.name) },
-                                    onClick = {
-                                        createCategoryId = category.categoryId
-                                        categoryMenuExpanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    OutlinedTextField(
-                        value = createPrice,
-                        onValueChange = { createPrice = it },
-                        label = { Text("Price ($currency, minor)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = createVu,
-                        onValueChange = { createVu = it },
-                        label = { Text("Unit VU") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    ExposedDropdownMenuBox(
-                        expanded = saleUnitMenuExpanded,
-                        onExpandedChange = { saleUnitMenuExpanded = it },
-                    ) {
-                        OutlinedTextField(
-                            value = if (createSaleUnit == "CASE") "Case" else "Unit",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Sale unit") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = saleUnitMenuExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                        )
-                        ExposedDropdownMenu(
-                            expanded = saleUnitMenuExpanded,
-                            onDismissRequest = { saleUnitMenuExpanded = false },
-                        ) {
-                            listOf("UNIT" to "Unit", "CASE" to "Case").forEach { (value, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        createSaleUnit = value
-                                        saleUnitMenuExpanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    if (createSaleUnit == "CASE") {
-                        OutlinedTextField(
-                            value = createUnitsPerCase,
-                            onValueChange = { createUnitsPerCase = it },
-                            label = { Text("Units per case") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    CatalogBarcodeField(
-                        value = createBarcode,
-                        onValueChange = { createBarcode = it },
-                        enabled = !creating,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                        TextButton(onClick = { createImagePicker.launch("image/*") }) {
-                            Text(if (createImageLabel != null) "Image selected" else "Add image")
-                        }
-                    }
-                    createError?.let {
-                        Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { createProduct() },
-                    enabled = !creating && categories.isNotEmpty(),
-                ) {
-                    Text(if (creating) "Creating…" else "Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreate = false }, enabled = !creating) {
-                    Text("Cancel")
-                }
-            },
+        CreateProductDialog(
+            categories = categories,
+            currency = currency,
+            creating = creating,
+            createName = createName,
+            onNameChange = { createName = it },
+            createPrice = createPrice,
+            onPriceChange = { createPrice = it },
+            createVu = createVu,
+            onVuChange = { createVu = it },
+            createBarcode = createBarcode,
+            onBarcodeChange = { createBarcode = it },
+            createSaleUnit = createSaleUnit,
+            onSaleUnitChange = { createSaleUnit = it },
+            createUnitsPerCase = createUnitsPerCase,
+            onUnitsPerCaseChange = { createUnitsPerCase = it },
+            createCategoryId = createCategoryId,
+            onCategoryIdChange = { createCategoryId = it },
+            createImageLabel = createImageLabel,
+            createImagePicker = createImagePicker,
+            createError = createError,
+            categoryMenuExpanded = categoryMenuExpanded,
+            onCategoryMenuExpandedChange = { categoryMenuExpanded = it },
+            saleUnitMenuExpanded = saleUnitMenuExpanded,
+            onSaleUnitMenuExpandedChange = { saleUnitMenuExpanded = it },
+            onCreateProduct = ::createProduct,
+            onDismiss = { showCreate = false }
         )
     }
 }

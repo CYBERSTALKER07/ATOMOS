@@ -1,0 +1,1973 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # google_artifact_registry_repository.pegasusx[0] will be created
+  + resource "google_artifact_registry_repository" "pegasusx" {
+      + create_time      = (known after apply)
+      + description      = "pegasusX backend-go and ai-worker container images"
+      + effective_labels = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + format           = "DOCKER"
+      + id               = (known after apply)
+      + labels           = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + location         = "asia-south1"
+      + mode             = "STANDARD_REPOSITORY"
+      + name             = (known after apply)
+      + project          = "void-494000"
+      + repository_id    = "pegasusx-staging-images"
+      + terraform_labels = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + update_time      = (known after apply)
+
+      + vulnerability_scanning_config (known after apply)
+    }
+
+  # google_billing_budget.pegasusx_monthly[0] will be created
+  + resource "google_billing_budget" "pegasusx_monthly" {
+      + billing_account = "01444D-F6DDEC-B7DC05"
+      + display_name    = "pegasusX monthly cap (staging)"
+      + id              = (known after apply)
+      + name            = (known after apply)
+
+      + all_updates_rule {
+          + disable_default_iam_recipients   = false
+          + enable_project_level_recipients  = false
+          + monitoring_notification_channels = (known after apply)
+          + schema_version                   = "1.0"
+        }
+
+      + amount {
+          + specified_amount {
+              + currency_code = "USD"
+              + units         = "1500"
+            }
+        }
+
+      + budget_filter {
+          + credit_types           = (known after apply)
+          + credit_types_treatment = "INCLUDE_ALL_CREDITS"
+          + labels                 = (known after apply)
+          + projects               = [
+              + "projects/void-494000",
+            ]
+          + services               = (known after apply)
+          + subaccounts            = (known after apply)
+        }
+
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 0.8
+        }
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 1
+        }
+    }
+
+  # google_compute_network.pegasusx_vpc will be created
+  + resource "google_compute_network" "pegasusx_vpc" {
+      + auto_create_subnetworks                   = true
+      + bgp_always_compare_med                    = (known after apply)
+      + bgp_best_path_selection_mode              = (known after apply)
+      + bgp_inter_region_cost                     = (known after apply)
+      + delete_default_routes_on_create           = false
+      + gateway_ipv4                              = (known after apply)
+      + id                                        = (known after apply)
+      + internal_ipv6_range                       = (known after apply)
+      + mtu                                       = (known after apply)
+      + name                                      = "pegasusx-staging-vpc"
+      + network_firewall_policy_enforcement_order = "AFTER_CLASSIC_FIREWALL"
+      + network_id                                = (known after apply)
+      + numeric_id                                = (known after apply)
+      + project                                   = "void-494000"
+      + routing_mode                              = (known after apply)
+      + self_link                                 = (known after apply)
+    }
+
+  # google_container_cluster.pegasusx[0] will be created
+  + resource "google_container_cluster" "pegasusx" {
+      + cluster_ipv4_cidr                        = (known after apply)
+      + datapath_provider                        = (known after apply)
+      + default_max_pods_per_node                = (known after apply)
+      + deletion_protection                      = true
+      + disable_l4_lb_firewall_reconciliation    = false
+      + effective_labels                         = {
+          + "goog-terraform-provisioned" = "true"
+        }
+      + enable_autopilot                         = true
+      + enable_cilium_clusterwide_network_policy = false
+      + enable_fqdn_network_policy               = false
+      + enable_intranode_visibility              = true
+      + enable_kubernetes_alpha                  = false
+      + enable_l4_ilb_subsetting                 = false
+      + enable_legacy_abac                       = false
+      + enable_multi_networking                  = false
+      + enable_shielded_nodes                    = true
+      + endpoint                                 = (known after apply)
+      + id                                       = (known after apply)
+      + label_fingerprint                        = (known after apply)
+      + location                                 = "asia-south1"
+      + logging_service                          = (known after apply)
+      + master_version                           = (known after apply)
+      + monitoring_service                       = (known after apply)
+      + name                                     = "pegasusx-staging-gke"
+      + network                                  = "pegasusx-staging-vpc"
+      + networking_mode                          = "VPC_NATIVE"
+      + node_locations                           = (known after apply)
+      + node_version                             = (known after apply)
+      + operation                                = (known after apply)
+      + private_ipv6_google_access               = (known after apply)
+      + project                                  = (known after apply)
+      + self_link                                = (known after apply)
+      + services_ipv4_cidr                       = (known after apply)
+      + subnetwork                               = "pegasusx-staging-vpc"
+      + terraform_labels                         = {
+          + "goog-terraform-provisioned" = "true"
+        }
+      + tpu_ipv4_cidr_block                      = (known after apply)
+
+      + addons_config (known after apply)
+
+      + anonymous_authentication_config (known after apply)
+
+      + authenticator_groups_config (known after apply)
+
+      + cluster_autoscaling (known after apply)
+
+      + confidential_nodes (known after apply)
+
+      + control_plane_endpoints_config (known after apply)
+
+      + cost_management_config (known after apply)
+
+      + database_encryption (known after apply)
+
+      + default_snat_status (known after apply)
+
+      + enterprise_config (known after apply)
+
+      + gateway_api_config (known after apply)
+
+      + gke_auto_upgrade_config (known after apply)
+
+      + identity_service_config (known after apply)
+
+      + ip_allocation_policy {
+          + cluster_ipv4_cidr_block       = (known after apply)
+          + cluster_secondary_range_name  = (known after apply)
+          + services_ipv4_cidr_block      = (known after apply)
+          + services_secondary_range_name = (known after apply)
+          + stack_type                    = "IPV4"
+
+          + pod_cidr_overprovision_config (known after apply)
+        }
+
+      + logging_config (known after apply)
+
+      + master_auth (known after apply)
+
+      + master_authorized_networks_config (known after apply)
+
+      + mesh_certificates (known after apply)
+
+      + monitoring_config (known after apply)
+
+      + node_config (known after apply)
+
+      + node_pool (known after apply)
+
+      + node_pool_auto_config (known after apply)
+
+      + node_pool_defaults (known after apply)
+
+      + notification_config (known after apply)
+
+      + pod_autoscaling (known after apply)
+
+      + rbac_binding_config (known after apply)
+
+      + release_channel {
+          + channel = "REGULAR"
+        }
+
+      + security_posture_config (known after apply)
+
+      + service_external_ips_config (known after apply)
+
+      + vertical_pod_autoscaling (known after apply)
+
+      + workload_identity_config {
+          + workload_pool = "void-494000.svc.id.goog"
+        }
+    }
+
+  # google_monitoring_alert_policy.ai_worker_consumer_lag[0] will be created
+  + resource "google_monitoring_alert_policy" "ai_worker_consumer_lag" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — AI Worker Kafka Lag > 10 s"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "ai-worker consumer lag high"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_GT"
+              + duration        = "60s"
+              + filter          = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+              + threshold_value = 10
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MAX"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "ai-worker Kafka lag exceeded 10 seconds. Check broker reachability, commit errors, and Spanner write failures before traffic is allowed to accumulate further."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.ai_worker_down[0] will be created
+  + resource "google_monitoring_alert_policy" "ai_worker_down" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — AI Worker Down"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "ai-worker up metric low"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_LT"
+              + duration        = "300s"
+              + filter          = "metric.type=\"prometheus.googleapis.com/void_ai_worker_up/gauge\" resource.type=\"prometheus_target\""
+              + threshold_value = 0.5
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MEAN"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "ai-worker process health is below 1 for 5 minutes. Check `/healthz`, container restarts, and recent fetch/commit failures."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.ai_worker_not_ready[0] will be created
+  + resource "google_monitoring_alert_policy" "ai_worker_not_ready" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — AI Worker Not Ready"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "ai-worker ready metric low"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_LT"
+              + duration        = "300s"
+              + filter          = "metric.type=\"prometheus.googleapis.com/void_ai_worker_ready/gauge\" resource.type=\"prometheus_target\""
+              + threshold_value = 0.5
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MEAN"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "ai-worker readiness stayed low for 5 minutes. Check rollout state, shutdown drains, and probe reachability."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.backend_5xx_rate[0] will be created
+  + resource "google_monitoring_alert_policy" "backend_5xx_rate" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — Backend 5xx rate > 1%"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "http 5xx fraction high"
+          + name         = (known after apply)
+
+          + condition_monitoring_query_language {
+              + duration = "300s"
+              + query    = <<-EOT
+                    fetch prometheus_target
+                    | metric 'prometheus.googleapis.com/void_http_requests_total/counter'
+                    | filter (metric.status_class = '5xx')
+                    | group_by 5m, [value_requests_total_aggregate: aggregate(value.requests_total)]
+                    | every 5m
+                    | condition val() > 10
+                EOT
+            }
+        }
+
+      + documentation {
+          + content   = "Backend 5xx rate elevated for 5 minutes. Check recent deploy, Spanner health, and Kafka lag. Roll back if SEV1."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.backend_kafka_lag[0] will be created
+  + resource "google_monitoring_alert_policy" "backend_kafka_lag" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — Backend Kafka lag > 30 s"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "backend consumer lag high"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_GT"
+              + duration        = "120s"
+              + filter          = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\""
+              + threshold_value = 30
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MAX"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "Kafka consumer lag exceeded 30 seconds on backend-go worker. Retailers may see stale order status until lag clears."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.optimizer_fallback_rate[0] will be created
+  + resource "google_monitoring_alert_policy" "optimizer_fallback_rate" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — Optimizer fallback_phase1 > 5% (5m)"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "fallback fraction high"
+          + name         = (known after apply)
+
+          + condition_monitoring_query_language {
+              + duration = "300s"
+              + query    = <<-EOT
+                    fetch prometheus_target
+                    | {
+                        metric 'prometheus.googleapis.com/void_optimizer_source_total/counter'
+                        | filter (metric.source = 'fallback_phase1')
+                        | align rate(5m)
+                        | every 5m
+                        | group_by [], [fallback_rate: aggregate(value.counter)]
+                      ;
+                        metric 'prometheus.googleapis.com/void_optimizer_source_total/counter'
+                        | align rate(5m)
+                        | every 5m
+                        | group_by [], [total_rate: aggregate(value.counter)]
+                    }
+                    | join
+                    | value fallback_rate / total_rate
+                    | condition val() > 0.05
+                EOT
+            }
+        }
+
+      + documentation {
+          + content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check optimizer-core health, OPTIMIZER_BASE_URL, and solver timeouts."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.outbox_backlog_high[0] will be created
+  + resource "google_monitoring_alert_policy" "outbox_backlog_high" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — Outbox unpublished > 100"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "outbox relay backlog high"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_GT"
+              + duration        = "300s"
+              + filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_unpublished_count/gauge\" resource.type=\"prometheus_target\""
+              + threshold_value = 100
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MAX"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "Transactional outbox has more than 100 unpublished events for 5 minutes. Check outbox relay, Kafka broker health, and worker pods before cross-role WS fanout stalls."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_alert_policy.spanner_cpu_high[0] will be created
+  + resource "google_monitoring_alert_policy" "spanner_cpu_high" {
+      + combiner              = "OR"
+      + creation_record       = (known after apply)
+      + display_name          = "pegasusX — Spanner CPU > 65%"
+      + enabled               = true
+      + id                    = (known after apply)
+      + name                  = (known after apply)
+      + notification_channels = []
+      + project               = "void-494000"
+
+      + conditions {
+          + display_name = "spanner instance cpu high"
+          + name         = (known after apply)
+
+          + condition_threshold {
+              + comparison      = "COMPARISON_GT"
+              + duration        = "600s"
+              + filter          = "metric.type=\"spanner.googleapis.com/instance/cpu/utilization\" resource.type=\"spanner_instance\""
+              + threshold_value = 0.65
+
+              + aggregations {
+                  + alignment_period   = "60s"
+                  + per_series_aligner = "ALIGN_MEAN"
+                }
+            }
+        }
+
+      + documentation {
+          + content   = "Spanner CPU above 65% for 10 minutes. Review hot queries in docs/SPANNER_HOT_PATH_REVIEW.md and dashboard stale-read usage."
+          + mime_type = "text/markdown"
+        }
+    }
+
+  # google_monitoring_dashboard.ai_worker_launch[0] will be created
+  + resource "google_monitoring_dashboard" "ai_worker_launch" {
+      + dashboard_json = jsonencode(
+            {
+              + displayName  = "pegasusX — AI Worker Launch"
+              + mosaicLayout = {
+                  + columns = 12
+                  + tiles   = [
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + gaugeView       = {
+                                      + lowerBound = 0
+                                      + upperBound = 1
+                                    }
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MEAN"
+                                              + perSeriesAligner   = "ALIGN_MEAN"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_ai_worker_up/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              + title     = "AI Worker Up"
+                            }
+                          + width  = 4
+                          + xPos   = 0
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + gaugeView       = {
+                                      + lowerBound = 0
+                                      + upperBound = 1
+                                    }
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MEAN"
+                                              + perSeriesAligner   = "ALIGN_MEAN"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_ai_worker_ready/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              + title     = "AI Worker Ready"
+                            }
+                          + width  = 4
+                          + xPos   = 4
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MAX"
+                                              + perSeriesAligner   = "ALIGN_MAX"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+                                        }
+                                    }
+                                }
+                              + title     = "AI Worker Kafka Lag"
+                            }
+                          + width  = 4
+                          + xPos   = 8
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + title   = "AI Worker Kafka Lag Trend"
+                              + xyChart = {
+                                  + dataSets = [
+                                      + {
+                                          + plotType        = "LINE"
+                                          + targetAxis      = "Y1"
+                                          + timeSeriesQuery = {
+                                              + timeSeriesFilter = {
+                                                  + aggregation = {
+                                                      + alignmentPeriod  = "60s"
+                                                      + perSeriesAligner = "ALIGN_MAX"
+                                                    }
+                                                  + filter      = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                  + yAxis    = {
+                                      + label = "seconds"
+                                      + scale = "LINEAR"
+                                    }
+                                }
+                            }
+                          + width  = 12
+                          + xPos   = 0
+                          + yPos   = 4
+                        },
+                    ]
+                }
+            }
+        )
+      + id             = (known after apply)
+      + project        = "void-494000"
+    }
+
+  # google_monitoring_dashboard.pilot_launch[0] will be created
+  + resource "google_monitoring_dashboard" "pilot_launch" {
+      + dashboard_json = jsonencode(
+            {
+              + displayName  = "pegasusX — Pilot Launch (P1)"
+              + mosaicLayout = {
+                  + columns = 12
+                  + tiles   = [
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MAX"
+                                              + perSeriesAligner   = "ALIGN_MAX"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              + title     = "Kafka consumer lag (max)"
+                            }
+                          + width  = 4
+                          + xPos   = 0
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_SUM"
+                                              + perSeriesAligner   = "ALIGN_MAX"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_ws_connections/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              + title     = "WS connections (sum)"
+                            }
+                          + width  = 4
+                          + xPos   = 4
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + sparkChartView  = {}
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MEAN"
+                                              + perSeriesAligner   = "ALIGN_MEAN"
+                                            }
+                                          + filter      = "metric.type=\"spanner.googleapis.com/instance/cpu/utilization\" resource.type=\"spanner_instance\""
+                                        }
+                                    }
+                                }
+                              + title     = "Spanner CPU %"
+                            }
+                          + width  = 4
+                          + xPos   = 8
+                          + yPos   = 0
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + title   = "HTTP 5xx (rate)"
+                              + xyChart = {
+                                  + dataSets = [
+                                      + {
+                                          + plotType        = "LINE"
+                                          + timeSeriesQuery = {
+                                              + timeSeriesFilter = {
+                                                  + aggregation = {
+                                                      + alignmentPeriod  = "60s"
+                                                      + perSeriesAligner = "ALIGN_RATE"
+                                                    }
+                                                  + filter      = "metric.type=\"prometheus.googleapis.com/void_http_requests_total/counter\" resource.type=\"prometheus_target\" metric.labels.status_class=\"5xx\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                }
+                            }
+                          + width  = 6
+                          + xPos   = 0
+                          + yPos   = 4
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + title   = "WS connections by hub"
+                              + xyChart = {
+                                  + dataSets = [
+                                      + {
+                                          + plotType        = "LINE"
+                                          + timeSeriesQuery = {
+                                              + timeSeriesFilter = {
+                                                  + aggregation = {
+                                                      + alignmentPeriod  = "60s"
+                                                      + groupByFields    = [
+                                                          + "metric.label.hub",
+                                                        ]
+                                                      + perSeriesAligner = "ALIGN_MAX"
+                                                    }
+                                                  + filter      = "metric.type=\"prometheus.googleapis.com/void_ws_connections/gauge\" resource.type=\"prometheus_target\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                }
+                            }
+                          + width  = 6
+                          + xPos   = 6
+                          + yPos   = 4
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + title   = "Optimizer fallback_phase1 rate"
+                              + xyChart = {
+                                  + dataSets = [
+                                      + {
+                                          + plotType        = "LINE"
+                                          + timeSeriesQuery = {
+                                              + timeSeriesFilter = {
+                                                  + aggregation = {
+                                                      + alignmentPeriod  = "60s"
+                                                      + perSeriesAligner = "ALIGN_RATE"
+                                                    }
+                                                  + filter      = "metric.type=\"prometheus.googleapis.com/void_optimizer_source_total/counter\" resource.type=\"prometheus_target\" metric.labels.source=\"fallback_phase1\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                }
+                            }
+                          + width  = 6
+                          + xPos   = 0
+                          + yPos   = 8
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + title   = "Redis geocode cache hits (rate)"
+                              + xyChart = {
+                                  + dataSets = [
+                                      + {
+                                          + plotType        = "LINE"
+                                          + timeSeriesQuery = {
+                                              + timeSeriesFilter = {
+                                                  + aggregation = {
+                                                      + alignmentPeriod  = "60s"
+                                                      + perSeriesAligner = "ALIGN_RATE"
+                                                    }
+                                                  + filter      = "metric.type=\"prometheus.googleapis.com/void_redis_cache_hit_total/counter\" resource.type=\"prometheus_target\" metric.labels.prefix=\"geo\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                }
+                            }
+                          + width  = 6
+                          + xPos   = 6
+                          + yPos   = 8
+                        },
+                      + {
+                          + height = 4
+                          + widget = {
+                              + scorecard = {
+                                  + timeSeriesQuery = {
+                                      + timeSeriesFilter = {
+                                          + aggregation = {
+                                              + alignmentPeriod    = "60s"
+                                              + crossSeriesReducer = "REDUCE_MAX"
+                                              + perSeriesAligner   = "ALIGN_MAX"
+                                            }
+                                          + filter      = "metric.type=\"prometheus.googleapis.com/void_outbox_unpublished_count/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              + title     = "Outbox unpublished (max)"
+                            }
+                          + width  = 6
+                          + xPos   = 0
+                          + yPos   = 12
+                        },
+                    ]
+                }
+            }
+        )
+      + id             = (known after apply)
+      + project        = "void-494000"
+    }
+
+  # google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"] will be created
+  + resource "google_monitoring_notification_channel" "budget_email" {
+      + display_name        = "pegasusX budget alert (cyberstalkerx7@gmail.com)"
+      + enabled             = true
+      + force_delete        = false
+      + id                  = (known after apply)
+      + labels              = {
+          + "email_address" = "cyberstalkerx7@gmail.com"
+        }
+      + name                = (known after apply)
+      + project             = "void-494000"
+      + type                = "email"
+      + user_labels         = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "purpose"     = "billing-budget"
+          + "tenant"      = "staging"
+        }
+      + verification_status = (known after apply)
+    }
+
+  # google_project_iam_member.backend_redis[0] will be created
+  + resource "google_project_iam_member" "backend_redis" {
+      + etag    = (known after apply)
+      + id      = (known after apply)
+      + member  = "serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com"
+      + project = "void-494000"
+      + role    = "roles/redis.editor"
+    }
+
+  # google_project_iam_member.backend_secrets[0] will be created
+  + resource "google_project_iam_member" "backend_secrets" {
+      + etag    = (known after apply)
+      + id      = (known after apply)
+      + member  = "serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com"
+      + project = "void-494000"
+      + role    = "roles/secretmanager.secretAccessor"
+    }
+
+  # google_project_iam_member.backend_spanner[0] will be created
+  + resource "google_project_iam_member" "backend_spanner" {
+      + etag    = (known after apply)
+      + id      = (known after apply)
+      + member  = "serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com"
+      + project = "void-494000"
+      + role    = "roles/spanner.databaseUser"
+    }
+
+  # google_project_service.gke_apis["artifactregistry.googleapis.com"] will be created
+  + resource "google_project_service" "gke_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "artifactregistry.googleapis.com"
+    }
+
+  # google_project_service.gke_apis["container.googleapis.com"] will be created
+  + resource "google_project_service" "gke_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "container.googleapis.com"
+    }
+
+  # google_project_service.gke_apis["iam.googleapis.com"] will be created
+  + resource "google_project_service" "gke_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "iam.googleapis.com"
+    }
+
+  # google_project_service.required_apis["compute.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "compute.googleapis.com"
+    }
+
+  # google_project_service.required_apis["monitoring.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "monitoring.googleapis.com"
+    }
+
+  # google_project_service.required_apis["redis.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "redis.googleapis.com"
+    }
+
+  # google_project_service.required_apis["secretmanager.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "secretmanager.googleapis.com"
+    }
+
+  # google_project_service.required_apis["spanner.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "spanner.googleapis.com"
+    }
+
+  # google_redis_instance.cache will be created
+  + resource "google_redis_instance" "cache" {
+      + alternative_location_id     = (known after apply)
+      + auth_enabled                = true
+      + auth_string                 = (sensitive value)
+      + authorized_network          = (known after apply)
+      + connect_mode                = "DIRECT_PEERING"
+      + create_time                 = (known after apply)
+      + current_location_id         = (known after apply)
+      + effective_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + effective_reserved_ip_range = (known after apply)
+      + host                        = (known after apply)
+      + id                          = (known after apply)
+      + labels                      = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + location_id                 = (known after apply)
+      + maintenance_schedule        = (known after apply)
+      + maintenance_version         = (known after apply)
+      + memory_size_gb              = 1
+      + name                        = "pegasusx-staging-redis"
+      + nodes                       = (known after apply)
+      + persistence_iam_identity    = (known after apply)
+      + port                        = (known after apply)
+      + project                     = "void-494000"
+      + read_endpoint               = (known after apply)
+      + read_endpoint_port          = (known after apply)
+      + read_replicas_mode          = (known after apply)
+      + redis_configs               = {
+          + "maxmemory-policy"       = "allkeys-lru"
+          + "notify-keyspace-events" = null
+        }
+      + redis_version               = "REDIS_7_0"
+      + region                      = "asia-south1"
+      + replica_count               = (known after apply)
+      + reserved_ip_range           = (known after apply)
+      + secondary_ip_range          = (known after apply)
+      + server_ca_certs             = (known after apply)
+      + terraform_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + tier                        = "STANDARD_HA"
+      + transit_encryption_mode     = "SERVER_AUTHENTICATION"
+
+      + persistence_config (known after apply)
+    }
+
+  # google_secret_manager_secret.adyen_webhook_secret will be created
+  + resource "google_secret_manager_secret" "adyen_webhook_secret" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-adyen-webhook-secret"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.apple_notarize_app_password will be created
+  + resource "google_secret_manager_secret" "apple_notarize_app_password" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-apple-notarize-app-password"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.apple_notarize_apple_id will be created
+  + resource "google_secret_manager_secret" "apple_notarize_apple_id" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-apple-notarize-apple-id"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.apple_notarize_team_id will be created
+  + resource "google_secret_manager_secret" "apple_notarize_team_id" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-apple-notarize-team-id"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.firebase_auth_enabled will be created
+  + resource "google_secret_manager_secret" "firebase_auth_enabled" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-firebase-auth-enabled"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.firebase_project_id will be created
+  + resource "google_secret_manager_secret" "firebase_project_id" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-firebase-project-id"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.global_pay_webhook_secret will be created
+  + resource "google_secret_manager_secret" "global_pay_webhook_secret" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-global-pay-webhook-secret"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.google_maps_api_key will be created
+  + resource "google_secret_manager_secret" "google_maps_api_key" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-google-maps-api-key"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.jwt_secret will be created
+  + resource "google_secret_manager_secret" "jwt_secret" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-jwt-secret"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.kafka_bootstrap_servers will be created
+  + resource "google_secret_manager_secret" "kafka_bootstrap_servers" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-kafka-bootstrap-servers"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.kafka_topic_main will be created
+  + resource "google_secret_manager_secret" "kafka_topic_main" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-kafka-topic-orders"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.kafka_topic_realtime will be created
+  + resource "google_secret_manager_secret" "kafka_topic_realtime" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-kafka-topic-realtime"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.kafka_topic_spatial will be created
+  + resource "google_secret_manager_secret" "kafka_topic_spatial" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-kafka-topic-spatial"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.kafka_topic_webhooks will be created
+  + resource "google_secret_manager_secret" "kafka_topic_webhooks" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-kafka-topic-webhooks"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.stripe_webhook_secret will be created
+  + resource "google_secret_manager_secret" "stripe_webhook_secret" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-stripe-webhook-secret"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.tauri_signing_private_key will be created
+  + resource "google_secret_manager_secret" "tauri_signing_private_key" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-tauri-signing-private-key"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.tauri_updater_pubkey will be created
+  + resource "google_secret_manager_secret" "tauri_updater_pubkey" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-tauri-updater-pubkey"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.windows_codesign_password will be created
+  + resource "google_secret_manager_secret" "windows_codesign_password" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-windows-codesign-password"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret.windows_codesign_pfx will be created
+  + resource "google_secret_manager_secret" "windows_codesign_pfx" {
+      + create_time           = (known after apply)
+      + deletion_protection   = false
+      + effective_annotations = (known after apply)
+      + effective_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + expire_time           = (known after apply)
+      + id                    = (known after apply)
+      + labels                = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                  = (known after apply)
+      + project               = "void-494000"
+      + secret_id             = "pegasusx-staging-windows-codesign-pfx"
+      + terraform_labels      = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+
+      + replication {
+          + auto {
+            }
+        }
+    }
+
+  # google_secret_manager_secret_version.firebase_auth_enabled will be created
+  + resource "google_secret_manager_secret_version" "firebase_auth_enabled" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.firebase_project_id[0] will be created
+  + resource "google_secret_manager_secret_version" "firebase_project_id" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.kafka_bootstrap_servers[0] will be created
+  + resource "google_secret_manager_secret_version" "kafka_bootstrap_servers" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.kafka_topic_main will be created
+  + resource "google_secret_manager_secret_version" "kafka_topic_main" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.kafka_topic_realtime will be created
+  + resource "google_secret_manager_secret_version" "kafka_topic_realtime" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.kafka_topic_spatial will be created
+  + resource "google_secret_manager_secret_version" "kafka_topic_spatial" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_secret_manager_secret_version.kafka_topic_webhooks will be created
+  + resource "google_secret_manager_secret_version" "kafka_topic_webhooks" {
+      + create_time            = (known after apply)
+      + deletion_policy        = "DELETE"
+      + destroy_time           = (known after apply)
+      + enabled                = true
+      + id                     = (known after apply)
+      + is_secret_data_base64  = false
+      + name                   = (known after apply)
+      + secret                 = (known after apply)
+      + secret_data            = (sensitive value)
+      + secret_data_wo         = (write-only attribute)
+      + secret_data_wo_version = 0
+      + version                = (known after apply)
+    }
+
+  # google_service_account.backend_runtime[0] will be created
+  + resource "google_service_account" "backend_runtime" {
+      + account_id   = "staging-backend"
+      + disabled     = false
+      + display_name = "pegasusX backend runtime (staging)"
+      + email        = "staging-backend@void-494000.iam.gserviceaccount.com"
+      + id           = (known after apply)
+      + member       = "serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com"
+      + name         = (known after apply)
+      + project      = "void-494000"
+      + unique_id    = (known after apply)
+    }
+
+  # google_service_account_iam_member.backend_wi[0] will be created
+  + resource "google_service_account_iam_member" "backend_wi" {
+      + etag               = (known after apply)
+      + id                 = (known after apply)
+      + member             = "serviceAccount:void-494000.svc.id.goog[pegasusx/backend-go]"
+      + role               = "roles/iam.workloadIdentityUser"
+      + service_account_id = (known after apply)
+    }
+
+  # google_spanner_database.main will be created
+  + resource "google_spanner_database" "main" {
+      + database_dialect         = (known after apply)
+      + deletion_protection      = true
+      + enable_drop_protection   = false
+      + id                       = (known after apply)
+      + instance                 = "pegasusx-staging-spanner"
+      + name                     = "pegasusx-staging-db"
+      + project                  = "void-494000"
+      + state                    = (known after apply)
+      + version_retention_period = (known after apply)
+    }
+
+  # google_spanner_instance.ledger will be created
+  + resource "google_spanner_instance" "ledger" {
+      + config                       = "regional-asia-south1"
+      + default_backup_schedule_type = (known after apply)
+      + display_name                 = "pegasusx-staging ledger"
+      + edition                      = (known after apply)
+      + effective_labels             = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + force_destroy                = false
+      + id                           = (known after apply)
+      + instance_type                = (known after apply)
+      + labels                       = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                         = "pegasusx-staging-spanner"
+      + num_nodes                    = (known after apply)
+      + processing_units             = 100
+      + project                      = "void-494000"
+      + state                        = (known after apply)
+      + terraform_labels             = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+    }
+
+  # google_storage_bucket.app_updates will be created
+  + resource "google_storage_bucket" "app_updates" {
+      + effective_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + force_destroy               = false
+      + id                          = (known after apply)
+      + labels                      = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + location                    = "ASIA-SOUTH1"
+      + name                        = "pegasusx-staging-app-updates"
+      + project                     = (known after apply)
+      + project_number              = (known after apply)
+      + public_access_prevention    = (known after apply)
+      + rpo                         = (known after apply)
+      + self_link                   = (known after apply)
+      + storage_class               = "STANDARD"
+      + terraform_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + time_created                = (known after apply)
+      + uniform_bucket_level_access = true
+      + updated                     = (known after apply)
+      + url                         = (known after apply)
+
+      + cors {
+          + max_age_seconds = 3600
+          + method          = [
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+            ]
+          + origin          = [
+              + "*",
+            ]
+          + response_header = [
+              + "*",
+            ]
+        }
+
+      + soft_delete_policy (known after apply)
+
+      + versioning (known after apply)
+
+      + website (known after apply)
+    }
+
+  # google_storage_bucket_iam_member.public_updates will be created
+  + resource "google_storage_bucket_iam_member" "public_updates" {
+      + bucket = "pegasusx-staging-app-updates"
+      + etag   = (known after apply)
+      + id     = (known after apply)
+      + member = "allUsers"
+      + role   = "roles/storage.objectViewer"
+    }
+
+Plan: 59 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + app_updates_bucket_name             = "pegasusx-staging-app-updates"
+  ~ artifact_registry_url               = "asia-south1-docker.pkg.dev/your-gcp-project-id/pegasusx-staging-images" -> "asia-south1-docker.pkg.dev/void-494000/pegasusx-staging-images"
+  ~ backend_runtime_service_account     = "staging-backend@your-gcp-project-id.iam.gserviceaccount.com" -> "staging-backend@void-494000.iam.gserviceaccount.com"
+  ~ project_id                          = "your-gcp-project-id" -> "void-494000"
+  + redis_host                          = (sensitive value)
+  + redis_port                          = (known after apply)
+  ~ spanner_database_uri                = "projects/your-gcp-project-id/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db" -> "projects/void-494000/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db"
+  + tauri_signing_private_key_secret_id = "pegasusx-staging-tauri-signing-private-key"
+  + tauri_updater_pubkey_secret_id      = "pegasusx-staging-tauri-updater-pubkey"
+  + windows_codesign_password_secret_id = "pegasusx-staging-windows-codesign-password"
+  + windows_codesign_pfx_secret_id      = "pegasusx-staging-windows-codesign-pfx"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+/Users/shakhzod/Desktop/V.O.I.D/pegasusX/artifacts/terraform-d2-plan-2026-07-20.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/artifacts/terraform-d2-plan-2026-07-20.tfplan"

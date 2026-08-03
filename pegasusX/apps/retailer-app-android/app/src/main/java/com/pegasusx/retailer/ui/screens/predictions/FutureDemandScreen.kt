@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
-import com.pegasusx.retailer.ui.screens.orders.AiPlannedCard
+import com.pegasusx.retailer.ui.screens.orders.components.AiPlannedCard
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone

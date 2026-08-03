@@ -11,16 +11,16 @@ import (
 
 // Notification mirrors the Notifications Spanner row.
 type Notification struct {
-	NotificationID string                 `json:"notification_id"`
-	RecipientID    string                 `json:"recipient_id"`
-	RecipientRole  string                 `json:"recipient_role"`
-	EventType      string                 `json:"event_type"`
-	Title          string                 `json:"title"`
-	Body           string                 `json:"body"`
-	DeepLink       string                 `json:"deep_link"`
-	IsRead         bool                   `json:"is_read"`
-	CreatedAt      time.Time              `json:"created_at"`
-	HandoffMetadata *HandoffCardMetadata  `json:"handoff_metadata,omitempty"`
+	NotificationID  string               `json:"notification_id"`
+	RecipientID     string               `json:"recipient_id"`
+	RecipientRole   string               `json:"recipient_role"`
+	EventType       string               `json:"event_type"`
+	Title           string               `json:"title"`
+	Body            string               `json:"body"`
+	DeepLink        string               `json:"deep_link"`
+	IsRead          bool                 `json:"is_read"`
+	CreatedAt       time.Time            `json:"created_at"`
+	HandoffMetadata *HandoffCardMetadata `json:"handoff_metadata,omitempty"`
 }
 
 // Repository defines the data access contract for notifications.
@@ -30,6 +30,8 @@ type Repository interface {
 	MarkRead(ctx context.Context, notificationIDs []string) error
 	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
+	GetPreference(ctx context.Context, principalID, eventType, channel string) (*NotificationPreference, error)
+	UpsertPreference(ctx context.Context, pref NotificationPreference) error
 }
 
 // SpannerRepository implements Repository backed by Cloud Spanner.
@@ -104,7 +106,7 @@ func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID str
 			"off": int64(offset),
 		},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var notifs []Notification
@@ -192,7 +194,7 @@ func (r *SpannerRepository) UnreadCount(ctx context.Context, recipientID string)
 		SQL:    "SELECT COUNT(*) FROM Notifications WHERE RecipientId = @rid AND IsRead = FALSE",
 		Params: map[string]any{"rid": recipientID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

@@ -500,18 +500,18 @@ private fun FiscalizingContent(event: RetailerWSMessage) {
             strokeCap = StrokeCap.Round,
             color = StatusOrange,
         )
-        Spacer(modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             "Pending Fiscal Receipt",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
-        Spacer(modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             "${event.amount}",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
             color = StatusOrange,
         )
-        Spacer(modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             "Payment is captured. Official fiscal document is being issued…",
             style = MaterialTheme.typography.bodyMedium,

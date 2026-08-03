@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -56,6 +57,13 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.fallbackDepotLat = cfg.FallbackDepotLat
 	s.fallbackDepotLng = cfg.FallbackDepotLng
 	s.replenishmentEngine = cfg.ReplenishmentEngine
+}
+
+// SetControlTower wires playbook scoring for exception enrichment.
+func (s *Service) SetControlTower(svc *controltower.Service) {
+	if s != nil {
+		s.controlTower = svc
+	}
 }
 
 // EmpathyAdoption is the supplier-scoped empathy metrics snapshot.

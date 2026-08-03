@@ -410,6 +410,67 @@ func TestNotificationDispatcher_MissingItemsFansSupplierAndDriver(t *testing.T) 
 	}
 }
 
+func TestNotificationDispatcher_ClaimFiledFansSupplierAndRetailer(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+	payload, _ := json.Marshal(map[string]any{
+		"type":        events.EventClaimFiled,
+		"trace_id":    "trace-claim",
+		"claim_id":    "clm-1",
+		"order_id":    "ord-1",
+		"supplier_id": "sup-1",
+		"retailer_id": "ret-1",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
+		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_ClaimResolvedFansSupplierAndRetailer(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+	payload, _ := json.Marshal(map[string]any{
+		"type":        events.EventClaimResolved,
+		"trace_id":    "trace-claim-res",
+		"claim_id":    "clm-1",
+		"order_id":    "ord-1",
+		"supplier_id": "sup-1",
+		"retailer_id": "ret-1",
+		"status":      "APPROVED",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
+		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+}
+
 func TestNotificationDispatcher_DriverAvailabilityFansWarehouseHomeNode(t *testing.T) {
 	t.Parallel()
 

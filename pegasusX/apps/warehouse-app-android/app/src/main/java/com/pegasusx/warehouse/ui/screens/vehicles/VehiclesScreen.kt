@@ -1,14 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -105,7 +100,11 @@ fun VehiclesScreen(
             else -> VehiclesList(
                 vehicles = vehicles,
                 onVehicleClick = onVehicleClick,
+<<<<<<< HEAD
                 modifier = Modifier.padding(innerPadding),
+=======
+                modifier = Modifier.padding(innerPadding)
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
             )
         }
     }

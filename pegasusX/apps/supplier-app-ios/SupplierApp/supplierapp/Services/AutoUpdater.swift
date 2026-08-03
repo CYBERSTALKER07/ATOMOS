@@ -128,7 +128,9 @@ final class AutoUpdater {
 
     func triggerOTAInstall(manifestURL: URL) {
         if !EnterpriseUpdateConfig.enableCdnOta {
-            openStoreListing()
+            Task { @MainActor in
+                openStoreListing()
+            }
             return
         }
         // itms-services requires the plist URL to be HTTPS and reachable without auth.

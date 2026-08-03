@@ -58,6 +58,8 @@ const NAV: NavSection[] = [
       { href: '/crm', icon: 'crm', label: 'Retailers' },
       { href: '/operations', icon: 'send', label: 'Operations' },
       { href: '/returns', icon: 'returns', label: 'Returns' },
+      { href: '/claims', icon: 'warning', label: 'Claims' },
+      { href: '/exceptions', icon: 'warning', label: 'Exceptions' },
       { href: '/transfers', icon: 'transfers', label: 'Transfers' },
       { href: '/analytics', icon: 'analytics', label: 'Analytics' },
     ],

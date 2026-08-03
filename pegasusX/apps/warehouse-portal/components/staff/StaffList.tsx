@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type { WarehouseStaffMember } from '@pegasusx/types';
 import Icon from '@/components/Icon';
 
@@ -7,6 +8,17 @@ interface StaffListProps {
 }
 
 export function StaffList({ staff, loading }: StaffListProps) {
+=======
+import Icon from '@/components/Icon';
+import type { WarehouseStaffMember } from '@pegasusx/types';
+
+interface StaffListProps {
+  staff: WarehouseStaffMember[];
+  loading: boolean;
+}
+
+export default function StaffList({ staff, loading }: StaffListProps) {
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
   if (loading) {
     return (
       <div className="space-y-2">

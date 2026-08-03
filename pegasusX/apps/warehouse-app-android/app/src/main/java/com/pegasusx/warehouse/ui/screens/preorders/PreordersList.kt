@@ -13,6 +13,7 @@ import com.pegasusx.warehouse.data.model.WarehousePreorderRow
 @Composable
 fun PreordersList(
     rows: List<WarehousePreorderRow>,
+<<<<<<< HEAD
     padding: PaddingValues,
     onProposeDate: (WarehousePreorderRow) -> Unit,
     onReject: (WarehousePreorderRow) -> Unit,
@@ -20,6 +21,15 @@ fun PreordersList(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 340.dp),
         modifier = Modifier.padding(padding).padding(16.dp),
+=======
+    modifier: Modifier = Modifier,
+    onPropose: (WarehousePreorderRow) -> Unit,
+    onReject: (WarehousePreorderRow) -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        modifier = modifier.padding(16.dp),
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -35,7 +45,11 @@ fun PreordersList(
                         AssistChip(onClick = {}, label = { Text("Awaiting retailer review") })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+<<<<<<< HEAD
                         TextButton(onClick = { onProposeDate(row) }) { Text("Propose date") }
+=======
+                        TextButton(onClick = { onPropose(row) }) { Text("Propose date") }
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                         TextButton(onClick = { onReject(row) }) { Text("Reject") }
                     }
                 }

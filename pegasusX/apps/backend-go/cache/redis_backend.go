@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"sort"
 	"strings"
@@ -40,9 +41,23 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 	}
 
 	if cfg.TLSEnabled {
-		opts.TLSConfig = &tls.Config{
+		tlsCfg := &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
+		if cfg.TLSInsecure {
+			tlsCfg.InsecureSkipVerify = true
+		} else if pem := strings.TrimSpace(cfg.CACertPEM); pem != "" {
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM([]byte(pem)) {
+				return nil, fmt.Errorf("redis backend: failed to parse REDIS CA PEM")
+			}
+			tlsCfg.RootCAs = pool
+			// Memorystore presents a cert for the instance host IP / internal name.
+			if host, _, ok := strings.Cut(trimmed, ":"); ok && host != "" {
+				tlsCfg.ServerName = host
+			}
+		}
+		opts.TLSConfig = tlsCfg
 	}
 
 	client := redis.NewClient(opts)

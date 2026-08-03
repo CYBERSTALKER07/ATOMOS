@@ -426,6 +426,48 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         case items
     }
 
+    init(
+        orderId: String,
+        supplierId: String,
+        supplierName: String,
+        warehouseId: String?,
+        warehouseName: String?,
+        driverId: String,
+        state: String,
+        totalAmount: Int,
+        orderSource: String,
+        driverLatitude: Double?,
+        driverLongitude: Double?,
+        liveLocationAvailable: Bool,
+        isApproaching: Bool,
+        deliveryToken: String,
+        createdAt: String,
+        fiscalStatus: String = "",
+        fiscalQr: String = "",
+        latestFiscalReceiptId: String = "",
+        items: [TrackingOrderItem]
+    ) {
+        self.orderId = orderId
+        self.supplierId = supplierId
+        self.supplierName = supplierName
+        self.warehouseId = warehouseId
+        self.warehouseName = warehouseName
+        self.driverId = driverId
+        self.state = state
+        self.totalAmount = totalAmount
+        self.orderSource = orderSource
+        self.driverLatitude = driverLatitude
+        self.driverLongitude = driverLongitude
+        self.liveLocationAvailable = liveLocationAvailable
+        self.isApproaching = isApproaching
+        self.deliveryToken = deliveryToken
+        self.createdAt = createdAt
+        self.fiscalStatus = fiscalStatus
+        self.fiscalQr = fiscalQr
+        self.latestFiscalReceiptId = latestFiscalReceiptId
+        self.items = items
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orderId = try c.decode(String.self, forKey: .orderId)

@@ -14,7 +14,16 @@ type ShopClosedAlert = {
   options: string[];
 };
 
-const DEFAULT_OPTIONS = ["OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY"];
+const DEFAULT_OPTIONS = [
+  "OPEN_NOW",
+  "5_MIN",
+  "CALL_ME",
+  "CLOSED_TODAY",
+  "RESCHEDULE",
+  "CREDIT_LEAVE",
+  "CANCEL",
+  "AUTHORIZE_BYPASS",
+];
 
 function optionLabel(option: string): string {
   switch (option) {
@@ -26,6 +35,14 @@ function optionLabel(option: string): string {
       return "Call me";
     case "CLOSED_TODAY":
       return "Closed for the day";
+    case "RESCHEDULE":
+      return "Reschedule delivery";
+    case "CREDIT_LEAVE":
+      return "Leave on credit";
+    case "CANCEL":
+      return "Cancel remaining";
+    case "AUTHORIZE_BYPASS":
+      return "Authorize bypass offload";
     default:
       return option;
   }

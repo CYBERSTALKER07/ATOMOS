@@ -1,35 +1,22 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
+import { motion } from "framer-motion";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
-import { PageChrome } from "@/components/PageChrome";
-import {
-  Truck,
-  Package,
-  Users,
-  MapPin,
-  X,
-  RefreshCw,
-  AlertTriangle,
-  WifiOff,
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
-import CountUp from "../../../components/CountUp";
-import EmptyState from "../../../components/EmptyState";
-import { PageSection } from "../../../components/PageSection";
-import NetworkPulsePanel from "../../../components/NetworkPulsePanel";
-import { Skeleton } from "../../../components/Skeleton";
-import { useLiveData } from "../../../lib/hooks";
-import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
+import { useLiveData } from "@/lib/hooks";
 import type {
   ActiveFulfillmentsResponse,
-  TrackingResponse,
   TrackingOrder,
-} from "../../../lib/types";
-import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+  TrackingResponse,
+} from "@/lib/types";
+import { useOptionalWebSocket, useWsEvent, type WsMessage } from "../../../lib/ws";
+import { PageChrome } from "@/components/PageChrome";
+import { PageSection } from "../../../components/PageSection";
+import NetworkPulsePanel from "../../../components/NetworkPulsePanel";
+import { TrackingMap } from "../../../components/tracking/TrackingMap";
+import { TrackingStatus } from "../../../components/tracking/TrackingStatus";
+
 
 const TASHKENT: [number, number] = [69.2401, 41.2995];
 
@@ -292,14 +279,7 @@ export default function TrackingPage() {
     );
   }, [orders]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || visibleOrders.length === 0) return;
-    const bounds = new maplibregl.LngLatBounds();
-    for (const o of visibleOrders)
-      bounds.extend([o.driver_longitude!, o.driver_latitude!]);
-    map.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 600 });
-  }, [visibleOrders]);
+
 
   const toggleSupplier = (id: string) => {
     setSelectedSupplierIds((prev) => {
@@ -379,307 +359,29 @@ export default function TrackingPage() {
         </motion.div>
       )}
 
-      <BentoGrid className="mb-2">
-        <BentoCard interactive={false}>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Active Deliveries
-              </span>
-              <Package size={18} style={{ color: "var(--desk-accent)" }} />
-            </div>
-            <CountUp
-              end={activeFulfillmentCount}
-              className="md-typescale-metric text-[var(--desk-text-primary)]"
-            />
-            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              Inbound orders in motion
-            </p>
-          </div>
-        </BentoCard>
+      <TrackingStatus
+        activeFulfillmentCount={activeFulfillmentCount}
+        approachingCount={approachingCount}
+        suppliers={suppliers}
+        avgItems={avgItems}
+        recentReceipts={recentReceipts}
+        selectedSupplierIds={selectedSupplierIds}
+        toggleSupplier={toggleSupplier}
+      />
 
-        <BentoCard interactive={false}>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Approaching
-              </span>
-              <MapPin size={18} style={{ color: "var(--desk-success)" }} />
-            </div>
-            <CountUp
-              end={approachingCount}
-              className="md-typescale-metric text-[var(--desk-text-primary)]"
-            />
-            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              Immediate vicinity
-            </p>
-          </div>
-        </BentoCard>
-
-        <BentoCard interactive={false}>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Suppliers
-              </span>
-              <Users size={18} style={{ color: "var(--desk-info)" }} />
-            </div>
-            <CountUp
-              end={suppliers.length}
-              className="md-typescale-metric text-[var(--desk-text-primary)]"
-            />
-            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              Contracted partners
-            </p>
-          </div>
-        </BentoCard>
-
-        <BentoCard interactive={false}>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Avg Items / Order
-              </span>
-              <Truck size={18} style={{ color: "var(--desk-warning)" }} />
-            </div>
-            <CountUp
-              end={avgItems}
-              className="md-typescale-metric text-[var(--desk-text-primary)]"
-            />
-            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              Basket density
-            </p>
-          </div>
-        </BentoCard>
-      </BentoGrid>
-
-      {recentReceipts.length > 0 && (
-        <PageSection
-          title="Recent receipts"
-          description="Completed deliveries from the tracking feed."
-        >
-          <div className="space-y-2 max-h-40 overflow-y-auto !mt-0">
-            {recentReceipts.slice(0, 6).map((receipt) => {
-              const st = (receipt.state || "").toUpperCase();
-              const fiscalLabel =
-                st === "FISCALIZING"
-                  ? "Pending fiscal"
-                  : st === "FISCAL_FAILED"
-                    ? "Fiscal failed"
-                    : st === "COMPLETED"
-                      ? "Fiscalized"
-                      : receipt.state || "—";
-              return (
-              <div
-                key={receipt.order_id}
-                className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-3 py-2"
-              >
-                <div>
-                  <p className="text-sm font-light text-[var(--desk-text-primary)]">
-                    {receipt.supplier_name || "Supplier"}
-                  </p>
-                  <p className="text-[10px] font-mono text-[var(--desk-text-tertiary)]">
-                    #{receipt.order_id.slice(-8)} · {fiscalLabel}
-                  </p>
-                </div>
-                <span className="text-sm font-light tabular-nums">
-                  {formatAmount(receipt.total_amount)}
-                </span>
-              </div>
-            );
-            })}
-          </div>
-        </PageSection>
-      )}
-
-      {suppliers.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {suppliers.map((s) => {
-            const active =
-              selectedSupplierIds.size === 0 || selectedSupplierIds.has(s.id);
-            return (
-              <button
-                key={s.id}
-                onClick={() => toggleSupplier(s.id)}
-                className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
-                  active
-                    ? "bg-[var(--desk-accent)] text-white shadow-[var(--shadow-sm)]"
-                    : "bg-[var(--desk-surface)] text-[var(--desk-text-secondary)] border border-[var(--desk-border)] hover:bg-[var(--desk-surface-subtle)]"
-                }`}
-              >
-                {s.name}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <PageSection
-        title="Live map"
-        description="Driver positions for active inbound deliveries."
-        className="flex-1 min-h-[500px] flex flex-col"
-      >
-      <div className="relative flex-1 min-h-[500px] rounded-2xl overflow-hidden border border-[var(--desk-border)] !mt-0 !p-0">
-        <AnimatePresence mode="popLayout">
-          {loading && orders.length === 0 ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 z-20 bg-[var(--desk-surface)]"
-            >
-              <Skeleton className="w-full h-full" style={{ borderRadius: 0 }} />
-            </motion.div>
-          ) : visibleOrders.length === 0 ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--desk-surface-subtle)]/80 backdrop-blur-sm p-6"
-            >
-              <EmptyState
-                headline={emptyStateTitle}
-                body={emptyStateMessage}
-                variant={
-                  loadIssue === "restricted"
-                    ? "restricted"
-                    : loadIssue === "offline"
-                      ? "offline"
-                      : loadIssue === "error"
-                        ? "error"
-                        : "no-orders"
-                }
-                action={loadIssue ? "Retry" : undefined}
-                onAction={loadIssue ? refreshAll : undefined}
-              />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        <MapGL
-          mapLib={maplibregl}
-          mapStyle={colorScheme === "dark" ? DARK_STYLE : LIGHT_STYLE}
-          initialViewState={{
-            longitude: TASHKENT[0],
-            latitude: TASHKENT[1],
-            zoom: 12,
-          }}
-          style={{ width: "100%", height: "100%" }}
-          onLoad={(e) => {
-            mapRef.current = e.target;
-          }}
-          onClick={() => setSelectedOrder(null)}
-        >
-          <NavigationControl position="top-right" />
-          {visibleOrders.map((order) => {
-            const isApproaching =
-              order.is_approaching || order.state === "ARRIVED";
-            return (
-              <Marker
-                key={order.order_id}
-                longitude={order.driver_longitude!}
-                latitude={order.driver_latitude!}
-                anchor="center"
-                onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  setSelectedOrder(order);
-                }}
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  whileHover={{ scale: 1.2 }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer shadow-xl border-2 border-white transition-colors duration-500 ${isApproaching ? "bg-[var(--desk-success)]" : "bg-[var(--desk-accent)]"}`}
-                >
-                  <Truck size={18} color="white" />
-                </motion.div>
-              </Marker>
-            );
-          })}
-        </MapGL>
-
-        {activeFulfillmentCount > 0 && (
-          <div
-            className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full md-typescale-label-medium"
-            style={{
-              background: "var(--background)",
-              border: "1px solid var(--border)",
-              color: "var(--foreground)",
-            }}
-          >
-            <Truck size={14} />
-            <span className="tabular-nums">{activeFulfillmentCount}</span> active
-          </div>
-        )}
-
-        {/* Selected order info card */}
-        <AnimatePresence>
-          {selectedOrder && (
-            <motion.div
-              layout
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              className="absolute bottom-6 left-6 right-6 lg:left-auto lg:w-[400px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl p-6 shadow-2xl z-30"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-3 h-3 rounded-full ${selectedOrder.is_approaching || selectedOrder.state === "ARRIVED" ? "bg-[var(--desk-success)]" : "bg-[var(--desk-accent)]"}`}
-                  />
-                  <div>
-                    <h3 className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                      {selectedOrder.supplier_name || "Unknown Supplier"}
-                    </h3>
-                    <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                      ID: #{selectedOrder.order_id.slice(-8)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="w-8 h-8 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-1 mb-6">
-                {selectedOrder.items.slice(0, 4).map((item) => (
-                  <span
-                    key={item.product_id}
-                    className="px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[9px] font-black text-[var(--desk-text-tertiary)] uppercase tracking-tighter"
-                  >
-                    {item.product_name} ×{item.quantity}
-                  </span>
-                ))}
-                {selectedOrder.items.length > 4 && (
-                  <span className="text-[9px] font-black text-[var(--desk-text-tertiary)] ml-1">
-                    +{selectedOrder.items.length - 4} MORE
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-[var(--desk-border)]">
-                <div>
-                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mb-0.5">
-                    Asset Value
-                  </p>
-                  <p className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] tabular-nums">
-                    {formatAmount(selectedOrder.total_amount)}{" "}
-                    <small className="text-[10px] ml-0.5 opacity-60">UZS</small>
-                  </p>
-                </div>
-                <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-black text-[10px] tracking-widest">
-                  {chipCfg[selectedOrder.state]?.label ??
-                    selectedOrder.state.replace(/_/g, " ")}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      </PageSection>
+      <TrackingMap
+        loading={loading}
+        visibleOrders={visibleOrders}
+        ordersLength={orders.length}
+        emptyStateTitle={emptyStateTitle}
+        emptyStateMessage={emptyStateMessage}
+        loadIssue={loadIssue}
+        refreshAll={refreshAll}
+        colorScheme={colorScheme}
+        activeFulfillmentCount={activeFulfillmentCount}
+        selectedOrder={selectedOrder}
+        setSelectedOrder={setSelectedOrder}
+      />
       </PageChrome>
     </div>
   );

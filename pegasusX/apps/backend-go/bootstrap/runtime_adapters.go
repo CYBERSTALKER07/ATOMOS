@@ -9,6 +9,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	backendkafka "github.com/pegasusx/pegasusx/apps/backend-go/kafka"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/redis/go-redis/v9"
 )
@@ -36,8 +37,8 @@ var (
 	newKafkaRuntimePublisher = func(brokersCSV string, cfg outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return outbox.NewKafkaPublisherFromCSV(brokersCSV, cfg)
 	}
-	newKafkaRuntimeDLQWriter = func(brokersCSV, topic string) (kafkaRuntimeDLQWriter, error) {
-		return backendkafka.NewDLQWriterFromCSV(brokersCSV, topic)
+	newKafkaRuntimeDLQWriter = func(brokersCSV, topic string, auth kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
+		return backendkafka.NewDLQWriterFromCSVWithAuth(brokersCSV, topic, auth)
 	}
 	newSpannerRuntimeClient = func(ctx context.Context, database string) (*spanner.Client, error) {
 		return spanner.NewClient(ctx, database)

@@ -24,9 +24,16 @@ object DriverIdempotencyKeys {
 
     fun reportShopClosed(orderId: String): String = "driver-report-shop-closed:${driverId()}:$orderId"
 
+    fun proximityUnlock(orderId: String): String = "driver-proximity-unlock:${driverId()}:$orderId"
+
+    fun partialOffload(orderId: String, fingerprint: String): String =
+        "driver-partial-offload:${driverId()}:$orderId:${stableHash(fingerprint)}"
+
     fun depart(truckId: String): String = "driver-depart:${driverId()}:$truckId"
 
     fun returnComplete(truckId: String): String = "driver-return-complete:${driverId()}:$truckId"
+
+    fun cashReconciliation(declaredMinor: Long): String = "driver-cash-recon:${driverId()}:$declaredMinor"
 
     fun syncBatch(orderSignatures: List<String>): String {
         val sorted = orderSignatures.map { it.trim() }.filter { it.isNotEmpty() }.sorted()

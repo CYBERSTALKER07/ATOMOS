@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"google.golang.org/api/iterator"
 )
 
@@ -37,9 +38,11 @@ type CycleResult struct {
 
 // Engine scans warehouse inventory against burn rates and persists insights.
 type Engine struct {
-	Spanner *spanner.Client
-	Log     *slog.Logger
-	Now     func() time.Time
+	Spanner                *spanner.Client
+	Log                    *slog.Logger
+	Now                    func() time.Time
+	EchelonTargetsEnabled  bool
+	SegmentSvc             *segment.Service
 }
 
 // NewEngine returns an engine bound to Spanner.
@@ -271,6 +274,11 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 		}
 
 		suggestedQty := computeSuggestedQty(*sku, reorderPoint)
+		if e.EchelonTargetsEnabled {
+			if target, ok, err := e.getEchelonTarget(ctx, wh.SupplierId, sku.SkuId, wh.WarehouseId); err == nil && ok {
+				suggestedQty = computeSuggestedQtyWithEchelon(*sku, reorderPoint, target.TargetQty, true)
+			}
+		}
 		reason := "LOW_STOCK"
 		if burn > float64(sku.CurrentStock)/lead {
 			reason = "HIGH_VELOCITY"
@@ -377,14 +385,14 @@ func (e *Engine) autoCreateTransfer(ctx context.Context, wh warehouseInfo, insig
 			}),
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId":      transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    wh.SupplierId,
-				"WarehouseId":   wh.WarehouseId,
+				"FactoryId":       factoryID,
+				"SupplierId":      wh.SupplierId,
+				"WarehouseId":     wh.WarehouseId,
 				"SourceInsightId": insightID,
-				"State":         "APPROVED",
-				"TotalVolumeVU": totalVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
+				"State":           "APPROVED",
+				"TotalVolumeVU":   totalVU,
+				"CreatedAt":       spanner.CommitTimestamp,
+				"UpdatedAt":       spanner.CommitTimestamp,
 			}),
 		}
 		payload := events.WarehouseEvent{

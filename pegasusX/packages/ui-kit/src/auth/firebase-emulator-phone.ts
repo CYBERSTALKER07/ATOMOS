@@ -1,8 +1,12 @@
 const DEFAULT_API_KEY = "demo-key";
 
 function emulatorIdentityToolkitBase(): string {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/identitytoolkit.googleapis.com`;
+  const envHost =
+    typeof process !== "undefined" && process.env?.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST
+      ? process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST.trim()
+      : "";
+  if (envHost) {
+    return `${envHost.replace(/\/$/, "")}/identitytoolkit.googleapis.com`;
   }
   return "http://127.0.0.1:9099/identitytoolkit.googleapis.com";
 }

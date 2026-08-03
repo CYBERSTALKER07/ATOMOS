@@ -39,8 +39,26 @@ struct TreasuryHubView: View {
                                 NavigationLink { ChargebacksView() } label: {
                                     Label("Chargebacks", systemImage: "exclamationmark.bubble")
                                 }
+                                NavigationLink { ClaimChargebacksView() } label: {
+                                    Label("Claim chargebacks", systemImage: "list.bullet.rectangle")
+                                }
+                                NavigationLink { ClaimsView() } label: {
+                                    Label("Claims queue", systemImage: "exclamationmark.triangle.fill")
+                                }
                                 NavigationLink { ReconciliationView() } label: {
                                     Label("Reconciliation", systemImage: "scalemass")
+                                }
+                                NavigationLink { CashReconciliationsView() } label: {
+                                    Label("Cash reconciliations", systemImage: "dollarsign.circle")
+                                }
+                                NavigationLink { CreditNotesListView() } label: {
+                                    Label("Credit notes", systemImage: "doc.text")
+                                }
+                                NavigationLink { CreditProfilesView() } label: {
+                                    Label("Credit profiles", systemImage: "creditcard.and.123")
+                                }
+                                NavigationLink { RoutePerformanceListView() } label: {
+                                    Label("Route performance", systemImage: "map")
                                 }
                                 NavigationLink { EarningsView() } label: {
                                     Label("Earnings", systemImage: "chart.line.uptrend.xyaxis")

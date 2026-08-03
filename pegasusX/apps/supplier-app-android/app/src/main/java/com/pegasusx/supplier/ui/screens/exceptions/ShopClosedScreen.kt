@@ -126,6 +126,15 @@ fun ShopClosedScreen(
                         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                             Text(row.orderId, style = MaterialTheme.typography.titleMedium)
                             Text("Driver ${row.driverId} · Retailer ${row.retailerId}", style = MaterialTheme.typography.bodySmall)
+                            row.shopClosedReason?.takeIf { it.isNotBlank() }?.let {
+                                Text("Reason $it", style = MaterialTheme.typography.labelSmall)
+                            }
+                            row.graceEndsAt?.takeIf { it.isNotBlank() }?.let {
+                                Text("Grace ends $it", style = MaterialTheme.typography.labelSmall)
+                            }
+                            row.shopClosedResolution?.takeIf { it.isNotBlank() }?.let {
+                                Text("Resolution $it", style = MaterialTheme.typography.labelSmall)
+                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                 TextButton(onClick = { resolve(row.attemptId, "WAIT") }, enabled = !busy) { Text("Wait") }
                                 TextButton(onClick = { resolve(row.attemptId, "BYPASS") }, enabled = !busy) { Text("Bypass") }

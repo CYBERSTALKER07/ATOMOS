@@ -33,6 +33,9 @@ enum class WarehouseSection(
     DEMAND_FORECAST(WarehouseRoutes.DEMAND_FORECAST, "Demand forecast", Icons.Default.ShowChart),
     RETAILERS(WarehouseRoutes.CRM, "Retailers", Icons.Default.Store),
     RETURNS(WarehouseRoutes.RETURNS, "Returns", Icons.AutoMirrored.Filled.Undo),
+    EXCEPTIONS(WarehouseRoutes.EXCEPTIONS, "Exceptions", Icons.Default.Warning),
+    CLAIMS(WarehouseRoutes.CLAIMS, "Claims", Icons.Default.Report),
+    RESCUES(WarehouseRoutes.RESCUES, "Rescues", Icons.Default.Build),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
     OPS_SETTINGS(WarehouseRoutes.OPS_SETTINGS, "Ops settings", Icons.Default.Settings),
     LOCATION_SETTINGS(WarehouseRoutes.LOCATION_SETTINGS, "Depot location", Icons.Default.Place),
@@ -67,7 +70,7 @@ enum class WarehouseSection(
         )
 
         val operationsSections: List<WarehouseSection> = listOf(
-            RETAILERS, RETURNS, PAYMENT_CONFIG, NOTIFICATIONS,
+            RETAILERS, RETURNS, EXCEPTIONS, CLAIMS, RESCUES, PAYMENT_CONFIG, NOTIFICATIONS,
         )
 
         val portalSections: List<WarehouseSection> = listOf(

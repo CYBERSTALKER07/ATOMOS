@@ -251,12 +251,17 @@ class OfflineVerifierViewModel @Inject constructor(
             scannedToken = scannedToken,
             signature = signature,
         )
+        val key = DriverIdempotencyKeys.deliver(orderId)
         pendingMutationDao.insert(
             PendingMutationEntity(
-                id = orderId,
+                id = key,
                 endpoint = "v1/order/deliver",
                 payloadJson = json.encodeToString(payload),
-                idempotencyKey = DriverIdempotencyKeys.deliver(orderId),
+                idempotencyKey = key,
+                priority = 20,
+                clientTimestampIso = java.time.Instant.now().toString(),
+                orderId = orderId,
+                status = "PENDING",
             ),
         )
         OfflineSyncScheduler.enqueue(appContext)

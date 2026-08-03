@@ -39,7 +39,7 @@ export default function ActivityPage() {
         title="Activity"
         description="Stream of operational events and recent actions."
         loading={loading}
-        skeletonVariant="list"
+        skeletonVariant="table"
         actions={
           <div className="flex items-center gap-3">
             <button
@@ -73,7 +73,7 @@ export default function ActivityPage() {
               </div>
             ) : (
               <div className="divide-y divide-[var(--desk-border)]">
-                {rows.map((row) => (
+                {rows.map((row: SupplierActivityEvent) => (
                   <div key={row.id || row.timestamp} className="p-4 hover:bg-[var(--desk-surface-hover)] transition-colors flex gap-4">
                     <div className="w-10 h-10 rounded-full bg-[var(--desk-surface-subtle)] flex items-center justify-center shrink-0">
                       <Activity size={18} className="text-[var(--desk-text-tertiary)]" />

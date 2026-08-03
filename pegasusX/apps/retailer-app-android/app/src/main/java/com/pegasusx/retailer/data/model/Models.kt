@@ -631,10 +631,39 @@ data class RegisterRequest(
 )
 
 @Serializable
+data class RetailerMembershipDTO(
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("retailer_role") val retailerRole: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("phone") val phone: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
 data class AuthResponse(
-    @SerialName("token") val token: String,
-    @SerialName("user") val user: User,
+    @SerialName("token") val token: String = "",
+    @SerialName("token_type") val tokenType: String = "full",
+    @SerialName("user") val user: User? = null,
     @SerialName("firebase_token") val firebaseToken: String = "",
+    @SerialName("is_configured") val isConfigured: Boolean? = null,
+    @SerialName("memberships") val memberships: List<RetailerMembershipDTO> = emptyList(),
+    @SerialName("expires_in_sec") val expiresInSec: Int = 420,
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("refresh_token") val refreshToken: String = "",
+) {
+    val isPendingOrgSelect: Boolean
+        get() = tokenType.equals("pending_org_select", ignoreCase = true)
+}
+
+@Serializable
+data class SelectOrgRequest(
+    @SerialName("retailer_id") val retailerId: String,
+)
+
+@Serializable
+data class MembershipsResponse(
+    @SerialName("memberships") val memberships: List<RetailerMembershipDTO> = emptyList(),
 )
 
 // ── Empathy Settings ──
@@ -663,12 +692,97 @@ data class UpdateGlobalSettingsRequest(
 @Serializable
 data class AutoOrderSettings(
     @SerialName("global_enabled") val globalEnabled: Boolean = false,
+    /** draft | place — place creates real supplier orders when server flag is on */
+    @SerialName("execution_mode") val executionMode: String? = null,
     @SerialName("analytics_start_date") val analyticsStartDate: String? = null,
     @SerialName("has_any_history") val hasAnyHistory: Boolean = false,
     @SerialName("supplier_overrides") val supplierOverrides: List<SupplierOverride> = emptyList(),
     @SerialName("category_overrides") val categoryOverrides: List<CategoryOverride> = emptyList(),
     @SerialName("product_overrides") val productOverrides: List<ProductOverride> = emptyList(),
     @SerialName("variant_overrides") val variantOverrides: List<VariantOverride> = emptyList(),
+)
+
+@Serializable
+data class AutoOrderSkip(
+    @SerialName("sku") val sku: String? = null,
+    @SerialName("reason") val reason: String = "",
+)
+
+@Serializable
+data class AutoOrderPlacedOrder(
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("supplier_id") val supplierId: String? = null,
+    @SerialName("line_count") val lineCount: Int = 0,
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    @SerialName("skus") val skus: List<String> = emptyList(),
+)
+
+@Serializable
+data class AutoOrderRun(
+    @SerialName("run_id") val runId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("started_at") val startedAt: String = "",
+    @SerialName("finished_at") val finishedAt: String? = null,
+    @SerialName("mode") val mode: String = "draft",
+    @SerialName("draft_lines") val draftLines: Int = 0,
+    @SerialName("placed_lines") val placedLines: Int = 0,
+    @SerialName("placed_orders") val placedOrders: List<AutoOrderPlacedOrder> = emptyList(),
+    @SerialName("skipped") val skipped: List<AutoOrderSkip> = emptyList(),
+    @SerialName("status") val status: String = "",
+    @SerialName("message") val message: String? = null,
+    @SerialName("suggestions_seen") val suggestionsSeen: Int = 0,
+    @SerialName("schedule_bucket") val scheduleBucket: String? = null,
+    @SerialName("candidate_source") val candidateSource: String? = null,
+)
+
+@Serializable
+data class AutoOrderRunsResponse(
+    @SerialName("items") val items: List<AutoOrderRun> = emptyList(),
+)
+
+/** L3.4 retailer reorder suggestion with demand source chips. */
+@Serializable
+data class RetailerReorderSuggestion(
+    @SerialName("sku") val sku: String = "",
+    @SerialName("suggested_qty") val suggestedQty: Long = 0,
+    @SerialName("adjusted_demand_per_day") val adjustedDemandPerDay: Double = 0.0,
+    @SerialName("current_stock") val currentStock: Long = 0,
+    @SerialName("in_flight_qty") val inFlightQty: Long = 0,
+    @SerialName("status") val status: String? = null,
+    @SerialName("sources") val sources: List<String> = emptyList(),
+    @SerialName("sell_through_velocity") val sellThroughVelocity: Double = 0.0,
+    @SerialName("base_demand_per_day") val baseDemandPerDay: Double = 0.0,
+)
+
+@Serializable
+data class RetailerReorderSuggestionsResponse(
+    @SerialName("items") val items: List<RetailerReorderSuggestion> = emptyList(),
+)
+
+@Serializable
+data class FamilyMigrateItem(
+    @SerialName("member_id") val memberId: String = "",
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("phone") val phone: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("retailer_role") val retailerRole: String = "",
+    @SerialName("temp_password") val tempPassword: String? = null,
+)
+
+@Serializable
+data class FamilyMigrateSkipped(
+    @SerialName("member_id") val memberId: String = "",
+    @SerialName("phone") val phone: String? = null,
+    @SerialName("reason") val reason: String = "",
+)
+
+@Serializable
+data class FamilyMigrateResult(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("migrated") val migrated: List<FamilyMigrateItem> = emptyList(),
+    @SerialName("skipped") val skipped: List<FamilyMigrateSkipped> = emptyList(),
+    @SerialName("family_remaining") val familyRemaining: Int = 0,
+    @SerialName("family_writes") val familyWrites: String = "",
 )
 
 @Serializable
@@ -983,4 +1097,18 @@ data class OrderTimelineEntry(
 data class OrderTimelineResponse(
     @SerialName("order_id") val orderId: String,
     val items: List<OrderTimelineEntry> = emptyList(),
+)
+
+@Serializable
+data class CreditProfile(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+    @SerialName("risk_score") val riskScore: Long = 0,
+    @SerialName("risk_tier") val riskTier: String = "",
+    @SerialName("delinquency_count") val delinquencyCount: Long = 0,
+    val status: String = "",
+    val version: Long = 0,
 )

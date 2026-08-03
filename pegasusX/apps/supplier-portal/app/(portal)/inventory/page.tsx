@@ -8,14 +8,33 @@ import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
 import { PageChrome } from "@/components/PageChrome";
+import { InventoryTable, type InventoryRow } from "@/components/inventory";
 
-type InventoryRow = {
-  sku_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price_minor: number;
-  currency: string;
+type InventoryApiItem = {
+  product_id: string;
+  warehouse_id: string;
+  quantity_on_hand?: number;
+  quantity_reserved?: number;
+  out_of_stock_policy?: string;
+  effective_policy?: string;
+  accepts_backorder?: boolean;
 };
+
+function mapInventoryRow(item: InventoryApiItem): InventoryRow {
+  const onHand = item.quantity_on_hand ?? 0;
+  const reserved = item.quantity_reserved ?? 0;
+  return {
+    sku_id: item.product_id,
+    warehouse_id: item.warehouse_id,
+    product_name: item.product_id,
+    quantity: Math.max(0, onHand - reserved),
+    unit_price_minor: 0,
+    currency: "UZS",
+    out_of_stock_policy: item.out_of_stock_policy || "INHERIT",
+    effective_policy: item.effective_policy,
+    accepts_backorder: item.accepts_backorder,
+  };
+}
 
 export default function PortalInventoryPage() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
@@ -23,6 +42,7 @@ export default function PortalInventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [deltas, setDeltas] = useState<Record<string, string>>({});
   const [adjustingSku, setAdjustingSku] = useState<string | null>(null);
+  const [policyUpdatingKey, setPolicyUpdatingKey] = useState<string | null>(null);
 
   const loadInventory = () => {
     setLoading(true);
@@ -30,8 +50,8 @@ export default function PortalInventoryPage() {
     supplierFetch("/v1/supplier/inventory")
       .then(async (res) => {
         if (!res.ok) throw new Error(`inventory ${res.status}`);
-        const body = (await res.json()) as { items?: InventoryRow[] };
-        setRows(body.items ?? []);
+        const body = (await res.json()) as { items?: InventoryApiItem[] };
+        setRows((body.items ?? []).map(mapInventoryRow));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load inventory"))
       .finally(() => setLoading(false));
@@ -79,13 +99,36 @@ export default function PortalInventoryPage() {
     }
   };
 
+  const updatePolicy = async (row: InventoryRow, policy: string) => {
+    const key = `${row.warehouse_id}:${row.sku_id}`;
+    setPolicyUpdatingKey(key);
+    setError(null);
+    try {
+      const res = await supplierFetch("/v1/supplier/inventory/policy", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          warehouse_id: row.warehouse_id,
+          product_id: row.sku_id,
+          out_of_stock_policy: policy,
+        }),
+      });
+      if (!res.ok) throw new Error(`policy ${res.status}`);
+      loadInventory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "policy_update_failed");
+    } finally {
+      setPolicyUpdatingKey(null);
+    }
+  };
+
   const pagination = usePagination(rows, 20);
 
   return (
     <PageChrome
       icon="inventory"
       title="Inventory"
-      description="SKU availability and audit trail for supplier operations."
+      description="SKU availability, stock policy per warehouse, and quantity adjustments."
       loading={loading}
       error={error}
       empty={rows.length === 0}
@@ -99,13 +142,12 @@ export default function PortalInventoryPage() {
         onExport={() =>
           downloadCsv(
             "supplier-inventory.csv",
-            ["sku_id", "product_name", "quantity", "unit_price_minor", "currency"],
+            ["warehouse_id", "sku_id", "quantity", "out_of_stock_policy"],
             rows.map((row) => [
+              row.warehouse_id,
               row.sku_id,
-              row.product_name,
               String(row.quantity),
-              String(row.unit_price_minor),
-              row.currency,
+              row.out_of_stock_policy ?? "INHERIT",
             ]),
           )
         }
@@ -115,50 +157,15 @@ export default function PortalInventoryPage() {
           Import CSV
         </a>
       </p>
-      <div className="md-card overflow-x-auto">
-        <table className="min-w-full text-left">
-          <thead className="border-b border-[var(--color-md-outline-variant)]">
-            <tr>
-              <th className="px-4 py-3 md-typescale-label-large">SKU</th>
-              <th className="px-4 py-3 md-typescale-label-large">Product</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Qty</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Unit (minor)</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Adjust</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagination.pageItems.map((row) => (
-              <tr key={row.sku_id} className="border-b border-[var(--color-md-outline-variant)]">
-                <td className="px-4 py-3 font-mono text-sm">{row.sku_id}</td>
-                <td className="px-4 py-3">{row.product_name}</td>
-                <td className="px-4 py-3 text-right">{row.quantity}</td>
-                <td className="px-4 py-3 text-right">{row.unit_price_minor}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <input
-                      type="number"
-                      className="md-input-outlined w-24 px-2 py-1 text-right"
-                      placeholder="±qty"
-                      value={deltas[row.sku_id] ?? ""}
-                      onChange={(e) =>
-                        setDeltas((prev) => ({ ...prev, [row.sku_id]: e.target.value }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1"
-                      disabled={adjustingSku === row.sku_id}
-                      onClick={() => void adjustRow(row)}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <InventoryTable
+        items={pagination.pageItems}
+        deltas={deltas}
+        adjustingSku={adjustingSku}
+        policyUpdatingKey={policyUpdatingKey}
+        onDeltaChange={(skuId, value) => setDeltas((prev) => ({ ...prev, [skuId]: value }))}
+        onApply={(row) => void adjustRow(row)}
+        onPolicyChange={(row, policy) => void updatePolicy(row, policy)}
+      />
     </PageChrome>
   );
 }

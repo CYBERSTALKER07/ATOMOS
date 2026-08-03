@@ -15,7 +15,7 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimOrderLifecycle_HappyPath(t *testing.T) {
-	// Simulate: Pending → Loaded → InTransit → Arrived → AwaitingPayment → Completed
+	// ADR-009: AwaitingPayment → Fiscalizing → Completed (not soft COMPLETED).
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -24,19 +24,20 @@ func TestSimOrderLifecycle_HappyPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusAwaitingPayment},
-		{order.StatusAwaitingPayment, order.StatusCompleted},
+		{order.StatusAwaitingPayment, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("happy path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("happy path lifecycle: Pending → Loaded → InTransit → Arrived → AwaitingPayment → Completed ✓")
+	t.Log("happy path: … → AwaitingPayment → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CashPath(t *testing.T) {
-	// Simulate: Pending → Loaded → InTransit → Arrived → PendingCashCollection → Completed
+	// ADR-009: PendingCashCollection → Fiscalizing → Completed (or FiscalFailed → retry/force).
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -45,19 +46,24 @@ func TestSimOrderLifecycle_CashPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusPendingCashCollection},
-		{order.StatusPendingCashCollection, order.StatusCompleted},
+		{order.StatusPendingCashCollection, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("cash path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("cash path lifecycle: Pending → Loaded → InTransit → Arrived → PendingCashCollection → Completed ✓")
+	// Soft complete must stay illegal.
+	if err := order.ValidateStatusTransition(string(order.StatusPendingCashCollection), string(order.StatusCompleted), order.TransitionOpts{}); err == nil {
+		t.Fatal("PENDING_CASH_COLLECTION → COMPLETED must be denied (fiscal hard-gate)")
+	}
+	t.Log("cash path: … → PendingCashCollection → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CreditPath(t *testing.T) {
-	// Simulate: Arrived → DeliveredOnCredit → Completed
+	// §9.1: credit leave-behind does not complete; settlement → Fiscalizing → Completed.
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -66,15 +72,19 @@ func TestSimOrderLifecycle_CreditPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusDeliveredOnCredit},
-		{order.StatusDeliveredOnCredit, order.StatusCompleted},
+		{order.StatusDeliveredOnCredit, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("credit path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("credit path lifecycle: Pending → ... → Arrived → DeliveredOnCredit → Completed ✓")
+	if err := order.ValidateStatusTransition(string(order.StatusDeliveredOnCredit), string(order.StatusCompleted), order.TransitionOpts{}); err == nil {
+		t.Fatal("DELIVERED_ON_CREDIT → COMPLETED must be denied (settle money first)")
+	}
+	t.Log("credit path: … → DeliveredOnCredit → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CancellationPaths(t *testing.T) {
@@ -86,7 +96,7 @@ func TestSimOrderLifecycle_CancellationPaths(t *testing.T) {
 
 	for _, from := range cancellableFrom {
 		t.Run(fmt.Sprintf("%s_to_cancelled", from), func(t *testing.T) {
-			if err := order.ValidateStatusTransition(from, order.StatusCancelled); err != nil {
+			if err := order.ValidateStatusTransition(string(from), string(order.StatusCancelled), order.TransitionOpts{}); err != nil {
 				t.Errorf("should allow %s → Cancelled: %v", from, err)
 			}
 		})
@@ -102,7 +112,7 @@ func TestSimOrderLifecycle_CancelRequestPaths(t *testing.T) {
 
 	for _, from := range cancelRequestFrom {
 		t.Run(fmt.Sprintf("%s_to_cancel_requested", from), func(t *testing.T) {
-			if err := order.ValidateStatusTransition(from, order.StatusCancelRequested); err != nil {
+			if err := order.ValidateStatusTransition(string(from), string(order.StatusCancelRequested), order.TransitionOpts{}); err != nil {
 				t.Errorf("should allow %s → CancelRequested: %v", from, err)
 			}
 		})
@@ -121,7 +131,7 @@ func TestSimOrderLifecycle_DelayedRecovery(t *testing.T) {
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("delay recovery %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
@@ -139,18 +149,18 @@ func TestSimOrderLifecycle_BackorderFlow(t *testing.T) {
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("backorder flow %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
 
 	// Also test backorder → scheduled
-	if err := order.ValidateStatusTransition(order.StatusBackordered, order.StatusScheduled); err != nil {
+	if err := order.ValidateStatusTransition(string(order.StatusBackordered), string(order.StatusScheduled), order.TransitionOpts{}); err != nil {
 		t.Fatalf("backorder → scheduled: %v", err)
 	}
 
 	// And backorder → cancelled
-	if err := order.ValidateStatusTransition(order.StatusBackordered, order.StatusCancelled); err != nil {
+	if err := order.ValidateStatusTransition(string(order.StatusBackordered), string(order.StatusCancelled), order.TransitionOpts{}); err != nil {
 		t.Fatalf("backorder → cancelled: %v", err)
 	}
 
@@ -168,13 +178,13 @@ func TestSimOrderLifecycle_ReconciliationPath(t *testing.T) {
 	}
 
 	for _, tr := range transitions {
-		if err := order.ValidateStatusTransition(tr.from, tr.to); err != nil {
+		if err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{}); err != nil {
 			t.Fatalf("reconciliation path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
 
 	// ReconciliationRequired → Cancelled is also valid
-	if err := order.ValidateStatusTransition(order.StatusReconciliationRequired, order.StatusCancelled); err != nil {
+	if err := order.ValidateStatusTransition(string(order.StatusReconciliationRequired), string(order.StatusCancelled), order.TransitionOpts{}); err != nil {
 		t.Fatalf("reconciliation → cancelled: %v", err)
 	}
 
@@ -208,7 +218,7 @@ func TestSimOrderLifecycle_ForbiddenTransitions(t *testing.T) {
 
 	for _, tr := range forbidden {
 		t.Run(fmt.Sprintf("%s_to_%s", tr.from, tr.to), func(t *testing.T) {
-			err := order.ValidateStatusTransition(tr.from, tr.to)
+			err := order.ValidateStatusTransition(string(tr.from), string(tr.to), order.TransitionOpts{})
 			if err == nil {
 				t.Errorf("should forbid %s → %s but allowed it", tr.from, tr.to)
 			}
@@ -233,7 +243,7 @@ func TestSimOrderLifecycle_IdempotentTransitions(t *testing.T) {
 
 	for _, s := range statuses {
 		t.Run(fmt.Sprintf("idempotent_%s", s), func(t *testing.T) {
-			if err := order.ValidateStatusTransition(s, s); err != nil {
+			if err := order.ValidateStatusTransition(string(s), string(s), order.TransitionOpts{}); err != nil {
 				t.Errorf("same-state transition %s → %s should be idempotent: %v", s, s, err)
 			}
 		})
@@ -245,14 +255,14 @@ func TestSimOrderLifecycle_IdempotentTransitions(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimOrderLifecycle_RollbackLoadedToPending(t *testing.T) {
-	if err := order.ValidateStatusTransition(order.StatusLoaded, order.StatusPending); err != nil {
+	if err := order.ValidateStatusTransition(string(order.StatusLoaded), string(order.StatusPending), order.TransitionOpts{}); err != nil {
 		t.Fatalf("rollback Loaded → Pending should be allowed: %v", err)
 	}
 	t.Log("rollback Loaded → Pending ✓")
 }
 
 func TestSimOrderLifecycle_RollbackInTransitToPending(t *testing.T) {
-	if err := order.ValidateStatusTransition(order.StatusInTransit, order.StatusPending); err != nil {
+	if err := order.ValidateStatusTransition(string(order.StatusInTransit), string(order.StatusPending), order.TransitionOpts{}); err != nil {
 		t.Fatalf("rollback InTransit → Pending should be allowed: %v", err)
 	}
 	t.Log("rollback InTransit → Pending ✓")
@@ -263,19 +273,21 @@ func TestSimOrderLifecycle_RollbackInTransitToPending(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimOrderLifecycle_StressHappyPath(t *testing.T) {
+	// ADR-009 fiscal hard-gate: COMPLETED only after FISCALIZING.
 	happyPath := []order.Status{
 		order.StatusPending,
 		order.StatusLoaded,
 		order.StatusInTransit,
 		order.StatusArrived,
 		order.StatusAwaitingPayment,
+		order.StatusFiscalizing,
 		order.StatusCompleted,
 	}
 
 	const numOrders = 100
 	for i := 0; i < numOrders; i++ {
 		for j := 1; j < len(happyPath); j++ {
-			if err := order.ValidateStatusTransition(happyPath[j-1], happyPath[j]); err != nil {
+			if err := order.ValidateStatusTransition(string(happyPath[j-1]), string(happyPath[j]), order.TransitionOpts{}); err != nil {
 				t.Fatalf("order %d: transition %s → %s: %v", i, happyPath[j-1], happyPath[j], err)
 			}
 		}

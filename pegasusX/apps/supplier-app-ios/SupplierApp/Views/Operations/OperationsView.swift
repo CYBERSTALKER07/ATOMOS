@@ -1,6 +1,5 @@
 import SwiftUI
 
-private let broadcastRoles = ["ALL", "DRIVER", "RETAILER", "PAYLOAD"]
 
 struct OperationsView: View {
     @Environment(TokenStore.self) private var tokenStore
@@ -81,70 +80,29 @@ struct OperationsView: View {
                 }
             }
 
-            Section {
-                SupplierSectionHeader(title: "Operator broadcast")
-            }
-            Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: SupplierTheme.spacingSM) {
-                        ForEach(supplierBroadcastTemplates) { template in
-                            Button(template.title) {
-                                applyTemplate(template)
-                            }
-                            .buttonStyle(.bordered)
-                            .font(.caption)
-                        }
-                    }
-                }
-                TextField("Closure / effective date (optional)", text: $templateDate)
-                TextField("Title", text: $title)
-                TextField("Message", text: $bodyText, axis: .vertical)
-                    .lineLimit(3...6)
-                Picker("Target role", selection: $broadcastRole) {
-                    ForEach(broadcastRoles, id: \.self) { role in
-                        Text(role).tag(role)
-                    }
-                }
-                Button(broadcasting ? "Sending…" : "Send broadcast") {
+            OperatorBroadcastView(
+                title: $title,
+                bodyText: $bodyText,
+                broadcastRole: $broadcastRole,
+                templateDate: $templateDate,
+                broadcasting: broadcasting,
+                sendBroadcast: {
                     Task { await sendBroadcast() }
                 }
-                .disabled(broadcasting || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
+            )
 
-            Section {
-                SupplierSectionHeader(
-                    title: "Replenishment",
-                    subtitle: "Warehouse supply request against your primary node"
-                )
-            }
-            Section {
-                NavigationLink { ReplenishmentPoliciesView() } label: {
-                    Label("View replenishment policies", systemImage: "doc.text")
-                }
-                Button(replenishing ? "Triggering…" : "Trigger replenishment") {
-                    runReplenishment()
-                }
-                .disabled(replenishing)
-            }
+            ReplenishmentActionView(
+                replenishing: replenishing,
+                runReplenishment: { runReplenishment() }
+            )
 
-            Section {
-                SupplierSectionHeader(title: "Payment bypass")
-            }
-            Section {
-                TextField("Order ID (AWAITING_PAYMENT)", text: $orderId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("Reason (optional)", text: $bypassReason)
-                Button(bypassing ? "Issuing…" : "Issue bypass token") {
-                    showBypassConfirm = true
-                }
-                .disabled(bypassing || orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                if let bypassToken {
-                    Text("Driver token: \(bypassToken)")
-                        .font(.footnote.monospaced())
-                }
-            }
+            PaymentBypassView(
+                orderId: $orderId,
+                bypassReason: $bypassReason,
+                bypassToken: bypassToken,
+                bypassing: bypassing,
+                showBypassConfirm: $showBypassConfirm
+            )
 
             if let statusMessage {
                 Section {
@@ -170,16 +128,7 @@ struct OperationsView: View {
         }
     }
 
-    private func applyTemplate(_ template: SupplierBroadcastTemplate) {
-        title = template.title
-        broadcastRole = template.defaultRole
-        let date = templateDate.trimmingCharacters(in: .whitespacesAndNewlines)
-        if template.body.contains("{date}") {
-            bodyText = template.body.replacingOccurrences(of: "{date}", with: date.isEmpty ? "the selected date" : date)
-        } else {
-            bodyText = template.body
-        }
-    }
+
 
     @MainActor
     private func sendBroadcast() async {

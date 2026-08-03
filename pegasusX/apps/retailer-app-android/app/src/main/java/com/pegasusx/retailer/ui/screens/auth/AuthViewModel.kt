@@ -84,15 +84,96 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private suspend fun completeAuth(response: com.pegasusx.retailer.data.model.AuthResponse) {
+    private suspend fun completeAuth(
+        response: com.pegasusx.retailer.data.model.AuthResponse,
+        clearScoped: Boolean = false,
+    ) {
+        if (response.isPendingOrgSelect) {
+            tokenManager.saveToken(response.token)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                isAuthenticated = false,
+                needsOrgSelect = true,
+                pendingMemberships = response.memberships.filter { it.isActive },
+                error = null,
+                loadIssue = null,
+            )
+            return
+        }
+        if (clearScoped) {
+            clearOrgScopedState()
+        }
         tokenManager.saveToken(response.token)
-        tokenManager.saveUserId(response.user.id)
-        tokenManager.saveUserName(response.user.name)
+        val user = response.user
+        if (user != null) {
+            tokenManager.saveUserId(user.id)
+            tokenManager.saveUserName(user.name)
+        }
         if (response.firebaseToken.isNotBlank()) {
             val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
             if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
         }
-        _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            isAuthenticated = true,
+            needsOrgSelect = false,
+            pendingMemberships = emptyList(),
+            error = null,
+            loadIssue = null,
+        )
+    }
+
+    /** C1.3 hard contract: cart, POS session, offline count drafts, assist context. */
+    fun clearOrgScopedState() {
+        val prefs = context.getSharedPreferences("retailer_org_scoped", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        val keys = listOf(
+            "retailer_cart",
+            "retailer_pos_parked_cart_v1",
+            "retailer_pending_pos_sales_v1",
+            "retailer_stock_count_draft_v1",
+            "retailer_assist_context_v1",
+            "retailer_pos_session_v1",
+        )
+        val appPrefs = context.getSharedPreferences("retailer_prefs", Context.MODE_PRIVATE)
+        appPrefs.edit().apply {
+            keys.forEach { remove(it) }
+            apply()
+        }
+    }
+
+    fun selectOrg(retailerId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
+            try {
+                val response = api.selectOrg(com.pegasusx.retailer.data.model.SelectOrgRequest(retailerId))
+                completeAuth(response, clearScoped = true)
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = resolveErrorMessage(e, issue, fallback = "Select organization failed"),
+                    loadIssue = issue,
+                )
+            }
+        }
+    }
+
+    fun switchOrg(retailerId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
+            try {
+                val response = api.switchOrg(com.pegasusx.retailer.data.model.SelectOrgRequest(retailerId))
+                completeAuth(response, clearScoped = true)
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = resolveErrorMessage(e, issue, fallback = "Switch organization failed"),
+                    loadIssue = issue,
+                )
+            }
+        }
     }
 
     suspend fun resolveAddress(lat: Double, lng: Double): String? =
@@ -138,31 +219,24 @@ class AuthViewModel @Inject constructor(
                     accessType = accessType?.takeIf { it.isNotBlank() },
                     storageCeilingHeightCM = storageCeilingHeightCM,
                 ))
-                tokenManager.saveToken(response.token)
-                tokenManager.saveUserId(response.user.id)
-                tokenManager.saveUserName(response.user.name)
-                // Exchange Firebase custom token (graceful degradation)
-                if (response.firebaseToken.isNotBlank()) {
-                    // Firebase OTP scaffold: exchange custom token when configured.
-                    // Full Firebase phone OTP remains behind env/feature gate — not required for retailer login.
-                    val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-                    if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
-                }
+                completeAuth(response, clearScoped = false)
+                val userId = response.user?.id ?: response.retailerId
                 try {
-                    api.setupRetailer(
-                        body = mapOf(
-                            "store_name" to storeName,
-                            "owner_name" to ownerName,
-                            "address_text" to addressText,
-                            "latitude" to latitude,
-                            "longitude" to longitude,
-                        ),
-                        idempotencyKey = RetailerIdempotencyKeys.setup(response.user.id),
-                    )
+                    if (userId.isNotBlank()) {
+                        api.setupRetailer(
+                            body = mapOf(
+                                "store_name" to storeName,
+                                "owner_name" to ownerName,
+                                "address_text" to addressText,
+                                "latitude" to latitude,
+                                "longitude" to longitude,
+                            ),
+                            idempotencyKey = RetailerIdempotencyKeys.setup(userId),
+                        )
+                    }
                 } catch (_: Exception) {
                     // Registration already captured core profile; setup is additive best-effort.
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
                 _uiState.value = _uiState.value.copy(
@@ -213,6 +287,8 @@ class AuthViewModel @Inject constructor(
 }
 
 data class AuthUiState(
+    val needsOrgSelect: Boolean = false,
+    val pendingMemberships: List<com.pegasusx.retailer.data.model.RetailerMembershipDTO> = emptyList(),
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val error: String? = null,

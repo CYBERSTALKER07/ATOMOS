@@ -604,7 +604,12 @@ func buildChargebackLedgerEntry(c ChargebackRecord) LedgerEntryRecord {
 		occurredAt = time.Now().UTC()
 	}
 
+	source := strings.TrimSpace(c.Source)
+	if source == "" {
+		source = "payment.chargeback"
+	}
 	return LedgerEntryRecord{
+		// Deterministic ledger id (matches chargeback id) so InsertOrUpdate is idempotent.
 		LedgerEntryID: "pledger_chargeback_" + c.ChargebackID,
 		OrderID:       c.OrderID,
 		SupplierID:    c.SupplierID,
@@ -614,7 +619,7 @@ func buildChargebackLedgerEntry(c ChargebackRecord) LedgerEntryRecord {
 		AmountMinor:   c.AmountMinor,
 		Currency:      normalizedUpper(c.Currency, "UZS"),
 		ReferenceID:   c.ChargebackID,
-		Source:        "payment.chargeback",
+		Source:        source,
 		OccurredAt:    occurredAt,
 		CreatedAt:     occurredAt,
 	}

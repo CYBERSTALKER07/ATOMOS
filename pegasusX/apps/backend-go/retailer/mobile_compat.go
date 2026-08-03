@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 )
@@ -171,14 +170,9 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// HandleDeviceToken serves POST /v1/user/device-token.
-func (s *Service) HandleDeviceToken(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
+// HandleDeviceToken is intentionally not mounted. Clients must use platform
+// POST /v1/user/device-token (durable DeviceTokens). Kept as a comment trap:
+// do not re-register a silent OK handler here.
 
 // HandleMobileRegister accepts the legacy mobile registration body and returns AuthResponse.
 func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
@@ -342,31 +336,4 @@ func mobileActiveFulfillment(order TrackingOrder) map[string]any {
 		m["live_location_available"] = false
 	}
 	return m
-}
-
-func demoTrackingOrdersForRetailer(retailerID, supplierID string) []TrackingOrder {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	return []TrackingOrder{
-		{
-			OrderID:    "ord_retailer_demo_1",
-			SupplierID: supplierID,
-			RetailerID: retailerID,
-			Status:     "IN_TRANSIT",
-			TotalMinor: 28000,
-			Currency:   "UZS",
-			CreatedAt:  now,
-			UpdatedAt:  now,
-			DriverID:   "drv_demo_1",
-			Items: []TrackingLineItem{
-				{ProductID: "prod-milk-1l", ProductName: "Whole Milk 1L", Quantity: 2, UnitPrice: 12000, LineTotal: 24000},
-			},
-			DriverLocation: &TrackingLocation{
-				DriverID:  supplierID,
-				Lat:       41.312,
-				Lng:       69.241,
-				Latitude:  41.312,
-				Longitude: 69.241,
-			},
-		},
-	}
 }

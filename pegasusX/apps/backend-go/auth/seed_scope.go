@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"golang.org/x/crypto/bcrypt"
@@ -61,6 +62,7 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 
 	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		ts := spanner.CommitTimestamp
+		effectiveFrom := time.Now().UTC().Add(-24 * time.Hour)
 		mutations := []*spanner.Mutation{
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId":    "ssmr-wh-transfer-receive",
@@ -150,6 +152,19 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"Version":       int64(1),
 				"CreatedAt":     ts,
 				"UpdatedAt":     ts,
+			}),
+			spanner.InsertOrUpdateMap("PriceLists", map[string]any{
+				"PriceListId":   "ssmr-smoke-price-list",
+				"SupplierId":    supplierID,
+				"Name":          "SSMR Smoke Default",
+				"EffectiveFrom": effectiveFrom,
+				"EffectiveTo":   nil,
+			}),
+			spanner.InsertOrUpdateMap("PriceListItems", map[string]any{
+				"PriceListId":    "ssmr-smoke-price-list",
+				"Sku":            sku,
+				"UnitPriceMinor": int64(50000),
+				"MinQty":         int64(1),
 			}),
 			spanner.InsertOrUpdateMap("Drivers", map[string]any{
 				"DriverId":     "drv_payload_1",

@@ -349,7 +349,8 @@ resource "google_secret_manager_secret_version" "apple_notarize_app_password" {
 # ------------------------------------------------------------------------------
 
 resource "google_storage_bucket" "app_updates" {
-  name          = "${local.resource_prefix}-app-updates"
+  # GCS names are global — include project_id so multi-account cutovers do not 409.
+  name          = "${var.project_id}-${local.resource_prefix}-app-updates"
   location      = var.region
   force_destroy = false
   

@@ -2,7 +2,7 @@ import SwiftUI
 
 private let dispatchTetrisBuffer = 0.95
 
-private enum DispatchAssignmentMode: String, CaseIterable, Identifiable {
+enum DispatchAssignmentMode: String, CaseIterable, Identifiable {
     case smart
     case manual
 
@@ -333,245 +333,58 @@ struct DispatchView: View {
 
     @ViewBuilder
     private func ordersSegment(preview: DispatchPreview) -> some View {
-        let selectedDriver = preview.availableDrivers.first(where: { $0.driverId == selectedDriverId })
-        let selectedVolume = preview.undispatchedOrders
-            .filter { selectedOrderIds.contains($0.orderId) }
-            .reduce(0.0) { $0 + $1.volumeVu }
-        let effectiveMax: Double = {
-            guard let driver = selectedDriver else { return 0 }
-            if let free = driver.freeVolumeVu, free > 0 {
-                return free * dispatchTetrisBuffer
+        DispatchOrderList(
+            preview: preview,
+            fleetVehicles: fleetVehicles,
+            vehicleReasons: $vehicleReasons,
+            vehicleNotes: $vehicleNotes,
+            mutatingFleetVehicleId: mutatingFleetVehicleId,
+            dispatchMode: $dispatchMode,
+            selectedDriverId: $selectedDriverId,
+            selectedOrderIds: $selectedOrderIds,
+            executing: executing,
+            onManualDispatch: {
+                Task { await runManualDispatch(forceCapacity: false) }
+            },
+            onSmartDispatch: {
+                showSmartConfirm = true
+            },
+            onProposeDate: { orderId in
+                proposeTarget = orderId
+                proposeDate = Date()
+                opsReasonInput = ""
+            },
+            onReject: { orderId in
+                rejectRoute = DispatchOrderDetailRoute(id: orderId)
+                opsReasonInput = ""
+            },
+            onOrderDoubleTap: { orderId in
+                detailRoute = DispatchOrderDetailRoute(id: orderId)
+            },
+            onMarkVehicleUnavailable: { vehicle in
+                let reason = vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD"
+                let note = vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? ""
+                Task {
+                    await updateFleetVehicle(
+                        vehicle,
+                        isActive: false,
+                        reason: reason,
+                        note: reason == VehicleUnavailableReasonOption.other.rawValue ? note : nil
+                    )
+                }
+            },
+            onRestoreVehicle: { vehicle in
+                Task { await updateFleetVehicle(vehicle, isActive: true) }
             }
-            return driver.maxVolumeVu * dispatchTetrisBuffer
-        }()
-
-        ResponsiveGridContentWrapper {
-            if !fleetVehicles.isEmpty {
-                Section("Fleet trucks (\(fleetVehicles.count))") {
-                    ForEach(fleetVehicles) { vehicle in
-                        let reasonBinding = Binding<String>(
-                            get: { vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD" },
-                            set: { vehicleReasons[vehicle.vehicleId] = $0 }
-                        )
-                        let noteBinding = Binding<String>(
-                            get: { vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? "" },
-                            set: { vehicleNotes[vehicle.vehicleId] = $0 }
-                        )
-                        FleetTruckDispatchCard(
-                            vehicle: vehicle,
-                            selectedReason: reasonBinding,
-                            customNote: noteBinding,
-                            mutating: mutatingFleetVehicleId == vehicle.vehicleId,
-                            onMarkUnavailable: {
-                                let reason = vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD"
-                                let note = vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? ""
-                                Task {
-                                    await updateFleetVehicle(
-                                        vehicle,
-                                        isActive: false,
-                                        reason: reason,
-                                        note: reason == VehicleUnavailableReasonOption.other.rawValue ? note : nil
-                                    )
-                                }
-                            },
-                            onRestore: {
-                                Task { await updateFleetVehicle(vehicle, isActive: true) }
-                            }
-                        )
-                    }
-                }
-            }
-
-            if preview.undispatchedOrders.isEmpty {
-                Section {
-                    ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("No pending orders"))
-                }
-            } else {
-                Section {
-                    Picker("Dispatch mode", selection: $dispatchMode) {
-                        ForEach(DispatchAssignmentMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    if dispatchMode == .manual {
-                    Picker("Truck / driver", selection: $selectedDriverId) {
-                        Text("Select truck / driver").tag("")
-                        ForEach(preview.availableDrivers) { driver in
-                            Text(driverPickerLabel(driver)).tag(driver.driverId)
-                        }
-                    }
-                    if selectedDriver != nil {
-                        Text("Loaded \(selectedVolume, specifier: "%.1f") / \(effectiveMax, specifier: "%.1f") VU effective")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Button {
-                        Task { await runManualDispatch(forceCapacity: false) }
-                    } label: {
-                        Text(executing ? "Dispatching…" : "Manual (\(selectedOrderIds.count))")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
-                    } else {
-                    Text("Trucks are assigned automatically across the fleet.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button {
-                        showSmartConfirm = true
-                    } label: {
-                        Text("Smart Dispatch")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
-                    }
-                    if preview.fleetEffectiveCapacityVu > 0 {
-                        Text("Fleet \(preview.fleetEffectiveCapacityVu, specifier: "%.1f") VU effective")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Section("Orders") {
-                    ForEach(preview.undispatchedOrders) { order in
-                        HStack(alignment: .center, spacing: LabTheme.spacingSM) {
-                            Button {
-                                if selectedOrderIds.contains(order.orderId) {
-                                    selectedOrderIds.remove(order.orderId)
-                                } else {
-                                    selectedOrderIds.insert(order.orderId)
-                                }
-                            } label: {
-                                Image(systemName: selectedOrderIds.contains(order.orderId) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selectedOrderIds.contains(order.orderId) ? Color.accentColor : .secondary)
-                            }
-                            .buttonStyle(.plain)
-
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
-                                    .font(.headline)
-                                Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                HStack(spacing: LabTheme.spacingSM) {
-                                    Button("Propose date") {
-                                        proposeTarget = order.orderId
-                                        proposeDate = Date()
-                                        opsReasonInput = ""
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    Button("Cancel", role: .destructive) {
-                                        rejectRoute = DispatchOrderDetailRoute(id: order.orderId)
-                                        opsReasonInput = ""
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                detailRoute = DispatchOrderDetailRoute(id: order.orderId)
-                            }
-                            .accessibilityHint("Double-tap to open order detail")
-                        }
-                    }
-                }
-                if !preview.proposedRoutes.isEmpty || !preview.optimizerWarnings.isEmpty || preview.windowConstrainedCount > 0 {
-                    Section("Smart suggest preview") {
-                        if preview.windowConstrainedCount > 0 {
-                            Text("\(preview.windowConstrainedCount) order(s) constrained by receiving window")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                        if let source = preview.optimizerSource, !source.isEmpty {
-                            Text("Source: \(source)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        ForEach(preview.optimizerWarnings, id: \.self) { warning in
-                            Text(warning)
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                }
-                if !preview.proposedRoutes.isEmpty {
-                    Section("Smart suggest routes (\(preview.proposedRoutes.count))") {
-                        DispatchPreviewMapView(routes: preview.proposedRoutes)
-                            .listRowInsets(EdgeInsets())
-                        ForEach(preview.proposedRoutes) { route in
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                HStack {
-                                    Text(route.driverName ?? route.driverId ?? "Driver")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(route.stopCount ?? route.orderIds.count) stops · \((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f") VU")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Text(route.orderIds.joined(separator: " → "))
-                                    .font(.caption.monospaced())
-                                    .lineLimit(2)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        )
     }
 
     @ViewBuilder
     private func driversSegment(preview: DispatchPreview) -> some View {
-        if preview.availableDrivers.isEmpty && preview.unavailableDrivers.isEmpty {
-            ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("No available drivers"))
-        } else {
-            ResponsiveGridContentWrapper {
-                if !preview.availableDrivers.isEmpty {
-                    Section("Available") {
-                        ForEach(preview.availableDrivers) { driver in
-                            driverRow(driver, unavailableDetail: false)
-                        }
-                    }
-                }
-                if !preview.unavailableDrivers.isEmpty {
-                    Section("Vehicle Unavailable") {
-                        ForEach(preview.unavailableDrivers) { driver in
-                            driverRow(driver, unavailableDetail: true)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func driverRow(_ driver: AvailableDriver, unavailableDetail: Bool) -> some View {
-        HStack(alignment: unavailableDetail ? .top : .center) {
-            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text(driver.name)
-                    .font(.headline)
-                Text(driverSubtitle(driver, unavailableDetail: unavailableDetail))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if unavailableDetail, let reason = driver.unavailableReason, !reason.isEmpty {
-                    Text(vehicleUnavailableReasonLabel(reason))
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                WarehouseStatusBadge(text: driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
-                if driver.maxVolumeVu > 0 {
-                    Text("\(driver.maxVolumeVu, specifier: "%.0f") VU")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
+        DispatchDriverList(
+            availableDrivers: preview.availableDrivers,
+            unavailableDrivers: preview.unavailableDrivers
+        )
     }
 
     @ViewBuilder
@@ -600,6 +413,7 @@ struct DispatchView: View {
                     }
                 }
             }
+            }
         }
     }
 
@@ -626,6 +440,7 @@ struct DispatchView: View {
                         lockPendingRelease = lock
                     }
                 }
+            }
             }
         }
     }

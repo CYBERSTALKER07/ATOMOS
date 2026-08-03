@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.data.remote.WarehouseApi
@@ -58,6 +61,8 @@ import com.pegasusx.warehouse.util.orderActionFlags
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.pegasusx.warehouse.ui.components.orders.orderOpsActions
+import com.pegasusx.warehouse.ui.components.orders.orderLineItems
 
 private enum class OrderMutationAction {
     ProposeDelivery,
@@ -83,7 +88,27 @@ fun OrderDetailScreen(
     var reasonInput by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
+
+    fun openReceipt() {
+        scope.launch {
+            try {
+                val resp = api.getOrderReceipt(orderId)
+                val meta = resp.body()
+                val url = meta?.htmlUrl?.ifBlank { null }
+                    ?: meta?.qrUrl?.ifBlank { null }
+                    ?: meta?.pdfUrl?.ifBlank { null }
+                if (resp.isSuccessful && !url.isNullOrBlank()) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } else {
+                    snackbarHostState.showSnackbar("Receipt unavailable (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "Receipt unavailable")
+            }
+        }
+    }
 
     fun load() {
         loading = true
@@ -293,67 +318,27 @@ fun OrderDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (showOps) {
+                    if (state == "COMPLETED" || state == "FISCALIZING" || state == "FISCAL_FAILED") {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            HorizontalDivider()
-                            Spacer(Modifier.height(PegasusSpacing.xs))
-                            Text("Warehouse actions", style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(PegasusSpacing.xs))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                            OutlinedButton(
+                                onClick = { openReceipt() },
+                                enabled = !mutating,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                if (canDelay) {
-                                    OutlinedButton(
-                                        onClick = { showProposeDatePicker = true },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Propose new date") }
-                                }
-                                if (canOverflow) {
-                                    OutlinedButton(
-                                        onClick = { pendingAction = OrderMutationAction.Overflow },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Overflow") }
-                                }
-                                if (canReject) {
-                                    OutlinedButton(
-                                        onClick = { pendingAction = OrderMutationAction.Reject },
-                                        enabled = !mutating,
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Reject") }
-                                }
+                                Text("View Pegasus receipt")
                             }
                         }
                     }
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        HorizontalDivider()
-                        Spacer(Modifier.height(PegasusSpacing.sm))
-                        Text("Line Items", style = MaterialTheme.typography.titleMedium)
-                    }
-                    items(current.lineItems) { item ->
-                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.padding(PegasusSpacing.lg),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.productName.ifBlank { "Product" }, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        "Qty: ${item.quantity}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                Text(
-                                    "${fmt.format(item.unitPrice)} UZS",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
+                    orderOpsActions(
+                        canDelay = canDelay,
+                        canOverflow = canOverflow,
+                        canReject = canReject,
+                        mutating = mutating,
+                        onProposeNewDate = { showProposeDatePicker = true },
+                        onOverflow = { pendingAction = OrderMutationAction.Overflow },
+                        onReject = { pendingAction = OrderMutationAction.Reject }
+                    )
+                    orderLineItems(current, fmt)
                 }
             }
         }

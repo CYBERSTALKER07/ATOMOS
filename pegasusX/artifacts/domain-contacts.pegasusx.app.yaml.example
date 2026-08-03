@@ -1,0 +1,18 @@
+# Fill this in, save as domain-contacts.pegasusx.app.yaml (do not commit secrets/PII).
+# Then tell the agent to run registration.
+#
+# Phone format: +<country>.<number>  e.g. +998.901234567
+# regionCode: ISO country (UZ, US, …)
+
+allContacts:
+  email: 'blackfoxenterprise3697@gmail.com'
+  phoneNumber: '+998.XXXXXXXXX'
+  postalAddress:
+    regionCode: 'UZ'
+    postalCode: '100000'
+    administrativeArea: 'Tashkent'
+    locality: 'Tashkent'
+    addressLines:
+      - 'Your street address'
+    recipients:
+      - 'Black Fox Enterprise'

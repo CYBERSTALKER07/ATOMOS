@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -187,6 +188,9 @@ type InventoryLevelView struct {
 	QuantityReserved int64  `json:"quantity_reserved"`
 	ReorderThreshold int64  `json:"reorder_threshold"`
 	Version          int64  `json:"version"`
+	OutOfStockPolicy string `json:"out_of_stock_policy,omitempty"`
+	EffectivePolicy  string `json:"effective_policy,omitempty"`
+	AcceptsBackorder bool   `json:"accepts_backorder,omitempty"`
 }
 
 // InventoryLevelUpsert is the write model for inventory import and seed paths.
@@ -252,6 +256,7 @@ type Service struct {
 	fallbackDepotLat      float64
 	fallbackDepotLng      float64
 	replenishmentEngine   *replenishment.Engine
+	controlTower          *controltower.Service
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute
@@ -372,12 +377,13 @@ type RegisterRequest struct {
 
 // RegisterResponse mirrors what the wizard expects.
 type RegisterResponse struct {
-	SupplierID   string `json:"supplier_id"`
-	LegalName    string `json:"legal_name"`
-	IsRegistered bool   `json:"is_registered"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
-	Token        string `json:"token,omitempty"`
+	SupplierID    string `json:"supplier_id"`
+	LegalName     string `json:"legal_name"`
+	IsRegistered  bool   `json:"is_registered"`
+	IsConfigured  bool   `json:"is_configured"`
+	NextStep      string `json:"next_step"`
+	Token         string `json:"token,omitempty"`
+	FirebaseToken string `json:"firebase_token,omitempty"`
 }
 
 // LoginRequest is the wire shape for POST /v1/auth/supplier/login.
@@ -388,12 +394,13 @@ type LoginRequest struct {
 
 // LoginResponse is the login confirmation payload.
 type LoginResponse struct {
-	SupplierID   string `json:"supplier_id"`
-	IsRegistered bool   `json:"is_registered"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
-	Token        string `json:"token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	SupplierID    string `json:"supplier_id"`
+	IsRegistered  bool   `json:"is_registered"`
+	IsConfigured  bool   `json:"is_configured"`
+	NextStep      string `json:"next_step"`
+	Token         string `json:"token,omitempty"`
+	RefreshToken  string `json:"refresh_token,omitempty"`
+	FirebaseToken string `json:"firebase_token,omitempty"`
 }
 
 // Validate enforces wizard invariants.
@@ -792,6 +799,12 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("session cookie issue failed", "err", err)
 	}
 	resp.Token = token
+	if fbToken, err := auth.MintCustomToken(r.Context(), resp.SupplierID, map[string]interface{}{
+		"role":        string(auth.RoleAdmin),
+		"supplier_id": resp.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp.FirebaseToken = fbToken
+	}
 	respBytes, _ := json.Marshal(resp)
 	if key := r.Header.Get("Idempotency-Key"); key != "" && s.idem != nil {
 		_ = s.idem.Save(r.Context(), key, idempotency.Record{
@@ -842,6 +855,12 @@ func (s *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("supplier refresh token issue failed", "err", err)
 	} else {
 		resp.RefreshToken = refresh
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), resp.SupplierID, map[string]interface{}{
+		"role":        string(auth.RoleAdmin),
+		"supplier_id": resp.SupplierID,
+	}); err == nil && fbToken != "" {
+		resp.FirebaseToken = fbToken
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

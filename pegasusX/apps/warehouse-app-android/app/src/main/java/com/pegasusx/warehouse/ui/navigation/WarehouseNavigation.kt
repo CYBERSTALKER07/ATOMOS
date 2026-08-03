@@ -52,11 +52,13 @@ import com.pegasusx.warehouse.ui.components.WarehouseBottomBar
 import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
 import com.pegasusx.warehouse.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.warehouse.ui.screens.auth.LoginScreen
+import com.pegasusx.warehouse.ui.screens.claims.ClaimsScreen
 import com.pegasusx.warehouse.ui.screens.crm.CRMScreen
 import com.pegasusx.warehouse.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.warehouse.ui.screens.dispatch.DispatchScreen
 import com.pegasusx.warehouse.ui.screens.dispatch.DispatchSettingsScreen
 import com.pegasusx.warehouse.ui.screens.drivers.DriversScreen
+import com.pegasusx.warehouse.ui.screens.exceptions.ExceptionsScreen
 import com.pegasusx.warehouse.ui.screens.fleet.FleetLiveMapScreen
 import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
@@ -74,6 +76,7 @@ import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
 import com.pegasusx.warehouse.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
 import com.pegasusx.warehouse.ui.screens.replenishment.ReplenishmentScreen
+import com.pegasusx.warehouse.ui.screens.rescues.RescuesScreen
 import com.pegasusx.warehouse.ui.screens.returns.ReturnsScreen
 import com.pegasusx.warehouse.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.warehouse.ui.screens.staff.StaffScreen
@@ -101,6 +104,9 @@ object WarehouseRoutes {
     const val ANALYTICS = "analytics"
     const val CRM = "crm"
     const val RETURNS = "returns"
+    const val EXCEPTIONS = "exceptions"
+    const val CLAIMS = "claims"
+    const val RESCUES = "rescues"
     const val TREASURY = "treasury"
     const val DISPATCH = "dispatch"
     const val FLEET_LIVE_MAP = "fleet_live_map"
@@ -401,6 +407,25 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.RETURNS) {
                     ReturnsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURNS))
                 }
+                composable(WarehouseRoutes.EXCEPTIONS) {
+                    ExceptionsScreen(
+                        api = api,
+                        onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
+                        onBack = backFor(WarehouseRoutes.EXCEPTIONS),
+                    )
+                }
+                composable(WarehouseRoutes.CLAIMS) {
+                    ClaimsScreen(
+                        api = api,
+                        onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
+                        onOpenReturns = { navController.navigate(WarehouseRoutes.RETURNS) },
+                        onOpenExceptions = { navController.navigate(WarehouseRoutes.EXCEPTIONS) },
+                        onBack = backFor(WarehouseRoutes.CLAIMS),
+                    )
+                }
+                composable(WarehouseRoutes.RESCUES) {
+                    RescuesScreen(api = api, onBack = backFor(WarehouseRoutes.RESCUES))
+                }
 
                 composable(WarehouseRoutes.TREASURY) {
                     TreasuryScreen(api = api, onBack = backFor(WarehouseRoutes.TREASURY))
@@ -572,7 +597,7 @@ fun WarehouseNavigation(
     }
 
     if (showShell) {
-        Column(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
             policyBanner()
             Row(Modifier.weight(1f)) {
             if (useDrawer) {

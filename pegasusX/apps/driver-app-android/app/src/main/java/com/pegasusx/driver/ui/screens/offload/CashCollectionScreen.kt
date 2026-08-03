@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,176 +97,30 @@ fun CashCollectionScreen(
     ) {
         when (state.phase) {
             CashFiscalPhase.FISCALIZING -> {
-                Icon(
-                    imageVector = Icons.Default.HourglassTop,
-                    contentDescription = null,
-                    tint = lab.fgTertiary,
-                    modifier = Modifier.size(80.dp)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "FISCALIZING",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = lab.fgTertiary,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = state.amount.formattedAmount(),
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = lab.fg
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                CircularProgressIndicator(
-                    color = lab.fg,
-                    modifier = Modifier.size(28.dp),
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Cash captured. Waiting for fiscal receipt…",
-                    fontSize = 14.sp,
-                    color = lab.fgTertiary,
-                    textAlign = TextAlign.Center
-                )
+                com.pegasusx.driver.ui.screens.offload.components.FiscalizingView(amount = state.amount)
             }
             CashFiscalPhase.FISCAL_FAILED -> {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = StatusRed,
-                    modifier = Modifier.size(80.dp)
+                com.pegasusx.driver.ui.screens.offload.components.FiscalFailedView(
+                    error = state.error,
+                    isCompleting = state.isCompleting,
+                    onRetryFiscal = { viewModel.retryFiscal() }
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "FISCAL FAILED",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = StatusRed,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Retry fiscal receipt or call supervisor for force-complete.",
-                    fontSize = 14.sp,
-                    color = lab.fgTertiary,
-                    textAlign = TextAlign.Center
-                )
-                state.error?.let { error ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = { viewModel.retryFiscal() },
-                    enabled = !state.isCompleting,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
-                ) {
-                    if (state.isCompleting) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    }
-                }
             }
             else -> {
-                Icon(
-                    imageVector = Icons.Default.Payments,
-                    contentDescription = null,
-                    tint = StatusGreen,
-                    modifier = Modifier.size(80.dp)
+                com.pegasusx.driver.ui.screens.offload.components.CollectCashView(
+                    amount = state.amount,
+                    amountReceivedMinor = state.amountReceivedMinor,
+                    amountReceivedInput = state.amountReceivedInput,
+                    onAmountReceivedChanged = { viewModel.onAmountReceivedChanged(it) },
+                    shortfallMinor = state.shortfallMinor,
+                    overageMinor = state.overageMinor,
+                    error = state.error,
+                    isCompleting = state.isCompleting,
+                    cashReceived = state.cashReceived,
+                    onRecordSplitPayment = { viewModel.recordSplitPayment() },
+                    onCollectCash = { viewModel.collectCash() },
+                    onAcknowledgeCashReceived = { viewModel.acknowledgeCashReceived() }
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "COLLECT CASH",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = lab.fgTertiary,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = state.amount.formattedAmount(),
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = lab.fg
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Collect the amount above from the retailer before completing delivery.",
-                    fontSize = 14.sp,
-                    color = lab.fgTertiary,
-                    textAlign = TextAlign.Center
-                )
-                state.error?.let { error ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    if (error.contains("GPS", ignoreCase = true)) {
-                        DriverGpsBanner(
-                            message = error,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
-                    }
-                }
-                Spacer(modifier = Modifier.height(48.dp))
-                OutlinedButton(
-                    onClick = { viewModel.recordSplitPayment() },
-                    enabled = !state.isCompleting,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    Text(
-                        text = "Split Payment (Pay Now + Pay Later)",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        if (state.cashReceived) {
-                            viewModel.collectCash()
-                        } else {
-                            viewModel.acknowledgeCashReceived()
-                        }
-                    },
-                    enabled = !state.isCompleting,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
-                ) {
-                    if (state.isCompleting) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = if (state.cashReceived) "Confirm cash capture" else "Cash Received",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
-                }
             }
         }
     }
@@ -273,9 +130,15 @@ fun CashCollectionScreen(
             onDismissRequest = { viewModel.dismissConfirmDialog() },
             title = { Text("Confirm cash collection?") },
             text = {
+                val varianceNote = when {
+                    state.shortfallMinor > 0 -> " Shortfall ${state.shortfallMinor.formattedAmount()} will be recorded."
+                    state.overageMinor > 0 -> " Overage ${state.overageMinor.formattedAmount()} will be recorded."
+                    else -> ""
+                }
                 Text(
-                    "You received ${state.amount.formattedAmount()} from the retailer. " +
-                        "Payment will be captured and a fiscal receipt requested."
+                    "You received ${state.amountReceivedMinor.formattedAmount()} from the retailer " +
+                        "(expected ${state.amount.formattedAmount()}).$varianceNote " +
+                        "Payment will be captured and a fiscal receipt requested for the received amount."
                 )
             },
             confirmButton = {

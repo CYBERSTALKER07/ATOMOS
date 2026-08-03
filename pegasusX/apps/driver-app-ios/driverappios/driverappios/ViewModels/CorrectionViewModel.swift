@@ -5,6 +5,7 @@
 
 import CoreLocation
 import SwiftUI
+import UIKit
 
 @Observable
 @MainActor
@@ -18,6 +19,9 @@ final class CorrectionViewModel {
     var showConfirmation = false
     var isSubmitting = false
     var submitError: String?
+    var evidencePhotoURL = ""
+    var isUploadingPhoto = false
+    var previewImage: UIImage?
 
     private let fleetService: FleetServiceProtocol
 
@@ -51,7 +55,32 @@ final class CorrectionViewModel {
 
     var hasRejections: Bool { rejectedCount > 0 }
 
+    var needsPhotoProof: Bool {
+        lineItems.contains { item in
+            guard item.status == .REJECTED_DAMAGED else { return false }
+            let r = reason(for: item.id)
+            return r == .DAMAGED || r == .WRONG_ITEM
+        }
+    }
+
     // MARK: - Actions
+
+    func uploadEvidence(image: UIImage, orderId: String) async {
+        isUploadingPhoto = true
+        submitError = nil
+        defer { isUploadingPhoto = false }
+        do {
+            previewImage = image
+            evidencePhotoURL = try await MediaUploadService.uploadJPEG(
+                image: image,
+                purpose: "driver_exception",
+                orderId: orderId
+            )
+        } catch {
+            evidencePhotoURL = ""
+            submitError = "Photo upload failed: \(error.localizedDescription)"
+        }
+    }
 
     func loadLineItems(orderId: String) async {
         isLoading = true
@@ -101,6 +130,12 @@ final class CorrectionViewModel {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
+            if needsPhotoProof && evidencePhotoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                submitError = "Photo required for damaged or wrong-item rejections."
+                Haptics.error()
+                return false
+            }
+
             let location = await MainActor.run { FleetViewModel.lastKnownLocation }
             if let location, location.latitude != 0 || location.longitude != 0 {
                 let edge = try await fleetService.updateOrderDuringDelivery(
@@ -115,19 +150,26 @@ final class CorrectionViewModel {
                 }
             }
 
-            let items = lineItems.map {
-                (
-                    lineItemId: $0.id,
-                    rejectedQty: $0.status == .REJECTED_DAMAGED ? $0.quantity : 0,
-                    status: $0.status,
-                    reason: $0.status == .REJECTED_DAMAGED ? reason(for: $0.id).rawValue : "",
-                    customReason: nil as String?
+            let missingItems: [MissingItemRequest] = lineItems.compactMap { item in
+                guard item.status == .REJECTED_DAMAGED else { return nil }
+                let r = reason(for: item.id)
+                let needsLinePhoto = r == .DAMAGED || r == .WRONG_ITEM
+                return MissingItemRequest(
+                    skuId: item.sku_id,
+                    missingQty: item.quantity,
+                    reason: r.rawValue,
+                    photoURL: needsLinePhoto ? evidencePhotoURL : nil
                 )
             }
-            try await fleetService.amendOrder(
+            if missingItems.isEmpty {
+                submitError = "No rejected items."
+                Haptics.error()
+                return false
+            }
+            _ = try await APIClient.shared.reportMissingItems(
                 orderId: orderId,
-                driverId: driverId,
-                items: items
+                missingItems: missingItems,
+                photoURL: evidencePhotoURL.isEmpty ? nil : evidencePhotoURL
             )
             Haptics.success()
             return true

@@ -18,6 +18,23 @@ variable "budget_alert_emails" {
 
 locals {
   budget_enabled = trimspace(var.billing_account_id) != "" && var.monthly_budget_usd > 0
+  budget_emails  = local.budget_enabled ? toset([for e in var.budget_alert_emails : trimspace(e) if trimspace(e) != ""]) : toset([])
+}
+
+# Email channels for 80%/100% budget thresholds (var.budget_alert_emails was unused before D2).
+resource "google_monitoring_notification_channel" "budget_email" {
+  for_each     = local.budget_emails
+  display_name = "pegasusX budget alert (${each.value})"
+  type         = "email"
+  labels = {
+    email_address = each.value
+  }
+  user_labels = {
+    app         = "pegasusx"
+    tenant      = var.tenant_slug
+    environment = var.environment
+    purpose     = "billing-budget"
+  }
 }
 
 resource "google_billing_budget" "pegasusx_monthly" {
@@ -44,5 +61,16 @@ resource "google_billing_budget" "pegasusx_monthly" {
   threshold_rules {
     threshold_percent = 1.0
     spend_basis       = "CURRENT_SPEND"
+  }
+
+  dynamic "all_updates_rule" {
+    for_each = length(local.budget_emails) > 0 ? [1] : []
+    content {
+      monitoring_notification_channels = [
+        for ch in google_monitoring_notification_channel.budget_email : ch.id
+      ]
+      # Keep billing account admins on the thread as well as explicit ops emails.
+      disable_default_iam_recipients = false
+    }
   }
 }

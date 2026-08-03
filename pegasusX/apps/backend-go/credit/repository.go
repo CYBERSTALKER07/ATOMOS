@@ -3,6 +3,7 @@ package credit
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -14,8 +15,10 @@ import (
 // Repository persists retailer credit profiles.
 type Repository interface {
 	GetProfile(ctx context.Context, retailerID, supplierID string) (Profile, bool, error)
+	ListBySupplier(ctx context.Context, supplierID, status string, limit int) ([]Profile, error)
 	UpsertProfile(ctx context.Context, p Profile, emit func(outbox.TxnBuffer) error) error
 	AdjustBalance(ctx context.Context, retailerID, supplierID string, deltaMinor int64, emit func(outbox.TxnBuffer) error) error
+	GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error)
 }
 
 // SpannerRepository is a Spanner-backed credit profile repository.
@@ -51,6 +54,51 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, retailerID, supplier
 		return Profile{}, false, err
 	}
 	return p, true, nil
+}
+
+// ListBySupplier returns credit profiles for one supplier, newest first.
+// status empty = all; otherwise exact Status match (ACTIVE|FROZEN|CLOSED|BLACKLISTED).
+func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID, status string, limit int) ([]Profile, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner credit repository: nil client")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return nil, fmt.Errorf("supplier_id_required")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	status = strings.ToUpper(strings.TrimSpace(status))
+	sql := "SELECT " + profileSelectColumns + " FROM RetailerCreditProfiles WHERE SupplierId = @sid"
+	params := map[string]any{"sid": supplierID}
+	if status != "" {
+		sql += " AND Status = @status"
+		params["status"] = status
+	}
+	sql += fmt.Sprintf(" ORDER BY UpdatedAt DESC LIMIT %d", limit)
+
+	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	defer iter.Stop()
+	out := make([]Profile, 0, 16)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list credit profiles: %w", err)
+		}
+		p, err := scanProfileRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
 }
 
 // UpsertProfile creates or updates a credit profile atomically with an optional outbox event.
@@ -196,18 +244,35 @@ func (r *SpannerRepository) AdjustBalance(ctx context.Context, retailerID, suppl
 
 func scanProfileRow(row *spanner.Row) (Profile, error) {
 	var p Profile
-	var status, riskTier spanner.NullString
+	var status spanner.NullString
 	var lastEvaluated spanner.NullTime
 	if err := row.Columns(&p.RetailerID, &p.SupplierID, &p.CreditLimitMinor, &p.CurrentBalanceMinor, &p.AvailableCreditMinor,
 		&p.RiskScore, &p.DelinquencyCount, &status, &lastEvaluated, &p.Version, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		return Profile{}, fmt.Errorf("scan credit profile row: %w", err)
 	}
 	p.Status = Status(status.StringVal)
-	p.RiskTier = RiskTier(riskTier.StringVal)
+	// RiskTier is derived (not a Spanner column); recompute from live balances.
+	p.RiskTier = deriveRiskTier(p.DelinquencyCount, p.CurrentBalanceMinor, p.CreditLimitMinor)
+	if p.AvailableCreditMinor == 0 && p.CreditLimitMinor > p.CurrentBalanceMinor {
+		p.AvailableCreditMinor = p.CreditLimitMinor - p.CurrentBalanceMinor
+	}
 	if lastEvaluated.Valid {
 		p.LastEvaluatedAt = lastEvaluated.Time
 	}
 	return p, nil
+}
+
+func deriveRiskTier(delinquencyCount, balanceMinor, limitMinor int64) RiskTier {
+	if delinquencyCount >= 3 || balanceMinor > limitMinor {
+		return RiskTierBlock
+	}
+	if delinquencyCount >= 1 || (limitMinor > 0 && balanceMinor > limitMinor/2) {
+		return RiskTierHigh
+	}
+	if limitMinor > 0 && balanceMinor > limitMinor/4 {
+		return RiskTierMedium
+	}
+	return RiskTierLow
 }
 
 type spannerTxnBuffer struct {
@@ -217,4 +282,42 @@ type spannerTxnBuffer struct {
 func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 	b.events = append(b.events, e)
 	return nil
+}
+
+// GetScoresForRetailers loads latest RetailerCreditScores rows for enrichment.
+func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error) {
+	out := make(map[string]RetailerCreditScore)
+	if r == nil || r.client == nil || len(retailerIDs) == 0 {
+		return out, nil
+	}
+	keys := make([]spanner.Key, 0, len(retailerIDs))
+	for _, id := range retailerIDs {
+		if strings.TrimSpace(id) == "" {
+			continue
+		}
+		keys = append(keys, spanner.Key{id})
+	}
+	if len(keys) == 0 {
+		return out, nil
+	}
+	iter := r.client.Single().Read(ctx, "RetailerCreditScores", spanner.KeySetFromKeys(keys...),
+		[]string{"RetailerId", "Score", "RiskTier", "SuggestedLimitMinor", "ComputedAt"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var rcs RetailerCreditScore
+		var tier string
+		if err := row.Columns(&rcs.RetailerID, &rcs.Score, &tier, &rcs.SuggestedLimitMinor, &rcs.ComputedAt); err != nil {
+			return nil, err
+		}
+		rcs.RiskTier = RiskTier(tier)
+		out[rcs.RetailerID] = rcs
+	}
+	return out, nil
 }

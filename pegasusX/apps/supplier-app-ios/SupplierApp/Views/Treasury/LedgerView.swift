@@ -16,11 +16,12 @@ struct LedgerView: View {
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.entryType).font(.headline)
-                        Text(MoneyFormat.minor(row.amountMinor, currency: row.currency)).font(.subheadline)
-                        if let orderId = row.orderId { Text("Order \(orderId)").font(.caption) }
-                        Text(row.occurredAt).font(.caption)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(row.entryType).font(.headline)
+                            Text(MoneyFormat.minor(row.amountMinor, currency: row.currency)).font(.subheadline)
+                            if let orderId = row.orderId { Text("Order \(orderId)").font(.caption) }
+                            Text(row.occurredAt).font(.caption)
+                        }
                     }
                 }
             }

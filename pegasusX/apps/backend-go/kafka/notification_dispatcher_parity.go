@@ -101,8 +101,8 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 		return d.handleOrderEvent(ctx, payload, traceID)
 	case "UNIFIED_CHECKOUT_COMPLETED":
 		return d.handleOrderEvent(ctx, payload, traceID)
-	case "SHOP_CLOSED_BYPASS_OFFLOAD":
-		return d.handleOrderEvent(ctx, payload, traceID)
+	case "SHOP_CLOSED_BYPASS_OFFLOAD", "SHOP_CLOSED_TIMEOUT", "PROXIMITY_UNLOCKED", "PARTIAL_OFFLOAD", "CREDIT_LEAVE":
+		return d.handleShopClosedEvent(ctx, payload, traceID)
 	case "ROUTE_FINALIZED":
 		return d.handleRouteEvent(ctx, payload, traceID)
 	case "FACTORY_MANIFEST_CREATED":
@@ -118,6 +118,11 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 		return d.handleExtendedFinanceEvent(ctx, payload, traceID)
 	case "STOCK_BACKORDERED":
 		return d.handleExtendedFinanceEvent(ctx, payload, traceID)
+	case "cash_reconciliation.created", "cash_reconciliation.accepted", "cash_reconciliation.written_off", "cash_reconciliation.escalation",
+		"credit_note.created", "credit_note.issued",
+		"reverse_logistics.task_created", "reverse_logistics.task_received",
+		"credit.score.updated", "reorder.suggestion.updated":
+		return d.handleFinanceGapEvent(ctx, payload, traceID)
 	case "SETTLEMENT_REVISED", "DELIVERY_DELTA_REFUNDED", "FEE_RATE_ADJUSTED":
 		return d.handleSupplierFinanceEvent(ctx, payload, traceID)
 
@@ -539,5 +544,18 @@ func (d *NotificationDispatcher) handleFleetDispatched(ctx context.Context, payl
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastDriver(ctx, e.DriverID, payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleFinanceGapEvent(ctx context.Context, payload []byte, traceID string) error {
+	e, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	if d.dropFanout(e.Type, traceID, e.dedupAggregateID()) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.supplierID(), payload)
+	d.persistInbox(ctx, e.supplierID(), "ADMIN", payload)
 	return nil
 }

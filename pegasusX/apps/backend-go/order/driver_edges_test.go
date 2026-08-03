@@ -34,19 +34,28 @@ func TestHandleCreditDeliveryDriverSuccess(t *testing.T) {
 	if repo.captured.Status != StatusDeliveredOnCredit {
 		t.Fatalf("captured status = %s, want %s", repo.captured.Status, StatusDeliveredOnCredit)
 	}
-	if repo.bufferedEvents != 2 {
-		t.Fatalf("buffered events = %d, want 2", repo.bufferedEvents)
+	// ORDER_STATUS_CHANGED + CREDIT_DELIVERY_MARKED + CREDIT_LEAVE
+	if repo.bufferedEvents != 3 {
+		t.Fatalf("buffered events = %d, want 3", repo.bufferedEvents)
 	}
-	event := repo.lastEvents[len(repo.lastEvents)-1]
-	var payload events.CreditDeliveryEvent
-	if err := json.Unmarshal(event.Payload, &payload); err != nil {
-		t.Fatalf("unmarshal event payload: %v", err)
+	foundMarked := false
+	for _, event := range repo.lastEvents {
+		var base struct {
+			Type    string `json:"type"`
+			OrderID string `json:"order_id"`
+		}
+		if err := json.Unmarshal(event.Payload, &base); err != nil {
+			t.Fatalf("unmarshal event payload: %v", err)
+		}
+		if base.Type == events.EventCreditDeliveryMarked {
+			foundMarked = true
+			if base.OrderID != "ord-1" {
+				t.Fatalf("event order_id = %s, want ord-1", base.OrderID)
+			}
+		}
 	}
-	if payload.Type != events.EventCreditDeliveryMarked {
-		t.Fatalf("event type = %s, want %s", payload.Type, events.EventCreditDeliveryMarked)
-	}
-	if payload.OrderID != "ord-1" {
-		t.Fatalf("event order_id = %s, want ord-1", payload.OrderID)
+	if !foundMarked {
+		t.Fatalf("missing %s among emitted events", events.EventCreditDeliveryMarked)
 	}
 }
 

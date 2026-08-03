@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"cloud.google.com/go/spanner"
 	"errors"
 	"io"
 	"log/slog"
@@ -41,9 +42,11 @@ type testRepo struct {
 	conditionReports    []ConditionReport
 	createConditionErr  error
 	listConditionErr    error
+	// fiscalAttempts mirrors OrderFiscalReceipts for worker idempotency tests.
+	fiscalAttempts map[string]FiscalReceiptRow
 }
 
-func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
+func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, _ StockReservationOpts) error {
 	if r.createErr != nil {
 		return r.createErr
 	}
@@ -90,6 +93,17 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	r.captured = o
 	r.order = o
 	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
+	if r.fiscalAttempts == nil {
+		r.fiscalAttempts = make(map[string]FiscalReceiptRow)
+	}
+	for _, fr := range o.PendingFiscalReceipts {
+		key := fr.OrderID + ":" + fr.AttemptID
+		r.fiscalAttempts[key] = fr
+	}
+	if o.FiscalReceiptUpdate != nil {
+		u := *o.FiscalReceiptUpdate
+		r.fiscalAttempts[u.OrderID+":"+u.AttemptID] = u
+	}
 	if emit != nil {
 		buf := &testTxnBuffer{}
 		if err := emit(buf); err != nil {
@@ -101,7 +115,7 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	return nil
 }
 
-func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error {
+func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error, _ StockReservationOpts) error {
 	if r.updateErr != nil {
 		return r.updateErr
 	}
@@ -125,6 +139,69 @@ func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 		return Order{}, false, nil
 	}
 	return r.order, true, nil
+}
+
+func (r *testRepo) GetOrderTxn(ctx context.Context, _ *spanner.ReadWriteTransaction, orderID string) (Order, bool, error) {
+	return r.GetOrder(ctx, orderID)
+}
+
+func (r *testRepo) GetFiscalByReceiptID(_ context.Context, receiptID string) (FiscalReceiptRow, bool, error) {
+	receiptID = strings.TrimSpace(receiptID)
+	if receiptID == "" {
+		return FiscalReceiptRow{}, false, nil
+	}
+	if r.fiscalAttempts != nil {
+		for _, fr := range r.fiscalAttempts {
+			if fr.FiscalReceiptID == receiptID {
+				return fr, true, nil
+			}
+		}
+	}
+	if r.captured.FiscalReceiptUpdate != nil && r.captured.FiscalReceiptUpdate.FiscalReceiptID == receiptID {
+		return *r.captured.FiscalReceiptUpdate, true, nil
+	}
+	return FiscalReceiptRow{}, false, nil
+}
+
+func (r *testRepo) GetFiscalAttempt(_ context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error) {
+	if r.fiscalAttempts != nil {
+		if fr, ok := r.fiscalAttempts[orderID+":"+attemptID]; ok {
+			return fr, true, nil
+		}
+	}
+	if r.captured.FiscalReceiptUpdate != nil {
+		u := *r.captured.FiscalReceiptUpdate
+		if u.OrderID == orderID && u.AttemptID == attemptID {
+			return u, true, nil
+		}
+	}
+	for _, fr := range r.captured.PendingFiscalReceipts {
+		if fr.OrderID == orderID && fr.AttemptID == attemptID {
+			return fr, true, nil
+		}
+	}
+	return FiscalReceiptRow{}, false, nil
+}
+
+func (r *testRepo) CountFiscalAttemptsByStatus(_ context.Context, orderID, status string) (int64, error) {
+	var n int64
+	if r.fiscalAttempts != nil {
+		for _, fr := range r.fiscalAttempts {
+			if fr.OrderID == orderID && fr.Status == status {
+				n++
+			}
+		}
+		return n, nil
+	}
+	if r.captured.FiscalReceiptUpdate != nil && r.captured.FiscalReceiptUpdate.Status == status {
+		n++
+	}
+	for _, fr := range r.captured.PendingFiscalReceipts {
+		if fr.Status == status {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (r *testRepo) CreateConditionReport(_ context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error {
@@ -279,7 +356,7 @@ func TestValidateStatusTransitionMatrix(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateStatusTransition(tc.current, tc.next)
+			err := ValidateStatusTransition(string(tc.current), string(tc.next), TransitionOpts{})
 			if tc.wantErr {
 				if !errors.Is(err, ErrInvalidStatusTransition) {
 					t.Fatalf("expected ErrInvalidStatusTransition, got %v", err)
@@ -980,4 +1057,24 @@ func deliveryTestOrder(status Status) Order {
 
 func (r *testRepo) ListManifestOrders(_ context.Context, manifestID string) ([]Order, error) {
 	return nil, nil
+}
+
+func (r *testRepo) FindPendingBuyerAcceptance(_ context.Context, _ int) ([]*Order, error) {
+	return nil, nil
+}
+
+func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, proofs []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error {
+	r.updateCalls++
+	r.captured = o
+	r.order = o // Update the mocked return value so subsequent GetOrder calls see the new state
+	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.bufferedEvents += len(buf.events)
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	return nil
 }

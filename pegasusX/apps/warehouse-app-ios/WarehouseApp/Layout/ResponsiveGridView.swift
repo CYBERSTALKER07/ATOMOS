@@ -22,7 +22,8 @@ struct ResponsiveGridView<Data: RandomAccessCollection, Content: View>: View whe
         } else {
             ResponsiveGridContentWrapper {
                 ForEach(data) { item in
-                content(item)
+                    content(item)
+                }
             }
         }
     }

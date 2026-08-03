@@ -123,6 +123,12 @@ struct WarehouseAdaptiveShell: View {
             CRMView()
         case .returns:
             ReturnsView()
+        case .exceptions:
+            ExceptionsView()
+        case .claims:
+            ClaimsView()
+        case .rescues:
+            RescuesView()
         case .paymentConfig:
             NavigationStack { PaymentConfigView() }
         case .opsSettings:

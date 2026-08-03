@@ -23,6 +23,14 @@ struct OrgFleetView: View {
                 SupplierErrorView(message: error) { Task { await reload() } }
             } else {
                 VStack(spacing: 0) {
+                    MetricsOverviewView(
+                        driversCount: drivers.count,
+                        vehiclesCount: vehicles.count,
+                        orgMembersCount: orgMembers.count,
+                        topology: topology
+                    )
+                    .padding(.top)
+
                     Picker("Section", selection: $tab) {
                         Text("Drivers (\(drivers.count))").tag(0)
                         Text("Vehicles (\(vehicles.count))").tag(1)
@@ -32,6 +40,7 @@ struct OrgFleetView: View {
                     .padding()
 
                     switch tab {
+<<<<<<< HEAD
                     case 0: DriverListView(drivers: drivers, topology: topology)
                     case 1: VehicleListView(vehicles: vehicles, topology: topology)
                     default: OrgMemberListView(orgMembers: orgMembers, onEdit: { member in
@@ -40,6 +49,20 @@ struct OrgFleetView: View {
                     }, onDeactivate: { userId in
                         await deactivateMember(userId)
                     }, memberActionId: memberActionId)
+=======
+                    case 0:
+                        DriverListView(drivers: drivers, topology: topology)
+                    case 1:
+                        VehicleListView(vehicles: vehicles, topology: topology)
+                    default:
+                        OrgMemberListView(
+                            orgMembers: orgMembers,
+                            editingMember: $editingMember,
+                            showEditMemberSheet: $showEditMemberSheet,
+                            memberActionId: $memberActionId,
+                            deactivateAction: deactivateMember
+                        )
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                     }
                 }
             }

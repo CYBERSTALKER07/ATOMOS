@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -197,6 +198,148 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
+// HandleCreditLeave serves POST /v1/driver/orders/{orderId}/credit-leave.
+func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleDriver {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	orderID := chi.URLParam(r, "orderId")
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	
+	var req struct {
+		Location DriverTelemetry `json:"location"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	if err := req.Location.Validate(100.0); err != nil {
+		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+		return
+	}
+
+	ctx := r.Context()
+	
+	// Perform transition to DeliveredOnCredit, enforcing proximity via UpdateOrderWithTxn similar to shop-closed.
+	// But let's load the order to get the proximity unlocked status and method, and to perform the update.
+	var current Order
+	current, found, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "order_load_failed"})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
+
+	if current.Status != StatusArrived {
+		s.writeOrderMutationError(w, "credit leave failed", orderID, fmt.Errorf("%w: order must be ARRIVED for credit leave (current: %s)", ErrInvalidStatusTransition, current.Status))
+		return
+	}
+
+	// Update status
+	current.Status = StatusDeliveredOnCredit
+	current.UpdatedAt = s.now().UTC()
+
+	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := s.ensureProximityUnlocked(ctx, txn, &current, req.Location.ToLocation(), TransitionOpts{
+			Actor:  claims.Subject,
+			Reason: "credit_leave",
+		}); err != nil {
+			return err
+		}
+
+		profile, err := s.getProfileForUpdate(ctx, txn, current.RetailerID, current.SupplierID)
+		if err != nil {
+			return fmt.Errorf("failed to load credit profile: %w", err)
+		}
+		score, err := getRetailerCreditScore(ctx, txn, current.RetailerID)
+		if err != nil {
+			s.log.WarnContext(ctx, "failed to load credit score for driver credit leave", "err", err, "retailer_id", current.RetailerID)
+		}
+
+		cfg := TimeoutConfig{
+			MaxAutoCreditMinor:            50000000,
+			MaxRiskTierForAutoCredit:      2,
+			AllowForceBypass:              false,
+			CreditScoreEnforcementEnabled: s.creditScoreEnforcement,
+		}
+
+		if err := CanLeaveOnCredit(&current, profile, score, cfg, cfg.CreditScoreEnforcementEnabled); err != nil {
+			return err
+		}
+
+		leg := PaymentLeg{
+			OrderID:        orderID,
+			LegID:          s.newID(),
+			Method:         MethodCredit,
+			AmountMinor:    current.TotalMinor,
+			Status:         PaymentStatusCaptured,
+			IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", orderID, s.newID()),
+			CreatedAt:      s.now(),
+			CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+		}
+		return s.RecordPaymentLeg(ctx, txn, leg)
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+			OrderID:    current.OrderID,
+			DriverID:   claims.Subject,
+			RetailerID: current.RetailerID,
+			SupplierID: current.SupplierID,
+			Status:     string(current.Status),
+		})
+	})
+	if err != nil {
+		s.log.ErrorContext(ctx, "credit leave failed", "order_id", orderID, "err", err)
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	s.invalidateOrderCache(ctx, orderID)
+
+	var proxUnlocked bool
+	var proxMethod string
+	if current.ProximityUnlockedAt != nil {
+		proxUnlocked = true
+		proxMethod = current.ProximityMethod
+	}
+
+	resp := driverEndpointResponse{
+		OrderID:           orderID,
+		Status:            string(StatusDeliveredOnCredit),
+		ProximityUnlocked: proxUnlocked,
+		ProximityMethod:   proxMethod,
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+}
+
 // HandleCreditDelivery serves POST /v1/delivery/credit-delivery.
 func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -223,8 +366,9 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	var req struct {
-		OrderID       string `json:"order_id"`
-		PhotoProofURL string `json:"photo_proof_url"`
+		OrderID          string `json:"order_id"`
+		PhotoProofURL    string `json:"photo_proof_url"`
+		ForceBypassToken string `json:"force_bypass_token,omitempty"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -237,25 +381,77 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	// Proximity gate: credit leave only when unlocked or supervised FORCE_BYPASS.
+	if err := s.requireProximityUnlocked(ctx, req.OrderID, req.ForceBypassToken); err != nil {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": ErrProximityLocked.Error()})
+		return
+	}
+
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:    req.OrderID,
 		NextStatus: StatusDeliveredOnCredit,
 		Reason:     "credit_delivery",
 		Precheck: func(o Order) error {
-			if o.Status != StatusArrived && o.Status != StatusArrivedShopClosed {
+			if o.Status != StatusArrived && o.Status != StatusShopClosedPending {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED (current: %s)", o.Status)
+			}
+			// Block if already in fiscal path.
+			if o.Status == StatusFiscalizing || o.FiscalStatus == FiscalStatusPending || o.FiscalStatus == FiscalStatusSuccess {
+				return fmt.Errorf("credit leave blocked: fiscal state %s", o.FiscalStatus)
+			}
+			if s.credit != nil && o.TotalMinor > 0 {
+				check, cerr := s.credit.CheckOrder(ctx, o.RetailerID, o.SupplierID, o.TotalMinor)
+				if cerr != nil {
+					return cerr
+				}
+				if !check.Allowed {
+					return fmt.Errorf("%w: %s", ErrCreditLimitBreached, check.Reason)
+				}
 			}
 			return nil
 		},
+		PrepareOrder: func(o *Order, _ Status) {
+			if o.ShopClosedResolution == "" {
+				o.ShopClosedResolution = ShopClosedResolutionCreditLeave
+			}
+		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
 				OrderID:    orderRecord.OrderID,
 				DriverID:   claims.Subject,
 				SupplierID: orderRecord.SupplierID,
 				RetailerID: orderRecord.RetailerID,
 				Status:     string(StatusDeliveredOnCredit),
+			}); err != nil {
+				return err
+			}
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventCreditLeave, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+				OrderID:    orderRecord.OrderID,
+				DriverID:   claims.Subject,
+				SupplierID: orderRecord.SupplierID,
+				RetailerID: orderRecord.RetailerID,
+				Status:     string(StatusDeliveredOnCredit),
+				Resolution: ShopClosedResolutionCreditLeave,
 			})
+		},
+		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			if err != nil {
+				return err
+			}
+			leg := PaymentLeg{
+				OrderID:        req.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCredit,
+				AmountMinor:    delivered,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", req.OrderID, s.newID()),
+				CreatedAt:      s.now(),
+				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
+			}
+			return s.RecordPaymentLeg(txnCtx, txn, leg)
 		},
 	})
 	if err != nil {
@@ -278,7 +474,90 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-// HandleExceptionReport serves POST /v1/delivery/exception-report.
+// ExceptionReportItem is one OS&D line on a driver exception report.
+// Wire accepts both canonical and driver-app legacy field names.
+type ExceptionReportItem struct {
+	SKU      string `json:"sku"`
+	Quantity int64  `json:"quantity"`
+	Reason   string `json:"reason"` // MISSING | DAMAGED | WRONG_ITEM | OTHER
+	PhotoURL string `json:"photo_url"`
+}
+
+// UnmarshalJSON accepts sku/sku_id and quantity/missing_qty (driver iOS/Android legacy).
+func (it *ExceptionReportItem) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		SKU        string `json:"sku"`
+		SKUID      string `json:"sku_id"`
+		Quantity   int64  `json:"quantity"`
+		MissingQty int64  `json:"missing_qty"`
+		Reason     string `json:"reason"`
+		PhotoURL   string `json:"photo_url"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	it.SKU = strings.TrimSpace(raw.SKU)
+	if it.SKU == "" {
+		it.SKU = strings.TrimSpace(raw.SKUID)
+	}
+	it.Quantity = raw.Quantity
+	if it.Quantity <= 0 {
+		it.Quantity = raw.MissingQty
+	}
+	it.Reason = raw.Reason
+	it.PhotoURL = raw.PhotoURL
+	return nil
+}
+
+// exceptionReportRequest is the POST body for exception-report / missing-items.
+type exceptionReportRequest struct {
+	OrderID  string
+	Note     string
+	Items    []ExceptionReportItem
+	PhotoURL string
+}
+
+// parseExceptionReportBody accepts canonical {items} and legacy driver {missing_items}.
+func parseExceptionReportBody(body []byte) (exceptionReportRequest, error) {
+	var raw struct {
+		OrderID      string                `json:"order_id"`
+		Note         string                `json:"note"`
+		Items        []ExceptionReportItem `json:"items"`
+		MissingItems []ExceptionReportItem `json:"missing_items"`
+		PhotoURL     string                `json:"photo_url"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return exceptionReportRequest{}, err
+	}
+	items := raw.Items
+	if len(items) == 0 {
+		items = raw.MissingItems
+	}
+	// Legacy missing-items default reason MISSING when empty.
+	for i := range items {
+		if strings.TrimSpace(items[i].Reason) == "" {
+			items[i].Reason = "MISSING"
+		}
+	}
+	return exceptionReportRequest{
+		OrderID:  strings.TrimSpace(raw.OrderID),
+		Note:     raw.Note,
+		Items:    items,
+		PhotoURL: raw.PhotoURL,
+	}, nil
+}
+
+// HandleMissingItems serves POST /v1/delivery/missing-items (compat alias).
+func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
+	s.HandleExceptionReport(w, r)
+}
+
+// HandleExceptionReport serves POST /v1/delivery/exception-report (and missing-items).
+// Drivers report MISSING/DAMAGED quantities with optional visual proof URLs.
+// DAMAGED lines require photo_url so adjudication is possible.
+//
+// Wire compatibility: driver apps send legacy missing_items[{sku_id, missing_qty}];
+// canonical clients send items[{sku, quantity, reason, photo_url}].
 func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -289,7 +568,7 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	body, err := readLimitedBody(r, 64*1024)
+	body, err := readLimitedBody(r, 256*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
@@ -304,21 +583,11 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		}
 	}()
 
-	var req struct {
-		OrderID  string `json:"order_id"`
-		Note     string `json:"note"`
-		ImageURL string `json:"image_url"`
-		Items    []struct {
-			SKU      string `json:"sku"`
-			Quantity int64  `json:"quantity"`
-			Reason   string `json:"reason"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
+	req, err := parseExceptionReportBody(body)
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
@@ -345,20 +614,45 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
 	}
 	amendItems := make([]AmendItemRequest, 0, len(req.Items))
+	photoURIs := make([]string, 0, len(req.Items)+1)
+	if u := strings.TrimSpace(req.PhotoURL); u != "" {
+		photoURIs = append(photoURIs, u)
+	}
 	for _, item := range req.Items {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_exception_item"})
 			return
 		}
-		origQty, ok := origQtyBySKU[sku]
-		if !ok || item.Quantity > origQty {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("quantity exceeds item quantity for sku %s", sku)})
-			return
-		}
-		reason := strings.ToUpper(strings.TrimSpace(item.Reason))
+		reason := normalizeAmendReason(item.Reason)
 		if reason == "" {
 			reason = "MISSING"
+		}
+		if err := validateAmendReason(reason, ""); err != nil && reason != "OTHER" {
+			// OTHER without custom reason still allowed for driver edges — map note.
+			if reason != "OTHER" {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_reason", "message": err.Error()})
+				return
+			}
+		}
+		// Visual proof required for damage / wrong-item during handshake.
+		if reason == "DAMAGED" || reason == "WRONG_ITEM" {
+			photo := strings.TrimSpace(item.PhotoURL)
+			if photo == "" {
+				photo = strings.TrimSpace(req.PhotoURL)
+			}
+			if photo == "" {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_url_required_for_damage"})
+				return
+			}
+			photoURIs = append(photoURIs, photo)
+		} else if u := strings.TrimSpace(item.PhotoURL); u != "" {
+			photoURIs = append(photoURIs, u)
+		}
+		origQty, ok := origQtyBySKU[sku]
+		if !ok || item.Quantity > origQty {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("exception quantity exceeds item quantity for sku %s", sku)})
+			return
 		}
 		amendItems = append(amendItems, AmendItemRequest{
 			ProductID:   sku,
@@ -383,15 +677,17 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
+	driverID := missingItemsDriverID(claims, updated)
 	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
 		"type":        events.EventMissingItemsReported, // TODO maybe rename to EventExceptionReported
 		"order_id":    req.OrderID,
-		"driver_id":   missingItemsDriverID(claims, updated),
+		"driver_id":   driverID,
 		"supplier_id": updated.SupplierID,
 		"retailer_id": updated.RetailerID,
 		"note":        req.Note,
-		"image_url":   req.ImageURL,
+		"image_url":   req.PhotoURL,
 		"items":       req.Items,
+		"photo_urls":  photoURIs,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "exception report event failed", "err", err)
@@ -399,34 +695,86 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if req.ImageURL != "" {
-		if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
-			"type":         "REVERSE_LOGISTICS_REQUIRED",
-			"order_id":     req.OrderID,
-			"warehouse_id": updated.WarehouseID,
-			"supplier_id":  updated.SupplierID,
-			"retailer_id":  updated.RetailerID,
-			"image_url":    req.ImageURL,
-			"items":        req.Items,
-			"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
-		}); err != nil {
-			s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
+	// Logistics exceptions topic (plus main via dual emit for reverse logistics).
+	if err := s.emitExceptionTopics(r.Context(), updated, map[string]any{
+		"type":        events.EventLogisticsExceptionReported,
+		"order_id":    req.OrderID,
+		"driver_id":   driverID,
+		"supplier_id": updated.SupplierID,
+		"retailer_id": updated.RetailerID,
+		"note":        req.Note,
+		"items":       req.Items,
+		"photo_urls":  photoURIs,
+		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "logistics exception topic emit failed", "err", err)
+	}
+
+	if err := s.emitExceptionTopics(r.Context(), updated, map[string]any{
+		"type":         events.EventReverseLogisticsRequired,
+		"order_id":     req.OrderID,
+		"warehouse_id": updated.WarehouseID,
+		"supplier_id":  updated.SupplierID,
+		"retailer_id":  updated.RetailerID,
+		"items":        req.Items,
+		"photo_urls":   photoURIs,
+		"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
+	}
+
+	// Optional claims bridge when service is wired (driver OS&D → claim).
+	if s.claimsBridge != nil {
+		if err := s.claimsBridge.OnDriverException(r.Context(), updated, driverID, req.Items, photoURIs, req.Note); err != nil {
+			s.log.WarnContext(r.Context(), "claims bridge failed", "err", err)
 		}
-	} else {
-		// Existing behavior if no photo proof, though the prompt implies photo proof triggers it.
-		// Let's emit it anyway for MISSING or DAMAGED? Wait, prompt says: 
-		// "(add photo proof support) → Verify: Uploading exception with valid image URL emits REVERSE_LOGISTICS_REQUIRED event."
-		// I'll leave the else branch without event or emit it anyway if it's missing?
-		// Actually, let's emit it if ImageURL != "" or items are missing. 
-		// I will just conditionally add image_url to the payload.
 	}
 
 	idemCommitted = true
+	// Include order_id + reported status aliases for driver iOS/Android wire contracts.
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":          "reported",
+		"order_id":        req.OrderID,
 		"adjusted_total":  amendResp.AdjustedTotal,
 		"original_amount": orderOriginalAmountMinor(updated),
+		"photo_count":     len(photoURIs),
 	})
+}
+
+// claimsBridge is optional — set from bootstrap to open Claims rows from driver OS&D.
+type claimsBridge interface {
+	OnDriverException(ctx context.Context, o Order, driverID string, items []ExceptionReportItem, photos []string, note string) error
+	GetRemainingClaimable(ctx context.Context, orderID string) (RemainingClaimableMinor int64, DeliveredGrossMinor int64, err error)
+}
+
+// SetClaimsBridge wires the claims domain bridge (optional).
+func (s *Service) SetClaimsBridge(b claimsBridge) {
+	if s != nil {
+		s.claimsBridge = b
+	}
+}
+
+func (s *Service) emitExceptionTopics(ctx context.Context, o Order, payload map[string]any) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner_unavailable")
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		// New logistics exceptions topic.
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		// Keep main so existing notification consumers still see reverse logistics.
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		mutations := make([]*spanner.Mutation, 0, len(buf.events))
+		for _, e := range buf.events {
+			mutations = append(mutations, outboxMutation(e))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	return err
 }
 
 // HandleSplitPayment serves POST /v1/delivery/split-payment.
@@ -551,7 +899,7 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 	if err := row.Columns(&status, &version, &did, &supplierID, &retailerID); err != nil {
 		return err
 	}
-	if status != string(StatusArrivedShopClosed) {
+	if status != string(StatusShopClosedPending) {
 		return fmt.Errorf("order must be ARRIVED_SHOP_CLOSED (current: %s)", status)
 	}
 	if !did.Valid || did.StringVal != driverID {

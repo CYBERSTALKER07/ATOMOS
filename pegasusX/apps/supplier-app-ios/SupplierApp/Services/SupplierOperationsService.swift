@@ -21,6 +21,94 @@ enum SupplierOperationsService {
         return resp.data
     }
 
+    static func complianceDashboard(limit: Int = 100) async throws -> ComplianceDashboardResponse {
+        try await APIClient.shared.get("v1/compliance/dashboard?limit=\(limit)")
+    }
+
+    static func cashReconciliations() async throws -> CashReconciliationsResponse {
+        try await APIClient.shared.get("v1/supplier/cash-reconciliations")
+    }
+
+    static func acceptCashReconciliation(
+        id: String,
+        note: String? = nil,
+        idempotencyKey: String
+    ) async throws {
+        var body: [String: String] = [:]
+        if let note, !note.isEmpty { body["note"] = note }
+        try await APIClient.shared.postVoid(
+            "v1/supplier/cash-reconciliations/\(id)/accept",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func creditNotes() async throws -> CreditNotesResponse {
+        try await APIClient.shared.get("v1/supplier/credit-notes?status=DRAFT&limit=100")
+    }
+
+    static func issueCreditNote(id: String, idempotencyKey: String) async throws {
+        try await APIClient.shared.postVoid(
+            "v1/supplier/credit-notes/\(id)/issue",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func creditProfiles(status: String? = nil, limit: Int = 100) async throws -> [CreditProfileRow] {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty { query["status"] = status }
+        let resp: CreditProfilesResponse = try await APIClient.shared.get(
+            "v1/supplier/credit-profiles",
+            query: query
+        )
+        return resp.profiles
+    }
+
+    static func patchRetailerCreditProfile(
+        _ request: RetailerCreditProfilePatchRequest,
+        idempotencyKey: String
+    ) async throws {
+        try await APIClient.shared.patchVoid(
+            "v1/supplier/retailer-credit-profile",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func resolveException(
+        kind: String,
+        id: String,
+        note: String? = nil,
+        creditNoteId: String? = nil
+    ) async throws {
+        var body: [String: String] = [:]
+        if let note, !note.isEmpty { body["note"] = note }
+        if let creditNoteId, !creditNoteId.isEmpty { body["credit_note_id"] = creditNoteId }
+        try await APIClient.shared.postVoid(
+            "v1/supplier/exceptions/\(kind)/\(id)/resolve",
+            body: body
+        )
+    }
+
+    static func routePerformance() async throws -> RoutePerformanceResponse {
+        try await APIClient.shared.get("v1/supplier/route-performance")
+    }
+
+    static func notificationPreferences() async throws -> NotificationPreferencesResponse {
+        try await APIClient.shared.get("v1/user/notification-preferences")
+    }
+
+    static func patchNotificationPreferences(_ preferences: [NotificationPreferenceRow]) async throws {
+        struct Body: Encodable {
+            let preferences: [NotificationPreferenceRow]
+        }
+        try await APIClient.shared.patchVoid(
+            "v1/user/notification-preferences",
+            body: Body(preferences: preferences)
+        )
+    }
+
     static func negotiationsPending(limit: Int = 500, offset: Int = 0) async throws -> [NegotiationProposalRow] {
         let resp: NegotiationPendingResponse = try await APIClient.shared.get(
             "v1/supplier/negotiations/pending?limit=\(limit)&offset=\(offset)"
@@ -292,8 +380,8 @@ enum SupplierOperationsService {
         let request = ApplyReassignRequest(driverId: driverId, isPartial: isPartial)
         try await APIClient.shared.postVoid(
             "v1/supplier/reassign-order",
-            query: ["order_id": orderId],
             body: request,
+            query: ["order_id": orderId],
             idempotencyKey: idempotencyKey
         )
     }
@@ -512,6 +600,31 @@ enum SupplierOperationsService {
 
     static func recordChargebackReversal(_ request: PaymentChargebackReversalRequest, idempotencyKey: String) async throws -> PaymentChargebackReversalResponse {
         try await APIClient.shared.post("v1/payment/chargeback/reversal", body: request, idempotencyKey: idempotencyKey)
+    }
+
+    static func listSupplierClaims(status: String? = "OPEN", limit: Int = 50) async throws -> [SupplierClaim] {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty {
+            query["status"] = status
+        }
+        let resp: SupplierClaimsListResponse = try await APIClient.shared.get("v1/supplier/claims", query: query)
+        return resp.claims
+    }
+
+    static func approveClaim(claimId: String, request: ApproveClaimRequest) async throws -> ApproveClaimResponse {
+        try await APIClient.shared.post("v1/claims/\(claimId)/approve", body: request)
+    }
+
+    static func rejectClaim(claimId: String, request: RejectClaimRequest) async throws -> SupplierClaim {
+        try await APIClient.shared.post("v1/claims/\(claimId)/reject", body: request)
+    }
+
+    static func listClaimChargebacks(limit: Int = 100, orderId: String? = nil) async throws -> ClaimChargebacksResponse {
+        var query: [String: String] = ["limit": String(limit)]
+        if let orderId, !orderId.isEmpty {
+            query["order_id"] = orderId
+        }
+        return try await APIClient.shared.get("v1/supplier/claim-chargebacks", query: query)
     }
 
     static func inventoryAudit() async throws -> [String: String] { // placeholder

@@ -33,6 +33,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/payment/chargeback", d.Service.HandleChargeback)
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/payment/chargeback/reversal", d.Service.HandleChargebackReversal)
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/payment/ledger", d.Service.HandleLedger)
+		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/claim-chargebacks", d.Service.HandleClaimChargebacks)
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/payment/settlement/authority", d.Service.HandleSettlementAuthority)
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/payment/reconciliation/mismatches", d.Service.HandleReconciliationMismatches)
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/payment/global_pay/initiate", d.Service.HandleDeprecatedGlobalPayInitiate)
@@ -40,7 +41,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	mountPayers := func(rr chi.Router) {
 		rr.Post("/v1/payers", d.Service.HandleCreatePayer)
-		rr.Get("/v1/payers", d.Service.HandleListPayers)
+		rr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/payers", d.Service.HandleListPayers)
 		rr.Get("/v1/payers/{payerId}", d.Service.HandleGetPayer)
 		rr.Put("/v1/payers/{payerId}", d.Service.HandleUpdatePayer)
 	}

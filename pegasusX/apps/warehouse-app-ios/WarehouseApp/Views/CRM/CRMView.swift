@@ -40,6 +40,7 @@ struct CRMView: View {
                         }
                     }
                 }
+                }
             }
             .background(LabTheme.background)
             .navigationTitle("Retailers")

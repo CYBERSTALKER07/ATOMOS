@@ -79,5 +79,10 @@ func (s *Service) cancelOrderWithReason(ctx context.Context, current *Order, act
 		return RetailerOrderLifecycleResponse{}, err
 	}
 	s.afterOrderMutation(ctx, *current)
+	if s.replanner != nil && current.ManifestID != "" {
+		go func(rID, act string) {
+			_ = s.replanner.ReplanRoute(context.Background(), rID, "cancel_order", act)
+		}(current.ManifestID, actorID)
+	}
 	return lifecycleResponse(*current, current.Version, false), nil
 }

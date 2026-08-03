@@ -115,6 +115,70 @@ fun AuthScreen(
         if (state.isAuthenticated) onAuthenticated()
     }
 
+    // C1.3 multi-org picker (PendingOrgSelect intermediate login)
+    if (state.needsOrgSelect) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(24.dp)
+                .imePadding(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Choose organization",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier = Modifier.height(8.dp))
+            Text(
+                text = "Your phone is linked to more than one retailer.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            state.pendingMemberships.forEach { m ->
+                Button(
+                    onClick = { viewModel.selectOrg(m.retailerId) },
+                    enabled = !state.isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                    shape = SquircleShape,
+                ) {
+                    Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = m.name.ifBlank { m.retailerId },
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = m.retailerRole,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
+            if (state.isLoading) {
+                Spacer(modifier = Modifier.height(12.dp))
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black)
+            }
+            state.error?.let { err ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(text = err, color = StatusRed, textAlign = TextAlign.Center)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = { viewModel.logout() }) {
+                Text("Back to sign in")
+            }
+        }
+        return
+    }
+
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Color.Black,
         unfocusedBorderColor = Color.Black.copy(alpha = 0.2f),

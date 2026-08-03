@@ -45,6 +45,8 @@ else
 fi
 
 run_gate "test-ssmr-infra" make test-ssmr-infra
+# Money hard-gate (ADR-009) — required before real PSP/OFD; see docs/PRE_CLOUD_THIRD_PARTY_GATE.md
+run_gate "test-ssmr-fiscal" make test-ssmr-fiscal
 
 printf '\n--- wire-ready summary ---\n'
 printf 'PASS: %s  FAIL: %s\n' "$PASS" "$FAIL"

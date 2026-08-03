@@ -8,15 +8,21 @@ import com.pegasusx.driver.data.model.AmendOrderResponse
 import com.pegasusx.driver.data.model.AuthResponse
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.ClientPolicyResponse
+import com.pegasusx.driver.data.model.CashReconciliationRow
+import com.pegasusx.driver.data.model.CashReconciliationsResponse
+import com.pegasusx.driver.data.model.SubmitCashReconciliationRequest
 import com.pegasusx.driver.data.model.CollectCashRequest
 import com.pegasusx.driver.data.model.CollectCashResponse
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadRequest
 import com.pegasusx.driver.data.model.ConfirmOffloadResponse
+import com.pegasusx.driver.data.model.DeliveryScanQRRequest
+import com.pegasusx.driver.data.model.DeliveryScanQRResponse
 import com.pegasusx.driver.data.model.DepartRequest
 import com.pegasusx.driver.data.model.DeliverySubmitRequest
 import com.pegasusx.driver.data.model.DeliverySubmitResponse
 import com.pegasusx.driver.data.model.DriverEarningsResponse
+import com.pegasusx.driver.data.model.DriverHistoryResponse
 import com.pegasusx.driver.data.model.DriverProfileResponse
 import com.pegasusx.driver.data.model.EarlyCompletePayload
 import com.pegasusx.driver.data.model.EarlyCompleteRequestResponse
@@ -24,7 +30,10 @@ import com.pegasusx.driver.data.model.LoginRequest
 import com.pegasusx.driver.data.model.ManifestGateResponse
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
-// Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+// Quantity negotiation product-disabled (410) — keep models if re-enabled later.
+// import com.pegasusx.driver.data.model.NegotiationPayload
+// import com.pegasusx.driver.data.model.NegotiationProposalResponse
+import com.pegasusx.driver.data.model.OpenFiscalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.PulseResponse
@@ -115,12 +124,19 @@ interface DriverApi {
     @POST("v1/order/validate-qr")
     suspend fun validateQR(@Body request: ValidateQRRequest): ValidateQRResponse
 
-    // Confirm offload — ARRIVED → AWAITING_PAYMENT, triggers retailer payment
+    // Confirm offload — ARRIVED → AWAITING_PAYMENT (legacy; prefer scanDeliveryQR)
     @POST("v1/order/confirm-offload")
     suspend fun confirmOffload(
         @Body request: ConfirmOffloadRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): ConfirmOffloadResponse
+
+    // Doorstep QR scan — ARRIVED → AWAITING_PAYMENT (canonical transition)
+    @POST("v1/delivery/scan-qr")
+    suspend fun scanDeliveryQR(
+        @Body request: DeliveryScanQRRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): DeliveryScanQRResponse
 
     // Complete order — capture → FISCALIZING (ADR-009); COMPLETED after fiscal SUCCESS
     @POST("v1/order/complete")
@@ -192,7 +208,7 @@ interface DriverApi {
 
     // Fetch driver history
     @GET("v1/driver/history")
-    suspend fun getHistory(): kotlinx.serialization.json.JsonObject
+    suspend fun getHistory(): DriverHistoryResponse
 
     // Fetch fleet manifest
     @GET("v1/fleet/manifest")
@@ -202,11 +218,24 @@ interface DriverApi {
     @GET("v1/driver/return-goods")
     suspend fun getReturnGoods(): ReturnGoodsResponse
 
+    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end. */
+    @GET("v1/driver/open-fiscal")
+    suspend fun getOpenFiscal(): OpenFiscalResponse
+
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(
         @Body request: ReturnCompleteRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
+
+    @GET("v1/driver/cash-reconciliations")
+    suspend fun listCashReconciliations(): CashReconciliationsResponse
+
+    @POST("v1/driver/cash-reconciliations")
+    suspend fun submitCashReconciliation(
+        @Body request: SubmitCashReconciliationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): CashReconciliationRow
 
     // Reorder stops — driver reorders their active route stops
     @POST("v1/fleet/route/reorder")
@@ -241,12 +270,26 @@ interface DriverApi {
 
     // ── Shop-Closed Protocol ──
 
-    // Driver reports shop is closed (ARRIVED → ARRIVED_SHOP_CLOSED)
+    // Driver reports shop is closed (ARRIVED → ARRIVED_SHOP_CLOSED ≡ SHOP_CLOSED_PENDING)
     @POST("v1/delivery/shop-closed")
     suspend fun reportShopClosed(
         @Body body: Map<String, String>,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
+
+    // Unlock cash/credit/split when physically at stop (H3 or ≤100m)
+    @POST("v1/delivery/proximity-unlock")
+    suspend fun proximityUnlock(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, @JvmSuppressWildcards Any>
+
+    // Line-level partial offload (delivered_qty + remaining_qty == qty)
+    @POST("v1/delivery/partial-offload")
+    suspend fun partialOffload(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, @JvmSuppressWildcards Any>
 
     // Driver uses bypass token to complete offload without retailer QR
     @POST("v1/delivery/bypass-offload")
@@ -271,9 +314,13 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): EarlyCompleteRequestResponse
 
-    // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+    // Quantity negotiation product-disabled — backend returns 410 feature_disabled.
+    // Not a substitute for missing-items / credit-leave / shop-closed.
     // @POST("v1/delivery/negotiate")
-    // suspend fun proposeNegotiation(@Body body: NegotiationPayload): NegotiationProposalResponse
+    // suspend fun proposeNegotiation(
+    //     @Body body: NegotiationPayload,
+    //     @Header("Idempotency-Key") idempotencyKey: String,
+    // ): NegotiationProposalResponse
 
     // Edge 32: Mark order as delivered on credit
     @POST("v1/delivery/credit-delivery")
@@ -294,12 +341,20 @@ interface DriverApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): Map<String, String>
 
-    // Edge 33: Report missing items after seal
+    // Edge 33: Report missing items after seal (exception-report alias; DAMAGED needs photo_url)
     @POST("v1/delivery/missing-items")
     suspend fun reportMissingItems(
         @Body body: MissingItemsPayload,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): MissingItemsResponse
+
+    /** Signed GCS PUT ticket for claim/exception evidence photos. */
+    @GET("v1/media/upload-ticket")
+    suspend fun getMediaUploadTicket(
+        @Query("purpose") purpose: String = "driver_exception",
+        @Query("ext") ext: String = "jpg",
+        @Query("order_id") orderId: String? = null,
+    ): MediaUploadTicket
 
     // ── LEO: Ghost Stop Prevention ──
 

@@ -33,7 +33,6 @@ function shouldUseAuthEmulator(): boolean {
 function resolveAuthEmulatorHost(): string {
   const configured = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST?.trim();
   if (configured) return configured;
-  if (typeof window !== "undefined") return window.location.origin;
   return "http://127.0.0.1:9099";
 }
 

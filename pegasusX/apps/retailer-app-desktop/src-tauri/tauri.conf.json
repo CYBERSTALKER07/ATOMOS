@@ -39,7 +39,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["pegasusx-retailer"]
+        "schemes": [
+          "pegasusx-retailer"
+        ]
       }
     },
     "updater": {

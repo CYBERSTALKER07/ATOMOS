@@ -22,6 +22,8 @@ type MEIOSummary = {
     critical_skus: number;
     warning_skus: number;
     avg_days_cover: number;
+    target_stock?: number;
+    on_hand_stock?: number;
   }>;
 };
 
@@ -85,6 +87,19 @@ export default function MeioNetworkPanel() {
               updatedAt={formatForecastUpdatedAt(demandGeneratedAt)}
               stale={isForecastStale(demandGeneratedAt)}
             />
+          ) : null}
+          {summary.warehouse_balances?.length ? (
+            <ul className="divide-y rounded-lg border" style={{ borderColor: "var(--desk-border)" }}>
+              {summary.warehouse_balances.map((wh) => (
+                <li key={wh.warehouse_id} className="flex flex-wrap gap-3 p-3 md-typescale-body-small">
+                  <span className="font-mono">{wh.warehouse_id}</span>
+                  <span>critical {wh.critical_skus}</span>
+                  <span>warning {wh.warning_skus}</span>
+                  {wh.on_hand_stock != null ? <span>on-hand {wh.on_hand_stock}</span> : null}
+                  {wh.target_stock != null ? <span>target {wh.target_stock}</span> : null}
+                </li>
+              ))}
+            </ul>
           ) : null}
         </>
       ) : (

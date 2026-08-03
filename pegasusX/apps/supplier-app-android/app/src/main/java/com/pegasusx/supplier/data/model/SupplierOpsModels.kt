@@ -346,6 +346,10 @@ data class ShopClosedAttemptRow(
     @SerialName("driver_id") val driverId: String = "",
     @SerialName("retailer_id") val retailerId: String = "",
     val resolution: String = "",
+    @SerialName("shop_closed_reason") val shopClosedReason: String? = null,
+    @SerialName("shop_closed_resolution") val shopClosedResolution: String? = null,
+    @SerialName("grace_ends_at") val graceEndsAt: String? = null,
+    @SerialName("shop_closed_at") val shopClosedAt: String? = null,
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String? = null,
 )
@@ -353,6 +357,76 @@ data class ShopClosedAttemptRow(
 @Serializable
 data class ShopClosedActiveResponse(
     val data: List<ShopClosedAttemptRow> = emptyList(),
+)
+
+@Serializable
+data class OrderReceiptMeta(
+    @SerialName("receipt_id") val receiptId: String = "",
+    @SerialName("html_url") val htmlUrl: String = "",
+    @SerialName("pdf_url") val pdfUrl: String = "",
+    @SerialName("qr_url") val qrUrl: String = "",
+    @SerialName("party_copy") val partyCopy: String = "",
+    @SerialName("legal_class") val legalClass: String = "",
+    @SerialName("tax_ofd") val taxOfd: Boolean = false,
+)
+
+@Serializable
+data class ComplianceSummary(
+    @SerialName("open_fiscal_count") val openFiscalCount: Int = 0,
+    @SerialName("force_complete_count") val forceCompleteCount: Int = 0,
+    @SerialName("claim_mismatch_count") val claimMismatchCount: Int = 0,
+    @SerialName("credit_freeze_count") val creditFreezeCount: Int = 0,
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class ComplianceFiscalOpenRow(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    val status: String = "",
+    @SerialName("fiscal_status") val fiscalStatus: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "UZS",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class ComplianceForceCompleteRow(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("reason_code") val reasonCode: String = "",
+    @SerialName("actor_id") val actorId: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val currency: String = "UZS",
+    @SerialName("completed_at") val completedAt: String = "",
+)
+
+@Serializable
+data class ComplianceClaimMismatchRow(
+    @SerialName("claim_id") val claimId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("claim_amount_minor") val claimAmountMinor: Long = 0,
+    @SerialName("order_total_minor") val orderTotalMinor: Long = 0,
+    @SerialName("mismatch_reason") val mismatchReason: String = "",
+    val currency: String = "UZS",
+)
+
+@Serializable
+data class ComplianceCreditFreezeRow(
+    @SerialName("retailer_id") val retailerId: String,
+    val status: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+)
+
+@Serializable
+data class ComplianceDashboardResponse(
+    val summary: ComplianceSummary = ComplianceSummary(),
+    @SerialName("open_fiscal") val openFiscal: List<ComplianceFiscalOpenRow> = emptyList(),
+    @SerialName("force_completes") val forceCompletes: List<ComplianceForceCompleteRow> = emptyList(),
+    @SerialName("claim_mismatches") val claimMismatches: List<ComplianceClaimMismatchRow> = emptyList(),
+    @SerialName("credit_freezes") val creditFreezes: List<ComplianceCreditFreezeRow> = emptyList(),
 )
 
 @Serializable
@@ -529,7 +603,7 @@ data class PaymentBypassResponse(
 
 @Serializable
 data class PaymentLedgerEntry(
-    @SerialName("ledger_entry_id") val ledgerEntryId: String,
+    @SerialName("ledger_entry_id") val ledgerEntryId: String = "",
     @SerialName("order_id") val orderId: String? = null,
     @SerialName("supplier_id") val supplierId: String? = null,
     @SerialName("retailer_id") val retailerId: String? = null,
@@ -537,12 +611,85 @@ data class PaymentLedgerEntry(
     @SerialName("entry_type") val entryType: String = "",
     @SerialName("amount_minor") val amountMinor: Long = 0,
     val currency: String = "",
+    @SerialName("reference_id") val referenceId: String? = null,
+    val source: String? = null,
     @SerialName("occurred_at") val occurredAt: String = "",
     @SerialName("created_at") val createdAt: String = "",
 )
 
 @Serializable
 data class PaymentLedgerResponse(
+    val items: List<PaymentLedgerEntry> = emptyList(),
+    val count: Int = 0,
+    val limit: Int = 0,
+    @SerialName("supplier_id") val supplierId: String = "",
+)
+
+// Logistics claims (GET /v1/supplier/claims, approve/reject, claim-chargebacks)
+
+@Serializable
+data class SupplierClaimLine(
+    val sku: String = "",
+    val quantity: Long = 0,
+    val reason: String? = null,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long? = null,
+    @SerialName("amount_minor") val amountMinor: Long? = null,
+)
+
+@Serializable
+data class SupplierClaimEvidence(
+    @SerialName("evidence_type") val evidenceType: String = "",
+    val uri: String = "",
+)
+
+@Serializable
+data class SupplierClaim(
+    @SerialName("claim_id") val claimId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("claim_type") val claimType: String = "",
+    val status: String = "",
+    @SerialName("amount_minor") val amountMinor: Long? = null,
+    val currency: String? = null,
+    val description: String? = null,
+    @SerialName("line_items") val lineItems: List<SupplierClaimLine> = emptyList(),
+    val evidences: List<SupplierClaimEvidence> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class SupplierClaimsListResponse(
+    val claims: List<SupplierClaim> = emptyList(),
+)
+
+@Serializable
+data class ApproveClaimRequest(
+    @SerialName("resolution_note") val resolutionNote: String = "",
+    @SerialName("settlement_mode") val settlementMode: String = "LEDGER_ONLY",
+    @SerialName("skip_gateway_refund") val skipGatewayRefund: Boolean = true,
+)
+
+@Serializable
+data class RejectClaimRequest(
+    @SerialName("resolution_note") val resolutionNote: String = "",
+)
+
+@Serializable
+data class ClaimSettlementResult(
+    @SerialName("chargeback_id") val chargebackId: String? = null,
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    val mode: String = "",
+    @SerialName("gateway_refunded") val gatewayRefunded: Boolean = false,
+)
+
+@Serializable
+data class ApproveClaimResponse(
+    val claim: SupplierClaim? = null,
+    val settlement: ClaimSettlementResult? = null,
+)
+
+@Serializable
+data class ClaimChargebacksResponse(
     val items: List<PaymentLedgerEntry> = emptyList(),
     val count: Int = 0,
     val limit: Int = 0,
@@ -910,4 +1057,95 @@ data class ControlTowerZoneOverrideCreateRequest(
     val action: String,
     @SerialName("ttl_seconds") val ttlSeconds: Int = 1800,
     @SerialName("polygon_geojson") val polygonGeojson: GeoJSONPolygonPayload,
+)
+
+@Serializable
+data class CashReconciliationRow(
+    @SerialName("reconciliation_id") val reconciliationId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    val status: String = "",
+    @SerialName("difference_minor") val differenceMinor: Long = 0,
+)
+
+@Serializable
+data class CashReconciliationsResponse(
+    val reconciliations: List<CashReconciliationRow> = emptyList(),
+)
+
+@Serializable
+data class CreditNoteRow(
+    @SerialName("credit_note_id") val creditNoteId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    val status: String = "",
+    @SerialName("total_gross_minor") val totalGrossMinor: Long = 0,
+)
+
+@Serializable
+data class CreditNotesResponse(
+    @SerialName("credit_notes") val creditNotes: List<CreditNoteRow> = emptyList(),
+)
+
+@Serializable
+data class CreditProfileRow(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0,
+    @SerialName("risk_score") val riskScore: Long = 0,
+    @SerialName("risk_tier") val riskTier: String = "",
+    @SerialName("delinquency_count") val delinquencyCount: Long = 0,
+    val status: String = "",
+    @SerialName("utilization_bps") val utilizationBps: Long? = null,
+    @SerialName("needs_attention") val needsAttention: Boolean = false,
+)
+
+@Serializable
+data class CreditProfilesResponse(
+    val profiles: List<CreditProfileRow> = emptyList(),
+    val count: Int = 0,
+)
+
+@Serializable
+data class RetailerCreditProfilePatchRequest(
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long,
+    val status: String,
+    val reason: String = "collections_desk",
+)
+
+@Serializable
+data class RoutePerformanceRow(
+    @SerialName("route_id") val routeId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("orders_completed") val ordersCompleted: Int = 0,
+)
+
+@Serializable
+data class RoutePerformanceResponse(
+    val routes: List<RoutePerformanceRow> = emptyList(),
+)
+
+@Serializable
+data class NotificationPreferenceRow(
+    @SerialName("event_type") val eventType: String = "",
+    val channel: String = "",
+    val enabled: Boolean = true,
+    @SerialName("quiet_from") val quietFrom: String? = null,
+    @SerialName("quiet_to") val quietTo: String? = null,
+)
+
+@Serializable
+data class NotificationPreferencesResponse(
+    val preferences: List<NotificationPreferenceRow> = emptyList(),
+)
+
+@Serializable
+data class NotificationPreferencesPatchRequest(
+    val preferences: List<NotificationPreferenceRow> = emptyList(),
+)
+
+@Serializable
+data class StatusResponse(
+    val status: String = "",
 )

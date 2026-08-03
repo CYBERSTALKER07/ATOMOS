@@ -1,13 +1,21 @@
+<<<<<<< HEAD
 import { ApiError } from "@pegasusx/api-client";
+=======
+import { ApiClient, ApiError } from "@pegasusx/api-client";
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 import type {
   HomeNodeType,
   Role,
   SupplierOrgMemberCreateRequest,
   SupplierTopologyResponse,
+<<<<<<< HEAD
   SupplierFleetDriverCreateRequest,
   SupplierFleetVehicleCreateRequest
 } from "@pegasusx/types";
 import type { ApiClient } from "@pegasusx/api-client";
+=======
+} from "@pegasusx/types";
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 
 export function supplierScopeId(): string {
   if (typeof window === "undefined") {
@@ -83,6 +91,21 @@ export const defaultVehicleForm: VehicleFormState = {
   homeNodeID: "",
 };
 
+<<<<<<< HEAD
+=======
+export function StatusText(props: { message: string; isError: boolean }) {
+  return (
+    <p
+      className="md-typescale-body-medium"
+      role={props.isError ? "alert" : undefined}
+      style={{ color: props.isError ? "var(--color-md-error)" : "var(--color-md-outline)" }}
+    >
+      {props.message}
+    </p>
+  );
+}
+
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
 export function buildOrgMemberRequest(form: OrgFormState): SupplierOrgMemberCreateRequest {
   const request: SupplierOrgMemberCreateRequest = {
     name: form.name,
@@ -190,6 +213,7 @@ export function newIdempotencyKey() {
   }
   return `pegasusx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+<<<<<<< HEAD
 
 export function StatusText(props: { message: string; isError: boolean }) {
   return (
@@ -202,3 +226,5 @@ export function StatusText(props: { message: string; isError: boolean }) {
     </p>
   );
 }
+=======
+>>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8

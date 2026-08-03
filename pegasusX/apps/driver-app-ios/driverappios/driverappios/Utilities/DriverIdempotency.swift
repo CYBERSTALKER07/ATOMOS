@@ -45,12 +45,24 @@ enum DriverIdempotency {
         "driver-report-shop-closed:\(driverId()):\(orderId)"
     }
 
+    static func proximityUnlock(orderId: String) -> String {
+        "driver-proximity-unlock:\(driverId()):\(orderId)"
+    }
+
+    static func partialOffload(orderId: String, fingerprint: String) -> String {
+        "driver-partial-offload:\(driverId()):\(orderId):\(stableHash(fingerprint))"
+    }
+
     static func depart(truckId: String) -> String {
         "driver-depart:\(driverId()):\(truckId)"
     }
 
     static func returnComplete(truckId: String) -> String {
         "driver-return-complete:\(driverId()):\(truckId)"
+    }
+
+    static func cashReconciliation(declaredMinor: Int64) -> String {
+        "driver-cash-recon:\(driverId()):\(declaredMinor)"
     }
 
     static func syncBatch(orderSignatures: [String]) -> String {
