@@ -19,6 +19,7 @@ type Deps struct {
 	PromotionService *promotion.Service
 	OrderService interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
+		HandleRetailerRespondShopClosed(http.ResponseWriter, *http.Request)
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
@@ -39,8 +40,120 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/login", d.Service.HandleRetailerLogin)
 	r.Post("/v1/auth/retailer/refresh", d.Service.HandleRetailerRefresh)
 	r.Post("/v1/auth/retailer/register", d.Service.HandleMobileRegister)
+	// C1.2 multi-org: intermediate token allowed (SessionAuth attaches claims; no RequireRole).
+	r.Get("/v1/auth/retailer/memberships", d.Service.HandleListMemberships)
+	r.Post("/v1/auth/retailer/select-org", d.Service.HandleSelectOrg)
 
 	mountProtected := func(rr chi.Router) {
+		// C1.2 switch-org requires full JWT (RequireRole rejects PendingOrgSelect).
+		rr.Post("/v1/auth/retailer/switch-org", d.Service.HandleSwitchOrg)
+		// Retail OS Phase 0 identity + capability packs
+		rr.Get("/v1/retailer/me", d.Service.HandleMe)
+		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)
+		rr.Post("/v1/retailer/capabilities/{packID}/enable", d.Service.HandleCapabilityEnable)
+		rr.Post("/v1/retailer/capabilities/{packID}/disable", d.Service.HandleCapabilityDisable)
+
+		// Retail OS Phase 7 — honest ops pulse (no demo supplier)
+		rr.Get("/v1/retailer/control-tower/pulse", d.Service.HandleControlTowerPulse)
+
+		// Retail OS Phase 1 team (org members)
+		rr.Get("/v1/retailer/org/members", d.Service.HandleOrgMembers)
+		rr.Post("/v1/retailer/org/members", d.Service.HandleOrgMembers)
+		rr.Patch("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Put("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Delete("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
+		rr.Put("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+		rr.Post("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+
+		// Retail OS Phase 2 locations
+		rr.Get("/v1/retailer/locations", d.Service.HandleLocations)
+		rr.Post("/v1/retailer/locations", d.Service.HandleLocations)
+		rr.Patch("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
+		rr.Put("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
+		rr.Post("/v1/retailer/locations/{locationID}/set-primary", d.Service.HandleLocationSetPrimary)
+		rr.Post("/v1/auth/retailer/switch-location", d.Service.HandleSwitchLocation)
+
+		// Retail OS Phase 3 store stock
+		rr.Get("/v1/retailer/stock", d.Service.HandleStockList)
+		rr.Get("/v1/retailer/stock/movements", d.Service.HandleStockMovements)
+		rr.Get("/v1/retailer/stock/{sku}", d.Service.HandleStockSKU)
+		rr.Post("/v1/retailer/stock/receive-sessions", d.Service.HandleStockReceiveSession)
+		rr.Post("/v1/retailer/stock/receive-sessions/{sessionID}/confirm", d.Service.HandleStockReceiveConfirm)
+		rr.Post("/v1/retailer/stock/transfer", d.Service.HandleStockTransfer)
+		rr.Post("/v1/retailer/stock/adjust", d.Service.HandleStockAdjust)
+		rr.Post("/v1/retailer/stock/counts", d.Service.HandleStockCount)
+		// Wave C3.3 offline count version protocol — flag OFFLINE_COUNT_ENABLED
+		rr.Get("/v1/retailer/stock/counts/version", d.Service.HandleStockCountVersion)
+		rr.Post("/v1/retailer/stock/counts/commit", d.Service.HandleStockCountCommit)
+
+		// Retail OS Phase 4 POS
+		rr.Get("/v1/retailer/registers", d.Service.HandleRegisters)
+		rr.Post("/v1/retailer/registers", d.Service.HandleRegisters)
+		rr.Post("/v1/retailer/pos/sessions/open", d.Service.HandlePosSessionOpen)
+		rr.Post("/v1/retailer/pos/sessions/{sessionID}/close", d.Service.HandlePosSessionClose)
+		rr.Get("/v1/retailer/pos/sessions/{sessionID}", d.Service.HandlePosSessionGet)
+		rr.Post("/v1/retailer/pos/sales", d.Service.HandlePosSale)
+		rr.Post("/v1/retailer/pos/sales/{saleID}/void", d.Service.HandlePosSaleVoid)
+		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)
+		rr.Get("/v1/retailer/pos/catalog", d.Service.HandlePOSCatalogSearch)
+
+		// Wave C3.1 parked carts (holds) — flag POS_HOLDS_ENABLED
+		rr.Get("/v1/retailer/pos/holds", d.Service.HandlePosHolds)
+		rr.Post("/v1/retailer/pos/holds", d.Service.HandlePosHolds)
+		rr.Post("/v1/retailer/pos/holds/{holdID}/resume", d.Service.HandlePosHoldResume)
+		rr.Post("/v1/retailer/pos/holds/{holdID}/void", d.Service.HandlePosHoldVoid)
+
+		// Local/manual POS catalog (non-Pegasus SKUs)
+		rr.Get("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
+		rr.Post("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
+		rr.Patch("/v1/retailer/local-skus/{localSkuID}", d.Service.HandleLocalSKUByID)
+
+		// Retail OS Phase 5 shifts & time clock
+		rr.Post("/v1/retailer/time/clock-in", d.Service.HandleClockIn)
+		rr.Post("/v1/retailer/time/clock-out", d.Service.HandleClockOut)
+		rr.Get("/v1/retailer/time/entries", d.Service.HandleTimeEntries)
+		rr.Get("/v1/retailer/shifts", d.Service.HandleShifts)
+		rr.Post("/v1/retailer/shifts", d.Service.HandleShifts)
+		rr.Post("/v1/retailer/shifts/{shiftID}/close", d.Service.HandleShiftClose)
+
+		// Retail OS Phase 6 sections + reports + assist
+		// unassigned-skus before {sectionID} so chi does not treat it as an id
+		rr.Get("/v1/retailer/sections/unassigned-skus", d.Service.HandleUnassignedSkus)
+		rr.Get("/v1/retailer/sections", d.Service.HandleSections)
+		rr.Post("/v1/retailer/sections", d.Service.HandleSections)
+		rr.Get("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Patch("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Put("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Delete("/v1/retailer/sections/{sectionID}", d.Service.HandleSectionByID)
+		rr.Get("/v1/retailer/sections/{sectionID}/skus", d.Service.HandleSectionSkus)
+		rr.Put("/v1/retailer/sections/{sectionID}/skus", d.Service.HandleSectionSkus)
+		rr.Get("/v1/retailer/sections/{sectionID}/staff", d.Service.HandleSectionStaff)
+		rr.Put("/v1/retailer/sections/{sectionID}/staff", d.Service.HandleSectionStaff)
+		rr.Get("/v1/retailer/me/sections", d.Service.HandleMySections)
+
+		rr.Get("/v1/retailer/reports/summary", d.Service.HandleReportsSummary)
+		rr.Get("/v1/retailer/reports/sales", d.Service.HandleReportsSales)
+		rr.Get("/v1/retailer/reports/inventory", d.Service.HandleReportsInventory)
+		rr.Get("/v1/retailer/reports/shifts", d.Service.HandleReportsShifts)
+		rr.Get("/v1/retailer/reports/export", d.Service.HandleReportsExport)
+
+		// Wave C2.2 franchise HQ (reads; flag HQ_ANALYTICS_ENABLED)
+		rr.Get("/v1/retailer/hq/summary", d.Service.HandleHqSummary)
+		rr.Get("/v1/retailer/hq/sales-by-location", d.Service.HandleHqSalesByLocation)
+		rr.Get("/v1/retailer/hq/sales-by-sku", d.Service.HandleHqSalesBySku)
+		rr.Get("/v1/retailer/hq/shrinkage", d.Service.HandleHqShrinkage)
+		rr.Get("/v1/retailer/hq/export", d.Service.HandleHqExport)
+
+		// L3 sell-through flywheel insights
+		rr.Get("/v1/retailer/insights/sell-through", d.Service.HandleSellThroughInsights)
+		rr.Get("/v1/retailer/reorder-suggestions", d.Service.HandleRetailerReorderSuggestions)
+
+		rr.Get("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
+		rr.Post("/v1/retailer/assist/tickets", d.Service.HandleAssistTickets)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/claim", d.Service.HandleAssistClaim)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/complete", d.Service.HandleAssistComplete)
+		rr.Post("/v1/retailer/assist/tickets/{ticketID}/cancel", d.Service.HandleAssistCancel)
+
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)
 		rr.Put("/v1/retailer/profile", d.Service.HandleProfile)
@@ -83,9 +196,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/family-members", d.Service.HandleFamilyMembers)
 		rr.Post("/v1/retailer/family-members", d.Service.HandleFamilyMembers)
 		rr.Delete("/v1/retailer/family-members/{memberID}", d.Service.HandleDeleteFamilyMember)
+		rr.Post("/v1/retailer/family-members/migrate-to-team", d.Service.HandleFamilyMigrateToTeam)
+
+		// Auto-order execution (Retail OS close-out)
+		rr.Post("/v1/retailer/settings/auto-order/run", d.Service.HandleAutoOrderRun)
+		rr.Get("/v1/retailer/settings/auto-order/runs", d.Service.HandleAutoOrderRuns)
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)
+			rr.Post("/v1/retailer/orders/{orderID}/shop-closed/respond", d.OrderService.HandleRetailerRespondShopClosed)
 		} else {
 			rr.Post("/v1/retailer/shop-closed-response", d.Service.HandleShopClosedResponse)
 		}

@@ -274,12 +274,24 @@ type OrderLifecycle interface {
 	ListRetailerAIPredictions(ctx context.Context, retailerID string, limit int) ([]order.RetailerAIPrediction, error)
 }
 
+// OrderCreator places real procurement orders (enterprise auto-order place mode).
+// Implemented by order.Service.Create in bootstrap — never mobile_compat stubs.
+type OrderCreator interface {
+	Create(ctx context.Context, retailerID string, req order.CreateRequest) (order.CreateResponse, error)
+}
+
 // NotificationReader provides read access to the notification inbox.
+// Optional CreateNotification enables Phase 5 variance alerts to owners.
 type NotificationReader interface {
 	ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error)
 	MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error
 	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
+}
+
+// NotificationWriter is optional; implemented by bootstrap adapter for alerts.
+type NotificationWriter interface {
+	CreateNotification(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error
 }
 
 // Service wires repository, cache, idempotency and outbox dependencies.
@@ -304,7 +316,67 @@ type Service struct {
 	autoOrderMu         sync.RWMutex
 	favoriteSuppliers   map[string]map[string]bool
 	familyByRetailer    map[string][]FamilyMember
+	familyWritesGone    map[string]bool // orgIDs that completed Family→Team migrate policy
 	autoOrderByRetailer map[string]*AutoOrderSettings
+	// Phase 0/1/2 memory fallbacks when Spanner client is nil (unit tests).
+	ownerByRetailer     map[string]RetailerUser
+	staffByRetailer     map[string][]RetailerUser
+	packsByRetailer     map[string]map[string]bool
+	locationsByRetailer map[string][]RetailerLocation
+	userLocations       map[string][]string // userID -> locationIDs
+	// Phase 3 store stock (memory fallback)
+	stockBalances   map[stockBalanceKey]memStockBalance
+	stockMovements  []StockMovementDTO
+	receiveSessions map[string]ReceiveSessionDTO
+	receiveByOrder  map[string]string
+	// Phase 4 POS memory
+	posRegisters     map[string]RegisterDTO
+	posSessions      map[string]PosSessionDTO
+	posSales         map[string]PosSaleDTO
+	posSalesByClient map[string]string // retailerID|clientSaleID -> saleID
+	// Phase 5 shifts memory
+	timeEntries map[string]TimeEntryDTO // entryID -> entry
+	shifts      map[string]ShiftDTO
+	// Phase 6 sections + assist memory
+	sections         map[string]SectionDTO
+	sectionSkus      map[string]map[string]bool // sectionID -> sku set
+	staffSections    map[string]map[string]bool // sectionID -> userID set
+	assistTickets    map[string]AssistTicketDTO
+	// Close-out: auto-order execution
+	autoOrderWorker     *autoOrderWorkerState
+	autoOrderCandidates map[string][]AutoOrderCandidate
+	// L3 sell-through (memory)
+	sellThroughDaily   map[sellThroughKey]SellThroughDayDTO
+	sellThroughFactors map[string]float64 // retailer|sku|day → SELL_THROUGH
+	// L3.5 AutoOrder from reorder suggestions (test seed)
+	reorderSuggestionSeed map[string][]RetailerReorderSuggestion
+	// Place mode
+	orderCreator          OrderCreator
+	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED
+	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
+	autoOrderBucket map[string]string
+	// Local POS catalog (memory fallback)
+	localCatalog map[string][]LocalSKU
+	// B4 DEMAND_SIGNAL memory capture (tests + no-Spanner emit path)
+	demandSignalsEmitted []events.DemandSignalEvent
+	// C1.1 multi-org memberships (memory dual-write when Spanner nil)
+	// key: userID → memberships by retailerID
+	membershipsByUser map[string]map[string]RetailerMembership
+	// C1.2 test override for MULTI_ORG_LOGIN_ENABLED (nil = read env)
+	multiOrgLoginOverride *bool
+	// C3.1 parked POS holds (memory when Spanner nil)
+	posHolds         map[string]PosHoldDTO // retailerID|holdID
+	posHoldsOverride *bool                 // test override for POS_HOLDS_ENABLED
+	// C2.1 HQ analytics memory projections
+	hqSalesDaily map[hqSalesKey]HqSalesDayDTO
+	hqStockSnap  map[hqStockKey]hqStockSnap
+	// C2.2 test override for HQ_ANALYTICS_ENABLED (nil = env)
+	hqAnalyticsOverride *bool
+	// C3.3 offline count version (memory when Spanner nil)
+	stockLocationVersions map[locationBinKey]int64
+	offlineCountOverride  *bool
+	// C4.1 assist SLA worker
+	assistSLAOverride *bool
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -312,23 +384,35 @@ type Service struct {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo        Repository
-	CartRepo    CartRepository
-	NotifSvc    NotificationReader
-	Orders      OrderLifecycle
-	Cache       *cache.Cache
-	Idem        idempotency.Store
-	Proximity   *RetailerProximityService
-	Locations   telemetry.LastLocationReader
-	SupplierID  string
-	CountryCode string
-	JWTSecret   string
-	JWTIssuer   string
-	Log         *slog.Logger
-	Now         func() time.Time
-	NewID       func() string
-	FirebaseVerifier auth.FirebaseVerifier
-	Spanner          *spanner.Client
+	Repo                 Repository
+	CartRepo             CartRepository
+	NotifSvc             NotificationReader
+	Orders               OrderLifecycle
+	OrderCreator         OrderCreator // optional; required for mode=place
+	AutoOrderPlaceEnabled bool
+	Cache                *cache.Cache
+	Idem                 idempotency.Store
+	Proximity            *RetailerProximityService
+	Locations            telemetry.LastLocationReader
+	SupplierID           string
+	CountryCode          string
+	JWTSecret            string
+	JWTIssuer            string
+	Log                  *slog.Logger
+	Now                  func() time.Time
+	NewID                func() string
+	FirebaseVerifier     auth.FirebaseVerifier
+	Spanner              *spanner.Client
+	// MultiOrgLoginEnabled overrides MULTI_ORG_LOGIN_ENABLED for tests (nil = env).
+	MultiOrgLoginEnabled *bool
+	// PosHoldsEnabled overrides POS_HOLDS_ENABLED for tests (nil = env).
+	PosHoldsEnabled *bool
+	// HqAnalyticsEnabled overrides HQ_ANALYTICS_ENABLED for tests (nil = env).
+	HqAnalyticsEnabled *bool
+	// OfflineCountEnabled overrides OFFLINE_COUNT_ENABLED for tests (nil = env).
+	OfflineCountEnabled *bool
+	// AssistSLAEnabled overrides ASSIST_SLA_ENABLED for tests (nil = env).
+	AssistSLAEnabled *bool
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -346,23 +430,57 @@ func NewService(c ServiceConfig) *Service {
 		repo:                c.Repo,
 		cartRepo:            c.CartRepo,
 		notifSvc:            c.NotifSvc,
-		orders:              c.Orders,
-		cache:               c.Cache,
+		orders:                c.Orders,
+		orderCreator:          c.OrderCreator,
+		autoOrderPlaceEnabled: c.AutoOrderPlaceEnabled,
+		autoOrderBucket:       make(map[string]string),
+		cache:                 c.Cache,
 		idem:                c.Idem,
 		proximity:           c.Proximity,
 		locations:           c.Locations,
 		supplierID:          c.SupplierID,
 		countryCode:         c.CountryCode,
-		jwtSecret:           c.JWTSecret,
-		jwtIssuer:           c.JWTIssuer,
-		log:                 c.Log,
-		now:                 c.Now,
-		newID:               c.NewID,
+		jwtSecret:             c.JWTSecret,
+		jwtIssuer:             c.JWTIssuer,
+		log:                   c.Log,
+		now:                   c.Now,
+		newID:                 c.NewID,
+		multiOrgLoginOverride: c.MultiOrgLoginEnabled,
+		posHoldsOverride:      c.PosHoldsEnabled,
+		posHolds:              make(map[string]PosHoldDTO),
+		hqSalesDaily:          make(map[hqSalesKey]HqSalesDayDTO),
+		hqStockSnap:           make(map[hqStockKey]hqStockSnap),
+		hqAnalyticsOverride:   c.HqAnalyticsEnabled,
+		offlineCountOverride:  c.OfflineCountEnabled,
+		assistSLAOverride:     c.AssistSLAEnabled,
+		stockLocationVersions: make(map[locationBinKey]int64),
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
+		familyWritesGone:    make(map[string]bool),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
-		firebaseVerifier:    c.FirebaseVerifier,
-		spannerClient:       c.Spanner,
+		ownerByRetailer:     make(map[string]RetailerUser),
+		staffByRetailer:     make(map[string][]RetailerUser),
+		packsByRetailer:     make(map[string]map[string]bool),
+		locationsByRetailer: make(map[string][]RetailerLocation),
+		userLocations:       make(map[string][]string),
+		stockBalances:       make(map[stockBalanceKey]memStockBalance),
+		receiveSessions:     make(map[string]ReceiveSessionDTO),
+		receiveByOrder:      make(map[string]string),
+		posRegisters:        make(map[string]RegisterDTO),
+		posSessions:         make(map[string]PosSessionDTO),
+		posSales:            make(map[string]PosSaleDTO),
+		posSalesByClient:    make(map[string]string),
+		timeEntries:         make(map[string]TimeEntryDTO),
+		shifts:              make(map[string]ShiftDTO),
+		sections:            make(map[string]SectionDTO),
+		sectionSkus:         make(map[string]map[string]bool),
+		staffSections:       make(map[string]map[string]bool),
+		assistTickets:       make(map[string]AssistTicketDTO),
+		sellThroughDaily:      make(map[sellThroughKey]SellThroughDayDTO),
+		sellThroughFactors:    make(map[string]float64),
+		reorderSuggestionSeed: make(map[string][]RetailerReorderSuggestion),
+		firebaseVerifier:      c.FirebaseVerifier,
+		spannerClient:         c.Spanner,
 	}
 }
 
@@ -372,6 +490,23 @@ func (s *Service) SetOrderLifecycle(orders OrderLifecycle) {
 		return
 	}
 	s.orders = orders
+}
+
+// SetOrderCreator wires real order placement for auto-order place mode.
+// Call after order.Service is constructed (bootstrap two-phase wire).
+func (s *Service) SetOrderCreator(creator OrderCreator) {
+	if s == nil {
+		return
+	}
+	s.orderCreator = creator
+}
+
+// SetAutoOrderPlaceEnabled toggles place mode process-wide (env AUTO_ORDER_PLACE_ENABLED).
+func (s *Service) SetAutoOrderPlaceEnabled(enabled bool) {
+	if s == nil {
+		return
+	}
+	s.autoOrderPlaceEnabled = enabled
 }
 
 // RegisterRequest is the wire shape for POST /v1/auth/retailer/register.
@@ -489,6 +624,11 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	// Post-commit cache invalidation. Pre-commit invalidation races with
 	// rollback — TTL is the safety net but never the correctness mechanism.
 	s.cache.Invalidate(ctx, retailerByPhoneKey(r.Phone))
+
+	// Phase 0: bootstrap OWNER user for multi-user identity spine.
+	if _, err := s.EnsureOwnerUser(ctx, r); err != nil {
+		s.log.Warn("owner bootstrap after register failed", "retailer_id", r.RetailerID, "err", err)
+	}
 
 	s.log.Info("retailer registered",
 		"retailer_id", r.RetailerID,

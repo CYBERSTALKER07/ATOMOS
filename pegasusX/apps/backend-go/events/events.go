@@ -27,6 +27,9 @@ var (
 	TopicLogisticsExceptions = topicFromEnv("KAFKA_TOPIC_LOGISTICS_EXCEPTIONS", "logistics.exceptions.v1")
 	// TopicLogisticsTelemetry carries real-time driver tracking updates.
 	TopicLogisticsTelemetry = topicFromEnv("KAFKA_TOPIC_LOGISTICS_TELEMETRY", "logistics.telemetry.v1")
+	// TopicDemand carries STORE_POS flywheel DEMAND_SIGNAL events for supplier subscribers.
+	// Dual-write from TopicMain when KAFKA_TOPIC_DUAL_WRITE=true (see DomainTopicForEventType).
+	TopicDemand = topicFromEnv("KAFKA_TOPIC_DEMAND", "pegasusx-demand")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -42,6 +45,44 @@ const (
 
 	// @Sync(RetailerEvent)
 	EventRetailerRegistered = "RETAILER_REGISTERED"
+	// Retail OS Phase 0
+	EventRetailerStaffCreated      = "RETAILER_STAFF_CREATED"
+	EventRetailerCapabilityChanged = "RETAILER_CAPABILITY_PACK_CHANGED"
+	EventRetailerAutoOrderUpdated  = "RETAILER_AUTO_ORDER_UPDATED"
+	// Retail OS Phase 2
+	EventRetailerLocationCreated = "RETAILER_LOCATION_CREATED"
+	EventRetailerLocationUpdated = "RETAILER_LOCATION_UPDATED"
+	// Retail OS Phase 3
+	EventStoreStockReceived    = "STORE_STOCK_RECEIVED"
+	EventStoreStockAdjusted    = "STORE_STOCK_ADJUSTED"
+	EventStoreStockTransferred = "STORE_STOCK_TRANSFERRED"
+	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
+	EventStoreStockClaimHold   = "STORE_STOCK_CLAIM_HOLD"
+	// Retail OS Phase 4
+	EventPosSessionOpened  = "POS_SESSION_OPENED"
+	EventPosSessionClosed  = "POS_SESSION_CLOSED"
+	EventPosSaleCompleted  = "POS_SALE_COMPLETED"
+	EventPosSaleVoided     = "POS_SALE_VOIDED"
+	// L3 sell-through flywheel
+	EventRetailerSellThroughUpdated = "RETAILER_SELL_THROUGH_UPDATED"
+	// B4 flywheel broadcast to suppliers (sku/qty/day only — no POS internals)
+	EventDemandSignal = "DEMAND_SIGNAL"
+	// Retail OS Phase 5
+	EventRetailerClockIn          = "RETAILER_CLOCK_IN"
+	EventRetailerClockOut         = "RETAILER_CLOCK_OUT"
+	EventRetailerShiftOpened      = "RETAILER_SHIFT_OPENED"
+	EventRetailerShiftClosed      = "RETAILER_SHIFT_CLOSED"
+	EventRetailerShiftVariance    = "RETAILER_SHIFT_CASH_VARIANCE"
+	// Retail OS Phase 6
+	EventRetailerSectionCreated      = "RETAILER_SECTION_CREATED"
+	EventRetailerSectionUpdated      = "RETAILER_SECTION_UPDATED"
+	EventRetailerSectionSkuMapped    = "RETAILER_SECTION_SKU_MAPPED"
+	EventRetailerStaffSectionAssigned = "RETAILER_STAFF_SECTION_ASSIGNED"
+	EventRetailerAssistTicketOpened  = "RETAILER_ASSIST_TICKET_OPENED"
+	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
+	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
+	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
+	EventRetailerAssistTicketSLABreached = "RETAILER_ASSIST_TICKET_SLA_BREACHED"
 
 	// @Sync(DriverEvent)
 	EventDriverCreated             = "DRIVER_CREATED"
@@ -85,8 +126,13 @@ const (
 	EventOrderReassigned       = "ORDER_REASSIGNED"
 	EventOrderFinalized        = "ORDER_FINALIZED"
 	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
-	EventReverseLogisticsRequired = "REVERSE_LOGISTICS_REQUIRED"
 	EventOrderAmended          = "ORDER_AMENDED"
+	EventOrderAllocated        = "ORDER_ALLOCATED"
+	EventAllocationPolicyApplied = "ALLOCATION_POLICY_APPLIED"
+	EventAllocationFairShareApplied = "ALLOCATION_FAIR_SHARE_APPLIED"
+	EventRetailerSegmentUpdated   = "RETAILER_SEGMENT_UPDATED"
+	EventSkuClassUpdated          = "SKU_CLASS_UPDATED"
+	EventServicePolicyUpdated     = "SERVICE_POLICY_UPDATED"
 
 	// @Sync(AIRecommendationEvent)
 	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"
@@ -109,6 +155,16 @@ const (
 	EventFiscalReceiptFailed    = "FISCAL_RECEIPT_FAILED"
 	// @Sync(OrderForceCompletedEvent)
 	EventOrderForceCompleted = "ORDER_FORCE_COMPLETED"
+	// @Sync(CashVarianceEvent) cash collect shortfall / overage (integer Tiyin)
+	EventCashShortfall = "CASH_SHORTFALL"
+	EventCashOverage   = "CASH_OVERAGE"
+
+	// @Sync(LogisticsException) claims / OS&D / reverse logistics
+	EventClaimFiled                 = "CLAIM_FILED"
+	EventClaimResolved              = "CLAIM_RESOLVED"
+	EventLogisticsExceptionReported = "LOGISTICS_EXCEPTION_REPORTED"
+	EventReverseLogisticsRequired   = "REVERSE_LOGISTICS_REQUIRED"
+	EventLogisticsTelemetry         = "LOGISTICS_TELEMETRY"
 
 	// @Sync(ManifestEvent)
 	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
@@ -147,6 +203,12 @@ const (
 
 	// @Sync(ShopClosedBypassOffloadEvent)
 	EventShopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
+
+	// Enhanced shop-closed / proximity / partial offload (Phase-1 last-mile).
+	EventShopClosedTimeout   = "SHOP_CLOSED_TIMEOUT"
+	EventProximityUnlocked   = "PROXIMITY_UNLOCKED"
+	EventPartialOffload      = "PARTIAL_OFFLOAD"
+	EventCreditLeave         = "CREDIT_LEAVE"
 
 	// @Sync(CreditDeliveryEvent)
 	EventCreditDeliveryMarked   = "CREDIT_DELIVERY_MARKED"
@@ -232,6 +294,7 @@ const (
 	AggregateWarehouse             = "Warehouse"
 	AggregateFactory               = "Factory"
 	AggregateOrder                 = "Order"
+	AggregateClaim                 = "Claim"
 	AggregateAIRecommendation      = "AIRecommendation"
 	AggregateRoute                 = "Route"
 	AggregateManifest              = "Manifest"
@@ -242,6 +305,7 @@ const (
 	AggregateProduct               = "Product"
 	AggregateConditionReport       = "ConditionReport"
 	AggregateCreditProfile         = "CreditProfile"
+	AggregateDemandSignal          = "DemandSignal"
 )
 
 func topicFromEnv(key string, fallback string) string {

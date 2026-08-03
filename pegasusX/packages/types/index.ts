@@ -540,9 +540,73 @@ export interface SupplierDemandSummaryResponse {
   prediction_count: number;
   items: SupplierDemandSummaryItem[];
   generated_at: string;
-  baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed" | string;
-  granularity?: "macro" | "regional" | "micro" | string;
-  confidence?: ForecastConfidence;
+	baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed" | string;
+	granularity?: "macro" | "regional" | "micro" | string;
+	confidence?: ForecastConfidence;
+}
+
+export interface DemandSignal {
+	signalId: string;
+	retailerId?: string;
+	productId?: string;
+	type: string; // HOLIDAY, WEATHER, EVENT, PROMO
+	scope: string; // GLOBAL, REGION, CITY, RETAILER, RETAILER_SKU
+	startDate: string; // "2006-01-02"
+	endDate: string;
+	multiplier: number;
+	description?: string;
+	createdBy: string;
+	createdAt: string;
+}
+
+/** Kafka DEMAND_SIGNAL flywheel payload (STORE_POS sell-through). Distinct from planning DemandSignal REST rows. */
+export interface DemandSignalEvent {
+	type: "DEMAND_SIGNAL";
+	timestamp?: string;
+	retailer_id: string;
+	location_id?: string;
+	sku: string;
+	day: string;
+	qty_delta: number;
+	net_sold?: number;
+	source: "STORE_POS";
+	kind?: "sale" | "void";
+	supplier_id?: string;
+}
+
+/** GET /v1/supplier/analytics/demand/flywheel item (B4.4 supplier feed UI). */
+export interface FlywheelDemandItem {
+	signal_id: string;
+	supplier_id?: string;
+	retailer_id: string;
+	location_id?: string;
+	sku: string;
+	day: string;
+	qty_delta: number;
+	net_sold: number;
+	kind: string;
+	source: string;
+	created_at?: string;
+}
+
+export interface FlywheelDemandFeedResponse {
+	source: "STORE_POS" | string;
+	description?: string;
+	items: FlywheelDemandItem[];
+	days: number;
+	count?: number;
+	feed_error?: string;
+}
+
+export interface CreateSignalRequest {
+	retailerId?: string;
+	productId?: string;
+	type: string;
+	scope: string;
+	startDate: string;
+	endDate: string;
+	multiplier: number;
+	description?: string;
 }
 
 export interface SupplierMEIONetworkSummary {
@@ -591,6 +655,145 @@ export interface SupplierReplenishmentTraceabilityResponse {
   generated_at: string;
 }
 
+export interface ReorderSuggestionRow {
+  retailer_id: string;
+  retailer_name?: string;
+  sku: string;
+  sku_name?: string;
+  suggested_qty: number;
+  adjusted_demand_per_day: number;
+  current_stock: number;
+  in_flight_qty: number;
+  suggested_by_date: string;
+  status: string;
+  computed_at: string;
+  /** L3 sell-through: STORE_POS | WHOLESALE_HISTORY */
+  sources?: string[];
+  sell_through_velocity?: number;
+  base_demand_per_day?: number;
+}
+
+export interface ReorderSuggestionsListResponse {
+  suggestions: ReorderSuggestionRow[];
+}
+
+export interface ReorderSuggestionDismissRequest {
+  retailer_id: string;
+  sku: string;
+}
+
+export interface ReorderSuggestionCreateDraftRequest {
+  retailer_id: string;
+  sku: string;
+}
+
+export interface ReorderSuggestionBulkCreateDraftsRequest {
+  items: ReorderSuggestionCreateDraftRequest[];
+}
+
+export interface ReorderSuggestionBulkCreateDraftResult {
+  retailer_id: string;
+  sku: string;
+  order_id?: string;
+  error?: string;
+}
+
+export interface ReorderSuggestionBulkCreateDraftsResponse {
+  results: ReorderSuggestionBulkCreateDraftResult[];
+}
+
+export interface CashReconciliationRow {
+  reconciliation_id: string;
+  driver_id: string;
+  route_id?: string;
+  shift_date: string;
+  expected_cash_minor: number;
+  declared_cash_minor: number;
+  difference_minor: number;
+  status: string;
+  driver_note?: string;
+  finance_note?: string;
+  created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+}
+
+export interface CashReconciliationsListResponse {
+  reconciliations: CashReconciliationRow[];
+  supplier_id?: string;
+}
+
+export interface CashReconciliationActionRequest {
+  note?: string;
+}
+
+export interface CreditNoteRow {
+  credit_note_id: string;
+  order_id: string;
+  type: string;
+  status: string;
+  reason_code: string;
+  reason_text?: string;
+  total_net_minor: number;
+  total_vat_minor: number;
+  total_gross_minor: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface CreditNotesListResponse {
+  credit_notes: CreditNoteRow[];
+}
+
+export interface CreateCreditNoteRequest {
+  order_id: string;
+  reason_code: string;
+  reason_text?: string;
+  lines?: Array<{ order_line_id: string; qty: number }>;
+}
+
+export interface TwinStopView {
+  RouteID?: string;
+  StopID?: string;
+  Sequence?: number;
+  Status?: string;
+  PredictedArrival?: string;
+  WindowStart?: string;
+  WindowEnd?: string;
+  DeliveredGrossMinor?: number;
+  RemainingGrossMinor?: number;
+}
+
+export interface TwinVehicleInventoryRow {
+  RouteID?: string;
+  Sku?: string;
+  QtyOnVehicle?: number;
+}
+
+export interface TwinRouteException {
+  type: string;
+  order_id?: string;
+  status?: string;
+  detail?: string;
+}
+
+export interface TwinOpsRouteView {
+  RouteID: string;
+  DriverID: string;
+  Status: string;
+  CurrentLat?: number;
+  CurrentLng?: number;
+  CurrentH3?: string;
+  RemainingStops?: number;
+  Stops?: TwinStopView[];
+  Inventory?: TwinVehicleInventoryRow[];
+  driver_name?: string;
+  driver_score?: number;
+  lateness: "green" | "amber" | "red";
+  has_shop_closed?: boolean;
+  exceptions?: TwinRouteException[];
+}
+
 export interface PlanningSignalIngestStatus {
   projection_count: number;
   last_ingest_at?: string;
@@ -621,6 +824,108 @@ export interface ControlTowerZoneOverrideRequest {
   ttl_seconds?: number;
 }
 
+export interface PlaybookActionResult {
+  index: number;
+  type: string;
+  status: string;
+  message?: string;
+}
+
+export interface ControlTowerPlaybookRun {
+  run_id: string;
+  playbook_id: string;
+  exception_id: string;
+  supplier_id: string;
+  mode: string;
+  status: string;
+  playbook_name?: string;
+  actions_result?: PlaybookActionResult[];
+  created_at: string;
+  executed_at?: string;
+  executed_by?: string;
+}
+
+export interface ControlTowerPlaybookRunsResponse {
+  runs: ControlTowerPlaybookRun[];
+}
+
+export interface ScoredException {
+  exception_id: string;
+  type: string;
+  severity: string;
+  order_id?: string;
+  retailer_id?: string;
+  amount_minor?: number;
+  score: number;
+  severity_rank: number;
+  age_minutes: number;
+  retailer_segment?: string;
+  recommended_playbook_ids?: string[];
+  top_playbook_name?: string;
+  created_at: string;
+}
+
+export interface ScoredExceptionsResponse {
+  exceptions: ScoredException[];
+}
+
+export interface ControlTowerPlaybook {
+  playbook_id: string;
+  supplier_id?: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  priority: number;
+  match_rules: Record<string, unknown>;
+  actions: Array<{ type: string; params?: unknown }>;
+  auto_execute: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface ControlTowerPlaybooksResponse {
+  playbooks: ControlTowerPlaybook[];
+}
+
+export interface RetailerSegmentRow {
+  retailer_id: string;
+  segment: string;
+  reason?: string;
+  updated_at: string;
+}
+
+export interface SkuClassRow {
+  sku: string;
+  velocity_class: string;
+  strategic_flag: boolean;
+  updated_at: string;
+}
+
+export interface RetailerSegmentsResponse {
+  retailers: RetailerSegmentRow[];
+}
+
+export interface SkuClassesResponse {
+  sku_classes: SkuClassRow[];
+}
+
+export interface SegmentationBootstrapResult {
+  segments_upserted: number;
+  sku_classes_upserted: number;
+  policies_seeded: number;
+}
+
+export interface SetRetailerSegmentInput {
+  segment: string;
+  reason?: string;
+}
+
+export interface SetSkuClassInput {
+  velocity_class: string;
+  strategic_flag?: boolean;
+}
+
 export interface PlanningScenarioInput {
   factory_downtime_hours?: number;
   demand_delta_pct?: number;
@@ -635,6 +940,9 @@ export interface PlanningScenarioResult {
   stockout_skus: string[];
   capacity_breach: boolean;
   cached_until: string;
+  mode?: string;
+  baseline_sla_risk_pct?: number;
+  revenue_at_risk_minor?: number;
 }
 
 export interface PlanningSAndOPSnapshot {
@@ -884,6 +1192,8 @@ export interface SupplierExceptionRow {
   note?: string;
   manifest_id?: string;
   updated_at: string;
+  score?: number;
+  top_playbook_name?: string;
 }
 
 export interface SupplierExceptionsResponse {
@@ -949,6 +1259,10 @@ export interface ShopClosedAttemptRow {
   driver_id: string;
   retailer_id: string;
   resolution: string;
+  shop_closed_reason?: string;
+  shop_closed_resolution?: string;
+  grace_ends_at?: string;
+  shop_closed_at?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -961,6 +1275,186 @@ export interface ShopClosedResolveRequest {
   attempt_id: string;
   action: "WAIT" | "BYPASS" | "RETURN_TO_DEPOT";
 }
+
+/** Driver: mark shop closed (POST /v1/delivery/shop-closed). */
+export type ShopClosedReason = "NO_ANSWER" | "CLOSED" | "REFUSED" | "OTHER";
+
+export interface ShopClosedReportRequest {
+  order_id: string;
+  latitude: number;
+  longitude: number;
+  reason?: ShopClosedReason;
+  photo_url?: string;
+  /** Offline capture time (RFC3339). */
+  client_timestamp?: string;
+}
+
+export interface ShopClosedReportResponse {
+  status: "ARRIVED_SHOP_CLOSED";
+  attempt_id: string;
+  reason?: string;
+  grace_ends_at?: string;
+}
+
+/** Retailer response codes for enhanced shop-closed protocol. */
+export type ShopClosedRetailerResponse =
+  | "OPEN_NOW"
+  | "5_MIN"
+  | "CALL_ME"
+  | "CLOSED_TODAY"
+  | "RESCHEDULE"
+  | "CREDIT_LEAVE"
+  | "CANCEL"
+  | "AUTHORIZE_BYPASS";
+
+export interface ShopClosedRetailerResponseRequest {
+  order_id: string;
+  response: ShopClosedRetailerResponse;
+  new_slot?: string;
+  photo_url?: string;
+}
+
+/** Proximity unlock before cash/credit/split (POST /v1/delivery/proximity-unlock). */
+export type ProximityMethod = "H3" | "GEOFENCE_100M" | "MANUAL" | "FORCE_BYPASS";
+
+export interface ProximityUnlockRequest {
+  order_id: string;
+  latitude: number;
+  longitude: number;
+  client_timestamp?: string;
+  force_bypass_token?: string;
+}
+
+export interface ProximityUnlockResponse {
+  order_id: string;
+  proximity_unlocked: boolean;
+  proximity_method?: ProximityMethod | string;
+  distance_m?: number;
+  unlocked_at?: string;
+  payment_modes_enabled: boolean;
+  message?: string;
+}
+
+/** Line-level partial offload (POST /v1/delivery/partial-offload). */
+export type OffloadStatus = "FULL" | "PARTIAL" | "NONE" | "RETURNED";
+export type OffloadReason =
+  | "DAMAGED"
+  | "MISSING"
+  | "SHOP_REFUSED"
+  | "CAPACITY"
+  | "OTHER";
+
+export interface PartialOffloadLine {
+  sku: string;
+  delivered_qty: number;
+  remaining_qty: number;
+  reason?: OffloadReason;
+}
+
+export interface PartialOffloadRequest {
+  order_id: string;
+  lines: PartialOffloadLine[];
+  client_timestamp?: string;
+  signed_nonce?: string;
+  note?: string;
+}
+
+export interface PartialOffloadResponse {
+  order_id: string;
+  partial_delivery: boolean;
+  delivered_minor: number;
+  remaining_minor: number;
+  currency: string;
+  status: string;
+  message: string;
+}
+
+export interface CreditDeliveryRequest {
+  order_id: string;
+  photo_proof_url?: string;
+  force_bypass_token?: string;
+}
+
+/** Timeout auto-decision (server-side matrix). */
+export type ShopClosedTimeoutResolution =
+  | "CREDIT_LEAVE"
+  | "RETURN_TO_WAREHOUSE"
+  | "FORCE_BYPASS"
+  | "RESCHEDULE";
+
+// ── Compliance / fiscal audit dashboard (Phase 1) ──
+
+export interface ComplianceFiscalOpenRow {
+  order_id: string;
+  retailer_id: string;
+  driver_id?: string;
+  status: string;
+  fiscal_status?: string;
+  total_minor: number;
+  currency: string;
+  latest_fiscal_attempt_id?: string;
+  updated_at: string;
+}
+
+export interface ComplianceForceCompleteRow {
+  order_id: string;
+  retailer_id: string;
+  driver_id?: string;
+  status: string;
+  fiscal_status: string;
+  reason_code?: string;
+  actor_id?: string;
+  attempt_id?: string;
+  total_minor: number;
+  currency: string;
+  completed_at: string;
+}
+
+export interface ComplianceClaimMismatchRow {
+  claim_id: string;
+  order_id: string;
+  retailer_id: string;
+  claim_status: string;
+  claim_amount_minor: number;
+  order_total_minor: number;
+  order_status: string;
+  currency: string;
+  mismatch_reason: string;
+  created_at: string;
+}
+
+export interface ComplianceCreditFreezeRow {
+  retailer_id: string;
+  status: string;
+  risk_tier?: string;
+  credit_limit_minor: number;
+  current_balance_minor: number;
+  available_credit_minor: number;
+  updated_at: string;
+}
+
+export interface ComplianceSummary {
+  open_fiscal_count: number;
+  force_complete_count: number;
+  claim_mismatch_count: number;
+  credit_freeze_count: number;
+  generated_at: string;
+}
+
+export interface ComplianceDashboardResponse {
+  summary: ComplianceSummary;
+  open_fiscal: ComplianceFiscalOpenRow[];
+  force_completes: ComplianceForceCompleteRow[];
+  claim_mismatches: ComplianceClaimMismatchRow[];
+  credit_freezes: ComplianceCreditFreezeRow[];
+}
+
+export type ComplianceExportBucket =
+  | "all"
+  | "open_fiscal"
+  | "force_completes"
+  | "claim_mismatches"
+  | "credit_freezes";
 
 export interface NegotiationProposalItem {
   sku_id: string;
@@ -1878,6 +2372,146 @@ export interface PaymentChargebackReversalResponse {
   status: string;
 }
 
+// ── Logistics claims (post-delivery OS&D / chargeback settle) ─────────────────
+// Mirrors apps/backend-go/claims types + GET /v1/supplier/claim-chargebacks.
+
+export type ClaimType =
+  | "DAMAGED"
+  | "MISSING"
+  | "CONCEALED_DAMAGE"
+  | "TEMPERATURE"
+  | "TAMPER"
+  | "OTHER"
+  | string;
+
+export type ClaimStatus =
+  | "OPEN"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "RESOLVED"
+  | string;
+
+export type ClaimSource =
+  | "RETAILER_CLAIM"
+  | "DRIVER_EXCEPTION"
+  | "TELEMETRY"
+  | string;
+
+/** Approve settlement modes accepted by POST /v1/claims/{id}/approve. */
+export type ClaimSettlementMode = "LEDGER_ONLY" | "STORE_CREDIT" | "GATEWAY_REFUND";
+
+export const CLAIM_SETTLEMENT_MODES: readonly {
+  value: ClaimSettlementMode;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: "LEDGER_ONLY",
+    label: "Ledger only",
+    hint: "Debit supplier settlement only (safe default)",
+  },
+  {
+    value: "STORE_CREDIT",
+    label: "Store credit",
+    hint: "Ledger + reduce retailer credit balance due",
+  },
+  {
+    value: "GATEWAY_REFUND",
+    label: "Card refund (GP)",
+    hint: "Ledger + Global Pay partial refund when session is card",
+  },
+] as const;
+
+export interface ClaimLine {
+  sku: string;
+  quantity: number;
+  reason?: string;
+  unit_price_minor?: number;
+  amount_minor?: number;
+}
+
+export interface ClaimEvidence {
+  evidence_id?: string;
+  claim_id?: string;
+  evidence_type: string;
+  uri: string;
+  mime_type?: string;
+  captured_at?: string;
+  captured_by?: string;
+  created_at?: string;
+}
+
+export interface Claim {
+  claim_id: string;
+  order_id: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id: RetailerId;
+  filed_by?: string;
+  filed_by_role?: string;
+  claim_type: ClaimType;
+  status: ClaimStatus;
+  description?: string;
+  amount_minor?: number;
+  currency?: Iso4217 | string;
+  line_items?: ClaimLine[];
+  evidences?: ClaimEvidence[];
+  resolution_note?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  source?: ClaimSource;
+  trace_id?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SupplierClaimsListResponse {
+  claims: Claim[];
+}
+
+export interface ApproveClaimRequest {
+  resolution_note?: string;
+  amount_minor?: number;
+  /** When true, force ledger-only even if mode would call gateway. */
+  skip_gateway_refund?: boolean;
+  settlement_mode?: ClaimSettlementMode | string;
+}
+
+export interface RejectClaimRequest {
+  resolution_note?: string;
+}
+
+/** Result of chargeback adjudication after approve. */
+export interface ClaimSettlementResult {
+  chargeback_id?: string;
+  amount_minor: number;
+  currency?: Iso4217 | string;
+  gateway?: string;
+  gateway_refunded?: boolean;
+  provider_ref?: string;
+  /** LEDGER_ONLY | LEDGER_AND_GATEWAY_REFUND | LEDGER_AND_STORE_CREDIT | IDEMPOTENT_REPLAY | … */
+  mode: string;
+  idempotent?: boolean;
+}
+
+export interface ApproveClaimResponse {
+  claim: Claim;
+  settlement?: ClaimSettlementResult;
+}
+
+/** GET /v1/supplier/claim-chargebacks — claim-originated ledger rows. */
+export interface ClaimChargebacksQuery {
+  limit?: number;
+  order_id?: OrderId;
+}
+
+export interface ClaimChargebacksResponse {
+  items: PaymentLedgerEntry[];
+  count: number;
+  limit: number;
+  supplier_id: SupplierId | "";
+}
+
 export interface ReconciliationMismatchQuery {
   supplier_id?: SupplierId;
   gateway?: PaymentGateway | string;
@@ -1931,6 +2565,590 @@ export interface WsEventEnvelope<T extends string = string, P = unknown> {
   data?: P;
 }
 
+/** Retail OS Phase 0 capability pack ids. */
+export type RetailerCapabilityPackId =
+  | "CORE"
+  | "TEAM"
+  | "LOCATIONS"
+  | "STORE_STOCK"
+  | "SECTIONS"
+  | "POS"
+  | "SHIFTS"
+  | "REPORTS_PRO"
+  | "CUSTOMER_ASSIST";
+
+export type RetailerStaffRole =
+  | "OWNER"
+  | "ADMIN"
+  | "MANAGER"
+  | "BUYER"
+  | "RECEIVER"
+  | "CASHIER"
+  | "STOCK_CLERK"
+  | "SECTION_LEAD"
+  | "VIEWER";
+
+export interface RetailerCapabilityPackMeta {
+  id: RetailerCapabilityPackId | string;
+  name: string;
+  description: string;
+  hard_deps?: string[];
+  soft_deps?: string[];
+  always_on?: boolean;
+}
+
+export interface RetailerCapabilityPackStatus extends RetailerCapabilityPackMeta {
+  enabled: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface RetailerMeResponse {
+  user_id: string;
+  retailer_id: RetailerId;
+  retailer_org_id: RetailerId;
+  retailer_role: RetailerStaffRole | string;
+  name: string;
+  phone?: string;
+  is_owner: boolean;
+  is_configured: boolean;
+  permissions: string[];
+  capabilities: string[];
+  packs: RetailerCapabilityPackStatus[];
+  location_ids?: string[];
+}
+
+export interface RetailerCapabilitiesResponse {
+  retailer_id: RetailerId;
+  capabilities: string[];
+  packs: RetailerCapabilityPackStatus[];
+}
+
+export interface RetailerCapabilityMutationResult {
+  status: "OK" | "BLOCKED" | "WARN" | string;
+  pack_id?: string;
+  enabled?: boolean;
+  capabilities?: string[];
+  missing_hard_deps?: string[];
+  missing_soft_deps?: string[];
+  enable_all?: string[];
+  message?: string;
+  evaluation?: RetailerCapabilityMutationResult;
+}
+
+/** Retail OS Phase 1 team member. */
+export interface RetailerOrgMember {
+  user_id: string;
+  retailer_id: RetailerId;
+  name: string;
+  phone: string;
+  retailer_role: RetailerStaffRole | string;
+  is_owner: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerOrgMembersResponse {
+  retailer_id: RetailerId;
+  items: RetailerOrgMember[];
+  updated_at: string;
+}
+
+export interface CreateRetailerOrgMemberRequest {
+  name: string;
+  phone: string;
+  password: string;
+  retailer_role: RetailerStaffRole | string;
+  is_active?: boolean;
+}
+
+export interface UpdateRetailerOrgMemberRequest {
+  name?: string;
+  retailer_role?: RetailerStaffRole | string;
+  password?: string;
+  is_active?: boolean;
+}
+
+export type RetailerHomeSurface =
+  | "dashboard"
+  | "pos"
+  | "dock"
+  | "catalog"
+  | "insights";
+
+/** Retail OS Phase 2 store branch. */
+export interface RetailerLocation {
+  location_id: string;
+  retailer_id: RetailerId;
+  name: string;
+  delivery_address?: string;
+  place_id?: string;
+  lat?: number;
+  lng?: number;
+  h3_cell?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerLocationsResponse {
+  retailer_id: RetailerId;
+  active_location_id?: string;
+  items: RetailerLocation[];
+}
+
+export interface CreateRetailerLocationRequest {
+  name: string;
+  delivery_address?: string;
+  place_id?: string;
+  lat?: number;
+  lng?: number;
+  h3_cell?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  is_primary?: boolean;
+}
+
+export interface SwitchRetailerLocationRequest {
+  location_id: string;
+}
+
+export interface SwitchRetailerLocationResponse {
+  token: string;
+  refresh_token: string;
+  active_location_id: string;
+  location: RetailerLocation;
+}
+
+/** Wave C1.2/C1.3 multi-org membership (person → retailer orgs). */
+export interface RetailerMembershipDTO {
+  user_id: string;
+  retailer_id: string;
+  retailer_role: string;
+  name?: string;
+  phone?: string;
+  is_active: boolean;
+}
+
+export type RetailerAuthTokenType = "full" | "pending_org_select";
+
+/** Login may return full JWT or intermediate PendingOrgSelect (C1.2). */
+export interface RetailerLoginResponse {
+  token: string;
+  token_type?: RetailerAuthTokenType;
+  refresh_token?: string;
+  is_configured?: boolean;
+  retailer_id?: string;
+  retailer_org_id?: string;
+  user_id?: string;
+  retailer_role?: string;
+  memberships?: RetailerMembershipDTO[];
+  membership_count?: number;
+  expires_in_sec?: number;
+  user?: {
+    id: string;
+    retailer_id?: string;
+    name: string;
+    company?: string;
+    email?: string;
+    avatar_url?: string | null;
+    role?: string;
+  };
+  home_surface?: string;
+  capabilities?: string[];
+  active_location_id?: string;
+  location_ids?: string[];
+  firebase_token?: string;
+}
+
+export interface RetailerSelectOrgRequest {
+  retailer_id: string;
+}
+
+export interface RetailerSwitchOrgRequest {
+  retailer_id: string;
+}
+
+export interface RetailerMembershipsResponse {
+  memberships: RetailerMembershipDTO[];
+}
+
+/** Wave C3.1/C3.2 parked POS cart (server hold). Never reserves stock. */
+export type RetailerPosHoldStatus = "HELD" | "RESUMED" | "EXPIRED" | "VOIDED";
+
+export interface RetailerPosHold {
+  hold_id: string;
+  retailer_id: string;
+  location_id: string;
+  register_id?: string;
+  user_id: string;
+  status: RetailerPosHoldStatus | string;
+  cart: unknown;
+  note?: string;
+  expires_at: string;
+  created_at?: string;
+  updated_at?: string;
+  resumed_at?: string;
+  voided_at?: string;
+}
+
+export interface RetailerPosHoldsListResponse {
+  retailer_id: string;
+  location_id?: string;
+  items: RetailerPosHold[];
+}
+
+export interface ParkRetailerPosHoldRequest {
+  location_id: string;
+  register_id?: string;
+  cart: unknown;
+  note?: string;
+}
+
+export interface ResumeRetailerPosHoldRequest {
+  location_id: string;
+}
+
+/** Wave C2.2 franchise HQ analytics reads. */
+export interface RetailerHqSummary {
+  retailer_id: string;
+  day: string;
+  location_count: number;
+  sku_count: number;
+  qty_sold: number;
+  qty_voided: number;
+  gross_minor: number;
+  net_minor: number;
+  currency: string;
+  honest_empty?: boolean;
+}
+
+export interface RetailerHqLocationSales {
+  location_id: string;
+  qty_sold: number;
+  qty_voided: number;
+  gross_minor: number;
+  net_minor: number;
+  currency: string;
+}
+
+export interface RetailerHqSalesByLocationResponse {
+  retailer_id: string;
+  day: string;
+  items: RetailerHqLocationSales[];
+  org_net_minor: number;
+  sum_locations: number;
+  balanced: boolean;
+  honest_empty?: boolean;
+}
+
+/** Retail OS Phase 3 store stock. */
+export type RetailerStockBin = "BACKROOM" | "FLOOR" | "QUARANTINE";
+
+export interface RetailerStockBalance {
+  location_id: string;
+  stock_bin: RetailerStockBin | string;
+  sku: string;
+  on_hand: number;
+  reserved: number;
+  available: number;
+}
+
+export interface RetailerStockListResponse {
+  retailer_id: string;
+  location_id: string;
+  items: RetailerStockBalance[];
+}
+
+export interface RetailerReceiveLine {
+  sku: string;
+  product_name?: string;
+  ordered_qty: number;
+  accepted_qty: number;
+}
+
+export interface RetailerReceiveSession {
+  session_id: string;
+  retailer_id: string;
+  location_id: string;
+  order_id: string;
+  status: "DRAFT" | "CONFIRMED" | string;
+  lines: RetailerReceiveLine[];
+  created_at?: string;
+  confirmed_at?: string;
+}
+
+export interface CreateRetailerReceiveSessionRequest {
+  order_id: string;
+  location_id?: string;
+  confirm?: boolean;
+  stock_bin?: RetailerStockBin | string;
+  lines?: { sku: string; accepted_qty: number }[];
+}
+
+export interface RetailerStockTransferRequest {
+  location_id?: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  sku: string;
+  qty: number;
+  from_bin?: RetailerStockBin | string;
+  to_bin?: RetailerStockBin | string;
+  note?: string;
+}
+
+export interface RetailerStockAdjustRequest {
+  location_id?: string;
+  sku: string;
+  qty_delta: number;
+  stock_bin?: RetailerStockBin | string;
+  note?: string;
+}
+
+export interface RetailerStockCountRequest {
+  location_id?: string;
+  stock_bin?: RetailerStockBin | string;
+  commit?: boolean;
+  lines: { sku: string; counted_qty: number }[];
+}
+
+export interface RetailerStockCountVersionResponse {
+  location_id: string;
+  stock_bin: string;
+  version: number;
+}
+
+export interface RetailerStockCountCommitRequest {
+  location_id?: string;
+  stock_bin?: RetailerStockBin | string;
+  base_version: number;
+  force?: boolean;
+  lines: { sku_id?: string; sku?: string; counted_qty: number }[];
+}
+
+export interface RetailerStockCountConflictResponse {
+  error: "COUNT_VERSION_CONFLICT";
+  server_version: number;
+  server_lines: Array<{ sku_id: string; counted_qty: number; on_hand: number }>;
+  message: string;
+}
+
+export interface RetailerStockCountCommitResponse {
+  count_id: string;
+  status: string;
+  new_version: number;
+}
+
+/** Retail OS Phase 4 POS */
+export interface RetailerRegister {
+  register_id: string;
+  retailer_id: string;
+  location_id: string;
+  label: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface RetailerPosSession {
+  session_id: string;
+  register_id: string;
+  location_id: string;
+  retailer_id: string;
+  opened_by_user_id: string;
+  closed_by_user_id?: string;
+  status: "OPEN" | "CLOSED" | string;
+  opening_float_minor: number;
+  closing_cash_minor?: number;
+  expected_cash_minor?: number;
+  variance_minor?: number;
+  currency: string;
+  opened_at?: string;
+  closed_at?: string;
+}
+
+export interface RetailerPosSaleLine {
+  sku: string;
+  name?: string;
+  qty: number;
+  unit_price_minor: number;
+  line_total_minor: number;
+}
+
+export interface RetailerPosTender {
+  method: "CASH" | "CARD" | "OTHER" | string;
+  amount_minor: number;
+}
+
+export interface RetailerPosSale {
+  sale_id: string;
+  session_id: string;
+  register_id: string;
+  location_id: string;
+  retailer_id: string;
+  cashier_user_id: string;
+  status: "COMPLETED" | "VOIDED" | string;
+  total_minor: number;
+  currency: string;
+  receipt_number: string;
+  lines: RetailerPosSaleLine[];
+  tenders: RetailerPosTender[];
+  stock_bin: string;
+  created_at?: string;
+  voided_at?: string;
+  voided_by_user_id?: string;
+  void_reason?: string;
+}
+
+export interface CreateRetailerPosSaleRequest {
+  session_id: string;
+  stock_bin?: string;
+  currency?: string;
+  lines: { sku: string; name?: string; qty: number; unit_price_minor: number }[];
+  tenders?: RetailerPosTender[];
+}
+
+/** Retail OS Phase 5 shifts & time clock */
+export interface RetailerTimeEntry {
+  entry_id: string;
+  retailer_id: string;
+  user_id: string;
+  location_id: string;
+  status: "OPEN" | "CLOSED" | string;
+  clock_in_at?: string;
+  clock_out_at?: string;
+  auto_closed?: boolean;
+  note?: string;
+}
+
+export interface RetailerTimeEntriesResponse {
+  items: RetailerTimeEntry[];
+  open_entry?: RetailerTimeEntry;
+  clocked_in: boolean;
+}
+
+export interface RetailerShift {
+  shift_id: string;
+  retailer_id: string;
+  location_id: string;
+  register_id?: string;
+  opened_by_user_id: string;
+  closed_by_user_id?: string;
+  status: "OPEN" | "CLOSED" | string;
+  opening_float_minor: number;
+  closing_cash_minor?: number;
+  expected_cash_minor?: number;
+  variance_minor?: number;
+  currency: string;
+  linked_pos_session_id?: string;
+  opened_at?: string;
+  closed_at?: string;
+}
+
+export interface RetailerShiftsResponse {
+  items: RetailerShift[];
+}
+
+export interface OpenRetailerShiftRequest {
+  location_id?: string;
+  register_id?: string;
+  opening_float_minor: number;
+  currency?: string;
+}
+
+export interface CloseRetailerShiftRequest {
+  closing_cash_minor: number;
+}
+
+/** Retail OS Phase 6 sections */
+export interface RetailerSection {
+  section_id: string;
+  retailer_id: string;
+  location_id: string;
+  name: string;
+  aisle_tag?: string;
+  shelf_tag?: string;
+  sort_order?: number;
+  status: "ACTIVE" | "INACTIVE" | string;
+  sku_count?: number;
+  staff_ids?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerSectionsResponse {
+  items: RetailerSection[];
+}
+
+/** Retail OS Phase 6 reports pro */
+export interface RetailerReportsSummary {
+  from?: string;
+  to?: string;
+  location_id?: string;
+  sales_minor: number;
+  sale_count: number;
+  on_hand_sku_count: number;
+  low_stock_count: number;
+  open_variances: number;
+  top_skus?: { sku: string; sales_minor: number; units: number }[];
+  pack?: string;
+}
+
+export interface RetailerReportsSalesItem {
+  key: string;
+  sales_minor: number;
+  sale_count: number;
+  units: number;
+}
+
+/** Retail OS Phase 6 assist */
+export type RetailerAssistTicketStatus =
+  | "OPEN"
+  | "CLAIMED"
+  | "DONE"
+  | "CANCELLED"
+  | string;
+
+export interface RetailerAssistTicket {
+  ticket_id: string;
+  retailer_id: string;
+  location_id: string;
+  section_id: string;
+  note: string;
+  status: RetailerAssistTicketStatus;
+  created_by_user_id: string;
+  claimed_by_user_id?: string;
+  completed_by_user_id?: string;
+  created_at?: string;
+  claimed_at?: string;
+  completed_at?: string;
+  sla_due_at?: string;
+  sla_breached_at?: string;
+}
+
+export interface RetailerAssistTicketsResponse {
+  items: RetailerAssistTicket[];
+}
+
+/** Retail OS Phase 7 — honest ops pulse (never demo) */
+export interface RetailerControlTowerPulse {
+  retailer_id: string;
+  generated_at: string;
+  open_orders: number;
+  active_fulfillments: number;
+  dock_pending: number;
+  pos_open_sessions: number;
+  open_shifts: number;
+  open_assist_tickets: number;
+  low_stock_sku_bins: number;
+  shift_variances_7d: number;
+  sales_minor_7d: number;
+  capabilities: string[];
+  empty: boolean;
+}
+
 export type EventType =
   | "SUPPLIER_CREATED"
   | "SUPPLIER_UPDATED"
@@ -1939,6 +3157,34 @@ export type EventType =
   | "SUPPLIER_BILLING_CONFIGURED"
   | "SUPPLIER_MEMBER_ADDED"
   | "RETAILER_REGISTERED"
+  | "RETAILER_STAFF_CREATED"
+  | "RETAILER_CAPABILITY_PACK_CHANGED"
+  | "RETAILER_AUTO_ORDER_UPDATED"
+  | "RETAILER_LOCATION_CREATED"
+  | "RETAILER_LOCATION_UPDATED"
+  | "STORE_STOCK_RECEIVED"
+  | "STORE_STOCK_ADJUSTED"
+  | "STORE_STOCK_TRANSFERRED"
+  | "STORE_STOCK_COUNTED"
+  | "POS_SESSION_OPENED"
+  | "POS_SESSION_CLOSED"
+  | "POS_SALE_COMPLETED"
+  | "POS_SALE_VOIDED"
+  | "RETAILER_SELL_THROUGH_UPDATED"
+  | "DEMAND_SIGNAL"
+  | "RETAILER_CLOCK_IN"
+  | "RETAILER_CLOCK_OUT"
+  | "RETAILER_SHIFT_OPENED"
+  | "RETAILER_SHIFT_CLOSED"
+  | "RETAILER_SHIFT_CASH_VARIANCE"
+  | "RETAILER_SECTION_CREATED"
+  | "RETAILER_SECTION_UPDATED"
+  | "RETAILER_SECTION_SKU_MAPPED"
+  | "RETAILER_STAFF_SECTION_ASSIGNED"
+  | "RETAILER_ASSIST_TICKET_OPENED"
+  | "RETAILER_ASSIST_TICKET_CLAIMED"
+  | "RETAILER_ASSIST_TICKET_COMPLETED"
+  | "RETAILER_ASSIST_TICKET_CANCELLED"
   | "DRIVER_CREATED"
   | "DRIVER_AVAILABILITY_CHANGED"
   | "DRIVER_LOCATION_UPDATED"
@@ -1980,6 +3226,12 @@ export type EventType =
   | "PAYMENT_FAILED"
   | "PAYMENT_REQUIRED"
   | "SETTLEMENT_REQUIRED"
+  | "FISCAL_RECEIPT_REQUESTED"
+  | "FISCAL_RECEIPT_SUCCEEDED"
+  | "FISCAL_RECEIPT_FAILED"
+  | "ORDER_FORCE_COMPLETED"
+  | "CASH_SHORTFALL"
+  | "CASH_OVERAGE"
   | "DELIVERY_SESSION_UPDATED"
   | "DELIVERY_DISPUTED"
   | "SHOP_CLOSED"
@@ -1987,6 +3239,10 @@ export type EventType =
   | "SHOP_CLOSED_ESCALATED"
   | "SHOP_CLOSED_RESOLVED"
   | "SHOP_CLOSED_BYPASS_OFFLOAD"
+  | "SHOP_CLOSED_TIMEOUT"
+  | "PROXIMITY_UNLOCKED"
+  | "PARTIAL_OFFLOAD"
+  | "CREDIT_LEAVE"
   | "CREDIT_DELIVERY_MARKED"
   | "CREDIT_DELIVERY_RESOLVED"
   | "NEGOTIATION_PROPOSED"
@@ -2982,6 +4238,7 @@ export type WsEvent =
   | WsEventEnvelope<"COMMAND_DISPATCHED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_RECEIVED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_SETTLED", CommandLifecycle>
+  | WsEventEnvelope<"RETAILER_ASSIST_TICKET_SLA_BREACHED", { ticket_id: string; retailer_id?: string; location_id?: string; section_id?: string }>
   | WsEventEnvelope<"SYSTEM_APP_OUTDATED", { minimum_version: string }>;
 
 // ── Warehouse portal / desktop (fleet, supply detail, live WS) ──
@@ -3424,4 +4681,87 @@ export interface MarkNotificationsReadRequest {
   mark_all?: boolean;
 }
 
+// ── Fleet Telemetry & Capacity Command Center ─────────────────────────────────
+export interface PartnerFilterMetric {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export interface VehicleShipmentCard {
+  id: string;
+  code: string;
+  status: "WAITING" | "ON_ROUTE" | "COMPLETED" | "DELAYED";
+  vehicle_type: "VAN" | "SEMI_TRUCK" | "BOX_TRUCK" | "FLATBED";
+  eta_seconds: number;
+  distance_miles_left: number;
+  stops_count: number;
+  stops_summary: string[];
+  driver_name?: string;
+  driver_phone?: string;
+  partner_id?: string;
+  partner_name?: string;
+}
+
+export interface VehicleCapacityMetrics {
+  vehicle_id: string;
+  code: string;
+  capacity_percentage: number;
+  current_volume_cubic_meters?: number;
+  max_volume_cubic_meters?: number;
+  current_weight_kg?: number;
+  max_weight_kg?: number;
+}
+
+export interface RouteTelemetryPoint {
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  speed_mph?: number;
+  heading_degrees?: number;
+}
+
+export interface RouteTelemetryDetails {
+  route_id: string;
+  vehicle_code: string;
+  status: string;
+  eta_seconds: number;
+  distance_miles_left: number;
+  start_point: { name: string; latitude: number; longitude: number };
+  destination_point: { name: string; latitude: number; longitude: number };
+  current_location: RouteTelemetryPoint;
+  waypoints: Array<{ name: string; latitude: number; longitude: number; status: "VISITED" | "PENDING" }>;
+}
+
+export interface PoDPhotoReport {
+  id: string;
+  title: string;
+  location_name: string;
+  timestamp: string;
+  photo_url: string;
+  step_number: number;
+}
+
+export interface FleetDispatchOverview {
+  total_count: number;
+  active_count: number;
+  inactive_count: number;
+  partner_filters: PartnerFilterMetric[];
+  shipments: VehicleShipmentCard[];
+}
+
+export interface FleetDispatchFilter {
+  partner_id?: string;
+  status_filter?: "ALL" | "ACTIVE" | "INACTIVE";
+  search_query?: string;
+}
+
 export * from "./forecast-confidence";
+
+export type SupplierSettingsResponse = any;
+export type RecommendReassignRequest = any;
+export type RecommendReassignResponse = { candidates?: ReassignmentCandidate[] };
+export type ApplyReassignRequest = any;
+export type StatusResponse = any;
+export type ReassignmentCandidate = any;
+

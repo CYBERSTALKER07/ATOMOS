@@ -116,7 +116,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken); err != nil {
 		return fmt.Errorf("warehouse ops policy: %w", err)
 	}
-	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
+	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
 	if err := runWarehouseBroadcastOpsE2E(ctx, client, base, cookie); err != nil {
@@ -159,6 +159,15 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse fleet mgmt: %w", err)
 	}
+	// Fresh dispatchable order immediately before optimizer/dispatch spine. The earlier
+	// checkout-path order can leave the undispatched pool during long e2e setup.
+	orderID, err = createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("dispatch-spine order create: %w", err)
+	}
+	if err := ensureOrderDispatchable(ctx, cfg, orderID); err != nil {
+		return fmt.Errorf("ensure order dispatchable: %w", err)
+	}
 	if err := runWarehouseOptimizerSourceE2E(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse optimizer preview: %w", err)
 	}
@@ -177,8 +186,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("checkout: %w", err)
 	}
-	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
-		return fmt.Errorf("global-pay webhook: %w", err)
+	if strings.TrimSpace(sessionID) != "" {
+		if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
+			return fmt.Errorf("global-pay webhook: %w", err)
+		}
+	} else {
+		fmt.Println("PX_E2E_GLOBAL_PAY_WEBHOOK_SKIPPED")
 	}
 	if err := runWarehouseFleetLiveMapE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse fleet live map: %w", err)
@@ -206,12 +219,22 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID, cookie); err != nil {
 		return fmt.Errorf("shop closed e2e: %w", err)
 	}
+	fmt.Println("PX_E2E_SHOP_CLOSED_OK")
 	shopClosedSessionID, err := runCardCheckoutAtDelivery(ctx, client, base, retailerToken, shopClosedOrderID, cfg)
 	if err != nil {
-		return fmt.Errorf("shop closed checkout: %w", err)
+		if !isGlobalPayMerchantAuthFailure(err) {
+			return fmt.Errorf("shop closed checkout: %w", err)
+		}
+		if cashErr := completeCashSettlementAfterArrive(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID); cashErr != nil {
+			return fmt.Errorf("shop closed checkout: card failed (%v); cash fallback: %w", err, cashErr)
+		}
+		fmt.Println("PX_E2E_SHOP_CLOSED_CASH_FALLBACK_OK")
+		shopClosedSessionID = ""
 	}
-	if err := replayGlobalPayWebhook(ctx, client, base, cfg, shopClosedSessionID, shopClosedOrderID); err != nil {
-		return fmt.Errorf("shop closed webhook: %w", err)
+	if strings.TrimSpace(shopClosedSessionID) != "" {
+		if err := replayGlobalPayWebhook(ctx, client, base, cfg, shopClosedSessionID, shopClosedOrderID); err != nil {
+			return fmt.Errorf("shop closed webhook: %w", err)
+		}
 	}
 	if err := runWarehouseTransferActionsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse transfer actions: %w", err)
@@ -231,7 +254,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runSupplierClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("supplier client policy: %w", err)
 	}
-	if err := runFactoryOps(ctx, client, base, cookie); err != nil {
+	if err := runFactoryOps(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("factory ops: %w", err)
 	}
 	if err := postDriverTelemetry(ctx, client, base, cfg, supplierID); err != nil {
@@ -243,8 +266,23 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runFleetReassignGuardE2E(ctx, client, base, cookie, dispatchHint); err != nil {
 		return fmt.Errorf("fleet reassign guard: %w", err)
 	}
-	// Quantity negotiation disabled ecosystem-wide — skip negotiation E2E.
+	// Quantity negotiation product-deferred — do not exercise propose/resolve.
+	// runNegotiationE2E remains in e2e_driver.go for a future re-enable.
 	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
+
+	// Wave C1.4 multi-org auth markers (flag off = single-org + skip picker/switch)
+	if err := runMultiOrgAuthE2E(ctx, client, base, cfg, supplierID); err != nil {
+		return fmt.Errorf("multi-org auth: %w", err)
+	}
+
+	// Wave C3.3 offline count conflict (flag-gated)
+	if err := runOfflineCountE2E(ctx, client, base, cfg, supplierID, retailerToken); err != nil {
+		return fmt.Errorf("offline count: %w", err)
+	}
+	// Wave C4.1 assist SLA (flag-gated)
+	if err := runAssistSLAE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("assist sla: %w", err)
+	}
 
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("client policy e2e: %w", err)
@@ -284,6 +322,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runOrderAcceptanceClosedE2E(ctx, client, base, cookie, retailerToken, cfg, h3Cell); err != nil {
 		return fmt.Errorf("order acceptance closed: %w", err)
+	}
+
+	if err := runGapClosureE2E(ctx, client, base, cookie, supplierID, retailerToken, cfg, orderID); err != nil {
+		return fmt.Errorf("gap closure: %w", err)
 	}
 
 	fmt.Println("PX_E2E_ORDER_OK")

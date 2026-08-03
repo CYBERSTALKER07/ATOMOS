@@ -175,6 +175,37 @@ final class APIClient {
         return try await post(path: "/v1/retailer/card/confirm", body: CardConfirmRequest(cardToken: cardToken, otpCode: otpCode))
     }
     
+    // MARK: - Logistics claims (post-delivery)
+
+    func listOrderClaims(orderId: String) async throws -> [RetailerClaim] {
+        let response: RetailerClaimsListResponse = try await get(path: "/v1/orders/\(orderId)/claims")
+        return response.claims
+    }
+
+    func fileOrderClaim(
+        orderId: String,
+        claimType: String,
+        description: String,
+        lines: [FileClaimLineBody],
+        photoURL: String?
+    ) async throws -> RetailerClaim {
+        var evidences: [FileClaimEvidenceBody] = []
+        if let photoURL, !photoURL.isEmpty {
+            evidences.append(FileClaimEvidenceBody(
+                evidenceType: "PHOTO",
+                uri: photoURL,
+                mimeType: "image/jpeg"
+            ))
+        }
+        let body = FileClaimRequestBody(
+            claimType: claimType,
+            description: description,
+            lineItems: lines,
+            evidences: evidences
+        )
+        return try await post(path: "/v1/orders/\(orderId)/claims", body: body)
+    }
+
     func deactivateCard(tokenId: String) async throws {
         let _: APIResponse<String> = try await post(path: "/v1/retailer/card/deactivate", body: CardIdRequest(tokenId: tokenId))
     }
@@ -348,6 +379,10 @@ final class APIClient {
     func getProfile() async throws -> RetailerProfileResponse {
         return try await get(path: "/v1/retailer/profile")
     }
+
+    func getCreditProfile() async throws -> CreditProfile {
+        try await get(path: "/v1/retailer/credit-profile")
+    }
     
     func updateProfile(request: RetailerProfileRequest, idempotencyKey: String) async throws {
         let _: APIResponse<String> = try await put(
@@ -357,14 +392,392 @@ final class APIClient {
         )
     }
 
+    // Retail OS Phase 0
+    func getRetailerMe() async throws -> RetailerMeResponse {
+        try await get(path: "/v1/retailer/me")
+    }
+
+    func getCapabilities() async throws -> RetailerCapabilitiesResponse {
+        try await get(path: "/v1/retailer/capabilities")
+    }
+
+    func enableCapability(packId: String, acceptSoft: Bool = true, enableDeps: Bool = true) async throws -> RetailerCapabilityMutationResponse {
+        struct Body: Encodable {
+            let accept_soft_deps: Bool
+            let enable_deps: Bool
+        }
+        return try await post(
+            path: "/v1/retailer/capabilities/\(packId)/enable",
+            body: Body(accept_soft_deps: acceptSoft, enable_deps: enableDeps),
+            headers: ["Idempotency-Key": "cap-en-\(packId)-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func disableCapability(packId: String) async throws -> RetailerCapabilityMutationResponse {
+        struct Empty: Encodable {}
+        return try await post(
+            path: "/v1/retailer/capabilities/\(packId)/disable",
+            body: Empty(),
+            headers: ["Idempotency-Key": "cap-dis-\(packId)-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    // Retail OS Phase 2 locations
+    func getLocations() async throws -> RetailerLocationsResponse {
+        try await get(path: "/v1/retailer/locations")
+    }
+
+    func createLocation(name: String, address: String, lat: Double = 0, lng: Double = 0) async throws -> RetailerLocationsResponse {
+        struct Body: Encodable {
+            let name: String
+            let delivery_address: String
+            let lat: Double
+            let lng: Double
+        }
+        return try await post(
+            path: "/v1/retailer/locations",
+            body: Body(name: name, delivery_address: address, lat: lat, lng: lng),
+            headers: ["Idempotency-Key": "loc-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func setPrimaryLocation(locationId: String) async throws -> RetailerLocationsResponse {
+        struct Empty: Encodable {}
+        return try await post(
+            path: "/v1/retailer/locations/\(locationId)/set-primary",
+            body: Empty(),
+            headers: ["Idempotency-Key": "prim-\(locationId)-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func switchLocation(locationId: String) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable { let location_id: String }
+        return try await post(
+            path: "/v1/auth/retailer/switch-location",
+            body: Body(location_id: locationId)
+        )
+    }
+
+    // Retail OS Phase 3 store stock
+    func getStoreStock(locationId: String?) async throws -> StoreStockListWire {
+        var path = "/v1/retailer/stock"
+        if let locationId, !locationId.isEmpty {
+            path += "?location_id=\(locationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? locationId)"
+        }
+        return try await get(path: path)
+    }
+
+    func receiveStoreStock(orderId: String, locationId: String) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable {
+            let order_id: String
+            let location_id: String
+            let confirm: Bool
+            let stock_bin: String
+        }
+        return try await post(
+            path: "/v1/retailer/stock/receive-sessions",
+            body: Body(order_id: orderId, location_id: locationId, confirm: true, stock_bin: "BACKROOM"),
+            headers: ["Idempotency-Key": "recv-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func transferStoreStock(locationId: String, sku: String, qty: Int64) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable {
+            let location_id: String
+            let sku: String
+            let qty: Int64
+            let from_bin: String
+            let to_bin: String
+        }
+        return try await post(
+            path: "/v1/retailer/stock/transfer",
+            body: Body(location_id: locationId, sku: sku, qty: qty, from_bin: "BACKROOM", to_bin: "FLOOR"),
+            headers: ["Idempotency-Key": "xfer-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func adjustStoreStock(locationId: String, sku: String, qtyDelta: Int64) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable {
+            let location_id: String
+            let sku: String
+            let qty_delta: Int64
+            let stock_bin: String
+            let note: String
+        }
+        return try await post(
+            path: "/v1/retailer/stock/adjust",
+            body: Body(location_id: locationId, sku: sku, qty_delta: qtyDelta, stock_bin: "BACKROOM", note: "ios_adjust"),
+            headers: ["Idempotency-Key": "adj-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func getStockCountVersion(locationId: String, stockBin: String) async throws -> StockCountVersionWire {
+        let path = "/v1/retailer/stock/counts/version?location_id=\(locationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? locationId)&stock_bin=\(stockBin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? stockBin)"
+        return try await get(path: path)
+    }
+
+    func commitStockCount(locationId: String, stockBin: String, baseVersion: Int64, sku: String, countedQty: Int64, force: Bool = false) async throws -> [String: AnyDecodable] {
+        struct Line: Encodable {
+            let sku_id: String
+            let counted_qty: Int64
+        }
+        struct Body: Encodable {
+            let location_id: String
+            let stock_bin: String
+            let base_version: Int64
+            let force: Bool
+            let lines: [Line]
+        }
+        return try await post(
+            path: "/v1/retailer/stock/counts/commit",
+            body: Body(location_id: locationId, stock_bin: stockBin, base_version: baseVersion, force: force, lines: [Line(sku_id: sku, counted_qty: countedQty)]),
+            headers: ["Idempotency-Key": "count-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    // Retail OS Phase 4 POS
+    func getRegisters() async throws -> RetailerRegistersWire {
+        try await get(path: "/v1/retailer/registers")
+    }
+
+    func createRegister(label: String) async throws -> RetailerRegisterWire {
+        struct Body: Encodable { let label: String }
+        return try await post(
+            path: "/v1/retailer/registers",
+            body: Body(label: label),
+            headers: ["Idempotency-Key": "reg-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func openPosSession(registerId: String) async throws -> PosSessionWire {
+        struct Body: Encodable {
+            let register_id: String
+            let opening_float_minor: Int64
+            let currency: String
+        }
+        return try await post(
+            path: "/v1/retailer/pos/sessions/open",
+            body: Body(register_id: registerId, opening_float_minor: 0, currency: "UZS"),
+            headers: ["Idempotency-Key": "open-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func closePosSession(sessionId: String, closingCashMinor: Int64) async throws -> PosSessionWire {
+        struct Body: Encodable { let closing_cash_minor: Int64 }
+        return try await post(
+            path: "/v1/retailer/pos/sessions/\(sessionId)/close",
+            body: Body(closing_cash_minor: closingCashMinor)
+        )
+    }
+
+    func createPosSale(
+        sessionId: String,
+        lines: [PosSaleLineWire],
+        totalMinor: Int64,
+        clientSaleId: String = UUID().uuidString,
+        origin: String = "online",
+        clientCreatedAt: String? = nil
+    ) async throws -> PosSaleWire {
+        struct Body: Encodable {
+            let session_id: String
+            let stock_bin: String
+            let lines: [PosSaleLineWire]
+            let tenders: [PosTenderWire]
+            let client_sale_id: String
+            let origin: String
+            let client_created_at: String?
+        }
+        return try await post(
+            path: "/v1/retailer/pos/sales",
+            body: Body(
+                session_id: sessionId,
+                stock_bin: "FLOOR",
+                lines: lines,
+                tenders: [PosTenderWire(method: "CASH", amount_minor: totalMinor)],
+                client_sale_id: clientSaleId,
+                origin: origin,
+                client_created_at: clientCreatedAt ?? ISO8601DateFormatter().string(from: Date())
+            ),
+            headers: ["Idempotency-Key": "pos-sale:\(clientSaleId)"]
+        )
+    }
+
+    func voidPosSale(saleId: String) async throws -> PosSaleWire {
+        struct Body: Encodable { let reason: String }
+        return try await post(
+            path: "/v1/retailer/pos/sales/\(saleId)/void",
+            body: Body(reason: "ios_void")
+        )
+    }
+
+    // Retail OS Phase 5 shifts & time
+    func clockIn(locationId: String? = nil) async throws -> TimeEntryWire {
+        struct Body: Encodable { let location_id: String? }
+        return try await post(
+            path: "/v1/retailer/time/clock-in",
+            body: Body(location_id: locationId)
+        )
+    }
+
+    func clockOut() async throws -> TimeEntryWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/time/clock-out", body: Empty())
+    }
+
+    func getTimeEntries() async throws -> TimeEntriesWire {
+        try await get(path: "/v1/retailer/time/entries")
+    }
+
+    func getShifts(locationId: String? = nil) async throws -> ShiftsListWire {
+        if let locationId, !locationId.isEmpty {
+            return try await get(path: "/v1/retailer/shifts?location_id=\(locationId)")
+        }
+        return try await get(path: "/v1/retailer/shifts")
+    }
+
+    func openShift(registerId: String?, openingFloatMinor: Int64) async throws -> ShiftWire {
+        struct Body: Encodable {
+            let register_id: String?
+            let opening_float_minor: Int64
+            let currency: String
+        }
+        return try await post(
+            path: "/v1/retailer/shifts",
+            body: Body(register_id: registerId, opening_float_minor: openingFloatMinor, currency: "UZS"),
+            headers: ["Idempotency-Key": "shift-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func closeShift(shiftId: String, closingCashMinor: Int64) async throws -> ShiftWire {
+        struct Body: Encodable { let closing_cash_minor: Int64 }
+        return try await post(
+            path: "/v1/retailer/shifts/\(shiftId)/close",
+            body: Body(closing_cash_minor: closingCashMinor)
+        )
+    }
+
+    // Retail OS Phase 6
+    func getSections(locationId: String? = nil) async throws -> SectionsListWire {
+        if let locationId, !locationId.isEmpty {
+            return try await get(path: "/v1/retailer/sections?location_id=\(locationId)")
+        }
+        return try await get(path: "/v1/retailer/sections")
+    }
+
+    func createSection(name: String, aisleTag: String?) async throws -> SectionWire {
+        struct Body: Encodable {
+            let name: String
+            let aisle_tag: String?
+        }
+        return try await post(
+            path: "/v1/retailer/sections",
+            body: Body(name: name, aisle_tag: aisleTag),
+            headers: ["Idempotency-Key": "sec-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func putSectionSkus(sectionId: String, skus: [String]) async throws -> [String: AnyDecodable] {
+        struct Body: Encodable { let skus: [String] }
+        return try await put(path: "/v1/retailer/sections/\(sectionId)/skus", body: Body(skus: skus))
+    }
+
+    func getReportsSummary() async throws -> ReportsSummaryWire {
+        try await get(path: "/v1/retailer/reports/summary")
+    }
+
+    func getControlTowerPulse() async throws -> ControlTowerPulseWire {
+        try await get(path: "/v1/retailer/control-tower/pulse")
+    }
+
+    func getAssistTickets() async throws -> AssistTicketsWire {
+        try await get(path: "/v1/retailer/assist/tickets")
+    }
+
+    func createAssistTicket(sectionId: String, note: String) async throws -> AssistTicketWire {
+        struct Body: Encodable {
+            let section_id: String
+            let note: String
+        }
+        return try await post(
+            path: "/v1/retailer/assist/tickets",
+            body: Body(section_id: sectionId, note: note),
+            headers: ["Idempotency-Key": "assist-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func claimAssistTicket(ticketId: String) async throws -> AssistTicketWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/assist/tickets/\(ticketId)/claim", body: Empty())
+    }
+
+    func completeAssistTicket(ticketId: String) async throws -> AssistTicketWire {
+        struct Empty: Encodable {}
+        return try await post(path: "/v1/retailer/assist/tickets/\(ticketId)/complete", body: Empty())
+    }
+
+    // Retail OS Phase 1 team
+    func getOrgMembers() async throws -> RetailerOrgMembersResponse {
+        try await get(path: "/v1/retailer/org/members")
+    }
+
+    func createOrgMember(name: String, phone: String, password: String, role: String) async throws -> RetailerOrgMembersResponse {
+        struct Body: Encodable {
+            let name: String
+            let phone: String
+            let password: String
+            let retailer_role: String
+        }
+        return try await post(
+            path: "/v1/retailer/org/members",
+            body: Body(name: name, phone: phone, password: password, retailer_role: role),
+            headers: ["Idempotency-Key": "team-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
+    func deactivateOrgMember(userId: String) async throws -> RetailerOrgMembersResponse {
+        struct Empty: Encodable {}
+        // DELETE via request helper
+        let components = URLComponents(string: baseURL + "/v1/retailer/org/members/\(userId)")!
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "DELETE"
+        request.setValue("team-deact-\(userId)-\(Int(Date().timeIntervalSince1970 * 1000))", forHTTPHeaderField: "Idempotency-Key")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let data = try await dataForRequestWithFallback(request)
+        return try JSONDecoder().decode(RetailerOrgMembersResponse.self, from: data)
+    }
+
+    func getFamilyMembersList() async throws -> FamilyMembersListResponse {
+        try await get(path: "/v1/retailer/family-members")
+    }
+
     func getFamilyMembers() async throws -> [FamilyMemberResponse] {
-        return try await get(path: "/v1/retailer/family-members")
+        let list = try await getFamilyMembersList()
+        return list.members
     }
-    
+
     func addFamilyMember(request: FamilyMemberRequest) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/family-members", body: request)
+        struct Empty: Decodable {}
+        let _: Empty = try await post(
+            path: "/v1/retailer/family-members",
+            body: request,
+            headers: ["Idempotency-Key": "fam-add-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
     }
-    
+
+    func migrateFamilyToTeam(role: String = "RECEIVER") async throws -> FamilyMigrateResult {
+        struct Body: Encodable {
+            let retailerRole: String
+            enum CodingKeys: String, CodingKey { case retailerRole = "retailer_role" }
+        }
+        return try await post(
+            path: "/v1/retailer/family-members/migrate-to-team",
+            body: Body(retailerRole: role),
+            headers: ["Idempotency-Key": "fam-migrate-\(Int(Date().timeIntervalSince1970 * 1000))"]
+        )
+    }
+
     func removeFamilyMember(memberId: String) async throws {
         // DELETE requires custom wrapper or generic empty request. Reusing existing request helper:
         let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
@@ -474,6 +887,26 @@ final class APIClient {
         )
     }
 
+    /// Auto-order worker tick. mode=draft|place (place requires flag + role + geo).
+    func runAutoOrder(mode: String = "draft") async throws -> AutoOrderRun {
+        let encoded = mode.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? mode
+        return try await post(path: "/v1/retailer/settings/auto-order/run?mode=\(encoded)")
+    }
+
+    func getAutoOrderRuns() async throws -> AutoOrderRunsResponse {
+        try await get(path: "/v1/retailer/settings/auto-order/runs")
+    }
+
+    /// OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY).
+    func getReorderSuggestions(source: String? = nil) async throws -> RetailerReorderSuggestionsResponse {
+        var path = "/v1/retailer/reorder-suggestions"
+        if let source, !source.isEmpty {
+            let enc = source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source
+            path += "?source=\(enc)"
+        }
+        return try await get(path: path)
+    }
+
     func getTracking() async throws -> TrackingResponse {
         try await get(path: "/v1/retailer/tracking")
     }
@@ -553,6 +986,237 @@ struct AnyEncodable: Encodable {
 
     func encode(to encoder: Encoder) throws {
         try _encode(encoder)
+    }
+}
+
+struct RetailerRegistersWire: Codable {
+    let items: [RetailerRegisterWire]
+}
+
+struct RetailerRegisterWire: Codable {
+    let registerId: String
+    let label: String?
+    enum CodingKeys: String, CodingKey {
+        case label
+        case registerId = "register_id"
+    }
+}
+
+struct PosSessionWire: Codable {
+    let sessionId: String
+    let status: String?
+    enum CodingKeys: String, CodingKey {
+        case status
+        case sessionId = "session_id"
+    }
+}
+
+struct PosSaleLineWire: Encodable {
+    let sku: String
+    let name: String
+    let qty: Int64
+    let unit_price_minor: Int64
+    init(sku: String, name: String, qty: Int64, unitPriceMinor: Int64) {
+        self.sku = sku
+        self.name = name
+        self.qty = qty
+        self.unit_price_minor = unitPriceMinor
+    }
+}
+
+struct PosTenderWire: Encodable {
+    let method: String
+    let amount_minor: Int64
+}
+
+struct PosSaleWire: Codable {
+    let saleId: String
+    let receiptNumber: String
+    let totalMinor: Int64?
+    let status: String?
+    enum CodingKeys: String, CodingKey {
+        case status
+        case saleId = "sale_id"
+        case receiptNumber = "receipt_number"
+        case totalMinor = "total_minor"
+    }
+}
+
+struct TimeEntriesWire: Codable {
+    let items: [TimeEntryWire]?
+    let clockedIn: Bool
+    let openEntry: TimeEntryWire?
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case clockedIn = "clocked_in"
+        case openEntry = "open_entry"
+    }
+}
+
+struct TimeEntryWire: Codable {
+    let entryId: String?
+    let userId: String?
+    let locationId: String?
+    let status: String?
+    let clockInAt: String?
+    let clockOutAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case entryId = "entry_id"
+        case userId = "user_id"
+        case locationId = "location_id"
+        case clockInAt = "clock_in_at"
+        case clockOutAt = "clock_out_at"
+    }
+}
+
+struct ShiftsListWire: Codable {
+    let items: [ShiftWire]
+}
+
+struct ShiftWire: Codable {
+    let shiftId: String
+    let status: String
+    let openingFloatMinor: Int64
+    let varianceMinor: Int64?
+    let currency: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case currency
+        case shiftId = "shift_id"
+        case openingFloatMinor = "opening_float_minor"
+        case varianceMinor = "variance_minor"
+    }
+}
+
+struct SectionsListWire: Codable {
+    let items: [SectionWire]
+}
+
+struct SectionWire: Codable {
+    let sectionId: String
+    let name: String
+    let aisleTag: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case sectionId = "section_id"
+        case aisleTag = "aisle_tag"
+    }
+}
+
+struct ReportsSummaryWire: Codable {
+    let salesMinor: Int64?
+    let saleCount: Int?
+    let onHandSkuCount: Int?
+    let lowStockCount: Int?
+    let topSkus: [ReportsTopSkuWire]?
+
+    enum CodingKeys: String, CodingKey {
+        case salesMinor = "sales_minor"
+        case saleCount = "sale_count"
+        case onHandSkuCount = "on_hand_sku_count"
+        case lowStockCount = "low_stock_count"
+        case topSkus = "top_skus"
+    }
+}
+
+struct ControlTowerPulseWire: Codable {
+    let retailerId: String?
+    let generatedAt: String?
+    let openOrders: Int
+    let activeFulfillments: Int
+    let dockPending: Int
+    let posOpenSessions: Int
+    let openShifts: Int
+    let openAssistTickets: Int
+    let lowStockSkuBins: Int
+    let shiftVariances7d: Int
+    let salesMinor7d: Int64
+    let capabilities: [String]?
+    let empty: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case empty
+        case capabilities
+        case retailerId = "retailer_id"
+        case generatedAt = "generated_at"
+        case openOrders = "open_orders"
+        case activeFulfillments = "active_fulfillments"
+        case dockPending = "dock_pending"
+        case posOpenSessions = "pos_open_sessions"
+        case openShifts = "open_shifts"
+        case openAssistTickets = "open_assist_tickets"
+        case lowStockSkuBins = "low_stock_sku_bins"
+        case shiftVariances7d = "shift_variances_7d"
+        case salesMinor7d = "sales_minor_7d"
+    }
+}
+
+struct ReportsTopSkuWire: Codable {
+    let sku: String?
+    let salesMinor: Int64?
+    let units: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case sku
+        case salesMinor = "sales_minor"
+        case units
+    }
+}
+
+struct AssistTicketsWire: Codable {
+    let items: [AssistTicketWire]
+}
+
+struct AssistTicketWire: Codable {
+    let ticketId: String
+    let note: String
+    let status: String
+    let slaDueAt: String?
+    let slaBreachedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case note
+        case status
+        case ticketId = "ticket_id"
+        case slaDueAt = "sla_due_at"
+        case slaBreachedAt = "sla_breached_at"
+    }
+}
+
+struct StoreStockListWire: Codable {
+    let items: [StoreStockBalanceWire]
+}
+
+struct StockCountVersionWire: Codable {
+    let locationId: String?
+    let stockBin: String?
+    let version: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case locationId = "location_id"
+        case stockBin = "stock_bin"
+    }
+}
+
+struct StoreStockBalanceWire: Codable {
+    let locationId: String?
+    let stockBin: String
+    let sku: String
+    let onHand: Int64
+    let available: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case sku
+        case locationId = "location_id"
+        case stockBin = "stock_bin"
+        case onHand = "on_hand"
+        case available
     }
 }
 

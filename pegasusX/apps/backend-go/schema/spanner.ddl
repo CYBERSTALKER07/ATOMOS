@@ -179,6 +179,8 @@ CREATE TABLE Orders (
   DeliveryProposalAt TIMESTAMP,
   DeliveryProposalBy STRING(128),
   DeliveryProposalReason STRING(512),
+  BuyerAcceptanceStatus STRING(MAX),
+  BuyerAcceptanceDeadline TIMESTAMP,
   Version          INT64         NOT NULL,
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -198,6 +200,7 @@ CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByStatusWarehouse ON Orders(Status, WarehouseId, CreatedAt DESC);
+CREATE INDEX Idx_Orders_BuyerAcceptance ON Orders(FiscalStatus, BuyerAcceptanceStatus, BuyerAcceptanceDeadline);
 
 CREATE TABLE SupplierReturns (
   ReturnId          STRING(36)  NOT NULL,
@@ -686,6 +689,16 @@ CREATE TABLE Notifications (
 CREATE INDEX Idx_Notifications_ByRecipientCreated ON Notifications(RecipientId, CreatedAt DESC);
 CREATE INDEX Idx_Notifications_ByRecipientUnread ON Notifications(RecipientId, IsRead, CreatedAt DESC);
 
+CREATE TABLE DeviceTokens (
+  Token     STRING(255) NOT NULL,
+  ActorId   STRING(36)  NOT NULL,
+  ActorRole STRING(20)  NOT NULL,
+  Platform  STRING(20)  NOT NULL,
+  UpdatedAt TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (Token);
+
+CREATE INDEX Idx_DeviceTokens_ByActorRole ON DeviceTokens(ActorId, ActorRole);
+
 CREATE TABLE AuditLog (
   AuditId        STRING(36)    NOT NULL,
   SupplierId     STRING(36)    NOT NULL,
@@ -760,6 +773,9 @@ CREATE TABLE SupplierTruckManifests (
   SealedAt          TIMESTAMP,
   DispatchedAt      TIMESTAMP,
   CompletedAt       TIMESTAMP,
+  LastReplannedAt   TIMESTAMP,
+  ReplanCount       INT64       NOT NULL DEFAULT (0),
+  ReplanReason      STRING(64),
   EncodedRoutePolyline STRING(MAX),
   RouteGeometrySource STRING(32),
   CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -770,6 +786,18 @@ CREATE INDEX Idx_SupplierManifests_BySupplierId ON SupplierTruckManifests(Suppli
 CREATE INDEX Idx_SupplierManifests_ByState ON SupplierTruckManifests(State);
 CREATE INDEX Idx_SupplierManifests_ByDriver ON SupplierTruckManifests(DriverId, State);
 CREATE INDEX Idx_SupplierManifests_ByWarehouse ON SupplierTruckManifests(WarehouseId, State);
+
+CREATE TABLE ManifestReplanLog (
+  ManifestId      STRING(36) NOT NULL,
+  ReplanId        STRING(36) NOT NULL,
+  Reason          STRING(64) NOT NULL,
+  OldSequenceJson BYTES(MAX),
+  NewSequenceJson BYTES(MAX),
+  TriggeredBy     STRING(64) NOT NULL,
+  CreatedAt       TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ManifestId, ReplanId),
+  INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE;
+
 
 CREATE TABLE DispatchRuns (
   RunId           STRING(36)  NOT NULL,
@@ -1261,6 +1289,7 @@ ALTER TABLE Orders ADD COLUMN LatestFiscalReceiptId STRING(128);
 ALTER TABLE Orders ADD COLUMN FiscalizedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN LatestFiscalAttemptId STRING(36);
 
+<<<<<<< HEAD
 CREATE TABLE Claims (
   ClaimId STRING(36) NOT NULL,
   OrderId STRING(36) NOT NULL,
@@ -1290,3 +1319,767 @@ CREATE TABLE ClaimEvidences (
 ) PRIMARY KEY (EvidenceId);
 
 CREATE INDEX Idx_ClaimEvidences_ByClaim ON ClaimEvidences(ClaimId);
+=======
+-- Enhanced shop-closed + proximity settlement + partial offload (2026-07-29).
+-- Wire status ARRIVED_SHOP_CLOSED ≡ design SHOP_CLOSED_PENDING.
+-- Partial line qty lives in LineItemsJson (DeliveredQty/RemainingQty/OffloadStatus).
+ALTER TABLE Orders ADD COLUMN ShopClosedAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ShopClosedReason STRING(64);
+ALTER TABLE Orders ADD COLUMN ShopClosedGraceEndsAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ShopClosedResolution STRING(32);
+ALTER TABLE Orders ADD COLUMN PartialDelivery BOOL;
+ALTER TABLE Orders ADD COLUMN ProximityUnlockedAt TIMESTAMP;
+ALTER TABLE Orders ADD COLUMN ProximityMethod STRING(16);
+
+CREATE TABLE OrderShopClosedLog (
+  OrderId   STRING(36) NOT NULL,
+  EventId   STRING(36) NOT NULL,
+  Actor     STRING(64) NOT NULL,
+  Action    STRING(32) NOT NULL,
+  Payload   BYTES(MAX),
+  CreatedAt TIMESTAMP NOT NULL,
+) PRIMARY KEY (OrderId, EventId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE INDEX Idx_OrderShopClosedLog_ByOrderCreated
+  ON OrderShopClosedLog(OrderId, CreatedAt DESC);
+
+-- ───────────────────────────────────────────────────────────────────────────────
+-- Tax Regime Versioning — versioned tax configurations + per-line fiscal snapshots
+-- ───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE TaxRegimeVersions (
+  Id             STRING(36)  NOT NULL,
+  CountryCode    STRING(2)   NOT NULL,
+  EffectiveFrom  TIMESTAMP   NOT NULL,
+  EffectiveTo    TIMESTAMP,
+  Currency       STRING(3)   NOT NULL,
+  VatRatesBps    ARRAY<INT64>,
+  SimplifiedRules JSON,
+  CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  CreatedBy      STRING(64)  NOT NULL,
+  UpdatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (Id);
+
+CREATE INDEX Idx_TaxRegimeVersions_Effective
+  ON TaxRegimeVersions(CountryCode, EffectiveFrom DESC);
+
+CREATE TABLE OrderLineFiscalSnapshots (
+  OrderId           STRING(36) NOT NULL,
+  LineSku           STRING(64) NOT NULL,
+  RegimeVersionId   STRING(36) NOT NULL,
+  TaxableMinor      INT64      NOT NULL,
+  VatMinor          INT64      NOT NULL,
+  TotalMinor        INT64      NOT NULL,
+  AppliedVatRateBps INT64      NOT NULL,
+) PRIMARY KEY (OrderId, LineSku),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE TABLE ExceptionTickets (
+    TicketId STRING(36) NOT NULL,
+    Type STRING(64) NOT NULL,
+    OrderId STRING(36) NOT NULL,
+    EhfId STRING(64),
+    Severity STRING(16) NOT NULL,
+    Status STRING(32) NOT NULL,
+    Title STRING(256) NOT NULL,
+    Description STRING(MAX),
+    AssignedRole STRING(64),
+    CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+    CreatedBy STRING(128),
+    Payload JSON
+) PRIMARY KEY (TicketId);
+
+CREATE TABLE DemandSignals (
+  SignalId        STRING(36) NOT NULL,
+  Type            STRING(32) NOT NULL,
+  Scope           STRING(64) NOT NULL,
+  Sku             STRING(64),
+  StartAt         TIMESTAMP NOT NULL,
+  EndAt           TIMESTAMP NOT NULL,
+  Multiplier      FLOAT64 NOT NULL,
+  Meta            JSON,
+  CreatedAt       TIMESTAMP NOT NULL,
+  CreatedBy       STRING(64) NOT NULL,
+) PRIMARY KEY (SignalId);
+
+CREATE INDEX DemandSignals_ByScopeTime ON DemandSignals (Scope, StartAt, EndAt);
+
+CREATE TABLE DemandAdjustments (
+  RetailerId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  Date            DATE NOT NULL,
+  BaseVelocity    FLOAT64 NOT NULL,
+  Adjustment      FLOAT64 NOT NULL,
+  AdjustedDemand  FLOAT64 NOT NULL,
+  FactorsJson     JSON,
+  ComputedAt      TIMESTAMP NOT NULL,
+) PRIMARY KEY (RetailerId, Sku, Date);
+-- Money movement ledger (append-only)
+CREATE TABLE OrderPaymentLegs (
+  OrderId           STRING(36) NOT NULL,
+  LegId             STRING(36) NOT NULL,
+  Method            STRING(16) NOT NULL,
+  AmountMinor       INT64 NOT NULL,
+  Status            STRING(16) NOT NULL,
+  IdempotencyKey    STRING(64) NOT NULL,
+  ProviderRef       STRING(128),
+  CreatedAt         TIMESTAMP NOT NULL,
+  CapturedAt        TIMESTAMP,
+) PRIMARY KEY (OrderId, LegId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+-- Explicit shortfalls / discrepancies
+CREATE TABLE OrderSettlementExceptions (
+  OrderId           STRING(36) NOT NULL,
+  ExceptionId       STRING(36) NOT NULL,
+  Type              STRING(32) NOT NULL,
+  AmountMinor       INT64 NOT NULL,
+  Status            STRING(16) NOT NULL,
+  Reason            STRING(MAX),
+  CreatedBy         STRING(64) NOT NULL,
+  CreatedAt         TIMESTAMP NOT NULL,
+) PRIMARY KEY (OrderId, ExceptionId);
+
+CREATE TABLE CreditNotes (
+  CreditNoteId        STRING(36) NOT NULL,
+  OrderId             STRING(36) NOT NULL,
+  Type                STRING(32) NOT NULL,
+  Status              STRING(16) NOT NULL,
+  ReasonCode          STRING(64) NOT NULL,
+  ReasonText          STRING(MAX),
+  TotalNetMinor       INT64 NOT NULL,
+  TotalVatMinor       INT64 NOT NULL,
+  TotalGrossMinor     INT64 NOT NULL,
+  RegimeId            STRING(36),
+  OriginalEhfId       STRING(128),
+  CorrectiveEhfId     STRING(128),
+  CreatedBy           STRING(64) NOT NULL,
+  CreatedAt           TIMESTAMP NOT NULL,
+  IssuedAt            TIMESTAMP,
+  CompletedAt         TIMESTAMP,
+) PRIMARY KEY (CreditNoteId);
+
+CREATE INDEX CreditNotes_ByOrder ON CreditNotes(OrderId);
+
+CREATE TABLE CreditNoteLines (
+  CreditNoteId        STRING(36) NOT NULL,
+  LineId              STRING(36) NOT NULL,
+  OrderLineId         STRING(36) NOT NULL,
+  Sku                 STRING(64) NOT NULL,
+  Qty                 INT64 NOT NULL,
+  UnitNetMinor        INT64 NOT NULL,
+  VatRateBps          INT64 NOT NULL,
+  LineNetMinor        INT64 NOT NULL,
+  LineVatMinor        INT64 NOT NULL,
+  LineGrossMinor      INT64 NOT NULL,
+) PRIMARY KEY (CreditNoteId, LineId),
+  INTERLEAVE IN PARENT CreditNotes ON DELETE CASCADE;
+
+CREATE TABLE ReverseLogisticsTasks (
+  TaskId              STRING(36) NOT NULL,
+  CreditNoteId        STRING(36) NOT NULL,
+  OrderId             STRING(36) NOT NULL,
+  Status              STRING(16) NOT NULL,
+  WarehouseId         STRING(36),
+  DriverId            STRING(36),
+  ExpectedQtyJson     JSON,
+  ReceivedQtyJson     JSON,
+  CreatedAt           TIMESTAMP NOT NULL,
+  UpdatedAt           TIMESTAMP NOT NULL,
+) PRIMARY KEY (TaskId);
+
+CREATE INDEX ReverseLogisticsTasks_ByStatus ON ReverseLogisticsTasks(Status);
+
+CREATE TABLE CashReconciliations (
+  ReconciliationId    STRING(36) NOT NULL,
+  DriverId            STRING(36) NOT NULL,
+  RouteId             STRING(36),
+  ShiftDate           DATE NOT NULL,
+  ExpectedCashMinor   INT64 NOT NULL,
+  DeclaredCashMinor   INT64 NOT NULL,
+  DifferenceMinor     INT64 NOT NULL,
+  Status              STRING(16) NOT NULL,
+  DriverNote          STRING(MAX),
+  FinanceNote         STRING(MAX),
+  CreatedAt           TIMESTAMP NOT NULL,
+  ResolvedAt          TIMESTAMP,
+  ResolvedBy          STRING(64),
+) PRIMARY KEY (ReconciliationId);
+
+CREATE INDEX CashReconciliations_ByDriverDate ON CashReconciliations(DriverId, ShiftDate);
+CREATE INDEX CashReconciliations_ByStatus ON CashReconciliations(Status);
+
+CREATE TABLE ReorderSuggestions (
+  RetailerId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  SuggestedQty    INT64 NOT NULL,
+  AdjustedDemand  FLOAT64 NOT NULL,
+  CurrentStock    INT64 NOT NULL,
+  InFlightQty     INT64 NOT NULL,
+  SafetyStock     FLOAT64 NOT NULL,
+  SuggestedByDate DATE NOT NULL,
+  ComputedAt      TIMESTAMP NOT NULL,
+  Status          STRING(16) NOT NULL,
+) PRIMARY KEY (RetailerId, Sku);
+
+CREATE TABLE RetailerCreditScores (
+  RetailerId STRING(MAX) NOT NULL,
+  Score INT64 NOT NULL,
+  RiskTier STRING(64) NOT NULL,
+  SuggestedLimitMinor INT64 NOT NULL,
+  FactorsJson JSON,
+  WindowStart TIMESTAMP NOT NULL,
+  WindowEnd TIMESTAMP NOT NULL,
+  ComputedAt TIMESTAMP NOT NULL,
+) PRIMARY KEY(RetailerId);
+
+CREATE TABLE RoutePerformanceAnalytics (
+  RouteId STRING(36) NOT NULL,
+  DriverId STRING(36),
+  PlannedStops INT64,
+  ActualStops INT64,
+  PlannedDurationSec INT64,
+  ActualDurationSec INT64,
+  ReplanCount INT64,
+  ComputedAt TIMESTAMP,
+) PRIMARY KEY (RouteId);
+
+CREATE TABLE NotificationPreferences (
+  PrincipalId STRING(36) NOT NULL,
+  PrincipalType STRING(16) NOT NULL,
+  EventType STRING(64) NOT NULL,
+  Channel STRING(16) NOT NULL,
+  Enabled BOOL NOT NULL,
+  QuietFrom STRING(8),
+  QuietTo STRING(8),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (PrincipalId, EventType, Channel);
+
+CREATE TABLE PriceLists (
+  PriceListId     STRING(36) NOT NULL,
+  SupplierId      STRING(36) NOT NULL,
+  Name            STRING(128) NOT NULL,
+  EffectiveFrom   TIMESTAMP NOT NULL,
+  EffectiveTo     TIMESTAMP,
+) PRIMARY KEY (PriceListId);
+
+CREATE TABLE PriceListItems (
+  PriceListId     STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  UnitPriceMinor  INT64 NOT NULL,
+  MinQty          INT64,
+) PRIMARY KEY (PriceListId, Sku),
+  INTERLEAVE IN PARENT PriceLists ON DELETE CASCADE;
+
+CREATE TABLE EventDensitySignals (
+  ZoneH3 STRING(15) NOT NULL,
+  Date DATE NOT NULL,
+  DensityScore FLOAT64,
+  EventsJson JSON,
+  ComputedAt TIMESTAMP,
+) PRIMARY KEY (ZoneH3, Date);
+CREATE TABLE RetailerSegments (
+  RetailerId      STRING(36) NOT NULL,
+  Segment         STRING(16) NOT NULL,
+  Reason          STRING(256),
+  EffectiveFrom   TIMESTAMP NOT NULL,
+  EffectiveTo     TIMESTAMP,
+  UpdatedBy       STRING(64) NOT NULL,
+  UpdatedAt       TIMESTAMP NOT NULL,
+) PRIMARY KEY (RetailerId);
+
+CREATE TABLE SkuClasses (
+  SupplierId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  VelocityClass   STRING(8) NOT NULL,
+  StrategicFlag   BOOL NOT NULL DEFAULT (FALSE),
+  UpdatedAt       TIMESTAMP NOT NULL,
+) PRIMARY KEY (SupplierId, Sku);
+
+CREATE TABLE ServicePolicies (
+  PolicyId              STRING(36) NOT NULL,
+  SupplierId            STRING(36) NOT NULL,
+  RetailerSegment       STRING(16) NOT NULL,
+  SkuClass              STRING(8) NOT NULL,
+  PriorityWeight        INT64 NOT NULL,
+  TargetServiceLevelBps INT64 NOT NULL,
+  MaxFairShareBps       INT64 NOT NULL,
+  MinFairShareBps       INT64 NOT NULL,
+  CreditRiskBoost       INT64 NOT NULL,
+  Enabled               BOOL NOT NULL DEFAULT (TRUE),
+  UpdatedAt             TIMESTAMP NOT NULL,
+) PRIMARY KEY (PolicyId);
+
+CREATE INDEX ServicePolicies_BySupplier ON ServicePolicies(SupplierId);
+
+CREATE TABLE AllocationDecisions (
+  DecisionId      STRING(36) NOT NULL,
+  OrderId         STRING(36) NOT NULL,
+  OrderLineId     STRING(36) NOT NULL,
+  SupplierId      STRING(36) NOT NULL,
+  RetailerId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Qty             INT64 NOT NULL,
+  AllocationMode  STRING(16) NOT NULL,
+  PriorityScore   INT64 NOT NULL,
+  FairShareBps    INT64,
+  PolicyId        STRING(36),
+  RetailerSegment STRING(16),
+  SkuClass        STRING(8),
+  RiskTier        STRING(16),
+  CreatedAt       TIMESTAMP NOT NULL,
+  ConstraintReason STRING(64),
+  RequestedQty    INT64,
+  AllocatedQty    INT64,
+) PRIMARY KEY (DecisionId);
+
+CREATE INDEX AllocationDecisions_ByOrder ON AllocationDecisions(OrderId, CreatedAt DESC);
+
+CREATE INDEX AllocationDecisions_ByRetailer ON AllocationDecisions(RetailerId, CreatedAt DESC);
+
+CREATE TABLE OrderLineAllocations (
+  OrderId         STRING(36) NOT NULL,
+  OrderLineId     STRING(36) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  Qty             INT64 NOT NULL,
+  CreatedAt       TIMESTAMP NOT NULL,
+  AllocationMode  STRING(16),
+  PriorityScore   INT64,
+  FairShareBps    INT64,
+  PolicyId        STRING(36),
+) PRIMARY KEY (OrderId, OrderLineId, WarehouseId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+-- O9-2: Control Tower playbooks — declarative exception → action orchestration.
+CREATE TABLE ControlTowerPlaybooks (
+  PlaybookId        STRING(36) NOT NULL,
+  SupplierId        STRING(36),
+  Name              STRING(128) NOT NULL,
+  Description       STRING(MAX),
+  IsActive          BOOL NOT NULL,
+  Priority          INT64 NOT NULL,
+  MatchRulesJson    JSON NOT NULL,
+  ActionsJson       JSON NOT NULL,
+  AutoExecute       BOOL NOT NULL,
+  CreatedAt         TIMESTAMP NOT NULL,
+  UpdatedAt         TIMESTAMP NOT NULL,
+  CreatedBy         STRING(64) NOT NULL,
+) PRIMARY KEY (PlaybookId);
+
+CREATE INDEX ControlTowerPlaybooks_BySupplierActive
+ON ControlTowerPlaybooks(SupplierId, IsActive, Priority DESC);
+
+CREATE TABLE ControlTowerPlaybookRuns (
+  RunId             STRING(36) NOT NULL,
+  PlaybookId        STRING(36) NOT NULL,
+  ExceptionId       STRING(36) NOT NULL,
+  SupplierId        STRING(36) NOT NULL,
+  Mode              STRING(16) NOT NULL,
+  Status            STRING(16) NOT NULL,
+  ActionsResultJson JSON,
+  CreatedAt         TIMESTAMP NOT NULL,
+  ExecutedAt        TIMESTAMP,
+  ExecutedBy        STRING(64),
+) PRIMARY KEY (RunId);
+
+CREATE INDEX ControlTowerPlaybookRuns_ByException
+ON ControlTowerPlaybookRuns(ExceptionId, CreatedAt DESC);
+
+CREATE INDEX ControlTowerPlaybookRuns_ByStatus
+ON ControlTowerPlaybookRuns(Status, CreatedAt DESC);
+
+CREATE TABLE EchelonTargets (
+  SupplierId      STRING(36) NOT NULL,
+  Sku             STRING(64) NOT NULL,
+  WarehouseId     STRING(36) NOT NULL,
+  Echelon         STRING(16) NOT NULL,
+  TargetQty       INT64 NOT NULL,
+  SafetyQty       INT64 NOT NULL,
+  ServiceLevelBps INT64 NOT NULL,
+  HorizonDays     INT64 NOT NULL,
+  ComputedAt      TIMESTAMP NOT NULL,
+  Source          STRING(32) NOT NULL,
+) PRIMARY KEY (SupplierId, Sku, WarehouseId, Echelon);
+
+-- Retail OS Phase 0: multi-user identity, capability packs, durable settings
+CREATE TABLE RetailerUsers (
+  UserId        STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  Phone         STRING(32)  NOT NULL,
+  Name          STRING(255),
+  PasswordHash  STRING(MAX),
+  FirebaseUid   STRING(128),
+  RetailerRole  STRING(32)  NOT NULL,
+  IsOwner       BOOL        NOT NULL,
+  IsActive      BOOL        NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UserId);
+
+CREATE UNIQUE INDEX UQ_RetailerUsers_ByRetailerPhone ON RetailerUsers(RetailerId, Phone);
+CREATE INDEX Idx_RetailerUsers_ByPhone ON RetailerUsers(Phone);
+CREATE INDEX Idx_RetailerUsers_ByRetailer ON RetailerUsers(RetailerId, IsActive, UpdatedAt DESC);
+
+-- Wave C1.1: multi-org membership (UserId may belong to many RetailerIds)
+CREATE TABLE RetailerUserMemberships (
+  UserId          STRING(36)  NOT NULL,
+  RetailerId      STRING(36)  NOT NULL,
+  RetailerRole    STRING(32)  NOT NULL,
+  IsActive        BOOL        NOT NULL DEFAULT (true),
+  LocationIdsJson STRING(MAX),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (UserId, RetailerId);
+
+CREATE INDEX Idx_RetailerUserMemberships_ByRetailer
+  ON RetailerUserMemberships (RetailerId, IsActive);
+
+CREATE INDEX Idx_RetailerUserMemberships_ByUserActive
+  ON RetailerUserMemberships (UserId, IsActive);
+
+CREATE TABLE RetailerCapabilityPacks (
+  RetailerId      STRING(36)  NOT NULL,
+  PackId          STRING(32)  NOT NULL,
+  Enabled         BOOL        NOT NULL,
+  EnabledByUserId STRING(36),
+  EnabledAt       TIMESTAMP,
+  ConfigJson      STRING(MAX),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, PackId);
+
+CREATE TABLE RetailerAutoOrderSettings (
+  RetailerId      STRING(36)  NOT NULL,
+  SettingsJson    STRING(MAX) NOT NULL,
+  UpdatedByUserId STRING(36),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId);
+
+CREATE TABLE RetailerFavoriteSuppliers (
+  RetailerId  STRING(36)  NOT NULL,
+  SupplierId  STRING(36)  NOT NULL,
+  IsFavorite  BOOL        NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, SupplierId);
+
+-- Retail OS Phase 2: multi-location stores + staff scope
+CREATE TABLE RetailerLocations (
+  LocationId             STRING(36)  NOT NULL,
+  RetailerId             STRING(36)  NOT NULL,
+  Name                   STRING(255) NOT NULL,
+  DeliveryAddress        STRING(MAX),
+  PlaceId                STRING(128),
+  Lat                    FLOAT64,
+  Lng                    FLOAT64,
+  H3Cell                 STRING(15),
+  ReceivingWindowOpen    STRING(10),
+  ReceivingWindowClose   STRING(10),
+  IsPrimary              BOOL        NOT NULL,
+  IsActive               BOOL        NOT NULL,
+  CreatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LocationId);
+
+CREATE INDEX Idx_RetailerLocations_ByRetailer ON RetailerLocations(RetailerId, IsActive, IsPrimary DESC, UpdatedAt DESC);
+
+CREATE TABLE RetailerUserLocations (
+  UserId      STRING(36) NOT NULL,
+  LocationId  STRING(36) NOT NULL,
+  RetailerId  STRING(36) NOT NULL,
+  CreatedAt   TIMESTAMP  NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UserId, LocationId);
+
+CREATE INDEX Idx_RetailerUserLocations_ByRetailerUser ON RetailerUserLocations(RetailerId, UserId);
+CREATE INDEX Idx_RetailerUserLocations_ByLocation ON RetailerUserLocations(LocationId);
+
+-- Retail OS Phase 3: retailer store inventory ledger
+CREATE TABLE RetailerStockBalances (
+  LocationId  STRING(36)  NOT NULL,
+  StockBin    STRING(16)  NOT NULL,
+  Sku         STRING(64)  NOT NULL,
+  RetailerId  STRING(36)  NOT NULL,
+  OnHand      INT64       NOT NULL,
+  Reserved    INT64       NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LocationId, StockBin, Sku);
+
+CREATE INDEX Idx_RetailerStockBalances_ByRetailerSku ON RetailerStockBalances(RetailerId, Sku, LocationId);
+
+CREATE TABLE RetailerStockMovements (
+  MovementId   STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  StockBin     STRING(16)  NOT NULL,
+  Sku          STRING(64)  NOT NULL,
+  Qty          INT64       NOT NULL,
+  MovementType STRING(32)  NOT NULL,
+  RefType      STRING(32),
+  RefId        STRING(64),
+  ActorUserId  STRING(36),
+  Note         STRING(MAX),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (MovementId);
+
+CREATE INDEX Idx_RetailerStockMovements_ByLocationCreated ON RetailerStockMovements(LocationId, CreatedAt DESC);
+CREATE INDEX Idx_RetailerStockMovements_ByRetailerSku ON RetailerStockMovements(RetailerId, Sku, CreatedAt DESC);
+CREATE INDEX Idx_RetailerStockMovements_ByRef ON RetailerStockMovements(RefType, RefId);
+
+CREATE TABLE RetailerReceiveSessions (
+  SessionId    STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  OrderId      STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  LinesJson    STRING(MAX) NOT NULL,
+  CreatedBy    STRING(36),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ConfirmedAt  TIMESTAMP,
+) PRIMARY KEY (SessionId);
+
+CREATE UNIQUE INDEX UQ_RetailerReceiveSessions_ByOrder ON RetailerReceiveSessions(OrderId);
+CREATE INDEX Idx_RetailerReceiveSessions_ByRetailer ON RetailerReceiveSessions(RetailerId, CreatedAt DESC);
+
+CREATE TABLE RetailerStockCounts (
+  CountId      STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  LinesJson    STRING(MAX) NOT NULL,
+  CreatedBy    STRING(36),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  CommittedAt  TIMESTAMP,
+) PRIMARY KEY (CountId);
+
+CREATE INDEX Idx_RetailerStockCounts_ByLocation ON RetailerStockCounts(LocationId, CreatedAt DESC);
+
+-- Retail OS Phase 4: POS registers, sessions, sales
+CREATE TABLE RetailerRegisters (
+  RegisterId  STRING(36)  NOT NULL,
+  RetailerId  STRING(36)  NOT NULL,
+  LocationId  STRING(36)  NOT NULL,
+  Label       STRING(128) NOT NULL,
+  Status      STRING(16)  NOT NULL,
+  CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RegisterId);
+
+CREATE INDEX Idx_RetailerRegisters_ByLocation ON RetailerRegisters(LocationId, Status, UpdatedAt DESC);
+CREATE INDEX Idx_RetailerRegisters_ByRetailer ON RetailerRegisters(RetailerId, UpdatedAt DESC);
+
+CREATE TABLE RetailerPosSessions (
+  SessionId          STRING(36)  NOT NULL,
+  RegisterId         STRING(36)  NOT NULL,
+  LocationId         STRING(36)  NOT NULL,
+  RetailerId         STRING(36)  NOT NULL,
+  OpenedByUserId     STRING(36)  NOT NULL,
+  ClosedByUserId     STRING(36),
+  Status             STRING(16)  NOT NULL,
+  OpeningFloatMinor  INT64       NOT NULL,
+  ClosingCashMinor   INT64,
+  ExpectedCashMinor  INT64,
+  VarianceMinor      INT64,
+  Currency           STRING(3)   NOT NULL,
+  OpenedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClosedAt           TIMESTAMP,
+) PRIMARY KEY (SessionId);
+
+CREATE INDEX Idx_RetailerPosSessions_ByRegister ON RetailerPosSessions(RegisterId, Status, OpenedAt DESC);
+CREATE INDEX Idx_RetailerPosSessions_ByRetailer ON RetailerPosSessions(RetailerId, OpenedAt DESC);
+
+CREATE TABLE RetailerPosSales (
+  SaleId           STRING(36)  NOT NULL,
+  SessionId        STRING(36)  NOT NULL,
+  RegisterId       STRING(36)  NOT NULL,
+  LocationId       STRING(36)  NOT NULL,
+  RetailerId       STRING(36)  NOT NULL,
+  CashierUserId    STRING(36)  NOT NULL,
+  Status           STRING(16)  NOT NULL,
+  TotalMinor       INT64       NOT NULL,
+  Currency         STRING(3)   NOT NULL,
+  ReceiptNumber    STRING(32)  NOT NULL,
+  LinesJson        STRING(MAX) NOT NULL,
+  TendersJson      STRING(MAX) NOT NULL,
+  StockBin         STRING(16)  NOT NULL,
+  CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  VoidedAt         TIMESTAMP,
+  VoidedByUserId   STRING(36),
+  VoidReason       STRING(MAX),
+) PRIMARY KEY (SaleId);
+
+CREATE INDEX Idx_RetailerPosSales_BySession ON RetailerPosSales(SessionId, CreatedAt DESC);
+CREATE INDEX Idx_RetailerPosSales_ByRetailer ON RetailerPosSales(RetailerId, CreatedAt DESC);
+CREATE UNIQUE INDEX UQ_RetailerPosSales_Receipt ON RetailerPosSales(RetailerId, ReceiptNumber);
+
+-- Wave C3.1: parked POS carts (holds) — never touch OnHand
+CREATE TABLE RetailerPosHolds (
+  HoldId        STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  LocationId    STRING(36)  NOT NULL,
+  RegisterId    STRING(36),
+  UserId        STRING(36)  NOT NULL,
+  Status        STRING(16)  NOT NULL,
+  CartJson      STRING(MAX) NOT NULL,
+  Note          STRING(512),
+  ExpiresAt     TIMESTAMP   NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ResumedAt     TIMESTAMP,
+  VoidedAt      TIMESTAMP
+) PRIMARY KEY (RetailerId, HoldId);
+
+CREATE INDEX Idx_RetailerPosHolds_ByLocationStatus
+  ON RetailerPosHolds (RetailerId, LocationId, Status, ExpiresAt);
+
+CREATE INDEX Idx_RetailerPosHolds_ByExpires
+  ON RetailerPosHolds (Status, ExpiresAt);
+
+-- Wave C2.1: HQ analytics projections (sale/void writers same Apply as ledger)
+CREATE TABLE RetailerHqSalesDaily (
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Day          DATE        NOT NULL,
+  SkuId        STRING(128) NOT NULL,
+  QtySold      INT64       NOT NULL,
+  QtyVoided    INT64       NOT NULL,
+  GrossMinor   INT64       NOT NULL,
+  NetMinor     INT64       NOT NULL,
+  Currency     STRING(8)   NOT NULL,
+  UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, Day, LocationId, SkuId);
+
+CREATE INDEX Idx_RetailerHqSalesDaily_ByDay
+  ON RetailerHqSalesDaily (RetailerId, Day, LocationId);
+
+CREATE TABLE RetailerHqStockSnapshot (
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  SkuId        STRING(128) NOT NULL,
+  OnHand       INT64       NOT NULL,
+  Reserved     INT64       NOT NULL,
+  AsOf         TIMESTAMP   NOT NULL,
+  UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, LocationId, SkuId);
+
+-- Retail OS Phase 5: shifts & time clock
+CREATE TABLE RetailerTimeEntries (
+  EntryId      STRING(36)  NOT NULL,
+  RetailerId   STRING(36)  NOT NULL,
+  UserId       STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Status       STRING(16)  NOT NULL,
+  ClockInAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClockOutAt   TIMESTAMP,
+  AutoClosed   BOOL        NOT NULL,
+  Note         STRING(MAX),
+) PRIMARY KEY (EntryId);
+
+CREATE INDEX Idx_RetailerTimeEntries_ByUserStatus ON RetailerTimeEntries(UserId, Status, ClockInAt DESC);
+CREATE INDEX Idx_RetailerTimeEntries_ByRetailer ON RetailerTimeEntries(RetailerId, ClockInAt DESC);
+
+CREATE TABLE RetailerShifts (
+  ShiftId            STRING(36)  NOT NULL,
+  RetailerId         STRING(36)  NOT NULL,
+  LocationId         STRING(36)  NOT NULL,
+  RegisterId         STRING(36),
+  OpenedByUserId     STRING(36)  NOT NULL,
+  ClosedByUserId     STRING(36),
+  Status             STRING(16)  NOT NULL,
+  OpeningFloatMinor  INT64       NOT NULL,
+  ClosingCashMinor   INT64,
+  ExpectedCashMinor  INT64,
+  VarianceMinor      INT64,
+  Currency           STRING(3)   NOT NULL,
+  LinkedPosSessionId STRING(36),
+  OpenedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClosedAt           TIMESTAMP,
+) PRIMARY KEY (ShiftId);
+
+CREATE INDEX Idx_RetailerShifts_ByLocationStatus ON RetailerShifts(LocationId, Status, OpenedAt DESC);
+CREATE INDEX Idx_RetailerShifts_ByRetailer ON RetailerShifts(RetailerId, OpenedAt DESC);
+CREATE INDEX Idx_RetailerShifts_ByPosSession ON RetailerShifts(LinkedPosSessionId);
+
+-- Retail OS Phase 6: sections + assist
+CREATE TABLE RetailerSections (
+  SectionId   STRING(36)  NOT NULL,
+  RetailerId  STRING(36)  NOT NULL,
+  LocationId  STRING(36)  NOT NULL,
+  Name        STRING(128) NOT NULL,
+  AisleTag    STRING(64),
+  ShelfTag    STRING(64),
+  SortOrder   INT64       NOT NULL,
+  Status      STRING(16)  NOT NULL,
+  CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt   TIMESTAMP,
+) PRIMARY KEY (SectionId);
+
+CREATE INDEX Idx_RetailerSections_ByLocation ON RetailerSections(LocationId, Status, SortOrder);
+CREATE INDEX Idx_RetailerSections_ByRetailer ON RetailerSections(RetailerId, Status, Name);
+
+CREATE TABLE RetailerSectionSkus (
+  SectionId  STRING(36)  NOT NULL,
+  Sku        STRING(128) NOT NULL,
+  LocationId STRING(36)  NOT NULL,
+  RetailerId STRING(36)  NOT NULL,
+  CreatedAt  TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SectionId, Sku);
+
+CREATE INDEX Idx_RetailerSectionSkus_BySkuLocation ON RetailerSectionSkus(Sku, LocationId);
+CREATE INDEX Idx_RetailerSectionSkus_ByLocation ON RetailerSectionSkus(LocationId, Sku);
+
+CREATE TABLE RetailerStaffSections (
+  UserId     STRING(36)  NOT NULL,
+  SectionId  STRING(36)  NOT NULL,
+  RetailerId STRING(36)  NOT NULL,
+  AssignedAt TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UserId, SectionId);
+
+CREATE INDEX Idx_RetailerStaffSections_BySection ON RetailerStaffSections(SectionId, UserId);
+CREATE INDEX Idx_RetailerStaffSections_ByRetailer ON RetailerStaffSections(RetailerId, UserId);
+
+CREATE TABLE RetailerAssistanceTickets (
+  TicketId          STRING(36)  NOT NULL,
+  RetailerId        STRING(36)  NOT NULL,
+  LocationId        STRING(36)  NOT NULL,
+  SectionId         STRING(36)  NOT NULL,
+  Note              STRING(MAX) NOT NULL,
+  Status            STRING(16)  NOT NULL,
+  CreatedByUserId   STRING(36)  NOT NULL,
+  ClaimedByUserId   STRING(36),
+  CompletedByUserId STRING(36),
+  CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ClaimedAt         TIMESTAMP,
+  CompletedAt       TIMESTAMP,
+  SlaDueAt          TIMESTAMP,
+  SlaBreachedAt     TIMESTAMP,
+) PRIMARY KEY (TicketId);
+
+CREATE INDEX Idx_RetailerAssist_ByLocationStatus ON RetailerAssistanceTickets(LocationId, Status, CreatedAt DESC);
+CREATE INDEX Idx_RetailerAssist_BySectionStatus ON RetailerAssistanceTickets(SectionId, Status, CreatedAt DESC);
+CREATE INDEX Idx_RetailerAssist_ByRetailer ON RetailerAssistanceTickets(RetailerId, CreatedAt DESC);
+
+-- Wave C3.3: offline count version per location+bin
+CREATE TABLE RetailerStockLocationVersions (
+  LocationId  STRING(36) NOT NULL,
+  StockBin    STRING(16) NOT NULL,
+  Version     INT64       NOT NULL,
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LocationId, StockBin);
+
+-- Wave C3.3: force-commit audit (MANAGER/OWNER only)
+CREATE TABLE RetailerStockCountForceAudits (
+  AuditId       STRING(36) NOT NULL,
+  CountId       STRING(36) NOT NULL,
+  RetailerId    STRING(36) NOT NULL,
+  LocationId    STRING(36) NOT NULL,
+  StockBin      STRING(16) NOT NULL,
+  BaseVersion   INT64       NOT NULL,
+  ServerVersion INT64       NOT NULL,
+  ActorUserId   STRING(36) NOT NULL,
+  ActorRole     STRING(32) NOT NULL,
+  LinesJson     JSON        NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AuditId);
+
+-- Wave C4.1: assist SLA breach tracking (column added via migration on RetailerAssistanceTickets)

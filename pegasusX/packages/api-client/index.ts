@@ -1,4 +1,4 @@
-import type {
+import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReassignResponse, ApplyReassignRequest, StatusResponse, 
   ConfirmAIOrderRequest,
   ConfirmPreorderRequest,
   EditPreorderRequest,
@@ -10,6 +10,13 @@ import type {
   PaymentChargebackResponse,
   PaymentChargebackReversalRequest,
   PaymentChargebackReversalResponse,
+  SupplierClaimsListResponse,
+  ApproveClaimRequest,
+  ApproveClaimResponse,
+  RejectClaimRequest,
+  Claim,
+  ClaimChargebacksQuery,
+  ClaimChargebacksResponse,
   RejectAIOrderRequest,
   RetailerAIPredictionsResponse,
   RetailerOrderLifecycleResponse,
@@ -21,6 +28,9 @@ import type {
   RetailerPendingPaymentsResponse,
   RetailerProfileResponse,
   RetailerPricingRuleResponse,
+  RetailerStockCountCommitRequest,
+  RetailerStockCountCommitResponse,
+  RetailerStockCountVersionResponse,
   RetailerProfileUpdateRequest,
   CreateRetailerPriceOverrideRequest,
   CreateRetailerPriceOverrideResponse,
@@ -45,6 +55,15 @@ import type {
   SupplierExceptionsResponse,
   ShopClosedActiveResponse,
   ShopClosedResolveRequest,
+  ShopClosedReportRequest,
+  ShopClosedReportResponse,
+  ProximityUnlockRequest,
+  ProximityUnlockResponse,
+  PartialOffloadRequest,
+  PartialOffloadResponse,
+  CreditDeliveryRequest,
+  ComplianceDashboardResponse,
+  ComplianceExportBucket,
   NegotiationPendingResponse,
   NegotiationResolveRequest,
   NegotiationResolveResponse,
@@ -76,9 +95,30 @@ import type {
   SupplierMEIONetworkSummary,
   SupplierReplenishmentPolicy,
   SupplierReplenishmentTraceabilityResponse,
+  ReorderSuggestionsListResponse,
+  ReorderSuggestionDismissRequest,
+  ReorderSuggestionCreateDraftRequest,
+  ReorderSuggestionBulkCreateDraftsRequest,
+  ReorderSuggestionBulkCreateDraftsResponse,
+  CashReconciliationRow,
+  CashReconciliationsListResponse,
+  CashReconciliationActionRequest,
+  CreditNoteRow,
+  CreditNotesListResponse,
+  CreateCreditNoteRequest,
+  TwinOpsRouteView,
+  TwinVehicleInventoryRow,
   ControlTowerZoneOverride,
   ControlTowerZoneOverridesResponse,
   ControlTowerZoneOverrideRequest,
+  ControlTowerPlaybookRunsResponse,
+  ScoredExceptionsResponse,
+  ControlTowerPlaybooksResponse,
+  RetailerSegmentsResponse,
+  SkuClassesResponse,
+  SegmentationBootstrapResult,
+  SetRetailerSegmentInput,
+  SetSkuClassInput,
   PlanningScenarioInput,
   PlanningScenarioResult,
   PlanningSignalIngestStatus,
@@ -181,6 +221,7 @@ export {
   retailerUnifiedCheckoutKey,
   retailerCardCheckoutKey,
   retailerCashCheckoutKey,
+  retailerPosSaleKey,
   retailerSupplierAddKey,
   retailerSupplierRemoveKey,
   supplierDispatchKey,
@@ -229,6 +270,8 @@ export {
   driverConfirmPaymentBypassKey,
   driverBypassOffloadKey,
   driverReportShopClosedKey,
+  driverProximityUnlockKey,
+  driverPartialOffloadKey,
   supplierShopClosedResolveKey,
   supplierResolveReturnKey,
   supplierProfileUpdateKey,
@@ -643,6 +686,44 @@ export class ApiClient {
     });
   }
 
+  /** Role-scoped Pegasus settlement receipt metadata (html_url / pdf_url for branded doc). */
+  async getOrderReceipt(
+    role: "retailer" | "supplier" | "warehouse",
+    orderId: string,
+  ): Promise<{
+    receipt_id: string;
+    html_url?: string;
+    pdf_url?: string;
+    qr_url?: string;
+    party_copy?: string;
+    legal_class?: string;
+    tax_ofd?: boolean;
+    amount_minor?: number;
+    currency?: string;
+  }> {
+    return this.request(
+      `/v1/${role}/orders/${encodeURIComponent(orderId)}/receipt?format=json`,
+      "GET",
+    );
+  }
+
+  /** Fetch branded receipt HTML or PDF bytes with auth (opens via blob URL in portals). */
+  async fetchOrderReceiptBlob(
+    role: "retailer" | "supplier" | "warehouse",
+    orderId: string,
+    format: "html" | "pdf",
+  ): Promise<Blob> {
+    const path = `/v1/${role}/orders/${encodeURIComponent(orderId)}/receipt?format=${format}`;
+    const headers = this.buildHeaders(undefined, true, undefined, true);
+    const fetchImpl = this.config.fetchImpl ?? fetch;
+    const response = await fetchImpl(this.resolveURL(path), { method: "GET", headers });
+    if (!response.ok) {
+      const payload = await parseResponsePayload(response);
+      throw new ApiError(extractErrorMessage(response.status, payload), response.status, payload);
+    }
+    return response.blob();
+  }
+
   async getSupplierDispatchPreview(query: { warehouse_id?: string } = {}): Promise<SupplierDispatchPreview> {
     return this.request<SupplierDispatchPreview>(
       appendQuery("/v1/supplier/dispatch/preview", query as Record<string, unknown>),
@@ -706,6 +787,31 @@ export class ApiClient {
 
   async getSupplierDemandHistory(): Promise<SupplierDemandHistoryResponse> {
     return this.request<SupplierDemandHistoryResponse>("/v1/supplier/analytics/demand/history", "GET");
+  }
+
+  /** B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (not planning multipliers). */
+  async getSupplierDemandFlywheel(params?: {
+    days?: number;
+    limit?: number;
+    sku?: string;
+  }): Promise<import("@pegasusx/types").FlywheelDemandFeedResponse> {
+    const q = new URLSearchParams();
+    if (params?.days != null) q.set("days", String(params.days));
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    if (params?.sku) q.set("sku", params.sku);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<import("@pegasusx/types").FlywheelDemandFeedResponse>(
+      `/v1/supplier/analytics/demand/flywheel${suffix}`,
+      "GET",
+    );
+  }
+
+  async getDemandSignals(): Promise<{ signals: import("@pegasusx/types").DemandSignal[] }> {
+    return this.request<{ signals: import("@pegasusx/types").DemandSignal[] }>("/v1/demand/signals", "GET");
+  }
+
+  async createDemandSignal(payload: import("@pegasusx/types").CreateSignalRequest): Promise<import("@pegasusx/types").DemandSignal> {
+    return this.request<import("@pegasusx/types").DemandSignal>("/v1/demand/signals", "POST", { body: payload });
   }
 
   async importSupplierInventoryCSV(
@@ -892,7 +998,104 @@ export class ApiClient {
     });
   }
 
-  /** Quantity negotiation disabled ecosystem-wide. */
+  /** Driver: mark shop closed at stop (POST /v1/delivery/shop-closed). */
+  async reportShopClosed(
+    request: ShopClosedReportRequest,
+    idempotencyKey: string,
+  ): Promise<ShopClosedReportResponse> {
+    return this.request<ShopClosedReportResponse>("/v1/delivery/shop-closed", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: unlock payment modes when physically at stop. */
+  async proximityUnlock(
+    request: ProximityUnlockRequest,
+    idempotencyKey: string,
+  ): Promise<ProximityUnlockResponse> {
+    return this.request<ProximityUnlockResponse>("/v1/delivery/proximity-unlock", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: line-level partial offload (qty math enforced server-side). */
+  async partialOffload(
+    request: PartialOffloadRequest,
+    idempotencyKey: string,
+  ): Promise<PartialOffloadResponse> {
+    return this.request<PartialOffloadResponse>("/v1/delivery/partial-offload", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Driver: leave delivery on credit (requires proximity unlock or force_bypass_token). */
+  async creditDelivery(
+    request: CreditDeliveryRequest,
+    idempotencyKey: string,
+  ): Promise<{ status?: string; order_id?: string }> {
+    return this.request("/v1/delivery/credit-delivery", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** Supplier compliance / fiscal audit dashboard (combined buckets). */
+  async getComplianceDashboard(params?: { limit?: number }): Promise<ComplianceDashboardResponse> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<ComplianceDashboardResponse>(`/v1/compliance/dashboard${suffix}`, "GET");
+  }
+
+  async getComplianceFiscalOpen(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["open_fiscal"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/fiscal-open${suffix}`, "GET");
+  }
+
+  async getComplianceForceCompletes(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["force_completes"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/force-completes${suffix}`, "GET");
+  }
+
+  async getComplianceClaimMismatches(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["claim_mismatches"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/claim-mismatches${suffix}`, "GET");
+  }
+
+  async getComplianceCreditFreezes(params?: { limit?: number }): Promise<{ data: ComplianceDashboardResponse["credit_freezes"]; count: number }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/compliance/credit-freezes${suffix}`, "GET");
+  }
+
+  /** JSON export of one or all compliance buckets. For CSV use download URL with format=csv. */
+  async getComplianceExport(params?: {
+    format?: "json" | "csv";
+    bucket?: ComplianceExportBucket;
+    limit?: number;
+  }): Promise<unknown> {
+    const q = new URLSearchParams();
+    q.set("format", params?.format ?? "json");
+    if (params?.bucket) q.set("bucket", params.bucket);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    return this.request(`/v1/compliance/export?${q.toString()}`, "GET");
+  }
+
+  /**
+   * Quantity negotiation is product-disabled ecosystem-wide.
+   * Backend returns empty pending list; clients must not surface propose UX.
+   * Independent of claims / shop-closed / partial-offload.
+   */
   async getSupplierNegotiationsPending(_params?: { limit?: number; offset?: number }): Promise<NegotiationPendingResponse> {
     return { data: [] };
   }
@@ -907,7 +1110,10 @@ export class ApiClient {
     });
   }
 
-  /** Quantity negotiation disabled ecosystem-wide. */
+  /**
+   * Quantity negotiation is product-disabled ecosystem-wide (410 on live API).
+   * Do not call — use claims / shop-closed / missing-items for delivery exceptions.
+   */
   async resolveSupplierNegotiation(
     _request: NegotiationResolveRequest,
     _idempotencyKey: string,
@@ -951,6 +1157,139 @@ export class ApiClient {
     return this.request<SupplierReplenishmentTraceabilityResponse>("/v1/supplier/replenishment/traceability", "GET");
   }
 
+  async listReorderSuggestions(params?: {
+    retailerId?: string;
+    status?: string;
+    sku?: string;
+    /** Server-side demand source filter: STORE_POS | WHOLESALE_HISTORY */
+    source?: string;
+  }): Promise<ReorderSuggestionsListResponse> {
+    const q = new URLSearchParams();
+    if (params?.retailerId) q.set("retailerId", params.retailerId);
+    if (params?.status) q.set("status", params.status);
+    if (params?.sku) q.set("sku", params.sku);
+    if (params?.source) q.set("source", params.source);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<ReorderSuggestionsListResponse>(`/v1/replenishment/suggestions${suffix}`, "GET");
+  }
+
+  async dismissReorderSuggestion(request: ReorderSuggestionDismissRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>("/v1/replenishment/suggestions/dismiss", "POST", { body: request });
+  }
+
+  async createDraftFromReorderSuggestion(
+    request: ReorderSuggestionCreateDraftRequest,
+    idempotencyKey?: string,
+  ): Promise<{ order_id: string; status?: string }> {
+    return this.request("/v1/replenishment/suggestions/create-draft", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async bulkCreateDraftsFromReorderSuggestions(
+    request: ReorderSuggestionBulkCreateDraftsRequest,
+    idempotencyKey?: string,
+  ): Promise<ReorderSuggestionBulkCreateDraftsResponse> {
+    return this.request<ReorderSuggestionBulkCreateDraftsResponse>("/v1/replenishment/suggestions/create-drafts", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async listCashReconciliations(params?: { status?: string; limit?: number }): Promise<CashReconciliationsListResponse> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<CashReconciliationsListResponse>(`/v1/supplier/cash-reconciliations${suffix}`, "GET");
+  }
+
+  async acceptCashReconciliation(id: string, request?: CashReconciliationActionRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/cash-reconciliations/${encodeURIComponent(id)}/accept`, "POST", {
+      body: request ?? {},
+    });
+  }
+
+  async writeOffCashReconciliation(id: string, request?: CashReconciliationActionRequest): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/cash-reconciliations/${encodeURIComponent(id)}/write-off`, "POST", {
+      body: request ?? {},
+    });
+  }
+
+  async listCreditNotes(params?: { status?: string; limit?: number }): Promise<CreditNotesListResponse> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<CreditNotesListResponse>(`/v1/supplier/credit-notes${suffix}`, "GET");
+  }
+
+  async createCreditNote(request: CreateCreditNoteRequest): Promise<CreditNoteRow> {
+    return this.request<CreditNoteRow>("/v1/supplier/credit-notes", "POST", { body: request });
+  }
+
+  async issueCreditNote(id: string): Promise<StatusResponse> {
+    return this.request<StatusResponse>(`/v1/supplier/credit-notes/${encodeURIComponent(id)}/issue`, "POST", {});
+  }
+
+  async getCreditNoteOrderLines(orderId: string): Promise<{ lines: Array<{ order_line_id: string; sku: string; qty: number; gross_minor: number }> }> {
+    return this.request(`/v1/supplier/credit-notes/order-lines?order_id=${encodeURIComponent(orderId)}`, "GET");
+  }
+
+  async resolveSupplierException(
+    kind: string,
+    id: string,
+    body?: { note?: string; credit_note_id?: string },
+  ): Promise<StatusResponse> {
+    return this.request<StatusResponse>(
+      `/v1/supplier/exceptions/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/resolve`,
+      "POST",
+      { body: body ?? {} },
+    );
+  }
+
+  async getNotificationPreferences(): Promise<{ preferences: Array<{ event_type: string; channel: string; enabled: boolean; quiet_from?: string; quiet_to?: string }> }> {
+    return this.request("/v1/user/notification-preferences", "GET");
+  }
+
+  async patchNotificationPreferences(preferences: Array<{ event_type: string; channel: string; enabled: boolean; quiet_from?: string; quiet_to?: string }>): Promise<StatusResponse> {
+    return this.request<StatusResponse>("/v1/user/notification-preferences", "PATCH", { body: { preferences } });
+  }
+
+  async listRoutePerformance(params?: { limit?: number }): Promise<{ routes: Array<Record<string, unknown>> }> {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/supplier/route-performance${suffix}`, "GET");
+  }
+
+  async listTwinActiveRoutes(params?: {
+    zoneH3?: string;
+    delayedOnly?: boolean;
+    shopClosedOnly?: boolean;
+    driverId?: string;
+  }): Promise<TwinOpsRouteView[]> {
+    const q = new URLSearchParams();
+    if (params?.zoneH3) q.set("zoneH3", params.zoneH3);
+    if (params?.delayedOnly) q.set("delayedOnly", "true");
+    if (params?.shopClosedOnly) q.set("shopClosedOnly", "true");
+    if (params?.driverId) q.set("driverId", params.driverId);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<TwinOpsRouteView[]>(`/v1/twin/routes/active${suffix}`, "GET");
+  }
+
+  async getTwinRoute(routeId: string): Promise<TwinOpsRouteView> {
+    return this.request<TwinOpsRouteView>(`/v1/twin/routes/${encodeURIComponent(routeId)}`, "GET");
+  }
+
+  async getTwinRouteInventory(routeId: string): Promise<TwinVehicleInventoryRow[]> {
+    return this.request<TwinVehicleInventoryRow[]>(
+      `/v1/twin/routes/${encodeURIComponent(routeId)}/inventory`,
+      "GET",
+    );
+  }
+
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
     return this.request<SupplierMEIONetworkSummary>("/v1/supplier/meio/network-summary", "GET");
   }
@@ -967,6 +1306,71 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  async listPlaybookRuns(status?: string, exceptionId?: string): Promise<ControlTowerPlaybookRunsResponse> {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (exceptionId) params.set("exception_id", exceptionId);
+    const q = params.toString();
+    return this.request<ControlTowerPlaybookRunsResponse>(
+      `/v1/control-tower/runs${q ? `?${q}` : ""}`,
+      "GET",
+    );
+  }
+
+  async listScoredExceptions(limit?: number): Promise<ScoredExceptionsResponse> {
+    const params = new URLSearchParams();
+    if (limit != null) params.set("limit", String(limit));
+    const q = params.toString();
+    return this.request<ScoredExceptionsResponse>(
+      `/v1/control-tower/exceptions/scored${q ? `?${q}` : ""}`,
+      "GET",
+    );
+  }
+
+  async listPlaybooks(): Promise<ControlTowerPlaybooksResponse> {
+    return this.request<ControlTowerPlaybooksResponse>("/v1/control-tower/playbooks", "GET");
+  }
+
+  async deactivatePlaybook(playbookId: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/playbooks/${playbookId}/deactivate`, "POST");
+  }
+
+  async approvePlaybookRun(runId: string, idempotencyKey: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/runs/${runId}/approve`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async skipPlaybookRun(runId: string, idempotencyKey: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/control-tower/runs/${runId}/skip`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async listRetailerSegments(): Promise<RetailerSegmentsResponse> {
+    return this.request<RetailerSegmentsResponse>("/v1/supplier/segmentation/retailers", "GET");
+  }
+
+  async setRetailerSegment(retailerId: string, body: SetRetailerSegmentInput): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/segmentation/retailers/${encodeURIComponent(retailerId)}`, "PATCH", {
+      body,
+    });
+  }
+
+  async listSkuClasses(): Promise<SkuClassesResponse> {
+    return this.request<SkuClassesResponse>("/v1/supplier/segmentation/sku-classes", "GET");
+  }
+
+  async setSkuClass(sku: string, body: SetSkuClassInput): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/segmentation/sku-classes/${encodeURIComponent(sku)}`, "PATCH", {
+      body,
+    });
+  }
+
+  async bootstrapSegmentation(): Promise<SegmentationBootstrapResult> {
+    return this.request<SegmentationBootstrapResult>("/v1/supplier/segmentation/bootstrap", "POST");
   }
 
   async runPlanningScenario(request: PlanningScenarioInput, idempotencyKey: string): Promise<PlanningScenarioResult> {
@@ -1231,6 +1635,30 @@ export class ApiClient {
 
   async getRetailerPulse(): Promise<PulseResponse> {
     return this.request<PulseResponse>("/v1/retailer/pulse", "GET");
+  }
+
+  async getStockCountVersion(query: {
+    location_id: string;
+    stock_bin?: string;
+  }): Promise<RetailerStockCountVersionResponse> {
+    return this.request<RetailerStockCountVersionResponse>(
+      appendQuery("/v1/retailer/stock/counts/version", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async commitStockCount(
+    request: RetailerStockCountCommitRequest,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<RetailerStockCountCommitResponse> {
+    return this.request<RetailerStockCountCommitResponse>(
+      "/v1/retailer/stock/counts/commit",
+      "POST",
+      {
+        body: request,
+        idempotencyKey: options.idempotencyKey,
+      },
+    );
   }
 
   async getFactoryPulse(): Promise<PulseResponse> {
@@ -1697,6 +2125,51 @@ export class ApiClient {
     });
   }
 
+  /** GET /v1/supplier/claims — supplier-scoped logistics claims queue. */
+  async listSupplierClaims(query: {
+    status?: string;
+    limit?: number;
+  } = {}): Promise<SupplierClaimsListResponse> {
+    return this.request<SupplierClaimsListResponse>(
+      appendQuery("/v1/supplier/claims", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  /** POST /v1/claims/{claimId}/approve */
+  async approveClaim(
+    claimId: string,
+    request: ApproveClaimRequest = {},
+    idempotencyKey?: string,
+  ): Promise<ApproveClaimResponse> {
+    return this.request<ApproveClaimResponse>(`/v1/claims/${encodeURIComponent(claimId)}/approve`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** POST /v1/claims/{claimId}/reject */
+  async rejectClaim(
+    claimId: string,
+    request: RejectClaimRequest = {},
+    idempotencyKey?: string,
+  ): Promise<Claim> {
+    return this.request<Claim>(`/v1/claims/${encodeURIComponent(claimId)}/reject`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** GET /v1/supplier/claim-chargebacks — claim-originated CHARGEBACK_RECORDED ledger rows. */
+  async listSupplierClaimChargebacks(
+    query: ClaimChargebacksQuery = {},
+  ): Promise<ClaimChargebacksResponse> {
+    return this.request<ClaimChargebacksResponse>(
+      appendQuery("/v1/supplier/claim-chargebacks", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
   private async request<TResponse>(
     path: string,
     method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
@@ -1727,7 +2200,31 @@ export class ApiClient {
     return payload as TResponse;
   }
 
+  // ── Fleet Telemetry & Capacity Command Center ─────────────────────────────────
+  async getFleetDispatchOverview(
+    role: "supplier" | "warehouse",
+    query: { partner_id?: string; status_filter?: string; search_query?: string } = {},
+  ): Promise<import("@pegasusx/types").FleetDispatchOverview> {
+    return this.request<import("@pegasusx/types").FleetDispatchOverview>(
+      appendQuery(`/v1/${role}/dispatch/tracking`, query as Record<string, unknown>),
+      "GET"
+    );
+  }
+
+  async getVehicleCapacity(vehicleId: string): Promise<import("@pegasusx/types").VehicleCapacityMetrics> {
+    return this.request<import("@pegasusx/types").VehicleCapacityMetrics>(`/v1/payload/capacity/${vehicleId}`, "GET");
+  }
+
+  async getRouteTelemetry(routeId: string): Promise<import("@pegasusx/types").RouteTelemetryDetails> {
+    return this.request<import("@pegasusx/types").RouteTelemetryDetails>(`/v1/driver/telemetry/${routeId}`, "GET");
+  }
+
+  async getShipmentProofPhotos(shipmentId: string): Promise<import("@pegasusx/types").PoDPhotoReport[]> {
+    return this.request<import("@pegasusx/types").PoDPhotoReport[]>(`/v1/delivery/proof-photos/${shipmentId}`, "GET");
+  }
+
   private buildHeaders(extra: HeadersInit | undefined, requiresAuth: boolean, idempotencyKey: string | undefined, hasRawBody: boolean): Headers {
+
     const headers = new Headers(extra);
     if (!hasRawBody) {
       headers.set("Content-Type", "application/json");

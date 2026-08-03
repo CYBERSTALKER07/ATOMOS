@@ -38,6 +38,7 @@
         "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
         "PX_E2E_DELIVERY_OK",
         "PX_E2E_SHOP_CLOSED_OK",
+        "PX_E2E_SHOP_CLOSED_CANCEL_RELEASE_OK",
         "PX_E2E_RETURN_GATE_RECEIVE_OK"
       ]
     },
@@ -61,6 +62,42 @@
         "PX_E2E_CATALOG_OK",
         "PX_E2E_REPLENISH_OK",
         "PX_E2E_REPLENISH_COLOCATE_OK"
+      ]
+    },
+    "gap_closure": {
+      "description": "Finance gap-closure: cash recon, credit notes, reverse logistics, prefs",
+      "markers": [
+        "PX_E2E_NOTIFICATION_PREFS_OK",
+        "PX_E2E_ROUTE_PERFORMANCE_OK",
+        "PX_E2E_CREDIT_SCORE_NOTIFY_OK",
+        "PX_E2E_CASH_RECON_OK",
+        "PX_E2E_EXCEPTION_RESOLVE_OK",
+        "PX_E2E_CREDIT_NOTE_DRAFT_OK",
+        "PX_E2E_CREDIT_NOTE_OK",
+        "PX_E2E_REVERSE_LOGISTICS_OK",
+        "PX_E2E_REORDER_SUGGESTION_OK",
+        "PX_E2E_GAP_CLOSURE_OK"
+      ]
+    },
+    "multi_org": {
+      "description": "Wave C1 multi-org auth (flag off default; picker/switch when MULTI_ORG_LOGIN_ENABLED)",
+      "markers": [
+        "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+        "PX_E2E_PENDING_ORG_REJECT_OK",
+        "PX_E2E_MULTI_ORG_PICKER_OK",
+        "PX_E2E_MULTI_ORG_PICKER_SKIPPED",
+        "PX_E2E_ORG_SWITCH_OK",
+        "PX_E2E_ORG_SWITCH_SKIPPED",
+        "PX_E2E_MULTI_ORG_AUTH_OK"
+      ]
+    },
+    "wave_c_stock_assist": {
+      "description": "Wave C3.3 offline count + C4.1 assist SLA (flag-gated; SKIPPED when flags off)",
+      "markers": [
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_SKIPPED",
+        "PX_E2E_ASSIST_SLA_OK",
+        "PX_E2E_ASSIST_SLA_SKIPPED"
       ]
     }
   },
@@ -102,7 +139,10 @@
     "PX_E2E_DRIVER_EDGES_OK",
     "PX_E2E_DRIVER_ASSIGN_DETECTION_OK",
     "PX_E2E_SUPPLIER_OPERATIONS_OK",
-    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK"
+    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK",
+    "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+    "PX_E2E_PENDING_ORG_REJECT_OK",
+    "PX_E2E_MULTI_ORG_AUTH_OK"
   ],
   "plan90": [
     "PX_E2E_MEIO_NETWORK_OK",
@@ -126,9 +166,24 @@
     "PX_E2E_PAYLOAD_FIREBASE_OTP_OK",
     "PX_E2E_DOMAIN_TOPIC_DISPATCH_OK",
     "PX_E2E_PAYME_WEBHOOK_OK",
-    "PX_E2E_CLICK_WEBHOOK_OK"
+    "PX_E2E_CLICK_WEBHOOK_OK",
+    "PX_E2E_GAP_CLOSURE_OK",
+    "PX_E2E_CASH_RECON_OK",
+    "PX_E2E_CREDIT_NOTE_OK",
+    "PX_E2E_REVERSE_LOGISTICS_OK",
+    "PX_E2E_NOTIFICATION_PREFS_OK",
+    "PX_E2E_REORDER_SUGGESTION_OK",
+    "PX_E2E_EXCEPTION_RESOLVE_OK"
   ],
   "alternatives": {
-    "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"]
+    "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"],
+    "multi_org_picker": [
+      "PX_E2E_MULTI_ORG_PICKER_OK",
+      "PX_E2E_MULTI_ORG_PICKER_SKIPPED"
+    ],
+    "multi_org_switch": [
+      "PX_E2E_ORG_SWITCH_OK",
+      "PX_E2E_ORG_SWITCH_SKIPPED"
+    ]
   }
 }
