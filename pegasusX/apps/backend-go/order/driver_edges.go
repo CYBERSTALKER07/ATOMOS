@@ -679,12 +679,13 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 	}
 	driverID := missingItemsDriverID(claims, updated)
 	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
-		"type":        events.EventMissingItemsReported,
+		"type":        events.EventMissingItemsReported, // TODO maybe rename to EventExceptionReported
 		"order_id":    req.OrderID,
 		"driver_id":   driverID,
 		"supplier_id": updated.SupplierID,
 		"retailer_id": updated.RetailerID,
 		"note":        req.Note,
+		"image_url":   req.PhotoURL,
 		"items":       req.Items,
 		"photo_urls":  photoURIs,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),

@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 [![Gem Version](https://badge.fury.io/rb/colored2.svg)](https://badge.fury.io/rb/colored2)
 [![Downloads](http://ruby-gem-downloads-badge.herokuapp.com/colored2?type=total)](https://rubygems.org/gems/colored2)
 [![Gitter](https://img.shields.io/gitter/room/gitterHQ/gitter.svg)](https://gitter.im/colored2)

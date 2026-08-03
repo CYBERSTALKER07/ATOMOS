@@ -1,5 +1,11 @@
 # Email Setup Guide for Team Applications
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 This guide will help you set up email notifications for your team application form so you receive applications directly on your phone.
 
 ## 📧 Setup Instructions

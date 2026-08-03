@@ -1,5 +1,10 @@
 # factory-app-ios
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 SwiftUI **iPad-first** factory operations app for pegasusX. All authenticated factory staff (`FACTORY`, `FACTORY_ADMIN`, `FACTORY_STAFF`) may read and update their assigned factory location.
 
 ## Stack

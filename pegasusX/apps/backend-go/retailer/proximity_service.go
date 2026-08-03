@@ -8,6 +8,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 
 	h3 "github.com/uber/h3-go/v4"
 
@@ -37,7 +38,7 @@ var (
 // PerimeterSetStore is the narrow Redis set contract required by spatial checks.
 // RedisBackend satisfies this interface.
 type PerimeterSetStore interface {
-	ReplaceSet(ctx context.Context, key string, members []string) error
+	ReplaceSet(ctx context.Context, key string, members []string, ttl time.Duration) error
 	SIsMember(ctx context.Context, key string, member string) (bool, error)
 	Exists(ctx context.Context, key string) (bool, error)
 }
@@ -197,10 +198,10 @@ func (s *RetailerProximityService) PrecomputeDeliveryZone(ctx context.Context, p
 		return PerimeterSnapshot{}, err
 	}
 
-	if err := s.store.ReplaceSet(ctx, s.perimeterKey, cells); err != nil {
+	if err := s.store.ReplaceSet(ctx, s.perimeterKey, cells, 0); err != nil {
 		return PerimeterSnapshot{}, fmt.Errorf("replace perimeter set: %w", err)
 	}
-	if err := s.store.ReplaceSet(ctx, s.compactedPerimeterKey, compacted); err != nil {
+	if err := s.store.ReplaceSet(ctx, s.compactedPerimeterKey, compacted, 0); err != nil {
 		return PerimeterSnapshot{}, fmt.Errorf("replace compacted perimeter set: %w", err)
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // SpannerRepository persists payment aggregates and emitted outbox events
@@ -152,26 +153,68 @@ func (r *SpannerRepository) SaveReversal(ctx context.Context, rev ReversalRecord
 	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildReversalLedgerEntry(rev)))
 }
 
-// SaveWebhook persists one validated webhook and optional outbox events.
+// SaveWebhook persists one validated webhook and optional outbox events idempotently.
 func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner payment repository: nil client")
 	}
 
-	base := spanner.InsertOrUpdateMap("PaymentWebhooks", map[string]any{
-		"WebhookId":      w.WebhookID,
-		"Gateway":        w.Gateway,
-		"TransactionId":  w.TransactionID,
-		"SessionId":      nullIfEmpty(w.SessionID),
-		"OrderId":        nullIfEmpty(w.OrderID),
-		"Status":         w.Status,
-		"AmountMinor":    w.AmountMinor,
-		"Currency":       w.Currency,
-		"SignatureValid": w.SignatureValid,
-		"ReceivedAt":     w.ReceivedAt.UTC(),
-	})
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "PaymentWebhooks", spanner.Key{w.WebhookID}, []string{"WebhookId"})
+		if err != nil && spanner.ErrCode(err) != codes.NotFound {
+			return fmt.Errorf("read webhook: %w", err)
+		}
+		if err == nil && row != nil {
+			// Webhook already processed, skip emitting events and mutations
+			return nil
+		}
 
-	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildWebhookLedgerEntry(w)))
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
+		base := spanner.InsertOrUpdateMap("PaymentWebhooks", map[string]any{
+			"WebhookId":      w.WebhookID,
+			"Gateway":        w.Gateway,
+			"TransactionId":  w.TransactionID,
+			"SessionId":      nullIfEmpty(w.SessionID),
+			"OrderId":        nullIfEmpty(w.OrderID),
+			"Status":         w.Status,
+			"AmountMinor":    w.AmountMinor,
+			"Currency":       w.Currency,
+			"SignatureValid": w.SignatureValid,
+			"ReceivedAt":     w.ReceivedAt.UTC(),
+		})
+
+		mutations := make([]*spanner.Mutation, 0, 2+len(buf.events))
+		mutations = append(mutations, base, ledgerMutation(buildWebhookLedgerEntry(w)))
+		for _, e := range buf.events {
+			createdAt := e.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			rowMap := map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     createdAt,
+				"PublishedAt":   nil,
+			}
+			if e.PublishedAt != nil {
+				rowMap["PublishedAt"] = e.PublishedAt.UTC()
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", rowMap))
+		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+		return txn.BufferWrite(mutations)
+	})
 }
 
 // FindStuckSessions reads sessions in AWAITING_PAYMENT state older than cutoff.

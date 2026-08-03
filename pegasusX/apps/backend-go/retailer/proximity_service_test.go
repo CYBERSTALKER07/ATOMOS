@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 type fakePerimeterStore struct {
@@ -14,7 +15,7 @@ func newFakePerimeterStore() *fakePerimeterStore {
 	return &fakePerimeterStore{sets: make(map[string]map[string]struct{})}
 }
 
-func (f *fakePerimeterStore) ReplaceSet(_ context.Context, key string, members []string) error {
+func (f *fakePerimeterStore) ReplaceSet(_ context.Context, key string, members []string, _ time.Duration) error {
 	set := make(map[string]struct{}, len(members))
 	for _, member := range members {
 		set[member] = struct{}{}

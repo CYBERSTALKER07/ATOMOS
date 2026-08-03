@@ -1,5 +1,11 @@
 # Base64
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 The Base64 module provides for the encoding (`#encode64`, `#strict_encode64`,
 `#urlsafe_encode64`) and decoding (`#decode64`, `#strict_decode64`,
 `#urlsafe_decode64`) of binary data using a Base64 representation.

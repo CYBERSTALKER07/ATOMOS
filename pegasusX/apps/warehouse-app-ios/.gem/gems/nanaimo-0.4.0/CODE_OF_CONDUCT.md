@@ -1,5 +1,11 @@
 # Contributor Code of Conduct
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 As contributors and maintainers of this project, and in the interest of
 fostering an open and welcoming community, we pledge to respect all people who
 contribute through reporting issues, posting feature requests, updating

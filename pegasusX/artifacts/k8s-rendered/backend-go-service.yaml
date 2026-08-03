@@ -6,6 +6,8 @@ metadata:
     app: backend-go
     app.kubernetes.io/name: backend-go
     app.kubernetes.io/part-of: pegasusx
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-api-backendconfig"}'
 spec:
   type: ClusterIP
   selector:

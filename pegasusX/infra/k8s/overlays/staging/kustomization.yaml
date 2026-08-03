@@ -15,6 +15,12 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 10m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 100Mi
   - target:
       kind: Deployment
       name: backend-go-worker
@@ -22,6 +28,51 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 10m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 100Mi
+  - target:
+      kind: Deployment
+      name: ai-worker
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 10m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 100Mi
+  - target:
+      kind: Deployment
+      name: optimizer-core
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 10m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 100Mi
+  - target:
+      kind: Deployment
+      name: osrm
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 10m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 100Mi
 
 configMapGenerator:
   - name: backend-go-config
@@ -57,3 +108,20 @@ configMapGenerator:
 labels:
   - pairs:
       pegasusx.io/environment: staging
+
+images:
+  - name: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go
+    newTag: staging
+  - name: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker
+    newTag: staging
+  - name: pegasusx-optimizer-core:local
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/optimizer-core
+    newTag: staging
+  - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker
+    newTag: staging
+  - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go
+    newTag: staging

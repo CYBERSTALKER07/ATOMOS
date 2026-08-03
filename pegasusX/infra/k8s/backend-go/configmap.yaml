@@ -10,6 +10,7 @@ data:
   HTTP_PORT: "8080"
   PEGASUSX_ENV: "production"
   REDIS_ADDR: "redis.pegasusx.svc.cluster.local:6379"
+  REDIS_TLS_ENABLED: "true"
   KAFKA_BROKERS: "kafka.pegasusx.svc.cluster.local:9092"
   KAFKA_TOPIC_MAIN: "pegasusx-main"
   KAFKA_TOPIC_FREEZE_LOCKS: "pegasusx-freeze-locks"

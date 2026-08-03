@@ -1,5 +1,10 @@
 # Pegasus Supplier (iOS)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Native SwiftUI supplier operations app for **iPhone and iPad**. JWT role `ADMIN`; backend routes under `/v1/supplier/*` and `/v1/auth/supplier/*`.
 
 ## Prerequisites

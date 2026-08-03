@@ -28,6 +28,9 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   RetailerPendingPaymentsResponse,
   RetailerProfileResponse,
   RetailerPricingRuleResponse,
+  RetailerStockCountCommitRequest,
+  RetailerStockCountCommitResponse,
+  RetailerStockCountVersionResponse,
   RetailerProfileUpdateRequest,
   CreateRetailerPriceOverrideRequest,
   CreateRetailerPriceOverrideResponse,
@@ -1632,6 +1635,30 @@ export class ApiClient {
 
   async getRetailerPulse(): Promise<PulseResponse> {
     return this.request<PulseResponse>("/v1/retailer/pulse", "GET");
+  }
+
+  async getStockCountVersion(query: {
+    location_id: string;
+    stock_bin?: string;
+  }): Promise<RetailerStockCountVersionResponse> {
+    return this.request<RetailerStockCountVersionResponse>(
+      appendQuery("/v1/retailer/stock/counts/version", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async commitStockCount(
+    request: RetailerStockCountCommitRequest,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<RetailerStockCountCommitResponse> {
+    return this.request<RetailerStockCountCommitResponse>(
+      "/v1/retailer/stock/counts/commit",
+      "POST",
+      {
+        body: request,
+        idempotencyKey: options.idempotencyKey,
+      },
+    );
   }
 
   async getFactoryPulse(): Promise<PulseResponse> {

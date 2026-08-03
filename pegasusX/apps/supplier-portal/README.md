@@ -1,5 +1,10 @@
 # supplier-portal
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Next.js 15 + React 19 **supplier portal** (web + Tauri 2 desktop + **Android**). Pegasus equivalent: `supplier-portal`. The product user is a **SUPPLIER**; JWT role remains `ADMIN` for legacy compatibility.
 
 ## Stack

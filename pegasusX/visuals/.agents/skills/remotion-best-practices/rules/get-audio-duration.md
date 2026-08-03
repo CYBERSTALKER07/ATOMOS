@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ---
 name: get-audio-duration
 description: Getting the duration of an audio file in seconds with Mediabunny

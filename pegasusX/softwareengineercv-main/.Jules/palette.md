@@ -1,4 +1,10 @@
 ## 2025-05-14 - [A11y: Improving Interactive Context and Feedback]
+
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 **Learning:** Interactive elements like custom tabs and status messages are often technically "invisible" to screen readers unless proper ARIA roles (tablist, tab, status) are applied. Non-semantic elements (divs) used as buttons lack focusability and clear purpose for keyboard users.
 **Action:** Always use semantic `<button>` elements for interactive indicators, apply `role="status"` to dynamic feedback messages, and implement the full WAI-ARIA Tabs pattern for content switchers to ensure a predictable experience for all users.
 

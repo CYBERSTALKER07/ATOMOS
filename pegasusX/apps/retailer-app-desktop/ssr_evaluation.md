@@ -1,5 +1,11 @@
 # Server-Side Rendering (SSR) Evaluation for Retailer Desktop
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 ## Context
 The Retailer Desktop application (`apps/retailer-app-desktop`) is built using Next.js (App Router) wrapped in a Tauri shell to provide a native desktop experience. The architecture requires `output: "export"` in `next.config.ts` to bundle a static HTML/JS payload that Tauri can render in its webview without a Node.js server.
 

@@ -12,7 +12,8 @@ import (
 type Deps struct {
 	Service             *payload.Service
 	OrderService        interface {
-		HandleMissingItems(http.ResponseWriter, *http.Request)
+		HandleCreditDelivery(http.ResponseWriter, *http.Request)
+		HandleExceptionReport(http.ResponseWriter, *http.Request)
 	}
 	JWTSecret           string
 	FirebaseAuthEnabled bool
@@ -58,7 +59,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
 		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
 		if d.OrderService != nil {
-			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)
+			rr.Post("/v1/delivery/exception-report", d.OrderService.HandleExceptionReport)
 		}
 		// POST /v1/user/device-token is registered globally via platformroutes.
 	}

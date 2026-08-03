@@ -1,5 +1,10 @@
 # factory-portal (desktop)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 Next.js 15 + **Tauri 2** desktop shell for factory operators. All authenticated factory-scoped users may edit their assigned factory location (setup + Settings → Location).
 
 ## Stack

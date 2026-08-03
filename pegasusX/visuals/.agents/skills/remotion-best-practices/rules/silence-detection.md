@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
 ---
 name: silence-detection
 description: Adaptive silence detection for video/audio files using FFmpeg loudnorm and silencedetect

@@ -208,3 +208,25 @@ func TestConfirmOffloadEmitsOriginalAmountForAmendedOrder(t *testing.T) {
 		t.Fatalf("original_amount = %v, want 1500", paymentPayload["original_amount"])
 	}
 }
+
+func TestOrderAmendableStatusCompleted(t *testing.T) {
+	now := time.Now()
+	
+	// Within 24 hours
+	order := Order{Status: StatusCompleted, UpdatedAt: now.Add(-12 * time.Hour)}
+	if !orderAmendableRecord(order) {
+		t.Fatalf("expected order to be amendable within 24 hours of StatusCompleted")
+	}
+
+	// Almost 24 hours
+	order = Order{Status: StatusCompleted, UpdatedAt: now.Add(-24 * time.Hour + time.Second)}
+	if !orderAmendableRecord(order) {
+		t.Fatalf("expected order to be amendable exactly 24 hours after StatusCompleted")
+	}
+
+	// More than 24 hours
+	order = Order{Status: StatusCompleted, UpdatedAt: now.Add(-24 * time.Hour - time.Second)}
+	if orderAmendableRecord(order) {
+		t.Fatalf("expected order not to be amendable >24 hours after StatusCompleted")
+	}
+}

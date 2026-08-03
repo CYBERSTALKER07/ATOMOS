@@ -124,8 +124,8 @@ func (r *RedisBackend) Publish(ctx context.Context, channel string, payload []by
 }
 
 // ReplaceSet atomically replaces a Redis set with the provided members and
-// leaves the set persistent (TTL=0).
-func (r *RedisBackend) ReplaceSet(ctx context.Context, key string, members []string) error {
+// applies the specified TTL. A TTL of 0 means no expiration.
+func (r *RedisBackend) ReplaceSet(ctx context.Context, key string, members []string, ttl time.Duration) error {
 	if r == nil || r.client == nil {
 		return nil
 	}
@@ -145,7 +145,11 @@ func (r *RedisBackend) ReplaceSet(ctx context.Context, key string, members []str
 			pipe.SAdd(ctx, key, args...)
 		}
 	}
-	pipe.Persist(ctx, key)
+	if ttl > 0 {
+		pipe.Expire(ctx, key, ttl)
+	} else {
+		pipe.Persist(ctx, key)
+	}
 	_, err := pipe.Exec(ctx)
 	return err
 }

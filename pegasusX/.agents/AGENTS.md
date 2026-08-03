@@ -6,6 +6,12 @@
 
 # pegasusX ecosystem alignment (required on every change)
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 When you edit backend code or add a feature, **trace every surface the change touches** and update them in the same batch. Do not land a partial slice that leaves role rows, contracts, or cross-role flows inconsistent.
 
 ## 1. Map the blast radius first

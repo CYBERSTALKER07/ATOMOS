@@ -1,5 +1,11 @@
 # Desktop Tauri updater keys
 
+> [!NOTE]
+> **Current Project State:** GCP Migration (Phase 2)
+> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+
+
+
 **Distribution:** website / GCS CDN only. These keys sign **sideloaded** enterprise installers — not Microsoft Store or Mac App Store packages.
 
 ## Dev / CI (committed)
