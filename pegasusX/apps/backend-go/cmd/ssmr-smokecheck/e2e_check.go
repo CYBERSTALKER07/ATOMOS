@@ -72,6 +72,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("issue retailer jwt: %w", err)
 	}
 
+	if err := runCreditPolicyE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken); err != nil {
+		return fmt.Errorf("credit policy: %w", err)
+	}
+
 	if err := runRetailerReceivingWindowE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("retailer receiving window: %w", err)
 	}

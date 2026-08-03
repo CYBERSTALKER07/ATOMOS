@@ -3871,15 +3871,72 @@ export interface RetailerCreditProfile {
   supplier_id: SupplierId;
   credit_limit_minor: number;
   current_balance_minor: number;
+  reserved_minor?: number;
   available_credit_minor: number;
   risk_score: number;
   risk_tier: "LOW" | "MEDIUM" | "HIGH" | "BLOCK";
   delinquency_count: number;
-  status: "ACTIVE" | "FROZEN" | "CLOSED" | "BLACKLISTED";
+  status: "INACTIVE" | "ACTIVE" | "FROZEN" | "CLOSED" | "BLACKLISTED";
   last_evaluated_at?: string;
   version: number;
   created_at: string;
   updated_at: string;
+}
+
+/** Supplier org-level irreversible credit program (CREDIT_POLICY_V2). */
+export interface SupplierCreditProgram {
+  supplier_id: SupplierId;
+  program_enabled: boolean;
+  enabled_at?: string;
+  enabled_by_user_id?: string;
+  disabled_at?: string;
+  disabled_by_actor?: string;
+  disable_reason?: string;
+  global_terms_days: number;
+  global_grace_days: number;
+  global_default_limit_minor: number;
+  timezone?: string;
+  version: number;
+  updated_at?: string;
+}
+
+/** Per-retailer Net terms / relationship (CREDIT_POLICY_V2). */
+export interface RetailerPaymentTerms {
+  retailer_id: RetailerId;
+  supplier_id: SupplierId;
+  credit_enabled: boolean;
+  enabled_at?: string;
+  terms_days: number;
+  grace_period_days: number;
+  credit_limit_minor: number;
+  use_global_defaults: boolean;
+  version: number;
+  updated_at?: string;
+  profile_status?: string;
+  available_credit_minor?: number;
+  current_balance_minor?: number;
+  on_hold?: boolean;
+}
+
+/** AR open item created at credit leave. */
+export interface ArInvoice {
+  invoice_id: string;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  order_id: OrderId;
+  status: "OPEN" | "PARTIAL" | "PAID" | "VOID" | string;
+  principal_minor: number;
+  balance_minor: number;
+  currency: string;
+  credit_leave_at: string;
+  due_at: string;
+  terms_days: number;
+  grace_period_days: number;
+  aging_bucket?: string;
+  dunning_step?: number;
+  version: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface OrderTimelineEntry {

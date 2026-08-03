@@ -91,7 +91,7 @@ export default function CreditCollectionsPage() {
   return (
     <PageChrome
       title="Credit collections"
-      description="Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Only your supplier_id profiles."
+      description="Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles."
       loading={loading}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">

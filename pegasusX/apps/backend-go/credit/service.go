@@ -11,9 +11,10 @@ import (
 
 // Service evaluates and mutates retailer credit state.
 type Service struct {
-	repo  Repository
-	now   func() time.Time
-	newID func() string
+	repo   Repository
+	policy PolicyGate
+	now    func() time.Time
+	newID  func() string
 }
 
 // NewService builds a credit service.
@@ -35,8 +36,9 @@ func (s *Service) SetNewID(fn func() string) {
 	s.newID = fn
 }
 
-// CheckOrder returns a credit check result for an order amount. A missing
-// profile is treated as zero limit (blocked) unless the requested amount is zero.
+// CheckOrder returns a credit check result for an order amount on the credit path.
+// Freeze / inactive / missing profile reject CREDIT only — cash/card callers must not use this gate.
+// Available = limit - balance - reserved (CAS headroom).
 func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string, amountMinor int64) (CheckResult, error) {
 	profile, found, err := s.repo.GetProfile(ctx, retailerID, supplierID)
 	if err != nil {
@@ -60,6 +62,7 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		Allowed:          false,
 		CreditLimitMinor: profile.CreditLimitMinor,
 		CurrentBalance:   profile.CurrentBalanceMinor,
+		ReservedMinor:    profile.ReservedMinor,
 		RequestedAmount:  amountMinor,
 	}
 
@@ -69,7 +72,12 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		result.Shortfall = amountMinor
 		return result, nil
 	case StatusFrozen:
+		// Freeze = credit-path only; relationship stays ON and visible.
 		result.Reason = "profile_frozen"
+		result.Shortfall = amountMinor
+		return result, nil
+	case StatusInactive, StatusClosed:
+		result.Reason = "credit_not_enabled"
 		result.Shortfall = amountMinor
 		return result, nil
 	}
@@ -86,14 +94,56 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		return result, nil
 	}
 
-	projected := profile.CurrentBalanceMinor + amountMinor
-	if projected > profile.CreditLimitMinor {
-		result.Shortfall = projected - profile.CreditLimitMinor
+	avail := profile.Available()
+	if amountMinor > avail {
+		result.Shortfall = amountMinor - avail
 		result.Reason = "credit_limit_breached"
 		return result, nil
 	}
 
 	result.Allowed = true
+	return result, nil
+}
+
+// PolicyGate optionally enforces program + relationship enablement (CREDIT_POLICY_V2).
+type PolicyGate interface {
+	CreditPathAllowed(ctx context.Context, retailerID, supplierID string) (allowed bool, reason string, termsDays int64, err error)
+	ResolveDueAt(ctx context.Context, retailerID, supplierID string, creditLeaveAt time.Time) (dueAt time.Time, termsDays int64, err error)
+}
+
+// SetPolicyGate wires the irreversible enable / terms gate.
+func (s *Service) SetPolicyGate(g PolicyGate) {
+	s.policy = g
+}
+
+// CheckCreditPath combines profile CheckOrder with policy program/relationship enablement.
+func (s *Service) CheckCreditPath(ctx context.Context, retailerID, supplierID string, amountMinor int64) (CheckResult, error) {
+	if s.policy != nil {
+		ok, reason, termsDays, err := s.policy.CreditPathAllowed(ctx, retailerID, supplierID)
+		if err != nil {
+			return CheckResult{}, err
+		}
+		if !ok {
+			return CheckResult{
+				Allowed:         false,
+				RequestedAmount: amountMinor,
+				Shortfall:       amountMinor,
+				Reason:          reason,
+				TermsDays:       termsDays,
+			}, nil
+		}
+	}
+	result, err := s.CheckOrder(ctx, retailerID, supplierID, amountMinor)
+	if err != nil {
+		return result, err
+	}
+	if result.Allowed && s.policy != nil {
+		due, terms, derr := s.policy.ResolveDueAt(ctx, retailerID, supplierID, s.now())
+		if derr == nil {
+			result.DueAt = due.UTC().Format(time.RFC3339)
+			result.TermsDays = terms
+		}
+	}
 	return result, nil
 }
 
@@ -155,12 +205,9 @@ func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason 
 		p.RiskTier = RiskTierMedium
 	}
 	if p.Status == "" {
-		p.Status = StatusActive
+		p.Status = StatusInactive
 	}
-	p.AvailableCreditMinor = p.CreditLimitMinor - p.CurrentBalanceMinor
-	if p.AvailableCreditMinor < 0 {
-		p.AvailableCreditMinor = 0
-	}
+	p.AvailableCreditMinor = p.Available()
 
 	return s.repo.UpsertProfile(ctx, p, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateCreditProfile, p.RetailerID, events.TopicMain, events.CreditProfileEvent{

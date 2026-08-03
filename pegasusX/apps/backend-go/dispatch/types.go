@@ -38,6 +38,10 @@ type DispatchableOrder struct {
 	IsRecovery           bool
 	ReceivingWindowOpen  string
 	ReceivingWindowClose string
+	// Optional multi-objective score inputs (filled by I/O enrichers; 0 = use defaults).
+	PriorityScore  int64   // allocation / segment priority
+	ShopClosedRisk float64 // 0–1 probability of shop-closed failure
+	VolumeSource   string  // "catalog" | "default_1_0" (honesty for preview)
 }
 
 // DispatchRoute tracks a single truck's load state.
@@ -63,6 +67,8 @@ type AvailableDriver struct {
 	VehicleID    string
 	VehicleClass string
 	MaxVolumeVU  float64
+	// Optional score input (0 = neutral default in ScoreCandidate).
+	DriverScore int64
 }
 
 // AssignmentResult is the output of the bin-packing / optimiser pipeline.

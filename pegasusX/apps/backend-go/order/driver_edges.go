@@ -303,7 +303,15 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:      s.now(),
 			CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 		}
-		return s.RecordPaymentLeg(ctx, txn, leg)
+		if err := s.RecordPaymentLeg(ctx, txn, leg); err != nil {
+			return err
+		}
+		if s.credit != nil && current.TotalMinor > 0 {
+			if err := s.credit.MarkBalanceInTxn(ctx, txn, current.RetailerID, current.SupplierID, orderID, current.TotalMinor); err != nil {
+				return err
+			}
+		}
+		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
@@ -319,6 +327,30 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
+	dueAt := ""
+	termsDays := int64(0)
+	if s.credit != nil {
+		if check, cerr := s.credit.CheckCreditPath(ctx, current.RetailerID, current.SupplierID, 0); cerr == nil {
+			dueAt = check.DueAt
+			termsDays = check.TermsDays
+		}
+	}
+	leaveAt := s.now()
+	dueTime := leaveAt.AddDate(0, 0, 30)
+	if dueAt != "" {
+		if t, perr := time.Parse(time.RFC3339, dueAt); perr == nil {
+			dueTime = t
+		}
+	} else if termsDays > 0 {
+		dueTime = leaveAt.AddDate(0, 0, int(termsDays))
+		dueAt = dueTime.UTC().Format(time.RFC3339)
+	}
+	if s.ar != nil && current.TotalMinor > 0 {
+		if _, aerr := s.ar.OpenFromCreditLeave(ctx, current.SupplierID, current.RetailerID, orderID,
+			current.TotalMinor, termsDays, 0, leaveAt, dueTime); aerr != nil {
+			s.log.Error("open AR invoice failed", "order_id", orderID, "err", aerr)
+		}
+	}
 	s.invalidateOrderCache(ctx, orderID)
 
 	var proxUnlocked bool
@@ -328,11 +360,13 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		proxMethod = current.ProximityMethod
 	}
 
-	resp := driverEndpointResponse{
-		OrderID:           orderID,
-		Status:            string(StatusDeliveredOnCredit),
-		ProximityUnlocked: proxUnlocked,
-		ProximityMethod:   proxMethod,
+	resp := map[string]any{
+		"order_id":            orderID,
+		"status":              string(StatusDeliveredOnCredit),
+		"proximity_unlocked":  proxUnlocked,
+		"proximity_method":    proxMethod,
+		"due_at":              dueAt,
+		"terms_days":          termsDays,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
@@ -387,11 +421,14 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var leaveRetailerID, leaveSupplierID string
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:    req.OrderID,
 		NextStatus: StatusDeliveredOnCredit,
 		Reason:     "credit_delivery",
 		Precheck: func(o Order) error {
+			leaveRetailerID = o.RetailerID
+			leaveSupplierID = o.SupplierID
 			if o.Status != StatusArrived && o.Status != StatusShopClosedPending {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED (current: %s)", o.Status)
 			}
@@ -400,7 +437,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("credit leave blocked: fiscal state %s", o.FiscalStatus)
 			}
 			if s.credit != nil && o.TotalMinor > 0 {
-				check, cerr := s.credit.CheckOrder(ctx, o.RetailerID, o.SupplierID, o.TotalMinor)
+				check, cerr := s.credit.CheckCreditPath(ctx, o.RetailerID, o.SupplierID, o.TotalMinor)
 				if cerr != nil {
 					return cerr
 				}
@@ -451,22 +488,52 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 				CreatedAt:      s.now(),
 				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 			}
-			return s.RecordPaymentLeg(txnCtx, txn, leg)
+			if err := s.RecordPaymentLeg(txnCtx, txn, leg); err != nil {
+				return err
+			}
+			// Same-txn MarkBalance / convert reserve (P0 integrity).
+			if s.credit != nil && delivered > 0 {
+				if markErr := s.credit.MarkBalanceInTxn(txnCtx, txn, leaveRetailerID, leaveSupplierID, req.OrderID, delivered); markErr != nil {
+					return markErr
+				}
+			}
+			return nil
 		},
 	})
 	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
+	dueAt := ""
+	termsDays := int64(0)
 	if s.credit != nil && result.Order.TotalMinor > 0 {
-		if markErr := s.credit.MarkBalance(ctx, result.Order.RetailerID, result.Order.SupplierID, result.Order.TotalMinor, result.Order.OrderID); markErr != nil {
-			s.log.Error("mark credit balance failed", "order_id", result.Order.OrderID, "err", markErr)
+		if check, cerr := s.credit.CheckCreditPath(ctx, result.Order.RetailerID, result.Order.SupplierID, 0); cerr == nil {
+			dueAt = check.DueAt
+			termsDays = check.TermsDays
+		}
+		leaveAt := s.now()
+		dueTime := leaveAt.AddDate(0, 0, 30)
+		if dueAt != "" {
+			if t, perr := time.Parse(time.RFC3339, dueAt); perr == nil {
+				dueTime = t
+			}
+		} else if termsDays > 0 {
+			dueTime = leaveAt.AddDate(0, 0, int(termsDays))
+			dueAt = dueTime.UTC().Format(time.RFC3339)
+		}
+		if s.ar != nil {
+			if _, aerr := s.ar.OpenFromCreditLeave(ctx, result.Order.SupplierID, result.Order.RetailerID, result.Order.OrderID,
+				result.Order.TotalMinor, termsDays, 0, leaveAt, dueTime); aerr != nil {
+				s.log.Error("open AR invoice failed", "order_id", result.Order.OrderID, "err", aerr)
+			}
 		}
 	}
 	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]any{
-		"status":   result.Order.Status,
-		"order_id": result.Order.OrderID,
+		"status":     result.Order.Status,
+		"order_id":   result.Order.OrderID,
+		"due_at":     dueAt,
+		"terms_days": termsDays,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)

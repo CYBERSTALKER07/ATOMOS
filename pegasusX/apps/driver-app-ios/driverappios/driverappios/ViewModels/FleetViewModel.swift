@@ -528,8 +528,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
         do {
-            _ = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
-            deliveryEdgeMessage = "Credit delivery recorded"
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            if let due = resp["due_at"], !due.isEmpty {
+                deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
+            } else {
+                deliveryEdgeMessage = "Credit delivery recorded"
+            }
             await loadMissions()
         } catch {
             deliveryEdgeError = error.localizedDescription

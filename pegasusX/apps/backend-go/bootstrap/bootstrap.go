@@ -20,6 +20,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -188,6 +189,8 @@ type App struct {
 	OrderService           *order.Service
 	ClaimsService          *claims.Service
 	CreditService          *credit.Service
+	CreditPolicyService    *credit.PolicyService
+	ARService              *ar.Service
 	CreditScoreWorker      *credit.Worker
 	CashReconHandlers      *cashrecon.Handlers
 	CashReconService       *cashrecon.Service
@@ -656,6 +659,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Warn("credit repository fallback enabled", "backend", "in-memory")
 	}
 	creditSvc := credit.NewService(creditRepo)
+	var creditPolicyRepo credit.PolicyRepository
+	var arRepo ar.Repository
+	if spannerClient != nil {
+		creditPolicyRepo = credit.NewSpannerPolicyRepository(spannerClient)
+		arRepo = ar.NewSpannerRepository(spannerClient)
+	} else {
+		creditPolicyRepo = credit.NewMemoryPolicyRepository()
+		arRepo = ar.NewMemoryRepository()
+	}
+	creditPolicySvc := credit.NewPolicyService(creditPolicyRepo, creditSvc)
+	creditSvc.SetPolicyGate(creditPolicySvc)
+	arSvc := ar.NewService(arRepo)
 	var creditScoreWorker *credit.Worker
 	if spannerClient != nil {
 		creditScoreWorker = credit.NewWorker(spannerClient)
@@ -1051,6 +1066,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
+	orderSvc.SetARService(arSvc)
 	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
 	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
 	claimsSvc.SetStoreCredit(creditSvc)
@@ -1376,6 +1392,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OrderService:           orderSvc,
 		ClaimsService:          claimsSvc,
 		CreditService:          creditSvc,
+		CreditPolicyService:    creditPolicySvc,
+		ARService:              arSvc,
 		CreditScoreWorker:      creditScoreWorker,
 		CashReconHandlers:      cashReconHandlers,
 		CashReconService:       cashReconSvc,

@@ -237,7 +237,11 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
-	creditroutes.RegisterRoutes(r, creditroutes.Deps{Service: app.CreditService})
+	creditroutes.RegisterRoutes(r, creditroutes.Deps{
+		Service:       app.CreditService,
+		PolicyService: app.CreditPolicyService,
+		ARService:     app.ARService,
+	})
 	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
 		Handlers:            app.CashReconHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,

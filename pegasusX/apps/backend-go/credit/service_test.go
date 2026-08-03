@@ -95,6 +95,32 @@ func (r *testCreditRepo) GetScoresForRetailers(_ context.Context, _ []string) (m
 	return map[string]RetailerCreditScore{}, nil
 }
 
+func (r *testCreditRepo) ReserveOrder(_ context.Context, res OrderReservation, emit func(outbox.TxnBuffer) error) error {
+	if r.adjustErr != nil {
+		return r.adjustErr
+	}
+	r.profile.ReservedMinor += res.AmountMinor
+	r.profile.AvailableCreditMinor = r.profile.Available()
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		_ = emit(buf)
+		r.bufferedEvents += len(buf.events)
+	}
+	return nil
+}
+
+func (r *testCreditRepo) ReleaseOrderReservation(_ context.Context, _ string, _ func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
+func (r *testCreditRepo) ConvertOrderReservation(_ context.Context, _ string, _ func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
+func (r *testCreditRepo) GetOrderReservation(_ context.Context, _ string) (OrderReservation, bool, error) {
+	return OrderReservation{}, false, nil
+}
+
 func newTestService(repo Repository) *Service {
 	s := NewService(repo)
 	s.SetNow(func() time.Time { return time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC) })
@@ -272,8 +298,8 @@ func TestUpsertProfile(t *testing.T) {
 	if repo.stored == nil {
 		t.Fatal("expected profile stored")
 	}
-	if repo.stored.Status != StatusActive {
-		t.Fatalf("expected active status, got %s", repo.stored.Status)
+	if repo.stored.Status != StatusInactive {
+		t.Fatalf("expected inactive status (pre-enable), got %s", repo.stored.Status)
 	}
 	if repo.stored.RiskTier != RiskTierMedium {
 		t.Fatalf("expected medium risk tier, got %s", repo.stored.RiskTier)

@@ -55,6 +55,10 @@ type BinPackOptions struct {
 	// capacity. When false, oversized consolidated orders become OverflowWarnings
 	// that the warehouse admin must resolve before dispatching.
 	AllowRetailerSplit bool
+	// Score carries depot/clock for multi-objective assignment (optional).
+	Score ScoreContext
+	// SkipLocalSearch disables D4 2-opt post-pass (tests).
+	SkipLocalSearch bool
 }
 
 // BinPack runs the Smart Fit protocol over a pre-fetched set of orders and fleet.
@@ -75,6 +79,10 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 	if len(opts) > 0 {
 		opt = opts[0]
 	}
+	scoreCtx := opt.Score
+	if scoreCtx.CellLookup == nil {
+		scoreCtx.CellLookup = cellLookup
+	}
 
 	result := &AssignmentResult{
 		Routes:  []DispatchRoute{},
@@ -88,6 +96,9 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 		}
 		return result
 	}
+
+	// Window urgency pre-sort; ScoreCandidate owns assignment ties.
+	SortByWindowUrgency(orders)
 
 	// Max fleet capacity for split threshold.
 	maxFleetCap := 0.0
@@ -309,41 +320,45 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				continue
 			}
 
-			// Balanced Routing: find the route with the LEAST number of orders that can fit `so`
+			// Multi-objective: pick best ScoreCandidate among fitting routes vs new truck.
 			bestRouteIdx := -1
-			bestRouteOrderCount := 999999
+			bestScore := -1e99
+			repr := so.Orders[0]
+			repr.VolumeVU = so.VolumeVU
 
-			// 1. Check existing active routes
 			for ri := range result.Routes {
 				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
-				if remaining >= so.VolumeVU {
-					orderCount := len(result.Routes[ri].Orders)
-					if orderCount < bestRouteOrderCount {
-						bestRouteIdx = ri
-						bestRouteOrderCount = orderCount
-					}
+				if remaining < so.VolumeVU {
+					continue
+				}
+				driver := driverFromFleet(fleet, result.Routes[ri].DriverID)
+				driver.MaxVolumeVU = result.Routes[ri].MaxVolume / TetrisBuffer
+				sc := ScoreCandidate(&result.Routes[ri], repr, driver, scoreCtx)
+				if sc > bestScore {
+					bestScore = sc
+					bestRouteIdx = ri
 				}
 			}
 
-			// 2. Check if a new truck would be better (it has 0 orders, so it balances perfectly)
 			bestNewTruckIdx := -1
-			if len(availableFleet) > 0 && bestRouteOrderCount > 0 {
-				match, ok := SelectBestVehicle(so.VolumeVU, availableFleet)
+			if len(availableFleet) > 0 {
+				match, ok := SelectBestScoredVehicle(repr, availableFleet, scoreCtx)
 				if ok && !match.Overflow {
-					bestRouteIdx = -2 // Special marker for new truck
-					bestRouteOrderCount = 0
-					for i, d := range availableFleet {
-						if d.DriverID == match.Driver.DriverID {
-							bestNewTruckIdx = i
-							break
+					sc := ScoreCandidate(nil, repr, match.Driver, scoreCtx)
+					if sc > bestScore {
+						bestScore = sc
+						bestRouteIdx = -2
+						for i, d := range availableFleet {
+							if d.DriverID == match.Driver.DriverID {
+								bestNewTruckIdx = i
+								break
+							}
 						}
 					}
 				}
 			}
 
-			// 3. Assign
 			if bestRouteIdx >= 0 {
-				// Existing route
 				for _, o := range so.Orders {
 					geo := o.ToGeo()
 					geo.Assigned = true
@@ -351,8 +366,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				}
 				result.Routes[bestRouteIdx].LoadedVolume += so.VolumeVU
 				placed = true
-			} else if bestRouteIdx == -2 {
-				// New truck
+			} else if bestRouteIdx == -2 && bestNewTruckIdx >= 0 {
 				driver := availableFleet[bestNewTruckIdx]
 				newRoute := DispatchRoute{
 					DriverID:     driver.DriverID,
@@ -402,5 +416,17 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 	// Suppress driverRouteMap "unused" lint.
 	_ = driverRouteMap
 
+	if !opt.SkipLocalSearch {
+		ImproveRoutesLocalSearch(result, scoreCtx)
+	}
 	return result
+}
+
+func driverFromFleet(fleet []AvailableDriver, driverID string) AvailableDriver {
+	for _, d := range fleet {
+		if d.DriverID == driverID {
+			return d
+		}
+	}
+	return AvailableDriver{DriverID: driverID, MaxVolumeVU: DefaultTruckVolumeVU}
 }

@@ -187,11 +187,18 @@ class OffloadReviewViewModel @Inject constructor(
                 }
                 val key = DriverIdempotencyKeys.creditDelivery(orderId)
                 try {
-                    api.markCreditDelivery(
+                    val resp = api.markCreditDelivery(
                         body.mapValues { it.value?.toString().orEmpty() },
                         key,
                     )
-                    _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+                    val due = resp["due_at"].orEmpty()
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            creditDeliveryRecorded = true,
+                            error = if (due.isNotBlank()) "Credit leave recorded · due $due" else null,
+                        )
+                    }
                 } catch (e: Exception) {
                     if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
                         offlineQueue.enqueueMap(

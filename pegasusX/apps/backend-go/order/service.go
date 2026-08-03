@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
@@ -338,6 +340,7 @@ type Service struct {
 	paymentCapturer PaymentCapturer
 	promotions      *promotion.Service
 	credit          *credit.Service
+	ar              *ar.Service
 	replanner       RouteReplanner
 
 	supplierID         string
@@ -466,6 +469,16 @@ func (s *Service) SetManifestStore(store *manifest.Store) {
 // credit-delivery balance updates.
 func (s *Service) SetCreditService(svc *credit.Service) {
 	s.credit = svc
+}
+
+// SetARService wires AR invoice creation at credit leave.
+func (s *Service) SetARService(svc *ar.Service) {
+	s.ar = svc
+}
+
+func creditReserveAtCreateEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("CREDIT_RESERVE_AT_CREATE")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 // SetTaxService wires the tax domain (optional).
@@ -1192,16 +1205,16 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		total += deliveryFeeMinor
 	}
 
-	if s.credit != nil && total > 0 {
-		check, err := s.credit.CheckOrder(ctx, retailerID, supplierID, total)
+	// Credit check is credit-path only. Cash/card/COD orders must not require a profile.
+	// Optional reserve at create when CREDIT_RESERVE_AT_CREATE=1 and relationship allows credit.
+	if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
+		check, err := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total)
 		if err != nil {
 			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
 		}
 		if !check.Allowed {
-			if emitErr := s.emitCreditLimitBreached(ctx, retailerID, total, check); emitErr != nil {
-				s.log.Warn("failed to emit credit limit breached event", "err", emitErr, "retailer_id", retailerID)
-			}
-			return CreateResponse{}, fmt.Errorf("%w: %s (shortfall %d)", ErrCreditLimitBreached, check.Reason, check.Shortfall)
+			// Soft-skip: create still proceeds without reserve (cash/card remain available).
+			s.log.Info("credit reserve skipped", "reason", check.Reason, "retailer_id", retailerID, "supplier_id", supplierID)
 		}
 	}
 
@@ -1301,6 +1314,14 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	}, stockOpts)
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
+	}
+
+	if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
+		if check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total); cerr == nil && check.Allowed {
+			if rerr := s.credit.Reserve(ctx, retailerID, supplierID, o.OrderID, total); rerr != nil {
+				s.log.Warn("credit reserve at create failed", "order_id", o.OrderID, "err", rerr)
+			}
+		}
 	}
 
 	if stockOpts.Skip && o.Status == StatusPending {

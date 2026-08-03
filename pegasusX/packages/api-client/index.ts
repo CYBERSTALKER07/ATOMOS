@@ -62,6 +62,9 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   PartialOffloadRequest,
   PartialOffloadResponse,
   CreditDeliveryRequest,
+  SupplierCreditProgram,
+  RetailerPaymentTerms,
+  ArInvoice,
   ComplianceDashboardResponse,
   ComplianceExportBucket,
   NegotiationPendingResponse,
@@ -1235,6 +1238,83 @@ export class ApiClient {
 
   async getCreditNoteOrderLines(orderId: string): Promise<{ lines: Array<{ order_line_id: string; sku: string; qty: number; gross_minor: number }> }> {
     return this.request(`/v1/supplier/credit-notes/order-lines?order_id=${encodeURIComponent(orderId)}`, "GET");
+  }
+
+  async getSupplierCreditProgram(): Promise<SupplierCreditProgram> {
+    return this.request<SupplierCreditProgram>("/v1/supplier/credit-program", "GET");
+  }
+
+  async enableSupplierCreditProgram(body: {
+    warning_ack: boolean;
+    warning_ack_at?: string;
+    global_terms_days?: number;
+    global_grace_days?: number;
+    global_default_limit_minor?: number;
+    timezone?: string;
+  }): Promise<SupplierCreditProgram> {
+    return this.request<SupplierCreditProgram>("/v1/supplier/credit-program", "POST", { body });
+  }
+
+  async patchSupplierCreditProgramDefaults(body: {
+    global_terms_days?: number;
+    global_grace_days?: number;
+    global_default_limit_minor?: number;
+    timezone?: string;
+  }): Promise<SupplierCreditProgram> {
+    return this.request<SupplierCreditProgram>("/v1/supplier/credit-program/defaults", "PATCH", { body });
+  }
+
+  async listSupplierCreditRelationships(): Promise<{ relationships: RetailerPaymentTerms[] }> {
+    return this.request("/v1/supplier/credit-relationships", "GET");
+  }
+
+  async enableRetailerCreditRelationship(
+    retailerId: string,
+    body: {
+      warning_ack: boolean;
+      warning_ack_at?: string;
+      terms_days?: number;
+      grace_period_days?: number;
+      credit_limit_minor?: number;
+      use_global_defaults?: boolean;
+    },
+  ): Promise<RetailerPaymentTerms> {
+    return this.request(
+      `/v1/supplier/credit-relationships/${encodeURIComponent(retailerId)}/enable`,
+      "POST",
+      { body },
+    );
+  }
+
+  async listRetailerCreditRelationships(): Promise<{ relationships: RetailerPaymentTerms[] }> {
+    return this.request("/v1/retailer/credit-relationships", "GET");
+  }
+
+  async listRetailerArInvoices(params?: { status?: string; limit?: number }): Promise<{ invoices: ArInvoice[] }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/retailer/ar/invoices${suffix}`, "GET");
+  }
+
+  async listSupplierArInvoices(params?: { status?: string }): Promise<{ invoices: ArInvoice[] }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/supplier/ar/invoices${suffix}`, "GET");
+  }
+
+  async adminDisableCreditRelationship(
+    supplierId: string,
+    retailerId: string,
+    body: { ticket_id: string; reason: string },
+  ): Promise<StatusResponse> {
+    return this.request(
+      `/v1/admin/credit-relationships/${encodeURIComponent(supplierId)}/${encodeURIComponent(retailerId)}/disable`,
+      "POST",
+      { body },
+    );
   }
 
   async resolveSupplierException(

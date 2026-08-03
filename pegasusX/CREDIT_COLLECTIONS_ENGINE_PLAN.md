@@ -29,6 +29,25 @@ flowchart TD
 
 ---
 
+## Policy layer (CREDIT_POLICY_V2) — companion to this plan
+
+**Ownership:** credit book is `SupplierId`↔`RetailerId`. Warehouse finance uses the same supplier-scoped APIs (not a second ledger). Pegaus admin/support is the only actor who can set `CreditEnabled=false` after enable (audited, ticket required).
+
+| Rule | Behavior |
+|------|----------|
+| Program / relationship ON | Self-serve enable with `warning_ack=true` + modal ack timestamp |
+| OFF after ON | Not self-serve — `403 credit_disable_requires_support`; admin API only |
+| Terms | Global defaults on `SupplierCreditPrograms` or per-retailer `RetailerPaymentTerms` override |
+| Freeze ≠ disable | `FROZEN` / hold blocks new credit leave; relationship stays ON and visible |
+| Due date | `dueAt = creditLeaveAt + TermsDays` (supplier timezone calendar days); open invoices keep original DueDate when terms change |
+
+**Tables:** `SupplierCreditPrograms`, `RetailerPaymentTerms`, `CreditPolicyAudit`, `OrderCreditReservations`, `ArInvoices`, `ArLedgerEntries` (see `spanner.ddl`).  
+**APIs:** `/v1/supplier/credit-program*`, `/v1/supplier/credit-relationships/*`, `/v1/retailer/credit-relationships`, `/v1/retailer/ar/invoices`, `/v1/admin/credit-*`.  
+**Flags:** `CREDIT_POLICY_V2_ENABLED` → `AR_INVOICES_ENABLED` → `AR_DUNNING_ENABLED`; reserve at create via `CREDIT_RESERVE_AT_CREATE`.  
+**Behavior doc:** [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](docs/CREDIT_ECOSYSTEM_BEHAVIOR.md).
+
+---
+
 ## Phase 0 — Integrity fixes (must ship before new AR features)
 
 These are correctness bugs in the existing spine; collections on a leaky balance is useless.

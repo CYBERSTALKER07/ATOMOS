@@ -1,7 +1,7 @@
 // Package plan is the orchestration layer for the Phase 2 dispatch optimiser.
 // It calls the VRP solver (apps/ai-worker via dispatch/optimizerclient),
-// re-validates the response, and falls back to the Phase 1 KMeans + binpack
-// pipeline (dispatch.BinPack) on any solver failure or invalid plan.
+// re-validates the response, and falls back to the Phase 1 H3 + BinPack
+// pipeline (dispatch.BinPack) on any solver failure, small batch, or invalid plan.
 //
 // Lives under dispatch/plan/ rather than inside dispatch/ to avoid an import
 // cycle: dispatch ← optimizerclient ← plan.
@@ -11,6 +11,9 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
@@ -21,12 +24,15 @@ const (
 	SourceOptimizer          = "optimizer"
 	SourceFallbackPhase1     = "fallback_phase1"
 	SourceFallbackValidation = "fallback_validation_rejected"
+	SourcePureSmallBatch     = "pure_small_batch"
 
 	defaultCapacityBufferPct  = 5.0
 	maxAcceptableUtilFraction = 1.0 - defaultCapacityBufferPct/100.0
 
+	// DenseBatchMinStops: AI preferred at/above this order count.
+	DenseBatchMinStops = 12
+
 	// fallbackTimeout bounds H3 cell resolution + binpack CPU during peak dispatch.
-	// Prevents Go handlers from hanging when the optimiser is unavailable.
 	fallbackTimeout = 3 * time.Second
 
 	// solverBudget is aligned with optimizerclient.DefaultTimeout plus wire overhead.
@@ -44,13 +50,15 @@ type Job struct {
 	Orders     []dispatch.DispatchableOrder
 	Fleet      []dispatch.AvailableDriver
 	CellLookup func(lat, lng float64) string
+	Score      dispatch.ScoreContext
 }
 
-// OptimizeAndValidate runs the VRP optimiser, re-validates the result, and
-// degrades gracefully to the Phase 1 fallback. Returns the final plan and
-// the source attribution.
+// OptimizeAndValidate runs the VRP optimiser for dense batches, re-validates,
+// and degrades gracefully to H3 BinPack. Small batches skip the optimizer call.
 func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, job Job) (*dispatch.AssignmentResult, string, error) {
-	if client != nil {
+	n := len(job.Orders)
+	threshold := denseBatchThreshold()
+	if client != nil && n >= threshold {
 		in := optimizerclient.SolveInput{
 			TraceID:    job.TraceID,
 			SupplierID: job.SupplierID,
@@ -67,7 +75,7 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 			if rejected := validateAssignment(res, job.Fleet); rejected != "" {
 				out := runFallbackWithDeadline(ctx, job)
 				out.Warnings = append(out.Warnings,
-					fmt.Sprintf("validation rejected: %s — engaged Phase 1 fallback", rejected))
+					fmt.Sprintf("validation rejected: %s — engaged H3 BinPack fallback", rejected))
 				return out, SourceFallbackValidation, nil
 			}
 			return res, SourceOptimizer, nil
@@ -76,7 +84,24 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 		out.Warnings = append(out.Warnings, fmt.Sprintf("optimizer error → fallback: %v", err))
 		return out, SourceFallbackPhase1, nil
 	}
-	return runFallbackWithDeadline(ctx, job), SourceFallbackPhase1, nil
+	out := runFallbackWithDeadline(ctx, job)
+	if client != nil && n < threshold {
+		out.Warnings = append(out.Warnings, fmt.Sprintf("pure_small_batch: %d < %d stops — skipped optimizer", n, threshold))
+		return out, SourcePureSmallBatch, nil
+	}
+	return out, SourceFallbackPhase1, nil
+}
+
+func denseBatchThreshold() int {
+	raw := strings.TrimSpace(os.Getenv("DISPATCH_AI_MIN_STOPS"))
+	if raw == "" {
+		return DenseBatchMinStops
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return DenseBatchMinStops
+	}
+	return n
 }
 
 // validateAssignment returns "" when every route fits within the configured
@@ -109,13 +134,29 @@ func validateAssignment(res *dispatch.AssignmentResult, fleet []dispatch.Availab
 	return ""
 }
 
-// runFallback executes the existing Phase 1 KMeansCluster + BinPack pipeline.
+// runFallback executes H3 cell grouping + scored BinPack (+ local search).
 func runFallback(job Job) *dispatch.AssignmentResult {
 	cellLookup := job.CellLookup
 	if cellLookup == nil {
 		cellLookup = dispatch.H3CellLookup
 	}
-	res := dispatch.BinPack(job.Orders, job.Fleet, cellLookup)
+	score := job.Score
+	score.DepotLat = job.DepotLat
+	score.DepotLng = job.DepotLng
+	if score.CellLookup == nil {
+		score.CellLookup = cellLookup
+	}
+
+	// Hierarchical pre-cluster when order count exceeds threshold and flag on.
+	if dispatch.HierarchicalEnabled() && len(job.Orders) >= dispatch.HierarchicalOrderThreshold() {
+		res := dispatch.BinPackHierarchical(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{Score: score})
+		if res == nil {
+			return &dispatch.AssignmentResult{}
+		}
+		return res
+	}
+
+	res := dispatch.BinPack(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{Score: score})
 	if res == nil {
 		return &dispatch.AssignmentResult{}
 	}

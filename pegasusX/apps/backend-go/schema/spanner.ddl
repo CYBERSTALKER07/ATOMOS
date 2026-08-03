@@ -295,10 +295,11 @@ CREATE TABLE RetailerCreditProfiles (
   SupplierId          STRING(36)    NOT NULL,
   CreditLimitMinor    INT64         NOT NULL DEFAULT (0),
   CurrentBalanceMinor INT64         NOT NULL DEFAULT (0),
+  ReservedMinor       INT64         NOT NULL DEFAULT (0),
   AvailableCreditMinor INT64        NOT NULL DEFAULT (0),
   RiskScore           INT64         NOT NULL DEFAULT (0),
   DelinquencyCount    INT64         NOT NULL DEFAULT (0),
-  Status              STRING(20)    NOT NULL DEFAULT ('ACTIVE'),
+  Status              STRING(20)    NOT NULL DEFAULT ('INACTIVE'),
   LastEvaluatedAt     TIMESTAMP,
   Version             INT64         NOT NULL DEFAULT (1),
   CreatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -2052,3 +2053,106 @@ CREATE TABLE RetailerAssistanceTickets (
 CREATE INDEX Idx_RetailerAssist_ByLocationStatus ON RetailerAssistanceTickets(LocationId, Status, CreatedAt DESC);
 CREATE INDEX Idx_RetailerAssist_BySectionStatus ON RetailerAssistanceTickets(SectionId, Status, CreatedAt DESC);
 CREATE INDEX Idx_RetailerAssist_ByRetailer ON RetailerAssistanceTickets(RetailerId, CreatedAt DESC);
+
+-- Credit policy v2: irreversible enable + Net terms + AR subledger
+CREATE TABLE SupplierCreditPrograms (
+  SupplierId STRING(36) NOT NULL,
+  ProgramEnabled BOOL NOT NULL DEFAULT (FALSE),
+  EnabledAt TIMESTAMP,
+  EnabledByUserId STRING(36),
+  DisabledAt TIMESTAMP,
+  DisabledByActor STRING(64),
+  DisableReason STRING(512),
+  GlobalTermsDays INT64 NOT NULL DEFAULT (30),
+  GlobalGraceDays INT64 NOT NULL DEFAULT (0),
+  GlobalDefaultLimitMinor INT64 NOT NULL DEFAULT (0),
+  Timezone STRING(64) NOT NULL DEFAULT ('Asia/Tashkent'),
+  Version INT64 NOT NULL DEFAULT (1),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId);
+
+CREATE TABLE RetailerPaymentTerms (
+  RetailerId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  CreditEnabled BOOL NOT NULL DEFAULT (FALSE),
+  EnabledAt TIMESTAMP,
+  EnabledByUserId STRING(36),
+  DisabledAt TIMESTAMP,
+  DisabledByActor STRING(64),
+  TermsDays INT64 NOT NULL DEFAULT (30),
+  GracePeriodDays INT64 NOT NULL DEFAULT (0),
+  CreditLimitMinor INT64 NOT NULL DEFAULT (0),
+  UseGlobalDefaults BOOL NOT NULL DEFAULT (TRUE),
+  Version INT64 NOT NULL DEFAULT (1),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, SupplierId);
+
+CREATE INDEX Idx_RetailerPaymentTerms_BySupplier ON RetailerPaymentTerms(SupplierId, CreditEnabled, UpdatedAt DESC);
+
+CREATE TABLE CreditPolicyAudit (
+  AuditId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  RetailerId STRING(36),
+  Action STRING(32) NOT NULL,
+  ActorUserId STRING(36),
+  ActorRole STRING(32),
+  BeforeJson JSON,
+  AfterJson JSON,
+  WarningAckAt TIMESTAMP,
+  TicketId STRING(64),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AuditId);
+
+CREATE INDEX Idx_CreditPolicyAudit_BySupplier ON CreditPolicyAudit(SupplierId, CreatedAt DESC);
+
+CREATE TABLE OrderCreditReservations (
+  OrderId STRING(36) NOT NULL,
+  RetailerId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  AmountMinor INT64 NOT NULL,
+  Status STRING(20) NOT NULL,
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (OrderId);
+
+CREATE INDEX Idx_OrderCreditReservations_ByRetailerSupplier ON OrderCreditReservations(RetailerId, SupplierId, Status);
+
+CREATE TABLE ArInvoices (
+  InvoiceId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  RetailerId STRING(36) NOT NULL,
+  OrderId STRING(36) NOT NULL,
+  Status STRING(20) NOT NULL,
+  PrincipalMinor INT64 NOT NULL,
+  BalanceMinor INT64 NOT NULL,
+  Currency STRING(3) NOT NULL DEFAULT ('UZS'),
+  CreditLeaveAt TIMESTAMP NOT NULL,
+  DueAt TIMESTAMP NOT NULL,
+  TermsDays INT64 NOT NULL,
+  GracePeriodDays INT64 NOT NULL DEFAULT (0),
+  AgingBucket STRING(16),
+  LastDunnedAt TIMESTAMP,
+  DunningStep INT64 NOT NULL DEFAULT (0),
+  Version INT64 NOT NULL DEFAULT (1),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (InvoiceId);
+
+CREATE UNIQUE INDEX Idx_ArInvoices_ByOrder ON ArInvoices(OrderId);
+CREATE INDEX Idx_ArInvoices_BySupplierDue ON ArInvoices(SupplierId, Status, DueAt);
+CREATE INDEX Idx_ArInvoices_ByRetailer ON ArInvoices(RetailerId, Status, DueAt);
+
+CREATE TABLE ArLedgerEntries (
+  EntryId STRING(36) NOT NULL,
+  InvoiceId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  RetailerId STRING(36) NOT NULL,
+  EntryType STRING(32) NOT NULL,
+  AmountMinor INT64 NOT NULL,
+  IdempotencyKey STRING(128) NOT NULL,
+  RefOrderId STRING(36),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (EntryId);
+
+CREATE UNIQUE INDEX Idx_ArLedger_ByIdempotency ON ArLedgerEntries(IdempotencyKey);
+CREATE INDEX Idx_ArLedger_ByInvoice ON ArLedgerEntries(InvoiceId, CreatedAt);

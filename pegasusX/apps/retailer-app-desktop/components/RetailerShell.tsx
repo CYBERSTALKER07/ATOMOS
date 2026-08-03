@@ -62,6 +62,7 @@ const NAV: NavSection[] = [
       { href: "/catalog", icon: PackageSearch, label: "Catalog", perm: "order.place" },
       { href: "/procurement", icon: Activity, label: "Procurement", perm: "order.place" },
       { href: "/my-suppliers", icon: Store, label: "My Suppliers", perm: "order.place" },
+      { href: "/credit", icon: Store, label: "Credit partners", perm: "order.place" },
       { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
       { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
       { href: "/stock/local-skus", icon: Box, label: "Local SKUs", perm: "stock.view", pack: "STORE_STOCK" },

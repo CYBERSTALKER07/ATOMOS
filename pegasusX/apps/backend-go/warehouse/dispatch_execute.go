@@ -116,7 +116,9 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			Lat: s.fallbackDepotLat,
 			Lng: s.fallbackDepotLng,
 		})
+		rows, fleet, _ = dispatch.EnrichScoreSignals(ctx, s.spannerClient, rows, fleet)
 		job := plan.BuildSolveJob(ctx, sid, whID, depot, rows, fleet)
+		job.Score = dispatch.ScoreContext{DepotLat: depot.Lat, DepotLng: depot.Lng}
 		assignment, source, err = plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
 		if err != nil {
 			return out, fmt.Errorf("optimize dispatch: %w", err)
