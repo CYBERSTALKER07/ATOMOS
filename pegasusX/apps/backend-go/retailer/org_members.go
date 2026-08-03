@@ -477,6 +477,17 @@ func (s *Service) createOrgMember(ctx context.Context, u RetailerUser) error {
 			return errRetailerMemberPhoneExists
 		}
 		s.staffByRetailer[u.RetailerID] = append(s.staffByRetailer[u.RetailerID], u)
+		// C1.1 dual-write membership (memory)
+		if s.membershipsByUser == nil {
+			s.membershipsByUser = map[string]map[string]RetailerMembership{}
+		}
+		if s.membershipsByUser[u.UserID] == nil {
+			s.membershipsByUser[u.UserID] = map[string]RetailerMembership{}
+		}
+		s.membershipsByUser[u.UserID][u.RetailerID] = RetailerMembership{
+			UserID: u.UserID, RetailerID: u.RetailerID, RetailerRole: u.RetailerRole,
+			IsActive: u.IsActive, Phone: u.Phone, Name: u.Name,
+		}
 		return nil
 	}
 	// Phone uniqueness under retailer
@@ -520,6 +531,8 @@ func (s *Service) createOrgMember(ctx context.Context, u RetailerUser) error {
 		}
 		return fmt.Errorf("create org member: %w", err)
 	}
+	// C1.1 dual-write membership
+	_ = s.UpsertMembershipFromUser(ctx, u)
 	return nil
 }
 
@@ -529,17 +542,33 @@ func (s *Service) updateOrgMember(ctx context.Context, u RetailerUser) error {
 		defer s.mu.Unlock()
 		if u.IsOwner {
 			s.ownerByRetailer[u.RetailerID] = u
-			return nil
-		}
-		list := s.staffByRetailer[u.RetailerID]
-		for i := range list {
-			if list[i].UserID == u.UserID {
-				list[i] = u
-				s.staffByRetailer[u.RetailerID] = list
-				return nil
+		} else {
+			list := s.staffByRetailer[u.RetailerID]
+			found := false
+			for i := range list {
+				if list[i].UserID == u.UserID {
+					list[i] = u
+					s.staffByRetailer[u.RetailerID] = list
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errRetailerMemberNotFound
 			}
 		}
-		return errRetailerMemberNotFound
+		// C1.1 dual-write membership (role / IsActive)
+		if s.membershipsByUser == nil {
+			s.membershipsByUser = map[string]map[string]RetailerMembership{}
+		}
+		if s.membershipsByUser[u.UserID] == nil {
+			s.membershipsByUser[u.UserID] = map[string]RetailerMembership{}
+		}
+		s.membershipsByUser[u.UserID][u.RetailerID] = RetailerMembership{
+			UserID: u.UserID, RetailerID: u.RetailerID, RetailerRole: u.RetailerRole,
+			IsActive: u.IsActive, Phone: u.Phone, Name: u.Name,
+		}
+		return nil
 	}
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Partial update via DML so we do not wipe CreatedAt / PasswordHash unintentionally.
@@ -575,7 +604,12 @@ func (s *Service) updateOrgMember(ctx context.Context, u RetailerUser) error {
 		_, err := txn.Update(ctx, spanner.Statement{SQL: sql, Params: params})
 		return err
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	// C1.1 dual-write membership (best-effort if table missing)
+	_ = s.UpsertMembershipFromUser(ctx, u)
+	return nil
 }
 
 func dtoFromUser(u RetailerUser) OrgMemberDTO {

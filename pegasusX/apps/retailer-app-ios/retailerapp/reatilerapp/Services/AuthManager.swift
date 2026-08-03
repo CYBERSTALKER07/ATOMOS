@@ -12,6 +12,9 @@ final class AuthManager {
     var currentUser: User?
     var isLoading = false
     var errorMessage: String?
+    /// C1.3: intermediate multi-org picker state (nil when not pending).
+    var pendingMemberships: [RetailerMembershipDTO]?
+    var needsOrgSelect: Bool = false
 
     private let api = APIClient.shared
 
@@ -21,10 +24,29 @@ final class AuthManager {
             let userId = KeychainHelper.read(key: "user_id") ?? ""
             let userName = KeychainHelper.read(key: "user_name") ?? ""
             let company = KeychainHelper.read(key: "user_company") ?? ""
-            currentUser = User(id: userId, name: userName, company: company, email: "", avatarURL: nil)
+            currentUser = User(id: userId, name: userName, company: company, email: nil, avatarURL: nil)
             let configured = KeychainHelper.read(key: "is_configured") == "true"
             needsSetup = !configured
         }
+    }
+
+    // MARK: - C1.3 clear-on-switch contract
+
+    /// Clears cart, POS session, offline drafts, assist context before org change.
+    func clearOrgScopedState() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            "retailer_cart",
+            "retailer_pos_parked_cart_v1",
+            "retailer_pending_pos_sales_v1",
+            "retailer_stock_count_draft_v1",
+            "retailer_assist_context_v1",
+            "retailer_pos_session_v1",
+        ]
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+        NotificationCenter.default.post(name: .pegasusOrgSwitched, object: nil)
     }
 
     // MARK: - Phone Validation (UZ: +998 XX XXX XX XX)
@@ -75,6 +97,44 @@ final class AuthManager {
             )
         }
 
+        isLoading = false
+    }
+
+    /// C1.3: complete multi-org login after picker selection.
+    func selectOrg(retailerId: String) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let body = SelectOrgRequest(retailerId: retailerId)
+            let response: AuthResponse = try await api.post(path: "/v1/auth/retailer/select-org", body: body)
+            applyAuthResponse(response, fromOrgChange: true)
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Organization access denied.",
+                offline: "Offline. Reconnect to select organization.",
+                fallback: "Could not select organization.",
+            )
+        }
+        isLoading = false
+    }
+
+    /// C1.3: switch active org (full JWT required).
+    func switchOrg(retailerId: String) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let body = SelectOrgRequest(retailerId: retailerId)
+            let response: AuthResponse = try await api.post(path: "/v1/auth/retailer/switch-org", body: body)
+            applyAuthResponse(response, fromOrgChange: true)
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Organization switch denied.",
+                offline: "Offline. Reconnect to switch organization.",
+                fallback: "Could not switch organization.",
+            )
+        }
         isLoading = false
     }
 
@@ -142,10 +202,13 @@ final class AuthManager {
         KeychainHelper.delete(key: "user_name")
         KeychainHelper.delete(key: "user_company")
         KeychainHelper.delete(key: "is_configured")
+        KeychainHelper.delete(key: "pending_org_token")
         FirebaseAuthHelper.shared.signOut()
         currentUser = nil
         isLoggedIn = false
         needsSetup = false
+        needsOrgSelect = false
+        pendingMemberships = nil
     }
 
     func markConfigured() {
@@ -153,18 +216,45 @@ final class AuthManager {
         needsSetup = false
     }
 
-    private func applyAuthResponse(_ response: AuthResponse) {
+    private func applyAuthResponse(_ response: AuthResponse, fromOrgChange: Bool = false) {
+        if response.isPendingOrgSelect {
+            // Intermediate: do not mark fully logged in for business routes.
+            api.authToken = response.token
+            KeychainHelper.save(key: "pending_org_token", value: response.token)
+            pendingMemberships = (response.memberships ?? []).filter(\.isActive)
+            needsOrgSelect = true
+            isLoggedIn = false
+            needsSetup = false
+            return
+        }
+        if fromOrgChange {
+            clearOrgScopedState()
+        }
         api.authToken = response.token
-        KeychainHelper.save(key: "user_id", value: response.user.id)
-        KeychainHelper.save(key: "user_name", value: response.user.name)
-        KeychainHelper.save(key: "user_company", value: response.user.company)
+        KeychainHelper.delete(key: "pending_org_token")
+        let user = response.user ?? User(
+            id: response.retailerId ?? "unknown",
+            name: "Retailer",
+            company: "Workspace",
+            email: nil,
+            avatarURL: nil
+        )
+        KeychainHelper.save(key: "user_id", value: user.id)
+        KeychainHelper.save(key: "user_name", value: user.name)
+        KeychainHelper.save(key: "user_company", value: user.company)
         let configured = response.isConfigured ?? true
         KeychainHelper.save(key: "is_configured", value: configured ? "true" : "false")
         if let fbToken = response.firebaseToken, !fbToken.isEmpty {
             FirebaseAuthHelper.shared.exchangeCustomToken(fbToken) { _ in }
         }
-        currentUser = response.user
+        currentUser = user
         isLoggedIn = true
         needsSetup = !configured
+        needsOrgSelect = false
+        pendingMemberships = nil
     }
+}
+
+extension Notification.Name {
+    static let pegasusOrgSwitched = Notification.Name("pegasusx.orgSwitched")
 }

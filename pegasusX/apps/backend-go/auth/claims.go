@@ -35,6 +35,13 @@ const (
 	HomeNodeFactory   HomeNodeType = "FACTORY"
 )
 
+// TokenUse discriminates intermediate multi-org tokens from full session JWTs.
+// Empty / "full" = normal business access. "PendingOrgSelect" is C1.2 only.
+const (
+	TokenUseFull             = ""
+	TokenUsePendingOrgSelect = "PendingOrgSelect"
+)
+
 // Claims is the parsed JWT identity. Populated by Middleware and read via
 // FromContext. SupplierID is required for every authenticated caller in
 // single-tenant mode.
@@ -42,6 +49,9 @@ const (
 // Retail OS (Phase 0+): for Role==RETAILER, Subject is ideally RetailerUserId
 // and RetailerOrgID is the tenant RetailerId. Legacy tokens may leave
 // RetailerOrgID empty and set Subject=RetailerId (treated as OWNER).
+//
+// Wave C1.2: TokenUse=PendingOrgSelect means the caller authenticated the
+// person but has not selected an org; business routes must reject it.
 type Claims struct {
 	Subject      string
 	Role         Role
@@ -54,6 +64,9 @@ type Claims struct {
 	PhoneNumber  string
 	TraceID      string
 
+	// TokenUse is empty for full tokens; PendingOrgSelect for multi-org intermediate.
+	TokenUse string
+
 	// Retailer multi-user identity (Role==RETAILER).
 	RetailerOrgID    string   // tenant RetailerId
 	RetailerRole     string   // OWNER | ADMIN | MANAGER | BUYER | ...
@@ -61,6 +74,11 @@ type Claims struct {
 	LocationIDs      []string // optional location scope (staff bind)
 	ActiveLocationID string   // currently selected store branch (Phase 2)
 	CapabilityPacks  []string // enabled pack ids excluding always-on CORE (optional cache)
+}
+
+// IsPendingOrgSelect reports whether claims are intermediate multi-org tokens.
+func IsPendingOrgSelect(c Claims) bool {
+	return strings.EqualFold(strings.TrimSpace(c.TokenUse), TokenUsePendingOrgSelect)
 }
 
 type ctxKey int
@@ -94,6 +112,8 @@ func ResolveSupplierID(ctx context.Context) (string, bool) {
 
 // RequireRole returns a middleware that 401s unauthenticated callers and 403s
 // callers whose Role is not in the allowed set.
+// PendingOrgSelect intermediate tokens are rejected with ORG_SELECT_REQUIRED
+// so multi-org login cannot touch business routes until select-org.
 func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 	allow := make(map[Role]struct{}, len(allowed))
 	for _, r := range allowed {
@@ -104,6 +124,12 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 			c, ok := FromContext(r.Context())
 			if !ok {
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsPendingOrgSelect(c) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ORG_SELECT_REQUIRED"}`))
 				return
 			}
 			if _, allowed := allow[c.Role]; !allowed {

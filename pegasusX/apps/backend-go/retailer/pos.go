@@ -607,10 +607,13 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		Origin:          origin,
 		ClientCreatedAt: strings.TrimSpace(req.ClientCreatedAt),
 	}
-	if err := s.savePosSale(r.Context(), sale); err != nil {
+	// C2.1: sale ledger + HQ sales daily in one Apply (savePosSaleWithHQ).
+	if err := s.savePosSaleWithHQ(r.Context(), sale, false); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_sale_failed"})
 		return
 	}
+	// HQ stock snapshot after stock move (projection; stock already applied above).
+	s.refreshHqStockSnapshotsForSale(r.Context(), orgID, sess.LocationID, bin, lines)
 	// L3 flywheel: sell-through rollup + DemandAdjustments SELL_THROUGH factor
 	s.recordSellThroughSale(r.Context(), orgID, sess.LocationID, lines)
 	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleCompleted, map[string]any{
@@ -688,10 +691,12 @@ func (s *Service) HandlePosSaleVoid(w http.ResponseWriter, r *http.Request) {
 	sale.VoidedAt = s.now().UTC().Format(time.RFC3339Nano)
 	sale.VoidedByUserID = actor
 	sale.VoidReason = strings.TrimSpace(req.Reason)
-	if err := s.savePosSale(r.Context(), sale); err != nil {
+	// C2.1: void ledger + HQ void deltas in one Apply.
+	if err := s.savePosSaleWithHQ(r.Context(), sale, true); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "void_failed"})
 		return
 	}
+	s.refreshHqStockSnapshotsForSale(r.Context(), orgID, sale.LocationID, sale.StockBin, sale.Lines)
 	s.recordSellThroughVoid(r.Context(), orgID, sale.LocationID, sale.Lines)
 	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleVoided, map[string]any{
 		"sale_id": saleID, "reason": sale.VoidReason,
@@ -954,11 +959,16 @@ func (s *Service) getOpenSessionForRegister(ctx context.Context, registerID stri
 }
 
 func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
+	return s.savePosSaleWithHQ(ctx, sale, false)
+}
+
+// savePosSaleWithHQ persists the sale ledger and HQ sales daily deltas in one Apply.
+// void=false → sale complete deltas; void=true → void deltas (same txn as ledger).
+func (s *Service) savePosSaleWithHQ(ctx context.Context, sale PosSaleDTO, isVoid bool) error {
 	linesJSON, _ := json.Marshal(sale.Lines)
 	tendersJSON, _ := json.Marshal(sale.Tenders)
 	if s.spannerClient == nil {
 		s.mu.Lock()
-		defer s.mu.Unlock()
 		if s.posSales == nil {
 			s.posSales = map[string]PosSaleDTO{}
 		}
@@ -968,6 +978,13 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 		s.posSales[sale.SaleID] = sale
 		if sale.ClientSaleID != "" {
 			s.posSalesByClient[sale.RetailerID+"|"+sale.ClientSaleID] = sale.SaleID
+		}
+		s.mu.Unlock()
+		// C2.1 memory HQ writers (same critical section as ledger conceptually)
+		if isVoid {
+			s.applyHqFromVoidMemory(sale)
+		} else {
+			s.applyHqFromSaleMemory(sale)
 		}
 		return nil
 	}
@@ -1005,7 +1022,22 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 		row["VoidedByUserId"] = nullableStr(sale.VoidedByUserID)
 		row["VoidReason"] = nullableStr(sale.VoidReason)
 	}
-	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPosSales", row)})
+
+	// C2.1: HQ sales daily in the SAME Apply as the sale ledger (not a goroutine).
+	muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPosSales", row)}
+	var hqMuts []*spanner.Mutation
+	var hqErr error
+	if isVoid {
+		hqMuts, hqErr = s.buildHqSalesMutationsFromVoid(ctx, sale)
+	} else {
+		hqMuts, hqErr = s.buildHqSalesMutationsFromSale(ctx, sale)
+	}
+	if hqErr == nil {
+		muts = append(muts, hqMuts...)
+	} else if s.log != nil {
+		s.log.Warn("hq sales mutations skipped", "sale_id", sale.SaleID, "err", hqErr)
+	}
+	_, err := s.spannerClient.Apply(ctx, muts)
 	return err
 }
 

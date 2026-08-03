@@ -78,6 +78,18 @@
         "PX_E2E_REORDER_SUGGESTION_OK",
         "PX_E2E_GAP_CLOSURE_OK"
       ]
+    },
+    "multi_org": {
+      "description": "Wave C1 multi-org auth (flag off default; picker/switch when MULTI_ORG_LOGIN_ENABLED)",
+      "markers": [
+        "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+        "PX_E2E_PENDING_ORG_REJECT_OK",
+        "PX_E2E_MULTI_ORG_PICKER_OK",
+        "PX_E2E_MULTI_ORG_PICKER_SKIPPED",
+        "PX_E2E_ORG_SWITCH_OK",
+        "PX_E2E_ORG_SWITCH_SKIPPED",
+        "PX_E2E_MULTI_ORG_AUTH_OK"
+      ]
     }
   },
   "required": [
@@ -118,7 +130,10 @@
     "PX_E2E_DRIVER_EDGES_OK",
     "PX_E2E_DRIVER_ASSIGN_DETECTION_OK",
     "PX_E2E_SUPPLIER_OPERATIONS_OK",
-    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK"
+    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK",
+    "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+    "PX_E2E_PENDING_ORG_REJECT_OK",
+    "PX_E2E_MULTI_ORG_AUTH_OK"
   ],
   "plan90": [
     "PX_E2E_MEIO_NETWORK_OK",
@@ -152,6 +167,14 @@
     "PX_E2E_EXCEPTION_RESOLVE_OK"
   ],
   "alternatives": {
-    "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"]
+    "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"],
+    "multi_org_picker": [
+      "PX_E2E_MULTI_ORG_PICKER_OK",
+      "PX_E2E_MULTI_ORG_PICKER_SKIPPED"
+    ],
+    "multi_org_switch": [
+      "PX_E2E_ORG_SWITCH_OK",
+      "PX_E2E_ORG_SWITCH_SKIPPED"
+    ]
   }
 }

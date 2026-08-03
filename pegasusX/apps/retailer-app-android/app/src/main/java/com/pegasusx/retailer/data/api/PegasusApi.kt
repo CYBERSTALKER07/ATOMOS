@@ -63,6 +63,16 @@ interface PegasusApi {
     @POST("/v1/auth/retailer/register")
     suspend fun register(@Body body: RegisterRequest): AuthResponse
 
+    /** C1.2/C1.3 multi-org */
+    @GET("/v1/auth/retailer/memberships")
+    suspend fun listMemberships(): com.pegasusx.retailer.data.model.MembershipsResponse
+
+    @POST("/v1/auth/retailer/select-org")
+    suspend fun selectOrg(@Body body: com.pegasusx.retailer.data.model.SelectOrgRequest): AuthResponse
+
+    @POST("/v1/auth/retailer/switch-org")
+    suspend fun switchOrg(@Body body: com.pegasusx.retailer.data.model.SelectOrgRequest): AuthResponse
+
     @GET("/v1/platform/geocode/reverse")
     suspend fun reverseGeocode(
         @Query("lat") lat: Double,

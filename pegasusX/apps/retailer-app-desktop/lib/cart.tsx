@@ -264,6 +264,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hydrateFromServer]);
 
+  // C1.3: clear cart in-memory when org is switched/selected.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onOrgSwitched = () => {
+      skipNextSyncRef.current = true;
+      setItems([]);
+      lastServerSignatureRef.current = '';
+      try {
+        localStorage.removeItem(LOCAL_CART_KEY);
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener('pegasusx:org-switched', onOrgSwitched);
+    return () => window.removeEventListener('pegasusx:org-switched', onOrgSwitched);
+  }, []);
+
   // Refresh local cart when another device updates the same retailer cart.
   useEffect(() => {
     if (!ws) {

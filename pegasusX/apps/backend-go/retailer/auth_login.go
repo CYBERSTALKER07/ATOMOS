@@ -95,32 +95,63 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Staff / owner with password hash.
-		if u, found, err := s.findRetailerUserByPhoneAny(r.Context(), phone); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
-			return
-		} else if found {
-			if !u.IsActive {
-				writeJSON(w, http.StatusForbidden, map[string]string{"error": "user_inactive"})
+		// Staff / owner: when multi-org flag on, resolve all matching memberships first.
+		if s.multiOrgLoginEnabled() {
+			if ms, matched, err := s.resolveAuthenticatedMemberships(r.Context(), phone, secret); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
 				return
-			}
-			if strings.TrimSpace(u.PasswordHash) != "" {
-				if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(secret)); err != nil {
-					// Fall through to demo owner path only for owners without match
-					if !u.IsOwner {
-						writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+			} else if matched != nil {
+				if shouldOfferOrgPicker(ms) {
+					if s.maybeWritePendingOrgSelect(w, phone, ms) {
 						return
 					}
-				} else {
-					shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID)
-					if err != nil || !shopOK {
-						// memory path may not have full shop — synthesize
-						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
-					} else {
+				}
+				// Single (or allowlist not multi): full JWT for matched user.
+				u := *matched
+				if s.repo != nil {
+					if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
 						ret = shop
+					} else {
+						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
 					}
-					sessionUser = &u
-					ok = true
+				} else {
+					ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+				}
+				sessionUser = &u
+				ok = true
+			}
+		}
+
+		// Legacy single-org path (flag off or multi path found nothing).
+		if !ok {
+			if u, found, err := s.findRetailerUserByPhoneAny(r.Context(), phone); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+				return
+			} else if found {
+				if !u.IsActive {
+					writeJSON(w, http.StatusForbidden, map[string]string{"error": "user_inactive"})
+					return
+				}
+				if strings.TrimSpace(u.PasswordHash) != "" {
+					if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(secret)); err != nil {
+						// Fall through to demo owner path only for owners without match
+						if !u.IsOwner {
+							writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+							return
+						}
+					} else {
+						if s.repo != nil {
+							if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
+								ret = shop
+							} else {
+								ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+							}
+						} else {
+							ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+						}
+						sessionUser = &u
+						ok = true
+					}
 				}
 			}
 		}
@@ -144,11 +175,61 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// C1.2 multi-org: when flag on and phone has 2+ memberships, return intermediate token.
+	// Flag off / single membership → legacy full JWT path unchanged.
 	if sessionUser != nil {
+		if s.tryMultiOrgLoginResponse(w, r, sessionUser.Phone, sessionUser) {
+			return
+		}
 		s.writeMobileAuthResponseForUser(w, ret, *sessionUser)
 		return
 	}
+	if s.tryMultiOrgLoginResponse(w, r, ret.Phone, nil) {
+		return
+	}
 	s.writeMobileAuthResponse(w, ret)
+}
+
+// tryMultiOrgLoginResponse writes pending_org_select when multi-org applies.
+// passwordAlreadyVerified is the session user when password path already matched one row.
+func (s *Service) tryMultiOrgLoginResponse(w http.ResponseWriter, r *http.Request, phone string, passwordMatched *RetailerUser) bool {
+	phone = strings.TrimSpace(phone)
+	if phone == "" || !s.multiOrgLoginEnabled() {
+		return false
+	}
+	ms, err := s.ListMembershipsByPhone(r.Context(), phone)
+	if err != nil || len(ms) <= 1 {
+		// Also try dual-read from all users if memberships sparse but multi user rows exist.
+		if passwordMatched != nil {
+			users, uerr := s.listRetailerUsersByPhone(r.Context(), phone)
+			if uerr == nil && len(users) > 1 {
+				var synth []RetailerMembership
+				for _, u := range users {
+					if !u.IsActive {
+						continue
+					}
+					synth = append(synth, RetailerMembership{
+						UserID: u.UserID, RetailerID: u.RetailerID, RetailerRole: u.RetailerRole,
+						IsActive: true, Phone: u.Phone, Name: u.Name,
+					})
+				}
+				if shouldOfferOrgPicker(synth) {
+					return s.maybeWritePendingOrgSelect(w, phone, synth)
+				}
+			}
+		}
+		return false
+	}
+	active := make([]RetailerMembership, 0, len(ms))
+	for _, m := range ms {
+		if m.IsActive {
+			active = append(active, m)
+		}
+	}
+	if !shouldOfferOrgPicker(active) {
+		return false
+	}
+	return s.maybeWritePendingOrgSelect(w, phone, active)
 }
 
 // HandleRetailerRefresh re-issues tokens from a refresh JWT.
@@ -184,6 +265,10 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 	}
 	if claims.Role != auth.RoleRetailer {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid_refresh_scope"})
+		return
+	}
+	if auth.IsPendingOrgSelect(claims) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_refresh_token", "code": "PENDING_ORG_EXPIRED"})
 		return
 	}
 	// Refresh capability snapshot when possible.
@@ -355,14 +440,15 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 	// Home surface hint for clients (role home).
 	home := roleHomeSurface(role)
 	respMap := map[string]any{
-		"token":           token,
-		"refresh_token":   refresh,
-		"is_configured":   isConfigured,
-		"retailer_id":     ret.RetailerID,
-		"retailer_org_id": ret.RetailerID,
-		"user_id":         user.UserID,
-		"retailer_role":   role,
-		"capabilities":    packList,
+		"token":              token,
+		"token_type":         "full",
+		"refresh_token":      refresh,
+		"is_configured":      isConfigured,
+		"retailer_id":        ret.RetailerID,
+		"retailer_org_id":    ret.RetailerID,
+		"user_id":            user.UserID,
+		"retailer_role":      role,
+		"capabilities":       packList,
 		"home_surface":       home,
 		"permissions":        auth.ListRetailerPerms(claims),
 		"active_location_id": activeLoc,

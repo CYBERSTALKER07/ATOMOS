@@ -48,6 +48,8 @@ type jwtPayload struct {
 	HomeNodeID   string `json:"home_node_id,omitempty"`
 	IsRegistered bool   `json:"is_registered"`
 	IsConfigured bool   `json:"is_configured"`
+	PhoneNumber  string `json:"phone_number,omitempty"`
+	TokenUse     string `json:"token_use,omitempty"`
 
 	// Retail OS multi-user (optional; additive for backward compatibility).
 	RetailerOrgID    string   `json:"retailer_org_id,omitempty"`
@@ -72,17 +74,19 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 	now := opts.Now()
 	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT"})
 	p, _ := json.Marshal(jwtPayload{
-		Sub:             c.Subject,
-		Iss:             opts.Issuer,
-		Iat:             now.Unix(),
-		Exp:             now.Add(opts.TTL).Unix(),
-		Role:            string(c.Role),
-		SupplierID:      c.SupplierID,
-		SupplierRole:    string(c.SupplierRole),
-		HomeNodeType:    string(c.HomeNodeType),
-		HomeNodeID:      c.HomeNodeID,
-		IsRegistered:    c.IsRegistered,
-		IsConfigured:    c.IsConfigured,
+		Sub:              c.Subject,
+		Iss:              opts.Issuer,
+		Iat:              now.Unix(),
+		Exp:              now.Add(opts.TTL).Unix(),
+		Role:             string(c.Role),
+		SupplierID:       c.SupplierID,
+		SupplierRole:     string(c.SupplierRole),
+		HomeNodeType:     string(c.HomeNodeType),
+		HomeNodeID:       c.HomeNodeID,
+		IsRegistered:     c.IsRegistered,
+		IsConfigured:     c.IsConfigured,
+		PhoneNumber:      c.PhoneNumber,
+		TokenUse:         c.TokenUse,
 		RetailerOrgID:    c.RetailerOrgID,
 		RetailerRole:     c.RetailerRole,
 		RetailerUserID:   c.RetailerUserID,
@@ -117,14 +121,16 @@ func Parse(token, secret string) (Claims, error) {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
 	return Claims{
-		Subject:         p.Sub,
-		Role:            Role(p.Role),
-		SupplierID:      p.SupplierID,
-		SupplierRole:    Role(p.SupplierRole),
-		HomeNodeType:    HomeNodeType(p.HomeNodeType),
-		HomeNodeID:      p.HomeNodeID,
-		IsRegistered:    p.IsRegistered,
-		IsConfigured:    p.IsConfigured,
+		Subject:          p.Sub,
+		Role:             Role(p.Role),
+		SupplierID:       p.SupplierID,
+		SupplierRole:     Role(p.SupplierRole),
+		HomeNodeType:     HomeNodeType(p.HomeNodeType),
+		HomeNodeID:       p.HomeNodeID,
+		IsRegistered:     p.IsRegistered,
+		IsConfigured:     p.IsConfigured,
+		PhoneNumber:      p.PhoneNumber,
+		TokenUse:         p.TokenUse,
 		RetailerOrgID:    p.RetailerOrgID,
 		RetailerRole:     p.RetailerRole,
 		RetailerUserID:   p.RetailerUserID,

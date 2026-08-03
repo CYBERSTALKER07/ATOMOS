@@ -27,6 +27,7 @@ import {
   HandHelping,
   FileBarChart,
   Box,
+  Building2,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -35,6 +36,7 @@ import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import Icon from "./Icon";
 import { apiFetch } from "@/lib/auth";
+import { OrgSwitcher } from "./OrgSwitcher";
 
 /* ────────── Navigation Config ────────── */
 
@@ -69,6 +71,7 @@ const NAV: NavSection[] = [
       { href: "/assist", icon: HandHelping, label: "Assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
       { href: "/insights", icon: BarChart3, label: "Insights", perm: "reports.view" },
       { href: "/reports", icon: FileBarChart, label: "Reports Pro", perm: "reports.view", pack: "REPORTS_PRO" },
+      { href: "/hq", icon: Building2, label: "Franchise HQ", perm: "reports.view", pack: "REPORTS_PRO" },
     ],
   },
   {
@@ -104,7 +107,8 @@ function filterNavByPerms(
             item.href === "/shifts" ||
             item.href === "/sections" ||
             item.href === "/assist" ||
-            item.href === "/reports"
+            item.href === "/reports" ||
+            item.href === "/hq"
           )
             return true;
           return false;
@@ -277,6 +281,9 @@ const DrawerContent = memo(function DrawerContent({
             margin: isRail ? "4px 8px" : "4px 16px",
           }}
         />
+
+        {/* C1.3 multi-org switcher (hidden when ≤1 membership) */}
+        {!isRail ? <OrgSwitcher /> : null}
 
         {/* Navigation */}
         <nav

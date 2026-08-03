@@ -10,6 +10,9 @@ import {
   AlertTriangle,
   WifiOff,
   CloudUpload,
+  PauseCircle,
+  PlayCircle,
+  XCircle,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
@@ -59,6 +62,17 @@ type Sale = {
   client_sale_id?: string;
 };
 
+/** Wave C3.1/C3.2 server parked cart (POS_HOLDS_ENABLED). */
+type ServerHold = {
+  hold_id: string;
+  location_id: string;
+  register_id?: string;
+  status: string;
+  cart: { lines?: CartLine[] } | CartLine[] | null;
+  note?: string;
+  expires_at?: string;
+};
+
 function formatMoney(minor: number, currency = "UZS") {
   return `${(minor / 100).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -88,6 +102,10 @@ export default function POSPage() {
   );
   const [pending, setPending] = useState<PendingPosSale[]>([]);
   const [receiptSeq, setReceiptSeq] = useState(1);
+  // C3.2 server holds (hidden when feature 404 / disabled)
+  const [holdsEnabled, setHoldsEnabled] = useState(false);
+  const [serverHolds, setServerHolds] = useState<ServerHold[]>([]);
+  const [holdNote, setHoldNote] = useState("");
 
   const totalMinor = useMemo(
     () => cart.reduce((s, l) => s + l.qty * l.unit_price_minor, 0),
@@ -152,9 +170,151 @@ export default function POSPage() {
     }
   }, [registerId]);
 
+  const activeLocationId = useMemo(() => {
+    const reg = registers.find((r) => r.register_id === registerId) || registers[0];
+    return reg?.location_id || "";
+  }, [registers, registerId]);
+
+  const loadServerHolds = useCallback(async () => {
+    if (!online) return;
+    try {
+      const q = activeLocationId
+        ? `?location_id=${encodeURIComponent(activeLocationId)}`
+        : "";
+      const res = await apiFetch(`/v1/retailer/pos/holds${q}`);
+      if (res.status === 404) {
+        setHoldsEnabled(false);
+        setServerHolds([]);
+        return;
+      }
+      if (!res.ok) return;
+      setHoldsEnabled(true);
+      const json = (await res.json()) as { items?: ServerHold[] };
+      setServerHolds(json.items ?? []);
+    } catch {
+      /* feature optional */
+    }
+  }, [online, activeLocationId]);
+
   useEffect(() => {
     void loadRegisters();
   }, [loadRegisters]);
+
+  useEffect(() => {
+    void loadServerHolds();
+  }, [loadServerHolds]);
+
+  const parkServerHold = async () => {
+    if (!session || cart.length === 0 || !activeLocationId) return;
+    if (!online) {
+      setError("Park hold requires network (use local auto-park offline).");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/v1/retailer/pos/holds", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `hold-park-${session.session_id}-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          location_id: activeLocationId,
+          register_id: session.register_id,
+          cart: { lines: cart },
+          note: holdNote.trim() || undefined,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 404) {
+        setHoldsEnabled(false);
+        throw new Error("Server holds disabled (POS_HOLDS_ENABLED)");
+      }
+      if (!res.ok) {
+        throw new Error(
+          (json as { error?: string }).error || `park_failed_${res.status}`,
+        );
+      }
+      setCart([]);
+      await clearParkedPosCart();
+      setHoldNote("");
+      setBanner("Cart parked on server (no stock held)");
+      await loadServerHolds();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Park failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resumeServerHold = async (hold: ServerHold) => {
+    if (!session || !online) {
+      setError("Resume requires open session and network.");
+      return;
+    }
+    if (cart.length > 0) {
+      setError("Clear or park current cart before resuming a hold.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(
+        `/v1/retailer/pos/holds/${hold.hold_id}/resume`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ location_id: activeLocationId || hold.location_id }),
+        },
+      );
+      const json = (await res.json().catch(() => ({}))) as ServerHold & {
+        error?: string;
+        code?: string;
+      };
+      if (!res.ok) {
+        throw new Error(json.code || json.error || `resume_failed_${res.status}`);
+      }
+      // Rehydrate cart from hold snapshot — no stock mutation server-side.
+      const raw = json.cart ?? hold.cart;
+      let lines: CartLine[] = [];
+      if (Array.isArray(raw)) {
+        lines = raw as CartLine[];
+      } else if (raw && typeof raw === "object" && Array.isArray((raw as { lines?: CartLine[] }).lines)) {
+        lines = (raw as { lines: CartLine[] }).lines;
+      }
+      setCart(lines);
+      setBanner(`Resumed hold ${hold.hold_id.slice(0, 8)}…`);
+      await loadServerHolds();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Resume failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const voidServerHold = async (holdId: string) => {
+    if (!online) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/v1/retailer/pos/holds/${holdId}/void`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(
+          (json as { error?: string }).error || `void_failed_${res.status}`,
+        );
+      }
+      setBanner("Hold voided (no stock change)");
+      await loadServerHolds();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Void hold failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const createRegister = async () => {
     setBusy(true);
@@ -657,6 +817,31 @@ export default function POSPage() {
                 <span>Total</span>
                 <span>{formatMoney(totalMinor)}</span>
               </div>
+              {holdsEnabled && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <label className="block text-sm text-muted-foreground">
+                    Park note (optional)
+                    <input
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      value={holdNote}
+                      onChange={(e) => setHoldNote(e.target.value)}
+                      placeholder="Customer returns…"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busy || cart.length === 0 || !online}
+                    onClick={() => void parkServerHold()}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
+                  >
+                    <PauseCircle className="h-4 w-4" />
+                    Park cart on server
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Does not reserve stock. Resume only at this location. Expires in 24h.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -705,6 +890,79 @@ export default function POSPage() {
             </>
           )}
         </section>
+
+        {/* C3.2 server holds list (same location) */}
+        {holdsEnabled && session && (
+          <section className="lg:col-span-2 rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Parked carts (server)</h2>
+              <button
+                type="button"
+                disabled={busy || !online}
+                onClick={() => void loadServerHolds()}
+                className="text-xs text-muted-foreground underline disabled:opacity-50"
+              >
+                Refresh
+              </button>
+            </div>
+            {serverHolds.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No held carts at this location.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border text-sm">
+                {serverHolds.map((h) => {
+                  const cartObj = h.cart;
+                  let lineCount = 0;
+                  if (Array.isArray(cartObj)) lineCount = cartObj.length;
+                  else if (cartObj && Array.isArray(cartObj.lines))
+                    lineCount = cartObj.lines.length;
+                  return (
+                    <li
+                      key={h.hold_id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-3"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {h.hold_id.slice(0, 10)}… · {lineCount} line(s)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {h.note ? `${h.note} · ` : ""}
+                          {h.expires_at
+                            ? `expires ${new Date(h.expires_at).toLocaleString()}`
+                            : "HELD"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={busy || !online || cart.length > 0}
+                          onClick={() => void resumeServerHold(h)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs disabled:opacity-50"
+                          title={
+                            cart.length > 0
+                              ? "Clear or park current cart first"
+                              : "Resume into current cart"
+                          }
+                        >
+                          <PlayCircle className="h-3.5 w-3.5" /> Resume
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy || !online}
+                          onClick={() => void voidServerHold(h.hold_id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+                        >
+                          <XCircle className="h-3.5 w-3.5" /> Void
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
     </PageChrome>
   );

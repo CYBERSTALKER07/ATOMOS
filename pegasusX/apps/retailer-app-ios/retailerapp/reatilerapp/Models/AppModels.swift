@@ -25,19 +25,55 @@ extension User {
     )
 }
 
-// MARK: - Auth Response
+// MARK: - Auth Response (C1.2/C1.3 multi-org aware)
+
+struct RetailerMembershipDTO: Codable, Identifiable, Hashable {
+    var id: String { "\(retailerId)|\(userId)" }
+    let userId: String
+    let retailerId: String
+    let retailerRole: String
+    let name: String?
+    let phone: String?
+    let isActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case retailerId = "retailer_id"
+        case retailerRole = "retailer_role"
+        case name, phone
+        case isActive = "is_active"
+    }
+}
 
 struct AuthResponse: Codable {
     let token: String
-    let user: User
+    let tokenType: String?
+    let user: User?
     let firebaseToken: String?
     let isConfigured: Bool?
+    let memberships: [RetailerMembershipDTO]?
+    let expiresInSec: Int?
+    let retailerId: String?
+    let refreshToken: String?
 
     enum CodingKeys: String, CodingKey {
-        case token, user
+        case token, user, memberships
+        case tokenType = "token_type"
         case firebaseToken = "firebase_token"
         case isConfigured = "is_configured"
+        case expiresInSec = "expires_in_sec"
+        case retailerId = "retailer_id"
+        case refreshToken = "refresh_token"
     }
+
+    var isPendingOrgSelect: Bool {
+        (tokenType ?? "").lowercased() == "pending_org_select"
+    }
+}
+
+struct SelectOrgRequest: Encodable {
+    let retailerId: String
+    enum CodingKeys: String, CodingKey { case retailerId = "retailer_id" }
 }
 
 // MARK: - Demand Forecast (AI)

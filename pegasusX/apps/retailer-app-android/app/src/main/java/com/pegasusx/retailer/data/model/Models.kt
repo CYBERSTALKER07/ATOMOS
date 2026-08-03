@@ -631,10 +631,39 @@ data class RegisterRequest(
 )
 
 @Serializable
+data class RetailerMembershipDTO(
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("retailer_role") val retailerRole: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("phone") val phone: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
 data class AuthResponse(
-    @SerialName("token") val token: String,
-    @SerialName("user") val user: User,
+    @SerialName("token") val token: String = "",
+    @SerialName("token_type") val tokenType: String = "full",
+    @SerialName("user") val user: User? = null,
     @SerialName("firebase_token") val firebaseToken: String = "",
+    @SerialName("is_configured") val isConfigured: Boolean? = null,
+    @SerialName("memberships") val memberships: List<RetailerMembershipDTO> = emptyList(),
+    @SerialName("expires_in_sec") val expiresInSec: Int = 420,
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("refresh_token") val refreshToken: String = "",
+) {
+    val isPendingOrgSelect: Boolean
+        get() = tokenType.equals("pending_org_select", ignoreCase = true)
+}
+
+@Serializable
+data class SelectOrgRequest(
+    @SerialName("retailer_id") val retailerId: String,
+)
+
+@Serializable
+data class MembershipsResponse(
+    @SerialName("memberships") val memberships: List<RetailerMembershipDTO> = emptyList(),
 )
 
 // ── Empathy Settings ──

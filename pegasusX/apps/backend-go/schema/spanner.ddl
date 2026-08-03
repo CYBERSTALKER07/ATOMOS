@@ -1692,6 +1692,23 @@ CREATE UNIQUE INDEX UQ_RetailerUsers_ByRetailerPhone ON RetailerUsers(RetailerId
 CREATE INDEX Idx_RetailerUsers_ByPhone ON RetailerUsers(Phone);
 CREATE INDEX Idx_RetailerUsers_ByRetailer ON RetailerUsers(RetailerId, IsActive, UpdatedAt DESC);
 
+-- Wave C1.1: multi-org membership (UserId may belong to many RetailerIds)
+CREATE TABLE RetailerUserMemberships (
+  UserId          STRING(36)  NOT NULL,
+  RetailerId      STRING(36)  NOT NULL,
+  RetailerRole    STRING(32)  NOT NULL,
+  IsActive        BOOL        NOT NULL DEFAULT (true),
+  LocationIdsJson STRING(MAX),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (UserId, RetailerId);
+
+CREATE INDEX Idx_RetailerUserMemberships_ByRetailer
+  ON RetailerUserMemberships (RetailerId, IsActive);
+
+CREATE INDEX Idx_RetailerUserMemberships_ByUserActive
+  ON RetailerUserMemberships (UserId, IsActive);
+
 CREATE TABLE RetailerCapabilityPacks (
   RetailerId      STRING(36)  NOT NULL,
   PackId          STRING(32)  NOT NULL,
@@ -1863,6 +1880,56 @@ CREATE TABLE RetailerPosSales (
 CREATE INDEX Idx_RetailerPosSales_BySession ON RetailerPosSales(SessionId, CreatedAt DESC);
 CREATE INDEX Idx_RetailerPosSales_ByRetailer ON RetailerPosSales(RetailerId, CreatedAt DESC);
 CREATE UNIQUE INDEX UQ_RetailerPosSales_Receipt ON RetailerPosSales(RetailerId, ReceiptNumber);
+
+-- Wave C3.1: parked POS carts (holds) — never touch OnHand
+CREATE TABLE RetailerPosHolds (
+  HoldId        STRING(36)  NOT NULL,
+  RetailerId    STRING(36)  NOT NULL,
+  LocationId    STRING(36)  NOT NULL,
+  RegisterId    STRING(36),
+  UserId        STRING(36)  NOT NULL,
+  Status        STRING(16)  NOT NULL,
+  CartJson      STRING(MAX) NOT NULL,
+  Note          STRING(512),
+  ExpiresAt     TIMESTAMP   NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ResumedAt     TIMESTAMP,
+  VoidedAt      TIMESTAMP
+) PRIMARY KEY (RetailerId, HoldId);
+
+CREATE INDEX Idx_RetailerPosHolds_ByLocationStatus
+  ON RetailerPosHolds (RetailerId, LocationId, Status, ExpiresAt);
+
+CREATE INDEX Idx_RetailerPosHolds_ByExpires
+  ON RetailerPosHolds (Status, ExpiresAt);
+
+-- Wave C2.1: HQ analytics projections (sale/void writers same Apply as ledger)
+CREATE TABLE RetailerHqSalesDaily (
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  Day          DATE        NOT NULL,
+  SkuId        STRING(128) NOT NULL,
+  QtySold      INT64       NOT NULL,
+  QtyVoided    INT64       NOT NULL,
+  GrossMinor   INT64       NOT NULL,
+  NetMinor     INT64       NOT NULL,
+  Currency     STRING(8)   NOT NULL,
+  UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, Day, LocationId, SkuId);
+
+CREATE INDEX Idx_RetailerHqSalesDaily_ByDay
+  ON RetailerHqSalesDaily (RetailerId, Day, LocationId);
+
+CREATE TABLE RetailerHqStockSnapshot (
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  SkuId        STRING(128) NOT NULL,
+  OnHand       INT64       NOT NULL,
+  Reserved     INT64       NOT NULL,
+  AsOf         TIMESTAMP   NOT NULL,
+  UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, LocationId, SkuId);
 
 -- Retail OS Phase 5: shifts & time clock
 CREATE TABLE RetailerTimeEntries (

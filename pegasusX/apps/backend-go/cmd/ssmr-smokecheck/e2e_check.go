@@ -270,6 +270,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	// runNegotiationE2E remains in e2e_driver.go for a future re-enable.
 	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
 
+	// Wave C1.4 multi-org auth markers (flag off = single-org + skip picker/switch)
+	if err := runMultiOrgAuthE2E(ctx, client, base, cfg, supplierID); err != nil {
+		return fmt.Errorf("multi-org auth: %w", err)
+	}
+
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("client policy e2e: %w", err)
 	}

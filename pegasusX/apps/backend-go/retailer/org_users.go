@@ -71,6 +71,16 @@ func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		s.ownerByRetailer = map[string]RetailerUser{}
 	}
 	if u, ok := s.ownerByRetailer[ret.RetailerID]; ok {
+		if s.membershipsByUser == nil {
+			s.membershipsByUser = map[string]map[string]RetailerMembership{}
+		}
+		if s.membershipsByUser[u.UserID] == nil {
+			s.membershipsByUser[u.UserID] = map[string]RetailerMembership{}
+		}
+		s.membershipsByUser[u.UserID][u.RetailerID] = RetailerMembership{
+			UserID: u.UserID, RetailerID: u.RetailerID, RetailerRole: u.RetailerRole,
+			IsActive: u.IsActive, Phone: u.Phone, Name: u.Name,
+		}
 		return u, nil
 	}
 	u := RetailerUser{
@@ -85,6 +95,17 @@ func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		UpdatedAt:    s.now(),
 	}
 	s.ownerByRetailer[ret.RetailerID] = u
+	// Dual-write membership (memory) — unlock held after return via unlocked path
+	if s.membershipsByUser == nil {
+		s.membershipsByUser = map[string]map[string]RetailerMembership{}
+	}
+	if s.membershipsByUser[u.UserID] == nil {
+		s.membershipsByUser[u.UserID] = map[string]RetailerMembership{}
+	}
+	s.membershipsByUser[u.UserID][u.RetailerID] = RetailerMembership{
+		UserID: u.UserID, RetailerID: u.RetailerID, RetailerRole: u.RetailerRole,
+		IsActive: true, Phone: u.Phone, Name: u.Name,
+	}
 	return u, nil
 }
 
@@ -115,6 +136,7 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
 			return err
 		}
+		// C1.1 dual-write membership (best-effort if table missing — Apply after txn)
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateRetailer, u.RetailerID, events.TopicMain, events.RetailerEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventRetailerStaffCreated, Timestamp: s.now().Format(time.RFC3339Nano)},
@@ -131,13 +153,16 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 	if err != nil {
 		// Race: another request created owner — re-read.
 		if u2, ok, err2 := s.findRetailerUserByRetailerPhone(ctx, ret.RetailerID, ret.Phone); err2 == nil && ok {
+			_ = s.UpsertMembershipFromUser(ctx, u2)
 			return u2, nil
 		}
 		if u2, ok, err2 := s.findOwnerUser(ctx, ret.RetailerID); err2 == nil && ok {
+			_ = s.UpsertMembershipFromUser(ctx, u2)
 			return u2, nil
 		}
 		return RetailerUser{}, fmt.Errorf("insert owner user: %w", err)
 	}
+	_ = s.UpsertMembershipFromUser(ctx, u)
 	return u, nil
 }
 

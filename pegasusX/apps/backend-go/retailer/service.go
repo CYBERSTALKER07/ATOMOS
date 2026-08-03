@@ -359,6 +359,19 @@ type Service struct {
 	localCatalog map[string][]LocalSKU
 	// B4 DEMAND_SIGNAL memory capture (tests + no-Spanner emit path)
 	demandSignalsEmitted []events.DemandSignalEvent
+	// C1.1 multi-org memberships (memory dual-write when Spanner nil)
+	// key: userID → memberships by retailerID
+	membershipsByUser map[string]map[string]RetailerMembership
+	// C1.2 test override for MULTI_ORG_LOGIN_ENABLED (nil = read env)
+	multiOrgLoginOverride *bool
+	// C3.1 parked POS holds (memory when Spanner nil)
+	posHolds         map[string]PosHoldDTO // retailerID|holdID
+	posHoldsOverride *bool                 // test override for POS_HOLDS_ENABLED
+	// C2.1 HQ analytics memory projections
+	hqSalesDaily map[hqSalesKey]HqSalesDayDTO
+	hqStockSnap  map[hqStockKey]hqStockSnap
+	// C2.2 test override for HQ_ANALYTICS_ENABLED (nil = env)
+	hqAnalyticsOverride *bool
 
 	firebaseVerifier auth.FirebaseVerifier
 	spannerClient    *spanner.Client
@@ -385,6 +398,12 @@ type ServiceConfig struct {
 	NewID                func() string
 	FirebaseVerifier     auth.FirebaseVerifier
 	Spanner              *spanner.Client
+	// MultiOrgLoginEnabled overrides MULTI_ORG_LOGIN_ENABLED for tests (nil = env).
+	MultiOrgLoginEnabled *bool
+	// PosHoldsEnabled overrides POS_HOLDS_ENABLED for tests (nil = env).
+	PosHoldsEnabled *bool
+	// HqAnalyticsEnabled overrides HQ_ANALYTICS_ENABLED for tests (nil = env).
+	HqAnalyticsEnabled *bool
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -412,11 +431,17 @@ func NewService(c ServiceConfig) *Service {
 		locations:           c.Locations,
 		supplierID:          c.SupplierID,
 		countryCode:         c.CountryCode,
-		jwtSecret:           c.JWTSecret,
-		jwtIssuer:           c.JWTIssuer,
-		log:                 c.Log,
-		now:                 c.Now,
-		newID:               c.NewID,
+		jwtSecret:             c.JWTSecret,
+		jwtIssuer:             c.JWTIssuer,
+		log:                   c.Log,
+		now:                   c.Now,
+		newID:                 c.NewID,
+		multiOrgLoginOverride: c.MultiOrgLoginEnabled,
+		posHoldsOverride:      c.PosHoldsEnabled,
+		posHolds:              make(map[string]PosHoldDTO),
+		hqSalesDaily:          make(map[hqSalesKey]HqSalesDayDTO),
+		hqStockSnap:           make(map[hqStockKey]hqStockSnap),
+		hqAnalyticsOverride:   c.HqAnalyticsEnabled,
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
 		familyWritesGone:    make(map[string]bool),

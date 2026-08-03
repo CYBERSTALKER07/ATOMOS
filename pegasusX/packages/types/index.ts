@@ -2723,6 +2723,128 @@ export interface SwitchRetailerLocationResponse {
   location: RetailerLocation;
 }
 
+/** Wave C1.2/C1.3 multi-org membership (person → retailer orgs). */
+export interface RetailerMembershipDTO {
+  user_id: string;
+  retailer_id: string;
+  retailer_role: string;
+  name?: string;
+  phone?: string;
+  is_active: boolean;
+}
+
+export type RetailerAuthTokenType = "full" | "pending_org_select";
+
+/** Login may return full JWT or intermediate PendingOrgSelect (C1.2). */
+export interface RetailerLoginResponse {
+  token: string;
+  token_type?: RetailerAuthTokenType;
+  refresh_token?: string;
+  is_configured?: boolean;
+  retailer_id?: string;
+  retailer_org_id?: string;
+  user_id?: string;
+  retailer_role?: string;
+  memberships?: RetailerMembershipDTO[];
+  membership_count?: number;
+  expires_in_sec?: number;
+  user?: {
+    id: string;
+    retailer_id?: string;
+    name: string;
+    company?: string;
+    email?: string;
+    avatar_url?: string | null;
+    role?: string;
+  };
+  home_surface?: string;
+  capabilities?: string[];
+  active_location_id?: string;
+  location_ids?: string[];
+  firebase_token?: string;
+}
+
+export interface RetailerSelectOrgRequest {
+  retailer_id: string;
+}
+
+export interface RetailerSwitchOrgRequest {
+  retailer_id: string;
+}
+
+export interface RetailerMembershipsResponse {
+  memberships: RetailerMembershipDTO[];
+}
+
+/** Wave C3.1/C3.2 parked POS cart (server hold). Never reserves stock. */
+export type RetailerPosHoldStatus = "HELD" | "RESUMED" | "EXPIRED" | "VOIDED";
+
+export interface RetailerPosHold {
+  hold_id: string;
+  retailer_id: string;
+  location_id: string;
+  register_id?: string;
+  user_id: string;
+  status: RetailerPosHoldStatus | string;
+  cart: unknown;
+  note?: string;
+  expires_at: string;
+  created_at?: string;
+  updated_at?: string;
+  resumed_at?: string;
+  voided_at?: string;
+}
+
+export interface RetailerPosHoldsListResponse {
+  retailer_id: string;
+  location_id?: string;
+  items: RetailerPosHold[];
+}
+
+export interface ParkRetailerPosHoldRequest {
+  location_id: string;
+  register_id?: string;
+  cart: unknown;
+  note?: string;
+}
+
+export interface ResumeRetailerPosHoldRequest {
+  location_id: string;
+}
+
+/** Wave C2.2 franchise HQ analytics reads. */
+export interface RetailerHqSummary {
+  retailer_id: string;
+  day: string;
+  location_count: number;
+  sku_count: number;
+  qty_sold: number;
+  qty_voided: number;
+  gross_minor: number;
+  net_minor: number;
+  currency: string;
+  honest_empty?: boolean;
+}
+
+export interface RetailerHqLocationSales {
+  location_id: string;
+  qty_sold: number;
+  qty_voided: number;
+  gross_minor: number;
+  net_minor: number;
+  currency: string;
+}
+
+export interface RetailerHqSalesByLocationResponse {
+  retailer_id: string;
+  day: string;
+  items: RetailerHqLocationSales[];
+  org_net_minor: number;
+  sum_locations: number;
+  balanced: boolean;
+  honest_empty?: boolean;
+}
+
 /** Retail OS Phase 3 store stock. */
 export type RetailerStockBin = "BACKROOM" | "FLOOR" | "QUARANTINE";
 

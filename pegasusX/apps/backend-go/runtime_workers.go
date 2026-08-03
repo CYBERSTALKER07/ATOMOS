@@ -98,6 +98,11 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.BillingTierConsumer.Start(ctx)
 		slog.Info("billing tier consumer started")
 	}
+	// Wave C3.2: expire parked POS carts past 24h TTL (no-op when POS_HOLDS_ENABLED off).
+	if app.RetailerService != nil {
+		go app.RetailerService.RunPosHoldsSweeper(ctx, 15*time.Minute)
+		slog.Info("retailer pos holds sweeper started")
+	}
 }
 
 func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {

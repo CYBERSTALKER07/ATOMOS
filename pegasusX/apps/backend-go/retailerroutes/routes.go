@@ -37,8 +37,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/login", d.Service.HandleRetailerLogin)
 	r.Post("/v1/auth/retailer/refresh", d.Service.HandleRetailerRefresh)
 	r.Post("/v1/auth/retailer/register", d.Service.HandleMobileRegister)
+	// C1.2 multi-org: intermediate token allowed (SessionAuth attaches claims; no RequireRole).
+	r.Get("/v1/auth/retailer/memberships", d.Service.HandleListMemberships)
+	r.Post("/v1/auth/retailer/select-org", d.Service.HandleSelectOrg)
 
 	mountProtected := func(rr chi.Router) {
+		// C1.2 switch-org requires full JWT (RequireRole rejects PendingOrgSelect).
+		rr.Post("/v1/auth/retailer/switch-org", d.Service.HandleSwitchOrg)
 		// Retail OS Phase 0 identity + capability packs
 		rr.Get("/v1/retailer/me", d.Service.HandleMe)
 		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)
@@ -86,6 +91,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)
 		rr.Get("/v1/retailer/pos/catalog", d.Service.HandlePOSCatalogSearch)
 
+		// Wave C3.1 parked carts (holds) — flag POS_HOLDS_ENABLED
+		rr.Get("/v1/retailer/pos/holds", d.Service.HandlePosHolds)
+		rr.Post("/v1/retailer/pos/holds", d.Service.HandlePosHolds)
+		rr.Post("/v1/retailer/pos/holds/{holdID}/resume", d.Service.HandlePosHoldResume)
+		rr.Post("/v1/retailer/pos/holds/{holdID}/void", d.Service.HandlePosHoldVoid)
+
 		// Local/manual POS catalog (non-Pegasus SKUs)
 		rr.Get("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
 		rr.Post("/v1/retailer/local-skus", d.Service.HandleLocalSKUs)
@@ -119,6 +130,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/reports/inventory", d.Service.HandleReportsInventory)
 		rr.Get("/v1/retailer/reports/shifts", d.Service.HandleReportsShifts)
 		rr.Get("/v1/retailer/reports/export", d.Service.HandleReportsExport)
+
+		// Wave C2.2 franchise HQ (reads; flag HQ_ANALYTICS_ENABLED)
+		rr.Get("/v1/retailer/hq/summary", d.Service.HandleHqSummary)
+		rr.Get("/v1/retailer/hq/sales-by-location", d.Service.HandleHqSalesByLocation)
+		rr.Get("/v1/retailer/hq/sales-by-sku", d.Service.HandleHqSalesBySku)
+		rr.Get("/v1/retailer/hq/shrinkage", d.Service.HandleHqShrinkage)
+		rr.Get("/v1/retailer/hq/export", d.Service.HandleHqExport)
 
 		// L3 sell-through flywheel insights
 		rr.Get("/v1/retailer/insights/sell-through", d.Service.HandleSellThroughInsights)
