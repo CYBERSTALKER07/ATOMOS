@@ -22,7 +22,7 @@ export default function ContactPage() {
 
   useEffect(() => {
     document.title = "Let's Connect | Get in Touch";
-    
+
     const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
     timeline
@@ -78,7 +78,7 @@ export default function ContactPage() {
       });
 
       // Animate success message
-      gsap.fromTo('.success-message', 
+      gsap.fromTo('.success-message',
         { scale: 0, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out' }
       );
@@ -125,11 +125,11 @@ export default function ContactPage() {
             <div ref={formRef}>
               <div className="border border-white/10 rounded-none p-8 bg-[#111]">
                 <h2 className="text-3xl font-light mb-6">Send a Message</h2>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-semibold mb-2">Your Name *</label>
-                    <input 
+                    <input
                       type="text"
                       name="name"
                       value={formData.name}
@@ -143,7 +143,7 @@ export default function ContactPage() {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2">Email Address *</label>
-                    <input 
+                    <input
                       type="email"
                       name="email"
                       value={formData.email}
@@ -157,7 +157,7 @@ export default function ContactPage() {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2">Subject *</label>
-                    <input 
+                    <input
                       type="text"
                       name="subject"
                       value={formData.subject}
@@ -171,7 +171,7 @@ export default function ContactPage() {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2">Message *</label>
-                    <textarea 
+                    <textarea
                       name="message"
                       value={formData.message}
                       onChange={handleChange}
@@ -213,13 +213,12 @@ export default function ContactPage() {
                 <Mail className="w-8 h-8 mb-4 text-white" />
                 <h3 className="text-2xl font-light mb-3">Email</h3>
                 <div className="space-y-2">
-                  <a 
+                  <a
                     href="mailto:shsoliyev@aut-edu.uz"
                     className="block text-[#A9EBF9] hover:text-white transition-colors text-lg"
                   >
-                    shsoliyev@aut-edu.uz
                   </a>
-                  <a 
+                  <a
                     href="mailto:cyberstalkerx7@gmail.com"
                     className="block text-[#A9EBF9] hover:text-white transition-colors text-lg"
                   >
