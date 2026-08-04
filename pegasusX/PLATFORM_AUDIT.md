@@ -2,6 +2,8 @@
 
 Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-08-04. No repo markdown was trusted; every claim below traces to code, schema, or config. File:line references are given so each finding can be re-checked.
 
+**Re-aligned 2026-08-04 (post Phase A/B G1–G3 backend):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal is env-selected (`PEGASUS` default, not unconditional Fake); billing workers are constructed but still schema-broken; credit **scoring product removed** (limits + status only); Firebase client configs are committed (OTP/SMS/SHA still ops-owned). Structural findings (single-supplier runtime, no ML, no partner API) remain.
+
 ---
 
 ## 0. Executive verdict
@@ -10,7 +12,7 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 
 **But it is not the system the docs and naming claim it is.** Three structural facts dominate everything else:
 
-1. **It is a single-supplier system, at runtime, by construction.** The schema is multi-tenant-shaped (`SupplierId` leads most keys), and supplier registration will mint up to 10 tenants — but `bootstrap/bootstrap.go` injects one `supplierSeed.SupplierID` into ~15 service constructors at process start (15 occurrences confirmed), and `order/service.go:286` holds it as a private field used as a constant at lines 981, 1027, 1043, 1089, 1214, 2780. **The supplier the retailer picks in the UI is discarded during order creation.** Registering a second supplier today produces a tenant whose orders are attributed to `seed-supplier-1`. The data plane can hold 10 suppliers; the request plane can serve exactly 1.
+1. **It is a single-supplier system, at runtime, by construction.** The schema is multi-tenant-shaped (`SupplierId` leads most keys), and supplier registration will mint up to 10 tenants — but `bootstrap/bootstrap.go` injects one `supplierSeed.SupplierID` into ~15 service constructors at process start, and `order.Service` holds it as a private `supplierID` field (`order/service.go` ~351) used as a constant on create/list paths. **The supplier the retailer picks in the UI is discarded during order creation.** Registering a second supplier today produces a tenant whose orders are attributed to the seed supplier. The data plane can hold 10 suppliers; the request plane can serve exactly 1.
 
 2. **There is zero machine learning, and the "AI" layer is arithmetic.** The Python service's entire dependency list is one line: `ortools==9.15.6755`. No Vertex, Gemini, OpenAI, TensorFlow, PyTorch, ONNX, sklearn, XGBoost, Prophet, statsmodels, embeddings, or vector search anywhere in Go modules, requirements, Cargo, or package.json. The code says so itself: `planning/baseline_sources.go:14` — *"Never returns 'ml' — training inference is deferred"*; `cmd/planning-training-export/main.go:24` — *"collect-only; no training"*. The auto-order quantity is `line.Quantity / 2` (`ai-worker/synthesis/engine.go:310`).
 
@@ -24,8 +26,8 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 
 | Layer | Score | One-line justification |
 |---|---|---|
-| Go backend | **7.5/10** | Real transactional primitives, disciplined DI, 1 TODO in 128k lines. Loses points on duplicate event publishing and 10 state-machine bypasses. |
-| Domain modelling | **8/10** | 18-state order machine, two-sided delivery negotiation, volumetric dispatch, COD/credit/split payment. Genuinely deep. |
+| Go backend | **8/10** | Same transactional primitives; claims/receive/stock liability spine + claim-window snapshot now wired. Still loses points on duplicate event publishing and state-machine bypasses. |
+| Domain modelling | **8.5/10** | 18-state order machine, two-sided delivery negotiation, volumetric dispatch, COD/credit/split payment, post-delivery claims ↔ quarantine ↔ reverse. Genuinely deep. |
 | Web frontend | **6/10** | Excellent type hygiene and idempotency; no server-state library across 60k lines, 0% localized, accessibility unusable. |
 | iOS | **4/10** | Modern SwiftUI/`@Observable`, but a decoder bug breaks the driver's primary flow and background location is misconfigured three ways. |
 | Android | **5/10** | Best offline queue in the repo; `supplier-app-android` does not compile. |
@@ -54,19 +56,20 @@ Worth stating precisely, because the rest of this report is critical and the goo
 12. **Spanner emulator integration tests in CI** (`.github/workflows/ci.yml:53-68`). Most teams never build this.
 13. **Code hygiene:** 1 TODO in 128k lines of Go, 0 `context.TODO()`, 3 non-test panics, zero `@ts-ignore`/`@ts-expect-error` in ~72k lines of TypeScript.
 14. **`cmd/ecosystem-simulator`** drives a full multi-role lifecycle against a live API — a legitimately valuable harness that isn't wired into CI.
+15. **Claims ↔ stock liability spine (Phase B).** `claims.Service` is constructed in `bootstrap/bootstrap.go`, mounted on `orderroutes` (`POST/GET …/claims`, `GET …/claim-eligibility`, approve/reject), with GCS fail-closed evidence, QUARANTINE hold (fail-closed + compensate), receive qty exclusion, reverse/WH fanout, COMPLETED claim-window snapshot + supplier/WH return-policy APIs. E2e markers include `PX_E2E_CLAIMS_*` / `PX_E2E_CLAIM_ELIGIBILITY_OK` / `PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK`.
 
 ---
 
 ## 2. The theatre list
 
-The single most important pattern in this codebase: **fourteen features ship the *interface* of a capability with none of the substance, and the deferral was never tracked.** This is more dangerous than missing features, because dashboards, policy toggles, and state machines all imply the thing works.
+The single most important pattern in this codebase: **features ship the *interface* of a capability with none of the substance, and the deferral was never tracked.** This is more dangerous than missing features, because dashboards, policy toggles, and state machines all imply the thing works. (Count refreshed 2026-08-04 — claims removed from theatre; fiscal/billing downgraded to partial.)
 
 | # | Feature | What exists | What's actually there | Evidence |
 |---|---|---|---|---|
-| 1 | **Fiscalization** | Full FISCALIZING → FISCAL_FAILED retry state machine, `OrderFiscalReceipts` table, retry endpoint | `defaultFiscalProvider()` returns `FakeFiscalProvider{}` **unconditionally**; it always succeeds unless the order ID contains "fiscal-fail" | `order/fiscal.go:79-100` |
-| 2 | **Marketplace commission** | 3 billing tables, 2 worker files | Neither worker is ever constructed; the writes don't match the schema (`AmountDelta` vs `CurrentValue`, omits NOT NULL columns) so they'd fail on first execution. **Nothing is metered.** | `internal/services/billing/meter_worker.go`, `kafka/billing_tier_worker.go`, ddl:951-974 |
-| 3 | **Claims / disputes** | 2 tables, 3-file package, a registered endpoint | The `claims` package is **never imported by any file**; the route is behind `if d.ClaimsService != nil` and nothing ever sets it. **The endpoint does not exist at runtime.** | `retailerroutes/routes.go:63-64`, ddl:1264 |
-| 4 | **Double-entry ledger** | Correct balanced-transfer implementation with normal-balance semantics | Nothing imports it, and `LedgerAccounts`/`LedgerEntries`/`LedgerTransactions` **are not in the DDL** — it would fail with table-not-found. The live money path is a single-sided event log with no reconciliation invariant. | `ledger/service.go:83-85` vs `schema/spanner.ddl` |
+| 1 | **Fiscalization (legal OFD)** | Full FISCALIZING → FISCAL_FAILED retry state machine, `OrderFiscalReceipts`, env-selected providers (`PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`) | **Not unconditional Fake anymore** — `defaultFiscalProvider()` → `ProviderFromEnv()`; SSMR/staging use `FISCAL_PROVIDER=PEGASUS` (platform commercial receipts). **Legal Soliq OFD still not production-ready** — `MY_SOLIQ` needs sandbox creds; misconfig returns hard-fail rather than silent Fake. | `order/fiscal.go` (`defaultFiscalProvider`); `order/fiscal_provider.go` (`ProviderFromEnv`) |
+| 2 | **Marketplace commission** | 3 billing tables, meter + tier workers, consumer started in `runtime_workers.go` | Workers **are constructed** (`bootstrap` + `BillingTierConsumer.Start`). Writes still **don't match schema** (`AmountDelta` vs `CurrentValue`; insert omits `EventId`/`MeterType` NOT NULL columns) — first live meter event fails. **Nothing is successfully metered.** | `internal/services/billing/meter_worker.go:47-60`; `schema/spanner.ddl` `BillingMeterEvents` / `BillingSupplierMeters` |
+| ~~3~~ | ~~**Claims / disputes**~~ | — | **Retired from theatre (2026-08-04).** Live service + routes + e2e. Residual hygiene: `Claims`/`ClaimEvidences` live in migration `20260728_logistics_claims.ddl` but are **missing from `schema/spanner.ddl`** (schema-drift risk for greenfield applies). Portal claim-window **settings UX** still open (API only). | `bootstrap/bootstrap.go` claims wiring; `orderroutes/routes.go`; `claims/*`; `order/claim_window.go` |
+| 4 | **Double-entry ledger** | Correct balanced-transfer implementation with normal-balance semantics | Nothing imports `ledger/` outside its own package, and `LedgerAccounts`/`LedgerEntries`/`LedgerTransactions` **are not in the DDL** — it would fail with table-not-found. Live money path is `PaymentLedgerEntries` / `ArLedgerEntries` (event log), not the textbook package. | `ledger/service.go` vs `schema/spanner.ddl` |
 | 5 | **AI confidence gate** | `MinConfidence` knob, debug log for rejections | Minimum possible score is `0.4 + 0.15 + 0 + 0 = 0.55`; the gate is `score < 0.55`. **`0.55 < 0.55` is false — every event passes.** | `synthesis/engine.go:181` vs `:99, 451-455` |
 | 6 | **Touchless replenishment policy** | `MinConfidenceScore FLOAT64 DEFAULT 0.85` | Loaded, written, and **never used in any decision**. A supplier setting "only auto-approve above 95%" is silently ignored. | `replenishment/policies.go:52,83` vs `touchless.go:41-52,242-253` |
 | 7 | **Auto-confirm of AI preorders** | `AutoConfirmAt` set to +24h; `AutoConfirmDueOrders` implemented | **Zero call sites.** Not in `runtime_workers.go`. AI preorders sit at `PENDING` forever, and dispatch eligibility requires `CONFIRMED`/`AUTO_CONFIRMED` — so they are invisible to dispatch until a human taps confirm. | `order/preorder_service.go:295`; `dispatch/eligibility.go:5-8` |
@@ -106,6 +109,7 @@ Ranked. These are bugs, not gaps.
 **P0-8 — The prod overlay is undeployable.** `kustomize build infra/k8s/overlays/prod` emits literal `PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER` for 3 workloads, `pegasusx-optimizer-core:local`, and two `:latest` images from a **different GCP project**. The `backend-go-secrets` ExternalSecret requires 12 keys; Terraform provisions 5 of those names and only 5 of all 19 secrets have any version — none of them JWT, GlobalPay, Adyen, Stripe, or Maps. ESO sync is atomic, so no pod starts. The Ingress references TLS secret `pegasusx-api-tls` that nothing creates.
 
 **P1 — Others worth naming:**
+- **`Claims` / `ClaimEvidences` missing from `schema/spanner.ddl`.** Tables exist in `schema/migrations/20260728_logistics_claims.ddl` (and are used by the live claims package). Greenfield `spanner.ddl` applies and schema-drift CI that only diffs the monolith file will miss them — mirror the CREATE TABLEs into `spanner.ddl`.
 - **Payment bypass violates the fiscal hard gate its own test asserts.** `order/supplier_ops.go:237` writes `Status: COMPLETED` from `AWAITING_PAYMENT` via a raw `UpdateMap`; `state_machine_test.go:40-44` explicitly asserts that transition must be blocked. The test passes; production skips fiscalization on a real money path. The validator has **4 call sites against 12 direct status assignments**, and `ARRIVED_SHOP_CLOSED` has no inbound edge in the table yet is written at `shop_closed.go:151`.
 - **Plaintext `"4321"` written into the `PinHash` column.** `warehouse/ops_fleet_handlers.go:77` — either every ops-created driver is locked out, or some path does a plaintext compare and they all share PIN 4321.
 - **Monotonic outbox and audit primary keys guarantee a Spanner hotspot.** `outbox/outbox.go:211-213` returns `evt_<UnixNano>` under a comment claiming "Production uses crypto/rand UUIDv7". That is the PK of `OutboxEvents` and `AuditLog`. Every insert in the fleet lands on one split. `uuid` is already a direct dependency.
@@ -119,9 +123,9 @@ Ranked. These are bugs, not gaps.
 - **Production Tauri configs ship the dev updater public key** — byte-identical to `contracts/desktop-updater/dev.pub` in all four apps, with `"installMode": "passive"` (silent install), and `apply_desktop_updater_pubkey.sh:7` **defaults to the dev key rather than failing**.
 - **Desktop SQLite cache has no TTL and is never cleared on logout.** `updated_at` is written and never read; `cacheDelete` is called by no application code; retailer keys are unscoped (`hooks.ts:63` caches by raw URL). A second retailer on the same install is served the first one's profile, orders, and pricing.
 - **An app update wipes unsynced deliveries.** `NetworkModule.kt:88-91` uses `.fallbackToDestructiveMigration()` on a DB already at version 4.
-- **Push notifications are dead on all 12 mobile apps.** No `.entitlements` file exists in the repo (so iOS registration always fails), an FCM service is declared in 2 of 6 Android manifests, and no `google-services.json`/`GoogleService-Info.plist` exists — Firebase falls back to `projectId: "demo-pegasus"`, `apiKey: "demo-key"`, which also breaks phone-OTP login in release builds.
+- **Push / Firebase OTP still ops-blocked.** Client configs are now committed (`google-services.json` / `GoogleService-Info.plist` under each mobile app; Android google-services plugin wired). Remaining blockers: missing/incomplete `.entitlements` / `aps-environment` for APNs, uneven `FirebaseMessagingService` manifests, and **owner** Firebase Phone SHA-1 + real SMS. Do not treat configs as “push works in release.”
 - **`AIPredictions.AggregateId` overflow.** `predictivepush/audit.go:51` writes `retailerId + ":" + productId` (73 chars) into `STRING(36)`. Step 3 of the daily cron fails on every run with real UUIDs. The synthesis engine already hit this and worked around it; nobody fixed this path.
-- **`DelinquencyCount` is never computed.** It is read and persisted verbatim; nothing increments it. The credit risk engine's primary input is permanently zero, making it effectively limit-only.
+- **`DelinquencyCount` is never computed.** It is read and persisted verbatim; nothing increments it. **Credit risk scoring was deliberately removed** (Phase A) — CREDIT_LEAVE / placement use status + available only — so this is no longer “the risk engine’s primary input,” but aging/dunning still cannot start without it.
 - **HPA targets 7 millicores.** `hpa.yaml:21` sets 70% CPU against a `cpu: 10m` request. An idle pod exceeds it and pins to `maxReplicas: 12`, which a 1–3 node e2-medium cluster cannot schedule.
 - **OSRM will crash-loop** — `osrm/deployment.yaml:26` runs `osrm-routed /data/region.osrm` with no volume, no PVC, no init container, 512Mi for a multi-GB extract, and no liveness probe. And the solver never calls OSRM anyway: distances are haversine (`contract_solver.py:34-43`), which underestimates by 20–40% in a dense street grid, so every route is over-committed on time.
 - **No CI compiles the 167k lines of mobile code**, no linter runs anywhere (no `.golangci.yml`, no ESLint step, no SwiftLint/detekt/ktlint config in the repo), no `-race`, and no security scanning of any kind. This is *why* P0-2 and P0-3 are in `HEAD`.
@@ -150,27 +154,27 @@ Twenty-two steps from need-detection to cash in the bank. "Automatable" means a 
 | 1 | Detect the reorder need | No | **Automated** — `AIPredictions`, predictive push |
 | 2 | Retailer confirms the suggestion | Default yes | **Automatable** — 5 per-scope auto-order toggles (global/category/supplier/product/variant) |
 | 3 | Supplier accepts the order | Default yes | **Automatable** — midnight-guard sweeper → `AUTO_ACCEPTED` |
-| 4 | Credit decision | No | **Automated** at placement — but `DelinquencyCount` is always 0, so it's limit-only |
+| 4 | Credit decision | No | **Automated** at placement — **limit + status only** (scoring removed); `DelinquencyCount` still never incremented |
 | 5 | Price determination | No | **Automated** — override → promotion → list |
 | 6 | Stock allocation / backorder | No | **Automated** — per-SKU policy over warehouse default |
 | 7 | Delivery date agreement | Sometimes | **Partial** — auto by default; the negotiation path needs a human on both sides |
 | 8 | Transfer approval | Sometimes | **Automatable** — touchless with a daily unit budget; CRITICAL always escalates by design |
 | 9 | Dispatch planning & driver assignment | Optional | **Automatable** — 60s auto-dispatch worker, real closed loop |
-| 10 | **Physical picking** | **YES — hard blocker** | **Absent.** No pick list, no bin, no location concept in 73 tables |
+| 10 | **Physical picking** | **YES — hard blocker** | **Absent at warehouse.** No WH pick list/bin/lot. (Retailer on-hand **does** exist: `RetailerStockBalances` / receive sessions.) |
 | 11 | **Truck loading** | **YES — hard blocker** | Absent by design — a 26-endpoint payload terminal exists so a human can drive it |
 | 12 | Manifest sealing | Yes | Partial — `seal-all` batches the clicks |
 | 13 | **Driving** | **YES** | — |
 | 14 | QR handshake | **YES — by design** | Geofence auto-detects arrival; the handshake is an intentional two-party control |
-| 15 | Offload & condition verification | **YES** | Absent — damage, shortage, temperature all human-reported |
+| 15 | Offload & condition verification | **YES** | Still human-reported at dock; **post-delivery** damage/shortage/concealed now file as claims → QUARANTINE + reverse |
 | 16 | **Cash collection** | **YES — structural** | Absent by nature. The most developed path in the platform *because* it's manual |
 | 17 | Card capture | No | **Automated** for Global Pay; stubbed elsewhere |
-| 18 | Fiscal receipt | No | **Automated shape, fake substance** (§2.1) |
+| 18 | Fiscal receipt | No | **Automated shape; PEGASUS commercial receipts live** — legal Soliq OFD still open (§2.1) |
 | 19 | Reconciliation | On exception | Partial — detection automated, resolution manual |
-| 20 | Returns disposition | Yes | Partial — `SuggestedDisposition` recommends, human confirms |
+| 20 | Returns disposition | Yes | **Stronger** — FileClaim + approve/reject + stock hold + reverse open; human still confirms disposition |
 | 21 | Exceptions (shop closed, delay, overflow, rescue) | **YES** | Absent — every path ends in a human decision |
 | 22 | **Dunning / collections** | **YES, entirely offline** | **Absent.** No `PaymentTerms`, no `DueDate`, no aging, and no SMS/email transport to send a reminder through |
 
-**The honest read.** Steps 1–9 — the whole commercial decision loop — are genuinely automatable today, and that is more than most SFA vendors ship. But the automation is only as good as its inputs, and right now step 1 produces `last_order / 2` from a system that **has no idea what is on the retailer's shelf**. An agent walks in, looks at the shelf, knows what sells, knows what's near expiry, knows the promo calendar, and negotiates. This halves the last invoice.
+**The honest read.** Steps 1–9 — the whole commercial decision loop — are genuinely automatable today, and that is more than most SFA vendors ship. But the automation is only as good as its inputs, and right now step 1 produces `last_order / 2` even though **retailer on-hand balances now exist** — the auto-order path still does not consult them. An agent walks in, looks at the shelf, knows what sells, knows what's near expiry, knows the promo calendar, and negotiates. This halves the last invoice.
 
 Two blockers are structural rather than unbuilt:
 - **Cash collection.** In a COD-dominant market the driver *is* the collections function. The platform doesn't remove that human, it instruments him — arguably the correct product decision, but it converts field headcount from sales to logistics rather than eliminating it.
@@ -190,7 +194,7 @@ The premise that "there is no such system in the world" is **not accurate**, and
 
 **The critical lesson from that landscape, and it is directly relevant.** The pure marketplace/e-commerce thesis largely *failed*. MaxAB-Wasoko retreated from 8 markets to 5 and is betting the company on **embedded fintech**; in Egypt fintech transactions already outpace e-commerce. TradeDepot pivoted to **advertising and data**. MarketForce shut its e-commerce arm. Sabi went to commodity exports. Udaan survived by abandoning geographic breadth for **city-level density** and private label (now 15% of revenue). Ankorstore gave up reorder commission entirely and monetizes via **subscription + fintech**.
 
-Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** And credit is precisely where the code is weakest — `RetailerCreditProfiles` exists with limits and risk tiers, but `DelinquencyCount` is never computed, there are no payment terms, no due dates, no aging, no dunning, and no channel to reach a retailer who hasn't installed the app.
+Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** And credit is precisely where the code is weakest — `RetailerCreditProfiles` exists with limits and status, but **risk scoring was deliberately removed** (Phase A; `RiskTier` cleared / ignored), `DelinquencyCount` is never computed, there are no payment terms, no due dates, no aging, no dunning, and no channel to reach a retailer who hasn't installed the app.
 
 **What is genuinely defensible here.** Not "a platform connecting all suppliers and retailers" — that exists and has been expensively fought over. What is unusual is the **vertical depth of a single stack from factory floor to shop shelf**: factory manifests → inter-hub transfers → warehouse loading bay with a dedicated terminal role → volumetric truck packing in VU → geofenced driver handshake → COD/split-payment/credit-delivery with ledger and reconciliation → fiscal receipt. Most competitors are a marketplace bolted onto 3PL, or an SFA app bolted onto someone else's ERP. **Nobody has the whole physical chain in one transactional model with one event bus.** That is the asset. It happens to be worth more as *deep software for one large distributor* than as a thin marketplace for many.
 
@@ -214,7 +218,7 @@ What the code offers them today:
 | GS1 identifiers | **GTIN only.** `returns/barcode.go:10-55` validates EAN-8/12/13 and GTIN-14 checksums correctly. **SSCC: 0 matches. GLN: 0 matches.** No ASN, no pallet labels. |
 | Label printing | **No ZPL.** Scanning in, nothing out. |
 | Accounting export | `PaymentLedgerEntries` and `MasterInvoices` internally; **no journal export, no chart-of-accounts mapping**. |
-| Legal receipt | `FakeFiscalProvider`. **You cannot legally close a sale in Uzbekistan on this code.** |
+| Legal receipt | `FISCAL_PROVIDER=PEGASUS` issues platform commercial receipts; **`MY_SOLIQ` OFD adapter exists but needs sandbox/prod creds.** You cannot legally close a Soliq-mandated sale until L5 lands. |
 | Data warehouse | **Zero BigQuery references.** |
 
 **Direct answer: no retailer or supplier with existing systems can integrate today, by any path, with any amount of effort on their side.** Every order requires a human typing into a mobile app.
@@ -351,25 +355,25 @@ Option (c) is what should gate touchless: high inferred confidence → auto-conf
 
 **Payment terms and aging.** Add to `Orders`: `PaymentTermsDays INT64`, `DueDate TIMESTAMP`. Add `RetailerPaymentTerms(RetailerId, SupplierId, TermsDays, GracePeriodDays, EarlyPayDiscountBps)`. Compute a nightly aging bucket per retailer (current / 1-30 / 31-60 / 61-90 / 90+) into a new `ARAging` table. Without a due date there is no such thing as overdue, which is why collections currently happens entirely off-platform.
 
-**Compute `DelinquencyCount`.** It is the credit engine's primary input and **nothing increments it** (`credit/service.go:173-178` reads a permanently-zero field). On the nightly aging job: increment when an invoice crosses its grace period, decrement or decay on sustained on-time payment.
+**Compute `DelinquencyCount`.** Nothing increments it today (`credit` persists the field verbatim). On the nightly aging job: increment when an invoice crosses its grace period, decrement or decay on sustained on-time payment. Required for dunning even though **score-based `RiskTier` gating was removed**.
 
-**Real risk scoring.** Replace the two-input tiering with a logistic scorecard over features the platform already has: payment history (on-time rate, mean days-late, worst bucket), order regularity (CV of inter-order interval), basket stability, tenure, exposure ratio, category mix, and — once §8.3 lands — forecast-vs-actual deviation as a demand-reliability proxy. Fit on realized defaults; recalibrate quarterly. Output a PD estimate, then `CreditLimit = min(policy_cap, k · monthly_volume · (1 − PD))`. Validate with a Gini/AUC on a holdout and a vintage analysis by cohort.
+**Risk scoring (product decision).** Phase A removed the scoring desk / worker / `RiskTier` gates — CREDIT_LEAVE and placement are **status + available only**. Do **not** re-add a scorecard unless product explicitly reverses that decision. Prefer aging + dunning + hard status holds over resurrecting ML-ish tiers.
 
 **Dunning.** A state machine per overdue invoice: `DUE_SOON` (T−3) → `OVERDUE` (T+1) → `ESCALATED_1` (T+7) → `ESCALATED_2` (T+14) → `CREDIT_HOLD` (T+21) → `COLLECTIONS`. Each transition emits a notification and, at `CREDIT_HOLD`, sets `RetailerCreditProfiles.Status` so `credit.CheckOrder` blocks new orders automatically. This is a small amount of code with a direct revenue effect.
 
 **Which requires notification transports that do not exist.** `notifications/` has exactly two: real FCM and a `LogTransport` (`transport.go:15`). **No SMS, no email, no WhatsApp** — zero references to Twilio, SendGrid, SMTP, or WhatsApp Business API in the repo. A retailer who hasn't installed the app is unreachable. Add an `SMSTransport` (local aggregator for UZ), an `EmailTransport`, and — given WhatsApp's dominance in this market segment — a WhatsApp Business API transport. Route by channel preference with fallback. **This is a prerequisite for dunning, for OTP reliability, and for onboarding retailers who don't have the app yet.**
 
-**Fiscalization, for real.** Implement the MY_SOLIQ / OFD adapter behind `FISCAL_PROVIDER` as the comment at `order/fiscal.go:98` promises. The retry state machine, `OrderFiscalReceipts`, the QR field, and the hard gate are all already built — only the provider is fake. This is a legal blocker, not an enhancement.
+**Fiscalization, for real (Soliq).** `ProviderFromEnv` already selects `PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`. Finish L5: Soliq sandbox SUCCESS with real creds behind `FISCAL_PROVIDER=MY_SOLIQ`. PEGASUS remains the non-legal commercial path. Retry state machine + `OrderFiscalReceipts` + hard gate are already built.
 
 **Refunds and settlement.** The only occurrence of "Refund" in non-test Go is reading `charge.AmountRefunded` off a Stripe webhook. Add a refund initiation path (full/partial, per gateway, with ledger entries and fiscal reversal). Add real supplier payout execution — `GET /v1/payment/settlement/authority` is a reporting view, and `warehouse/ops_portal.go:772` returns a hardcoded fake invoice (`"invoice_id": "inv-1"`) in the treasury endpoint.
 
-**Then wire the billing meter** (§2.2) so the platform can actually charge: fix the column mismatch, construct the workers, define a fee schedule (per-order, per-GMV-bps, or subscription), and emit invoices. Today nothing is metered, so there is no revenue mechanism in the code at all.
+**Then fix the billing meter** (§2.2) so the platform can actually charge: workers are already constructed and the consumer starts — **fix the column mismatch** (`EventId`/`MeterType`/`CurrentValue` vs `AmountDelta`), define a fee schedule (per-order, per-GMV-bps, or subscription), and emit invoices. Today nothing is *successfully* metered.
 
 ---
 
 ### 8.7 Warehouse execution — the capability that caps the addressable market
 
-**Why.** Bins, lots, expiry, serials, pick lists, cycle counts, and stocktake are **absent from all 73 tables** — not unimplemented, absent. `Products` has `IsPerishable` and `StorageTempMinC/MaxC` but nothing tracks an actual expiry date on stock. The current model is "a warehouse is a bag of SKUs; a human finds the goods from memory." That works for a small distributor and is **disqualifying for food or pharma**, and it is why step 10 in §5 is a hard blocker.
+**Why.** Warehouse bins, lots, expiry, serials, pick lists, cycle counts, and stocktake are **absent** — not unimplemented, absent. (Retailer on-hand **is** modeled: `RetailerStockBalances`, `RetailerReceiveSessions`, movements, counts — Phase B.) `Products` has `IsPerishable` and `StorageTempMinC/MaxC` but nothing tracks an actual expiry date on **warehouse** stock. The current model is "a warehouse is a bag of SKUs; a human finds the goods from memory." That works for a small distributor and is **disqualifying for food or pharma**, and it is why step 10 in §5 is a hard blocker.
 
 **Schema.**
 ```
@@ -413,7 +417,7 @@ InventoryAdjustments(AdjustmentId, WarehouseId, ProductId, LotId,
 
 **Scanning throughput.** Warehouse and payload scanning is unusable at picker volume: a network round-trip per scan with no local EAN→SKU cache from the already-downloaded manifest, re-scanning a SKU **un-checks** it (`toggleItem`), a 1.5s debounce caps repeated-SKU rate at ~40/min, ML Kit runs all 13 symbologies per frame with no `BarcodeScannerOptions`, no torch control anywhere, and **no hardware scanner support at all** (zero DataWedge/Zebra/keyboard-wedge hits) — so pickers on Zebra TC-series devices can't use the trigger. Fix all six: prefetch the map, increment a per-line scanned count instead of toggling, drop the debounce, restrict to EAN-8/13, add torch, add a hidden `BasicTextField` wedge path plus a DataWedge intent receiver.
 
-**Push, deep links, localization.** Add `aps-environment` entitlements and `PrivacyInfo.xcprivacy` (required for App Store submission, currently absent in all 6 iOS apps), commit real Firebase config per flavor, declare `FirebaseMessagingService` in the 4 missing manifests, and make `FirebaseOptions` fall back to **failure** rather than `demo-pegasus`/`demo-key`. Register URL schemes and intent filters — `deepLink` is decoded into DTOs in all 12 apps and then discarded because no app declares a handler. Wire `packages/i18n/generated/*` into `project.yml` resources and Gradle `res.srcDirs`, then mechanically replace 1,125 Kotlin literals and every Swift string.
+**Push, deep links, localization.** Firebase client JSON/plists are **committed** under each mobile app (2026-08). Still required: `aps-environment` entitlements and `PrivacyInfo.xcprivacy` (App Store), declare `FirebaseMessagingService` where missing, refuse `demo-pegasus`/`demo-key` fallbacks, and owner SHA-1 + real SMS for Phone Auth. Register URL schemes and intent filters — `deepLink` is decoded into DTOs in all 12 apps and then discarded because no app declares a handler. Wire `packages/i18n/generated/*` into `project.yml` resources and Gradle `res.srcDirs`, then mechanically replace 1,125 Kotlin literals and every Swift string.
 
 **Security hardening.** Set `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` on Keychain items (currently unset, so tokens are unreadable while the phone is locked — breaking background reconnect — and are included in device backups). Add `FLAG_SECURE`/`isCaptured` blur on driver PIN, cash, and card screens. Add SQLCipher to Room and encryption to SwiftData — both currently hold orders, addresses, and a GPS trail in plaintext. Add certificate pinning. Split `network_security_config.xml` into `src/debug` — it currently permits cleartext to a developer's `192.168.0.101` in release. Sign `updater.json` with a detached Ed25519 signature verified against a pinned key and allowlist the manifest host; today Android verifies a hash supplied by the same server as the APK, and **iOS OTA verifies nothing at all**.
 
@@ -449,7 +453,7 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 
 **Phase 3 — global product master.** `GlobalProducts` keyed by GTIN with brand/manufacturer/pack-size; `SupplierProductOffers` mapping `(SupplierId, ProductId) → GlobalProductId` with price, MOQ, lead time; `ProductMatchQueue` for human review; `UnitsOfMeasure` with a real pack hierarchy (each/inner/case/pallet — currently a single nullable `UnitsPerPack`). Matching pipeline: exact GTIN, then fuzzy on brand + normalized pack size + unit measure, with conflicts queued. 4 new tables, 20–30 files, plus a worker. This is the prerequisite for cross-supplier comparison, and it reuses the GTIN checksum validation that already exists in `returns/barcode.go`.
 
-**Phase 4 — marketplace commerce.** Fix and wire the billing meter (§2.2); supplier ratings and scorecards; RFQ / competing quotes (note `NegotiationProposals` is delivery-date negotiation, not price bidding); split payments and escrow — which likely **forces a second gateway integration**, since Global Pay probably lacks sub-merchant support; supplier payout execution.
+**Phase 4 — marketplace commerce.** Fix the billing meter schema (§2.2 — workers already wired); supplier ratings and scorecards; RFQ / competing quotes (note `NegotiationProposals` is delivery-date negotiation, not price bidding); split payments and escrow — which likely **forces a second gateway integration**, since Global Pay probably lacks sub-merchant support; supplier payout execution.
 
 **Phase 5 — tenant operations.** There is currently **no platform admin console at all** — no supplier management, no approval queue, no suspension, no offboarding. A supplier can self-register and nobody can approve or remove them. Add the console, an approval workflow with document collection and KYB, tenant-scoped audit, and per-tenant observability.
 
@@ -461,7 +465,7 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 
 | Role | App completeness | Top gaps |
 |---|---|---|
-| **Retailer** | iOS 75% / Android 80% / desktop good | Shelf inventory input (§8.3), real proposals, KYC, i18n, cross-supplier cart (§8.10 P2), tenant-scoped desktop cache |
+| **Retailer** | iOS 75% / Android 80% / desktop good | Receive+stock+FileClaim/eligibility countdown shipped (G1/G2); still weak on inferred shelf for auto-order (§8.3), KYC, i18n, cross-supplier cart (§8.10 P2), tenant-scoped desktop cache |
 | **Supplier** | Portal strong / iOS 60% / **Android 35%, doesn't compile** | Restore Android build, payout execution, refunds, real pricing engine, billing/commission, forecast accuracy view |
 | **Warehouse** | Portal good / iOS 60% (0 ViewModels, 0 tests) / Android 55% (146 `!!`, 1 ViewModel for 35 screens) | **Bins, lots, expiry, pick waves, cycle counts (§8.7)** — the largest single capability gap in the product; ViewModels; scanning throughput |
 | **Factory** | Portal 9k lines / iOS 55% / Android 55% (0 ViewModels) | Production scheduling, capacity/MRP (`GetSAndOP` is `factories × 700 × 7`), real transfer lead-time capture |
@@ -477,7 +481,7 @@ Cross-cutting, all surfaces: localization (0% on web, 0% on iOS, ~1% on Android 
 
 **Gate 0 — Stop the bleeding (2–4 weeks).** All of §8.0. Non-negotiable end state: CI compiles and tests all 12 mobile apps and lints everything; Spanner backups exist and a restore has been *executed*; Terraform state is remote; the prod overlay renders real digest-pinned images; the optimizer either solves or provably falls back; `supplier-app-android` and `driver-app-ios` work.
 
-**Gate 1 — Make it legal and reachable (4–6 weeks).** Real fiscalization (§8.6). SMS + email transports (§8.6). Payment terms, due dates, aging, `DelinquencyCount`, dunning state machine (§8.6). Push notifications functional on all 12 apps (§8.8). Without this gate you cannot legally transact and cannot collect.
+**Gate 1 — Make it legal and reachable (4–6 weeks).** Soliq OFD SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ` (§8.6; PEGASUS commercial path already live). SMS + email transports (§8.6). Payment terms, due dates, aging, `DelinquencyCount`, dunning state machine (§8.6) — **without re-adding removed credit scoring**. Finish push/OTP ops (APNs entitlements, SHA-1, real SMS) on top of committed Firebase configs (§8.8). Without this gate you cannot legally OFD-transact and cannot collect.
 
 **Gate 2 — Make the intelligence real (6–10 weeks).** §8.4 **first** — accuracy measurement, because it is how you evaluate everything after it. Then §8.1 forecasting, §8.2 safety stock (with lead-time capture started immediately, since it needs history), §8.3 inventory-grounded auto-order **in shadow mode**. Ship touchless only when shadow-mode acceptance exceeds 80%.
 
@@ -502,7 +506,7 @@ Delete or explicitly rename. Every one of these currently misleads the next engi
 | `ledger/` package | Textbook double-entry, zero callers, tables not in the DDL. Either add the DDL and wire it into `payment` with a reconciliation invariant, or delete it. |
 | `services/optimizer-core/server-rust/` | 447 lines, index bug, deployed nowhere. Delete, or replace it with the Go Clarke-Wright as a real A/B arm. |
 | `optimizationjobs/` package + `OptimizationJobs` table | `EnqueueJob` has zero callers; nothing publishes or consumes `TopicOptimizerJobs`. |
-| `kafka.AnalyticsStreamProcessor` | `runtime_workers.go:50-53` passes a literal `dummyStream` channel nothing ever writes to. It logs `revenue_minor=0` once a minute, forever. |
+| `kafka.AnalyticsStreamProcessor` | Package still exists (`kafka/stream_processor.go`) but **is no longer started** from `runtime_workers.go` (dummy channel removed). Delete the orphan type or wire a real Kafka stream — do not reintroduce a dummy. |
 | `enterprise/` (auth0, datadog, vault) | 225 lines of vendor SDKs bolted onto a system that already has Firebase Auth, Prometheus, and external-secrets. `InitVault` failure is logged and ignored. |
 | The four dead chart components | Ship empty axis-labelled charts to four production analytics pages. Wire or delete, and add a CI grep failing on `MOCK_` outside tests. |
 | `apps/admin-portal`, `apps/supplier-app-desktop` | 3-file redirect stubs that inflate the app count from 6 real web surfaces to 8. |
@@ -531,7 +535,7 @@ The engineering is not the problem. The transactional outbox, the retry-safe clo
 
 The problem is threefold and each part is fixable:
 
-**First, labels outran substance.** `MinConfidenceScore` is stored and ignored. Seasonal multipliers are defined and never multiplied. A weather signal returns the integer 2 in summer. A confidence gate cannot mathematically reject. The accuracy metric compares products to order counts. A fiscal state machine wraps a provider that always says yes. Each of these shipped the *interface* of a capability, and the deferral was never tracked — which is why 14 of them accumulated. The fix is cultural before it is technical: nothing customer-visible ships until the thing behind it works, and anything deferred gets an issue, not a comment.
+**First, labels outran substance.** `MinConfidenceScore` is stored and ignored. Seasonal multipliers are defined and never multiplied. A weather signal returns the integer 2 in summer. A confidence gate cannot mathematically reject. The accuracy metric compares products to order counts. Billing workers run against a schema they cannot write. Fiscal now has a real `PEGASUS` path, but Soliq OFD is still unfinished. Each of these shipped the *interface* of a capability, and the deferral was never tracked — which is why a long theatre list accumulated (claims have since been wired for real). The fix is cultural before it is technical: nothing customer-visible ships until the thing behind it works, and anything deferred gets an issue, not a comment.
 
 **Second, there was no gate.** No CI compiling 167k lines of mobile code, no linter, no `-race`, no security scan, no CD, no backup, no restore rehearsal. That single absence explains an app that doesn't compile in `HEAD`, a decoder bug that breaks the driver's primary flow, a prod overlay that renders placeholder image names, and a database with no recovery path. Gate 0 is not cleanup — it is the precondition for knowing whether any subsequent work helped.
 
