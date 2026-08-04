@@ -77,3 +77,27 @@ A feature is not done until:
 2. Cross-role downstream effects are handled (or explicitly documented as deferred)
 3. `go test` on touched backend packages passes
 4. New ecosystem behavior has an SSMR assertion or a documented reason it is UI-only / manual QA
+
+---
+
+## Cursor Cloud specific instructions
+
+Active stack is **`pegasusX/`** (the sibling `pegasus/` tree is not the one under development). All paths below are relative to `pegasusX/`. Standard commands live in the root `README.md`, `pegasusX/Makefile`, and each app's `package.json`; only the non-obvious cloud caveats are captured here. The update script only refreshes dependencies (`pnpm install` + `go mod download`) — Docker, infra, schema, seed, and service startup are session-time steps below.
+
+**Infra (Docker) — required before the backend can boot.** Docker is preinstalled in the snapshot but the daemon does not auto-start (no systemd). Start it once per session, then bring up the emulators:
+- `sudo dockerd > /tmp/dockerd.log 2>&1 &` (then `sudo chmod 666 /var/run/docker.sock` if `docker` needs sudo). Docker 29 here uses the `fuse-overlayfs` storage driver with `containerd-snapshotter` disabled (see `/etc/docker/daemon.json`); iptables is set to legacy.
+- `make infra-up` (= `docker compose -f infra/docker-compose.yml up -d`) starts Spanner emulator (`:9010`), Redis (`:6379`), Kafka (`:9092`), kafka-ui (`:8081`).
+
+**Schema + seed:** `cd apps/backend-go && SPANNER_EMULATOR_HOST=localhost:9010 go run ./cmd/setup`. Idempotent — creates the Spanner instance/db, applies `schema/spanner.ddl`, and seeds the single-tenant supplier `sup_61d822c6ab9714ca11f20db9` plus demo scope rows (`auth.EnsureDemoScopeLinks`).
+
+**Backend run — must export `SPANNER_EMULATOR_HOST`.** The runtime Spanner client (`bootstrap/runtime_adapters.go`) calls `spanner.NewClient` with no emulator option and relies on the SDK reading the `SPANNER_EMULATOR_HOST` env var to skip GCP credentials. `make backend-run` (`go run ./...`) does NOT set it, so a bare run fails with `could not find default credentials`. Run: `cd apps/backend-go && SPANNER_EMULATOR_HOST=localhost:9010 go run .` → API on `:8080`, health `GET /v1/health`. Config auto-defaults (project `pegasusx-local`, `REDIS_ADDR=localhost:6379`, `KAFKA_BROKERS=localhost:9092`, `JWT_SECRET=dev-only-change-me`) match the emulators; a `.env` copy is not required.
+
+**Auth / demo login.** Seeded admin phone `+998901000001`. Password endpoint (`POST /v1/auth/supplier/login`) defaults to password `SmokeTest!234`. The supplier-portal login UI submits the 6-digit "OTP" as the `password` (client regex `^\d{6}$`), so to log in through the UI, boot the backend with `SSMR_SMOKE_SUPPLIER_PASSWORD=123456` and enter code `123456`. Dev JWT shortcut: `SPANNER_EMULATOR_HOST=localhost:9010 go run ./cmd/mint-dev-jwt` prints a token scoped to `sup_61d822c6ab9714ca11f20db9`.
+
+**Portal:** `cd apps/supplier-portal && pnpm dev` → `:3000` (login at `/auth/login`).
+
+**Known pre-existing frontend defect (NOT environment setup — for maintainers):** the browser portal → backend auth path is broken independent of setup. (1) The `/api` proxy handler is committed at `app/api/api/api/api/api/api/api/api/api/api/api/[...path]/route.ts` (repeated `api/` dirs), so `/api/*` 404s. (2) `packages/api-client` `resolveURL` does `new URL(path, "/api")`, which throws `Invalid base URL` in the browser because the base is relative. (3) That proxy defaults its backend target to `:8180` (SSMR) — override with `SUPPLIER_BACKEND_BASE_URL=http://localhost:8080`. Until these are fixed, exercise backend flows via API/curl (or the intended Tauri desktop shell). Backend correctness is fully testable this way.
+
+**`seed` package:** `apps/backend-go/seed` was historically excluded by an over-broad `.gitignore` rule (`**/backend-go/seed`, intended for the compiled binary), which broke fresh clones (`bootstrap` and `cmd/setup` import it). It is now tracked; if it ever goes missing again the backend will not compile.
+
+**Lint note:** `go vet ./...` reports pre-existing duplicate-JSON-tag findings in the `credit` package, unrelated to setup. The repo's `make qa-gate` gates on `go test`, not `go vet`.
