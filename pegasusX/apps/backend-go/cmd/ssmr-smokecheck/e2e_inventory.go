@@ -158,7 +158,8 @@ func runConcurrentStockRejectE2E(
 
 	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
 	patchBody, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "REJECT"})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, "ssmr-concurrent-stock-reject-policy")
+	stockSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, "ssmr-concurrent-stock-reject-policy-"+stockSuffix)
 	if err != nil {
 		return err
 	}
@@ -214,8 +215,8 @@ func runConcurrentStockRejectE2E(
 			results <- createOutcome{status: status, body: respBody, err: err}
 		}()
 	}
-	launchCreate(retailerToken, "ssmr-concurrent-stock-a", h3Cell)
-	launchCreate(retailer2Token, "ssmr-concurrent-stock-b", h3Cell2)
+	launchCreate(retailerToken, "ssmr-concurrent-stock-a-"+stockSuffix, h3Cell)
+	launchCreate(retailer2Token, "ssmr-concurrent-stock-b-"+stockSuffix, h3Cell2)
 
 	var created, rejected int
 	for i := 0; i < 2; i++ {
@@ -311,7 +312,8 @@ func runOrderAcceptanceClosedE2E(
 			},
 		},
 	})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, closedSchedule, cookie, "ssmr-order-acceptance-closed")
+	acceptSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, closedSchedule, cookie, "ssmr-order-acceptance-closed-"+acceptSuffix)
 	if err != nil {
 		return err
 	}
@@ -328,7 +330,7 @@ func runOrderAcceptanceClosedE2E(
 		"lat":     cfg.DeliveryZoneCenterLat,
 		"lng":     cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-order-acceptance-closed-create")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-order-acceptance-closed-create-"+acceptSuffix)
 	if err != nil {
 		return err
 	}
@@ -341,7 +343,7 @@ func runOrderAcceptanceClosedE2E(
 
 	// Restore open schedule for downstream tests.
 	openSchedule, _ := json.Marshal(map[string]any{"operating_schedule": map[string]any{"is_24h": true, "enforce_order_acceptance": false}})
-	_, _, _, _ = clientDo(ctx, client, http.MethodPatch, settingsURL, openSchedule, cookie, "ssmr-order-acceptance-restore")
+	_, _, _, _ = clientDo(ctx, client, http.MethodPatch, settingsURL, openSchedule, cookie, "ssmr-order-acceptance-restore-"+acceptSuffix)
 
 	fmt.Println("PX_E2E_ORDER_ACCEPTANCE_CLOSED_OK")
 	return nil

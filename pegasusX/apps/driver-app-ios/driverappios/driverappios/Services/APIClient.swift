@@ -73,7 +73,7 @@ final class APIClient: @unchecked Sendable {
         session = URLSession(configuration: config)
 
         decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Explicit CodingKeys use snake_case wire names; do not convertFromSnakeCase.
     }
 
     // MARK: - Auth

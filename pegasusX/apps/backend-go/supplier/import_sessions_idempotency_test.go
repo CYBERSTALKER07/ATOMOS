@@ -21,7 +21,7 @@ func TestImportApproveIdempotencyReplay(t *testing.T) {
 	}
 	body := []byte(`{}`)
 	cached := []byte(`{"session_id":"sess-1","status":"APPROVED","next_phase":"apply"}`)
-	if err := idem.Save(context.Background(), "supplier-import-approve:sess-1", idempotency.Record{
+	if err := idem.Save(context.Background(), "sup-1:supplier-import-approve:sess-1", idempotency.Record{
 		BodyHash:   sha256Hex(body),
 		StatusCode: http.StatusAccepted,
 		Response:   cached,
@@ -53,7 +53,7 @@ func TestImportApproveIdempotencyConflict(t *testing.T) {
 		idem: idem,
 		now:  func() time.Time { return time.Unix(0, 0).UTC() },
 	}
-	if err := idem.Save(context.Background(), "supplier-import-approve:sess-1", idempotency.Record{
+	if err := idem.Save(context.Background(), "sup-1:supplier-import-approve:sess-1", idempotency.Record{
 		BodyHash:   sha256Hex([]byte(`{}`)),
 		StatusCode: http.StatusAccepted,
 		Response:   []byte(`{"ok":true}`),

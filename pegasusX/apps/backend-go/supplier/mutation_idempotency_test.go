@@ -27,7 +27,7 @@ func TestHandlePricingRulesPatchIdempotencyReplay(t *testing.T) {
 
 	body := `{"base_markup_bps":1200,"retailer_discount_bps":200,"min_margin_bps":100,"currency":"UZS"}`
 	cached := []byte(`{"supplier_id":"sup-1","base_markup_bps":1200,"retailer_discount_bps":200,"min_margin_bps":100,"currency":"UZS","rule_version":1,"updated_at":"2026-06-29T12:00:00Z"}`)
-	if err := idem.Save(context.Background(), "supplier-pricing-patch:sup-1", idempotency.Record{
+	if err := idem.Save(context.Background(), "sup-1:supplier-pricing-patch:sup-1", idempotency.Record{
 		BodyHash:   sha256Hex([]byte(body)),
 		StatusCode: http.StatusOK,
 		Response:   cached,
@@ -63,7 +63,7 @@ func TestHandleUpdateProfileIdempotencyConflict(t *testing.T) {
 		Currency:   "UZS",
 	})
 
-	if err := idem.Save(context.Background(), "supplier-profile:sup-1", idempotency.Record{
+	if err := idem.Save(context.Background(), "sup-1:supplier-profile:sup-1", idempotency.Record{
 		BodyHash:   sha256Hex([]byte(`{"legal_name":"Acme"}`)),
 		StatusCode: http.StatusOK,
 		Response:   []byte(`{"supplier_id":"sup-1"}`),
@@ -93,7 +93,7 @@ func TestHandleInventoryPatchIdempotencyReplay(t *testing.T) {
 
 	body := `{"sku_id":"sku-1","quantity_delta":5,"quantity":10}`
 	cached := []byte(`{"status":"ok"}`)
-	if err := idem.Save(context.Background(), "supplier-inventory:sku-1", idempotency.Record{
+	if err := idem.Save(context.Background(), "sup-1:supplier-inventory:sku-1", idempotency.Record{
 		BodyHash:   sha256Hex([]byte(body)),
 		StatusCode: http.StatusOK,
 		Response:   cached,

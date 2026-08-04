@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 )
 
@@ -43,6 +44,10 @@ func (s *Service) guardMutationReplay(w http.ResponseWriter, r *http.Request, bo
 	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {
 		return "", false
+	}
+	// Namespace by supplier so shared client keys cannot replay another tenant.
+	if sid, ok := auth.ResolveSupplierID(r.Context()); ok && strings.TrimSpace(sid) != "" {
+		key = strings.TrimSpace(sid) + ":" + key
 	}
 	hash := sha256Hex(body)
 	rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)

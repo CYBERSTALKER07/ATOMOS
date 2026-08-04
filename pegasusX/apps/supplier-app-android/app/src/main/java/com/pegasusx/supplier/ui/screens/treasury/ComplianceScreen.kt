@@ -107,8 +107,8 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 kind = PegasusStateKind.Error,
                 headline = "Compliance unavailable",
                 body = error ?: "",
-                primaryActionLabel = "Retry",
-                onPrimaryAction = { load() },
+                actionLabel = "Retry",
+                onAction = { load() },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),

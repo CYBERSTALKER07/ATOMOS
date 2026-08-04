@@ -484,6 +484,10 @@ func (s *Service) guardMutationReplay(w http.ResponseWriter, r *http.Request, bo
 	if key == "" || s.idem == nil {
 		return "", false
 	}
+	// Namespace by supplier so a shared client key cannot replay another tenant's response.
+	if sid := strings.TrimSpace(s.scopedSupplierID(r)); sid != "" {
+		key = sid + ":" + key
+	}
 	hash := sha256Hex(body)
 	rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
 	switch {
@@ -523,6 +527,9 @@ func (s *Service) releaseMutationReplay(ctx context.Context, r *http.Request) {
 	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {
 		return
+	}
+	if sid := strings.TrimSpace(s.scopedSupplierID(r)); sid != "" {
+		key = sid + ":" + key
 	}
 	_ = s.idem.Release(ctx, key)
 }

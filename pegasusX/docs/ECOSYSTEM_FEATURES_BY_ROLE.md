@@ -4,6 +4,13 @@
 **Grounding:** live monorepo (`apps/backend-go`, role apps, contracts) as of 2026-07-29  
 **Money unit:** all financial amounts are **integer minor units** (tiyin/cents-style). **Never floats** for money.
 
+> **Authoritative split (2026-08-04, CODE-GROUNDED):** Prefer these over this overview. They were extracted from `*routes/routes.go`, client shells/section enums, and Go packages — not from this file:
+>
+> 1. [FEATURES_BY_APP_ROLE.md](./FEATURES_BY_APP_ROLE.md) — routes + client nav inventory  
+> 2. [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) — formulas from Go  
+> 3. [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md) — `state_machine.go` + route triggers  
+
+
 ---
 
 ## Part 0 — What the ecosystem is for

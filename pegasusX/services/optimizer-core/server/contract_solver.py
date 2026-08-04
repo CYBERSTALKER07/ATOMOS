@@ -142,13 +142,13 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), 0)
     routing = pywrapcp.RoutingModel(manager)
 
-    def transit_callback(from_index: int, to_index: int) -> int:
+    def distance_callback(from_index: int, to_index: int) -> int:
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
         return distance_matrix[from_node][to_node]
 
-    transit_idx = routing.RegisterTransitCallback(transit_callback)
-    routing.SetArcCostEvaluatorOfAllVehicles(transit_idx)
+    distance_idx = routing.RegisterTransitCallback(distance_callback)
+    routing.SetArcCostEvaluatorOfAllVehicles(distance_idx)
 
     def demand_callback(from_index: int) -> int:
         from_node = manager.IndexToNode(from_index)
@@ -156,6 +156,23 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
 
     demand_idx = routing.RegisterUnaryTransitCallback(demand_callback)
     routing.AddDimensionWithVehicleCapacity(demand_idx, 0, vehicle_caps, True, "Capacity")
+
+    # Per-vehicle travel time in minutes (must not reuse the meters cost callback).
+    time_callback_indices: list[int] = []
+    for vehicle_index, speed in enumerate(vehicle_speeds):
+        def make_time_cb(veh_idx: int = vehicle_index, spd: float = speed):
+            def time_callback(from_index: int, to_index: int) -> int:
+                from_node = manager.IndexToNode(from_index)
+                to_node = manager.IndexToNode(to_index)
+                travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
+                # Service time is paid when leaving a customer node.
+                if from_node != 0:
+                    travel += int(stops[from_node - 1]["service_minutes"])
+                return travel
+
+            return time_callback
+
+        time_callback_indices.append(routing.RegisterTransitCallback(make_time_cb()))
 
     time_windows: list[tuple[int, int] | None] = [None]
     has_time_windows = False
@@ -173,7 +190,9 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         for tw in time_windows:
             if tw is not None:
                 max_horizon = max(max_horizon, tw[1] + DEFAULT_SERVICE_MINUTES)
-        routing.AddDimension(transit_idx, 30, max_horizon, False, "Time")
+        routing.AddDimensionWithVehicleTransits(
+            time_callback_indices, 30, max_horizon, False, "Time"
+        )
         time_dim = routing.GetDimensionOrDie("Time")
         for node_index in range(1, size):
             tw = time_windows[node_index]
@@ -182,6 +201,12 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             manager_index = manager.NodeToIndex(node_index)
             service = int(stops[node_index - 1]["service_minutes"])
             time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
+
+    # Drop infeasible stops individually instead of collapsing the whole model.
+    # Penalty high enough that assignment is preferred when feasible.
+    drop_penalty = 100_000
+    for node_index in range(1, size):
+        routing.AddDisjunction([manager.NodeToIndex(node_index)], drop_penalty)
 
     max_stops = int(tunables["max_stops_per_route"])
 

@@ -267,26 +267,47 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 
 	// WH inbound / reverse row with claim_id (G12/G20).
 	whID := demoWarehouseID()
+	// Inbound gate resolves warehouse from PAYLOAD / WAREHOUSE_ADMIN home_node_id.
 	whToken, err := issueRoleJWT(cfg, auth.Claims{
 		Subject:      "ssmr-wh-claims",
-		Role:         auth.RoleWarehouse,
+		Role:         auth.RoleWarehouseAdmin,
 		SupplierID:   supplierID,
 		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   whID,
 	})
 	if err != nil {
 		return fmt.Errorf("warehouse jwt: %w", err)
 	}
+	payloadTok, err := issueRoleJWT(cfg, auth.Claims{
+		Subject:      envOr("PAYLOAD_DEMO_WORKER_ID", "payloader-demo-1"),
+		Role:         auth.RolePayload,
+		SupplierID:   supplierID,
+		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   whID,
+		IsConfigured: true,
+	})
+	if err != nil {
+		return fmt.Errorf("payloader jwt for reverse list: %w", err)
+	}
 	foundReverse := false
 	deadline := time.Now().Add(25 * time.Second)
 	for time.Now().Before(deadline) {
-		st, body, _, listErr := clientDo(ctx, client, http.MethodGet,
-			base+"/v1/returns/inbound?warehouse_id="+whID+"&physical_status=OPEN&limit=50", nil, whToken, "")
-		if listErr == nil && st == http.StatusOK {
-			if strings.Contains(string(body), filed.ClaimID) || strings.Contains(string(body), "claim_id="+filed.ClaimID) {
-				foundReverse = true
-				break
+		for _, tok := range []string{payloadTok, whToken} {
+			st, body, _, listErr := clientDo(ctx, client, http.MethodGet,
+				base+"/v1/returns/inbound?warehouse_id="+whID+"&physical_status=OPEN&limit=50", nil, tok, "")
+			if listErr == nil && st == http.StatusOK {
+				if strings.Contains(string(body), filed.ClaimID) ||
+					strings.Contains(string(body), "claim_id="+filed.ClaimID) ||
+					strings.Contains(string(body), orderID) {
+					foundReverse = true
+					break
+				}
 			}
+		}
+		if foundReverse {
+			break
 		}
 		// Fallback reverse-logistics tasks list (credit-note style board).
 		st2, body2, _, listErr2 := clientDo(ctx, client, http.MethodGet,

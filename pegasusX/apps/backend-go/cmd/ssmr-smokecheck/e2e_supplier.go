@@ -70,7 +70,7 @@ func runSupplierOperationsE2E(ctx context.Context, client *http.Client, base, co
 	}
 
 	broadcastPayload := []byte(`{"title":"SSMR ops","body":"broadcast smoke","role":"ALL"}`)
-	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "ssmr-supplier-ops-broadcast")
+	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, fmt.Sprintf("ssmr-supplier-ops-broadcast-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -105,14 +105,17 @@ func runSupplierClientPolicyE2E(ctx context.Context, client *http.Client, base s
 	return nil
 }
 
-func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config, supplierID string) error {
 	csvBody := fmt.Sprintf(
 		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,50,5\nSSMR-SKU-BAD,%s,10,1\n",
 		demoWarehouseID(), demoWarehouseID(),
 	)
+	// Unique key per run: Redis idempotency is not supplier-scoped; a fixed key
+	// can replay another tenant's session_id and break staging asserts.
+	idemKey := fmt.Sprintf("ssmr-supplier-inventory-import-%s-%d", supplierID, time.Now().UnixNano())
 	status, respBody, _, err := clientDoContentType(
 		ctx, client, http.MethodPost, base+"/v1/supplier/inventory/import",
-		[]byte(csvBody), "text/csv", cookie, "ssmr-supplier-inventory-import",
+		[]byte(csvBody), "text/csv", cookie, idemKey,
 	)
 	if err != nil {
 		return err
@@ -137,8 +140,11 @@ func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, bas
 	if strings.TrimSpace(result.SessionID) == "" {
 		return fmt.Errorf("supplier inventory import missing session_id body %s", string(respBody))
 	}
-	supplierID := supplierIDFromJWT(cookie, cfg.JWTSecret)
-	if err := assertSupplierImportStagingRows(ctx, cfg, supplierID, result.SessionID, demoWarehouseID()); err != nil {
+	sid := strings.TrimSpace(supplierID)
+	if sid == "" {
+		sid = supplierIDFromJWT(cookie, cfg.JWTSecret)
+	}
+	if err := assertSupplierImportStagingRows(ctx, cfg, sid, result.SessionID, demoWarehouseID()); err != nil {
 		return fmt.Errorf("supplier import staging rows: %w", err)
 	}
 	fmt.Println("PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK")
@@ -154,7 +160,8 @@ func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, 
 		"file_name":       "ssmr-wizard.csv",
 		"file_size_bytes": len(csvBody),
 	})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/inventory/imports", createBody, cookie, "ssmr-import-wizard-create")
+	runSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/inventory/imports", createBody, cookie, "ssmr-import-wizard-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -172,7 +179,7 @@ func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, 
 	}
 
 	ingestURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/ingest"
-	status, respBody, _, err = clientDoContentType(ctx, client, http.MethodPost, ingestURL, []byte(csvBody), "text/csv", cookie, "ssmr-import-wizard-ingest")
+	status, respBody, _, err = clientDoContentType(ctx, client, http.MethodPost, ingestURL, []byte(csvBody), "text/csv", cookie, "ssmr-import-wizard-ingest-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -181,7 +188,7 @@ func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, 
 	}
 
 	approveURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/approve"
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, approveURL, nil, cookie, "ssmr-import-wizard-approve")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, approveURL, nil, cookie, "ssmr-import-wizard-approve-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -190,7 +197,7 @@ func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, 
 	}
 
 	applyURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/apply"
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, applyURL, nil, cookie, "ssmr-import-wizard-apply")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, applyURL, nil, cookie, "ssmr-import-wizard-apply-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -570,7 +577,7 @@ func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cook
 		"supplier_role":         "WAREHOUSE_ADMIN",
 		"assigned_warehouse_id": whID,
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/org/members", memberBody, cookie, "ssmr-org-member")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/org/members", memberBody, cookie, fmt.Sprintf("ssmr-org-member-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
