@@ -468,6 +468,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
 	orderRecord.FiscalReceiptUpdate = &row
+	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
@@ -510,6 +511,7 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 	orderRecord.LatestFiscalAttemptID = existing.AttemptID
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
+	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return s.stampTaxRegimeTxn(ctx, txn, &orderRecord)
@@ -735,6 +737,7 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
 	orderRecord.PendingFiscalReceipts = []FiscalReceiptRow{row}
+	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := s.stampTaxRegimeTxn(ctx, txn, &orderRecord); err != nil {

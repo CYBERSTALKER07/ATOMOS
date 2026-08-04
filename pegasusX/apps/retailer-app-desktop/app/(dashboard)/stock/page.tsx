@@ -8,8 +8,10 @@ import {
   Plus,
   AlertTriangle,
   ClipboardList,
+  RotateCcw,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
+import { StockRequestReturnModal } from "@/components/StockRequestReturnModal";
 import { apiFetch } from "@/lib/auth";
 
 type Balance = {
@@ -45,6 +47,13 @@ export default function StockPage() {
   const [countSku, setCountSku] = useState("");
   const [countQty, setCountQty] = useState("0");
   const [countBin, setCountBin] = useState("FLOOR");
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimSku, setClaimSku] = useState<string | undefined>(undefined);
+
+  const openRequestReturn = (sku?: string) => {
+    setClaimSku(sku);
+    setClaimOpen(true);
+  };
 
   const loadLocations = useCallback(async () => {
     try {
@@ -260,7 +269,24 @@ export default function StockPage() {
           >
             Refresh
           </button>
+          <button
+            type="button"
+            onClick={() => openRequestReturn()}
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Request return / chargeback
+          </button>
         </div>
+
+        <StockRequestReturnModal
+          open={claimOpen}
+          preferredSku={claimSku}
+          onClose={() => {
+            setClaimOpen(false);
+            setClaimSku(undefined);
+          }}
+        />
 
         <section className="grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-4 space-y-2">
@@ -399,7 +425,8 @@ export default function StockPage() {
                   <th className="py-2 pr-3">Bin</th>
                   <th className="py-2 pr-3">On hand</th>
                   <th className="py-2 pr-3">Reserved</th>
-                  <th className="py-2">Available</th>
+                  <th className="py-2 pr-3">Available</th>
+                  <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -412,7 +439,16 @@ export default function StockPage() {
                     <td className="py-2 pr-3">{row.stock_bin}</td>
                     <td className="py-2 pr-3">{row.on_hand}</td>
                     <td className="py-2 pr-3">{row.reserved}</td>
-                    <td className="py-2">{row.available}</td>
+                    <td className="py-2 pr-3">{row.available}</td>
+                    <td className="py-2">
+                      <button
+                        type="button"
+                        className="text-xs underline"
+                        onClick={() => openRequestReturn(row.sku)}
+                      >
+                        Request return
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

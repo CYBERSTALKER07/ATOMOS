@@ -168,6 +168,33 @@ export type RetailerClaim = {
   created_at?: string;
 };
 
+export type ClaimEligibility = {
+  eligible: boolean;
+  ends_at: string | null;
+  window_hours: number;
+  hours_remaining: number;
+  policy_source: string;
+  photo_required_types?: string[];
+  order_status?: string;
+  reason?: string;
+};
+
+export async function getClaimEligibility(
+  orderId: string,
+): Promise<ClaimEligibility> {
+  const res = await apiFetch(
+    `/v1/orders/${encodeURIComponent(orderId)}/claim-eligibility`,
+    { method: 'GET' },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(
+      err?.error || err?.message || `eligibility_failed_${res.status}`,
+    );
+  }
+  return (await res.json()) as ClaimEligibility;
+}
+
 export async function listOrderClaims(orderId: string): Promise<Response> {
   return apiFetch(`/v1/orders/${encodeURIComponent(orderId)}/claims`, {
     method: 'GET',

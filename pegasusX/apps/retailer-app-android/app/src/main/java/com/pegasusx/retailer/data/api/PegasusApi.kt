@@ -16,6 +16,7 @@ import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.CreditProfile
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.MediaUploadTicket
@@ -105,6 +106,9 @@ interface PegasusApi {
     ): JsonElement
 
     // ── Claims (post-delivery, 48h window) ──
+    @GET("/v1/orders/{orderId}/claim-eligibility")
+    suspend fun getClaimEligibility(@Path("orderId") orderId: String): ClaimEligibility
+
     @GET("/v1/orders/{orderId}/claims")
     suspend fun listOrderClaims(@Path("orderId") orderId: String): RetailerClaimsListResponse
 

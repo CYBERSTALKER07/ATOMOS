@@ -33,6 +33,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.WarehouseEventConsumer.Start(ctx)
 		slog.Info("warehouse event consumer started")
 	}
+	if app.ReturnsEventConsumer != nil {
+		go app.ReturnsEventConsumer.Start(ctx)
+		slog.Info("returns reverse-logistics consumer started")
+	}
 	if app.WarehouseService != nil {
 		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
 		slog.Info("warehouse auto-dispatch worker started")

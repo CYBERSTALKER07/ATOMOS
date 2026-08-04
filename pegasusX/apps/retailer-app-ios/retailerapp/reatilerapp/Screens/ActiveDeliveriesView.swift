@@ -317,7 +317,12 @@ struct OrderDetailSheet: View {
     @State private var isCancelling = false
     @State private var cancelError = false
     @State private var showFileClaim = false
+    @State private var claimElig: ClaimEligibility?
     private let api = APIClient.shared
+
+    private var claimCandidate: Bool {
+        order.status == .completed || order.status == .deliveredOnCredit
+    }
 
     var body: some View {
         NavigationStack {
@@ -437,23 +442,52 @@ struct OrderDetailSheet: View {
                     OrderStatusHistorySection(orderId: order.id)
                         .slideIn(delay: 0.18)
 
-                    // Post-delivery claims (COMPLETED within claim window — server enforces 48h)
-                    if order.status == .completed || order.status == .deliveredOnCredit {
-                        Button { showFileClaim = true } label: {
-                            HStack(spacing: AppTheme.spacingSM) {
-                                Image(systemName: "exclamationmark.bubble")
-                                Text("Report damage or missing items")
-                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    // Post-delivery claims — gated by claim-eligibility countdown (G2)
+                    if claimCandidate {
+                        if let claimElig, claimElig.eligible {
+                            Text("Eligible until \(formatClaimEndsAt(claimElig.endsAt)) (\(claimElig.hoursRemaining)h left)")
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(AppTheme.textTertiary)
+                            Button { showFileClaim = true } label: {
+                                HStack(spacing: AppTheme.spacingSM) {
+                                    Image(systemName: "exclamationmark.bubble")
+                                    Text("Report damage or missing items")
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.spacingMD)
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+                                        .stroke(AppTheme.separator.opacity(0.5), lineWidth: 1)
+                                )
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AppTheme.spacingMD)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppTheme.radiusCard)
-                                    .stroke(AppTheme.separator.opacity(0.5), lineWidth: 1)
+                            .slideIn(delay: 0.22)
+                        } else if let claimElig, !claimElig.eligible {
+                            Text(
+                                "Window closed — claim filing unavailable" +
+                                    (claimElig.endsAt.map { " (ended \(formatClaimEndsAt($0)))" } ?? "")
                             )
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .slideIn(delay: 0.22)
+                        } else {
+                            Button { showFileClaim = true } label: {
+                                HStack(spacing: AppTheme.spacingSM) {
+                                    Image(systemName: "exclamationmark.bubble")
+                                    Text("Report damage or missing items")
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.spacingMD)
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+                                        .stroke(AppTheme.separator.opacity(0.5), lineWidth: 1)
+                                )
+                            }
+                            .slideIn(delay: 0.22)
                         }
-                        .slideIn(delay: 0.22)
                     }
 
                     // Cancel action — permitted for cancellable states
@@ -518,7 +552,21 @@ struct OrderDetailSheet: View {
             .sheet(isPresented: $showFileClaim) {
                 FileClaimView(order: order)
             }
+            .task(id: order.id) {
+                guard claimCandidate else {
+                    claimElig = nil
+                    return
+                }
+                claimElig = try? await api.getClaimEligibility(orderId: order.id)
+            }
         }
+    }
+
+    private func formatClaimEndsAt(_ raw: String?) -> String {
+        guard let raw, let date = ISO8601DateFormatter().date(from: raw) else {
+            return raw ?? "window end"
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func cancelOrder() async {

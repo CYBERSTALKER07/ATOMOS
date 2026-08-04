@@ -20,10 +20,12 @@ class FileClaimDepsViewModel @Inject constructor(
 fun FileClaimHost(
     order: Order,
     onDismiss: () -> Unit,
+    preferredSku: String? = null,
     viewModel: FileClaimDepsViewModel = hiltViewModel(),
 ) {
     FileClaimSheet(
         order = order,
+        preferredSku = preferredSku,
         api = viewModel.api,
         mediaUpload = viewModel.mediaUpload,
         onDismiss = onDismiss,

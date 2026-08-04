@@ -33,17 +33,27 @@ func (s *Service) HandleFileOrderClaim(w http.ResponseWriter, r *http.Request) {
 	if orderID == "" {
 		orderID = strings.TrimSpace(chi.URLParam(r, "id"))
 	}
+	body, err := readLimitedBody(r, 1<<20)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req FileClaimRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
 	created, err := s.FileRetailerClaim(r.Context(), claims, orderID, req)
 	if err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeClaimError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, created)
+	s.writeIdempotentJSON(w, r, body, http.StatusCreated, created)
 }
 
 // HandleApproveClaim serves POST /v1/claims/{claimID}/approve.
@@ -130,6 +140,29 @@ func (s *Service) HandleListSupplierClaims(w http.ResponseWriter, r *http.Reques
 		list = []Claim{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"claims": list})
+}
+
+// HandleGetClaimEligibility serves GET /v1/orders/{orderID}/claim-eligibility.
+func (s *Service) HandleGetClaimEligibility(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	actor, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	orderID := strings.TrimSpace(chi.URLParam(r, "orderID"))
+	if orderID == "" {
+		orderID = strings.TrimSpace(chi.URLParam(r, "id"))
+	}
+	elig, err := s.GetClaimEligibility(r.Context(), actor, orderID)
+	if err != nil {
+		writeClaimError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, elig)
 }
 
 // HandleListOrderClaims serves GET /v1/orders/{orderID}/claims.

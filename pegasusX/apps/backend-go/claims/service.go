@@ -11,6 +11,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 )
@@ -38,6 +39,10 @@ type OrderSnapshot struct {
 	LineItems          []OrderLine
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	// G3 immutable claim window (preferred over env duration when set).
+	ClaimWindowHours        int64
+	ClaimWindowEndsAt       *time.Time
+	ClaimWindowPolicySource string
 }
 
 // OrderLookup loads order snapshots for claim authorization.
@@ -93,6 +98,7 @@ type Service struct {
 	storeCr     StoreCreditApplier
 	creditNotes CreditNoteCreator
 	storeStock  StoreStockClaimPort
+	idem        idempotency.Store
 	now         func() time.Time
 	newID       func() string
 	log         *slog.Logger
@@ -108,6 +114,7 @@ type Config struct {
 	StoreCr     StoreCreditApplier
 	CreditNotes CreditNoteCreator
 	StoreStock  StoreStockClaimPort
+	Idem        idempotency.Store
 	Now         func() time.Time
 	NewID       func() string
 	Log         *slog.Logger
@@ -137,7 +144,7 @@ func NewService(cfg Config) *Service {
 	return &Service{
 		repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL,
 		storeCr: cfg.StoreCr, creditNotes: cfg.CreditNotes, storeStock: cfg.StoreStock,
-		now: now, newID: newID, log: log, window: window,
+		idem: cfg.Idem, now: now, newID: newID, log: log, window: window,
 	}
 }
 
@@ -169,13 +176,16 @@ func (s *Service) SetCreditNotes(cn CreditNoteCreator) {
 	}
 }
 
+// openReverseLogistics attempts a sync dock-ticket open. On failure increments
+// claim_reverse_open_fail_total; the returns Kafka consumer retries via outbox (G12).
 func (s *Service) openReverseLogistics(ctx context.Context, in ReverseLogisticsInput) {
 	if s == nil || s.rl == nil {
 		return
 	}
 	if err := s.rl.OpenFromClaim(ctx, in); err != nil {
-		s.log.WarnContext(ctx, "reverse logistics ticket open failed",
-			"err", err, "claim_id", in.ClaimID, "order_id", in.OrderID)
+		incClaimReverseOpenFail()
+		s.log.ErrorContext(ctx, "reverse logistics ticket open failed (async retry via REVERSE_LOGISTICS_REQUIRED)",
+			"err", err, "claim_id", in.ClaimID, "order_id", in.OrderID, "warehouse_id", in.WarehouseID)
 	}
 }
 
@@ -398,17 +408,17 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 			return Claim{}, ErrForbidden
 		}
 	}
-	if strings.ToUpper(strings.TrimSpace(o.Status)) != OrderStatusCompleted {
-		return Claim{}, fmt.Errorf("%w: order status %s (claims only after delivery complete)", ErrClaimNotAllowed, o.Status)
-	}
-	// Window starts at COMPLETED (delivery+handshake+fiscal), not at first ship day.
-	completedAt := o.UpdatedAt
-	if completedAt.IsZero() {
-		completedAt = o.CreatedAt
-	}
 	now := s.now().UTC()
-	if !completedAt.IsZero() && now.After(completedAt.UTC().Add(s.window)) {
-		return Claim{}, ErrClaimWindowExpired
+	elig := EvaluateClaimEligibility(o, now, s.window)
+	if !elig.Eligible {
+		switch elig.Reason {
+		case "claim_window_expired":
+			return Claim{}, ErrClaimWindowExpired
+		case "order_not_completed":
+			return Claim{}, fmt.Errorf("%w: order status %s (claims only after delivery complete)", ErrClaimNotAllowed, o.Status)
+		default:
+			return Claim{}, fmt.Errorf("%w: order status %s (claims only after delivery complete)", ErrClaimNotAllowed, o.Status)
+		}
 	}
 
 	// Cumulative liability: prior non-rejected claims reserve qty on the order.
@@ -494,6 +504,7 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 			"order_id":     c.OrderID,
 			"supplier_id":  c.SupplierID,
 			"retailer_id":  c.RetailerID,
+			"warehouse_id": o.WarehouseID,
 			"claim_type":   string(c.ClaimType),
 			"status":       string(c.Status),
 			"source":       string(c.Source),
@@ -509,7 +520,8 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
 			return err
 		}
-		if needsPhoto {
+		// Physical reverse: outbox retry path for dock tickets (G12).
+		if claimNeedsStoreHold(c.ClaimType) || needsPhoto {
 			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, map[string]any{
 				"type":         events.EventReverseLogisticsRequired,
 				"claim_id":     c.ClaimID,
@@ -518,6 +530,8 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 				"supplier_id":  c.SupplierID,
 				"retailer_id":  c.RetailerID,
 				"claim_type":   string(c.ClaimType),
+				"source":       string(c.Source),
+				"line_items":   c.LineItems,
 				"timestamp":    now.Format(time.RFC3339Nano),
 			})
 		}
@@ -627,6 +641,9 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 			"type":         events.EventClaimFiled,
 			"claim_id":     c.ClaimID,
 			"order_id":     c.OrderID,
+			"supplier_id":  c.SupplierID,
+			"retailer_id":  c.RetailerID,
+			"warehouse_id": o.WarehouseID,
 			"source":       string(c.Source),
 			"claim_type":   string(c.ClaimType),
 			"driver_id":    driverID,
@@ -638,7 +655,25 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
 			return err
 		}
-		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		if claimNeedsStoreHold(claimType) {
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, map[string]any{
+				"type":         events.EventReverseLogisticsRequired,
+				"claim_id":     c.ClaimID,
+				"order_id":     c.OrderID,
+				"warehouse_id": o.WarehouseID,
+				"supplier_id":  c.SupplierID,
+				"retailer_id":  c.RetailerID,
+				"driver_id":    driverID,
+				"claim_type":   string(c.ClaimType),
+				"source":       string(c.Source),
+				"line_items":   pricedLines,
+				"timestamp":    now.Format(time.RFC3339Nano),
+			})
+		}
+		return nil
 	})
 	if err != nil {
 		return Claim{}, err

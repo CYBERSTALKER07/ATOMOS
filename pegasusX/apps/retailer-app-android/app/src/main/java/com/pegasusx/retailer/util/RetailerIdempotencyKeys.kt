@@ -46,6 +46,10 @@ object RetailerIdempotencyKeys {
         return "retailer-profile-update:$retailerId:${stableHash(fingerprint)}"
     }
 
+    /** Stable file-claim key — same body retries return the same claim_id (G11/G25). */
+    fun claimFile(orderId: String, bodyFingerprint: String): String =
+        "claim-file:$orderId:${stableHash(bodyFingerprint)}"
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L

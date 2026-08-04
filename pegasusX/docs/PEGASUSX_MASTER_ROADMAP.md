@@ -1,8 +1,8 @@
 # PegasusX Master Roadmap (Everything, Sequenced)
 
 **Status:** Program roadmap (order of battle)  
-**Repo:** `/Users/shakhzod/Desktop/V.O.I.D/pegasusX`  
-**Date:** 2026-08-03  
+**Repo:** `/Users/shakhzod/ATOMOS/pegasusX` (canonical working tree; Desktop `V.O.I.D` is not the execution root)  
+**Date:** 2026-08-04  
 **Role:** Sequences all major plans; detail stays in linked docs — do not duplicate every epic here.
 
 ---
@@ -50,8 +50,8 @@ flowchart TD
 |------|--------|------|
 | Global Pay SUCCESS + Firebase real OTP | L1 | Card SUCCESS marker; OTP on device; no emulator in release |
 | Remove **all** credit risk scoring | Credit-score removal | **Done** — no worker / score desk; CREDIT_LEAVE = status + available only (`RetailerCreditScores` table orphaned, no writers) |
-| Kill supplier `sup-demo-1` CT/Compliance | E1 | Session-scoped supplier; honest empty |
-| Apply shop-closed Spanner DDL on SSMR | E3 | Parity-ledger not Pending; e2e grace fields |
+| Kill supplier `sup-demo-1` CT/Compliance | E1 | **Done** — session-scoped supplier; honest empty |
+| Apply shop-closed Spanner DDL on SSMR | E3 | **Done** — DDL on SSMR+staging; schema-drift CI gate |
 | GCS evidence fail-closed (no placehold.co in SSMR/prod) | G16/G21 | **Done** — fail-closed ticket + URI reject; `PX_E2E_CLAIM_MEDIA_GCS_OK` |
 
 **Parallel OK:** docs/plan link cleanup only.
@@ -67,11 +67,12 @@ flowchart TD
 | TEAM claim auth (`retailer_org_id`) + `claim.file` | G6/G7 / RS0 | **Done** — org resolve + `claim.file`; cashier 403 |
 | Claim → QUARANTINE hold + approve/reject dispositions | G8/G24 / RS3 | **Done (fail-closed)** — hold error → compensate REJECTED; single-Apply txn follow-up |
 | Receive excludes driver-excepted qty | G9 / RS2 | **Done** — `ReceivableQty` caps delivered − residual − open claims |
-| Idempotency on file claim + client keys | G11/G25 | Double-submit same `claim_id` |
-| Stock “Request return” UX (3 clients) | G1 | Order picker + reasons + photo |
-| Supplier/WH claim window settings + order snapshot | G3/G10 / RS1 | 8/24/custom; retailer countdown |
-| Reverse open retry + CLAIM_FILED → WH | G12/G22 | Inbound row always; WH notified |
-| Concealed+stock+WH e2e markers | G20 | Marker gate green |
+| Idempotency on file claim + client keys | G11/G25 | **Done** — Redis guard + stable `claim-file:` keys; `PX_E2E_CLAIMS_IDEMPOTENCY_OK` |
+| Stock “Request return” UX (3 clients) | G1 | **Done** — stock CTA → COMPLETED picker → existing FileClaim (+ optional SKU prefill) on desktop/Android/iOS |
+| Claim eligibility / countdown API | G2 | **Done** — `GET …/claim-eligibility` + retailer CTA countdown (3 clients); `PX_E2E_CLAIM_ELIGIBILITY_OK` |
+| Supplier/WH claim window settings + order snapshot | G3/G10 / RS1 | 8/24/custom; snapshot on COMPLETED (deferred; eligibility uses ENV/DEFAULT until then) |
+| Reverse open retry + CLAIM_FILED → WH | G12/G22 | **Done** — returns Kafka consumer + `warehouse_id` on CLAIM_FILED; metric on sync fail |
+| Concealed+stock+WH e2e markers | G20 | **Done** — receive→CONCEALED→hold→inbound markers in gate |
 
 Detail: [`RETAILER_RECEIVE_STOCK_CLAIMS_PLAN.md`](./RETAILER_RECEIVE_STOCK_CLAIMS_PLAN.md).
 
@@ -157,8 +158,8 @@ Not a product epic — **make the platform operable**.
 
 Do **not** set `PEGASUSX_ENV=production` until:
 
-1. Phase **A** green (GP SUCCESS, Firebase OTP, no demo desks, shop-closed DDL, GCS evidence real)  
-2. Phase **B** P0 green (claim auth, quarantine bridge, receive exclude exceptions)  
+1. Phase **A** green (GP SUCCESS, Firebase OTP still open; demo desks / shop-closed DDL / GCS evidence code **Done** — SSMR media marker needs TokenCreator IAM)  
+2. Phase **B** P0 green (claim auth, quarantine, receive exclude, idempotency, reverse/WH fanout, G20 markers, G1 stock UX, G2 eligibility — **code Done**; remaining product UX G3 windows)  
 3. `ValidateProductionProfile` passes (no GP stubs)
 
 CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail OS packs parity-tested.
@@ -177,11 +178,11 @@ CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail
 
 ## Immediate next 5 engineering moves
 
-1. ~~Credit-score removal~~ **Done** (status + available only; worker/UI scoring gone).  
+1. ~~Credit-score removal~~ **Done**.  
 2. ~~E1 `sup-demo-1` + E3 shop-closed DDL~~ **Done**.  
-3. **L1** owner secrets (GP password, Firebase Phone/SHA).  
-4. **GCS evidence fail-closed** (G16/G21) then **RS0 + G8 + G9**.  
-5. Start **E2** perimeter key design before second supplier.
+3. ~~GCS fail-closed + RS0 + G8 + G9~~ **Done** (SSMR media e2e still needs WI `roles/iam.serviceAccountTokenCreator` for signBlob).  
+4. ~~E2 perimeter key design + helper~~ **Done** (prod reads still global; EH1.1 cutover later).  
+5. ~~Phase B G11/G25 + G12/G22 + G20 + G1 + G2~~ **Done**. **Next eng:** Phase C E2 cutover / G19 ConfigMap / G3 claim windows as product allows. **Owner/ops:** **L1** GP password + Firebase Phone/SHA + WI TokenCreator for GCS smoke.
 
 ---
 

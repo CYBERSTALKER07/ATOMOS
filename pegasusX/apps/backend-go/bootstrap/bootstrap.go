@@ -209,6 +209,7 @@ type App struct {
 	NotificationConsumer   *kafka.Consumer
 	OrderEventConsumer     *kafka.Consumer
 	WarehouseEventConsumer *kafka.Consumer
+	ReturnsEventConsumer   *kafka.Consumer
 	BillingTierConsumer    *kafka.Consumer
 	Reliability            *ReliabilityMiddleware
 	InfraHealth            infraroutes.Deps
@@ -747,6 +748,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	claimsSvc := claims.NewService(claims.Config{
 		Repo:   claimsRepo,
 		Orders: orderClaimsLookup{svc: orderSvc},
+		Idem:   idemStore,
 		Log:    log,
 	})
 	if creditNoteSvc != nil {
@@ -1170,6 +1172,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var notificationConsumer *kafka.Consumer
 	var orderEventConsumer *kafka.Consumer
 	var warehouseEventConsumer *kafka.Consumer
+	var returnsEventConsumer *kafka.Consumer
 	var billingTierConsumer *kafka.Consumer
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
@@ -1217,6 +1220,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			})
 			orderHandler := kafka.WithEventDedup(kafkaEventDedup, orderConsumerGroup, order.NewEventConsumer(orderSvc, log).HandleEvent)
 			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouseConsumerGroup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
+			const returnsConsumerGroup = "void-returns-reverse"
+			returnsHandler := kafka.WithEventDedup(kafkaEventDedup, returnsConsumerGroup, returns.NewEventConsumer(returnsSvc, log).HandleEvent)
 			orderEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   orderConsumerGroup,
@@ -1230,6 +1235,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				GroupID:   warehouseConsumerGroup,
 				Topic:     events.DispatchConsumerTopic(),
 				Handler:   warehouseHandler,
+				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
+			})
+			returnsEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
+				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+				GroupID:   returnsConsumerGroup,
+				Topic:     events.TopicExceptions,
+				Handler:   returnsHandler,
 				DLQWriter: dlqWriter,
 				Auth:      kafkaAuth,
 			})
@@ -1257,6 +1270,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				if err := warehouseEventConsumer.Close(); err != nil {
 					log.Warn("warehouse event consumer close failed", "err", err)
 				}
+				if returnsEventConsumer != nil {
+					if err := returnsEventConsumer.Close(); err != nil {
+						log.Warn("returns event consumer close failed", "err", err)
+					}
+				}
 				if billingTierConsumer != nil {
 					if err := billingTierConsumer.Close(); err != nil {
 						log.Warn("billing tier consumer close failed", "err", err)
@@ -1270,10 +1288,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				"topic", cfg.KafkaTopicMain,
 				"order_topic", events.OrderConsumerTopic(),
 				"dispatch_topic", events.DispatchConsumerTopic(),
+				"exceptions_topic", events.TopicExceptions,
 				"dlq_topic", cfg.KafkaTopicMainDLQ,
 				"consume_domain", events.ConsumeDomainTopics(),
 				"dual_write", events.DualWriteDomainTopics(),
 				"billing_tier", billingTierConsumer != nil,
+				"returns_reverse", returnsEventConsumer != nil,
 			)
 		}
 	}
@@ -1404,6 +1424,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotificationConsumer:   notificationConsumer,
 		OrderEventConsumer:     orderEventConsumer,
 		WarehouseEventConsumer: warehouseEventConsumer,
+		ReturnsEventConsumer:   returnsEventConsumer,
 		BillingTierConsumer:    billingTierConsumer,
 		OutboxRelay:            outboxRelay,
 		Reliability:            reliabilityMiddleware,

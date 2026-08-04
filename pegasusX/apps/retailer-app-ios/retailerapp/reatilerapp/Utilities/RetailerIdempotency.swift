@@ -76,6 +76,11 @@ enum RetailerIdempotency {
         "retailer-profile-update:\(retailerId):\(stableHash(payloadFingerprint))"
     }
 
+    /// Stable file-claim key — same body retries return the same claim_id (G11/G25).
+    static func claimFile(orderId: String, bodyFingerprint: String) -> String {
+        "claim-file:\(orderId):\(stableHash(bodyFingerprint))"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

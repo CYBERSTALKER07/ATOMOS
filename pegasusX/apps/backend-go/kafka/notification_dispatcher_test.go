@@ -415,28 +415,36 @@ func TestNotificationDispatcher_ClaimFiledFansSupplierAndRetailer(t *testing.T) 
 
 	supplierConn := &dispatcherConnSpy{id: "supplier"}
 	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	warehouseConn := &dispatcherConnSpy{id: "warehouse"}
 	supplierHub := ws.NewHub("supplier", nil, nil)
 	retailerHub := ws.NewHub("retailer", nil, nil)
+	warehouseHub := ws.NewHub("warehouse", nil, nil)
 	supplierHub.Subscribe("supplier:sup-1", supplierConn)
 	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+	warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
 
 	dispatcher := NewNotificationDispatcher(DispatcherDeps{
-		SupplierHub: supplierHub,
-		RetailerHub: retailerHub,
+		SupplierHub:  supplierHub,
+		RetailerHub:  retailerHub,
+		WarehouseHub: warehouseHub,
 	})
 	payload, _ := json.Marshal(map[string]any{
-		"type":        events.EventClaimFiled,
-		"trace_id":    "trace-claim",
-		"claim_id":    "clm-1",
-		"order_id":    "ord-1",
-		"supplier_id": "sup-1",
-		"retailer_id": "ret-1",
+		"type":         events.EventClaimFiled,
+		"trace_id":     "trace-claim",
+		"claim_id":     "clm-1",
+		"order_id":     "ord-1",
+		"supplier_id":  "sup-1",
+		"retailer_id":  "ret-1",
+		"warehouse_id": "wh-1",
 	})
 	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
 		t.Fatalf("handle event: %v", err)
 	}
 	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
 		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+	if len(warehouseConn.messages) != 1 {
+		t.Fatalf("warehouse=%d want 1 (G22 warehouse_id fanout)", len(warehouseConn.messages))
 	}
 }
 

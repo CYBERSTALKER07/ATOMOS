@@ -2,14 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
+import { claimFileKey } from "@pegasusx/api-client";
 import {
   claimTypeNeedsPhoto,
   fileOrderClaim,
+  getClaimEligibility,
   listOrderClaims,
   uploadClaimPhoto,
+  type ClaimEligibility,
   type RetailerClaim,
 } from "../lib/api";
 import type { Order } from "../lib/types";
+
+function formatEligibleUntil(endsAt: string | null | undefined): string | null {
+  if (!endsAt) return null;
+  const d = new Date(endsAt);
+  if (Number.isNaN(d.getTime())) return endsAt;
+  return d.toLocaleString();
+}
 
 const CLAIM_TYPES = [
   "CONCEALED_DAMAGE",
@@ -23,9 +33,11 @@ const CLAIM_TYPES = [
 type Props = {
   order: Order;
   onFiled?: (claim: RetailerClaim) => void;
+  /** Prefill qty=1 (capped by line qty) when launched from a stock row. */
+  initialSku?: string;
 };
 
-export function FileClaimPanel({ order, onFiled }: Props) {
+export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
   const [claimType, setClaimType] = useState<string>("CONCEALED_DAMAGE");
   const [description, setDescription] = useState("");
   const [qtyBySku, setQtyBySku] = useState<Record<string, number>>({});
@@ -36,6 +48,9 @@ export function FileClaimPanel({ order, onFiled }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [existing, setExisting] = useState<RetailerClaim[]>([]);
+  const [skuWarning, setSkuWarning] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<ClaimEligibility | null>(null);
+  const [eligLoading, setEligLoading] = useState(true);
 
   const items = order.items ?? [];
   const needsPhoto = claimTypeNeedsPhoto(claimType);
@@ -43,6 +58,9 @@ export function FileClaimPanel({ order, onFiled }: Props) {
     () => Object.values(qtyBySku).reduce((s, n) => s + n, 0),
     [qtyBySku],
   );
+  // Allow submit when eligibility unknown (fetch failed) — server still enforces window.
+  const canSubmit =
+    !eligLoading && (eligibility == null || eligibility.eligible === true);
 
   const refreshExisting = useCallback(async () => {
     try {
@@ -61,6 +79,46 @@ export function FileClaimPanel({ order, onFiled }: Props) {
   useEffect(() => {
     void refreshExisting();
   }, [refreshExisting]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEligLoading(true);
+    void getClaimEligibility(order.order_id)
+      .then((e) => {
+        if (!cancelled) setEligibility(e);
+      })
+      .catch(() => {
+        if (!cancelled) setEligibility(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEligLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [order.order_id]);
+
+  useEffect(() => {
+    const sku = (initialSku ?? "").trim();
+    if (!sku) {
+      setSkuWarning(null);
+      return;
+    }
+    const lineItems = order.items ?? [];
+    const match = lineItems.find(
+      (item) => (item.sku_id || item.line_item_id) === sku,
+    );
+    if (!match) {
+      setSkuWarning(`SKU ${sku} is not on this order — pick another line.`);
+      return;
+    }
+    const key = match.sku_id || match.line_item_id;
+    setSkuWarning(null);
+    setQtyBySku((prev) => ({
+      ...prev,
+      [key]: Math.min(1, Math.max(0, match.quantity)),
+    }));
+  }, [initialSku, order.order_id, order.items]);
 
   const onPickFile = async (file: File | null) => {
     if (!file) return;
@@ -81,6 +139,10 @@ export function FileClaimPanel({ order, onFiled }: Props) {
   const submit = async () => {
     setError(null);
     setSuccessId(null);
+    if (eligibility && !eligibility.eligible) {
+      setError("Window closed — claim window has expired.");
+      return;
+    }
     if (selectedTotal <= 0) {
       setError("Select at least one item quantity.");
       return;
@@ -107,15 +169,16 @@ export function FileClaimPanel({ order, onFiled }: Props) {
             },
           ]
         : [];
+      const claimBody = {
+        claim_type: claimType,
+        description,
+        line_items,
+        evidences,
+      };
       const res = await fileOrderClaim(
         order.order_id,
-        {
-          claim_type: claimType,
-          description,
-          line_items,
-          evidences,
-        },
-        `retailer-claim:${order.order_id}:${Date.now()}`,
+        claimBody,
+        claimFileKey(order.order_id, claimBody),
       );
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -140,9 +203,40 @@ export function FileClaimPanel({ order, onFiled }: Props) {
         <h3 className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
           File claim
         </h3>
-        <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
-          Within 48 hours of delivery. Amounts use your order prices.
-        </p>
+        {eligLoading && (
+          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+            Checking claim window…
+          </p>
+        )}
+        {!eligLoading && eligibility?.eligible && (
+          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+            Eligible until{" "}
+            {formatEligibleUntil(eligibility.ends_at) ?? "window end"} (
+            {eligibility.hours_remaining}h left · {eligibility.window_hours}h
+            window). Amounts use your order prices.
+          </p>
+        )}
+        {!eligLoading && eligibility && !eligibility.eligible && (
+          <p className="md-typescale-body-small text-red-600 mt-1">
+            Window closed
+            {eligibility.reason === "claim_window_expired"
+              ? " — filing deadline passed."
+              : eligibility.reason === "order_not_completed"
+                ? " — order not COMPLETED yet."
+                : "."}
+          </p>
+        )}
+        {!eligLoading && !eligibility && (
+          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+            Within 48 hours of delivery (server enforces). Amounts use your order
+            prices.
+          </p>
+        )}
+        {skuWarning && (
+          <p className="md-typescale-body-small text-amber-700 mt-2">
+            {skuWarning}
+          </p>
+        )}
       </div>
 
       <label className="block">
@@ -300,7 +394,13 @@ export function FileClaimPanel({ order, onFiled }: Props) {
 
       <button
         type="button"
-        disabled={submitting || uploading || selectedTotal <= 0}
+        disabled={
+          submitting ||
+          uploading ||
+          selectedTotal <= 0 ||
+          !canSubmit ||
+          eligLoading
+        }
         onClick={() => void submit()}
         className="portal-btn portal-btn--primary h-11 w-full rounded-xl font-light"
       >

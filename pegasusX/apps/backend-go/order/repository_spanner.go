@@ -40,7 +40,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline, ClaimWindowHours, ClaimWindowEndsAt, ClaimWindowPolicySource`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
@@ -309,6 +309,15 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		}
 		if o.BuyerAcceptanceDeadline != nil {
 			orderMap["BuyerAcceptanceDeadline"] = *o.BuyerAcceptanceDeadline
+		}
+		if o.ClaimWindowHours > 0 {
+			orderMap["ClaimWindowHours"] = o.ClaimWindowHours
+		}
+		if o.ClaimWindowEndsAt != nil {
+			orderMap["ClaimWindowEndsAt"] = *o.ClaimWindowEndsAt
+		}
+		if strings.TrimSpace(o.ClaimWindowPolicySource) != "" {
+			orderMap["ClaimWindowPolicySource"] = o.ClaimWindowPolicySource
 		}
 		// Shop-closed / proximity / partial (2026-07-29 additive columns).
 		if strings.TrimSpace(o.ShopClosedResolution) != "" {
@@ -886,6 +895,9 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		proximityMethod         spanner.NullString
 		buyerAcceptanceStatus   spanner.NullString
 		buyerAcceptanceDeadline spanner.NullTime
+		claimWindowHours        spanner.NullInt64
+		claimWindowEndsAt       spanner.NullTime
+		claimWindowPolicySource spanner.NullString
 	)
 	if err := row.Columns(
 		&orderRecord.OrderID,
@@ -945,6 +957,9 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&proximityMethod,
 		&buyerAcceptanceStatus,
 		&buyerAcceptanceDeadline,
+		&claimWindowHours,
+		&claimWindowEndsAt,
+		&claimWindowPolicySource,
 	); err != nil {
 		return Order{}, err
 	}
@@ -1045,6 +1060,14 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		t := buyerAcceptanceDeadline.Time.UTC()
 		orderRecord.BuyerAcceptanceDeadline = &t
 	}
+	if claimWindowHours.Valid {
+		orderRecord.ClaimWindowHours = claimWindowHours.Int64
+	}
+	if claimWindowEndsAt.Valid {
+		t := claimWindowEndsAt.Time.UTC()
+		orderRecord.ClaimWindowEndsAt = &t
+	}
+	orderRecord.ClaimWindowPolicySource = claimWindowPolicySource.StringVal
 
 	if len(lineItemsRaw) > 0 {
 		if err := json.Unmarshal(lineItemsRaw, &orderRecord.LineItems); err != nil {
@@ -1587,6 +1610,15 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 		}
 		if o.BuyerAcceptanceDeadline != nil {
 			orderMap["BuyerAcceptanceDeadline"] = *o.BuyerAcceptanceDeadline
+		}
+		if o.ClaimWindowHours > 0 {
+			orderMap["ClaimWindowHours"] = o.ClaimWindowHours
+		}
+		if o.ClaimWindowEndsAt != nil {
+			orderMap["ClaimWindowEndsAt"] = *o.ClaimWindowEndsAt
+		}
+		if strings.TrimSpace(o.ClaimWindowPolicySource) != "" {
+			orderMap["ClaimWindowPolicySource"] = o.ClaimWindowPolicySource
 		}
 		// Shop-closed / proximity / partial (2026-07-29 additive columns).
 		if strings.TrimSpace(o.ShopClosedResolution) != "" {

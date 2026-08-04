@@ -31,6 +31,18 @@ data class RetailerClaimsListResponse(
 )
 
 @Serializable
+data class ClaimEligibility(
+    val eligible: Boolean = false,
+    @SerialName("ends_at") val endsAt: String? = null,
+    @SerialName("window_hours") val windowHours: Int = 0,
+    @SerialName("hours_remaining") val hoursRemaining: Double = 0.0,
+    @SerialName("policy_source") val policySource: String = "",
+    @SerialName("photo_required_types") val photoRequiredTypes: List<String> = emptyList(),
+    @SerialName("order_status") val orderStatus: String = "",
+    val reason: String = "",
+)
+
+@Serializable
 data class FileClaimEvidenceBody(
     @SerialName("evidence_type") val evidenceType: String,
     val uri: String,

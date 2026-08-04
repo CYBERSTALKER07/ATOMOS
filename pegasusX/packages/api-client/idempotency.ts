@@ -727,3 +727,8 @@ export function payloadInboundConfirmKey(returnIds: string[], disposition: strin
 export function payloadManifestExceptionKey(manifestId: string, orderId: string): string {
   return `payload-manifest-exception-${manifestId}-${orderId}`;
 }
+
+/** Stable file-claim key — same body retries return the same claim_id (G11/G25). */
+export function claimFileKey(orderId: string, body: unknown): string {
+  return `claim-file:${orderId}:${stableHash(JSON.stringify(body ?? {}))}`;
+}

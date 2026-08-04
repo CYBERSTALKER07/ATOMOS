@@ -177,6 +177,10 @@ final class APIClient {
     
     // MARK: - Logistics claims (post-delivery)
 
+    func getClaimEligibility(orderId: String) async throws -> ClaimEligibility {
+        try await get(path: "/v1/orders/\(orderId)/claim-eligibility")
+    }
+
     func listOrderClaims(orderId: String) async throws -> [RetailerClaim] {
         let response: RetailerClaimsListResponse = try await get(path: "/v1/orders/\(orderId)/claims")
         return response.claims
@@ -187,7 +191,8 @@ final class APIClient {
         claimType: String,
         description: String,
         lines: [FileClaimLineBody],
-        photoURL: String?
+        photoURL: String?,
+        idempotencyKey: String? = nil
     ) async throws -> RetailerClaim {
         var evidences: [FileClaimEvidenceBody] = []
         if let photoURL, !photoURL.isEmpty {
@@ -203,7 +208,11 @@ final class APIClient {
             lineItems: lines,
             evidences: evidences
         )
-        return try await post(path: "/v1/orders/\(orderId)/claims", body: body)
+        var headers: [String: String] = [:]
+        if let idempotencyKey, !idempotencyKey.isEmpty {
+            headers["Idempotency-Key"] = idempotencyKey
+        }
+        return try await post(path: "/v1/orders/\(orderId)/claims", body: body, headers: headers)
     }
 
     func deactivateCard(tokenId: String) async throws {

@@ -60,6 +60,28 @@ struct RetailerClaimsListResponse: Codable {
     let claims: [RetailerClaim]
 }
 
+struct ClaimEligibility: Codable, Hashable {
+    let eligible: Bool
+    let endsAt: String?
+    let windowHours: Int
+    let hoursRemaining: Double
+    let policySource: String
+    let photoRequiredTypes: [String]?
+    let orderStatus: String?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case eligible
+        case endsAt = "ends_at"
+        case windowHours = "window_hours"
+        case hoursRemaining = "hours_remaining"
+        case policySource = "policy_source"
+        case photoRequiredTypes = "photo_required_types"
+        case orderStatus = "order_status"
+        case reason
+    }
+}
+
 struct FileClaimEvidenceBody: Encodable {
     let evidenceType: String
     let uri: String

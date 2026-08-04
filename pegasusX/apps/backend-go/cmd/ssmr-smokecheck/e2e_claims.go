@@ -18,7 +18,12 @@ import (
 //
 //	PX_E2E_CLAIMS_MEDIA_TICKET_OK
 //	PX_E2E_CLAIM_MEDIA_GCS_OK
+//	PX_E2E_CLAIM_ELIGIBILITY_OK
+//	PX_E2E_CLAIMS_CONCEALED_OK
+//	PX_E2E_STORE_STOCK_CLAIM_HOLD_OK
+//	PX_E2E_CLAIMS_REVERSE_OK
 //	PX_E2E_CLAIMS_FILE_OK
+//	PX_E2E_CLAIMS_IDEMPOTENCY_OK
 //	PX_E2E_CLAIMS_IDOR_OK
 //	PX_E2E_CLAIMS_APPROVE_LEDGER_OK
 //	PX_E2E_CLAIMS_ALL_OK
@@ -69,6 +74,18 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 	bodyStr := string(respBody)
 	if strings.Contains(bodyStr, "placehold.co") {
 		return fmt.Errorf("claim media upload-ticket returned placehold.co (fail-closed): %s", bodyStr)
+	}
+	var mediaTicket struct {
+		PublicURL string `json:"public_url"`
+		ImageURL  string `json:"image_url"`
+	}
+	_ = json.Unmarshal(respBody, &mediaTicket)
+	evidenceURI := strings.TrimSpace(mediaTicket.PublicURL)
+	if evidenceURI == "" {
+		evidenceURI = strings.TrimSpace(mediaTicket.ImageURL)
+	}
+	if evidenceURI == "" || strings.Contains(evidenceURI, "placehold.co") {
+		return fmt.Errorf("claim media ticket missing GCS public_url: %s", bodyStr)
 	}
 	fmt.Println("PX_E2E_CLAIMS_MEDIA_TICKET_OK")
 	fmt.Println("PX_E2E_CLAIM_MEDIA_GCS_OK")
@@ -135,17 +152,59 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("order %s has no claimable sku", orderID)
 	}
 
-	// File MISSING claim (no photo required).
-	fileBody, _ := json.Marshal(map[string]any{
-		"claim_type":  "MISSING",
-		"description": "ssmr claims smoke",
-		"line_items": []map[string]any{
-			{"sku": sku, "quantity": qty, "reason": "MISSING"},
+	// G2: claim-eligibility countdown before file.
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet,
+		base+"/v1/orders/"+orderID+"/claim-eligibility", nil, retailerToken, "")
+	if err != nil {
+		return fmt.Errorf("claim eligibility: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("claim eligibility status %d body %s", status, string(respBody))
+	}
+	var elig struct {
+		Eligible    bool    `json:"eligible"`
+		EndsAt      *string `json:"ends_at"`
+		WindowHours int     `json:"window_hours"`
+	}
+	if err := json.Unmarshal(respBody, &elig); err != nil {
+		return fmt.Errorf("claim eligibility decode: %w body %s", err, string(respBody))
+	}
+	if !elig.Eligible || elig.EndsAt == nil || strings.TrimSpace(*elig.EndsAt) == "" || elig.WindowHours <= 0 {
+		return fmt.Errorf("claim eligibility unexpected: %+v body %s", elig, string(respBody))
+	}
+	fmt.Println("PX_E2E_CLAIM_ELIGIBILITY_OK")
+
+	// G20: receive into store OnHand, then CONCEALED_DAMAGE + photo → quarantine + WH reverse.
+	recvBody, _ := json.Marshal(map[string]any{
+		"order_id":  orderID,
+		"confirm":   true,
+		"stock_bin": "BACKROOM",
+		"lines": []map[string]any{
+			{"sku": sku, "accepted_qty": qty},
 		},
-		"evidences": []any{},
 	})
 	status, respBody, _, err = clientDo(ctx, client, http.MethodPost,
-		base+"/v1/orders/"+orderID+"/claims", fileBody, retailerToken, "ssmr-claim-file:"+orderID)
+		base+"/v1/retailer/stock/receive-sessions", recvBody, retailerToken, "ssmr-claim-receive:"+orderID)
+	if err != nil {
+		return fmt.Errorf("receive session: %w", err)
+	}
+	if status != http.StatusCreated && status != http.StatusOK {
+		return fmt.Errorf("receive session status %d body %s", status, string(respBody))
+	}
+
+	fileBody, _ := json.Marshal(map[string]any{
+		"claim_type":  "CONCEALED_DAMAGE",
+		"description": "ssmr concealed claims smoke",
+		"line_items": []map[string]any{
+			{"sku": sku, "quantity": qty, "reason": "CONCEALED_DAMAGE"},
+		},
+		"evidences": []map[string]any{
+			{"evidence_type": "PHOTO", "uri": evidenceURI, "mime_type": "image/jpeg"},
+		},
+	})
+	idemKey := "claim-file:" + orderID + ":ssmr-concealed"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost,
+		base+"/v1/orders/"+orderID+"/claims", fileBody, retailerToken, idemKey)
 	if err != nil {
 		return fmt.Errorf("file claim: %w", err)
 	}
@@ -159,7 +218,84 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := json.Unmarshal(respBody, &filed); err != nil || strings.TrimSpace(filed.ClaimID) == "" {
 		return fmt.Errorf("file claim decode: %w body %s", err, string(respBody))
 	}
+	fmt.Println("PX_E2E_CLAIMS_CONCEALED_OK")
 	fmt.Println("PX_E2E_CLAIMS_FILE_OK")
+
+	// Double-submit same key+body → same claim_id (G11).
+	status2, respBody2, _, err := clientDo(ctx, client, http.MethodPost,
+		base+"/v1/orders/"+orderID+"/claims", fileBody, retailerToken, idemKey)
+	if err != nil {
+		return fmt.Errorf("file claim replay: %w", err)
+	}
+	if status2 != http.StatusCreated && status2 != http.StatusOK {
+		return fmt.Errorf("file claim replay status %d body %s", status2, string(respBody2))
+	}
+	var replay struct {
+		ClaimID string `json:"claim_id"`
+	}
+	if err := json.Unmarshal(respBody2, &replay); err != nil || replay.ClaimID != filed.ClaimID {
+		return fmt.Errorf("file claim replay claim_id=%q want %q body %s", replay.ClaimID, filed.ClaimID, string(respBody2))
+	}
+	fmt.Println("PX_E2E_CLAIMS_IDEMPOTENCY_OK")
+
+	// Store QUARANTINE hold (G20 / G8).
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet,
+		base+"/v1/retailer/stock?stock_bin=QUARANTINE", nil, retailerToken, "")
+	if err != nil {
+		return fmt.Errorf("quarantine stock list: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("quarantine stock status %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), sku) && !strings.Contains(strings.ToUpper(string(respBody)), "QUARANTINE") {
+		// Accept non-empty quarantine list or sku presence; hold may use movements.
+		statusM, movBody, _, mErr := clientDo(ctx, client, http.MethodGet,
+			base+"/v1/retailer/stock/movements?sku="+sku+"&limit=20", nil, retailerToken, "")
+		if mErr != nil || statusM != http.StatusOK ||
+			(!strings.Contains(strings.ToUpper(string(movBody)), "CLAIM") && !strings.Contains(string(movBody), filed.ClaimID)) {
+			return fmt.Errorf("quarantine/hold not visible for sku=%s claim=%s stock=%s movements=%s",
+				sku, filed.ClaimID, string(respBody), string(movBody))
+		}
+	}
+	fmt.Println("PX_E2E_STORE_STOCK_CLAIM_HOLD_OK")
+
+	// WH inbound / reverse row with claim_id (G12/G20).
+	whID := demoWarehouseID()
+	whToken, err := issueRoleJWT(cfg, auth.Claims{
+		Subject:      "ssmr-wh-claims",
+		Role:         auth.RoleWarehouse,
+		SupplierID:   supplierID,
+		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeID:   whID,
+	})
+	if err != nil {
+		return fmt.Errorf("warehouse jwt: %w", err)
+	}
+	foundReverse := false
+	deadline := time.Now().Add(25 * time.Second)
+	for time.Now().Before(deadline) {
+		st, body, _, listErr := clientDo(ctx, client, http.MethodGet,
+			base+"/v1/returns/inbound?warehouse_id="+whID+"&physical_status=OPEN&limit=50", nil, whToken, "")
+		if listErr == nil && st == http.StatusOK {
+			if strings.Contains(string(body), filed.ClaimID) || strings.Contains(string(body), "claim_id="+filed.ClaimID) {
+				foundReverse = true
+				break
+			}
+		}
+		// Fallback reverse-logistics tasks list (credit-note style board).
+		st2, body2, _, listErr2 := clientDo(ctx, client, http.MethodGet,
+			base+"/v1/warehouse/reverse-logistics?warehouse_id="+whID+"&status=OPEN", nil, whToken, "")
+		if listErr2 == nil && st2 == http.StatusOK &&
+			(strings.Contains(string(body2), filed.ClaimID) || strings.Contains(string(body2), orderID)) {
+			foundReverse = true
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !foundReverse {
+		return fmt.Errorf("WH reverse/inbound missing claim_id=%s order=%s within timeout", filed.ClaimID, orderID)
+	}
+	fmt.Println("PX_E2E_CLAIMS_REVERSE_OK")
 
 	// IDOR: other retailer cannot list claims.
 	otherTok, err := auth.Issue(auth.Claims{
@@ -243,8 +379,6 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	fmt.Println("PX_E2E_CLAIMS_APPROVE_LEDGER_OK")
 
-	// Reverse-logistics ticket (MISSING claims do not open dock tickets; smoke uses MISSING).
-	// For damage path coverage, open a second micro-claim with photo when product supports it is optional.
 	// Ledger: claim chargebacks query (supplier-scoped).
 	status, respBody, _, err = clientDo(ctx, client, http.MethodGet,
 		base+"/v1/supplier/claim-chargebacks?limit=50&order_id="+orderID, nil, supplierTok, "")

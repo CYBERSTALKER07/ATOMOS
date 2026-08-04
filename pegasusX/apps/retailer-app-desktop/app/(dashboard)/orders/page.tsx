@@ -35,7 +35,16 @@ import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
 import { FileClaimPanel } from "../../../components/FileClaimPanel";
-import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder, acceptDeliveryProposal, rejectDeliveryProposal } from "../../../lib/api";
+import {
+  confirmAiOrder,
+  rejectAiOrder,
+  confirmPreorder,
+  editPreorder,
+  acceptDeliveryProposal,
+  rejectDeliveryProposal,
+  getClaimEligibility,
+  type ClaimEligibility,
+} from "../../../lib/api";
 import {
   retailerCancelKey,
   retailerRequestCancelKey,
@@ -93,6 +102,7 @@ function OrdersPageContent() {
   const [aiActionPending, setAiActionPending] = useState(false);
   const [preorderActionPending, setPreorderActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [claimElig, setClaimElig] = useState<ClaimEligibility | null>(null);
   const ws = useOptionalWebSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -442,9 +452,39 @@ function OrdersPageContent() {
     !!detail &&
     (cancellableStates.has(detail.state) ||
       requestCancelStates.has(detail.state));
-  const showFileClaim =
+  const claimCandidate =
     !!detail &&
     (detail.state === "COMPLETED" || detail.state === "DELIVERED_ON_CREDIT");
+  const showFileClaim = claimCandidate && claimElig?.eligible === true;
+  const showClaimWindowClosed =
+    claimCandidate && claimElig != null && !claimElig.eligible;
+
+  useEffect(() => {
+    if (!detail?.order_id || !claimCandidate) {
+      setClaimElig(null);
+      return;
+    }
+    let cancelled = false;
+    void getClaimEligibility(detail.order_id)
+      .then((e) => {
+        if (!cancelled) setClaimElig(e);
+      })
+      .catch(() => {
+        // Fallback: show panel; FileClaimPanel re-fetches / server enforces.
+        if (!cancelled) {
+          setClaimElig({
+            eligible: true,
+            ends_at: null,
+            window_hours: 48,
+            hours_remaining: 48,
+            policy_source: "DEFAULT",
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.order_id, claimCandidate]);
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const message = actionError ?? ordersError?.message;
@@ -889,6 +929,16 @@ function OrdersPageContent() {
                 </div>
               )}
 
+              {showClaimWindowClosed && (
+                <div className="mb-10 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
+                  Window closed — claim filing is no longer available for this
+                  order
+                  {claimElig?.ends_at
+                    ? ` (ended ${new Date(claimElig.ends_at).toLocaleString()})`
+                    : ""}
+                  .
+                </div>
+              )}
               {showFileClaim && (
                 <div className="mb-10">
                   <FileClaimPanel order={detail} />

@@ -48,10 +48,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasusx.retailer.data.model.ClaimEligibility
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +136,18 @@ fun OrderDetailSheetContent(
     onShowQR: () -> Unit,
     onCancelCash: () -> Unit,
     onFileClaim: (() -> Unit)? = null,
+    claimDeps: FileClaimDepsViewModel = hiltViewModel(),
 ) {
+        var claimElig by remember(order.id) { mutableStateOf<ClaimEligibility?>(null) }
+        val claimCandidate =
+            order.status == OrderStatus.COMPLETED || order.status == OrderStatus.DELIVERED_ON_CREDIT
+        LaunchedEffect(order.id, claimCandidate) {
+            if (!claimCandidate) {
+                claimElig = null
+                return@LaunchedEffect
+            }
+            claimElig = runCatching { claimDeps.api.getClaimEligibility(order.id) }.getOrNull()
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -366,21 +380,49 @@ fun OrderDetailSheetContent(
                     }
                 }
 
-                // ── File claim (COMPLETED / credit deliveries, 48h window) ──
-                if (
-                    onFileClaim != null &&
-                    (order.status == OrderStatus.COMPLETED || order.status == OrderStatus.DELIVERED_ON_CREDIT)
-                ) {
+                // ── File claim (COMPLETED + open eligibility window) ──
+                if (onFileClaim != null && claimCandidate) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = onFileClaim,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                    ) {
-                        Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
+                    when {
+                        claimElig?.eligible == true -> {
+                            Text(
+                                "Eligible until ${formatClaimEndsAt(claimElig?.endsAt)} (${claimElig?.hoursRemaining}h left)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedButton(
+                                onClick = onFileClaim,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                            ) {
+                                Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        claimElig != null && !claimElig!!.eligible -> {
+                            Text(
+                                "Window closed — claim filing unavailable" +
+                                    (claimElig?.endsAt?.let { " (ended ${formatClaimEndsAt(it)})" } ?: ""),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            )
+                        }
+                        else -> {
+                            // Loading or fetch failed — keep CTA; server enforces window.
+                            OutlinedButton(
+                                onClick = onFileClaim,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                            ) {
+                                Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
 

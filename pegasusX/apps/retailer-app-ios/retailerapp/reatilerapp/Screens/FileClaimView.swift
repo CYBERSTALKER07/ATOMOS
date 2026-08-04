@@ -5,6 +5,7 @@ import UIKit
 /// Post-delivery claim for COMPLETED orders (concealed damage / missing within 48h window).
 struct FileClaimView: View {
     let order: Order
+    var preferredSku: String? = nil
     @Environment(\.dismiss) private var dismiss
     private let api = APIClient.shared
 
@@ -17,10 +18,17 @@ struct FileClaimView: View {
     @State private var isUploadingPhoto = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var skuWarning: String?
     @State private var successClaimId: String?
     @State private var existing: [RetailerClaim] = []
+    @State private var eligibility: ClaimEligibility?
+    @State private var eligLoading = true
 
     private let claimTypes = ["CONCEALED_DAMAGE", "DAMAGED", "MISSING", "TAMPER", "TEMPERATURE", "OTHER"]
+
+    private var canSubmit: Bool {
+        !eligLoading && (eligibility?.eligible ?? true) && selectedQtyTotal > 0 && !isSubmitting && !isUploadingPhoto
+    }
 
     var body: some View {
         NavigationStack {
@@ -28,9 +36,28 @@ struct FileClaimView: View {
                 Section {
                     Text("Order #\(order.id.suffix(6))")
                         .font(.headline)
-                    Text("File within 48 hours of delivery. Amounts are calculated from your order prices.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if eligLoading {
+                        Text("Checking claim window…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let eligibility, eligibility.eligible {
+                        Text("Eligible until \(formatEndsAt(eligibility.endsAt)) (\(eligibility.hoursRemaining)h left). Amounts use your order prices.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let eligibility, !eligibility.eligible {
+                        Text(windowClosedCopy(eligibility))
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    } else {
+                        Text("File within 48 hours of delivery (server enforces). Amounts are calculated from your order prices.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let skuWarning {
+                        Text(skuWarning)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 Section("Claim type") {
@@ -123,11 +150,60 @@ struct FileClaimView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Submit") { Task { await submit() } }
-                        .disabled(isSubmitting || isUploadingPhoto || selectedQtyTotal == 0)
+                        .disabled(!canSubmit)
                 }
             }
-            .task { await loadExisting() }
+            .task {
+                await loadExisting()
+                await loadEligibility()
+                applyPreferredSku()
+            }
         }
+    }
+
+    private func loadEligibility() async {
+        eligLoading = true
+        defer { eligLoading = false }
+        do {
+            eligibility = try await api.getClaimEligibility(orderId: order.id)
+        } catch {
+            eligibility = nil
+        }
+    }
+
+    private func formatEndsAt(_ raw: String?) -> String {
+        guard let raw, let date = ISO8601DateFormatter().date(from: raw) else {
+            return raw ?? "window end"
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private func windowClosedCopy(_ e: ClaimEligibility) -> String {
+        switch e.reason {
+        case "claim_window_expired":
+            return "Window closed — filing deadline passed."
+        case "order_not_completed":
+            return "Window closed — order not COMPLETED yet."
+        default:
+            return "Window closed."
+        }
+    }
+
+    private func applyPreferredSku() {
+        let sku = preferredSku?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !sku.isEmpty else {
+            skuWarning = nil
+            return
+        }
+        guard let match = order.items.first(where: {
+            $0.productId == sku || $0.id == sku || $0.variantId == sku
+        }) else {
+            skuWarning = "SKU \(sku) is not on this order — pick another line."
+            return
+        }
+        let key = match.productId.isEmpty ? match.variantId : match.productId
+        selected[key] = min(1, max(0, match.quantity))
+        skuWarning = nil
     }
 
     private var selectedQtyTotal: Int {
@@ -176,6 +252,10 @@ struct FileClaimView: View {
     private func submit() async {
         errorMessage = nil
         successClaimId = nil
+        if let eligibility, !eligibility.eligible {
+            errorMessage = "Window closed — claim window has expired."
+            return
+        }
         isSubmitting = true
         defer { isSubmitting = false }
 
@@ -195,12 +275,16 @@ struct FileClaimView: View {
         }
 
         do {
+            let photo = photoURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            let fingerprint = ([claimType, descriptionText] + lines.map { "\($0.sku):\($0.quantity)" } + [photo])
+                .joined(separator: "|")
             let claim = try await api.fileOrderClaim(
                 orderId: order.id,
                 claimType: claimType,
                 description: descriptionText,
                 lines: lines,
-                photoURL: photoURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                photoURL: photo,
+                idempotencyKey: RetailerIdempotency.claimFile(orderId: order.id, bodyFingerprint: fingerprint)
             )
             successClaimId = claim.claimId
             await loadExisting()

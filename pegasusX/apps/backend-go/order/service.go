@@ -205,6 +205,11 @@ type Order struct {
 	BuyerAcceptanceStatus   string
 	BuyerAcceptanceDeadline *time.Time
 
+	// Claim window snapshot (immutable after first COMPLETED write; G3).
+	ClaimWindowHours        int64
+	ClaimWindowEndsAt       *time.Time
+	ClaimWindowPolicySource string
+
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
 	// ConditionReports is written in the same UpdateOrder transaction and not stored on Orders.
@@ -368,6 +373,7 @@ type Service struct {
 	proximityCfg       ProximityConfig
 	allocator          Allocator
 	allocationRequired bool
+	returnPolicies     ReturnPolicyStore
 }
 
 // RouteReplanner handles continuous dynamic resequencing.
@@ -404,6 +410,7 @@ type ServiceConfig struct {
 	Handoff         *handoff.Engine
 	Idem            idempotency.Store
 	Allocator       Allocator
+	ReturnPolicies  ReturnPolicyStore
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -445,11 +452,24 @@ func NewService(c ServiceConfig) *Service {
 		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
 		allocator:          c.Allocator,
 		allocationRequired: false,
+		returnPolicies:     c.ReturnPolicies,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
 	}
+	if svc.returnPolicies == nil {
+		if rp, ok := c.Repo.(ReturnPolicyStore); ok {
+			svc.returnPolicies = rp
+		}
+	}
 	return svc
+}
+
+// SetReturnPolicyStore wires claim-window policy persistence (optional).
+func (s *Service) SetReturnPolicyStore(store ReturnPolicyStore) {
+	if s != nil {
+		s.returnPolicies = store
+	}
 }
 
 // SetPaymentCapturer sets the capturer after construction.
@@ -1503,6 +1523,9 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	current.Status = nextStatus
 	current.UpdatedAt = s.now()
 	s.applyHandoffLifecycle(&current, prevStatus, previousDriverID)
+	if nextStatus == StatusCompleted {
+		_ = s.ApplyClaimWindowSnapshot(ctx, &current, current.UpdatedAt)
+	}
 
 	actorID := claims.Subject
 	if actorID == "" {

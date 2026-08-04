@@ -46,12 +46,16 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.pegasusx.retailer.data.api.MediaUploadService
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimEvidenceBody
 import com.pegasusx.retailer.data.model.FileClaimLineBody
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.RetailerClaim
-import java.util.UUID
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
 private val claimTypes = listOf(
@@ -66,6 +70,7 @@ fun FileClaimSheet(
     mediaUpload: MediaUploadService,
     onDismiss: () -> Unit,
     onFiled: (RetailerClaim) -> Unit = {},
+    preferredSku: String? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -77,8 +82,11 @@ fun FileClaimSheet(
     var isUploading by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var skuWarning by remember { mutableStateOf<String?>(null) }
     var existing by remember { mutableStateOf<List<RetailerClaim>>(emptyList()) }
     var successId by remember { mutableStateOf<String?>(null) }
+    var eligibility by remember { mutableStateOf<ClaimEligibility?>(null) }
+    var eligLoading by remember { mutableStateOf(true) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -105,6 +113,27 @@ fun FileClaimSheet(
 
     LaunchedEffect(order.id) {
         existing = runCatching { api.listOrderClaims(order.id).claims }.getOrDefault(emptyList())
+        eligLoading = true
+        eligibility = runCatching { api.getClaimEligibility(order.id) }.getOrNull()
+        eligLoading = false
+    }
+
+    LaunchedEffect(order.id, preferredSku) {
+        val sku = preferredSku?.trim().orEmpty()
+        if (sku.isEmpty()) {
+            skuWarning = null
+            return@LaunchedEffect
+        }
+        val match = order.items.firstOrNull {
+            it.productId == sku || it.id == sku
+        }
+        if (match == null) {
+            skuWarning = "SKU $sku is not on this order — pick another line."
+            return@LaunchedEffect
+        }
+        val key = match.productId.ifBlank { match.id }
+        selectedQty[key] = minOf(1, match.quantity)
+        skuWarning = null
     }
 
     val needsPhoto = claimType in setOf("DAMAGED", "CONCEALED_DAMAGE", "TAMPER", "TEMPERATURE")
@@ -128,11 +157,40 @@ fun FileClaimSheet(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
-                Text(
-                    "Within 48 hours of delivery. Amounts use order prices.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                )
+                when {
+                    eligLoading -> Text(
+                        "Checking claim window…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    )
+                    eligibility?.eligible == true -> Text(
+                        "Eligible until ${formatClaimEndsAt(eligibility?.endsAt)} (${eligibility?.hoursRemaining}h left). Amounts use order prices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    )
+                    eligibility != null -> Text(
+                        "Window closed" + when (eligibility?.reason) {
+                            "claim_window_expired" -> " — filing deadline passed."
+                            "order_not_completed" -> " — order not COMPLETED yet."
+                            else -> "."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    else -> Text(
+                        "Within 48 hours of delivery (server enforces). Amounts use order prices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    )
+                }
+                skuWarning?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
             }
 
             item {
@@ -264,6 +322,10 @@ fun FileClaimSheet(
                     onClick = {
                         scope.launch {
                             error = null
+                            if (eligibility?.eligible == false) {
+                                error = "Window closed — claim window has expired."
+                                return@launch
+                            }
                             if (totalSelected <= 0) {
                                 error = "Select at least one item quantity."
                                 return@launch
@@ -293,15 +355,26 @@ fun FileClaimSheet(
                                 } else {
                                     emptyList()
                                 }
+                                val body = FileClaimRequestBody(
+                                    claimType = claimType,
+                                    description = description,
+                                    lineItems = lines,
+                                    evidences = evidences,
+                                )
+                                val fingerprint = buildString {
+                                    append(claimType).append('|').append(description).append('|')
+                                    lines.sortedBy { it.sku }.forEach {
+                                        append(it.sku).append(':').append(it.quantity).append(';')
+                                    }
+                                    evidences.forEach { append(it.uri).append(';') }
+                                }
                                 val claim = api.fileOrderClaim(
                                     orderId = order.id,
-                                    body = FileClaimRequestBody(
-                                        claimType = claimType,
-                                        description = description,
-                                        lineItems = lines,
-                                        evidences = evidences,
+                                    body = body,
+                                    idempotencyKey = com.pegasusx.retailer.util.RetailerIdempotencyKeys.claimFile(
+                                        order.id,
+                                        fingerprint,
                                     ),
-                                    idempotencyKey = "retailer-claim:${order.id}:${UUID.randomUUID()}",
                                 )
                                 successId = claim.claimId
                                 existing = runCatching { api.listOrderClaims(order.id).claims }
@@ -314,7 +387,8 @@ fun FileClaimSheet(
                             }
                         }
                     },
-                    enabled = !isSubmitting && !isUploading && totalSelected > 0,
+                    enabled = !isSubmitting && !isUploading && totalSelected > 0 &&
+                        !eligLoading && (eligibility == null || eligibility?.eligible == true),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 28.dp),
@@ -332,4 +406,14 @@ fun FileClaimSheet(
             }
         }
     }
+}
+
+internal fun formatClaimEndsAt(endsAt: String?): String {
+    if (endsAt.isNullOrBlank()) return "window end"
+    return runCatching {
+        val instant = Instant.parse(endsAt)
+        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+            .withZone(ZoneId.systemDefault())
+            .format(instant)
+    }.getOrDefault(endsAt)
 }
