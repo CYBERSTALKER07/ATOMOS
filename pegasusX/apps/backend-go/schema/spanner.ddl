@@ -200,7 +200,8 @@ CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByStatusWarehouse ON Orders(Status, WarehouseId, CreatedAt DESC);
-CREATE INDEX Idx_Orders_BuyerAcceptance ON Orders(FiscalStatus, BuyerAcceptanceStatus, BuyerAcceptanceDeadline);
+-- Idx_Orders_BuyerAcceptance is created after Orders.FiscalStatus is added below
+-- (see the fiscal ALTER block) so a fresh top-to-bottom apply stays valid.
 
 CREATE TABLE SupplierReturns (
   ReturnId          STRING(36)  NOT NULL,
@@ -733,15 +734,7 @@ CREATE TABLE Notifications (
 CREATE INDEX Idx_Notifications_ByRecipientCreated ON Notifications(RecipientId, CreatedAt DESC);
 CREATE INDEX Idx_Notifications_ByRecipientUnread ON Notifications(RecipientId, IsRead, CreatedAt DESC);
 
-CREATE TABLE DeviceTokens (
-  Token     STRING(255) NOT NULL,
-  ActorId   STRING(36)  NOT NULL,
-  ActorRole STRING(20)  NOT NULL,
-  Platform  STRING(20)  NOT NULL,
-  UpdatedAt TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (Token);
-
-CREATE INDEX Idx_DeviceTokens_ByActorRole ON DeviceTokens(ActorId, ActorRole);
+-- DeviceTokens is defined once, later in this file (Token STRING(512) for FCM/APNs).
 
 CREATE TABLE AuditLog (
   AuditId        STRING(36)    NOT NULL,
@@ -1332,6 +1325,7 @@ ALTER TABLE Orders ADD COLUMN FiscalStatus STRING(32);
 ALTER TABLE Orders ADD COLUMN LatestFiscalReceiptId STRING(128);
 ALTER TABLE Orders ADD COLUMN FiscalizedAt TIMESTAMP;
 ALTER TABLE Orders ADD COLUMN LatestFiscalAttemptId STRING(36);
+CREATE INDEX Idx_Orders_BuyerAcceptance ON Orders(FiscalStatus, BuyerAcceptanceStatus, BuyerAcceptanceDeadline);
 
 -- Enhanced shop-closed + proximity settlement + partial offload (2026-07-29).
 -- Wire status ARRIVED_SHOP_CLOSED ≡ design SHOP_CLOSED_PENDING.
