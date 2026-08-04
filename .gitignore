@@ -21,8 +21,10 @@ dist/
 # === Go ===
 **/backend-go/backend-go
 **/backend-go/main
-**/backend-go/seed
-**/backend-go/setup
+# NOTE: apps/backend-go/seed and .../setup are source packages, not binaries.
+# Only ignore compiled binaries at the module root, never the source trees.
+!**/backend-go/seed/
+!**/backend-go/seed/**
 **/ai-worker/pegasus-ai-worker
 **/ai-worker/*-ai-worker
 
