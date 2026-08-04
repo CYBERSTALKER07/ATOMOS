@@ -132,7 +132,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseSupplyRequestItemsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse supply request items: %w", err)
 	}
-	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg); err != nil {
+	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg, supplierID); err != nil {
 		return fmt.Errorf("supplier inventory import (staging substrate): %w", err)
 	}
 	if err := runInventoryReleaseBypassCancelE2E(ctx, client, base, cfg, supplierID, cookie, retailerToken, h3Cell); err != nil {
@@ -301,6 +301,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runClaimStoreQuarantineE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie); err != nil {
 		return fmt.Errorf("claim store quarantine: %w", err)
+	}
+	// Full claims spine (GCS media + eligibility/window + file/approve) — required markers.
+	if err := runClaimsE2E(ctx, cfg); err != nil {
+		return fmt.Errorf("claims e2e: %w", err)
 	}
 	if err := runSoliqSandboxE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("soliq sandbox: %w", err)

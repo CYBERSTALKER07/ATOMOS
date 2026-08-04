@@ -72,6 +72,12 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 		defer cancel()
 		res, err := client.Solve(solveCtx, in)
 		if err == nil {
+			if res == nil || (len(res.Routes) == 0 && len(job.Orders) > 0) {
+				out := runFallbackWithDeadline(ctx, job)
+				out.Warnings = append(out.Warnings,
+					"optimizer returned zero routes — engaged H3 BinPack fallback")
+				return out, SourceFallbackValidation, nil
+			}
 			if rejected := validateAssignment(res, job.Fleet); rejected != "" {
 				out := runFallbackWithDeadline(ctx, job)
 				out.Warnings = append(out.Warnings,

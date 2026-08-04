@@ -190,7 +190,8 @@ CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail
 
 - Use existing plan IDs (L*, G*, E*, RS*, PG*, EH*) in PRs.  
 - Living status: [`context/current_status.md`](../context/current_status.md), [`artifacts/PegasusX_Ecosystem_Status_Report.md`](../artifacts/PegasusX_Ecosystem_Status_Report.md), [`context/parity-ledger.md`](../context/parity-ledger.md).  
-- After each phase exit: update those three + [`REAL_WORLD_CASE_MATRIX.md`](./REAL_WORLD_CASE_MATRIX.md).
+- After each phase exit: update those three + [`REAL_WORLD_CASE_MATRIX.md`](./REAL_WORLD_CASE_MATRIX.md).  
+- Anti-theatre / E2E proof: [`SUBSTANCE_GATE.md`](./SUBSTANCE_GATE.md) + [`contracts/ssmr_ecosystem_markers.json`](../contracts/ssmr_ecosystem_markers.json).
 
 ---
 

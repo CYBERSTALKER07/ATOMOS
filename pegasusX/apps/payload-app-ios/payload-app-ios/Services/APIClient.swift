@@ -69,7 +69,7 @@ final class APIClient: @unchecked Sendable {
         cfg.timeoutIntervalForResource = 30
         session = URLSession(configuration: cfg)
         decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Explicit CodingKeys use snake_case wire names; do not convertFromSnakeCase.
         encoder = JSONEncoder()
     }
 

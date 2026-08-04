@@ -783,7 +783,8 @@ func (s *Service) resolveGateWarehouseID(r *http.Request) (string, bool) {
 	if claims.Role == auth.RolePayload && strings.TrimSpace(claims.HomeNodeID) != "" {
 		return strings.TrimSpace(claims.HomeNodeID), true
 	}
-	if claims.Role == auth.RoleWarehouseAdmin && strings.TrimSpace(claims.HomeNodeID) != "" {
+	if (claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleWarehouse) &&
+		strings.TrimSpace(claims.HomeNodeID) != "" {
 		return strings.TrimSpace(claims.HomeNodeID), true
 	}
 	return "", false

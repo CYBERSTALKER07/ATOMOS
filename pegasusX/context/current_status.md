@@ -1,11 +1,13 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-04 (Phase B G3 claim-window backend)*
+*Last Updated: 2026-08-04 (Substance Gate API pass)*
 
 ## 1. Code completeness (this closure)
 
 Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
 
+- **2026-08-04 Substance Gate (backend-first)** SSMR preflight green; full `ssmr-smokecheck e2e` + `ssmr-ecosystem-marker-gate-ok` on image `ssmr-substance-gate-a66868b8-084112` (worker replicas=1). Claims spine required markers green (`CLAIM_ELIGIBILITY` / `CLAIM_WINDOW_SNAPSHOT` / media GCS / file / reverse). Sign-off: [`artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md`](../artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md). Client UI walks DEFERRED; client-policy HTTP 200 all roles×platforms. Ops still: GP card SUCCESS, Firebase SMS.
+- **2026-08-04 Gate-0 hygiene** `Claims`/`ClaimEvidences` in `spanner.ddl`; iOS driver/payload drop `convertFromSnakeCase`; supplier Android OrgFleet wreckage deleted (Enterprise+Store Kotlin compile green); optimizer Time dimension in minutes + empty-route fallback; worker `replicas:1` (SSMR scaled); `AUTO_CONFIRM_PREORDERS_ENABLED` sweeper; orphan `ledger/` package deleted. Deferred: multi-tenant seed, partner API/ML, Spanner backup TF, outbox leases.
 - **2026-08-04 G3 (backend)** Supplier/WH return-policy tables + resolve_window; immutable `ClaimWindowHours`/`EndsAt`/`PolicySource` on COMPLETED; eligibility/FileClaim prefer snapshot; GET/PUT `/v1/supplier/return-policy` + `/v1/warehouse/return-policy`. Portal/mobile settings UX still open. E2e asserts non-empty `policy_source` (`PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK`).
 - **2026-08-04 G2** `GET /v1/orders/{id}/claim-eligibility` (shared window math with file-claim); retailer countdown + CTA hide on desktop/Android/iOS; e2e `PX_E2E_CLAIM_ELIGIBILITY_OK`.
 - **2026-08-04 G1** Stock-first Request return / chargeback on retailer desktop, Android, iOS: COMPLETED/DELIVERED_ON_CREDIT order picker → existing FileClaim UI (`initialSku` / `preferredSku` prefill); reuses `POST /v1/orders/{id}/claims`.
@@ -27,10 +29,10 @@ Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for deta
 | GKE `pegasusx-ssmr-gke` ns `pegasusx-ssmr` | Live |
 | Spanner migrations | **Applied** 2026-08-01 (`DONE_FAIL=0`) |
 | ConfigMap | `FISCAL_PROVIDER=PEGASUS`, seeds/`ALLOW_DRIVER_DEMO_FALLBACK=false`, `REQUIRE_INFRA_ADAPTERS=true`, `PAYLOAD_DEMO_WAREHOUSE_ID=ssmr-warehouse-1` |
-| Backend image | `…/backend-go:ssmr-gap-closure-nomock4` (API + worker) |
+| Backend image | `…/backend-go:ssmr-substance-gate-a66868b8-084112` (API + worker) |
 | Ingress LB `api-ssmr.pegasusx.app` → `136.69.43.141` | Live; ManagedCert **Active** (Google Trust Services WR3); HTTPS redirect on |
 | Health / cloud smoke | OK (`PUBLIC_BASE_URL=https://api-ssmr.pegasusx.app` → `PX11_CLOUD_SMOKE_OK`) |
-| SSMR e2e + marker gate | **PASS** 2026-08-01 (`ssmr-e2e.log`, `ssmr-ecosystem-marker-gate-ok`) via port-forward |
+| SSMR e2e + marker gate | **PASS** 2026-08-04 (`artifacts/ssmr-e2e-substance-gate-2026-08-04.log`, `ssmr-ecosystem-marker-gate-ok`) |
 | Firebase Auth/FCM backend | Live; iOS plists + Android JSON/plugin applied; real SMS / SHA-1 still owner |
 | Fiscal | `FISCAL_PROVIDER=PEGASUS` |
 | Global Pay | Card path still needs real merchant password; e2e uses cash fallback (`PX_E2E_PAYMENT_CASH_FALLBACK_OK`) |

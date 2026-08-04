@@ -98,6 +98,24 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.BillingTierConsumer.Start(ctx)
 		slog.Info("billing tier consumer started")
 	}
+	// Gate-0: auto-confirm due AI preorders (default off until smoke).
+	if app.OrderService != nil && os.Getenv("AUTO_CONFIRM_PREORDERS_ENABLED") == "1" {
+		go func() {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := app.OrderService.AutoConfirmDueOrders(ctx, 200); err != nil {
+						slog.Warn("auto-confirm preorders sweep failed", "err", err)
+					}
+				}
+			}
+		}()
+		slog.Info("auto-confirm preorders sweeper started")
+	}
 	// Wave C3.2: expire parked POS carts past 24h TTL (no-op when POS_HOLDS_ENABLED off).
 	if app.RetailerService != nil {
 		go app.RetailerService.RunPosHoldsSweeper(ctx, 15*time.Minute)

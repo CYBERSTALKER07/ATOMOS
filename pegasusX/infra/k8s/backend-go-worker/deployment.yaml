@@ -7,7 +7,8 @@ metadata:
     app.kubernetes.io/name: backend-go-worker
     app.kubernetes.io/part-of: pegasusx
 spec:
-  replicas: 2
+  # Single replica until outbox relay has ClaimedBy/ClaimedUntil leases (audit P0-5).
+  replicas: 1
   selector:
     matchLabels:
       app: backend-go-worker

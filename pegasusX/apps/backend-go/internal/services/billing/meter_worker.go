@@ -2,9 +2,12 @@ package billing
 
 import (
 	"context"
+	"fmt"
 	"log"
-	
+
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
 )
 
 // MeterWorker handles idempotent per-order metering and dynamic fee milestone checks.
@@ -23,51 +26,57 @@ func NewMeterWorker(client *spanner.Client) *MeterWorker {
 // It checks if global billing milestones are crossed and adjusts system fee rates accordingly.
 func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount float64, supplierID string) error {
 	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%.2f supplierID=%s", orderID, amount, supplierID)
-	
-	// Transaction to idempotently record the meter event and update shards
+
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// 1. Check if event is already processed (Idempotency)
+		// 1. Idempotency: skip when this order was already metered.
 		stmt := spanner.Statement{
-			SQL: "SELECT TRUE FROM BillingMeterEvents WHERE OrderId = @orderId",
+			SQL: `SELECT EventId FROM BillingMeterEvents WHERE OrderId = @orderId LIMIT 1`,
 			Params: map[string]interface{}{
 				"orderId": orderID,
 			},
 		}
-		
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
-		row, err := iter.Next()
-		if err == nil && row != nil {
+		if _, err := iter.Next(); err == nil {
 			log.Printf("Order %s already metered, skipping", orderID)
-			return nil // Already processed
+			return nil
+		} else if err != iterator.Done {
+			return fmt.Errorf("billing meter idempotency lookup: %w", err)
 		}
-		
-		// 2. Insert BillingMeterEvent
-		var mutations []*spanner.Mutation
-		mutations = append(mutations, spanner.InsertMap("BillingMeterEvents", map[string]interface{}{
-			"OrderId":    orderID,
-			"SupplierId": supplierID,
-			"Amount":     amount,
-			// Spanner CommitTimestamp used in schema
-		}))
 
-		// 3. Update sharded BillingSupplierMeters
-		// Using standard Read-Modify-Write within the RW transaction
-		mutations = append(mutations, spanner.InsertOrUpdateMap("BillingSupplierMeters", map[string]interface{}{
-			"SupplierId": supplierID,
-			"ShardId":    0, // simplified sharding
-			"AmountDelta": amount, 
-		}))
-		
-		// 4. Milestone checks & FEE_RATE_ADJUSTED emission
-		
+		const shardID int64 = 0
+		var current float64
+		row, err := txn.ReadRow(ctx, "BillingSupplierMeters", spanner.Key{supplierID, shardID}, []string{"CurrentValue"})
+		if err == nil {
+			if err := row.Column(0, &current); err != nil {
+				return fmt.Errorf("billing meter read current: %w", err)
+			}
+		} else if spanner.ErrCode(err) != 5 { // NotFound
+			return fmt.Errorf("billing meter read: %w", err)
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.InsertMap("BillingMeterEvents", map[string]interface{}{
+				"EventId":     uuid.NewString(),
+				"SupplierId":  supplierID,
+				"OrderId":     orderID,
+				"MeterType":   "ORDER_GMV",
+				"Amount":      amount,
+				"ProcessedAt": spanner.CommitTimestamp,
+			}),
+			spanner.InsertOrUpdateMap("BillingSupplierMeters", map[string]interface{}{
+				"SupplierId":   supplierID,
+				"ShardId":      shardID,
+				"CurrentValue": current + amount,
+				"UpdatedAt":    spanner.CommitTimestamp,
+			}),
+		}
 		return txn.BufferWrite(mutations)
 	})
-	
+
 	if err != nil {
 		log.Printf("Failed to process billing for order %s: %v", orderID, err)
 		return err
 	}
-	
 	return nil
 }

@@ -141,7 +141,7 @@ func ensureWarehouseDispatchFleet(ctx context.Context, client *http.Client, base
 		"home_node_id":   whID,
 		"vehicle_class":  "CLASS_B",
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/vehicles", vehicleBody, cookie, "ssmr-fleet-vehicle")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/vehicles", vehicleBody, cookie, fmt.Sprintf("ssmr-fleet-vehicle-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func ensureWarehouseDispatchFleet(ctx context.Context, client *http.Client, base
 		"home_node_id":   whID,
 		"vehicle_id":     vehicleID,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/drivers", driverBody, cookie, "ssmr-fleet-driver")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/drivers", driverBody, cookie, fmt.Sprintf("ssmr-fleet-driver-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}

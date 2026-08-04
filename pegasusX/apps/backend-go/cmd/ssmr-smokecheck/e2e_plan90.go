@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func runPlan90E2E(ctx context.Context, client *http.Client, base, cookie string) error {
@@ -72,7 +73,7 @@ func runPlanningIngestE2E(ctx context.Context, client *http.Client, base, cookie
 		"source":  "ssmr_test",
 		"payload": map[string]any{"units": 10},
 	})
-	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/signals/ingest", reqBody, cookie, "ssmr-planning-ingest")
+	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/signals/ingest", reqBody, cookie, fmt.Sprintf("ssmr-planning-ingest-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func runPromoSimulateE2E(ctx context.Context, client *http.Client, base, cookie 
 		"expected_units":      500,
 		"avg_unit_margin_minor": 1000,
 	})
-	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/promotions/simulate", reqBody, cookie, "ssmr-promo-sim")
+	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/promotions/simulate", reqBody, cookie, fmt.Sprintf("ssmr-promo-sim-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -155,7 +156,7 @@ func runControlTowerOverrideE2E(ctx context.Context, client *http.Client, base, 
 		"ttl_seconds":      600,
 		"polygon_geojson":  polygon,
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/control-tower/zone-overrides", createBody, cookie, "ssmr-ct-override")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/control-tower/zone-overrides", createBody, cookie, fmt.Sprintf("ssmr-ct-override-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -188,7 +189,7 @@ func runScenarioSandboxE2E(ctx context.Context, client *http.Client, base, cooki
 		"factory_downtime_hours": 8,
 		"demand_delta_pct":       10,
 	})
-	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/scenarios/run", reqBody, cookie, "ssmr-scenario")
+	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/scenarios/run", reqBody, cookie, fmt.Sprintf("ssmr-scenario-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}

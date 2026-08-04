@@ -14,13 +14,14 @@ import (
 
 func runReplenishmentSupplyChainE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
 	whID := demoWarehouseID()
+	runSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	createBody, _ := json.Marshal(map[string]any{
 		"items": []map[string]any{
 			{"product_id": "SSMR-SKU-1", "requested_quantity": 10},
 		},
 	})
 	createURL := fmt.Sprintf("%s/v1/warehouse/supply-requests?warehouse_id=%s&start_date=2026-06-14&days=3", base, whID)
-	status, respBody, _, err := clientPost(ctx, client, createURL, createBody, cookie, "ssmr-replen-create")
+	status, respBody, _, err := clientPost(ctx, client, createURL, createBody, cookie, "ssmr-replen-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,8 @@ func runReplenishmentSupplyChainE2E(ctx context.Context, client *http.Client, ba
 }
 
 func runReplenishColocateE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
-	if err := putSupplierTopologyColocate(ctx, client, base, cookie, cfg); err != nil {
+	runSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	if err := putSupplierTopologyColocate(ctx, client, base, cookie, cfg, runSuffix); err != nil {
 		return err
 	}
 	whID := demoWarehouseID()
@@ -147,7 +149,7 @@ func runReplenishColocateE2E(ctx context.Context, client *http.Client, base, coo
 		},
 	})
 	createURL := fmt.Sprintf("%s/v1/warehouse/supply-requests?warehouse_id=%s&start_date=2026-06-14&days=1", base, whID)
-	status, respBody, _, err := clientPost(ctx, client, createURL, createBody, cookie, "ssmr-colocate-create")
+	status, respBody, _, err := clientPost(ctx, client, createURL, createBody, cookie, "ssmr-colocate-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -165,7 +167,7 @@ func runReplenishColocateE2E(ctx context.Context, client *http.Client, base, coo
 	}
 
 	fulfillBody, _ := json.Marshal(map[string]string{"action": "FULFILL"})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+created.RequestID, fulfillBody, cookie, "ssmr-colocate-fulfill-"+created.RequestID)
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+created.RequestID, fulfillBody, cookie, "ssmr-colocate-fulfill-"+created.RequestID+"-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,7 @@ func runReplenishColocateE2E(ctx context.Context, client *http.Client, base, coo
 	return fmt.Errorf("colocate inventory missing replenishment-bulk-vu: %s", string(respBody))
 }
 
-func putSupplierTopologyColocate(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+func putSupplierTopologyColocate(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config, runSuffix string) error {
 	factoryID := demoFactoryID()
 	body, _ := json.Marshal(map[string]any{
 		"warehouses": []map[string]any{
@@ -231,7 +233,11 @@ func putSupplierTopologyColocate(ctx context.Context, client *http.Client, base,
 			},
 		},
 	})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", body, cookie, "ssmr-topology-colocate")
+	idemKey := "ssmr-topology-colocate"
+	if strings.TrimSpace(runSuffix) != "" {
+		idemKey = idemKey + "-" + runSuffix
+	}
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", body, cookie, idemKey)
 	if err != nil {
 		return err
 	}

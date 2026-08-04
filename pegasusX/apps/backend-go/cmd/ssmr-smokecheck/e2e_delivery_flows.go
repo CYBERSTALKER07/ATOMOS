@@ -15,6 +15,7 @@ import (
 )
 
 func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {
+	runSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	delivery := time.Now().UTC().AddDate(0, 0, 10)
 	createBody, _ := json.Marshal(map[string]any{
 		"line_items": []map[string]any{
@@ -26,7 +27,7 @@ func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retail
 		"delivery_mode":           "SCHEDULED",
 		"requested_delivery_date": delivery.Format(time.RFC3339),
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-manual-preorder-create")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-manual-preorder-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retail
 		"delivery_mode":           "SCHEDULED",
 		"requested_delivery_date": delivery.Format(time.RFC3339),
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-manual-preorder-reject-create")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-manual-preorder-reject-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -103,6 +104,7 @@ func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retail
 }
 
 func runDeliveryProposalE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {
+	runSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	delivery := time.Now().UTC().AddDate(0, 0, 14).Truncate(24 * time.Hour).Add(12 * time.Hour)
 	proposed := delivery.AddDate(0, 0, 5)
 	createBody, _ := json.Marshal(map[string]any{
@@ -115,7 +117,7 @@ func runDeliveryProposalE2E(ctx context.Context, client *http.Client, base, reta
 		"delivery_mode":           "SCHEDULED",
 		"requested_delivery_date": delivery.Format(time.RFC3339),
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-delivery-proposal-create")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-delivery-proposal-create-"+runSuffix)
 	if err != nil {
 		return err
 	}
@@ -170,7 +172,7 @@ func runDeliveryProposalE2E(ctx context.Context, client *http.Client, base, reta
 		"delivery_mode":           "SCHEDULED",
 		"requested_delivery_date": delivery.Format(time.RFC3339),
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-delivery-proposal-reject-create")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-delivery-proposal-reject-create-"+runSuffix)
 	if err != nil {
 		return err
 	}

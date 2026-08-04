@@ -313,7 +313,7 @@ func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retai
 			{"sku_id": sku, "quantity": 1, "unit_price": 1000},
 		},
 	})
-	status, respBody, _, err := clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, "ssmr-checkout-preview")
+	status, respBody, _, err := clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, fmt.Sprintf("ssmr-checkout-preview-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,8 @@ func runCheckoutPolicyGraceE2E(
 	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
 
 	patchBackorder, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "ACCEPT_BACKORDER"})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBackorder, cookie, "ssmr-policy-grace-backorder")
+	policySuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBackorder, cookie, "ssmr-policy-grace-backorder-"+policySuffix)
 	if err != nil {
 		return err
 	}
@@ -370,7 +371,7 @@ func runCheckoutPolicyGraceE2E(
 			{"sku_id": sku, "quantity": 10, "unit_price": 50000},
 		},
 	})
-	status, respBody, _, err = clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", previewBody, retailerToken, "ssmr-policy-grace-preview")
+	status, respBody, _, err = clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", previewBody, retailerToken, "ssmr-policy-grace-preview-"+policySuffix)
 	if err != nil {
 		return err
 	}
@@ -388,7 +389,7 @@ func runCheckoutPolicyGraceE2E(
 	}
 
 	patchReject, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "REJECT"})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, settingsURL, patchReject, cookie, "ssmr-policy-grace-reject")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, settingsURL, patchReject, cookie, "ssmr-policy-grace-reject-"+policySuffix)
 	if err != nil {
 		return err
 	}
@@ -405,7 +406,7 @@ func runCheckoutPolicyGraceE2E(
 		"lng":                   cfg.DeliveryZoneCenterLng,
 		"checkout_policy_token": preview.CheckoutPolicyToken,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-policy-grace-create")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-policy-grace-create-"+policySuffix)
 	if err != nil {
 		return err
 	}

@@ -35,6 +35,11 @@ data:
   REQUIRE_INFRA_ADAPTERS: "true"
   RELIABILITY_MIDDLEWARE_ENABLED: "true"
   FIREBASE_AUTH_ENABLED: "true"
+  # G19 / G3 claim window defaults (supplier/WH policies override at COMPLETED snapshot)
+  CLAIM_WINDOW_HOURS: "48"
+  CLAIM_AUTO_APPROVE_MAX_MINOR: "0"
+  CREDIT_NOTE_AUTO_FROM_CLAIM: "false"
+  CLAIM_EVIDENCE_MAX_BYTES: "10485760"
   # PEGASUSX_RUN_MODE: api | worker | all (default all). Worker Deployment sets worker.
   PEGASUSX_RUN_MODE: "api"
   # GOOGLE_MAPS_API_KEY is injected from backend-go-secrets (GSM) — enables Places autocomplete in prod.

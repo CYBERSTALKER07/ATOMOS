@@ -246,6 +246,47 @@ CREATE TABLE ReturnReceiveSessions (
 
 CREATE INDEX Idx_ReturnReceiveSessions_ByWarehouse ON ReturnReceiveSessions(WarehouseId, Status, StartedAt DESC);
 
+-- Logistics exception claims (post-delivery damage / OS&D). Mirrored from
+-- schema/migrations/20260728_logistics_claims.ddl for greenfield / schema-drift CI.
+CREATE TABLE Claims (
+  ClaimId STRING(36) NOT NULL,
+  OrderId STRING(36) NOT NULL,
+  SupplierId STRING(36) NOT NULL,
+  RetailerId STRING(36) NOT NULL,
+  FiledBy STRING(128) NOT NULL,
+  FiledByRole STRING(32) NOT NULL,
+  ClaimType STRING(32) NOT NULL,
+  Status STRING(32) NOT NULL,
+  Description STRING(MAX),
+  AmountMinor INT64,
+  Currency STRING(8),
+  LineItemsJSON BYTES(MAX),
+  ResolutionNote STRING(MAX),
+  ResolvedBy STRING(128),
+  ResolvedAt TIMESTAMP,
+  Source STRING(32) NOT NULL,
+  TraceId STRING(64),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (ClaimId);
+
+CREATE INDEX Idx_Claims_ByOrderCreated ON Claims (OrderId, CreatedAt DESC);
+CREATE INDEX Idx_Claims_ByRetailerStatus ON Claims (RetailerId, Status, CreatedAt DESC);
+CREATE INDEX Idx_Claims_BySupplierStatus ON Claims (SupplierId, Status, CreatedAt DESC);
+
+CREATE TABLE ClaimEvidences (
+  ClaimId STRING(36) NOT NULL,
+  EvidenceId STRING(36) NOT NULL,
+  EvidenceType STRING(32) NOT NULL,
+  Uri STRING(MAX) NOT NULL,
+  MimeType STRING(128),
+  CapturedAt TIMESTAMP,
+  CapturedBy STRING(128),
+  MetaJSON BYTES(MAX),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (ClaimId, EvidenceId),
+  INTERLEAVE IN PARENT Claims ON DELETE CASCADE;
+
 CREATE TABLE OrderDeliveryProofs (
   ProofId           STRING(36)    NOT NULL,
   OrderId           STRING(36)    NOT NULL,
@@ -1832,7 +1873,7 @@ CREATE TABLE RetailerReceiveSessions (
   LinesJson    STRING(MAX) NOT NULL,
   CreatedBy    STRING(36),
   CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-  ConfirmedAt  TIMESTAMP,
+  ConfirmedAt  TIMESTAMP OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SessionId);
 
 CREATE UNIQUE INDEX UQ_RetailerReceiveSessions_ByOrder ON RetailerReceiveSessions(OrderId);
@@ -1846,7 +1887,7 @@ CREATE TABLE RetailerStockCounts (
   LinesJson    STRING(MAX) NOT NULL,
   CreatedBy    STRING(36),
   CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-  CommittedAt  TIMESTAMP,
+  CommittedAt  TIMESTAMP OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (CountId);
 
 CREATE INDEX Idx_RetailerStockCounts_ByLocation ON RetailerStockCounts(LocationId, CreatedAt DESC);

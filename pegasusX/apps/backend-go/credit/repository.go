@@ -149,10 +149,11 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 		return fmt.Errorf("invalid credit profile status: %s", p.Status)
 	}
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{p.RetailerID, p.SupplierID}, []string{"Version", "ReservedMinor", "CurrentBalanceMinor"})
-		var expectedVersion, reserved, balance int64
-		if err == nil {
-			_ = row.Columns(&expectedVersion, &reserved, &balance)
+		expectedVersion, reserved, balance, found, err := readProfileVersionReservedBalance(ctx, txn, p.RetailerID, p.SupplierID)
+		if err != nil {
+			return err
+		}
+		if found {
 			if p.Version != 0 && expectedVersion != p.Version {
 				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", expectedVersion, p.Version)
 			}
@@ -163,8 +164,6 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 			if p.CurrentBalanceMinor == 0 && balance > 0 && p.CreditLimitMinor > 0 {
 				// keep existing balance unless caller set it
 			}
-		} else if spanner.ErrCode(err) != codes.NotFound {
-			return err
 		} else {
 			p.Version = 1
 			p.CreatedAt = p.UpdatedAt
@@ -198,6 +197,35 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 		mutations = append(mutations, bufferOutboxMutations(buf)...)
 		return txn.BufferWrite(mutations)
 	})
+}
+
+// readProfileVersionReservedBalance prefers the modern column set and falls back
+// when ReservedMinor has not been migrated yet (avoids aborting the RW txn).
+func readProfileVersionReservedBalance(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID string) (version, reserved, balance int64, found bool, err error) {
+	row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID}, []string{"Version", "ReservedMinor", "CurrentBalanceMinor"})
+	if err == nil {
+		if colErr := row.Columns(&version, &reserved, &balance); colErr != nil {
+			return 0, 0, 0, false, colErr
+		}
+		return version, reserved, balance, true, nil
+	}
+	if spanner.ErrCode(err) == codes.NotFound {
+		return 0, 0, 0, false, nil
+	}
+	if !strings.Contains(err.Error(), "ReservedMinor") {
+		return 0, 0, 0, false, err
+	}
+	row, err = txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID}, []string{"Version", "CurrentBalanceMinor"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return 0, 0, 0, false, nil
+		}
+		return 0, 0, 0, false, err
+	}
+	if colErr := row.Columns(&version, &balance); colErr != nil {
+		return 0, 0, 0, false, colErr
+	}
+	return version, 0, balance, true, nil
 }
 
 // AdjustBalance atomically adds deltaMinor to the current balance and recomputes available credit.

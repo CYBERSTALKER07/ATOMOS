@@ -3,7 +3,7 @@
 //  payload-app-ios
 //
 //  Wire-format DTOs for every endpoint the Expo payload-terminal calls.
-//  snake_case fields → CodingKeys; APIClient uses .convertFromSnakeCase by default.
+//  snake_case fields → explicit CodingKeys (APIClient does not convertFromSnakeCase).
 //
 
 import Foundation

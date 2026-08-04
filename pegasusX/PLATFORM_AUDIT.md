@@ -2,7 +2,7 @@
 
 Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-08-04. No repo markdown was trusted; every claim below traces to code, schema, or config. File:line references are given so each finding can be re-checked.
 
-**Re-aligned 2026-08-04 (post Phase A/B G1–G3 backend):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal is env-selected (`PEGASUS` default, not unconditional Fake); billing workers are constructed but still schema-broken; credit **scoring product removed** (limits + status only); Firebase client configs are committed (OTP/SMS/SHA still ops-owned). Structural findings (single-supplier runtime, no ML, no partner API) remain.
+**Re-aligned 2026-08-04 (post Phase A/B G1–G3 + Gate-0 hygiene):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal env-selected (`PEGASUS` default); billing workers constructed but schema-broken; credit scoring removed; Firebase client configs committed. **Gate-0 closed:** Claims in `spanner.ddl`, iOS snake_case decode, OrgFleet Android compile, optimizer minutes Time dim + empty-route reject, worker replicas=1, AutoConfirm sweeper flag, orphan `ledger/` deleted. Still open: single-supplier runtime, no partner API/ML, Spanner backup TF, outbox leases, P0-4 iOS offline.
 
 ---
 
@@ -29,8 +29,8 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 | Go backend | **8/10** | Same transactional primitives; claims/receive/stock liability spine + claim-window snapshot now wired. Still loses points on duplicate event publishing and state-machine bypasses. |
 | Domain modelling | **8.5/10** | 18-state order machine, two-sided delivery negotiation, volumetric dispatch, COD/credit/split payment, post-delivery claims ↔ quarantine ↔ reverse. Genuinely deep. |
 | Web frontend | **6/10** | Excellent type hygiene and idempotency; no server-state library across 60k lines, 0% localized, accessibility unusable. |
-| iOS | **4/10** | Modern SwiftUI/`@Observable`, but a decoder bug breaks the driver's primary flow and background location is misconfigured three ways. |
-| Android | **5/10** | Best offline queue in the repo; `supplier-app-android` does not compile. |
+| iOS | **5/10** | Modern SwiftUI/`@Observable`; Gate-0 removed convertFromSnakeCase decoder bug. Background location still misconfigured; P0-4 offline enqueue remains. |
+| Android | **6/10** | Best offline queue in the repo; supplier Android compiles again (Gate-0 OrgFleet). |
 | Infra / DevOps | **3/10** | Well-authored manifests, zero operationalization: no Spanner backup, local Terraform state, prod overlay renders placeholder images, no CD. |
 | AI / optimization | **2.5/10** | Real OR-Tools and a correct Clarke-Wright exist; the deployed solver has a fatal unit bug and forecasting is a 7-day mean. |
 | Integration surface | **0.5/10** | A spreadsheet wizard. |
@@ -42,7 +42,7 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 
 Worth stating precisely, because the rest of this report is critical and the good work deserves to be identified so it isn't refactored away.
 
-1. **Outbox events commit inside the state transaction.** `order/repository_spanner.go:247-291`, `ledger/repository_spanner.go:37-73` — a `spannerTxnBuffer` collects events *inside* the closure, then base + outbox mutations are written in one `txn.BufferWrite`. The event cannot commit without the state change.
+1. **Outbox events commit inside the state transaction.** `order/repository_spanner.go` (and payment/ledger-style writers) — a `spannerTxnBuffer` collects events *inside* the closure, then base + outbox mutations are written in one `txn.BufferWrite`. The event cannot commit without the state change.
 2. **The buffer is built inside the closure**, so Spanner's automatic transaction retries cannot double-emit. This is the detail that separates people who have operated Spanner from people who have read about it.
 3. **Optimistic concurrency is enforced, not decorative.** `order/repository_spanner.go:203-244` reads `Version` via `ReadRow` inside the RW transaction, rejects on mismatch, increments on commit.
 4. **Out-of-band webhook re-verification.** `payment/global_pay_webhook.go:81-91` independently queries the gateway for authoritative status before accepting a settlement — this defeats forgery even with a leaked webhook secret. Rare outside fintech.
@@ -68,11 +68,11 @@ The single most important pattern in this codebase: **features ship the *interfa
 |---|---|---|---|---|
 | 1 | **Fiscalization (legal OFD)** | Full FISCALIZING → FISCAL_FAILED retry state machine, `OrderFiscalReceipts`, env-selected providers (`PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`) | **Not unconditional Fake anymore** — `defaultFiscalProvider()` → `ProviderFromEnv()`; SSMR/staging use `FISCAL_PROVIDER=PEGASUS` (platform commercial receipts). **Legal Soliq OFD still not production-ready** — `MY_SOLIQ` needs sandbox creds; misconfig returns hard-fail rather than silent Fake. | `order/fiscal.go` (`defaultFiscalProvider`); `order/fiscal_provider.go` (`ProviderFromEnv`) |
 | 2 | **Marketplace commission** | 3 billing tables, meter + tier workers, consumer started in `runtime_workers.go` | Workers **are constructed** (`bootstrap` + `BillingTierConsumer.Start`). Writes still **don't match schema** (`AmountDelta` vs `CurrentValue`; insert omits `EventId`/`MeterType` NOT NULL columns) — first live meter event fails. **Nothing is successfully metered.** | `internal/services/billing/meter_worker.go:47-60`; `schema/spanner.ddl` `BillingMeterEvents` / `BillingSupplierMeters` |
-| ~~3~~ | ~~**Claims / disputes**~~ | — | **Retired from theatre (2026-08-04).** Live service + routes + e2e. Residual hygiene: `Claims`/`ClaimEvidences` live in migration `20260728_logistics_claims.ddl` but are **missing from `schema/spanner.ddl`** (schema-drift risk for greenfield applies). Portal claim-window **settings UX** still open (API only). | `bootstrap/bootstrap.go` claims wiring; `orderroutes/routes.go`; `claims/*`; `order/claim_window.go` |
-| 4 | **Double-entry ledger** | Correct balanced-transfer implementation with normal-balance semantics | Nothing imports `ledger/` outside its own package, and `LedgerAccounts`/`LedgerEntries`/`LedgerTransactions` **are not in the DDL** — it would fail with table-not-found. Live money path is `PaymentLedgerEntries` / `ArLedgerEntries` (event log), not the textbook package. | `ledger/service.go` vs `schema/spanner.ddl` |
+| ~~3~~ | ~~**Claims / disputes**~~ | — | **Retired (2026-08-04).** Live service + routes + e2e. `Claims`/`ClaimEvidences` mirrored into `schema/spanner.ddl` (Gate-0). Portal claim-window settings UX still open. | `schema/spanner.ddl`; `claims/*` |
+| ~~4~~ | ~~**Double-entry ledger**~~ | — | **Deleted (Gate-0).** Orphan `ledger/` package removed; live money path remains `PaymentLedgerEntries` / `ArLedgerEntries`. | — |
 | 5 | **AI confidence gate** | `MinConfidence` knob, debug log for rejections | Minimum possible score is `0.4 + 0.15 + 0 + 0 = 0.55`; the gate is `score < 0.55`. **`0.55 < 0.55` is false — every event passes.** | `synthesis/engine.go:181` vs `:99, 451-455` |
 | 6 | **Touchless replenishment policy** | `MinConfidenceScore FLOAT64 DEFAULT 0.85` | Loaded, written, and **never used in any decision**. A supplier setting "only auto-approve above 95%" is silently ignored. | `replenishment/policies.go:52,83` vs `touchless.go:41-52,242-253` |
-| 7 | **Auto-confirm of AI preorders** | `AutoConfirmAt` set to +24h; `AutoConfirmDueOrders` implemented | **Zero call sites.** Not in `runtime_workers.go`. AI preorders sit at `PENDING` forever, and dispatch eligibility requires `CONFIRMED`/`AUTO_CONFIRMED` — so they are invisible to dispatch until a human taps confirm. | `order/preorder_service.go:295`; `dispatch/eligibility.go:5-8` |
+| 7 | **Auto-confirm of AI preorders** | `AutoConfirmAt` set to +24h; `AutoConfirmDueOrders` + worker ticker | **Wired behind `AUTO_CONFIRM_PREORDERS_ENABLED=1`** (Gate-0; default off). Without the flag, preorders stay PENDING until human confirm. | `runtime_workers.go`; `order/preorder_service.go` |
 | 8 | **Seasonality** | Two templates with `Multiplier` ×1.35 / ×1.15 | The `Multiplier` field is **never read by any quantity calculation** — only serialized and cached. Seasonality is decorative. | `planning/seasonal_templates.go:46-49` |
 | 9 | **Weather & POS demand signals** | A `CompositeSignalProvider` "demand sensing stack" | `externalWeatherSignals` returns hardcoded `Qty: 2` if the month is June–August. `externalPOSSignals` returns `Qty: 3` on the 1st, 15th, and last of the month. No API calls. | `predictivepush/signals.go:96-130` |
 | 10 | **Price elasticity / promo simulation** | Promo simulator with projected volume, margin, and a "closed-loop score" | Fixed 0.5 elasticity for every product and season. The actual-vs-projected scorer does `_ = promotionID` — it **counts all completed orders in 30 days** and calls that the promotion's result, comparing an order *count* against a projected unit *volume*. | `planning/promo_eval.go:59`, `:156-163` |
@@ -83,7 +83,7 @@ The single most important pattern in this codebase: **features ship the *interfa
 
 Two more that are naming rather than function: `RunMEIONetwork` ("Multi-Echelon Inventory Optimization") is a two-node greedy donor/receiver swap per SKU (`replenishment/mei_engine.go:168`); `SourceFallback = "KMEANS_BINPACK"` labels an algorithm that contains **no k-means anywhere in the repository**.
 
-**Recommendation:** every item above is either wired, deleted, or explicitly renamed to what it is. Shipping `MinConfidenceScore` to a customer-facing settings screen when the field is ignored is a trust liability, not a feature.
+**Recommendation:** every item above is either wired, deleted, or explicitly renamed to what it is. Shipping `MinConfidenceScore` to a customer-facing settings screen when the field is ignored is a trust liability, not a feature. **Operating instruction:** [`docs/SUBSTANCE_GATE.md`](docs/SUBSTANCE_GATE.md) — SG algorithm + per-role / per-platform E2E verification against `PX_E2E_*` markers.
 
 ---
 
@@ -91,16 +91,18 @@ Two more that are naming rather than function: `RunMEIONetwork` ("Multi-Echelon 
 
 Ranked. These are bugs, not gaps.
 
-**P0-1 — The deployed route optimizer has a unit error that silently produces zero manifests.**
-`services/optimizer-core/server/contract_solver.py:145-151` registers a transit callback returning **meters**. The same callback index is then registered as the **Time** dimension with a horizon of 1440 (intended as 24×60 minutes), and cumulative variables are constrained to HH:MM-derived **minutes** (`:171-184`). **Any route totalling more than 1.44 km is infeasible.** `AddDisjunction` is never called, so no node can be dropped — the whole model goes infeasible and every order is orphaned (`:264-268`). The backend's validator iterates `res.Routes`, so an empty route list **passes validation** and returns `SourceOptimizer` as a success (`dispatch/plan/optimize.go:92-108`) — the well-built bin-packing fallback never engages. Receiving windows are populated and inherited from the retailer record (`dispatch/repository.go:58-59`), so this triggers in any real deployment.
+**P0-1 — ~~The deployed route optimizer has a unit error that silently produces zero manifests.~~ Fixed (Gate-0).**
+Time dimension now uses per-vehicle **minutes** callbacks (`AddDimensionWithVehicleTransits`); `AddDisjunction` drops infeasible stops; Go client rejects zero-route optimizer responses and falls back to H3 BinPack (`contract_solver.py`, `dispatch/plan/optimize.go`). Redeploy optimizer-core image to pick up Python fix.
 
-**P0-2 — `supplier-app-android` does not compile.** `refactor_android.py` used `re.search` with `DOTALL` and a `^\}` terminator, which swallowed whole files into each extracted "component". `OrgFleetPickers.kt` is 2,132 lines containing **four verbatim copies** of the original screen; `OrgFleetScreen`, `DriverRoster`, and five other declarations each appear 6 times in the same package. The app with the widest endpoint surface (90) is unbuildable.
+**P0-2 — ~~`supplier-app-android` does not compile.~~ Fixed (Gate-0).**
+Deleted wrecked `orgfleet/components/*` duplicates; parent `OrgFleetScreen` + `FormPickers` remain. `compileEnterpriseDebugKotlin` + `compileStoreDebugKotlin` green.
 
-**P0-3 — Driver iOS cannot decode any response.** `APIClient.swift:76` sets `keyDecodingStrategy = .convertFromSnakeCase`, which rewrites incoming keys to camelCase *before* they are matched against 154 explicit snake_case `CodingKeys`. `Order.retailerId` is non-optional, so `getAssignedOrders()` throws — **the driver cannot load a route.** The `ClientPolicy` force-update gate fails the same way and its error is swallowed by a bare `catch`. `payload-app-ios/.../APIClient.swift:72` has the identical bug. Fix: delete one line in each file.
+**P0-3 — ~~Driver iOS cannot decode any response.~~ Fixed (Gate-0).**
+Removed `.convertFromSnakeCase` from driver + payload `APIClient.swift` so explicit snake_case `CodingKeys` match.
 
 **P0-4 — Server rejections become "successful" offline deliveries on iOS.** `FleetServiceLive.swift:57-64` treats only `FleetServiceError` as a business rejection, but `APIClient` never throws that type — it throws `APIError`. A 403 "you are 4 km from the customer" is caught by the `else` branch, queued offline, and **reported to the driver as a completed delivery**, then replayed forever with coordinates `(0, 0)` (`:266-272`, directly beneath a comment claiming it refuses to fabricate coordinates).
 
-**P0-5 — Every domain event is published to Kafka roughly twice.** `infra/k8s/backend-go-worker/deployment.yaml:10` sets `replicas: 2`; `runtime_workers.go:15-18` starts `OutboxRelay.Start` unconditionally on every pod; `outbox/relay.go:124-153` fetches unpublished rows with a plain `Single()` read and no lease or claim. The relay's own doc comment warns against exactly this. And the dedupe layer **cannot catch it** — `kafka/event_dedup_middleware.go:16` keys on `(group, topic, partition, offset)`, and two pods publishing the same logical event produce two distinct offsets. No leader election exists anywhere in the repo.
+**P0-5 — Outbox double-publish — short-term mitigated (Gate-0).** Worker `replicas: 1` in manifest + SSMR scaled. Full lease (`ClaimedBy`/`ClaimedUntil`) + EventID Kafka dedupe still open before safe multi-replica relay.
 
 **P0-6 — No Spanner backup exists.** No `google_spanner_backup_schedule`, no `version_retention_period`, zero backup resources in state. No documented RPO/RTO, no restore script, no restore rehearsal. Combined with P0-7, there is an unbounded-loss path with no recovery mechanism.
 
@@ -246,7 +248,7 @@ These are one-to-few-line fixes with outsized consequences. Do them first; sever
 | Spanner backups | `infra/terraform` | `google_spanner_backup_schedule` (daily, 7–30d) + `version_retention_period` for PITR. **Then execute a restore into a scratch DB and record the RTO.** |
 | Migration integrity | `cmd/apply-migration/main.go:267` | Remove `FailedPrecondition` from the benign set; narrow `InvalidArgument` to exact matches. Add `SchemaMigrations(version, checksum, applied_at)` and refuse a version whose checksum changed. Remove `migrate-job.yaml` from `base/kustomization.yaml:15`; run it as a gated pipeline step with a `-<git-sha>` suffix. |
 | Terraform state to GCS | `backend.gcs.tf.example` | Activate against a versioned bucket, `state push` serial 143, delete the local file, **rotate the 5 secret values that were in plaintext state**. |
-| Wire the auto-confirm sweeper | `runtime_workers.go:44` | `go app.OrderService.AutoConfirmDueOrders(ctx, 200)` on a ticker, behind a per-supplier flag. |
+| ~~Wire the auto-confirm sweeper~~ | `runtime_workers.go` | **Done (Gate-0)** — ticker behind `AUTO_CONFIRM_PREORDERS_ENABLED=1` (default off). |
 | Enforce `MinConfidenceScore` | `replenishment/touchless.go:41-52, 242-253` | Thread the policy value in. Property test: `MinConfidenceScore = 1.0` must auto-approve nothing. |
 | Fix `AggregateId` overflow | `predictivepush/audit.go:51` | Write a UUID; move the composite key into `PredictionData`, matching what `synthesis` already does. |
 | LIFO loading order | `warehouse/dispatch_execute.go:240`, `supplier/dispatch_execute.go:392` | `LoadingOrder = stopCount - 1 - idx` for rear-loading vehicles; add `LoadingPattern` to `Vehicles` for side-loaders. Today the first delivery is loaded at the *back* of the box — the loader must unload the whole truck at stop 1. |
@@ -466,10 +468,10 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 | Role | App completeness | Top gaps |
 |---|---|---|
 | **Retailer** | iOS 75% / Android 80% / desktop good | Receive+stock+FileClaim/eligibility countdown shipped (G1/G2); still weak on inferred shelf for auto-order (§8.3), KYC, i18n, cross-supplier cart (§8.10 P2), tenant-scoped desktop cache |
-| **Supplier** | Portal strong / iOS 60% / **Android 35%, doesn't compile** | Restore Android build, payout execution, refunds, real pricing engine, billing/commission, forecast accuracy view |
+| **Supplier** | Portal strong / iOS 60% / Android compiles (Gate-0 OrgFleet) | Payout execution, refunds, real pricing engine, billing/commission, forecast accuracy view |
 | **Warehouse** | Portal good / iOS 60% (0 ViewModels, 0 tests) / Android 55% (146 `!!`, 1 ViewModel for 35 screens) | **Bins, lots, expiry, pick waves, cycle counts (§8.7)** — the largest single capability gap in the product; ViewModels; scanning throughput |
 | **Factory** | Portal 9k lines / iOS 55% / Android 55% (0 ViewModels) | Production scheduling, capacity/MRP (`GetSAndOP` is `factories × 700 × 7`), real transfer lead-time capture |
-| **Driver** | **iOS 40% (decoder bug blocks route loading)** / Android 70% (best offline story) | P0-3, P0-4, background location, photo/signature POD, generic offline queue, boot receiver |
+| **Driver** | iOS decoder Gate-0 fixed / Android 70% (best offline story) | P0-4 offline enqueue, background location, photo/signature POD, generic offline queue, boot receiver |
 | **Payload terminal** | iOS 45% (no `.xcodeproj`) / Android 50% | Generate the Xcode project, hardware scanner, per-line quantities, split the 1,700-line god view |
 | **Platform admin** | **Effectively absent** — 3 endpoints and a redirect stub | The entire console: tenant management, approval, suspension, fee schedule, global observability, support tooling |
 
@@ -503,7 +505,7 @@ Delete or explicitly rename. Every one of these currently misleads the next engi
 
 | Item | Why |
 |---|---|
-| `ledger/` package | Textbook double-entry, zero callers, tables not in the DDL. Either add the DDL and wire it into `payment` with a reconciliation invariant, or delete it. |
+| ~~`ledger/` package~~ | **Deleted (Gate-0).** |
 | `services/optimizer-core/server-rust/` | 447 lines, index bug, deployed nowhere. Delete, or replace it with the Go Clarke-Wright as a real A/B arm. |
 | `optimizationjobs/` package + `OptimizationJobs` table | `EnqueueJob` has zero callers; nothing publishes or consumes `TopicOptimizerJobs`. |
 | `kafka.AnalyticsStreamProcessor` | Package still exists (`kafka/stream_processor.go`) but **is no longer started** from `runtime_workers.go` (dummy channel removed). Delete the orphan type or wire a real Kafka stream — do not reintroduce a dummy. |
