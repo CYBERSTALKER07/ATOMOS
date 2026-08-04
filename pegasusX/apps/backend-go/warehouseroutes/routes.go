@@ -58,6 +58,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/ops/orders", d.Service.HandleOrders)
 		rr.Get("/v1/warehouse/ops/orders/*", d.Service.HandleOrders)
 		if d.OrderService != nil {
+			rr.Group(func(admin chi.Router) {
+				admin.Use(auth.RequireRole(auth.RoleWarehouseAdmin, auth.RoleAdmin))
+				admin.Get("/v1/warehouse/return-policy", d.OrderService.HandleWarehouseReturnPolicy)
+				admin.Put("/v1/warehouse/return-policy", d.OrderService.HandleWarehouseReturnPolicy)
+			})
 			rr.Post("/v1/warehouse/ops/orders/{id}/delay", d.OrderService.HandleWarehouseMarkDelayed)
 			rr.Post("/v1/warehouse/ops/orders/{id}/reject", d.OrderService.HandleWarehouseRejectOrder)
 			rr.Post("/v1/warehouse/ops/orders/{id}/overflow", d.OrderService.HandleWarehousePayloadOverflow)

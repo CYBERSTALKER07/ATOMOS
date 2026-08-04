@@ -128,9 +128,12 @@ func (s *Service) HandleWarehouseReturnPolicy(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	warehouseID := strings.TrimSpace(claims.WarehouseID)
+	warehouseID := strings.TrimSpace(auth.EffectiveWarehouseID(r.Context()))
 	if warehouseID == "" {
-		warehouseID = strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		warehouseID = strings.TrimSpace(claims.HomeNodeID)
+	}
+	if q := strings.TrimSpace(r.URL.Query().Get("warehouse_id")); q != "" {
+		warehouseID = q
 	}
 	if warehouseID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_id_required"})

@@ -80,6 +80,55 @@ func TestEvaluateClaimEligibility_NotCompleted(t *testing.T) {
 	}
 }
 
+func TestEvaluateClaimEligibility_PrefersSnapshotEndsAt(t *testing.T) {
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	ends := now.Add(8 * time.Hour)
+	o := OrderSnapshot{
+		OrderID:                 "ord-1",
+		Status:                  OrderStatusCompleted,
+		UpdatedAt:               now.Add(-40 * time.Hour), // would be expired under 48h legacy
+		ClaimWindowHours:        48,
+		ClaimWindowEndsAt:       &ends,
+		ClaimWindowPolicySource: "SUPPLIER",
+	}
+	elig := EvaluateClaimEligibility(o, now, 48*time.Hour)
+	if !elig.Eligible {
+		t.Fatalf("expected eligible via snapshot: %+v", elig)
+	}
+	if elig.PolicySource != "SUPPLIER" {
+		t.Fatalf("policy_source=%q", elig.PolicySource)
+	}
+	if elig.EndsAt == nil || *elig.EndsAt != ends.Format(time.RFC3339) {
+		t.Fatalf("ends_at=%v want %s", elig.EndsAt, ends.Format(time.RFC3339))
+	}
+	if elig.WindowHours != 48 {
+		t.Fatalf("window_hours=%d", elig.WindowHours)
+	}
+}
+
+func TestEvaluateClaimEligibility_SnapshotExpired(t *testing.T) {
+	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
+	ends := now.Add(-1 * time.Hour)
+	o := OrderSnapshot{
+		OrderID:                 "ord-1",
+		Status:                  OrderStatusCompleted,
+		UpdatedAt:               now.Add(-2 * time.Hour), // still open under 48h legacy
+		ClaimWindowHours:        1,
+		ClaimWindowEndsAt:       &ends,
+		ClaimWindowPolicySource: "WAREHOUSE_OVERRIDE",
+	}
+	elig := EvaluateClaimEligibility(o, now, 48*time.Hour)
+	if elig.Eligible {
+		t.Fatalf("expected expired via snapshot: %+v", elig)
+	}
+	if elig.Reason != "claim_window_expired" {
+		t.Fatalf("reason=%q", elig.Reason)
+	}
+	if elig.PolicySource != "WAREHOUSE_OVERRIDE" {
+		t.Fatalf("policy_source=%q", elig.PolicySource)
+	}
+}
+
 func TestGetClaimEligibility_ForbiddenOtherRetailer(t *testing.T) {
 	now := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
 	svc := NewService(Config{

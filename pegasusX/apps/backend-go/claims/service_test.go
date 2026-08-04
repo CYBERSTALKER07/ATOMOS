@@ -264,6 +264,32 @@ func TestFileRetailerClaimWindowExpired(t *testing.T) {
 	}
 }
 
+func TestFileRetailerClaim_SnapshotEndsAtExpired(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	o := completedOrder(now)
+	o.UpdatedAt = now.Add(-2 * time.Hour) // open under legacy 48h
+	ends := now.Add(-30 * time.Minute)
+	o.ClaimWindowHours = 1
+	o.ClaimWindowEndsAt = &ends
+	o.ClaimWindowPolicySource = "SUPPLIER"
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: o},
+		Now:    func() time.Time { return now },
+		Window: 48 * time.Hour,
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != ErrClaimWindowExpired {
+		t.Fatalf("got %v want window expired via snapshot", err)
+	}
+}
+
 func TestApproveClaimSettlesChargeback(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	repo := NewMemoryRepository()

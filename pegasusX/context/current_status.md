@@ -1,13 +1,14 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-04 (Phase B G2 claim-eligibility)*
+*Last Updated: 2026-08-04 (Phase B G3 claim-window backend)*
 
 ## 1. Code completeness (this closure)
 
 Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
 
-- **2026-08-04 G2** `GET /v1/orders/{id}/claim-eligibility` (shared window math with file-claim); retailer countdown + CTA hide on desktop/Android/iOS; e2e `PX_E2E_CLAIM_ELIGIBILITY_OK`. Policy source ENV/DEFAULT until G3 snapshots.
-- **2026-08-04 G1** Stock-first Request return / chargeback on retailer desktop, Android, iOS: COMPLETED/DELIVERED_ON_CREDIT order picker → existing FileClaim UI (`initialSku` / `preferredSku` prefill); reuses `POST /v1/orders/{id}/claims`. G3 window policies still deferred.
+- **2026-08-04 G3 (backend)** Supplier/WH return-policy tables + resolve_window; immutable `ClaimWindowHours`/`EndsAt`/`PolicySource` on COMPLETED; eligibility/FileClaim prefer snapshot; GET/PUT `/v1/supplier/return-policy` + `/v1/warehouse/return-policy`. Portal/mobile settings UX still open. E2e asserts non-empty `policy_source` (`PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK`).
+- **2026-08-04 G2** `GET /v1/orders/{id}/claim-eligibility` (shared window math with file-claim); retailer countdown + CTA hide on desktop/Android/iOS; e2e `PX_E2E_CLAIM_ELIGIBILITY_OK`.
+- **2026-08-04 G1** Stock-first Request return / chargeback on retailer desktop, Android, iOS: COMPLETED/DELIVERED_ON_CREDIT order picker → existing FileClaim UI (`initialSku` / `preferredSku` prefill); reuses `POST /v1/orders/{id}/claims`.
 - **2026-08-04 Phase B leftovers** G11/G25 claim file Redis idempotency + stable client `claim-file:` keys; G12 returns Kafka consumer on `REVERSE_LOGISTICS_REQUIRED` + `claim_reverse_open_fail_total`; G22 `warehouse_id` on `CLAIM_FILED` WH fanout; G20 e2e receive→CONCEALED→QUARANTINE→inbound markers (`PX_E2E_CLAIMS_CONCEALED_OK`, `PX_E2E_STORE_STOCK_CLAIM_HOLD_OK`, `PX_E2E_CLAIMS_REVERSE_OK`, `PX_E2E_CLAIMS_IDEMPOTENCY_OK`) required in marker gate.
 - **2026-08-04 Phase A/B** GCS evidence fail-closed (`REQUIRE_INFRA_ADAPTERS` / prod|ssmr|staging — no `placehold.co`; `invalid_evidence_uri`; e2e `PX_E2E_CLAIM_MEDIA_GCS_OK`). RS0 `claim.file` + `ResolveRetailerOrgID`. G8 hold fail-closed + compensate REJECTED. G9 `ReceivableQty` excludes residual/open claims. E2 design doc + `PerimeterKeyForSupplier` (prod still global key). Ops: WI SA needs `roles/iam.serviceAccountTokenCreator` for signBlob — see owner secrets handoff.
 - **2026-08-04 Phase A** Credit risk scoring removed (no score worker / `RiskTier` gates / suggested-limit desk); CREDIT_LEAVE = status + available. E1 session-scoped CT/Compliance; E3 shop-closed DDL wired on SSMR+staging + CI schema-drift gate.

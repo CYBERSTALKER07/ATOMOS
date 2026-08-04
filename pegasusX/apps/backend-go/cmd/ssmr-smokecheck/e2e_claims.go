@@ -19,6 +19,7 @@ import (
 //	PX_E2E_CLAIMS_MEDIA_TICKET_OK
 //	PX_E2E_CLAIM_MEDIA_GCS_OK
 //	PX_E2E_CLAIM_ELIGIBILITY_OK
+//	PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK
 //	PX_E2E_CLAIMS_CONCEALED_OK
 //	PX_E2E_STORE_STOCK_CLAIM_HOLD_OK
 //	PX_E2E_CLAIMS_REVERSE_OK
@@ -162,9 +163,10 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("claim eligibility status %d body %s", status, string(respBody))
 	}
 	var elig struct {
-		Eligible    bool    `json:"eligible"`
-		EndsAt      *string `json:"ends_at"`
-		WindowHours int     `json:"window_hours"`
+		Eligible     bool    `json:"eligible"`
+		EndsAt       *string `json:"ends_at"`
+		WindowHours  int     `json:"window_hours"`
+		PolicySource string  `json:"policy_source"`
 	}
 	if err := json.Unmarshal(respBody, &elig); err != nil {
 		return fmt.Errorf("claim eligibility decode: %w body %s", err, string(respBody))
@@ -172,7 +174,11 @@ func runClaimsE2E(ctx context.Context, cfg *bootstrap.Config) error {
 	if !elig.Eligible || elig.EndsAt == nil || strings.TrimSpace(*elig.EndsAt) == "" || elig.WindowHours <= 0 {
 		return fmt.Errorf("claim eligibility unexpected: %+v body %s", elig, string(respBody))
 	}
+	if strings.TrimSpace(elig.PolicySource) == "" {
+		return fmt.Errorf("claim eligibility policy_source empty: %+v body %s", elig, string(respBody))
+	}
 	fmt.Println("PX_E2E_CLAIM_ELIGIBILITY_OK")
+	fmt.Println("PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK")
 
 	// G20: receive into store OnHand, then CONCEALED_DAMAGE + photo → quarantine + WH reverse.
 	recvBody, _ := json.Marshal(map[string]any{

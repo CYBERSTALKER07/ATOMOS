@@ -70,7 +70,7 @@ flowchart TD
 | Idempotency on file claim + client keys | G11/G25 | **Done** — Redis guard + stable `claim-file:` keys; `PX_E2E_CLAIMS_IDEMPOTENCY_OK` |
 | Stock “Request return” UX (3 clients) | G1 | **Done** — stock CTA → COMPLETED picker → existing FileClaim (+ optional SKU prefill) on desktop/Android/iOS |
 | Claim eligibility / countdown API | G2 | **Done** — `GET …/claim-eligibility` + retailer CTA countdown (3 clients); `PX_E2E_CLAIM_ELIGIBILITY_OK` |
-| Supplier/WH claim window settings + order snapshot | G3/G10 / RS1 | 8/24/custom; snapshot on COMPLETED (deferred; eligibility uses ENV/DEFAULT until then) |
+| Supplier/WH claim window settings + order snapshot | G3/G10 / RS1 | **Backend Done** — policy tables + COMPLETED snapshot; FileClaim/eligibility use `ClaimWindowEndsAt`; GET/PUT `/v1/supplier|warehouse/return-policy`. Portal/mobile settings UX still open |
 | Reverse open retry + CLAIM_FILED → WH | G12/G22 | **Done** — returns Kafka consumer + `warehouse_id` on CLAIM_FILED; metric on sync fail |
 | Concealed+stock+WH e2e markers | G20 | **Done** — receive→CONCEALED→hold→inbound markers in gate |
 
@@ -159,7 +159,7 @@ Not a product epic — **make the platform operable**.
 Do **not** set `PEGASUSX_ENV=production` until:
 
 1. Phase **A** green (GP SUCCESS, Firebase OTP still open; demo desks / shop-closed DDL / GCS evidence code **Done** — SSMR media marker needs TokenCreator IAM)  
-2. Phase **B** P0 green (claim auth, quarantine, receive exclude, idempotency, reverse/WH fanout, G20 markers, G1 stock UX, G2 eligibility — **code Done**; remaining product UX G3 windows)  
+2. Phase **B** P0 green (claim auth, quarantine, receive exclude, idempotency, reverse/WH fanout, G20 markers, G1–G3 backend — **code Done**; G3 supplier/WH settings portal UX still open)  
 3. `ValidateProductionProfile` passes (no GP stubs)
 
 CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail OS packs parity-tested.
@@ -182,7 +182,7 @@ CORE-only retailers may pilot earlier; multi-scale retail marketing needs Retail
 2. ~~E1 `sup-demo-1` + E3 shop-closed DDL~~ **Done**.  
 3. ~~GCS fail-closed + RS0 + G8 + G9~~ **Done** (SSMR media e2e still needs WI `roles/iam.serviceAccountTokenCreator` for signBlob).  
 4. ~~E2 perimeter key design + helper~~ **Done** (prod reads still global; EH1.1 cutover later).  
-5. ~~Phase B G11/G25 + G12/G22 + G20 + G1 + G2~~ **Done**. **Next eng:** Phase C E2 cutover / G19 ConfigMap / G3 claim windows as product allows. **Owner/ops:** **L1** GP password + Firebase Phone/SHA + WI TokenCreator for GCS smoke.
+5. ~~Phase B G11/G25 + G12/G22 + G20 + G1 + G2 + G3 backend~~ **Done**. **Next eng:** Phase C E2 cutover / G19 ConfigMap / G3 portal claim-window UX as product allows. **Owner/ops:** **L1** GP password + Firebase Phone/SHA + WI TokenCreator for GCS smoke.
 
 ---
 
