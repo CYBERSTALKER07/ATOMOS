@@ -1,0 +1,15 @@
+# Marketing site (Next.js) — pegasusX/softwareengineercv-main
+# Force npm in the app folder so pnpm does not hoist the pegasusX workspace install
+# (which does not include this package and leaves `next` missing).
+
+[build]
+  base = "pegasusX/softwareengineercv-main"
+  command = "npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NETLIFY_USE_PNPM = "false"
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
