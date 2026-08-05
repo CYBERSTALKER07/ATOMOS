@@ -45,6 +45,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.supplier
         INFOPLIST_FILE: SupplierApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SupplierApp/SupplierApp.entitlements
   SupplierAppTests:
     type: bundle.unit-test
     platform: iOS

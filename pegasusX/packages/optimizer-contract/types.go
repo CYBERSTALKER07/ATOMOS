@@ -25,9 +25,9 @@ const (
 	// points at the Python sidecar.
 	SourceORTools SolverSource = "OR_TOOLS_VRP"
 
-	// SourceFallback is the Phase 1 K-Means clustering + binpack pipeline.
+	// SourceFallback is the H3-grouped first-fit binpack pipeline (no k-means).
 	// Used when the optimiser times out, returns 5xx, or is unreachable.
-	SourceFallback SolverSource = "KMEANS_BINPACK"
+	SourceFallback SolverSource = "H3_BINPACK"
 )
 
 // SolveRequest is the input to POST /v1/optimizer/solve. The backend

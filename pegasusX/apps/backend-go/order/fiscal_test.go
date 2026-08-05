@@ -314,6 +314,42 @@ func TestFiscalWorkerIdempotentOnSuccessRedelivery(t *testing.T) {
 	}
 }
 
+func TestConfirmPaymentBypassOpensFiscalizingNotCompleted(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusAwaitingPayment)
+	o.DriverID = "drv-1"
+	o.SupplierID = "sup-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+
+	if err := svc.ConfirmPaymentBypass(context.Background(), o.OrderID, "drv-1", "sup-1"); err != nil {
+		t.Fatalf("ConfirmPaymentBypass: %v", err)
+	}
+	if repo.captured.Status != StatusFiscalizing {
+		t.Fatalf("status=%s want FISCALIZING (ADR-009; must not COMPLETED)", repo.captured.Status)
+	}
+	if len(repo.captured.PendingFiscalReceipts) != 1 {
+		t.Fatalf("pending fiscal receipts=%d want 1", len(repo.captured.PendingFiscalReceipts))
+	}
+	if repo.captured.PendingFiscalReceipts[0].PaymentMethod != "PAYMENT_BYPASS" {
+		t.Fatalf("payment method=%q want PAYMENT_BYPASS", repo.captured.PendingFiscalReceipts[0].PaymentMethod)
+	}
+}
+
+func TestConfirmPaymentBypassRejectsWrongDriver(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusAwaitingPayment)
+	o.DriverID = "drv-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	if err := svc.ConfirmPaymentBypass(context.Background(), o.OrderID, "drv-other", ""); !errors.Is(err, ErrOrderForbidden) {
+		t.Fatalf("got %v want ErrOrderForbidden", err)
+	}
+	if repo.updateCalls != 0 {
+		t.Fatalf("updateCalls=%d want 0", repo.updateCalls)
+	}
+}
+
 func TestSettleExternalPaymentIgnoresTerminalAndFiscalStates(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	for _, st := range []Status{StatusCompleted, StatusFiscalizing, StatusFiscalFailed, StatusCancelled} {

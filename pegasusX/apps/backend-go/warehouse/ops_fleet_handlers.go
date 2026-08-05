@@ -2,15 +2,18 @@ package warehouse
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
 
@@ -66,6 +69,16 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		driverID := "drv-" + uuid.NewString()[:8]
+		plainPin, err := generateOpsDriverPIN(4)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_generate_failed"})
+			return
+		}
+		pinHash, err := bcrypt.GenerateFromPassword([]byte(plainPin), bcrypt.DefaultCost)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_hash_failed"})
+			return
+		}
 
 		if s.spannerClient != nil {
 			now := s.now().UTC()
@@ -74,7 +87,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 				DriverID:    driverID,
 				Name:        strings.TrimSpace(req.Name),
 				Phone:       strings.TrimSpace(req.Phone),
-				PinHash:     "4321",
+				PinHash:     string(pinHash),
 				SupplierID:  strings.TrimSpace(s.supplierID),
 				WarehouseID: whID,
 				CreatedAt:   now,
@@ -98,7 +111,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 
 		resp := map[string]any{
 			"driver_id": driverID,
-			"pin":       "4321",
+			"pin":       plainPin, // plaintext once; PinHash is bcrypt
 		}
 		respBytes, _ := json.Marshal(resp)
 		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
@@ -526,4 +539,21 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "vehicle_not_found"})
+}
+
+// generateOpsDriverPIN returns a cryptographically random numeric PIN of length n.
+func generateOpsDriverPIN(n int) (string, error) {
+	if n <= 0 {
+		n = 4
+	}
+	var b strings.Builder
+	b.Grow(n)
+	for i := 0; i < n; i++ {
+		v, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", err
+		}
+		b.WriteByte(byte('0' + v.Int64()))
+	}
+	return b.String(), nil
 }

@@ -77,8 +77,10 @@ resource "google_spanner_instance" "ledger" {
 }
 
 resource "google_spanner_database" "main" {
-  instance = google_spanner_instance.ledger.name
-  name     = local.spanner_database_name
+  instance                 = google_spanner_instance.ledger.name
+  name                     = local.spanner_database_name
+  version_retention_period = var.spanner_version_retention_period
+  enable_drop_protection   = true
 }
 
 # Kafka remains provider-agnostic (Confluent Cloud / managed Kafka / self-hosted).

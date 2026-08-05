@@ -4,15 +4,10 @@ import dynamic from 'next/dynamic';
 import type { CategoryHub } from '@/app/data/topicPages';
 import { HubTopicGrid } from '@/app/components/page-sections';
 import type { HubLayoutConfig } from '@/app/lib/explore/hubLayouts';
-import { AxionPageLayout } from '@/app/components/fleek/axion';
+import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
-import FleekDataSection from '@/app/components/fleek/FleekDataSection';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
-import {
-  mapTopicsToSolutions,
-  DEFAULT_TECH_FEATURES,
-} from '@/app/data/axionSectionContent';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9Related';
+import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 
 const FleetScrollShowcase = dynamic(() => import('@/app/components/fleet/FleetScrollShowcase'), {
   ssr: false,
@@ -34,67 +29,47 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
       />
     ) : null;
 
-  const topicLinks = hub.topics.map((t) => ({
-    label: t.content.title,
-    href: `/${hub.id}/${t.slug}`,
-    description: t.content.summary,
-  }));
-
-  const industryItems = hub.topics.slice(0, 6).map((t, i) => ({
+  const capabilities = hub.topics.map((t, i) => ({
     title: t.content.title,
     description: t.content.summary,
-    icon: (['retail', 'health', 'tech', 'manufacturing', 'fleet', 'warehouse'] as const)[i % 6],
     href: `/${hub.id}/${t.slug}`,
-    highlight: i === 3,
+    image: EDITORIAL_IMAGES[i % EDITORIAL_IMAGES.length],
+    tag: hub.label,
   }));
 
-  const techFeatures: typeof DEFAULT_TECH_FEATURES =
-    hub.topics.slice(0, 4).map((t) => ({
-      title: t.content.title,
-      description: t.content.summary,
-      href: `/${hub.id}/${t.slug}`,
-    }));
+  const differentiators = hub.topics.slice(0, 4).map((t) => ({
+    title: t.content.title,
+    description: t.content.summary,
+  }));
 
   return (
     <FleekPageShell activeHref={`/${hub.id}`}>
-      <AxionPageLayout
-        hero={{
-          title: hub.label,
-          summary: config.intro?.body ?? hub.promo?.body ?? `Explore ${hub.label} on Pegasus.`,
-          primaryHref: hub.promo?.primaryHref ?? '/join',
-          primaryLabel: hub.promo?.primaryLabel ?? 'Learn More',
-          imageSrc: EDITORIAL_IMAGES[hub.topics.length % EDITORIAL_IMAGES.length],
-        }}
-        solutions={{
-          title: `${hub.label} solutions`,
-          subtitle: config.intro?.body ?? hub.promo?.body,
-          items: mapTopicsToSolutions(topicLinks, [...EDITORIAL_IMAGES]),
-          seeAllHref: `/${hub.id}`,
-        }}
-        industries={{
-          eyebrow: `/ ${hub.label.toUpperCase()}`,
-          title: config.intro?.title ?? `Tailored ${hub.label.toLowerCase()} for your network`,
-          description: config.intro?.body ?? hub.promo?.body,
-          items: industryItems,
-        }}
-        technology={{
-          eyebrow: '/ TECHNOLOGY',
-          title: 'Innovation that moves your business',
-          features: techFeatures.length >= 4 ? techFeatures : DEFAULT_TECH_FEATURES,
-          extra: (
-            <>
-              <FleekDataSection hubId={hub.id} extra={fleetBand} />
-            </>
-          ),
-        }}
+      <O9FleekPageLayout
+        categoryLabel={hub.label}
+        categoryHref={`/${hub.id}`}
+        title={config.intro?.title ?? hub.label}
+        summary={config.intro?.body ?? hub.promo?.body ?? `Explore ${hub.label} on Pegasus.`}
+        heroImageSrc={EDITORIAL_IMAGES[hub.topics.length % EDITORIAL_IMAGES.length]}
+        proofItems={DEFAULT_PROOF}
+        hubId={hub.id}
+        differentiators={differentiators}
+        differentiatorsTitle={config.intro?.title ?? `Tailored ${hub.label.toLowerCase()} for your network`}
+        capabilities={capabilities}
+        capabilitiesTitle={`${hub.label} capabilities`}
+        fleetBand={fleetBand ? <div className="o9-section">{fleetBand}</div> : undefined}
+        showTourCta
         details={
           <>
             {config.intro ? (
-              <div className="axion-details__intro">
-                <p className="axion-eyebrow">{config.intro.eyebrow}</p>
-                <h2 className="axion-section__title">{config.intro.title}</h2>
-                <p className="axion-section__subtitle">{config.intro.body}</p>
-              </div>
+              <section className="docs-section">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
+                  {config.intro.eyebrow}
+                </p>
+                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
+                  {config.intro.title}
+                </h2>
+                <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">{config.intro.body}</p>
+              </section>
             ) : null}
             <HubTopicGrid
               hubId={hub.id}
@@ -102,7 +77,6 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
               topics={hub.topics}
               layout={config.topicGridLayout}
             />
-            <O9TourCTA />
           </>
         }
       />

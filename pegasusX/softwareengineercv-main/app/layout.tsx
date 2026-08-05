@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
-import { OG_IMAGE } from "@/app/lib/siteAssets";
-import { SITE_NAME, SITE_URL } from "@/app/lib/seo";
+import { BRAND_LOGO, OG_IMAGE } from "@/app/lib/siteAssets";
+import { absoluteAsset, SITE_NAME, SITE_URL } from "@/app/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,10 +53,11 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     images: [
       {
-        url: OG_IMAGE,
-        width: 1200,
-        height: 630,
-        alt: 'Pegasus Logistics Platform',
+        url: absoluteAsset(OG_IMAGE),
+        width: 512,
+        height: 512,
+        alt: 'Pegasus logo',
+        type: 'image/jpeg',
       },
     ],
   },
@@ -65,7 +66,7 @@ export const metadata: Metadata = {
     title: 'Pegasus | Logistics Operating System',
     description: 'Dispatch, fleet tracking, payments, and realtime coordination for supplier-led logistics networks.',
     creator: '@pegasus',
-    images: [OG_IMAGE],
+    images: [absoluteAsset(OG_IMAGE)],
   },
   robots: {
     index: true,
@@ -79,9 +80,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/atom.jpeg',
-    shortcut: '/atom.jpeg',
-    apple: '/atom.jpeg',
+    icon: BRAND_LOGO,
+    shortcut: BRAND_LOGO,
+    apple: '/web-app-manifest-192x192.png',
   },
   manifest: '/manifest.json',
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION

@@ -279,16 +279,24 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 				suggestedQty = computeSuggestedQtyWithEchelon(*sku, reorderPoint, target.TargetQty, true)
 			}
 		}
+		seasonMul := seasonalMultiplierFor(e.Now())
+		if seasonMul > 0 && seasonMul != 1.0 {
+			suggestedQty = int64(math.Ceil(float64(suggestedQty) * seasonMul))
+			if suggestedQty < 1 {
+				suggestedQty = 1
+			}
+		}
 		reason := "LOW_STOCK"
 		if burn > float64(sku.CurrentStock)/lead {
 			reason = "HIGH_VELOCITY"
 		}
 		breakdownJSON, _ := json.Marshal(map[string]any{
-			"unfulfilled":   sku.UnfulfilledQty,
-			"in_transit":    sku.InTransitQty,
-			"current_stock": sku.CurrentStock,
-			"burn_rate_7d":  burn,
-			"reorder_point": reorderPoint,
+			"unfulfilled":         sku.UnfulfilledQty,
+			"in_transit":          sku.InTransitQty,
+			"current_stock":       sku.CurrentStock,
+			"burn_rate_7d":        burn,
+			"reorder_point":       reorderPoint,
+			"seasonal_multiplier": seasonMul,
 		})
 
 		insightID := uuid.NewString()

@@ -72,6 +72,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist
+        CODE_SIGN_ENTITLEMENTS: payload-app-ios/PayloadApp.entitlements
   payload-app-iosTests:
     type: bundle.unit-test
     platform: iOS

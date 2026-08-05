@@ -14,6 +14,11 @@ func WithEventDedup(store EventDedupStore, consumerGroup string, handler EventHa
 	}
 	return func(ctx context.Context, msg kafka.Message) error {
 		key := DedupKeyForConsumerGroup(consumerGroup, msg.Topic, msg.Partition, msg.Offset)
+		if eid := headerValue(msg, "event_id"); eid != "" {
+			if k := DedupKeyForEventID(consumerGroup, msg.Topic, eid); k != "" {
+				key = k
+			}
+		}
 		ok, err := store.ShouldProcess(ctx, key)
 		if err != nil {
 			return err
@@ -23,4 +28,13 @@ func WithEventDedup(store EventDedupStore, consumerGroup string, handler EventHa
 		}
 		return handler(ctx, msg)
 	}
+}
+
+func headerValue(msg kafka.Message, name string) string {
+	for _, h := range msg.Headers {
+		if h.Key == name {
+			return string(h.Value)
+		}
+	}
+	return ""
 }

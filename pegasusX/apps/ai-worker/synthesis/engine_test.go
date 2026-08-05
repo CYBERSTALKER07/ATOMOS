@@ -23,14 +23,34 @@ func TestBuildSupplierRecommendation_Reorder(t *testing.T) {
 	if rec.Action != "SUGGEST_REORDER" {
 		t.Fatalf("action = %q", rec.Action)
 	}
-	if rec.Score < 0.4 || rec.Score > 1 {
+	// Low-signal floor is below default MinConfidence(0.55) so the gate can reject.
+	if rec.Score < 0.25 || rec.Score > 1 {
 		t.Fatalf("score out of range: %v", rec.Score)
+	}
+	if !(rec.Score < 0.55) {
+		t.Fatalf("low-signal score %v must be rejectable by default MinConfidence 0.55", rec.Score)
 	}
 	if rec.SupplierID != "sup-1" || rec.AggregateType != "ORDER" {
 		t.Fatalf("ids: %+v", rec)
 	}
 	if len(rec.PredictionID) == 0 || len(rec.AggregateID) != 36 {
 		t.Fatalf("ids not uuid-shaped: pred=%q agg=%q", rec.PredictionID, rec.AggregateID)
+	}
+}
+
+func TestMinConfidenceOneRejectsAll(t *testing.T) {
+	e := &Engine{MinConfidence: 1.0, Client: nil, Log: nil}
+	if e.minConfidence() != 1.0 {
+		t.Fatalf("minConfidence=%v", e.minConfidence())
+	}
+	// Gate uses minConf >= 1.0 as reject-all; score may still reach 1.0 under clamps.
+	rec := BuildSupplierRecommendation(OrderSignal{
+		OrderID: "o", SupplierID: "s", RetailerID: "r",
+		TotalMinor: 9_000_000,
+		LineItems:  []Line{{ProductID: "p", Quantity: 500}},
+	}, []OrderSignal{{}, {}, {}}, time.Now().UTC())
+	if !(e.minConfidence() >= 1.0 || rec.Score < e.minConfidence()) {
+		t.Fatalf("MinConfidence=1.0 must reject (score=%v)", rec.Score)
 	}
 }
 

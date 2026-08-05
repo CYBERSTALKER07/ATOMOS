@@ -40,10 +40,7 @@ jobs:
       - name: Validate ai-worker K8s manifests
         run: make validate-ai-worker-k8s
       - name: Fail on placeholder / :latest prod images
-        run: bash scripts/ci_fail_placeholder_images.sh infra/k8s/overlays/prod || {
-          echo "::warning::Prod overlay still needs digest-pinned images (Gate-0 Batch B). Soft-fail until digests land."
-          exit 0
-        }
+        run: bash scripts/ci_fail_placeholder_images.sh infra/k8s/overlays/prod
       - name: Wire-ready gate (prod profile + parity + k8s; no SSMR in CI — see ssmr-infra workflow)
         run: |
           bash scripts/validate_production_profile.sh

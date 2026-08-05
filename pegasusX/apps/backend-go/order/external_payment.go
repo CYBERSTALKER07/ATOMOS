@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -35,11 +36,55 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		return nil
 	}
 
-	previousStatus := orderRecord.Status
 	method := strings.TrimSpace(gateway)
 	if method == "" {
 		method = "CARD"
 	}
+	return s.beginFiscalFromAwaitingPayment(ctx, orderRecord, method, "external_payment_cleared", nil)
+}
+
+// ConfirmPaymentBypass validates driver ownership then opens the fiscal gate (ADR-009).
+// Must never write COMPLETED directly — COMPLETED only after fiscal SUCCESS.
+func (s *Service) ConfirmPaymentBypass(ctx context.Context, orderID, driverID, expectedSupplierID string) error {
+	orderRecord, found, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrOrderNotFound
+	}
+	if orderRecord.Status != StatusAwaitingPayment {
+		return fmt.Errorf("%w: order must be AWAITING_PAYMENT, got %s", ErrInvalidStatusTransition, orderRecord.Status)
+	}
+	if strings.TrimSpace(orderRecord.DriverID) == "" || strings.TrimSpace(orderRecord.DriverID) != strings.TrimSpace(driverID) {
+		return ErrOrderForbidden
+	}
+	if expectedSupplierID != "" && strings.TrimSpace(orderRecord.SupplierID) != strings.TrimSpace(expectedSupplierID) {
+		return ErrOrderForbidden
+	}
+	ts := time.Now().UTC()
+	if s.now != nil {
+		ts = s.now()
+	}
+	extra := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderID, events.TopicMain, map[string]any{
+			"type":      "PAYMENT_BYPASS_CONFIRMED",
+			"order_id":  orderID,
+			"driver_id": driverID,
+			"timestamp": ts.Format(time.RFC3339Nano),
+		})
+	}
+	return s.beginFiscalFromAwaitingPayment(ctx, orderRecord, "PAYMENT_BYPASS", "payment_bypass_confirmed", extra)
+}
+
+// beginFiscalFromAwaitingPayment is the shared AWAITING_PAYMENT → FISCALIZING path.
+func (s *Service) beginFiscalFromAwaitingPayment(
+	ctx context.Context,
+	orderRecord Order,
+	method, reason string,
+	extraEmit func(outbox.TxnBuffer) error,
+) error {
+	previousStatus := orderRecord.Status
 	row := s.newFiscalPendingRow(orderRecord, method, "", orderRecord.TotalMinor)
 	orderRecord.Status = StatusFiscalizing
 	// Version must stay at the value read from Spanner: UpdateOrder compares it
@@ -53,15 +98,21 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 	orderRecord.LatestFiscalAttemptID = row.AttemptID
 	orderRecord.PendingFiscalReceipts = []FiscalReceiptRow{row}
 
-	err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+	err := s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
 		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 			Order:          orderRecord,
 			PreviousStatus: previousStatus,
-			Reason:         "external_payment_cleared",
+			Reason:         reason,
 		}); err != nil {
 			return err
 		}
-		return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, method)
+		if err := emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, method); err != nil {
+			return err
+		}
+		if extraEmit != nil {
+			return extraEmit(txn)
+		}
+		return nil
 	})
 	if err != nil {
 		return err

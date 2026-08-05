@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // responseRecorder captures the response body and status code to save in the store.
@@ -48,14 +50,20 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				return
 			}
 
-			key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-			if key == "" {
-				key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+			rawKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+			if rawKey == "" {
+				rawKey = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
 			}
-			if key == "" {
+			if rawKey == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
+			principal := ""
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				principal = strings.TrimSpace(claims.Subject)
+			}
+			routePattern := r.Method + " " + r.URL.Path
+			key := ScopeKey(principal, routePattern, rawKey)
 
 			bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
 			if err != nil {

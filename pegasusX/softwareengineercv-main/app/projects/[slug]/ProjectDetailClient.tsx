@@ -8,7 +8,6 @@ import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { BENTO_THREE } from '@/app/lib/bento';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 import type { Project } from '@/app/data/projects';
 
 export default function ProjectDetailClient({ project }: { project: Project }) {
@@ -35,6 +34,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
       secondaryLabel={project.liveUrl ? 'LIVE DEMO' : 'GITHUB'}
       hubId="capabilities"
       stackFeatures={project.features.slice(0, 6)}
+      relatedProjectSlug={project.slug}
       dataExtra={
         <ImpactMetricCard
           metric={{
@@ -161,8 +161,6 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
               </div>
             </section>
           ) : null}
-
-          <O9TourCTA relatedProjectSlug={project.slug} />
         </>
       }
     />

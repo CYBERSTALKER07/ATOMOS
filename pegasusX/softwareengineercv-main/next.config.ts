@@ -3,6 +3,9 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   images: {
+    // Netlify IPX requires native `sharp`; without it `/_ipx/*` returns 500 and next/image breaks.
+    // Public assets are served directly when unoptimized (still fine for this marketing site).
+    unoptimized: process.env.NETLIFY === 'true',
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],

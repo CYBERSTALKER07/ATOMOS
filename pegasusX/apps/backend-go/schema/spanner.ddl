@@ -620,9 +620,18 @@ CREATE TABLE OutboxEvents (
   Payload          BYTES(MAX)    NOT NULL,
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   PublishedAt      TIMESTAMP,
+  ClaimedBy        STRING(64),
+  ClaimedUntil     TIMESTAMP,
 ) PRIMARY KEY (EventId);
 
 CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(PublishedAt, CreatedAt);
+
+-- Migration version ledger: refuse checksum drift on re-apply.
+CREATE TABLE SchemaMigrations (
+  Version     STRING(128)  NOT NULL,
+  Checksum    STRING(64)   NOT NULL,
+  AppliedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (Version);
 
 CREATE TABLE AIPredictions (
   PredictionId    STRING(36)    NOT NULL,

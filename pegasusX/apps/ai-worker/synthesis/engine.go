@@ -96,9 +96,12 @@ func (e *Engine) HandleOrderEvent(ctx context.Context, eventType string, payload
 	}
 
 	rec := BuildSupplierRecommendation(signal, history, e.now())
-	if rec.Score < e.minConfidence() {
+	minConf := e.minConfidence()
+	// MinConfidence >= 1.0 is an explicit reject-all control (Gate-0 CONTROL proof).
+	if minConf >= 1.0 || rec.Score < minConf {
 		e.Log.Debug("synthesis below confidence floor",
 			"score", rec.Score,
+			"min_confidence", minConf,
 			"supplier_id", signal.SupplierID,
 			"retailer_id", signal.RetailerID,
 		)
@@ -170,15 +173,19 @@ func BuildSupplierRecommendation(signal OrderSignal, history []OrderSignal, now 
 		}
 	}
 	// Recency + volume heuristic (deterministic, no external model call).
-	recencyBoost := 0.15
+	// Base/recency sized so a first thin order scores below default MinConfidence(0.55).
+	recencyBoost := 0.05
 	if orderCount >= 3 {
-		recencyBoost = 0.35
+		recencyBoost = 0.30
 	} else if orderCount >= 2 {
-		recencyBoost = 0.25
+		recencyBoost = 0.18
+	} else if orderCount >= 1 {
+		recencyBoost = 0.10
 	}
 	volumeBoost := math.Min(0.3, float64(totalQty)/100.0)
 	valueBoost := math.Min(0.2, float64(signal.TotalMinor)/1_000_000.0)
-	score := clamp01(0.4 + recencyBoost + volumeBoost + valueBoost)
+	// Base 0.15: first thin order (qty~15, ~100k minor) lands ~0.50 < default 0.55 gate.
+	score := clamp01(0.15 + recencyBoost + volumeBoost + valueBoost)
 
 	action := "SUGGEST_REORDER"
 	reason := []string{"ORDER_SIGNAL", "RETAILER_HISTORY"}

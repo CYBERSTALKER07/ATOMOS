@@ -13,7 +13,7 @@ export default function FleekPageShell({ activeHref, children }: FleekPageShellP
   return (
     <main className="fleek-docs min-h-screen bg-black text-white">
       <FleekNav activeHref={activeHref} />
-      <div className="axion-page pt-[4.5rem] md:pt-20">
+      <div className="axion-page pt-[4.5rem] md:pt-20 o9-page-wrap">
         <div className="axion-page__main">{children}</div>
       </div>
       <Footer />

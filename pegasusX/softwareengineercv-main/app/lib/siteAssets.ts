@@ -72,6 +72,8 @@ export const FLEET_SHOWCASE_CAPTIONS = [
 
 export const HERO_VIDEO_POSTER = SITE_IMAGES.truckTerminal;
 export const ORDER_LIFECYCLE_POSTER = SITE_IMAGES.truckTerminal;
-export const OG_IMAGE = SITE_IMAGES.pegasusContainer;
+/** Brand mark — nav, footer, and social link previews. */
+export const BRAND_LOGO = '/pegasus.jpg';
+export const OG_IMAGE = BRAND_LOGO;
 export const SOLUTIONS_DEFAULT_IMAGE = SITE_IMAGES.warehouseWireframe;
 export const DISPATCH_ARCADE_IMAGE = SITE_IMAGES.warehouseAutomation;

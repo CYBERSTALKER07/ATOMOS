@@ -13,8 +13,6 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
-	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 const (
@@ -198,53 +196,8 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 	}
 
 	driverID := strings.TrimSpace(claims.Subject)
-	now := s.now()
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"Status", "Version", "DriverId", "SupplierId"})
-		if err != nil {
-			return ErrOrderNotFound
-		}
-		var status, supplierID string
-		var version int64
-		var driverCol spanner.NullString
-		if err := row.Columns(&status, &version, &driverCol, &supplierID); err != nil {
-			return err
-		}
-		if status != string(StatusAwaitingPayment) {
-			return fmt.Errorf("order must be AWAITING_PAYMENT, got %s", status)
-		}
-		if !driverCol.Valid || driverCol.StringVal != driverID {
-			return ErrOrderForbidden
-		}
-		if rec.SupplierID != "" && supplierID != rec.SupplierID {
-			return ErrOrderForbidden
-		}
-
-		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, map[string]any{
-			"type":      "PAYMENT_BYPASS_CONFIRMED",
-			"order_id":  req.OrderID,
-			"driver_id": driverID,
-			"timestamp": now.Format(time.RFC3339Nano),
-		}); err != nil {
-			return err
-		}
-
-		mutations := []*spanner.Mutation{
-			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":   req.OrderID,
-				"Status":    string(StatusCompleted),
-				"Version":   version + 1,
-				"UpdatedAt": now.UTC(),
-			}),
-		}
-		for _, e := range buf.events {
-			mutations = append(mutations, outboxMutation(e))
-		}
-		return txn.BufferWrite(mutations)
-	})
-	if err != nil {
+	// Gate-0: never write COMPLETED from bypass — open fiscal gate (ADR-009).
+	if err := s.ConfirmPaymentBypass(ctx, req.OrderID, driverID, rec.SupplierID); err != nil {
 		if errors.Is(err, ErrOrderNotFound) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 			return
@@ -253,13 +206,17 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "order_forbidden"})
 			return
 		}
+		if errors.Is(err, ErrInvalidStatusTransition) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
 
 	s.cache.Invalidate(ctx, cacheKeyPaymentBypassPrefix+req.OrderID)
 	s.invalidateOrderCache(ctx, req.OrderID)
-	resp := map[string]any{"status": "completed", "order_id": req.OrderID}
+	resp := map[string]any{"status": "FISCALIZING", "order_id": req.OrderID}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
 	idemCommitted = true
@@ -326,54 +283,35 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 	if supplierID == "" {
 		supplierID = s.supplierID
 	}
-	now := s.now()
+	// Gate-0: early-complete must open fiscalization, never jump to COMPLETED.
 	approved := 0
-
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		for _, orderID := range rec.OrderIDs {
-			orderID = strings.TrimSpace(orderID)
-			if orderID == "" {
-				continue
-			}
-			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-				[]string{"Status", "Version", "SupplierId"})
-			if err != nil {
-				continue
-			}
-			var status, oidSupplier string
-			var version int64
-			if err := row.Columns(&status, &version, &oidSupplier); err != nil {
-				continue
-			}
-			if oidSupplier != supplierID {
-				continue
-			}
-			if status == string(StatusCompleted) || status == string(StatusCancelled) {
-				continue
-			}
-			if err := txn.BufferWrite([]*spanner.Mutation{
-				spanner.UpdateMap("Orders", map[string]any{
-					"OrderId":   orderID,
-					"Status":    string(StatusCompleted),
-					"Version":   version + 1,
-					"UpdatedAt": now.UTC(),
-				}),
-			}); err != nil {
-				return err
-			}
-			approved++
+	for _, orderID := range rec.OrderIDs {
+		orderID = strings.TrimSpace(orderID)
+		if orderID == "" {
+			continue
 		}
-		return nil
-	})
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "early_complete_failed"})
-		return
+		o, found, gerr := s.repo.GetOrder(ctx, orderID)
+		if gerr != nil || !found {
+			continue
+		}
+		if strings.TrimSpace(o.SupplierID) != supplierID {
+			continue
+		}
+		if o.Status != StatusAwaitingPayment {
+			continue
+		}
+		if err := s.beginFiscalFromAwaitingPayment(ctx, o, "EARLY_COMPLETE", "early_complete_approved", nil); err != nil {
+			s.log.WarnContext(ctx, "early complete fiscal open failed", "order_id", orderID, "err", err)
+			continue
+		}
+		approved++
 	}
 	s.cache.Invalidate(ctx, cacheKeyEarlyCompletePrefix+req.DriverID)
 	resp := map[string]any{
 		"status":          "approved",
 		"driver_id":       req.DriverID,
 		"orders_approved": approved,
+		"next_status":     "FISCALIZING",
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)

@@ -1,11 +1,18 @@
 import type { Metadata } from 'next';
-import { OG_IMAGE } from '@/app/lib/siteAssets';
+import { BRAND_LOGO, OG_IMAGE } from '@/app/lib/siteAssets';
 
 export const SITE_NAME = 'Pegasus';
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pegasus.io').replace(
-  /\/$/,
-  ''
-);
+
+function resolveSiteUrl(): string {
+  const candidate =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.URL ??
+    process.env.DEPLOY_PRIME_URL ??
+    'https://pegasus.io';
+  return candidate.replace(/\/$/, '');
+}
+
+export const SITE_URL = resolveSiteUrl();
 
 const DEFAULT_DESCRIPTION =
   'Pegasus is the logistics operating system for supplier-led networks — dispatch, fleet tracking, payments, and realtime coordination across six roles.';
@@ -34,7 +41,7 @@ export function pageMetadata({
   description = DEFAULT_DESCRIPTION,
   path = '',
   image = OG_IMAGE,
-  imageAlt = 'Pegasus logistics platform — container crane illustration',
+  imageAlt = 'Pegasus logo',
   noIndex = false,
 }: PageMetadataInput): Metadata {
   const canonical = absoluteUrl(path);
@@ -54,9 +61,10 @@ export function pageMetadata({
       images: [
         {
           url: absoluteAsset(image),
-          width: 1200,
-          height: 630,
+          width: 512,
+          height: 512,
           alt: imageAlt,
+          type: 'image/jpeg',
         },
       ],
     },
@@ -79,7 +87,7 @@ export function organizationJsonLd() {
     name: SITE_NAME,
     description: DEFAULT_DESCRIPTION,
     url: SITE_URL,
-    logo: absoluteAsset('/pegasus.jpg'),
+    logo: absoluteAsset(BRAND_LOGO),
     image: absoluteAsset(OG_IMAGE),
     sameAs: ['https://linkedin.com/company/pegasus'],
     knowsAbout: [
@@ -105,7 +113,7 @@ export function websiteJsonLd() {
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
-      logo: absoluteAsset('/pegasus.jpg'),
+      logo: absoluteAsset(BRAND_LOGO),
     },
   };
 }

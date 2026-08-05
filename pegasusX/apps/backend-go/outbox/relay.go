@@ -163,7 +163,7 @@ func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
 		}
 		attemptErr := error(nil)
 		for _, topic := range topics {
-			err := r.publisher.Publish(ctx, topic, granularRoutingKey(e), e.Payload)
+			err := publishOutboxEvent(ctx, r.publisher, topic, granularRoutingKey(e), e)
 			if err != nil {
 				attemptErr = err
 				break
@@ -200,6 +200,14 @@ func backoffWithJitter(base, maxBackoff time.Duration, attempt int) time.Duratio
 	}
 	// Full jitter: random in [0, d).
 	return time.Duration(rand.Int63n(int64(d) + 1))
+}
+
+func publishOutboxEvent(ctx context.Context, pub Publisher, topic string, key []byte, e Event) error {
+	headers := map[string][]byte{"event_id": []byte(e.EventID)}
+	if hp, ok := pub.(HeaderPublisher); ok {
+		return hp.PublishWithHeaders(ctx, topic, key, e.Payload, headers)
+	}
+	return pub.Publish(ctx, topic, key, e.Payload)
 }
 
 func granularRoutingKey(e Event) []byte {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -62,6 +63,8 @@ func (s *SpannerStore) Append(ctx context.Context, events []Event) error {
 				"Payload":       e.Payload,
 				"CreatedAt":     createdAt,
 				"PublishedAt":   nil,
+				"ClaimedBy":     nil,
+				"ClaimedUntil":  nil,
 			}
 			if e.PublishedAt != nil {
 				row["PublishedAt"] = e.PublishedAt.UTC()
@@ -81,7 +84,10 @@ func (s *SpannerStore) Append(ctx context.Context, events []Event) error {
 	return nil
 }
 
-// Fetch returns unpublished events ordered by CreatedAt.
+const defaultOutboxLease = 2 * time.Minute
+
+// Fetch claims unpublished events with a short lease (ClaimedBy/ClaimedUntil)
+// inside a RW transaction so multi-replica relays cannot double-publish.
 func (s *SpannerStore) Fetch(ctx context.Context, limit int) ([]Event, error) {
 	if s == nil || s.client == nil {
 		return nil, fmt.Errorf("outbox spanner store: nil client")
@@ -89,58 +95,84 @@ func (s *SpannerStore) Fetch(ctx context.Context, limit int) ([]Event, error) {
 	if limit <= 0 {
 		limit = 100
 	}
+	claimant := "relay-" + uuid.NewString()
+	if len(claimant) > 64 {
+		claimant = claimant[:64]
+	}
+	now := time.Now().UTC()
+	leaseUntil := now.Add(defaultOutboxLease)
+	var events []Event
 
-	stmt := spanner.Statement{
-		SQL: `
+	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		stmt := spanner.Statement{
+			SQL: `
 SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt
 FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished}
 WHERE PublishedAt IS NULL
+  AND (ClaimedUntil IS NULL OR ClaimedUntil < @now)
 ORDER BY CreatedAt
 LIMIT @limit`,
-		Params: map[string]interface{}{
-			"limit": int64(limit),
-		},
-	}
+			Params: map[string]interface{}{
+				"limit": int64(limit),
+				"now":   now,
+			},
+		}
+		iter := txn.Query(ctx, stmt)
+		defer iter.Stop()
 
-	iter := s.client.Single().Query(ctx, stmt)
-	defer iter.Stop()
+		claimed := make([]Event, 0, limit)
+		mutations := make([]*spanner.Mutation, 0, limit)
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("outbox spanner store: fetch: %w", err)
+			}
 
-	events := make([]Event, 0, limit)
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("outbox spanner store: fetch: %w", err)
-		}
+			var (
+				eventID       string
+				aggregateType string
+				aggregateID   string
+				topicName     string
+				payload       []byte
+				createdAt     time.Time
+				publishedAt   spanner.NullTime
+			)
+			if err := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &publishedAt); err != nil {
+				return fmt.Errorf("outbox spanner store: fetch scan: %w", err)
+			}
 
-		var (
-			eventID       string
-			aggregateType string
-			aggregateID   string
-			topicName     string
-			payload       []byte
-			createdAt     time.Time
-			publishedAt   spanner.NullTime
-		)
-		if err := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &publishedAt); err != nil {
-			return nil, fmt.Errorf("outbox spanner store: fetch scan: %w", err)
+			e := Event{
+				EventID:       eventID,
+				AggregateType: aggregateType,
+				AggregateID:   aggregateID,
+				TopicName:     topicName,
+				Payload:       payload,
+				CreatedAt:     createdAt.UTC(),
+			}
+			if publishedAt.Valid {
+				ts := publishedAt.Time.UTC()
+				e.PublishedAt = &ts
+			}
+			claimed = append(claimed, e)
+			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
+				"EventId":      eventID,
+				"ClaimedBy":    claimant,
+				"ClaimedUntil": leaseUntil,
+			}))
 		}
-
-		e := Event{
-			EventID:       eventID,
-			AggregateType: aggregateType,
-			AggregateID:   aggregateID,
-			TopicName:     topicName,
-			Payload:       payload,
-			CreatedAt:     createdAt.UTC(),
+		if len(mutations) > 0 {
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
 		}
-		if publishedAt.Valid {
-			ts := publishedAt.Time.UTC()
-			e.PublishedAt = &ts
-		}
-		events = append(events, e)
+		events = claimed
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return events, nil
 }

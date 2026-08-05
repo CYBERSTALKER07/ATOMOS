@@ -6,6 +6,8 @@ import (
 	"cloud.google.com/go/spanner"
 )
 
+// nil-client path returns ErrNilSpannerClient (see retry.go).
+
 // Chunker configuration limits.
 // Spanner limit is 80,000 mutations per transaction.
 // A safe chunk size depends on the number of columns being written.
@@ -19,7 +21,7 @@ const DefaultChunkSize = 2000
 // If chunk N fails, chunks 1..N-1 have already committed.
 func RunChunkedTransaction[T any](ctx context.Context, client *spanner.Client, items []T, chunkSize int, fn func(context.Context, *spanner.ReadWriteTransaction, []T) error) error {
 	if client == nil {
-		return nil
+		return ErrNilSpannerClient
 	}
 	if len(items) == 0 {
 		return nil

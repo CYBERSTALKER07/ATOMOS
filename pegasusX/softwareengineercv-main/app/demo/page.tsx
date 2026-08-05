@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 
 const PERSONAS = [
   {
@@ -58,8 +57,6 @@ export default function DemoPortal() {
               </Link>
             ))}
           </div>
-
-          <O9TourCTA />
 
           <p className="mt-10 text-center">
             <Link

@@ -94,6 +94,11 @@ func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*Kaf
 // Publish writes a single message to a topic. Key should be aggregate root id
 // bytes to preserve per-entity ordering.
 func (p *KafkaPublisher) Publish(ctx context.Context, topic string, key []byte, value []byte) error {
+	return p.PublishWithHeaders(ctx, topic, key, value, nil)
+}
+
+// PublishWithHeaders writes with optional Kafka headers (event_id for consumer dedupe).
+func (p *KafkaPublisher) PublishWithHeaders(ctx context.Context, topic string, key []byte, value []byte, headers map[string][]byte) error {
 	if p == nil || p.writer == nil {
 		return fmt.Errorf("kafka publisher: nil writer")
 	}
@@ -106,9 +111,17 @@ func (p *KafkaPublisher) Publish(ctx context.Context, topic string, key []byte, 
 		Value: value,
 		Time:  time.Now().UTC(),
 	}
+	var hdrs []kafka.Header
 	if traceID := traceIDFromPayload(value); traceID != "" {
-		msg.Headers = []kafka.Header{{Key: "trace_id", Value: []byte(traceID)}}
+		hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
 	}
+	for k, v := range headers {
+		if strings.TrimSpace(k) == "" || len(v) == 0 {
+			continue
+		}
+		hdrs = append(hdrs, kafka.Header{Key: k, Value: v})
+	}
+	msg.Headers = hdrs
 	return p.writer.WriteMessages(ctx, msg)
 }
 

@@ -36,9 +36,10 @@ func TestIsRetryableSpannerErr(t *testing.T) {
 
 func TestRunReadWriteTransactionNilClient(t *testing.T) {
 	t.Parallel()
-	if err := RunReadWriteTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err := RunReadWriteTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return errors.New("should not run")
-	}); err != nil {
-		t.Fatalf("nil client: %v", err)
+	})
+	if !errors.Is(err, ErrNilSpannerClient) {
+		t.Fatalf("nil client: got %v, want ErrNilSpannerClient", err)
 	}
 }

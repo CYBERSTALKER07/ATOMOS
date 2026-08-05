@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import SplashScreen from './SplashScreen';
+import SiteAssistant from '@/app/components/SiteAssistant';
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
     <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
       {children}
+      {!showSplash ? <SiteAssistant /> : null}
     </>
   );
 };

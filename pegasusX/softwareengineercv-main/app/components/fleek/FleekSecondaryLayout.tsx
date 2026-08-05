@@ -1,9 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AxionPageLayout } from '@/app/components/fleek/axion';
+import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
-import FleekDataSection from '@/app/components/fleek/FleekDataSection';
+import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 
 type FleekSecondaryLayoutProps = {
   activeHref?: string;
@@ -21,45 +21,39 @@ type FleekSecondaryLayoutProps = {
   section06: ReactNode;
   dataExtra?: ReactNode;
   showStack?: boolean;
+  relatedProjectSlug?: string;
 };
 
 export default function FleekSecondaryLayout({
-  activeHref,
+  activeHref = '/',
   sectionTitle,
   title,
   summary,
-  primaryHref = '/join',
-  primaryLabel = 'Learn More',
   heroVisual,
   heroImageSrc,
-  hubId,
   section06,
   dataExtra,
+  relatedProjectSlug,
 }: FleekSecondaryLayoutProps) {
+  const categoryLabel = sectionTitle ?? 'Pegasus';
+  const heroContent = heroVisual ?? dataExtra;
+
   return (
     <FleekPageShell activeHref={activeHref}>
-      <AxionPageLayout
-        hero={{
-          title,
-          summary,
-          primaryHref,
-          primaryLabel,
-          visual: heroVisual,
-          imageSrc: heroImageSrc,
-        }}
-        solutions={{
-          title: sectionTitle ? `${sectionTitle} solutions` : 'Logistics Solutions',
-          subtitle: summary,
-          seeAllHref: activeHref ?? '/capabilities',
-        }}
-        technology={{
-          extra: (
-            <>
-              <FleekDataSection hubId={hubId} extra={dataExtra} />
-            </>
-          ),
-        }}
+      <O9FleekPageLayout
+        variant="secondary"
+        categoryLabel={categoryLabel}
+        categoryHref={activeHref}
+        title={title}
+        summary={summary}
+        heroImageSrc={heroImageSrc}
+        heroVisual={heroContent}
+        proofItems={DEFAULT_PROOF}
+        showProofStrip={false}
+        showTestimonials={false}
+        showTourCta
         details={section06}
+        relatedProjectSlug={relatedProjectSlug}
       />
     </FleekPageShell>
   );

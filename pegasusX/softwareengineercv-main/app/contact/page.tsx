@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Mail, Zap, Clock } from 'lucide-react';
 import ChamferButton from '@/app/components/ChamferButton';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -175,7 +174,6 @@ export default function ContactPage() {
               </div>
             </div>
           </section>
-          <O9TourCTA />
         </>
       }
     />

@@ -1,10 +1,13 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-05 (Client Parity Closure)*
+*Last Updated: 2026-08-05 (Gate-0 Track A closure)*
 
 ## 1. Code completeness (this closure)
 
-Closed in monorepo (see `artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md`):
+Closed in monorepo (Gate-0 Track A — see `artifacts/GATE0_BLAST_RADIUS_2026-08-05.md`, `artifacts/GATE0_SPANNER_BACKUP_RESTORE_2026-08-05.md`):
+
+- **2026-08-05 Gate-0 Track A** Payment bypass / early-complete → `FISCALIZING` (ADR-009); ops driver PIN bcrypt; nil Spanner fail-loud; SchemaMigrations + narrow DDL benign; outbox UUID + ClaimedBy lease + Kafka `event_id` dedupe; idempotency SHA-256 + principal/route scope; AI confidence gate rejectable + touchless `MinConfidenceScore`; seasonal multiplier on suggested qty; `H3_BINPACK` rename; VelocityGauge honest empty; binaries untracked; gen-contracts vendored; HPA CPU 250m; OSRM PVC; prod digest pins + ManagedCertificate; Spanner PITR 7d + TF backup schedule + GCS remote state; iOS `aps-environment` entitlements + driver FCM service + location background mode.
+- Closed in monorepo (see `artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md`):
 
 - **2026-08-05 Client Parity Closure** P0-4 iOS offline classifier + GPS fail-closed; AUTHORIZE_BYPASS photo ×3 retailer; supplier/WH return-policy portal+mobile; driver PoD credit gate; empty chart unmount + SpendAnalytics thin wire; portal i18n bootstrap (supplier/warehouse). Interactive UI walks READY_FOR_WALK (human PASS pending). Product-deferred unchanged: negotiations / Soliq / offline POS.
 - **2026-08-04 Substance Gate (backend-first)** SSMR preflight green; full `ssmr-smokecheck e2e` + `ssmr-ecosystem-marker-gate-ok` on image `ssmr-substance-gate-a66868b8-084112` (worker replicas=1). Claims spine required markers green (`CLAIM_ELIGIBILITY` / `CLAIM_WINDOW_SNAPSHOT` / media GCS / file / reverse). Sign-off: [`artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md`](../artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md). Client UI walks were DEFERRED; client-policy HTTP 200 all roles×platforms. Ops still: GP card SUCCESS, Firebase SMS.

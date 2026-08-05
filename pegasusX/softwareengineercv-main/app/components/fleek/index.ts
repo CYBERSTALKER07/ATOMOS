@@ -6,7 +6,7 @@ export { default as FleekHeroSection } from './FleekHeroSection';
 export { default as FleekTicker } from './FleekTicker';
 export { default as FleekStackSection } from './FleekStackSection';
 export { default as FleekCtaBand } from './FleekCtaBand';
-export { default as FleekDataSection } from './FleekDataSection';
+export { O9FleekPageLayout } from './o9';
 export { default as WireframeGlobe } from './WireframeGlobe';
 export { default as ImpactMetricCard } from './cards/ImpactMetricCard';
 export { default as BlobStatPanel } from './cards/BlobStatPanel';

@@ -8,7 +8,6 @@ import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import ChamferButton from '@/app/components/ChamferButton';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 import LazyWhenInView from '@/app/components/LazyWhenInView';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 
 const Lanyard = dynamic(() => import('@/app/components/Lanyard'), { ssr: false });
 
@@ -98,7 +97,7 @@ export default function JoinPage() {
       secondaryHref="/platform"
       secondaryLabel="PLATFORM TOUR"
       showStack={false}
-      dataExtra={<PixelDualHero />}
+      heroVisual={<PixelDualHero />}
       section06={
         <>
           <section className="docs-section">
@@ -226,7 +225,6 @@ export default function JoinPage() {
               </div>
             </div>
           </section>
-        <O9TourCTA />
         </>
       }
     />

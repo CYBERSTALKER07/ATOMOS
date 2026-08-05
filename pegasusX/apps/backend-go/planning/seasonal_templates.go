@@ -49,6 +49,8 @@ var builtinSeasonalTemplates = []SeasonalTemplate{
 }
 
 // ActiveSeasonalTemplate returns the active template for a date (custom overrides win).
+// Callers that need the multiplier for quantity math must apply tpl.Multiplier
+// (replenishment.seasonalMultiplierFor mirrors built-ins for the hot path).
 func (s *Service) ActiveSeasonalTemplate(ctx context.Context, supplierID string, on time.Time) (*SeasonalTemplate, string, error) {
 	if custom, err := s.activeCustomOverride(ctx, supplierID, on); err != nil {
 		return nil, "", err

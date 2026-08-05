@@ -18,6 +18,20 @@ func DedupKeyForMessage(topic string, partition int, offset int64) string {
 	return fmt.Sprintf("%s|%d|%d", topic, partition, offset)
 }
 
+// DedupKeyForEventID prefers Event.EventID (Kafka header) over broker offset so
+// multi-replica outbox relays that re-publish the same logical event are dropped.
+func DedupKeyForEventID(consumerGroup, topic, eventID string) string {
+	eid := strings.TrimSpace(eventID)
+	if eid == "" {
+		return ""
+	}
+	group := strings.TrimSpace(consumerGroup)
+	if group == "" {
+		return fmt.Sprintf("%s|eid:%s", topic, eid)
+	}
+	return fmt.Sprintf("%s:%s|eid:%s", group, topic, eid)
+}
+
 // DedupKeyForConsumerGroup scopes dedup to one consumer group so independent
 // groups reading the same topic/partition/offset do not suppress each other.
 func DedupKeyForConsumerGroup(consumerGroup, topic string, partition int, offset int64) string {

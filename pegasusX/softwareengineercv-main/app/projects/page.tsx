@@ -8,7 +8,6 @@ import { projects, getAllCategories } from '@/app/data/projects';
 import { bentoPlacement, bentoVariant } from '@/app/lib/bento';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 
 export default function AllProjectsPage() {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -113,7 +112,6 @@ export default function AllProjectsPage() {
                 ))}
             </div>
           </section>
-          <O9TourCTA />
         </>
       }
     />

@@ -7,7 +7,6 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
-import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
 import type { AppsFamilyConfig } from './AppsFamilyPage.types';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -117,7 +116,6 @@ export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
               ))}
             </div>
           </section>
-          <O9TourCTA />
         </>
       }
     />

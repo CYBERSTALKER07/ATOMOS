@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type traceIDContextKey struct{}
@@ -42,6 +44,11 @@ type TxnBuffer interface {
 // The Relay treats a nil error as durable success and marks PublishedAt.
 type Publisher interface {
 	Publish(ctx context.Context, topic string, key []byte, value []byte) error
+}
+
+// HeaderPublisher optionally attaches Kafka headers (e.g. event_id for dedupe).
+type HeaderPublisher interface {
+	PublishWithHeaders(ctx context.Context, topic string, key []byte, value []byte, headers map[string][]byte) error
 }
 
 // Store is the read side: the Relay calls Fetch to pull unpublished events and
@@ -207,7 +214,7 @@ func (e AuditEntry) AuditRowMap() map[string]any {
 	return m
 }
 
-// newEventID is overridable in tests. Production uses crypto/rand UUIDv7.
+// newEventID is overridable in tests. Production uses random UUIDv4 (STRING(36)).
 var newEventID = func() string {
-	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
+	return uuid.NewString()
 }
