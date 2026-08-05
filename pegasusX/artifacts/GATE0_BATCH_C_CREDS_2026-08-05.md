@@ -26,7 +26,9 @@ ExternalSecret wiring already maps these into `backend-go-secrets` (SSMR overlay
 | Driver iOS background | `location` + `remote-notification` added to `UIBackgroundModes` |
 | Driver Android FCM | **`DriverFirebaseMessagingService`** registered in manifest |
 | Retailer / Payload Android FCM | Already declared |
-| Real Phone SMS / SHA-1 | Still **owner ops** (Firebase console Blaze + debug SHA-1 fingerprints) — configs alone ≠ SMS works |
+| Android debug SHA-1 | **Registered** on all 6 Firebase Android apps (`DD13…6759` from `~/.android/debug.keystore`) |
+| Real Phone SMS proof | Still **owner ops** — send one OTP on device/emulator after Blaze billing confirmed; configs + SHA ≠ live SMS until tested |
+| Identity Toolkit API | Enabled (`identitytoolkit.googleapis.com`) |
 
 ## Maps
 
@@ -34,11 +36,11 @@ GSM key present and referenced by ExternalSecret (`google-maps-api-key`). No cod
 
 ## Global Pay card SUCCESS
 
-Credentials exist in GSM. Remaining proof:
+Credentials exist in GSM (username / password / service-id / webhook secret). Remaining proof (not automatable without merchant portal + live card):
 
 1. Confirm merchant password is the live staging password (not a stub).
 2. Register webhook URL in Global Pay portal → SSMR ingress.
-3. Run SSMR e2e until `PX_E2E_PAYMENT_CARD_SUCCESS_OK` (today cash fallback marker is green).
+3. Run SSMR e2e until `PX_E2E_PAYMENT_CARD_SUCCESS_OK` (cash fallback marker already green).
 
 ## Artifact Registry (image pins)
 

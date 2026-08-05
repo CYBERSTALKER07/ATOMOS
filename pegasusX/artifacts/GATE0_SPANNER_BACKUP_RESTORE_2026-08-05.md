@@ -29,8 +29,10 @@
 |------|--------|
 | Source backup | `pegasusx-ssmr-db_9b9b15a6-2728-4bb3-b5c6-b190acbb95ac` |
 | Destination | `ssmr-restore-rehearse` (same instance) |
-| Started | ~2026-08-05T17:52Z |
-| Outcome | Recorded in follow-up section below when READY |
+| `createTime` | `2026-08-05T17:54:21.655464Z` |
+| `READY_OPTIMIZING` | `2026-08-05T18:19:42Z` (~25 min; DB usable) |
+| `READY` | `2026-08-05T18:24:35Z` |
+| Cleanup | Scratch DB deleted after READY; only `pegasusx-ssmr-db` remains |
 
 ## RPO / RTO (SSMR)
 
@@ -38,4 +40,4 @@
 |--------|--------|
 | RPO (scheduled full) | ≤ 24h (daily schedule) |
 | RPO (PITR) | ≤ 7d window after retention change |
-| RTO (restore rehearsal) | *fill when READY* — wall clock from restore start to READY |
+| RTO (restore rehearsal) | **~30.2 min** wall clock (`createTime` → `READY`); usable at ~25 min (`READY_OPTIMIZING`) |

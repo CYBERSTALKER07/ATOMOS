@@ -25,6 +25,13 @@ images:
   - name: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
     newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/ai-worker
     digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
+  # CronJobs in base still reference legacy us-central1 :latest — remap to same digests.
+  - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
+    digest: sha256:a5b31a6bd963757780aa675e9778989ac75cd25329b785f4e202cd82c5e4a181
+  - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/ai-worker
+    digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
   # optimizer-core image not yet published to AR — keep deployment but pin tag away from :local
   - name: pegasusx-optimizer-core
     newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
