@@ -8,10 +8,10 @@
   publish = ".next"
 
 [build.environment]
-  # Netlify walks up to pegasusX/ and runs pnpm for the whole workspace before
-  # our build command. No-op the automatic install; `npm ci` in command handles deps.
+  # Netlify auto-detects pnpm for the pegasusX monorepo (new package-manager detection).
+  # No-op that install; `npm ci` in the build command installs this app only.
+  PNPM_FLAGS = "--version"
   NPM_FLAGS = "--version"
-  NETLIFY_USE_PNPM = "false"
   NODE_VERSION = "20"
 
 [[plugins]]
