@@ -14,6 +14,11 @@ vendor/
 # Local build artifact (never commit; ~59MB)
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*
+# Compiled binaries must never be tracked
+apps/ai-worker/ai-worker
+apps/handoff-service/handoff-service
+/kustomize
+kustomize.yaml
 
 # env
 .env

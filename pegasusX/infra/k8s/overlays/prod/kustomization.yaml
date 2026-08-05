@@ -11,3 +11,20 @@ resources:
   - ../../optimizer-core/configmap.yaml
   - ../../optimizer-core/deployment.yaml
   - ../../optimizer-core/service.yaml
+  - ../../osrm/pvc.yaml
+  - ../../osrm/deployment.yaml
+  - ../../osrm/service.yaml
+
+# Digest-pin real Artifact Registry images before promoting to prod.
+# CI fails if PLACEHOLDER / :latest / :local remain after render
+# (scripts/ci_fail_placeholder_images.sh).
+images:
+  - name: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+    newName: us-central1-docker.pkg.dev/pegasus-503013/pegasusx/backend-go
+    newTag: REPLACE_WITH_DIGEST_OR_SHA
+  - name: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
+    newName: us-central1-docker.pkg.dev/pegasus-503013/pegasusx/ai-worker
+    newTag: REPLACE_WITH_DIGEST_OR_SHA
+  - name: pegasusx-optimizer-core:local
+    newName: us-central1-docker.pkg.dev/pegasus-503013/pegasusx/optimizer-core
+    newTag: REPLACE_WITH_DIGEST_OR_SHA
