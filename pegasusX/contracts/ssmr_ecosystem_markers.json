@@ -99,6 +99,8 @@
         "PX_E2E_PAYMENT_CASH_FALLBACK_OK",
         "PX_E2E_AUTO_ORDER_DRAFT_OK",
         "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED",
+        "PX_E2E_AUTO_ORDER_SHADOW_OK",
+        "PX_E2E_AUTO_ORDER_SHADOW_SKIPPED",
         "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
         "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED",
         "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
@@ -109,6 +111,70 @@
         "PX_E2E_NEGOTIATION_SKIPPED",
         "PX_E2E_SOLIQ_SANDBOX_OK",
         "PX_E2E_SOLIQ_SANDBOX_SKIPPED"
+      ]
+    },
+    "partner_integration": {
+      "description": "Gate-3 Partner API keys, /partner/v1 orders, IDOR, outbound webhook ping, export + replay + EDI-lite (SKIPPED until Partner migrations applied)",
+      "markers": [
+        "PX_E2E_PARTNER_KEY_AUTH_OK",
+        "PX_E2E_PARTNER_ORDER_CREATE_OK",
+        "PX_E2E_PARTNER_IDOR_DENIED",
+        "PX_E2E_WEBHOOK_DELIVERED_OK",
+        "PX_E2E_WEBHOOK_REPLAY_OK",
+        "PX_E2E_WEBHOOK_REPLAY_SKIPPED",
+        "PX_E2E_PARTNER_EXPORT_OK",
+        "PX_E2E_PARTNER_EXPORT_SKIPPED",
+        "PX_E2E_PARTNER_JOURNALS_OK",
+        "PX_E2E_PARTNER_JOURNALS_SKIPPED",
+        "PX_E2E_PARTNER_EDI_ORDERS_OK",
+        "PX_E2E_PARTNER_EDI_ORDERS_SKIPPED",
+        "PX_E2E_PARTNER_EDI_ORDRSP_OK",
+        "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
+        "PX_E2E_PARTNER_SKIPPED"
+      ]
+    },
+    "gs1_labels": {
+      "description": "§8.9 Wave 2C GS1 SSCC at seal + ZPL label render (flag-gated GS1_LABELS_ENABLED)",
+      "markers": [
+        "PX_E2E_GS1_SSCC_OK",
+        "PX_E2E_GS1_SSCC_SKIPPED",
+        "PX_E2E_GS1_ZPL_OK",
+        "PX_E2E_GS1_ZPL_SKIPPED"
+      ]
+    },
+    "collections": {
+      "description": "AR dunning step machine + DelinquencyCount + CREDIT_HOLD (flag-gated AR_DUNNING_ENABLED)",
+      "markers": [
+        "PX_E2E_COLLECTIONS_DUNNING_OK",
+        "PX_E2E_COLLECTIONS_DUNNING_SKIPPED"
+      ]
+    },
+    "forecast_accuracy": {
+      "description": "§8.4 ForecastAccuracyDaily WAPE join (flag-gated FORECAST_ACCURACY_ENABLED)",
+      "markers": [
+        "PX_E2E_FORECAST_ACCURACY_OK",
+        "PX_E2E_FORECAST_ACCURACY_SKIPPED"
+      ]
+    },
+    "forecast_algo": {
+      "description": "§8.1 Croston/SES/Holt–Winters baseline writer (flag-gated FORECAST_ALGO_ENABLED)",
+      "markers": [
+        "PX_E2E_FORECAST_ALGO_OK",
+        "PX_E2E_FORECAST_ALGO_SKIPPED"
+      ]
+    },
+    "safety_stock": {
+      "description": "§8.2 service-level safety stock + ReceivedAt / InTransitQty (flag-gated SAFETY_STOCK_V2_ENABLED)",
+      "markers": [
+        "PX_E2E_SAFETY_STOCK_OK",
+        "PX_E2E_SAFETY_STOCK_SKIPPED"
+      ]
+    },
+    "safety_stock_replay": {
+      "description": "§8.2 90-day fill-rate replay legacy vs v2 (flag-gated SAFETY_STOCK_V2_ENABLED)",
+      "markers": [
+        "PX_E2E_SAFETY_STOCK_REPLAY_OK",
+        "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
       ]
     }
   },
@@ -163,7 +229,11 @@
     "PX_E2E_CLAIMS_REVERSE_OK",
     "PX_E2E_CLAIM_MEDIA_GCS_OK",
     "PX_E2E_CLAIMS_MEDIA_TICKET_OK",
-    "PX_E2E_CLAIMS_FILE_OK"
+    "PX_E2E_CLAIMS_FILE_OK",
+    "PX_E2E_PARTNER_KEY_AUTH_OK",
+    "PX_E2E_PARTNER_ORDER_CREATE_OK",
+    "PX_E2E_PARTNER_IDOR_DENIED",
+    "PX_E2E_WEBHOOK_DELIVERED_OK"
   ],
   "plan90": [
     "PX_E2E_MEIO_NETWORK_OK",
@@ -210,6 +280,10 @@
       "PX_E2E_AUTO_ORDER_DRAFT_OK",
       "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED"
     ],
+    "auto_order_shadow": [
+      "PX_E2E_AUTO_ORDER_SHADOW_OK",
+      "PX_E2E_AUTO_ORDER_SHADOW_SKIPPED"
+    ],
     "claim_quarantine": [
       "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
       "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED"
@@ -237,6 +311,75 @@
     "credit_profiles": [
       "PX_E2E_CREDIT_PROFILES_OK",
       "PX_E2E_CREDIT_SCORE_NOTIFY_OK"
+    ],
+    "partner_integration": [
+      "PX_E2E_PARTNER_KEY_AUTH_OK",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_order": [
+      "PX_E2E_PARTNER_ORDER_CREATE_OK",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_idor": [
+      "PX_E2E_PARTNER_IDOR_DENIED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_webhook": [
+      "PX_E2E_WEBHOOK_DELIVERED_OK",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_webhook_replay": [
+      "PX_E2E_WEBHOOK_REPLAY_OK",
+      "PX_E2E_WEBHOOK_REPLAY_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_export": [
+      "PX_E2E_PARTNER_EXPORT_OK",
+      "PX_E2E_PARTNER_EXPORT_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_journals": [
+      "PX_E2E_PARTNER_JOURNALS_OK",
+      "PX_E2E_PARTNER_JOURNALS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_edi_orders": [
+      "PX_E2E_PARTNER_EDI_ORDERS_OK",
+      "PX_E2E_PARTNER_EDI_ORDERS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_edi_ordrsp": [
+      "PX_E2E_PARTNER_EDI_ORDRSP_OK",
+      "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "gs1_sscc": [
+      "PX_E2E_GS1_SSCC_OK",
+      "PX_E2E_GS1_SSCC_SKIPPED"
+    ],
+    "gs1_zpl": [
+      "PX_E2E_GS1_ZPL_OK",
+      "PX_E2E_GS1_ZPL_SKIPPED"
+    ],
+    "collections_dunning": [
+      "PX_E2E_COLLECTIONS_DUNNING_OK",
+      "PX_E2E_COLLECTIONS_DUNNING_SKIPPED"
+    ],
+    "forecast_accuracy": [
+      "PX_E2E_FORECAST_ACCURACY_OK",
+      "PX_E2E_FORECAST_ACCURACY_SKIPPED"
+    ],
+    "forecast_algo": [
+      "PX_E2E_FORECAST_ALGO_OK",
+      "PX_E2E_FORECAST_ALGO_SKIPPED"
+    ],
+    "safety_stock": [
+      "PX_E2E_SAFETY_STOCK_OK",
+      "PX_E2E_SAFETY_STOCK_SKIPPED"
+    ],
+    "safety_stock_replay": [
+      "PX_E2E_SAFETY_STOCK_REPLAY_OK",
+      "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
     ]
   }
 }

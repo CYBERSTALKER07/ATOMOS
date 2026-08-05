@@ -34,6 +34,8 @@ CREATE TABLE SupplierProfiles (
   BillingLng              FLOAT64,
   TaxId                   STRING(64),
   CompanyRegNumber        STRING(128),
+  Gln                     STRING(13),
+  Gs1CompanyPrefix        STRING(10),
   FleetVehicleCount       INT64         NOT NULL DEFAULT (0),
   FleetMaxVU              INT64         NOT NULL DEFAULT (0),
   FactoryCount            INT64         NOT NULL DEFAULT (0),
@@ -138,6 +140,7 @@ CREATE TABLE Retailers (
   ReceivingWindowOpen     STRING(10),
   ReceivingWindowClose    STRING(10),
   Timezone              STRING(64),
+  Gln                     STRING(13),
 
   RegionId                STRING(36),
   CreatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -420,6 +423,7 @@ CREATE TABLE Warehouses (
   OrderLineMaxQuantity INT64,
   DeliveryFeeRules JSON,
   OperatingSchedule  JSON,
+  Gln                STRING(13),
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   H3Cell             STRING(15),
@@ -873,6 +877,21 @@ CREATE TABLE ManifestOrders (
 ) PRIMARY KEY (ManifestId, OrderId),
   INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE;
 
+-- Gate-3 Wave 2C: SSCC ship units (one per ManifestOrders at seal)
+CREATE TABLE ManifestShipUnits (
+  ManifestId  STRING(36)  NOT NULL,
+  ShipUnitId  STRING(36)  NOT NULL,
+  Sscc        STRING(18)  NOT NULL,
+  OrderId     STRING(36)  NOT NULL,
+  Sequence    INT64       NOT NULL DEFAULT (0),
+  Gtin        STRING(14),
+  CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ManifestId, ShipUnitId),
+  INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX UQ_ManifestShipUnits_Sscc ON ManifestShipUnits(Sscc);
+CREATE UNIQUE INDEX UQ_ManifestShipUnits_ByOrder ON ManifestShipUnits(ManifestId, OrderId);
+
 CREATE TABLE ManifestExceptions (
   ExceptionId   STRING(36)  NOT NULL,
   OrderId       STRING(36)  NOT NULL,
@@ -931,6 +950,7 @@ CREATE TABLE FactoryInternalTransfers (
   SourceInsightId STRING(36),
   WarehouseId     STRING(36),
   TransferMode    STRING(10),
+  ReceivedAt      TIMESTAMP,
   CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (TransferId);
@@ -1226,6 +1246,9 @@ CREATE TABLE ReplenishmentPolicies (
   AutoApprovePredictivePush  BOOL        NOT NULL DEFAULT (true),
   MaxDailyTransferUnits      INT64       NOT NULL DEFAULT (500),
   MinConfidenceScore         FLOAT64     NOT NULL DEFAULT (0.85),
+  TargetServiceLevel         FLOAT64     NOT NULL DEFAULT (0.98),
+  LeadTimeDays               INT64       NOT NULL DEFAULT (2),
+  LeadTimeSigmaDays          FLOAT64     NOT NULL DEFAULT (1.0),
   UpdatedAt                  TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
@@ -1264,6 +1287,30 @@ CREATE TABLE DemandForecastBaseline (
 
 CREATE INDEX Idx_DemandBaseline_ByWarehouseDate
   ON DemandForecastBaseline(WarehouseId, ForecastDate DESC);
+
+-- §8.4: nightly baseline vs completed line-unit accuracy (WAPE / bias / tracking signal).
+CREATE TABLE ForecastAccuracyDaily (
+  SupplierId      STRING(36)  NOT NULL,
+  ForecastDate    DATE        NOT NULL,
+  WarehouseId     STRING(36)  NOT NULL,
+  ProductId       STRING(36)  NOT NULL,
+  ForecastQty     INT64       NOT NULL,
+  ActualQty       INT64       NOT NULL,
+  AbsError        INT64       NOT NULL,
+  SignedError     INT64       NOT NULL,
+  Wape7           FLOAT64,
+  Wape28          FLOAT64,
+  Bias7           FLOAT64,
+  Bias28          FLOAT64,
+  TrackingSignal  FLOAT64,
+  SampleDays7     INT64       NOT NULL DEFAULT (0),
+  SampleDays28    INT64       NOT NULL DEFAULT (0),
+  AlertTs         BOOL        NOT NULL DEFAULT (FALSE),
+  ComputedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, ForecastDate, WarehouseId, ProductId);
+
+CREATE INDEX Idx_ForecastAccuracyDaily_BySupplierDate
+  ON ForecastAccuracyDaily(SupplierId, ForecastDate DESC);
 
 CREATE TABLE SeasonalTemplateOverrides (
   SupplierId   STRING(36) NOT NULL,
@@ -1798,6 +1845,33 @@ CREATE TABLE RetailerAutoOrderSettings (
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RetailerId);
 
+-- §8.3 Shadow auto-order proposal ledger
+CREATE TABLE RetailerAutoOrderShadowProposals (
+  RetailerId     STRING(64)  NOT NULL,
+  ProposalId     STRING(64)  NOT NULL,
+  Sku            STRING(64)  NOT NULL,
+  SupplierId     STRING(64),
+  ProposedQty    INT64       NOT NULL,
+  IP             FLOAT64,
+  ReorderPoint   FLOAT64,
+  OrderUpTo      FLOAT64,
+  Confidence     FLOAT64,
+  Reason         STRING(64),
+  BucketDate     DATE        NOT NULL,
+  Status         STRING(32)  NOT NULL,
+  RunId          STRING(64),
+  MatchedOrderId STRING(64),
+  MatchedQty     INT64,
+  AcceptedUnmod  BOOL,
+  CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, ProposalId);
+
+CREATE INDEX Idx_RetailerAutoOrderShadow_ByRetailerBucket
+  ON RetailerAutoOrderShadowProposals (RetailerId, BucketDate DESC);
+
+CREATE INDEX Idx_RetailerAutoOrderShadow_ByRetailerSkuBucket
+  ON RetailerAutoOrderShadowProposals (RetailerId, Sku, BucketDate DESC);
+
 CREATE TABLE RetailerFavoriteSuppliers (
   RetailerId  STRING(36)  NOT NULL,
   SupplierId  STRING(36)  NOT NULL,
@@ -1819,6 +1893,7 @@ CREATE TABLE RetailerLocations (
   ReceivingWindowClose   STRING(10),
   IsPrimary              BOOL        NOT NULL,
   IsActive               BOOL        NOT NULL,
+  Gln                    STRING(13),
   CreatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (LocationId);
@@ -2227,3 +2302,121 @@ CREATE TABLE ArLedgerEntries (
 
 CREATE UNIQUE INDEX Idx_ArLedger_ByIdempotency ON ArLedgerEntries(IdempotencyKey);
 CREATE INDEX Idx_ArLedger_ByInvoice ON ArLedgerEntries(InvoiceId, CreatedAt);
+
+-- Partner Integration Layer (Gate 3 / §8.9): machine identity + outbound webhooks
+CREATE TABLE PartnerApiKeys (
+  KeyId STRING(36) NOT NULL,
+  TenantType STRING(16) NOT NULL,
+  TenantId STRING(36) NOT NULL,
+  KeyPrefix STRING(16) NOT NULL,
+  KeyHash STRING(128) NOT NULL,
+  Scopes ARRAY<STRING(64)>,
+  RateLimitClass STRING(32) NOT NULL DEFAULT ('partner_default'),
+  Status STRING(16) NOT NULL DEFAULT ('ACTIVE'),
+  ExpiresAt TIMESTAMP,
+  CreatedBy STRING(64),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  LastUsedAt TIMESTAMP,
+) PRIMARY KEY (KeyId);
+
+CREATE UNIQUE INDEX Idx_PartnerApiKeys_ByPrefix ON PartnerApiKeys(KeyPrefix);
+CREATE INDEX Idx_PartnerApiKeys_ByTenant ON PartnerApiKeys(TenantType, TenantId, Status);
+
+CREATE TABLE WebhookSubscriptions (
+  SubscriptionId STRING(36) NOT NULL,
+  TenantType STRING(16) NOT NULL,
+  TenantId STRING(36) NOT NULL,
+  Url STRING(2048) NOT NULL,
+  SigningSecret STRING(128) NOT NULL,
+  EventTypes ARRAY<STRING(64)>,
+  IsActive BOOL NOT NULL DEFAULT (TRUE),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SubscriptionId);
+
+CREATE INDEX Idx_WebhookSubscriptions_ByTenant ON WebhookSubscriptions(TenantType, TenantId, IsActive);
+
+CREATE TABLE WebhookDeliveryAttempts (
+  AttemptId STRING(36) NOT NULL,
+  SubscriptionId STRING(36) NOT NULL,
+  EventId STRING(64) NOT NULL,
+  EventType STRING(64) NOT NULL,
+  PayloadJson JSON,
+  Status STRING(16) NOT NULL,
+  HttpCode INT64,
+  NextRetryAt TIMESTAMP,
+  AttemptCount INT64 NOT NULL DEFAULT (0),
+  LastError STRING(1024),
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AttemptId);
+
+CREATE UNIQUE INDEX Idx_WebhookDelivery_BySubEvent ON WebhookDeliveryAttempts(SubscriptionId, EventId);
+CREATE INDEX Idx_WebhookDelivery_ByStatusRetry ON WebhookDeliveryAttempts(Status, NextRetryAt);
+
+-- Gate-3 Wave 2A: partner bulk export + SFTP
+CREATE TABLE PartnerExportJobs (
+  JobId       STRING(36)   NOT NULL,
+  TenantType  STRING(16)   NOT NULL,
+  TenantId    STRING(36)   NOT NULL,
+  Resource    STRING(32)   NOT NULL,
+  Format      STRING(16)   NOT NULL,
+  Status      STRING(16)   NOT NULL,
+  FromDate    DATE,
+  ToDate      DATE,
+  ObjectPath  STRING(512),
+  RowCount    INT64        NOT NULL DEFAULT (0),
+  Error       STRING(1024),
+  SftpStatus  STRING(16),
+  CreatedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  FinishedAt  TIMESTAMP,
+) PRIMARY KEY (JobId);
+
+CREATE INDEX Idx_PartnerExportJobs_ByTenantCreated
+  ON PartnerExportJobs (TenantType, TenantId, CreatedAt DESC);
+
+CREATE INDEX Idx_PartnerExportJobs_ByStatus
+  ON PartnerExportJobs (Status, CreatedAt);
+
+CREATE TABLE PartnerSftpConfigs (
+  TenantType STRING(16)   NOT NULL,
+  TenantId   STRING(36)   NOT NULL,
+  Host       STRING(255)  NOT NULL,
+  Port       INT64        NOT NULL DEFAULT (22),
+  Username   STRING(128)  NOT NULL,
+  SecretRef  STRING(256)  NOT NULL,
+  RemoteDir  STRING(512)  NOT NULL DEFAULT ('/'),
+  IsActive   BOOL         NOT NULL DEFAULT (TRUE),
+  InboundDir  STRING(512),
+  OutboundDir STRING(512),
+  ArchiveDir  STRING(512),
+  EdiEnabled  BOOL,
+  UpdatedAt  TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (TenantType, TenantId);
+
+-- Gate-3 Wave 2B: EDI-lite document ledger
+CREATE TABLE PartnerEdiDocuments (
+  DocumentId    STRING(36)   NOT NULL,
+  TenantType    STRING(16)   NOT NULL,
+  TenantId      STRING(36)   NOT NULL,
+  Direction     STRING(8)    NOT NULL,
+  DocType       STRING(16)   NOT NULL,
+  ExternalDocId STRING(128)  NOT NULL,
+  OrderId       STRING(36),
+  Status        STRING(16)   NOT NULL,
+  ObjectPath    STRING(512),
+  RemoteName    STRING(255),
+  Error         STRING(1024),
+  PayloadHash   STRING(64),
+  CreatedAt     TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  FinishedAt    TIMESTAMP,
+) PRIMARY KEY (DocumentId);
+
+CREATE UNIQUE INDEX Idx_PartnerEdiDocuments_Idempotency
+  ON PartnerEdiDocuments (TenantType, TenantId, Direction, DocType, ExternalDocId);
+
+CREATE INDEX Idx_PartnerEdiDocuments_ByTenantCreated
+  ON PartnerEdiDocuments (TenantType, TenantId, CreatedAt DESC);
+
+CREATE INDEX Idx_PartnerEdiDocuments_ByStatusDir
+  ON PartnerEdiDocuments (Status, Direction, CreatedAt);

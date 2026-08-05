@@ -42,7 +42,7 @@ Make **enterprise planning + execution depth** the default baseline (O9 / Kinaxi
 - Live SSMR: Spanner, Redis, Strimzi Kafka, GKE, Firebase Auth/FCM path, Maps Places geocode, `FISCAL_PROVIDER=PEGASUS` (Soliq deferred).  
 - Order fiscal hard-gate (ADR-009): capture → `FISCALIZING` → `COMPLETED` / `FISCAL_FAILED`.  
 - Claims: order-line pricing, 48h window, LEDGER_ONLY / STORE_CREDIT / GATEWAY_REFUND, INTERNAL cash clawback.  
-- Dispatch: optimizer-core (OR-Tools) + heuristic fallback; freeze locks exist.  
+- Dispatch: code wires **optimizer-core (OR-Tools)** with H3 BinPack fallback; **cloud SSMR/prod runs heuristic until sidecar image + replicas ≥ 1**. Route geometry: Google Routes → OSRM → dense. SoT: [`../OPTIMIZER_AND_ROUTING_RUNTIME.md`](../OPTIMIZER_AND_ROUTING_RUNTIME.md).  
 - Explicit **Payload** role + seal + inject. Offline driver hashes exist.
 
 ## Next detail slices (pick one)

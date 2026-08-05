@@ -964,6 +964,9 @@ struct SupplierReplenishmentPolicy: Decodable {
     let autoApprovePredictivePush: Bool
     let maxDailyTransferUnits: Int64
     let minConfidenceScore: Double
+    let targetServiceLevel: Double
+    let leadTimeDays: Int64
+    let leadTimeSigmaDays: Double
 
     enum CodingKeys: String, CodingKey {
         case supplierId = "supplier_id"
@@ -971,6 +974,21 @@ struct SupplierReplenishmentPolicy: Decodable {
         case autoApprovePredictivePush = "auto_approve_predictive_push"
         case maxDailyTransferUnits = "max_daily_transfer_units"
         case minConfidenceScore = "min_confidence_score"
+        case targetServiceLevel = "target_service_level"
+        case leadTimeDays = "lead_time_days"
+        case leadTimeSigmaDays = "lead_time_sigma_days"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        autoApproveStable = try c.decodeIfPresent(Bool.self, forKey: .autoApproveStable) ?? false
+        autoApprovePredictivePush = try c.decodeIfPresent(Bool.self, forKey: .autoApprovePredictivePush) ?? false
+        maxDailyTransferUnits = try c.decodeIfPresent(Int64.self, forKey: .maxDailyTransferUnits) ?? 0
+        minConfidenceScore = try c.decodeIfPresent(Double.self, forKey: .minConfidenceScore) ?? 0
+        targetServiceLevel = try c.decodeIfPresent(Double.self, forKey: .targetServiceLevel) ?? 0.98
+        leadTimeDays = try c.decodeIfPresent(Int64.self, forKey: .leadTimeDays) ?? 2
+        leadTimeSigmaDays = try c.decodeIfPresent(Double.self, forKey: .leadTimeSigmaDays) ?? 1.0
     }
 }
 

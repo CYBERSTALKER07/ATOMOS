@@ -2,23 +2,74 @@ import SwiftUI
 
 // MARK: - Response Models
 
+struct AutoOrderShadowStats: Codable {
+    let proposalCount: Int64
+    let matchedOrders: Int64
+    let wape: Double
+    let unmodifiedAcceptRate: Double
+    let windowDays: Int
+
+    enum CodingKeys: String, CodingKey {
+        case proposalCount = "proposal_count"
+        case matchedOrders = "matched_orders"
+        case wape
+        case unmodifiedAcceptRate = "unmodified_accept_rate"
+        case windowDays = "window_days"
+    }
+}
+
+struct AutoOrderShadowProposal: Codable, Identifiable {
+    var id: String { proposalId }
+    let proposalId: String
+    let retailerId: String
+    let sku: String
+    let supplierId: String?
+    let proposedQty: Int64
+    let ip: Double
+    let reorderPoint: Double
+    let orderUpTo: Double
+    let bucketDate: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case proposalId = "proposal_id"
+        case retailerId = "retailer_id"
+        case sku
+        case supplierId = "supplier_id"
+        case proposedQty = "proposed_qty"
+        case ip
+        case reorderPoint = "reorder_point"
+        case orderUpTo = "order_up_to"
+        case bucketDate = "bucket_date"
+        case status
+    }
+}
+
+struct AutoOrderShadowProposalsResponse: Codable {
+    let items: [AutoOrderShadowProposal]
+}
+
 struct AutoOrderSettings: Codable {
     let globalEnabled: Bool
+    let executionMode: String?
     let hasAnyHistory: Bool
     let analyticsStartDate: String?
     let supplierOverrides: [SupplierOverride]
     let categoryOverrides: [CategoryOverride]
     let productOverrides: [ProductOverride]
     let variantOverrides: [VariantOverride]
+    let shadowStats: AutoOrderShadowStats?
 
     enum CodingKeys: String, CodingKey {
         case globalEnabled = "global_enabled"
+        case executionMode = "execution_mode"
         case hasAnyHistory = "has_any_history"
         case analyticsStartDate = "analytics_start_date"
         case supplierOverrides = "supplier_overrides"
         case categoryOverrides = "category_overrides"
         case productOverrides = "product_overrides"
         case variantOverrides = "variant_overrides"
+        case shadowStats = "shadow_stats"
     }
 }
 
@@ -76,19 +127,34 @@ struct ProductOverride: Codable, Identifiable, Hashable {
 struct VariantOverride: Codable, Identifiable, Hashable {
     var id: String { skuID }
     let skuID: String
-    let productID: String
+    let productID: String?
     let enabled: Bool
     let hasHistory: Bool
     let skuLabel: String?
     let analyticsStartDate: String?
 
     enum CodingKeys: String, CodingKey {
-        case skuID = "sku_id"
+        case skuID = "variant_id"
+        case skuIDAlt = "sku_id"
         case productID = "product_id"
         case enabled
         case hasHistory = "has_history"
         case skuLabel = "sku_label"
         case analyticsStartDate = "analytics_start_date"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let v = try c.decodeIfPresent(String.self, forKey: .skuID) {
+            skuID = v
+        } else {
+            skuID = try c.decodeIfPresent(String.self, forKey: .skuIDAlt) ?? ""
+        }
+        productID = try c.decodeIfPresent(String.self, forKey: .productID)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        hasHistory = try c.decodeIfPresent(Bool.self, forKey: .hasHistory) ?? false
+        skuLabel = try c.decodeIfPresent(String.self, forKey: .skuLabel)
+        analyticsStartDate = try c.decodeIfPresent(String.self, forKey: .analyticsStartDate)
     }
 }
 
@@ -102,7 +168,8 @@ struct AutoOrderView: View {
     @State private var forecasts: [DemandForecast] = []
     @State private var isLoading = true
     @State private var syncMessage: String? = nil
-    @AppStorage("globalAutoOrder") private var globalAutoOrder = false
+    @State private var globalAutoOrder = false
+    @State private var executionMode = "draft"
     @State private var pendingTarget: EnableTarget?
     @State private var localToggleStates: [String: Bool] = [:]
     @State private var runs: [AutoOrderRun] = []
@@ -111,6 +178,7 @@ struct AutoOrderView: View {
     @State private var runningMode: String?
     @State private var placeConfirmOpen = false
     @State private var reorderSuggestions: [RetailerReorderSuggestion] = []
+    @State private var shadowProposals: [AutoOrderShadowProposal] = []
 
     private enum EnableTarget {
         case global
@@ -152,6 +220,8 @@ struct AutoOrderView: View {
                             predictionCount: forecasts.count
                         ).slideIn(delay: 0)
 
+                        executionModeCard.slideIn(delay: 0.01)
+                        shadowInboxCard.slideIn(delay: 0.015)
                         autoOrderWorkerCard.slideIn(delay: 0.02)
 
                         reorderSuggestionsCard.slideIn(delay: 0.03)
@@ -208,7 +278,7 @@ struct AutoOrderView: View {
 
                             if !s.variantOverrides.isEmpty {
                                 AutoOrderOverridesSection(
-                                    title: "Variant / SKU Overrides",
+                                    title: "Size / variant Overrides",
                                     icon: "cube",
                                     items: s.variantOverrides.map { OverrideItem(id: $0.skuID, label: $0.skuLabel ?? $0.skuID, enabled: $0.enabled, hasHistory: $0.hasHistory, level: .variant) },
                                     localToggleStates: $localToggleStates,
@@ -302,6 +372,54 @@ struct AutoOrderView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var executionModeCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+            Text("Execution mode")
+                .font(.system(.headline, design: .rounded))
+            Text("Off / Shadow (recommended) / Draft cart / Place. Scope toggles below choose SKUs; disable blocks even when global is on.")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+            HStack(spacing: 6) {
+                ForEach([("off", "Off"), ("shadow", "Shadow"), ("draft", "Draft"), ("place", "Place")], id: \.0) { mode, label in
+                    Button(label) {
+                        Task { await setExecutionMode(mode) }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(executionMode == mode ? AppTheme.accent : AppTheme.textSecondary)
+                    .disabled(running)
+                }
+            }
+            if let stats = settings?.shadowStats {
+                Text(String(format: "30d WAPE %.0f%% · accept %.0f%% (%lld proposals)", stats.wape * 100, stats.unmodifiedAcceptRate * 100, stats.proposalCount))
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var shadowInboxCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+            Text("Shadow inbox")
+                .font(.system(.headline, design: .rounded))
+            if shadowProposals.isEmpty {
+                Text("No shadow proposals yet. Set mode to Shadow and run Shadow now.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                ForEach(shadowProposals.prefix(8)) { p in
+                    Text("\(p.sku) · qty \(p.proposedQty) · IP \(Int(p.ip)) · ROP \(Int(p.reorderPoint))")
+                        .font(.system(.caption, design: .rounded))
+                }
+            }
+        }
+        .padding(AppTheme.spacingMD)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
     private var autoOrderWorkerCard: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
             HStack {
@@ -311,10 +429,19 @@ struct AutoOrderView: View {
                     .font(.system(.headline, design: .rounded))
                 Spacer()
             }
-            Text("Draft stages cart lines (idempotent per SKU/day). Place creates real supplier orders when the server flag is on.")
+            Text("Shadow records proposals only. Draft stages cart lines. Place creates real supplier orders when the server flag is on.")
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
             HStack(spacing: AppTheme.spacingSM) {
+                Button {
+                    Task { await runAutoOrder(mode: "shadow") }
+                } label: {
+                    Text(running && runningMode == "shadow" ? "…" : "Shadow")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(running || executionMode == "off")
+
                 Button {
                     Task { await runAutoOrder(mode: "draft") }
                 } label: {
@@ -324,12 +451,12 @@ struct AutoOrderView: View {
                         } else {
                             Image(systemName: "play.fill")
                         }
-                        Text(running && runningMode == "draft" ? "Drafting…" : "Draft now")
+                        Text(running && runningMode == "draft" ? "Drafting…" : "Draft")
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(running)
+                .disabled(running || executionMode == "off")
 
                 Button {
                     placeConfirmOpen = true
@@ -340,12 +467,12 @@ struct AutoOrderView: View {
                         } else {
                             Image(systemName: "cart.fill")
                         }
-                        Text(running && runningMode == "place" ? "Placing…" : "Place now")
+                        Text(running && runningMode == "place" ? "Placing…" : "Place")
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(running)
+                .disabled(running || executionMode == "off")
             }
             .confirmationDialog(
                 "Create real supplier orders?",
@@ -479,21 +606,63 @@ struct AutoOrderView: View {
         async let forecastsReq: ([DemandForecast], String?) = loadForecasts()
         async let runsReq: [AutoOrderRun] = loadRuns()
         async let suggestionsReq: [RetailerReorderSuggestion] = loadSuggestions()
+        async let shadowReq: [AutoOrderShadowProposal] = loadShadowProposals()
 
         let (fetchedSettings, settingsSyncMessage) = await settingsReq
         let (fetchedForecasts, forecastSyncMessage) = await forecastsReq
         let fetchedRuns = await runsReq
         let fetchedSuggestions = await suggestionsReq
+        let fetchedShadow = await shadowReq
 
         withAnimation(AnimationConstants.fluid) {
             settings = fetchedSettings
             forecasts = fetchedForecasts
             runs = fetchedRuns
             reorderSuggestions = fetchedSuggestions
+            shadowProposals = fetchedShadow
             globalAutoOrder = fetchedSettings?.globalEnabled ?? false
+            executionMode = normalizeMode(fetchedSettings?.executionMode, global: fetchedSettings?.globalEnabled ?? false)
             localToggleStates.removeAll()
             syncMessage = settingsSyncMessage ?? forecastSyncMessage
             isLoading = false
+        }
+    }
+
+    private func normalizeMode(_ raw: String?, global: Bool) -> String {
+        switch raw?.lowercased() {
+        case "off", "shadow", "draft", "place": return raw!.lowercased()
+        default: return global ? "draft" : "off"
+        }
+    }
+
+    private func loadShadowProposals() async -> [AutoOrderShadowProposal] {
+        do {
+            return try await api.getAutoOrderShadowProposals().items
+        } catch {
+            return shadowProposals
+        }
+    }
+
+    private func setExecutionMode(_ mode: String) async {
+        do {
+            _ = try await api.setAutoOrderExecutionMode(mode: mode)
+            await loadAll()
+            syncMessage = {
+                switch mode {
+                case "off": return "Auto-order off."
+                case "shadow": return "Mode: Shadow (proposals only — recommended)."
+                case "draft": return "Mode: Draft cart lines."
+                case "place": return "Mode: Place (still requires Place now + server flag)."
+                default: return "Mode updated."
+                }
+            }()
+        } catch {
+            syncMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Cannot change execution mode for this account.",
+                offline: "Offline mode active. Reconnect and retry.",
+                fallback: "Execution mode update failed.",
+            )
         }
     }
 
@@ -527,6 +696,8 @@ struct AutoOrderView: View {
                 } else {
                     syncMessage = "Place run \(run.status)\(run.message.map { ": \($0)" } ?? "")"
                 }
+            } else if mode == "shadow" && (run.status == "OK" || run.status == "PARTIAL") {
+                syncMessage = "Shadow run: \(run.draftLines) proposal(s)" + (run.message.map { " — \($0)" } ?? "")
             } else if run.status == "OK" || run.status == "PARTIAL" {
                 syncMessage = "Draft run complete: \(run.draftLines) line(s)" + (run.message.map { " — \($0)" } ?? "")
             } else {
@@ -534,6 +705,7 @@ struct AutoOrderView: View {
             }
             runs = await loadRuns()
             reorderSuggestions = await loadSuggestions()
+            shadowProposals = await loadShadowProposals()
         } catch {
             syncMessage = RetailerErrorSupport.message(
                 for: error,

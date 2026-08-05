@@ -194,6 +194,10 @@ enum FactoryService {
         try await api.get("v1/factory/fleet")
     }
 
+    static func fleetLiveMap() async throws -> FactoryFleetLiveMapResponse {
+        try await api.get("v1/factory/fleet/live-map")
+    }
+
     static func fleetDrivers() async throws -> [FactoryFleetDriverRow] {
         let response: FactoryFleetDriversEnvelope = try await api.get("v1/factory/fleet/drivers")
         return response.drivers

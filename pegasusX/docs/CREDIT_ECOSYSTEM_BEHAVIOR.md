@@ -26,7 +26,9 @@ Trade credit for Pegaus B2B wholesale: irreversible enablement, Net terms, reser
 2. Supplier enables **retailer relationship** (modal ack → profile `ACTIVE` + terms).
 3. Optional: reserve at order create (`CREDIT_RESERVE_AT_CREATE`) — Available = Limit − Balance − Reserved.
 4. Driver **credit leave** → same-txn MarkBalance/convert reserve → open AR invoice with DueAt.
-5. Aging worker buckets overdue invoices; dunning may auto-hold (`FROZEN`) without clearing `CreditEnabled`.
+5. Aging worker buckets overdue invoices; **dunning step machine** (when `AR_DUNNING_ENABLED`) advances  
+   `DUE_SOON → OVERDUE → ESCALATED_1 → ESCALATED_2 → CREDIT_HOLD → COLLECTIONS`, bumps `DelinquencyCount` on first OVERDUE,  
+   auto-holds (`FROZEN`) at CREDIT_HOLD without clearing `CreditEnabled`, and fans out inbox + FCM.
 6. Repayment clears balance / closes invoice.
 7. Permanent disable only via admin API; open AR remains collectible. Re-enable is self-serve again (new ack).
 
@@ -61,7 +63,9 @@ CREDIT_LEAVE and shop-closed timeout use **status + available** only. Limits and
 - Backend: `credit` policy service + reserve/CAS; `ar` invoices + aging; order create no longer blocks cash on missing profile; same-txn MarkBalance on credit leave.
 - Clients: `packages/types`, `packages/api-client`, supplier/warehouse/retailer portals, driver due-at copy.
 - Flags: `CREDIT_POLICY_V2_ENABLED`, `CREDIT_RESERVE_AT_CREATE`, `AR_INVOICES_ENABLED`, `AR_DUNNING_ENABLED`.
-- E2E markers: `PX_E2E_CREDIT_ENABLE_IRREVERSIBLE_OK`, `PX_E2E_CREDIT_TERMS_DUE_OK`, `PX_E2E_CREDIT_ADMIN_DISABLE_OK`.
+- Ops: `POST /v1/admin/ar/dunning/run-once` (ADMIN) triggers aging + step advance.
+- E2E markers: `PX_E2E_CREDIT_ENABLE_IRREVERSIBLE_OK`, `PX_E2E_CREDIT_TERMS_DUE_OK`, `PX_E2E_CREDIT_ADMIN_DISABLE_OK`,  
+  `PX_E2E_COLLECTIONS_DUNNING_OK` / `PX_E2E_COLLECTIONS_DUNNING_SKIPPED`.
 
 ## Edge case matrix (pass criteria)
 

@@ -35,7 +35,7 @@ export function AutoOrderRules({
         {settings?.global_enabled && (
           <div className="mt-4 flex items-center gap-2 text-[var(--desk-success)]">
             <CheckCircle2 size={16} />
-            <span className="md-typescale-body-small">Global auto-order active. Overrides all granular settings.</span>
+            <span className="md-typescale-body-small">Global on. Scoped Off still blocks matching suppliers/categories/products/size-variants.</span>
           </div>
         )}
       </div>
@@ -122,7 +122,7 @@ export function AutoOrderRules({
       )}
 
       {(settings?.variant_overrides?.length ?? 0) > 0 && (
-        <PageSection title="Variant / SKU Overrides">
+        <PageSection title="Size / variant Overrides">
           <div className="space-y-2">
             {settings?.variant_overrides.map((item) => (
               <div key={item.variant_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
@@ -130,7 +130,7 @@ export function AutoOrderRules({
                   <Box size={18} className="text-[var(--desk-text-tertiary)]" />
                   <div>
                     <div className="md-typescale-body-medium">{item.variant_id}</div>
-                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Variant / SKU override</div>
+                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Size / variant override</div>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">

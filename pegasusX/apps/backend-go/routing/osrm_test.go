@@ -71,7 +71,7 @@ func TestGeometryBuilder_FallsBackToDense(t *testing.T) {
 		{Lat: 41.2995, Lng: 69.2401},
 		{Lat: 41.3095, Lng: 69.2501},
 	}
-	builder := NewGeometryBuilder(nil)
+	builder := NewGeometryBuilder(nil, nil, RoutingProviderAuto)
 	geometry := builder.Build(context.Background(), "route-1", waypoints)
 	if geometry.Source != "computed_dense" {
 		t.Fatalf("source=%q", geometry.Source)

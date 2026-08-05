@@ -4,6 +4,8 @@ import com.pegasusx.retailer.data.model.ApiResponse
 import com.pegasusx.retailer.data.model.ActiveFulfillmentsResponse
 import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
+import com.pegasusx.retailer.data.model.AutoOrderShadowProposalsResponse
+import com.pegasusx.retailer.data.model.AutoOrderShadowStats
 import com.pegasusx.retailer.data.model.RetailerReorderSuggestionsResponse
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
@@ -575,7 +577,7 @@ interface PegasusApi {
         @Body body: UpdateSettingsRequest,
     ): ApiResponse
 
-    /** Auto-order worker tick. mode=draft|place (place requires flag + role + geo). */
+    /** Auto-order worker tick. mode=shadow|draft|place (place requires flag + role + geo). */
     @POST("/v1/retailer/settings/auto-order/run")
     suspend fun runAutoOrder(
         @Query("mode") mode: String = "draft",
@@ -584,6 +586,12 @@ interface PegasusApi {
 
     @GET("/v1/retailer/settings/auto-order/runs")
     suspend fun getAutoOrderRuns(): JsonElement
+
+    @GET("/v1/retailer/settings/auto-order/shadow-proposals")
+    suspend fun getAutoOrderShadowProposals(): AutoOrderShadowProposalsResponse
+
+    @GET("/v1/retailer/settings/auto-order/shadow-stats")
+    suspend fun getAutoOrderShadowStats(): AutoOrderShadowStats
 
     /** OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY). */
     @GET("/v1/retailer/reorder-suggestions")

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"os"
 	"strings"
 	"time"
 
@@ -15,6 +16,13 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
+
+// inventoryGroundedAutoOrder skips AI_PREORDER /2 order inserts when the
+// retailer inventory-grounded auto-order path owns quantity decisions (§8.3).
+func inventoryGroundedAutoOrder() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("AUTO_ORDER_INVENTORY_GROUNDED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
 
 // OrderSignal is the minimal order-event payload used for synthesis.
 type OrderSignal struct {
@@ -296,6 +304,15 @@ func (e *Engine) predictionMutation(rec Recommendation) (*spanner.Mutation, erro
 }
 
 func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, rec Recommendation) (*spanner.Mutation, bool, error) {
+	// §8.3: when inventory-grounded auto-order owns qty, keep AIPredictions advisory only.
+	if inventoryGroundedAutoOrder() {
+		e.Log.Info("skipping AI_PREORDER insert; inventory-grounded auto-order enabled",
+			"retailer_id", signal.RetailerID,
+			"supplier_id", signal.SupplierID,
+		)
+		return nil, false, nil
+	}
+
 	// Skip if a pending AI preorder already exists for this retailer recently.
 	exists, err := e.hasOpenAIPreorder(ctx, signal.RetailerID, signal.SupplierID)
 	if err != nil {

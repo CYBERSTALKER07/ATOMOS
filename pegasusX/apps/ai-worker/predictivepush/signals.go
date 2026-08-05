@@ -92,39 +92,17 @@ func stubSeasonalitySignals(supplierID string, targetDay time.Time) []DemandSign
 	}}
 }
 
-// externalWeatherSignals is a placeholder for pegasus weather-ingest (low confidence until wired).
+// externalWeatherSignals is intentionally empty until a real weather API is wired.
+// Hardcoded summer Qty stubs were removed (§8.1) — fake demand is worse than no signal.
 func externalWeatherSignals(supplierID string, targetDay time.Time) []DemandSignal {
-	if supplierID == "" {
-		return nil
-	}
-	month := targetDay.Month()
-	if month < time.June || month > time.August {
-		return nil
-	}
-	return []DemandSignal{{
-		SupplierID: supplierID,
-		Qty:        2,
-		Confidence: 0.4,
-		Source:     "weather_forecast_stub",
-		TargetDate: targetDay,
-	}}
+	_ = supplierID
+	_ = targetDay
+	return nil
 }
 
-// externalPOSSignals is a placeholder for retailer POS calendar feeds.
+// externalPOSSignals is intentionally empty until a real POS feed is wired.
 func externalPOSSignals(supplierID string, targetDay time.Time) []DemandSignal {
-	if supplierID == "" {
-		return nil
-	}
-	day := targetDay.Day()
-	lastDay := time.Date(targetDay.Year(), targetDay.Month()+1, 0, 0, 0, 0, 0, targetDay.Location()).Day()
-	if day != 1 && day != 15 && day != lastDay {
-		return nil
-	}
-	return []DemandSignal{{
-		SupplierID: supplierID,
-		Qty:        3,
-		Confidence: 0.45,
-		Source:     "pos_calendar_stub",
-		TargetDate: targetDay,
-	}}
+	_ = supplierID
+	_ = targetDay
+	return nil
 }

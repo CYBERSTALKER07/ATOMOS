@@ -274,6 +274,33 @@ data class VehicleListResponse(
     val vehicles: List<Vehicle> = emptyList(),
 )
 
+@Serializable
+data class FactoryFleetDriverLocation(
+    @SerialName("driver_id") val driverId: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+)
+
+@Serializable
+data class FactoryFleetLiveRoute(
+    @SerialName("manifest_id") val manifestId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("manifest_state") val manifestState: String = "",
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
+    @SerialName("location_stale") val locationStale: Boolean = false,
+    @SerialName("driver_location") val driverLocation: FactoryFleetDriverLocation? = null,
+)
+
+@Serializable
+data class FactoryFleetLiveMapResponse(
+    val routes: List<FactoryFleetLiveRoute> = emptyList(),
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("fetched_at") val fetchedAt: String = "",
+)
+
 // ── Staff ──
 @Serializable
 data class StaffMember(

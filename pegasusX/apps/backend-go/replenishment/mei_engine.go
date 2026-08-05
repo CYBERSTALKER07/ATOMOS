@@ -111,7 +111,21 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 				urgency:     urgency,
 			}
 			if urgency != "STABLE" {
-				reorder := burn*float64(defaultLeadTimeDays) + burn*float64(defaultLeadTimeDays)*safetyBufferMultiplier
+				lead := float64(defaultLeadTimeDays)
+				var reorder float64
+				if SafetyStockV2Enabled() {
+					reorder = ComputeReorderPoint(SafetyStockInputs{
+						DBar:             burn,
+						SigmaD:           math.Max(burn*0.25, 1),
+						SigmaDAssumed:    true,
+						L:                lead,
+						SigmaL:           1.0,
+						LeadSigmaAssumed: true,
+						ServiceLevel:     0.98,
+					}).ReorderPoint
+				} else {
+					reorder = LegacyReorderPoint(burn, lead)
+				}
 				sku.suggestedQty = computeSuggestedQty(skuStock{
 					SkuId:           skuID,
 					CurrentStock:    qty,

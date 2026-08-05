@@ -299,6 +299,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runAutoOrderDraftE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("auto-order draft: %w", err)
 	}
+	if err := runAutoOrderShadowE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("auto-order shadow: %w", err)
+	}
 	if err := runClaimStoreQuarantineE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie); err != nil {
 		return fmt.Errorf("claim store quarantine: %w", err)
 	}
@@ -357,6 +360,24 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 
 	if err := runGapClosureE2E(ctx, client, base, cookie, supplierID, retailerToken, cfg, orderID); err != nil {
 		return fmt.Errorf("gap closure: %w", err)
+	}
+	if err := runPartnerIntegrationE2E(ctx, client, base, cookie, supplierID, retailerToken, retailerID, h3Cell, cfg); err != nil {
+		return fmt.Errorf("partner integration: %w", err)
+	}
+	if err := runCollectionsDunningE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("collections dunning: %w", err)
+	}
+	if err := runForecastAccuracyE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("forecast accuracy: %w", err)
+	}
+	if err := runForecastAlgoE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("forecast algo: %w", err)
+	}
+	if err := runSafetyStockE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("safety stock: %w", err)
+	}
+	if err := runSafetyStockReplayE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("safety stock replay: %w", err)
 	}
 
 	fmt.Println("PX_E2E_ORDER_OK")

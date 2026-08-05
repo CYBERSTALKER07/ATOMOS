@@ -39,6 +39,7 @@ type Warehouse struct {
 	CreatedAt                  time.Time `json:"created_at" spanner:"CreatedAt"`
 	UpdatedAt                  time.Time `json:"updated_at" spanner:"UpdatedAt"`
 	H3Cell                     *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
+	Gln                        *string   `json:"gln,omitempty" spanner:"Gln"`
 }
 
 // CreateWarehouse inserts a new warehouse record and emits a WAREHOUSE_CREATED event atomically.
@@ -71,7 +72,7 @@ func (r *SpannerRepository) GetWarehouse(ctx context.Context, warehouseID string
 		"CoLocateWithFactoryId", "IsActive", "IsOnShift", "RegionId", "PaymentConfigId",
 		"AutoDispatchEnabled", "DefaultOutOfStockPolicy", "ShowStockCountsToRetailers",
 		"PreorderMinLeadDays", "PreorderMaxLeadDays", "OrderLineMinQuantity", "OrderLineMaxQuantity",
-		"DeliveryFeeRules", "OperatingSchedule", "CreatedAt", "UpdatedAt", "H3Cell",
+		"DeliveryFeeRules", "OperatingSchedule", "CreatedAt", "UpdatedAt", "H3Cell", "Gln",
 	})
 	if err != nil {
 		return Warehouse{}, err

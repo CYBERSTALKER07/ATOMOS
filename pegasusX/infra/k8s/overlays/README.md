@@ -17,9 +17,12 @@ kubectl kustomize infra/k8s/overlays/staging --load-restrictor LoadRestrictionsN
 
 | Overlay | Namespace | Notes |
 |---------|-----------|-------|
-| `prod/` | `pegasusx` | Full HA: 3+ API replicas, worker split, ai-worker + optimizer-core, PDB/HPA, PodMonitoring |
-| `staging/` | `pegasusx-staging` | Dual-write Kafka topics; `OPTIMIZER_BASE_URL=http://optimizer-core:8082` |
+| `prod/` | `pegasusx` | HA API/worker + ai-worker; **optimizer-core included but `replicas: 0`** until a real AR image exists (placeholder pin today) |
+| `staging/` | `pegasusx-staging` | Dual-write Kafka topics; remaps optimizer image; live only if image published + deployed |
+| `ssmr/` | `pegasusx-ssmr` | Cloud cutover; **no optimizer-core** — dispatch uses H3 BinPack fallback |
 | `dev/` | `pegasusx-dev` | Single replica, debug logging |
+
+**Optimizer + routing runtime SoT:** [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md)
 
 See also: [WS_INGRESS_AFFINITY.md](../../docs/WS_INGRESS_AFFINITY.md)
 

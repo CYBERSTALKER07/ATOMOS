@@ -1,7 +1,7 @@
 # PegasusX Ecosystem — Features by Role (Deep Reference)
 
 **Audience:** operators, product, engineering  
-**Grounding:** live monorepo (`apps/backend-go`, role apps, contracts) as of 2026-07-29  
+**Grounding:** live monorepo (`apps/backend-go`, role apps, contracts); spatial/dispatch bullets re-aligned 2026-08-05  
 **Money unit:** all financial amounts are **integer minor units** (tiyin/cents-style). **Never floats** for money.
 
 > **Authoritative split (2026-08-04, CODE-GROUNDED):** Prefer these over this overview. They were extracted from `*routes/routes.go`, client shells/section enums, and Go packages — not from this file:
@@ -9,6 +9,8 @@
 > 1. [FEATURES_BY_APP_ROLE.md](./FEATURES_BY_APP_ROLE.md) — routes + client nav inventory  
 > 2. [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) — formulas from Go  
 > 3. [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md) — `state_machine.go` + route triggers  
+> 4. [OPTIMIZER_AND_ROUTING_RUNTIME.md](./OPTIMIZER_AND_ROUTING_RUNTIME.md) — OR-Tools + Google Routes **runtime** (code vs cloud)  
+> 5. [PARTNER_API.md](./PARTNER_API.md) — Gate-3 machine identity + `/partner/v1` + outbound webhooks  
 
 
 ---
@@ -112,7 +114,8 @@ Derived from delinquency count + balance vs limit (`deriveRiskTier` / `EvaluateR
 
 - Retailers sit in **H3 cells**; delivery zone is a precomputed set of cells around supplier center + radius + resolution.  
 - Driver telemetry updates location; proximity / geo-report use H3 aggregates.  
-- Route geometry: optional **OSRM**; dispatch plan: optional **optimizer-core (OR-Tools)** with heuristic fallback.
+- Route geometry: **Google Routes → OSRM → dense** (`ROUTING_PROVIDER=auto`); clients render backend polylines.  
+- Dispatch plan: **optimizer-core (OR-Tools)** when `OPTIMIZER_BASE_URL` is healthy; else H3 BinPack (`fallback_phase1`). **Cloud SSMR/prod: heuristic-only until sidecar image + replicas ≥ 1.** SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md).
 
 ---
 
@@ -607,8 +610,8 @@ Driver payouts snapshot; past routes.
 
 | Area | Algorithm / approach |
 |------|----------------------|
-| Dispatch | OR-Tools sidecar when available; heuristic fallback; capacity load checks; suggest unselect set |
-| Routing geometry | OSRM polyline when `ROUTING_OSRM_URL` set |
+| Dispatch | Code: OR-Tools via `optimizer-core` + `optimizerclient`; cloud often heuristic (`fallback_phase1`) until sidecar deployed. Capacity checks + suggest-unselect. See [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md). |
+| Routing geometry | Google Routes (primary) → OSRM → dense; clients render backend polyline only |
 | Delivery zone | H3 disk/ring precompute around lat/lng/radius/resolution |
 | Demand forecast | History-based series per warehouse SKU (Spanner or scaffold) |
 | Credit risk | Rule tiers from delinquency + utilization |

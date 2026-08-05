@@ -207,7 +207,27 @@ func (e *Engine) fetchActiveWarehouses(ctx context.Context, supplierID string) (
 }
 
 func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, int, error) {
-	leadDays := int64(defaultLeadTimeDays)
+	policy, _ := LoadPolicy(ctx, e.Spanner, wh.SupplierId)
+	leadDays := policy.LeadTimeDays
+	if leadDays <= 0 {
+		leadDays = defaultLeadTimeDays
+	}
+	leadSigmaAssumed := true
+	leadSigma := policy.LeadTimeSigmaDays
+	if leadSigma < 0 {
+		leadSigma = 1.0
+	}
+	if SafetyStockV2Enabled() {
+		if obs, err := ObservedLeadStats(ctx, e.Spanner, wh.SupplierId); err == nil && !obs.Assumed {
+			leadDays = int64(math.Round(obs.MeanDays))
+			if leadDays < 1 {
+				leadDays = 1
+			}
+			leadSigma = obs.SigmaDays
+			leadSigmaAssumed = false
+		}
+	}
+
 	stock, err := e.getWarehouseStock(ctx, wh.WarehouseId, wh.SupplierId)
 	if err != nil {
 		return 0, 0, fmt.Errorf("stock lookup: %w", err)
@@ -224,12 +244,18 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	if err != nil {
 		return 0, 0, fmt.Errorf("unit volume lookup: %w", err)
 	}
+	inTransit, err := InTransitBySKU(ctx, e.Spanner, wh.WarehouseId)
+	if err != nil {
+		e.Log.Warn("replenishment.in_transit_lookup_failed", "warehouse_id", wh.WarehouseId, "err", err)
+		inTransit = map[string]int64{}
+	}
 
 	allSkus := make(map[string]*skuStock)
 	for skuID, qty := range stock {
 		allSkus[skuID] = &skuStock{
 			SkuId:           skuID,
 			CurrentStock:    qty,
+			InTransitQty:    inTransit[skuID],
 			FactoryLeadDays: leadDays,
 			UnitVolumeVU:    vuMap[skuID],
 		}
@@ -237,7 +263,7 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	for skuID, rate := range burnRates {
 		sku := allSkus[skuID]
 		if sku == nil {
-			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, UnitVolumeVU: vuMap[skuID]}
+			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, InTransitQty: inTransit[skuID], UnitVolumeVU: vuMap[skuID]}
 			allSkus[skuID] = sku
 		}
 		sku.DailyBurnRate = rate
@@ -245,7 +271,7 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	for skuID, qty := range unfulfilled {
 		sku := allSkus[skuID]
 		if sku == nil {
-			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, UnitVolumeVU: vuMap[skuID]}
+			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, InTransitQty: inTransit[skuID], UnitVolumeVU: vuMap[skuID]}
 			allSkus[skuID] = sku
 		}
 		sku.UnfulfilledQty = qty
@@ -259,7 +285,36 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 		}
 		lead := float64(sku.FactoryLeadDays)
 		burn := sku.DailyBurnRate
-		reorderPoint := burn*lead + burn*lead*safetyBufferMultiplier
+		dBar := burn
+		if avg, ok, _ := AvgBaselineDemand(ctx, e.Spanner, wh.SupplierId, wh.WarehouseId, sku.SkuId); ok && avg > 0 {
+			dBar = avg
+		}
+		var reorderPoint float64
+		var ssResult SafetyStockResult
+		useV2 := SafetyStockV2Enabled()
+		if useV2 {
+			sigmaD, _, sigmaOK, _ := ResidualSigmaD(ctx, e.Spanner, wh.SupplierId, wh.WarehouseId, sku.SkuId)
+			sigmaDAssumed := !sigmaOK
+			if !sigmaOK {
+				sigmaD = math.Max(dBar*0.25, 1)
+			}
+			sl := policy.TargetServiceLevel
+			if sl <= 0 {
+				sl = 0.98
+			}
+			ssResult = ComputeReorderPoint(SafetyStockInputs{
+				DBar:             dBar,
+				SigmaD:           sigmaD,
+				SigmaDAssumed:    sigmaDAssumed,
+				L:                lead,
+				SigmaL:           leadSigma,
+				LeadSigmaAssumed: leadSigmaAssumed,
+				ServiceLevel:     sl,
+			})
+			reorderPoint = ssResult.ReorderPoint
+		} else {
+			reorderPoint = LegacyReorderPoint(burn, lead)
+		}
 		tte := float64(sku.CurrentStock) / burn
 		urgency := classifyUrgency(tte, lead)
 		if urgency == "STABLE" {
@@ -290,14 +345,27 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 		if burn > float64(sku.CurrentStock)/lead {
 			reason = "HIGH_VELOCITY"
 		}
-		breakdownJSON, _ := json.Marshal(map[string]any{
+		breakdown := map[string]any{
 			"unfulfilled":         sku.UnfulfilledQty,
 			"in_transit":          sku.InTransitQty,
 			"current_stock":       sku.CurrentStock,
 			"burn_rate_7d":        burn,
+			"d_bar":               dBar,
 			"reorder_point":       reorderPoint,
 			"seasonal_multiplier": seasonMul,
-		})
+			"safety_stock_v2":     useV2,
+		}
+		if useV2 {
+			breakdown["safety_stock"] = ssResult.SafetyStock
+			breakdown["z_alpha"] = ssResult.ZAlpha
+			breakdown["sigma_d"] = ssResult.SigmaD
+			breakdown["sigma_l"] = ssResult.SigmaL
+			breakdown["sigma_d_assumed"] = ssResult.SigmaDAssumed
+			breakdown["lead_sigma_assumed"] = ssResult.LeadSigmaAssumed
+			breakdown["service_level"] = ssResult.ServiceLevel
+			breakdown["lead_days"] = ssResult.LeadDays
+		}
+		breakdownJSON, _ := json.Marshal(breakdown)
 
 		insightID := uuid.NewString()
 		if err := e.writeInsight(ctx, insightID, wh, sku, burn, tte, suggestedQty, urgency, reason, string(breakdownJSON)); err != nil {

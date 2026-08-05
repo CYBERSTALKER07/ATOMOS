@@ -82,6 +82,7 @@ export default function ManifestsPage() {
                 <th className="text-right py-2 px-3 font-medium">Stops</th>
                 <th className="text-left py-2 px-3 font-medium">Status</th>
                 <th className="text-right py-2 px-3 font-medium">Created</th>
+                <th className="text-right py-2 px-3 font-medium">Labels</th>
               </tr>
             </thead>
             <tbody>
@@ -98,6 +99,32 @@ export default function ManifestsPage() {
                   </td>
                   <td className="py-2.5 px-3 text-right text-[var(--muted)]">
                     {new Date(m.created_at).toLocaleTimeString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    <button
+                      type="button"
+                      className="md-btn md-btn-text text-xs"
+                      onClick={async () => {
+                        try {
+                          const res = await apiFetch(`/v1/warehouse/manifests/${encodeURIComponent(m.manifest_id)}/labels`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: '{}',
+                          });
+                          if (!res.ok) return;
+                          const zpl = await res.text();
+                          const blob = new Blob([zpl], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${m.manifest_id.slice(0, 8)}-labels.zpl`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      Print labels
+                    </button>
                   </td>
                 </tr>
               ))}

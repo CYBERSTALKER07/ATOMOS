@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { Truck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "../Skeleton";
 import EmptyState from "../EmptyState";
-import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
+import MapGL, { Layer, Marker, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { PageSection } from "../PageSection";
@@ -78,13 +78,42 @@ export function TrackingMap({
 }: TrackingMapProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
 
+  const routeLines = useMemo(() => {
+    const features = visibleOrders
+      .map((order) => {
+        const coords = order.route_geometry?.coordinates;
+        if (!coords || coords.length < 2) return null;
+        return {
+          type: "Feature" as const,
+          properties: { order_id: order.order_id },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: coords.map((p) => [p.lng, p.lat] as [number, number]),
+          },
+        };
+      })
+      .filter((f): f is NonNullable<typeof f> => f !== null);
+    return { type: "FeatureCollection" as const, features };
+  }, [visibleOrders]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || visibleOrders.length === 0) return;
     const bounds = new maplibregl.LngLatBounds();
-    for (const o of visibleOrders)
-      bounds.extend([o.driver_longitude!, o.driver_latitude!]);
-    map.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 600 });
+    let hasBounds = false;
+    for (const o of visibleOrders) {
+      if (o.driver_longitude != null && o.driver_latitude != null) {
+        bounds.extend([o.driver_longitude, o.driver_latitude]);
+        hasBounds = true;
+      }
+      for (const p of o.route_geometry?.coordinates ?? []) {
+        bounds.extend([p.lng, p.lat]);
+        hasBounds = true;
+      }
+    }
+    if (hasBounds && !bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 600 });
+    }
   }, [visibleOrders]);
 
   return (
@@ -145,14 +174,30 @@ export function TrackingMap({
           onClick={() => setSelectedOrder(null)}
         >
           <NavigationControl position="top-right" />
+          {routeLines.features.length > 0 ? (
+            <Source id="tracking-routes" type="geojson" data={routeLines}>
+              <Layer
+                id="tracking-routes-line"
+                type="line"
+                paint={{
+                  "line-color": "#2563eb",
+                  "line-width": 4,
+                  "line-opacity": 0.85,
+                }}
+              />
+            </Source>
+          ) : null}
           {visibleOrders.map((order) => {
+            if (order.driver_longitude == null || order.driver_latitude == null) {
+              return null;
+            }
             const isApproaching =
               order.is_approaching || order.state === "ARRIVED";
             return (
               <Marker
                 key={order.order_id}
-                longitude={order.driver_longitude!}
-                latitude={order.driver_latitude!}
+                longitude={order.driver_longitude}
+                latitude={order.driver_latitude}
                 anchor="center"
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();

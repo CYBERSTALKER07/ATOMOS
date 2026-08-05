@@ -13,6 +13,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
@@ -110,15 +111,19 @@ type supplierProfileResponse struct {
 	IsConfigured     bool     `json:"is_configured"`
 	SelectedGateways []string `json:"selected_gateways"`
 	PaymentAcceptor  string   `json:"payment_acceptor"`
+	Gln              string   `json:"gln,omitempty"`
+	Gs1CompanyPrefix string   `json:"gs1_company_prefix,omitempty"`
 	UpdatedAt        string   `json:"updated_at"`
 }
 
 type supplierProfileUpdateRequest struct {
-	LegalName   string   `json:"legal_name,omitempty"`
-	ContactName string   `json:"contact_name,omitempty"`
-	Email       string   `json:"email,omitempty"`
-	Phone       string   `json:"phone,omitempty"`
-	Categories  []string `json:"categories,omitempty"`
+	LegalName        string   `json:"legal_name,omitempty"`
+	ContactName      string   `json:"contact_name,omitempty"`
+	Email            string   `json:"email,omitempty"`
+	Phone            string   `json:"phone,omitempty"`
+	Categories       []string `json:"categories,omitempty"`
+	Gln              *string  `json:"gln,omitempty"`
+	Gs1CompanyPrefix *string  `json:"gs1_company_prefix,omitempty"`
 }
 
 type supplierDashboardResponse struct {
@@ -343,6 +348,8 @@ func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileR
 		IsConfigured:     current.IsConfigured,
 		SelectedGateways: append([]string(nil), current.SelectedGateways...),
 		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
+		Gln:              current.Gln,
+		Gs1CompanyPrefix: current.Gs1CompanyPrefix,
 		UpdatedAt:        updated,
 	}
 }
@@ -392,6 +399,27 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Categories) > 0 {
 		current.Categories = append([]string(nil), req.Categories...)
+	}
+	if req.Gln != nil {
+		raw := strings.TrimSpace(*req.Gln)
+		if raw == "" {
+			current.Gln = ""
+		} else {
+			norm, err := gs1.NormalizeGLN(raw)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			current.Gln = norm
+		}
+	}
+	if req.Gs1CompanyPrefix != nil {
+		prefix := digitsOnlyCompanyPrefix(*req.Gs1CompanyPrefix)
+		if prefix != "" && (len(prefix) < 7 || len(prefix) > 10) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_gs1_company_prefix"})
+			return
+		}
+		current.Gs1CompanyPrefix = prefix
 	}
 	now := s.now()
 	current.UpdatedAt = now
@@ -1245,4 +1273,14 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Deprecation", "true")
 	w.Header().Set("Sunset", "Sun, 31 Dec 2026 23:59:59 GMT")
 	writeJSON(w, http.StatusOK, response)
+}
+
+func digitsOnlyCompanyPrefix(raw string) string {
+	var b strings.Builder
+	for i := 0; i < len(raw); i++ {
+		if raw[i] >= '0' && raw[i] <= '9' {
+			b.WriteByte(raw[i])
+		}
+	}
+	return b.String()
 }

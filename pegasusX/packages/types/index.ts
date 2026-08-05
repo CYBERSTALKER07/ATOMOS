@@ -634,6 +634,22 @@ export interface SupplierReplenishmentPolicy {
   auto_approve_predictive_push: boolean;
   max_daily_transfer_units: number;
   min_confidence_score: number;
+  /** Cycle service level α for safety stock z_α (default 0.98). */
+  target_service_level: number;
+  /** Policy lead time in days (overridden by observed L when ≥10 samples). */
+  lead_time_days: number;
+  /** Assumed lead-time σ until observed history exists. */
+  lead_time_sigma_days: number;
+}
+
+export interface SupplierReplenishmentPolicyPatch {
+  auto_approve_stable?: boolean;
+  auto_approve_predictive_push?: boolean;
+  max_daily_transfer_units?: number;
+  min_confidence_score?: number;
+  target_service_level?: number;
+  lead_time_days?: number;
+  lead_time_sigma_days?: number;
 }
 
 export interface SupplierReplenishmentTraceRow {
@@ -664,6 +680,8 @@ export interface ReorderSuggestionRow {
   adjusted_demand_per_day: number;
   current_stock: number;
   in_flight_qty: number;
+  /** §8.2 SS units (legacy demand·0.15 when SAFETY_STOCK_V2_ENABLED off). */
+  safety_stock?: number;
   suggested_by_date: string;
   status: string;
   computed_at: string;
@@ -1083,6 +1101,39 @@ export interface SupplierDemandHistoryResponse {
   upcoming: SupplierDemandUpcomingRow[];
 }
 
+/** §8.4 server-persisted forecast accuracy (WAPE / bias / tracking signal). */
+export interface SupplierDemandAccuracySeriesRow {
+  date: string;
+  warehouse_id: string;
+  product_id: string;
+  forecast_qty: number;
+  actual_qty: number;
+  wape_7: number;
+  wape_28: number;
+  bias_7: number;
+  bias_28: number;
+  tracking_signal: number;
+  alert_ts: boolean;
+}
+
+export interface SupplierDemandAccuracyResponse {
+  enabled: boolean;
+  period_days: number;
+  as_of?: string;
+  wape_7: number;
+  wape_28: number;
+  bias_7: number;
+  bias_28: number;
+  tracking_signal: number;
+  sample_days_7: number;
+  sample_days_28: number;
+  alert_count: number;
+  forecast_units: number;
+  actual_units: number;
+  series: SupplierDemandAccuracySeriesRow[];
+  generated_at: string;
+}
+
 export interface SupplierInventoryImportResult {
   session_id?: string;
   applied: number;
@@ -1235,6 +1286,10 @@ export interface SupplierManifestDetail extends SupplierManifestRow {
   dispatched_at?: string;
   created_at?: string;
   region_code?: string;
+  /** Thin inbound map — last known driver GPS for payload seal/handoff. */
+  driver_lat?: number;
+  driver_lng?: number;
+  live_location_available?: boolean;
 }
 
 export interface SupplierManifestInjectOrderRequest {
@@ -1589,6 +1644,20 @@ export interface WarehouseYardManifest {
   manifest_state: string;
 }
 
+/** Factory fleet live map — driver pins (geometry deferred until FactoryTruckManifests polyline columns). */
+export type FactoryFleetLiveRoute = Omit<SupplierFleetLiveRoute, "route_geometry"> & {
+  order_count?: number;
+  loading_started_at?: string;
+  delivery_summary?: string;
+};
+
+export interface FactoryFleetLiveMapResponse {
+  routes: FactoryFleetLiveRoute[];
+  yard_manifests?: WarehouseYardManifest[];
+  factory_id: string;
+  fetched_at: string;
+}
+
 export interface WarehouseDispatchRun {
   run_id: string;
   warehouse_id: string;
@@ -1693,6 +1762,10 @@ export interface SupplierProfile {
   is_registered: boolean;
   is_configured: boolean;
   selected_gateways: PaymentGateway[];
+  /** GS1 Global Location Number (13 digits). */
+  gln?: string;
+  /** GS1 company prefix (7–10 digits) used to mint SSCC-18 at seal. */
+  gs1_company_prefix?: string;
   updated_at: string;
 }
 
@@ -1702,6 +1775,23 @@ export interface SupplierProfileUpdateRequest {
   email?: string;
   phone?: string;
   categories?: string[];
+  gln?: string;
+  gs1_company_prefix?: string;
+}
+
+export interface ManifestShipUnit {
+  manifest_id: string;
+  ship_unit_id: string;
+  sscc: string;
+  order_id: string;
+  sequence: number;
+  gtin?: string;
+  created_at: string;
+}
+
+export interface ManifestShipUnitsResponse {
+  manifest_id: string;
+  ship_units: ManifestShipUnit[];
 }
 
 export interface SupplierTopologyInventorySeed {
@@ -3556,6 +3646,8 @@ export interface RetailerTrackingOrder {
   currency: Iso4217;
   live_location_available: boolean;
   driver_location?: RetailerTrackingLocation;
+  /** Planned sealed-route overlay from SupplierTruckManifests (Google Routes / OSRM). */
+  route_geometry?: RouteGeometryWire;
   payment_evidence?: RetailerTrackingPaymentEvidence;
   receipt_dossier?: RetailerTrackingReceiptDossier;
   created_at: string;
@@ -4834,3 +4926,151 @@ export type ApplyReassignRequest = any;
 export type StatusResponse = any;
 export type ReassignmentCandidate = any;
 
+/** Partner Integration Layer (Gate 3 / §8.9) */
+export type PartnerTenantType = "RETAILER" | "SUPPLIER";
+
+export interface PartnerIssuedKey {
+  key_id: string;
+  tenant_type: PartnerTenantType;
+  tenant_id: string;
+  scopes: string[];
+  key_prefix: string;
+  /** Shown once at issuance — store securely. */
+  secret: string;
+  expires_at?: string;
+}
+
+export interface PartnerApiKeyMeta {
+  key_id: string;
+  tenant_type: PartnerTenantType;
+  tenant_id: string;
+  key_prefix: string;
+  scopes: string[];
+  status: string;
+}
+
+export interface PartnerWebhookCreated {
+  subscription_id: string;
+  url: string;
+  event_types: string[];
+  signing_secret: string;
+}
+
+export interface PartnerAvailabilityRow {
+  product_id: string;
+  supplier_id: string;
+  available_stock?: number;
+  is_out_of_stock?: boolean;
+  accepts_backorder?: boolean;
+  show_stock_counts?: boolean;
+}
+
+export interface PartnerWebhookSubscription {
+  subscription_id: string;
+  url: string;
+  event_types: string[];
+  is_active: boolean;
+  secret_prefix?: string;
+  created_at?: string;
+}
+
+export interface PartnerDeadLetterAttempt {
+  attempt_id: string;
+  subscription_id: string;
+  event_id: string;
+  event_type: string;
+  status: string;
+  last_error?: string;
+  attempt_count?: number;
+}
+
+export type PartnerExportResource = "orders" | "invoices" | "inventory" | "ledger" | "journals";
+export type PartnerExportFormat = "csv" | "json" | "xml";
+
+export interface PartnerExportJob {
+  job_id: string;
+  tenant_type?: string;
+  tenant_id?: string;
+  resource: string;
+  format: string;
+  status: string;
+  row_count?: number;
+  sftp_status?: string;
+  error?: string;
+  download_url?: string;
+  from?: string;
+  to?: string;
+  created_at?: string;
+  finished_at?: string;
+}
+
+export interface PartnerSftpConfig {
+  configured: boolean;
+  host?: string;
+  port?: number;
+  username?: string;
+  secret_ref?: string;
+  remote_dir?: string;
+  is_active?: boolean;
+  inbound_dir?: string;
+  outbound_dir?: string;
+  archive_dir?: string;
+  edi_enabled?: boolean;
+}
+
+export interface PartnerEdiDocument {
+  document_id: string;
+  tenant_type?: string;
+  tenant_id?: string;
+  direction: string;
+  doc_type: string;
+  external_doc_id: string;
+  order_id?: string;
+  status: string;
+  remote_name?: string;
+  object_path?: string;
+  error?: string;
+  created_at?: string;
+  finished_at?: string;
+}
+
+
+// ── §8.3 Inventory-grounded auto-order ──────────────────────────────────────
+export type AutoOrderExecutionMode = "off" | "shadow" | "draft" | "place";
+
+export interface AutoOrderShadowStats {
+  proposal_count: number;
+  matched_orders: number;
+  wape: number;
+  unmodified_accept_rate: number;
+  window_days: number;
+}
+
+export interface AutoOrderShadowProposal {
+  proposal_id: string;
+  retailer_id: string;
+  sku: string;
+  supplier_id?: string;
+  proposed_qty: number;
+  ip: number;
+  reorder_point: number;
+  order_up_to: number;
+  confidence?: number;
+  reason?: string;
+  bucket_date: string;
+  status: string;
+  run_id?: string;
+  created_at?: string;
+}
+
+export interface RetailerAutoOrderSettings {
+  global_enabled: boolean;
+  execution_mode?: AutoOrderExecutionMode | string;
+  has_any_history?: boolean;
+  analytics_start_date?: string;
+  supplier_overrides?: Array<{ supplier_id: string; enabled: boolean }>;
+  category_overrides?: Array<{ category_id: string; enabled: boolean }>;
+  product_overrides?: Array<{ product_id: string; enabled: boolean }>;
+  variant_overrides?: Array<{ variant_id: string; enabled: boolean }>;
+  shadow_stats?: AutoOrderShadowStats;
+}

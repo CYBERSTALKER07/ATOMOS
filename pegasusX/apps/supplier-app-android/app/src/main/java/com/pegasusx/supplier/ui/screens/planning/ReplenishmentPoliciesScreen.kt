@@ -108,6 +108,25 @@ fun ReplenishmentPoliciesScreen(
                         Modifier.weight(1f),
                     )
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
+                    SupplierKpiTile(
+                        "Service level",
+                        "${(policy!!.targetServiceLevel * 100).toInt()}%",
+                        Icons.Default.Policy,
+                        Modifier.weight(1f),
+                    )
+                    SupplierKpiTile(
+                        "Lead days / σ",
+                        "${policy!!.leadTimeDays} / ${policy!!.leadTimeSigmaDays}",
+                        Icons.Default.Speed,
+                        Modifier.weight(1f),
+                    )
+                }
+                Text(
+                    "Lead σ is assumed until ≥10 transfers have ReceivedAt history.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

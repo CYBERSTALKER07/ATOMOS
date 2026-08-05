@@ -28,6 +28,9 @@ export interface ManifestDetailPaneProps {
   handleManifestSeal: () => void;
   isSealingManifest: boolean;
   isLoading: boolean;
+  inboundDriverLat?: number | null;
+  inboundDriverLng?: number | null;
+  inboundLive?: boolean;
 }
 
 export const ManifestDetailPane: React.FC<ManifestDetailPaneProps> = ({
@@ -52,9 +55,22 @@ export const ManifestDetailPane: React.FC<ManifestDetailPaneProps> = ({
   handleManifestSeal,
   isSealingManifest,
   isLoading,
+  inboundDriverLat = null,
+  inboundDriverLng = null,
+  inboundLive = false,
 }) => {
   return (
       <View className="flex-1 flex-col">
+        {inboundDriverLat != null && inboundDriverLng != null ? (
+          <View
+            className="px-8 py-3"
+            style={{ borderBottomWidth: isIOS ? 0.33 : 1, borderBottomColor: T.colors.separator }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: T.colors.secondaryLabel }}>
+              Inbound truck {inboundLive ? 'LIVE' : 'last known'}: {inboundDriverLat.toFixed(5)}, {inboundDriverLng.toFixed(5)}
+            </Text>
+          </View>
+        ) : null}
         {/* Order header */}
         {selectedOrder ? (
           <>

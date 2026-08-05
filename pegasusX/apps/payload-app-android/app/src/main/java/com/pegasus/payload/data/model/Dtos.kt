@@ -90,6 +90,9 @@ data class Manifest(
     // Hydrated by the detail endpoint only — Phase 4 wires this.
     val orders: List<LiveOrder> = emptyList(),
     @SerialName("overflow_count") val overflowCount: Int = 0,
+    @SerialName("driver_lat") val driverLat: Double? = null,
+    @SerialName("driver_lng") val driverLng: Double? = null,
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
 )
 
 @Serializable

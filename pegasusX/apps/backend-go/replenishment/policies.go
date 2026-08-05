@@ -9,13 +9,16 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// Policy holds touchless replenishment knobs for one supplier.
+// Policy holds touchless + safety-stock knobs for one supplier.
 type Policy struct {
 	SupplierID                string  `json:"supplier_id"`
 	AutoApproveStable         bool    `json:"auto_approve_stable"`
 	AutoApprovePredictivePush bool    `json:"auto_approve_predictive_push"`
 	MaxDailyTransferUnits     int64   `json:"max_daily_transfer_units"`
 	MinConfidenceScore        float64 `json:"min_confidence_score"`
+	TargetServiceLevel        float64 `json:"target_service_level"`
+	LeadTimeDays              int64   `json:"lead_time_days"`
+	LeadTimeSigmaDays         float64 `json:"lead_time_sigma_days"`
 }
 
 func defaultPolicy(supplierID string) Policy {
@@ -25,6 +28,9 @@ func defaultPolicy(supplierID string) Policy {
 		AutoApprovePredictivePush: true,
 		MaxDailyTransferUnits:     500,
 		MinConfidenceScore:        0.85,
+		TargetServiceLevel:        0.98,
+		LeadTimeDays:              defaultLeadTimeDays,
+		LeadTimeSigmaDays:         1.0,
 	}
 }
 
@@ -35,7 +41,10 @@ func LoadPolicy(ctx context.Context, client *spanner.Client, supplierID string) 
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT AutoApproveStable, AutoApprovePredictivePush,
-		             MaxDailyTransferUnits, MinConfidenceScore
+		             MaxDailyTransferUnits, MinConfidenceScore,
+		             COALESCE(TargetServiceLevel, 0.98),
+		             COALESCE(LeadTimeDays, 2),
+		             COALESCE(LeadTimeSigmaDays, 1.0)
 		      FROM ReplenishmentPolicies WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": supplierID},
 	}
@@ -49,10 +58,59 @@ func LoadPolicy(ctx context.Context, client *spanner.Client, supplierID string) 
 		return Policy{}, err
 	}
 	p := defaultPolicy(supplierID)
-	if err := row.Columns(&p.AutoApproveStable, &p.AutoApprovePredictivePush, &p.MaxDailyTransferUnits, &p.MinConfidenceScore); err != nil {
+	if err := row.Columns(
+		&p.AutoApproveStable, &p.AutoApprovePredictivePush,
+		&p.MaxDailyTransferUnits, &p.MinConfidenceScore,
+		&p.TargetServiceLevel, &p.LeadTimeDays, &p.LeadTimeSigmaDays,
+	); err != nil {
 		return Policy{}, err
 	}
+	if p.TargetServiceLevel <= 0 {
+		p.TargetServiceLevel = 0.98
+	}
+	if p.LeadTimeDays <= 0 {
+		p.LeadTimeDays = defaultLeadTimeDays
+	}
+	if p.LeadTimeSigmaDays < 0 {
+		p.LeadTimeSigmaDays = 1.0
+	}
 	return p, nil
+}
+
+// UpsertPolicy writes the full policy row.
+func UpsertPolicy(ctx context.Context, client *spanner.Client, p Policy) error {
+	if client == nil || p.SupplierID == "" {
+		return errors.New("policy upsert unavailable")
+	}
+	if p.TargetServiceLevel <= 0 {
+		p.TargetServiceLevel = 0.98
+	}
+	if p.LeadTimeDays <= 0 {
+		p.LeadTimeDays = defaultLeadTimeDays
+	}
+	if p.LeadTimeSigmaDays < 0 {
+		p.LeadTimeSigmaDays = 1.0
+	}
+	if p.MaxDailyTransferUnits <= 0 {
+		p.MaxDailyTransferUnits = 500
+	}
+	if p.MinConfidenceScore <= 0 {
+		p.MinConfidenceScore = 0.85
+	}
+	_, err := client.Apply(ctx, []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("ReplenishmentPolicies", map[string]any{
+			"SupplierId":                p.SupplierID,
+			"AutoApproveStable":         p.AutoApproveStable,
+			"AutoApprovePredictivePush": p.AutoApprovePredictivePush,
+			"MaxDailyTransferUnits":     p.MaxDailyTransferUnits,
+			"MinConfidenceScore":        p.MinConfidenceScore,
+			"TargetServiceLevel":        p.TargetServiceLevel,
+			"LeadTimeDays":              p.LeadTimeDays,
+			"LeadTimeSigmaDays":         p.LeadTimeSigmaDays,
+			"UpdatedAt":                 spanner.CommitTimestamp,
+		}),
+	})
+	return err
 }
 
 // EnsurePolicy seeds a default policy row when absent.
@@ -81,6 +139,9 @@ func EnsurePolicy(ctx context.Context, client *spanner.Client, supplierID string
 				"AutoApprovePredictivePush": p.AutoApprovePredictivePush,
 				"MaxDailyTransferUnits":     p.MaxDailyTransferUnits,
 				"MinConfidenceScore":        p.MinConfidenceScore,
+				"TargetServiceLevel":        p.TargetServiceLevel,
+				"LeadTimeDays":              p.LeadTimeDays,
+				"LeadTimeSigmaDays":         p.LeadTimeSigmaDays,
 				"UpdatedAt":                 spanner.CommitTimestamp,
 			}),
 		})

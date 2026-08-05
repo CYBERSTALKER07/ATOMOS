@@ -100,6 +100,7 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
 			"TransferId": transferID,
 			"State":      "RECEIVED",
+			"ReceivedAt": spanner.CommitTimestamp,
 			"UpdatedAt":  spanner.CommitTimestamp,
 		})}); err != nil {
 			return err

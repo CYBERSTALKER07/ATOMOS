@@ -36,12 +36,10 @@ func TestBuildRevenueResponseSumsCompletedOrders(t *testing.T) {
 	}
 }
 
-func TestBuildDemandHistoryAggregatesActualAndBaseline(t *testing.T) {
+func TestBuildDemandHistoryFromDayMaps(t *testing.T) {
 	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
-	orders := []SupplierOrder{
-		{Status: "COMPLETED", UpdatedAt: "2026-06-14T09:00:00Z"},
-		{Status: "COMPLETED", UpdatedAt: "2026-06-13T18:00:00Z"},
-	}
+	predicted := map[string]int64{"2026-06-14": 12, "2026-06-13": 8}
+	actual := map[string]int64{"2026-06-14": 10, "2026-06-13": 9}
 	recs := []AIRecommendation{
 		{
 			RecommendationID: "r-1",
@@ -54,13 +52,16 @@ func TestBuildDemandHistoryAggregatesActualAndBaseline(t *testing.T) {
 			Status:           "PENDING",
 		},
 	}
-	resp := buildDemandHistory(orders, recs, now, 14)
+	resp := buildDemandHistoryFromDayMaps(predicted, actual, recs, now, 14)
 	if len(resp.TimeSeries) != 14 {
 		t.Fatalf("time_series=%d want=14", len(resp.TimeSeries))
 	}
 	last := resp.TimeSeries[len(resp.TimeSeries)-1]
-	if last.ActualQty != 1 || last.PredictedQty != 5 {
+	if last.ActualQty != 10 || last.PredictedQty != 12 {
 		t.Fatalf("last point actual=%d predicted=%d", last.ActualQty, last.PredictedQty)
+	}
+	if len(resp.Upcoming) != 1 || resp.Upcoming[0].PredictedQty != 5 {
+		t.Fatalf("upcoming=%+v", resp.Upcoming)
 	}
 }
 

@@ -48,7 +48,9 @@ export default function ProfilePage() {
     (draft.legal_name.trim() !== (profile.legal_name ?? "") ||
       draft.contact_name.trim() !== (profile.contact_name ?? "") ||
       draft.email.trim() !== (profile.email ?? "") ||
-      draft.phone.trim() !== (profile.phone ?? ""));
+      draft.phone.trim() !== (profile.phone ?? "") ||
+      draft.gln.trim() !== (profile.gln ?? "") ||
+      draft.gs1_company_prefix.trim() !== (profile.gs1_company_prefix ?? ""));
 
   async function saveProfile() {
     if (!profile || !draft) return;
@@ -67,6 +69,8 @@ export default function ProfilePage() {
       contact_name: contactName,
       email,
       phone: phone || undefined,
+      gln: draft.gln.trim(),
+      gs1_company_prefix: draft.gs1_company_prefix.trim(),
     };
 
     setSaving(true);

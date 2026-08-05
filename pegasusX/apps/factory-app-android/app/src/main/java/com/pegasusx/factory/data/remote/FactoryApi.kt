@@ -156,6 +156,9 @@ interface FactoryApi {
     @GET("v1/factory/fleet")
     suspend fun getFleet(): Response<VehicleListResponse>
 
+    @GET("v1/factory/fleet/live-map")
+    suspend fun getFleetLiveMap(): Response<FactoryFleetLiveMapResponse>
+
     @GET("v1/factory/fleet/drivers")
     suspend fun getFleetDrivers(): Response<FleetDriverListResponse>
 

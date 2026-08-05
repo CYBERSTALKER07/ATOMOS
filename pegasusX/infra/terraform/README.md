@@ -62,9 +62,14 @@ terraform apply
   `kafka_bootstrap_servers`; Terraform stores it in
   `pegasusx-<tenant>-kafka-bootstrap-servers` for External Secrets. Local SSMR
   keeps Docker Kafka in `infra/docker-compose.ssmr.yml` (no Confluent required).
-- **Google Maps:** enable Geocoding API + Places API; restrict the server key to
-  backend egress IPs. Android Maps SDK keys are separate app-restricted keys per
-  `CLOUD_CREDENTIALS_CHECKLIST.md`. Pass `google_maps_api_key` on apply to seed GSM.
+- **Google Maps Platform:** `maps_platform.tf` enables Routes, Geocoding, Places,
+  and Maps backend APIs. Pass `google_maps_api_key` (server: Geocode + Places +
+  Routes; IP-restrict to GKE NAT). Optional `maps_android_api_key` /
+  `maps_ios_api_key` seed client SDK GSM shells. See
+  `CLOUD_CREDENTIALS_CHECKLIST.md`. Geometry order in backend:
+  Google Routes → OSRM → dense (`ROUTING_PROVIDER=auto`).
+- **Billing:** set `billing_account_id` + `monthly_budget_usd` +
+  `budget_alert_emails` so Maps Routes spend is covered by the monthly budget.
 - Kafka is provider-agnostic in this baseline. The module stores bootstrap
   coordinates plus the isolated topic names in Secret Manager so backend-go and
   ai-worker can consume them at deploy time.

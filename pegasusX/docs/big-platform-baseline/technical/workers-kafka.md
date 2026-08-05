@@ -7,7 +7,7 @@
 | backend-go API | `api` | HTTP/WS; writes Spanner+outbox; **no** outbox relay |
 | backend-go-worker | `worker` | Outbox relay, order mutator, warehouse mutator, notifications, reconcilers |
 | ai-worker | separate | Import, freeze registry, demand jobs, optional synthesis |
-| optimizer-core | sidecar | OR-Tools solve |
+| optimizer-core | separate Deployment (port 8082) | OR-Tools VRP for supplier/WH dispatch; **not** in SSMR overlay; prod `replicas: 0` until AR image |
 
 ## Consumer groups (existing + planned)
 

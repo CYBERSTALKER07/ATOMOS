@@ -204,16 +204,44 @@ export interface VariantOverride {
   variant_id: string;
   enabled: boolean;
 }
+export type AutoOrderExecutionMode = "off" | "shadow" | "draft" | "place";
+
+export interface AutoOrderShadowStats {
+  proposal_count: number;
+  matched_orders: number;
+  wape: number;
+  unmodified_accept_rate: number;
+  window_days: number;
+}
+
+export interface AutoOrderShadowProposal {
+  proposal_id: string;
+  retailer_id: string;
+  sku: string;
+  supplier_id?: string;
+  proposed_qty: number;
+  ip: number;
+  reorder_point: number;
+  order_up_to: number;
+  confidence?: number;
+  reason?: string;
+  bucket_date: string;
+  status: string;
+  run_id?: string;
+  created_at?: string;
+}
+
 export interface AutoOrderSettings {
   global_enabled: boolean;
-  /** draft (default) | place — place creates real supplier orders when flag on */
-  execution_mode?: "draft" | "place" | string;
+  /** off | shadow | draft | place — place creates real supplier orders when flag on */
+  execution_mode?: AutoOrderExecutionMode | string;
   has_any_history: boolean;
   analytics_start_date?: string;
   supplier_overrides: SupplierOverride[];
   category_overrides: CategoryOverride[];
   product_overrides: ProductOverride[];
   variant_overrides: VariantOverride[];
+  shadow_stats?: AutoOrderShadowStats;
 }
 
 /** POST /v1/retailer/settings/auto-order/run audit row */
@@ -235,7 +263,7 @@ export interface AutoOrderRun {
   retailer_id: string;
   started_at: string;
   finished_at?: string;
-  mode: "draft" | "place" | string;
+  mode: AutoOrderExecutionMode | string;
   draft_lines: number;
   placed_lines?: number;
   placed_orders?: AutoOrderPlacedOrder[];
@@ -445,6 +473,14 @@ export interface TrackingOrderItem {
   line_total: number;
 }
 
+export interface TrackingRouteGeometry {
+  route_id?: string;
+  encoded_polyline?: string;
+  coordinates: Array<{ lat: number; lng: number }>;
+  source: string;
+  stop_count?: number;
+}
+
 export interface TrackingOrder {
   order_id: string;
   supplier_id: string;
@@ -462,6 +498,7 @@ export interface TrackingOrder {
   fiscal_qr?: string;
   latest_fiscal_receipt_id?: string;
   items: TrackingOrderItem[];
+  route_geometry?: TrackingRouteGeometry;
 }
 
 export interface TrackingResponse {

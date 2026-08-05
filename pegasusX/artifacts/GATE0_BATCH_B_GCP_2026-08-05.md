@@ -19,7 +19,7 @@
 
 | Item | Why deferred |
 |------|----------------|
-| Populate OSRM PVC with Uzbekistan (or target) extract | Needs cluster write + Geofabrik download (~GB); manifests ready |
+| Populate OSRM PVC with Uzbekistan (or target) extract | Optional regional **fallback** only — Google Routes is primary world-scale geometry (`ROUTING_PROVIDER=auto`) |
 | `terraform import` of existing `default_daily_full_backup_schedule` | Avoid duplicate schedule until import |
-| Publish `optimizer-core` image | Prod replicas scaled to 0 until AR image exists |
+| Publish `optimizer-core` image | Prod replicas scaled to 0 until AR image exists — SoT: [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md) |
 | Apply prod overlay to live cluster | Image/TLS manifests ready; apply is a release step |

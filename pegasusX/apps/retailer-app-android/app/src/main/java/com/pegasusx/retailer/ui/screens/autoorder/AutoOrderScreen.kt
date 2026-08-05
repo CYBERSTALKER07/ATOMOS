@@ -206,7 +206,89 @@ fun AutoOrderScreen(
             )
         }
 
-        // ── Run worker (draft + place) ──
+        // ── Execution mode ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Execution mode", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Global aggressiveness. Scope toggles below choose which SKUs. " +
+                            "Disable at any scope blocks even when global is on. Shadow recommended.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        listOf("off" to "Off", "shadow" to "Shadow", "draft" to "Draft", "place" to "Place").forEach { (mode, label) ->
+                            val selected = uiState.executionMode == mode
+                            OutlinedButton(
+                                onClick = { viewModel.setExecutionMode(mode) },
+                                enabled = !uiState.running,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    uiState.settings?.shadowStats?.let { st ->
+                        Text(
+                            "30d WAPE ${(st.wape * 100).toInt()}% · accept ${(st.unmodifiedAcceptRate * 100).toInt()}% (${st.proposalCount} proposals)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Shadow inbox ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Shadow inbox", style = MaterialTheme.typography.titleMedium)
+                    if (uiState.shadowProposals.isEmpty()) {
+                        Text(
+                            "No shadow proposals yet. Set mode to Shadow and run Shadow now.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        uiState.shadowProposals.take(8).forEach { p ->
+                            Text(
+                                "${p.sku} · qty ${p.proposedQty} · IP ${p.ip.toInt()} · ROP ${p.reorderPoint.toInt()}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Run worker (shadow + draft + place) ──
         item {
             Card(
                 colors = CardDefaults.cardColors(
@@ -219,7 +301,7 @@ fun AutoOrderScreen(
                 ) {
                     Text("Auto-order worker", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Draft stages cart lines (idempotent per SKU/day). " +
+                        "Shadow records proposals only. Draft stages cart lines. " +
                             "Place creates real supplier orders when the server flag is on.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -229,8 +311,21 @@ fun AutoOrderScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedButton(
+                            onClick = viewModel::runAutoOrderShadow,
+                            enabled = !uiState.running && uiState.executionMode != "off",
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            if (uiState.running && uiState.runningMode == "shadow") {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text("…")
+                            } else {
+                                Text("Shadow")
+                            }
+                        }
+                        OutlinedButton(
                             onClick = viewModel::runAutoOrderNow,
-                            enabled = !uiState.running,
+                            enabled = !uiState.running && uiState.executionMode != "off",
                             modifier = Modifier.weight(1f),
                         ) {
                             if (uiState.running && uiState.runningMode == "draft") {
@@ -240,12 +335,12 @@ fun AutoOrderScreen(
                             } else {
                                 Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Draft now")
+                                Text("Draft")
                             }
                         }
                         Button(
                             onClick = viewModel::openPlaceConfirm,
-                            enabled = !uiState.running,
+                            enabled = !uiState.running && uiState.executionMode != "off",
                             modifier = Modifier.weight(1f),
                         ) {
                             if (uiState.running && uiState.runningMode == "place") {
@@ -259,7 +354,7 @@ fun AutoOrderScreen(
                             } else {
                                 Icon(Icons.Rounded.ShoppingCart, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Place now")
+                                Text("Place")
                             }
                         }
                     }

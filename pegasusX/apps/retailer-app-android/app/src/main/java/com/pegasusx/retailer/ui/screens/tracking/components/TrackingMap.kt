@@ -34,6 +34,8 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import androidx.compose.ui.graphics.Color
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
@@ -74,6 +76,17 @@ fun TrackingMap(
                 onMapClick = { onOrderSelected(null) },
             ) {
                 for (order in visibleOrders) {
+                    val routePoints = order.routeGeometry?.coordinates
+                        ?.map { LatLng(it.lat, it.lng) }
+                        .orEmpty()
+                    if (routePoints.size >= 2) {
+                        Polyline(
+                            points = routePoints,
+                            color = Color(0xFF2563EB),
+                            width = 10f,
+                        )
+                    }
+
                     val driverLat = order.driverLatitude ?: continue
                     val driverLng = order.driverLongitude ?: continue
                     val position = LatLng(driverLat, driverLng)

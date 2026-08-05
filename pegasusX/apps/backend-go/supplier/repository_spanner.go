@@ -104,6 +104,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"IBAN",
 		"SelectedGatewaysJson",
 		"PaymentAcceptor",
+		"Gln",
+		"Gs1CompanyPrefix",
 		"RegisteredAt",
 		"ConfiguredAt",
 		"UpdatedAt",
@@ -120,7 +122,7 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	var fleetVehicleCount, fleetMaxVU, factoryCount spanner.NullInt64
 	var categoriesJSON, selectedGatewaysJSON []byte
 	var configuredAt spanner.NullTime
-	var paymentAcceptor spanner.NullString
+	var paymentAcceptor, gln, gs1Prefix spanner.NullString
 
 	if err := profileRow.Columns(
 		new(string),
@@ -149,11 +151,19 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		&p.IBAN,
 		&selectedGatewaysJSON,
 		&paymentAcceptor,
+		&gln,
+		&gs1Prefix,
 		&p.RegisteredAt,
 		&configuredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier profile %s: %w", supplierID, err)
+	}
+	if gln.Valid {
+		p.Gln = gln.StringVal
+	}
+	if gs1Prefix.Valid {
+		p.Gs1CompanyPrefix = gs1Prefix.StringVal
 	}
 
 	if warehouseLat.Valid {
@@ -691,6 +701,8 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 			"IBAN":                   strings.TrimSpace(p.IBAN),
 			"SelectedGatewaysJson":   selectedGatewaysJSON,
 			"PaymentAcceptor":        normalizeSupplierPaymentAcceptor(p.PaymentAcceptor),
+			"Gln":                    strings.TrimSpace(p.Gln),
+			"Gs1CompanyPrefix":       strings.TrimSpace(p.Gs1CompanyPrefix),
 			"RegisteredAt":           registeredAt,
 			"ConfiguredAt":           nullableTime(p.ConfiguredAt),
 			"UpdatedAt":              updatedAt,

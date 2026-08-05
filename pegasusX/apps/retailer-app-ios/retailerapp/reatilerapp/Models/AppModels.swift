@@ -522,6 +522,7 @@ struct RetailerReorderSuggestion: Codable, Identifiable {
     let adjustedDemandPerDay: Double?
     let currentStock: Int64?
     let inFlightQty: Int64?
+    let safetyStock: Double?
     let status: String?
     let sources: [String]?
     let sellThroughVelocity: Double?
@@ -535,6 +536,7 @@ struct RetailerReorderSuggestion: Codable, Identifiable {
         case adjustedDemandPerDay = "adjusted_demand_per_day"
         case currentStock = "current_stock"
         case inFlightQty = "in_flight_qty"
+        case safetyStock = "safety_stock"
         case sellThroughVelocity = "sell_through_velocity"
         case baseDemandPerDay = "base_demand_per_day"
     }

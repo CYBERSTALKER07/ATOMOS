@@ -67,6 +67,15 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierCreditProgram,
   RetailerPaymentTerms,
   ArInvoice,
+  PartnerDeadLetterAttempt,
+  PartnerEdiDocument,
+  PartnerExportJob,
+  PartnerIssuedKey,
+  PartnerSftpConfig,
+  PartnerWebhookSubscription,
+  PartnerApiKeyMeta,
+  PartnerWebhookCreated,
+  PartnerAvailabilityRow,
   ComplianceDashboardResponse,
   ComplianceExportBucket,
   NegotiationPendingResponse,
@@ -99,6 +108,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierDemandHistoryResponse,
   SupplierMEIONetworkSummary,
   SupplierReplenishmentPolicy,
+  SupplierReplenishmentPolicyPatch,
   SupplierReplenishmentTraceabilityResponse,
   ReorderSuggestionsListResponse,
   ReorderSuggestionDismissRequest,
@@ -163,6 +173,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierFleetVehiclesResponse,
   SupplierProfile,
   SupplierProfileUpdateRequest,
+  ManifestShipUnitsResponse,
   SupplierPricingRule,
   SupplierPricingRuleUpdateRequest,
   SupplierPromotion,
@@ -185,6 +196,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   WarehouseForceReceiveRequest,
   WarehouseInventoryResponse,
   WarehouseFleetLiveMapResponse,
+  FactoryFleetLiveMapResponse,
   WarehouseFleetVehicleDetailResponse,
   WarehouseFleetVehicleListResponse,
   WarehouseOpsDashboardResponse,
@@ -448,6 +460,37 @@ export class ApiClient {
     idempotencyKey: string,
   ): Promise<SupplierProfile> {
     return this.request<SupplierProfile>("/v1/supplier/profile", "PUT", { body: request, idempotencyKey });
+  }
+
+  async listManifestShipUnits(
+    manifestId: string,
+    role: "warehouse" | "payload" | "payloader" | "supplier" = "warehouse",
+  ): Promise<ManifestShipUnitsResponse> {
+    const mid = encodeURIComponent(manifestId);
+    const path =
+      role === "supplier"
+        ? `/v1/supplier/manifests/${mid}/ship-units`
+        : role === "payload" || role === "payloader"
+          ? `/v1/${role}/manifests/${mid}/ship-units`
+          : `/v1/warehouse/manifests/${mid}/ship-units`;
+    return this.request<ManifestShipUnitsResponse>(path, "GET");
+  }
+
+  /** Downloads GS1-128 ZPL as text/plain (caller may save as .zpl). */
+  async renderManifestLabelsZpl(
+    manifestId: string,
+    opts: { orderId?: string; role?: "warehouse" | "payload" | "payloader" | "supplier" } = {},
+  ): Promise<string> {
+    const mid = encodeURIComponent(manifestId);
+    const role = opts.role ?? "warehouse";
+    const path =
+      role === "supplier"
+        ? `/v1/supplier/manifests/${mid}/labels`
+        : role === "payload" || role === "payloader"
+          ? `/v1/${role}/manifests/${mid}/labels`
+          : `/v1/warehouse/manifests/${mid}/labels`;
+    const body = opts.orderId ? { order_id: opts.orderId } : {};
+    return this.requestText(path, "POST", { body });
   }
 
   async getSupplierTopology(): Promise<SupplierTopologyResponse> {
@@ -794,6 +837,23 @@ export class ApiClient {
 
   async getSupplierDemandHistory(): Promise<SupplierDemandHistoryResponse> {
     return this.request<SupplierDemandHistoryResponse>("/v1/supplier/analytics/demand/history", "GET");
+  }
+
+  /** §8.4 persisted WAPE / bias / tracking signal from ForecastAccuracyDaily. */
+  async getSupplierDemandAccuracy(params?: {
+    days?: number;
+    warehouse_id?: string;
+    product_id?: string;
+  }): Promise<import("@pegasusx/types").SupplierDemandAccuracyResponse> {
+    const q = new URLSearchParams();
+    if (params?.days != null) q.set("days", String(params.days));
+    if (params?.warehouse_id) q.set("warehouse_id", params.warehouse_id);
+    if (params?.product_id) q.set("product_id", params.product_id);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<import("@pegasusx/types").SupplierDemandAccuracyResponse>(
+      `/v1/supplier/analytics/demand/accuracy${suffix}`,
+      "GET",
+    );
   }
 
   /** B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (not planning multipliers). */
@@ -1158,6 +1218,16 @@ export class ApiClient {
 
   async getSupplierReplenishmentPolicies(): Promise<SupplierReplenishmentPolicy> {
     return this.request<SupplierReplenishmentPolicy>("/v1/supplier/replenishment/policies", "GET");
+  }
+
+  async patchSupplierReplenishmentPolicies(
+    patch: SupplierReplenishmentPolicyPatch,
+  ): Promise<SupplierReplenishmentPolicy> {
+    return this.request<SupplierReplenishmentPolicy>(
+      "/v1/supplier/replenishment/policies",
+      "PATCH",
+      patch,
+    );
   }
 
   async getSupplierReplenishmentTraceability(): Promise<SupplierReplenishmentTraceabilityResponse> {
@@ -1707,6 +1777,10 @@ export class ApiClient {
 
   async getWarehouseFleetLiveMap(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetLiveMapResponse> {
     return this.request<WarehouseFleetLiveMapResponse>(appendQuery("/v1/warehouse/ops/fleet/live-map", query as Record<string, unknown>), "GET");
+  }
+
+  async getFactoryFleetLiveMap(query: { factory_id?: string } = {}): Promise<FactoryFleetLiveMapResponse> {
+    return this.request<FactoryFleetLiveMapResponse>(appendQuery("/v1/factory/fleet/live-map", query as Record<string, unknown>), "GET");
   }
 
   async getWarehousePulse(query: { warehouse_id?: string } = {}): Promise<PulseResponse> {
@@ -2294,6 +2368,196 @@ export class ApiClient {
     );
   }
 
+  // ── Partner Integration Layer (/partner/v1 + admin key issue) ─────────────
+
+  async issuePartnerApiKey(body: {
+    tenant_type?: string;
+    tenant_id?: string;
+    scopes?: string[];
+  }): Promise<PartnerIssuedKey> {
+    return this.request<PartnerIssuedKey>("/v1/admin/partner-keys", "POST", { body });
+  }
+
+  async listPartnerApiKeys(): Promise<{ keys: PartnerApiKeyMeta[] }> {
+    return this.request("/v1/admin/partner-keys", "GET");
+  }
+
+  async revokePartnerApiKey(keyId: string): Promise<{ ok: boolean }> {
+    return this.request(`/v1/admin/partner-keys/${encodeURIComponent(keyId)}/revoke`, "POST", { body: {} });
+  }
+
+  /** Machine-auth partner call — pass full `pxk_…` secret; does not use session JWT. */
+  async partnerCreateOrder(
+    apiKey: string,
+    body: Record<string, unknown>,
+    idempotencyKey: string,
+  ): Promise<{ order_id: string; status: string; total_minor: number; currency: string }> {
+    return this.request("/partner/v1/orders", "POST", {
+      body,
+      idempotencyKey,
+      requiresAuth: false,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  async partnerGetOrder(apiKey: string, orderId: string): Promise<unknown> {
+    return this.request(`/partner/v1/orders/${encodeURIComponent(orderId)}`, "GET", {
+      requiresAuth: false,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  async partnerListCatalog(
+    apiKey: string,
+    query: { supplier_id?: string; retailer_id?: string; category_id?: string } = {},
+  ): Promise<{ products: unknown[] }> {
+    return this.request(appendQuery("/partner/v1/catalog", query as Record<string, unknown>), "GET", {
+      requiresAuth: false,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  async partnerInventoryAvailability(
+    apiKey: string,
+    query: { supplier_id?: string; retailer_id?: string; product_ids?: string } = {},
+  ): Promise<{ availability: PartnerAvailabilityRow[] }> {
+    return this.request(
+      appendQuery("/partner/v1/inventory/availability", query as Record<string, unknown>),
+      "GET",
+      { requiresAuth: false, headers: { Authorization: `Bearer ${apiKey}` } },
+    );
+  }
+
+  async partnerCreateWebhook(
+    apiKey: string,
+    body: { url: string; event_types?: string[] },
+  ): Promise<PartnerWebhookCreated> {
+    return this.request("/partner/v1/webhooks", "POST", {
+      body,
+      requiresAuth: false,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  async partnerPingWebhook(apiKey: string, subscriptionId: string): Promise<{ ok: boolean }> {
+    return this.request(`/partner/v1/webhooks/${encodeURIComponent(subscriptionId)}/ping`, "POST", {
+      body: {},
+      requiresAuth: false,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  }
+
+  // Supplier JWT convenience aliases (ADMIN session = supplier portal)
+  async listSupplierPartnerKeys(): Promise<{ keys: PartnerApiKeyMeta[] }> {
+    return this.request("/v1/supplier/partner-keys", "GET");
+  }
+
+  async issueSupplierPartnerKey(body: {
+    scopes?: string[];
+  } = {}): Promise<PartnerIssuedKey> {
+    return this.request<PartnerIssuedKey>("/v1/supplier/partner-keys", "POST", { body });
+  }
+
+  async revokeSupplierPartnerKey(keyId: string): Promise<{ ok: boolean }> {
+    return this.request(`/v1/supplier/partner-keys/${encodeURIComponent(keyId)}/revoke`, "POST", {
+      body: {},
+    });
+  }
+
+  async listSupplierPartnerWebhooks(): Promise<{ subscriptions: PartnerWebhookSubscription[] }> {
+    return this.request("/v1/supplier/partner-webhooks", "GET");
+  }
+
+  async createSupplierPartnerWebhook(body: {
+    url: string;
+    event_types?: string[];
+  }): Promise<PartnerWebhookCreated> {
+    return this.request("/v1/supplier/partner-webhooks", "POST", { body });
+  }
+
+  async deactivateSupplierPartnerWebhook(subscriptionId: string): Promise<{ ok: boolean }> {
+    return this.request(
+      `/v1/supplier/partner-webhooks/${encodeURIComponent(subscriptionId)}`,
+      "DELETE",
+    );
+  }
+
+  async pingSupplierPartnerWebhook(subscriptionId: string): Promise<{ ok: boolean }> {
+    return this.request(
+      `/v1/supplier/partner-webhooks/${encodeURIComponent(subscriptionId)}/ping`,
+      "POST",
+      { body: {} },
+    );
+  }
+
+  async listSupplierPartnerDeadLetter(): Promise<{ attempts: PartnerDeadLetterAttempt[] }> {
+    return this.request("/v1/supplier/partner-webhooks/dead-letter", "GET");
+  }
+
+  async replaySupplierPartnerDeadLetter(
+    attemptId: string,
+  ): Promise<{ ok: boolean; attempt_id: string; status: string }> {
+    return this.request(
+      `/v1/supplier/partner-webhooks/dead-letter/${encodeURIComponent(attemptId)}/replay`,
+      "POST",
+      { body: {} },
+    );
+  }
+
+  async createSupplierPartnerExport(body: {
+    resource: string;
+    format?: string;
+    from?: string;
+    to?: string;
+  }): Promise<PartnerExportJob> {
+    return this.request("/v1/supplier/partner-exports", "POST", { body });
+  }
+
+  async listSupplierPartnerExports(): Promise<{ jobs: PartnerExportJob[] }> {
+    return this.request("/v1/supplier/partner-exports", "GET");
+  }
+
+  async getSupplierPartnerExport(jobId: string): Promise<PartnerExportJob> {
+    return this.request(`/v1/supplier/partner-exports/${encodeURIComponent(jobId)}`, "GET");
+  }
+
+  async getSupplierPartnerSftp(): Promise<PartnerSftpConfig> {
+    return this.request("/v1/supplier/partner-sftp", "GET");
+  }
+
+  async putSupplierPartnerSftp(body: {
+    host?: string;
+    port?: number;
+    username?: string;
+    secret_ref?: string;
+    remote_dir?: string;
+    inbound_dir?: string;
+    outbound_dir?: string;
+    archive_dir?: string;
+    edi_enabled?: boolean;
+  }): Promise<{ ok: boolean }> {
+    return this.request("/v1/supplier/partner-sftp", "PUT", { body });
+  }
+
+  async listSupplierPartnerEdiDocuments(): Promise<{ documents: PartnerEdiDocument[] }> {
+    return this.request("/v1/supplier/partner-edi/documents", "GET");
+  }
+
+  async getSupplierPartnerEdiDocument(documentId: string): Promise<PartnerEdiDocument> {
+    return this.request(
+      `/v1/supplier/partner-edi/documents/${encodeURIComponent(documentId)}`,
+      "GET",
+    );
+  }
+
+  async replaySupplierPartnerEdiDocument(documentId: string): Promise<PartnerEdiDocument> {
+    return this.request(
+      `/v1/supplier/partner-edi/documents/${encodeURIComponent(documentId)}/replay`,
+      "POST",
+      { body: {} },
+    );
+  }
+
   private async request<TResponse>(
     path: string,
     method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
@@ -2322,6 +2586,38 @@ export class ApiClient {
     }
 
     return payload as TResponse;
+  }
+
+  private async requestText(
+    path: string,
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    options: RequestOptions = {},
+  ): Promise<string> {
+    const fetchImpl = this.config.fetchImpl ?? fetch;
+    const requiresAuth = options.requiresAuth ?? true;
+    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey, options.rawBody !== undefined);
+    const init: RequestInit = {
+      method,
+      headers,
+      credentials: "include",
+    };
+    if (options.rawBody !== undefined) {
+      init.body = options.rawBody;
+    } else if (options.body !== undefined) {
+      init.body = JSON.stringify(options.body);
+    }
+    const response = await fetchImpl(this.resolveURL(path), init);
+    const text = await response.text();
+    if (!response.ok) {
+      let payload: unknown = text;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        /* keep text */
+      }
+      throw new ApiError(extractErrorMessage(response.status, payload), response.status, payload);
+    }
+    return text;
   }
 
   // ── Fleet Telemetry & Capacity Command Center ─────────────────────────────────

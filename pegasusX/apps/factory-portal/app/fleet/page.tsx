@@ -6,6 +6,8 @@ import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile'
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import FleetLiveMap from '@/components/FleetLiveMap';
+import { useFactoryFleetLiveMap } from '@/lib/use-factory-fleet-live-map';
 import { motion } from 'framer-motion';
 
 interface Vehicle {
@@ -21,6 +23,7 @@ export default function FleetPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const liveMap = useFactoryFleetLiveMap();
 
   const load = useCallback(async () => {
     setError(null);
@@ -81,6 +84,14 @@ export default function FleetPage() {
           </button>
         }
       >
+        <div className="mb-6 h-[360px] rounded-xl overflow-hidden border border-[var(--border)]">
+          <FleetLiveMap
+            routes={liveMap.routes}
+            loading={liveMap.loading}
+            error={liveMap.error}
+            className="w-full h-full"
+          />
+        </div>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

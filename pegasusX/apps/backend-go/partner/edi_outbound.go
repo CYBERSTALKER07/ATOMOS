@@ -1,0 +1,267 @@
+package partner
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner/edi"
+)
+
+// EdiOutboundWorker emits ORDRSP/DESADV/INVOIC files for queued documents.
+type EdiOutboundWorker struct {
+	ediDocs EdiDocumentRepository
+	sftp    SftpConfigRepository
+	orders  *order.Service
+	log     *slog.Logger
+	now     func() time.Time
+	SecretLoader func(secretRef string) (string, error)
+	Uploader     func(ctx context.Context, cfg SftpConfig, secret, remoteDir, localPath, remoteName string) error
+}
+
+func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, orders *order.Service, log *slog.Logger) *EdiOutboundWorker {
+	if log == nil {
+		log = slog.Default()
+	}
+	return &EdiOutboundWorker{
+		ediDocs: docs, sftp: sftp, orders: orders, log: log,
+		now:          func() time.Time { return time.Now().UTC() },
+		SecretLoader: LoadSecretRef,
+		Uploader:     UploadSFTPToDir,
+	}
+}
+
+func (w *EdiOutboundWorker) Start(ctx context.Context, interval time.Duration) {
+	if w == nil || !PartnerEDIEnabled() {
+		return
+	}
+	if interval <= 0 {
+		interval = 20 * time.Second
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := w.RunOnce(ctx); err != nil {
+				w.log.Warn("edi outbound tick failed", "err", err)
+			}
+		}
+	}
+}
+
+func (w *EdiOutboundWorker) RunOnce(ctx context.Context) (int, error) {
+	if w == nil || w.ediDocs == nil || !PartnerEDIEnabled() {
+		return 0, nil
+	}
+	pending, err := w.ediDocs.ListPendingOutbound(ctx, 20)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, d := range pending {
+		if err := w.emit(ctx, d); err != nil {
+			w.log.Warn("edi emit failed", "document_id", d.DocumentID, "err", err)
+		} else {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// EnqueueOutbound inserts a RECEIVED outbound doc if not already present.
+func (w *EdiOutboundWorker) EnqueueOutbound(ctx context.Context, tenantType, tenantID, docType, externalDocID, orderID string) error {
+	if w == nil || w.ediDocs == nil || !PartnerEDIEnabled() {
+		return nil
+	}
+	if tenantType == "" || tenantID == "" || docType == "" || externalDocID == "" {
+		return fmt.Errorf("invalid_edi_enqueue")
+	}
+	_, ok, err := w.ediDocs.GetByExternal(ctx, tenantType, tenantID, EdiDirectionOut, docType, externalDocID)
+	if err != nil || ok {
+		return err
+	}
+	cfg, found, err := w.sftp.Get(ctx, tenantType, tenantID)
+	if err != nil {
+		return err
+	}
+	if !found || !cfg.EdiEnabled {
+		// Still allow enqueue for supplier mirror when retailer events carry supplier_id —
+		// caller should pass supplier tenant. Skip when EDI off.
+		return nil
+	}
+	d := EdiDocument{
+		DocumentID:    uuid.NewString(),
+		TenantType:    tenantType,
+		TenantID:      tenantID,
+		Direction:     EdiDirectionOut,
+		DocType:       docType,
+		ExternalDocID: externalDocID,
+		OrderID:       orderID,
+		Status:        EdiStatusReceived,
+		CreatedAt:     w.now(),
+	}
+	return w.ediDocs.Insert(ctx, d)
+}
+
+func (w *EdiOutboundWorker) emit(ctx context.Context, d EdiDocument) error {
+	cfg, ok, err := w.sftp.Get(ctx, d.TenantType, d.TenantID)
+	if err != nil || !ok || !cfg.EdiEnabled {
+		return w.fail(ctx, d, "edi_not_configured")
+	}
+	normalizeSftpDirs(&cfg)
+
+	snap, err := w.loadSnapshot(ctx, d.OrderID)
+	if err != nil {
+		return w.fail(ctx, d, err.Error())
+	}
+
+	var body string
+	switch d.DocType {
+	case EdiDocORDRSP:
+		body = edi.BuildORDRSP(snap, d.ExternalDocID)
+	case EdiDocDESADV:
+		body = edi.BuildDESADV(snap, d.ExternalDocID)
+	case EdiDocINVOIC:
+		body = edi.BuildINVOIC(snap, nil, d.ExternalDocID)
+	default:
+		return w.fail(ctx, d, "unknown_doc_type")
+	}
+
+	remoteName := fmt.Sprintf("%s_%s_%d.edi", d.DocType, sanitizeName(d.ExternalDocID), w.now().Unix())
+	objectPath := fmt.Sprintf("partner-edi/%s/%s/%s", strings.ToLower(d.TenantType), d.TenantID, remoteName)
+	localPath, err := w.writeLocal(objectPath, []byte(body))
+	if err != nil {
+		return w.fail(ctx, d, "write_failed:"+err.Error())
+	}
+
+	// Always write under local EDI root / temp; optionally SFTP push.
+	if PartnerSFTPEnabled() && strings.TrimSpace(cfg.Host) != "" {
+		loader := w.SecretLoader
+		if loader == nil {
+			loader = LoadSecretRef
+		}
+		secret, err := loader(cfg.SecretRef)
+		if err != nil || secret == "" {
+			return w.fail(ctx, d, "sftp_secret_unavailable")
+		}
+		outDir := joinRemote(cfg.RemoteDir, cfg.OutboundDir)
+		up := w.Uploader
+		if up == nil {
+			up = UploadSFTPToDir
+		}
+		if err := up(ctx, cfg, secret, outDir, localPath, remoteName); err != nil {
+			return w.fail(ctx, d, "sftp_upload:"+err.Error())
+		}
+	} else if root := partnerEDILocalRoot(); root != "" {
+		destDir := filepath.Join(root, strings.ToLower(d.TenantType), d.TenantID, cfg.OutboundDir)
+		_ = os.MkdirAll(destDir, 0o755)
+		_ = os.WriteFile(filepath.Join(destDir, remoteName), []byte(body), 0o644)
+	}
+
+	now := w.now()
+	d.Status = EdiStatusEmitted
+	d.ObjectPath = objectPath
+	d.RemoteName = remoteName
+	d.FinishedAt = &now
+	d.Error = ""
+	return w.ediDocs.Update(ctx, d)
+}
+
+func (w *EdiOutboundWorker) fail(ctx context.Context, d EdiDocument, msg string) error {
+	now := w.now()
+	d.Status = EdiStatusFailed
+	d.Error = msg
+	d.FinishedAt = &now
+	_ = w.ediDocs.Update(ctx, d)
+	return fmt.Errorf("%s", msg)
+}
+
+func (w *EdiOutboundWorker) loadSnapshot(ctx context.Context, orderID string) (edi.OrderSnapshot, error) {
+	if w.orders == nil || strings.TrimSpace(orderID) == "" {
+		return edi.OrderSnapshot{}, fmt.Errorf("order_unavailable")
+	}
+	o, ok, err := w.orders.GetOrder(ctx, orderID)
+	if err != nil || !ok {
+		return edi.OrderSnapshot{}, fmt.Errorf("order_not_found")
+	}
+	snap := edi.OrderSnapshot{
+		OrderID: o.OrderID, RetailerID: o.RetailerID, SupplierID: o.SupplierID,
+		Status: string(o.Status), Currency: o.Currency, TotalMinor: o.TotalMinor,
+	}
+	for _, li := range o.LineItems {
+		snap.Lines = append(snap.Lines, edi.Line{SKU: li.SKU, Qty: li.Quantity})
+	}
+	return snap, nil
+}
+
+func (w *EdiOutboundWorker) writeLocal(objectPath string, body []byte) (string, error) {
+	var full string
+	if root := partnerEDILocalRoot(); root != "" {
+		full = filepath.Join(root, "_objects", filepath.FromSlash(objectPath))
+	} else {
+		full = filepath.Join(os.TempDir(), "pegasusx-partner-edi", filepath.FromSlash(objectPath))
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(full, body, 0o644); err != nil {
+		return "", err
+	}
+	return full, nil
+}
+
+func sanitizeName(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, s)
+	if len(s) > 80 {
+		s = s[:80]
+	}
+	return s
+}
+
+// MapEventToOutboundDocs returns (docType, externalDocID) pairs to enqueue for a domain event.
+func MapEventToOutboundDocs(eventType string, envelope map[string]any) []struct{ DocType, ExtID, OrderID string } {
+	orderID, _ := envelope["order_id"].(string)
+	status, _ := envelope["status"].(string)
+	if status == "" {
+		status, _ = envelope["new_status"].(string)
+	}
+	out := make([]struct{ DocType, ExtID, OrderID string }, 0)
+	switch eventType {
+	case "ORDER_CREATED":
+		if orderID != "" {
+			out = append(out, struct{ DocType, ExtID, OrderID string }{EdiDocORDRSP, orderID + ":CREATED", orderID})
+		}
+	case "ORDER_STATUS_CHANGED":
+		if orderID == "" || status == "" {
+			return out
+		}
+		switch status {
+		case "CANCELLED", "CANCEL_REQUESTED", "REJECTED", "BACKORDERED", "SCHEDULED", "PENDING",
+			"CONFIRMED", "AUTO_ACCEPTED":
+			out = append(out, struct{ DocType, ExtID, OrderID string }{EdiDocORDRSP, orderID + ":" + status, orderID})
+		case "LOADED", "IN_TRANSIT":
+			out = append(out, struct{ DocType, ExtID, OrderID string }{EdiDocDESADV, orderID + ":" + status, orderID})
+		case "DELIVERED_ON_CREDIT":
+			out = append(out, struct{ DocType, ExtID, OrderID string }{EdiDocINVOIC, orderID + ":INVOIC", orderID})
+		}
+	case "PAYMENT_CLEARED":
+		if orderID != "" {
+			out = append(out, struct{ DocType, ExtID, OrderID string }{EdiDocINVOIC, orderID + ":PAID", orderID})
+		}
+	}
+	return out
+}

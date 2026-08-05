@@ -11,13 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"google.golang.org/api/iterator"
 )
 
 // FamilyMember models retailer family-member records.
@@ -1207,7 +1210,7 @@ func (s *Service) listRetailerTrackingOrders(ctx context.Context, retailerID str
 			break
 		}
 	}
-	return normalizeTrackingOrders(s.attachLiveLocations(ctx, all)), nil
+	return normalizeTrackingOrders(s.attachRouteGeometry(ctx, s.attachLiveLocations(ctx, all))), nil
 }
 
 func (s *Service) listRetailerRecentReceipts(ctx context.Context, retailerID string) ([]TrackingOrder, error) {
@@ -1401,6 +1404,85 @@ func trackingLocationFromTelemetry(location telemetry.DriverLocation) *TrackingL
 		ReceivedAt:        location.ReceivedAt.UTC().Format(time.RFC3339Nano),
 		StaleAfterSeconds: location.StaleAfterSeconds,
 	}
+}
+
+// attachRouteGeometry hydrates planned polylines from SupplierTruckManifests (fail-open).
+func (s *Service) attachRouteGeometry(ctx context.Context, orders []TrackingOrder) []TrackingOrder {
+	if s == nil || s.spannerClient == nil || len(orders) == 0 {
+		return orders
+	}
+	manifestIDs := make([]string, 0, len(orders))
+	seen := make(map[string]struct{}, len(orders))
+	for i := range orders {
+		mid := strings.TrimSpace(orders[i].ManifestID)
+		if mid == "" {
+			continue
+		}
+		if _, ok := seen[mid]; ok {
+			continue
+		}
+		seen[mid] = struct{}{}
+		manifestIDs = append(manifestIDs, mid)
+	}
+	if len(manifestIDs) == 0 {
+		return orders
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ManifestId, RouteId, EncodedRoutePolyline, RouteGeometrySource, StopCount
+		      FROM SupplierTruckManifests
+		      WHERE ManifestId IN UNNEST(@ids)
+		        AND EncodedRoutePolyline IS NOT NULL
+		        AND EncodedRoutePolyline != ''`,
+		Params: map[string]any{"ids": manifestIDs},
+	}
+	iter := s.spannerClient.Single().
+		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		Query(ctx, stmt)
+	defer iter.Stop()
+
+	byManifest := make(map[string]routing.RouteGeometryWire, len(manifestIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			s.log.Warn("retailer tracking route geometry query failed", "err", err)
+			return orders
+		}
+		var manifestID, routeID string
+		var encoded, source spanner.NullString
+		var stopCount int64
+		if err := row.Columns(&manifestID, &routeID, &encoded, &source, &stopCount); err != nil {
+			s.log.Warn("retailer tracking route geometry scan failed", "err", err)
+			continue
+		}
+		if !encoded.Valid || encoded.StringVal == "" {
+			continue
+		}
+		geometry, decodeErr := routing.GeometryFromStoredPolyline(
+			routeID,
+			encoded.StringVal,
+			source.StringVal,
+			int(stopCount),
+		)
+		if decodeErr != nil {
+			continue
+		}
+		wire := routing.ToRouteGeometryWire(geometry)
+		byManifest[strings.TrimSpace(manifestID)] = wire
+	}
+	for i := range orders {
+		mid := strings.TrimSpace(orders[i].ManifestID)
+		if mid == "" {
+			continue
+		}
+		if wire, ok := byManifest[mid]; ok {
+			copy := wire
+			orders[i].RouteGeometry = &copy
+		}
+	}
+	return orders
 }
 
 func retailerIDFromRequest(r *http.Request) (string, error) {

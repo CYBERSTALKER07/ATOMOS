@@ -382,6 +382,27 @@ struct TrackingOrderItem: Codable, Identifiable, Hashable {
     }
 }
 
+struct RouteGeometryCoordinate: Codable, Hashable {
+    let lat: Double
+    let lng: Double
+}
+
+struct RouteGeometryWire: Codable, Hashable {
+    let routeId: String?
+    let encodedPolyline: String?
+    let coordinates: [RouteGeometryCoordinate]
+    let source: String
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case encodedPolyline = "encoded_polyline"
+        case coordinates
+        case source
+        case stopCount = "stop_count"
+    }
+}
+
 struct TrackingOrder: Codable, Identifiable, Hashable {
     var id: String { orderId }
     let orderId: String
@@ -403,6 +424,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
     let fiscalQr: String
     let latestFiscalReceiptId: String
     let items: [TrackingOrderItem]
+    let routeGeometry: RouteGeometryWire?
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
@@ -424,6 +446,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         case fiscalQr = "fiscal_qr"
         case latestFiscalReceiptId = "latest_fiscal_receipt_id"
         case items
+        case routeGeometry = "route_geometry"
     }
 
     init(
@@ -445,7 +468,8 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         fiscalStatus: String = "",
         fiscalQr: String = "",
         latestFiscalReceiptId: String = "",
-        items: [TrackingOrderItem]
+        items: [TrackingOrderItem],
+        routeGeometry: RouteGeometryWire? = nil
     ) {
         self.orderId = orderId
         self.supplierId = supplierId
@@ -466,6 +490,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         self.fiscalQr = fiscalQr
         self.latestFiscalReceiptId = latestFiscalReceiptId
         self.items = items
+        self.routeGeometry = routeGeometry
     }
 
     init(from decoder: Decoder) throws {
@@ -489,6 +514,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         fiscalQr = try c.decodeIfPresent(String.self, forKey: .fiscalQr) ?? ""
         latestFiscalReceiptId = try c.decodeIfPresent(String.self, forKey: .latestFiscalReceiptId) ?? ""
         items = try c.decodeIfPresent([TrackingOrderItem].self, forKey: .items) ?? []
+        routeGeometry = try c.decodeIfPresent(RouteGeometryWire.self, forKey: .routeGeometry)
     }
 
     var displayTotal: String {

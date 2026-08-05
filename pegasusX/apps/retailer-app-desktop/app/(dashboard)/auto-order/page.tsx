@@ -15,13 +15,14 @@ import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
 import { AutoOrderList } from "@/components/auto-order/AutoOrderList";
 import { PageChrome } from "@/components/PageChrome";
-import { BentoGrid, BentoCard } from "@/components/BentoGrid";
 import { useLiveData } from "@/lib/hooks";
 import { apiFetch } from "@/lib/auth";
 import { getRetailerId } from "@/lib/retailer-profile";
 import type {
+  AutoOrderExecutionMode,
   AutoOrderRun,
   AutoOrderSettings,
+  AutoOrderShadowProposal,
   Prediction,
 } from "@/lib/types";
 
@@ -53,16 +54,24 @@ export default function AutoOrderPage() {
   const [runsLoading, setRunsLoading] = useState(true);
   const [runsError, setRunsError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [runningMode, setRunningMode] = useState<"draft" | "place" | null>(null);
+  const [runningMode, setRunningMode] = useState<AutoOrderExecutionMode | null>(
+    null,
+  );
   const [lastRun, setLastRun] = useState<AutoOrderRun | null>(null);
   const [reorderSuggestions, setReorderSuggestions] = useState<
     RetailerReorderSuggestion[]
   >([]);
+  const [shadowProposals, setShadowProposals] = useState<
+    AutoOrderShadowProposal[]
+  >([]);
   const [placeConfirmOpen, setPlaceConfirmOpen] = useState(false);
 
   const retailerId = getRetailerId();
-  const executionMode =
-    settings?.execution_mode === "place" ? "place" : "draft";
+  const executionMode: AutoOrderExecutionMode = (() => {
+    const m = settings?.execution_mode;
+    if (m === "off" || m === "shadow" || m === "draft" || m === "place") return m;
+    return settings?.global_enabled ? "draft" : "off";
+  })();
 
   const fetchPredictions = useCallback(async () => {
     if (!retailerId) return;
@@ -112,6 +121,22 @@ export default function AutoOrderPage() {
     }
   }, []);
 
+  const fetchShadowProposals = useCallback(async () => {
+    try {
+      const res = await apiFetch(
+        "/v1/retailer/settings/auto-order/shadow-proposals",
+      );
+      if (!res.ok) {
+        setShadowProposals([]);
+        return;
+      }
+      const data = (await res.json()) as { items?: AutoOrderShadowProposal[] };
+      setShadowProposals(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setShadowProposals([]);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchPredictions();
   }, [fetchPredictions]);
@@ -124,15 +149,26 @@ export default function AutoOrderPage() {
     void fetchReorderSuggestions();
   }, [fetchReorderSuggestions]);
 
+  useEffect(() => {
+    void fetchShadowProposals();
+  }, [fetchShadowProposals]);
+
   const refreshAll = useCallback(() => {
     setSyncMessage(null);
     void mutateSettings();
     void fetchPredictions();
     void fetchRuns();
     void fetchReorderSuggestions();
-  }, [mutateSettings, fetchPredictions, fetchRuns, fetchReorderSuggestions]);
+    void fetchShadowProposals();
+  }, [
+    mutateSettings,
+    fetchPredictions,
+    fetchRuns,
+    fetchReorderSuggestions,
+    fetchShadowProposals,
+  ]);
 
-  const runAutoOrder = async (mode: "draft" | "place") => {
+  const runAutoOrder = async (mode: "shadow" | "draft" | "place") => {
     setRunning(true);
     setRunningMode(mode);
     setSyncMessage(null);
@@ -166,6 +202,13 @@ export default function AutoOrderPage() {
                 (json.message ? ` — ${json.message}` : "")
             : `Place run ${json.status}${json.message ? `: ${json.message}` : ""}`,
         );
+      } else if (mode === "shadow") {
+        setSyncMessage(
+          json.status === "OK" || json.status === "PARTIAL"
+            ? `Shadow run: ${json.draft_lines} proposal(s) recorded (no orders)` +
+                (json.message ? ` — ${json.message}` : "")
+            : `Shadow ${json.status}${json.message ? `: ${json.message}` : ""}`,
+        );
       } else {
         setSyncMessage(
           json.status === "OK" || json.status === "PARTIAL"
@@ -176,6 +219,7 @@ export default function AutoOrderPage() {
       }
       await fetchRuns();
       await fetchReorderSuggestions();
+      await fetchShadowProposals();
     } catch (err) {
       setSyncMessage(err instanceof Error ? err.message : "Auto-order run failed");
     } finally {
@@ -184,12 +228,15 @@ export default function AutoOrderPage() {
     }
   };
 
-  const setExecutionMode = async (mode: "draft" | "place") => {
+  const setExecutionMode = async (mode: AutoOrderExecutionMode) => {
     try {
       const res = await apiFetch("/v1/retailer/settings/auto-order/global", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ execution_mode: mode }),
+        body: JSON.stringify({
+          execution_mode: mode,
+          global_enabled: mode !== "off",
+        }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as {
@@ -198,11 +245,13 @@ export default function AutoOrderPage() {
         throw new Error(json.error || "execution_mode_update_failed");
       }
       await mutateSettings();
-      setSyncMessage(
-        mode === "place"
-          ? "Default execution set to Place (still requires Place now + confirm)."
-          : "Default execution set to Draft.",
-      );
+      const labels: Record<AutoOrderExecutionMode, string> = {
+        off: "Auto-order off.",
+        shadow: "Mode: Shadow (proposals only — recommended).",
+        draft: "Mode: Draft cart lines.",
+        place: "Mode: Place (still requires Place now + server flag).",
+      };
+      setSyncMessage(labels[mode]);
     } catch (err) {
       setSyncMessage(
         err instanceof Error ? err.message : "Failed to update execution mode",
@@ -293,7 +342,20 @@ export default function AutoOrderPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              disabled={running || isLoading}
+              disabled={running || isLoading || executionMode === "off"}
+              onClick={() => void runAutoOrder("shadow")}
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
+            >
+              {running && runningMode === "shadow" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Play size={16} />
+              )}
+              {running && runningMode === "shadow" ? "Shadowing…" : "Shadow now"}
+            </button>
+            <button
+              type="button"
+              disabled={running || isLoading || executionMode === "off"}
               onClick={() => void runAutoOrder("draft")}
               className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
             >
@@ -306,7 +368,7 @@ export default function AutoOrderPage() {
             </button>
             <button
               type="button"
-              disabled={running || isLoading}
+              disabled={running || isLoading || executionMode === "off"}
               onClick={() => setPlaceConfirmOpen(true)}
               className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
             >
@@ -407,69 +469,80 @@ export default function AutoOrderPage() {
           </div>
         )}
 
-        <BentoGrid className="mb-8">
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Execution default
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className={`text-xs px-3 py-1.5 rounded-lg border ${
-                    executionMode === "draft"
-                      ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
-                      : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
-                  }`}
-                  onClick={() => void setExecutionMode("draft")}
+        <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+          <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-1">
+            Execution mode
+          </h3>
+          <p className="text-xs text-[var(--desk-text-tertiary)] mb-4">
+            How aggressive globally. Scopes below choose which SKUs participate. Off disables
+            worker action. Shadow is recommended until acceptance looks good.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ["off", "Off"],
+                ["shadow", "Shadow"],
+                ["draft", "Draft cart"],
+                ["place", "Place orders"],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                className={`text-xs px-3 py-1.5 rounded-lg border ${
+                  executionMode === mode
+                    ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
+                    : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
+                }`}
+                onClick={() => void setExecutionMode(mode)}
+              >
+                {label}
+                {mode === "place" ? " *" : mode === "shadow" ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-[var(--desk-text-tertiary)]">
+            * Place still needs AUTO_ORDER_PLACE_ENABLED + manager permission.
+            {settings?.shadow_stats
+              ? ` · 30d WAPE ${(settings.shadow_stats.wape * 100).toFixed(0)}% · accept ${(settings.shadow_stats.unmodified_accept_rate * 100).toFixed(0)}% (${settings.shadow_stats.proposal_count} proposals)`
+              : ""}
+          </p>
+        </div>
+
+        <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
+              Shadow inbox
+            </h3>
+            <span className="text-xs text-[var(--desk-text-tertiary)]">
+              Inventory (R,s,S) proposals — no cart or orders
+            </span>
+          </div>
+          {shadowProposals.length === 0 ? (
+            <p className="text-sm text-[var(--desk-text-secondary)]">
+              No shadow proposals yet. Set mode to Shadow and run Shadow now.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {shadowProposals.slice(0, 12).map((p) => (
+                <div
+                  key={p.proposal_id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-canvas)] px-4 py-3"
                 >
-                  Draft
-                </button>
-                <button
-                  type="button"
-                  className={`text-xs px-3 py-1.5 rounded-lg border ${
-                    executionMode === "place"
-                      ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
-                      : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
-                  }`}
-                  onClick={() => void setExecutionMode("place")}
-                >
-                  Place
-                </button>
-              </div>
+                  <p className="text-sm font-light text-[var(--desk-text-primary)]">
+                    {p.sku} · qty {p.proposed_qty}
+                    {` · IP ${p.ip.toFixed?.(0) ?? p.ip}`}
+                    {` · ROP ${p.reorder_point.toFixed?.(0) ?? p.reorder_point}`}
+                    {` · S ${p.order_up_to.toFixed?.(0) ?? p.order_up_to}`}
+                  </p>
+                  <span className="text-xs text-[var(--desk-text-tertiary)]">
+                    {p.bucket_date}
+                  </span>
+                </div>
+              ))}
             </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Suppliers
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {settings?.supplier_overrides?.length || 0}
-              </span>
-            </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Suggestions
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {reorderSuggestions.length}
-              </span>
-            </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Predictions
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {predictions.length}
-              </span>
-            </div>
-          </BentoCard>
-        </BentoGrid>
+          )}
+        </div>
 
         {/* Reorder suggestions (sell-through aware) */}
         <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
@@ -633,10 +706,10 @@ export default function AutoOrderPage() {
               <li>The AI analyzes your purchase patterns even when auto-order is off.</li>
               <li>When you enable, choose to use your history or start fresh.</li>
               <li>Starting fresh requires at least 2 orders per product.</li>
-              <li>Overrides: Variant &gt; Product &gt; Category &gt; Supplier &gt; Global.</li>
+              <li>Overrides: Size/variant &gt; Product &gt; Category &gt; Supplier &gt; Global (Off blocks even when global on).</li>
               <li>
-                <strong>Run auto-order now</strong> drafts cart lines for today
-                (idempotent per SKU). Place mode still drafts until order.create is wired.
+                Modes: Shadow records proposals only; Draft stages cart; Place creates
+                AUTO_ORDER when the server flag and manager permission allow.
               </li>
             </ol>
           </div>

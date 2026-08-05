@@ -492,6 +492,59 @@ struct Vehicle: Decodable, Identifiable {
     }
 }
 
+struct FactoryFleetDriverLocation: Decodable {
+    let driverId: String?
+    let lat: Double?
+    let lng: Double?
+    let latitude: Double?
+    let longitude: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case lat, lng, latitude, longitude
+    }
+}
+
+struct FactoryFleetLiveRoute: Decodable, Identifiable {
+    var id: String { manifestId }
+    let manifestId: String
+    let driverId: String?
+    let driverName: String?
+    let manifestState: String?
+    let liveLocationAvailable: Bool?
+    let locationStale: Bool?
+    let driverLocation: FactoryFleetDriverLocation?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case manifestState = "manifest_state"
+        case liveLocationAvailable = "live_location_available"
+        case locationStale = "location_stale"
+        case driverLocation = "driver_location"
+    }
+}
+
+struct FactoryFleetLiveMapResponse: Decodable {
+    let routes: [FactoryFleetLiveRoute]
+    let factoryId: String?
+    let fetchedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case routes
+        case factoryId = "factory_id"
+        case fetchedAt = "fetched_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        routes = try c.decodeIfPresent([FactoryFleetLiveRoute].self, forKey: .routes) ?? []
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId)
+        fetchedAt = try c.decodeIfPresent(String.self, forKey: .fetchedAt)
+    }
+}
+
 struct VehicleListResponse: Decodable {
     let vehicles: [Vehicle]
 }

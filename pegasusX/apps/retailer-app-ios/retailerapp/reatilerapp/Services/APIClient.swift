@@ -835,17 +835,23 @@ final class APIClient {
     }
 
     struct GlobalAutoOrderRequest: Encodable {
-        let globalAutoOrderEnabled: Bool
+        let globalAutoOrderEnabled: Bool?
+        let globalEnabled: Bool?
+        let executionMode: String?
         let useHistory: Bool?
 
         enum CodingKeys: String, CodingKey {
             case globalAutoOrderEnabled = "global_auto_order_enabled"
+            case globalEnabled = "global_enabled"
+            case executionMode = "execution_mode"
             case useHistory = "use_history"
         }
 
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(globalAutoOrderEnabled, forKey: .globalAutoOrderEnabled)
+            try container.encodeIfPresent(globalAutoOrderEnabled, forKey: .globalAutoOrderEnabled)
+            try container.encodeIfPresent(globalEnabled, forKey: .globalEnabled)
+            try container.encodeIfPresent(executionMode, forKey: .executionMode)
             try container.encodeIfPresent(useHistory, forKey: .useHistory)
         }
     }
@@ -873,8 +879,33 @@ final class APIClient {
     func setGlobalAutoOrder(enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
         try await patch(
             path: "/v1/retailer/settings/auto-order/global",
-            body: GlobalAutoOrderRequest(globalAutoOrderEnabled: enabled, useHistory: useHistory)
+            body: GlobalAutoOrderRequest(
+                globalAutoOrderEnabled: enabled,
+                globalEnabled: enabled,
+                executionMode: nil,
+                useHistory: useHistory
+            )
         )
+    }
+
+    func setAutoOrderExecutionMode(mode: String) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/global",
+            body: GlobalAutoOrderRequest(
+                globalAutoOrderEnabled: mode != "off",
+                globalEnabled: mode != "off",
+                executionMode: mode,
+                useHistory: nil
+            )
+        )
+    }
+
+    func getAutoOrderShadowProposals() async throws -> AutoOrderShadowProposalsResponse {
+        try await get(path: "/v1/retailer/settings/auto-order/shadow-proposals")
+    }
+
+    func getAutoOrderShadowStats() async throws -> AutoOrderShadowStats {
+        try await get(path: "/v1/retailer/settings/auto-order/shadow-stats")
     }
 
     func setSupplierAutoOrder(supplierId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {

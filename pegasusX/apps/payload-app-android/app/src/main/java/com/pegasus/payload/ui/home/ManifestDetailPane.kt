@@ -73,6 +73,16 @@ fun ManifestDetailPane(
                 )
                 return@Column
             }
+            val inboundLat = state.manifest?.driverLat
+            val inboundLng = state.manifest?.driverLng
+            if (inboundLat != null && inboundLng != null) {
+                Text(
+                    text = "Inbound truck ${if (state.manifest?.liveLocationAvailable == true) "LIVE" else "last known"}: " +
+                        "%.5f, %.5f".format(inboundLat, inboundLng),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             DetailHeader(
                 truck = truck,
                 onRefresh = onRefresh,

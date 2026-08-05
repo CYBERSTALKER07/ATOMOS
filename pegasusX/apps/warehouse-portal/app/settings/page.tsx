@@ -21,6 +21,7 @@ type WarehouseLocation = {
   place_id?: string;
   lat: number;
   lng: number;
+  gln?: string;
 };
 
 export default function WarehouseSettingsPage() {
@@ -43,6 +44,7 @@ export default function WarehouseSettingsPage() {
   const [weekdayOpen, setWeekdayOpen] = useState('09:00');
   const [weekdayClose, setWeekdayClose] = useState('17:00');
   const [location, setLocation] = useState<LocationValue>({ address: '', lat: '0', lng: '0' });
+  const [gln, setGln] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingLocation, setSavingLocation] = useState(false);
 
@@ -87,6 +89,7 @@ export default function WarehouseSettingsPage() {
         lng: String(loc.lng ?? 0),
         place_id: loc.place_id,
       });
+      setGln(loc.gln ?? '');
     }
   }, []);
 
@@ -204,6 +207,7 @@ export default function WarehouseSettingsPage() {
           place_id: resolved.place_id,
           lat,
           lng,
+          gln: gln.trim(),
         }),
       });
       if (res.ok) {
@@ -228,6 +232,13 @@ export default function WarehouseSettingsPage() {
         <div className="max-w-2xl space-y-6">
           <PortalSection icon="warehouse" title="Depot location" description="Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.">
             <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
+            <PortalField label="GLN (13 digits)">
+              <PortalInput
+                value={gln}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setGln(e.target.value)}
+                placeholder="Optional GS1 location number"
+              />
+            </PortalField>
             <button
               type="button"
               disabled={savingLocation}

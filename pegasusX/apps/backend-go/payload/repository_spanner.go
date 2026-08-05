@@ -25,6 +25,14 @@ func NewSpannerRepository(client *spanner.Client, supplierID, warehouseID string
 	}
 }
 
+// SpannerClient exposes the underlying client for GS1 ship-unit helpers.
+func (r *SpannerRepository) SpannerClient() *spanner.Client {
+	if r == nil {
+		return nil
+	}
+	return r.client
+}
+
 // spannerTxnBuffer buffers outbox events during a Spanner transaction.
 type spannerTxnBuffer struct {
 	events []outbox.Event

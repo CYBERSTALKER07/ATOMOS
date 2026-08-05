@@ -44,6 +44,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/factory/transfers/{transferID}", d.Service.HandleTransferByID)
 		rr.Post("/v1/factory/transfers/{transferID}/transition", d.Service.HandleTransferTransition)
 		rr.Get("/v1/factory/fleet", d.Service.HandleFleet)
+		rr.Get("/v1/factory/fleet/live-map", d.Service.HandleFactoryFleetLiveMap)
 		rr.Get("/v1/factory/manifests", d.Service.HandleManifests)
 		rr.Get("/v1/factory/manifests/{manifestID}", d.Service.HandleManifestDetail)
 		rr.Post("/v1/factory/manifests/{manifestID}/start-loading", d.Service.HandleManifestStartLoading)

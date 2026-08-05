@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.pegasusx.factory.data.model.FactoryFleetLiveRoute
 import com.pegasusx.factory.data.model.Vehicle
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
@@ -38,6 +39,7 @@ fun FleetScreen(
     onBack: () -> Unit,
 ) {
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
+    var liveRoutes by remember { mutableStateOf<List<FactoryFleetLiveRoute>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -54,6 +56,10 @@ fun FleetScreen(
                     vehicles = resp.body()!!.vehicles
                 } else {
                     error = "Failed (${resp.code()})"
+                }
+                val liveResp = api.getFleetLiveMap()
+                if (liveResp.isSuccessful) {
+                    liveRoutes = liveResp.body()?.routes.orEmpty()
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
@@ -141,6 +147,29 @@ fun FleetScreen(
                         available = available,
                         assigned = assigned,
                     )
+                }
+                if (liveRoutes.isNotEmpty()) {
+                    item {
+                        FactorySectionTitle(title = "Live drivers")
+                    }
+                    items(liveRoutes, key = { it.manifestId }) { route ->
+                        val loc = route.driverLocation
+                        val lat = loc?.lat?.takeIf { it != 0.0 } ?: loc?.latitude
+                        val lng = loc?.lng?.takeIf { it != 0.0 } ?: loc?.longitude
+                        FactoryOpsListCard(
+                            headline = route.driverName.ifBlank { route.driverId.ifBlank { route.manifestId } },
+                            supporting = buildString {
+                                append(route.manifestState)
+                                if (lat != null && lng != null) {
+                                    append(" · %.5f, %.5f".format(lat, lng))
+                                } else {
+                                    append(" · waiting for GPS")
+                                }
+                                if (route.locationStale) append(" · stale")
+                            },
+                            status = if (route.liveLocationAvailable) "LIVE" else "OFFLINE",
+                        )
+                    }
                 }
                 item {
                     FactorySectionTitle(title = "Vehicle roster")

@@ -34,18 +34,18 @@ func TestCompositeSignalProviderCollectSeasonalityFriday(t *testing.T) {
 	}
 }
 
-func TestExternalWeatherSummer(t *testing.T) {
+func TestExternalWeatherNoStub(t *testing.T) {
 	summer := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
 	out := externalWeatherSignals("sup-1", summer)
-	if len(out) != 1 || out[0].Source != "weather_forecast_stub" {
-		t.Fatalf("unexpected weather signals: %+v", out)
+	if len(out) != 0 {
+		t.Fatalf("expected empty weather signals, got %+v", out)
 	}
 }
 
-func TestExternalPOSMonthStart(t *testing.T) {
+func TestExternalPOSNoStub(t *testing.T) {
 	out := externalPOSSignals("sup-1", time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
-	if len(out) != 1 || out[0].Source != "pos_calendar_stub" {
-		t.Fatalf("unexpected pos signals: %+v", out)
+	if len(out) != 0 {
+		t.Fatalf("expected empty POS signals, got %+v", out)
 	}
 }
 

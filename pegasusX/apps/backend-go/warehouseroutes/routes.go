@@ -109,6 +109,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/warehouse/ops/staff", d.Service.HandleOpsStaff)
 		rr.Get("/v1/warehouse/ops/products", d.Service.HandleOpsProducts)
 		rr.Get("/v1/warehouse/ops/manifests", d.Service.HandleOpsManifests)
+		if d.PayloadService != nil {
+			rr.Get("/v1/warehouse/manifests/{manifestID}/ship-units", d.PayloadService.HandleListShipUnits)
+			rr.Post("/v1/warehouse/manifests/{manifestID}/labels", d.PayloadService.HandleManifestLabels)
+		}
 		rr.Get("/v1/warehouse/ops/fleet/live-map", d.Service.HandleWarehouseFleetLiveMap)
 		rr.Get("/v1/warehouse/ops/analytics", d.Service.HandleOpsAnalytics)
 		rr.Get("/v1/warehouse/ops/crm", d.Service.HandleOpsCRM)

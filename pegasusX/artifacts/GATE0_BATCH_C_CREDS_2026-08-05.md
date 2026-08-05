@@ -48,6 +48,6 @@ Credentials exist in GSM (username / password / service-id / webhook secret). Re
 |-------|-----------------------------------|
 | backend-go | `sha256:a5b31a6…` (`ssmr-substance-gate-a66868b8-084112`) |
 | ai-worker | `sha256:9f05b7d8…` (`ssmr-4a0796fd-glibc`) |
-| optimizer-core | **Not published** — prod overlay scales replicas to 0 until a real image lands |
+| optimizer-core | **Not published** — prod overlay scales replicas to 0 until a real image lands. SoT: [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md) |
 
 Repo: `asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images`

@@ -21,6 +21,14 @@ struct ReplenishmentPoliciesView: View {
                         LabeledContent("Max daily transfer units", value: "\(policy.maxDailyTransferUnits)")
                         LabeledContent("Min confidence score", value: String(format: "%.1f", policy.minConfidenceScore))
                     }
+                    Section("Safety stock") {
+                        LabeledContent("Target service level", value: String(format: "%.0f%%", policy.targetServiceLevel * 100))
+                        LabeledContent("Lead time (days)", value: "\(policy.leadTimeDays)")
+                        LabeledContent("Lead σ (days, assumed)", value: String(format: "%.1f", policy.leadTimeSigmaDays))
+                        Text("Lead σ is assumed until ≥10 transfers have ReceivedAt history.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Section {
                         Text("Supplier: \(policy.supplierId)")
                             .font(.caption)

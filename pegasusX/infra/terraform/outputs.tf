@@ -95,8 +95,18 @@ output "stripe_webhook_secret_id" {
 }
 
 output "google_maps_api_key_secret_id" {
-  description = "Secret Manager secret id for Google Maps Platform API key."
+  description = "Secret Manager secret id for server-side Google Maps Platform API key (Geocode/Places/Routes)."
   value       = google_secret_manager_secret.google_maps_api_key.secret_id
+}
+
+output "maps_android_api_key_secret_id" {
+  description = "GSM secret id for Android Maps SDK API key."
+  value       = google_secret_manager_secret.maps_android_api_key.secret_id
+}
+
+output "maps_ios_api_key_secret_id" {
+  description = "GSM secret id for iOS Maps SDK API key."
+  value       = google_secret_manager_secret.maps_ios_api_key.secret_id
 }
 
 output "app_updates_bucket_name" {

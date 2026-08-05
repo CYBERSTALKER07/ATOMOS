@@ -836,13 +836,15 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 			return fmt.Errorf("transfer_forbidden")
 		}
 
-		muts := []*spanner.Mutation{
-			spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId": transferID,
-				"State":      newState,
-				"UpdatedAt":  spanner.CommitTimestamp,
-			}),
+		transferUpdate := map[string]any{
+			"TransferId": transferID,
+			"State":      newState,
+			"UpdatedAt":  spanner.CommitTimestamp,
 		}
+		if strings.EqualFold(newState, "RECEIVED") {
+			transferUpdate["ReceivedAt"] = spanner.CommitTimestamp
+		}
+		muts := []*spanner.Mutation{spanner.UpdateMap("FactoryInternalTransfers", transferUpdate)}
 		if strings.EqualFold(newState, "RECEIVED") && !strings.EqualFold(state, "RECEIVED") && strings.TrimSpace(warehouseID) != "" {
 			units := int64(totalVolume)
 			if units <= 0 {

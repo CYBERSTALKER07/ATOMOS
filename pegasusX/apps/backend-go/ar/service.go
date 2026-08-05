@@ -60,6 +60,8 @@ type Repository interface {
 	GetByOrder(ctx context.Context, orderID string) (Invoice, bool, error)
 	ListByRetailer(ctx context.Context, retailerID string, status string, limit int) ([]Invoice, error)
 	ListBySupplier(ctx context.Context, supplierID string, status string, limit int) ([]Invoice, error)
+	ListOpenForDunning(ctx context.Context, limit int) ([]Invoice, error)
+	UpdateDunning(ctx context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error
 	ApplyPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error
 	ApplyCreditNote(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error
 	RecomputeAging(ctx context.Context, now time.Time, limit int) (int, error)
@@ -263,6 +265,44 @@ func (r *MemoryRepository) ApplyCreditNote(ctx context.Context, invoiceID string
 	return r.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey)
 }
 
+func (r *MemoryRepository) ListOpenForDunning(_ context.Context, limit int) ([]Invoice, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit <= 0 {
+		limit = 200
+	}
+	out := make([]Invoice, 0)
+	for _, inv := range r.byID {
+		if inv.Status != StatusOpen && inv.Status != StatusPartial {
+			continue
+		}
+		out = append(out, inv)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (r *MemoryRepository) UpdateDunning(_ context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	inv, ok := r.byID[invoiceID]
+	if !ok {
+		return fmt.Errorf("invoice_not_found")
+	}
+	if inv.Version != version {
+		return fmt.Errorf("version_conflict")
+	}
+	inv.DunningStep = step
+	inv.AgingBucket = agingBucket
+	inv.LastDunnedAt = lastDunnedAt
+	inv.Version++
+	inv.UpdatedAt = time.Now().UTC()
+	r.byID[invoiceID] = inv
+	return nil
+}
+
 func (r *MemoryRepository) RecomputeAging(_ context.Context, now time.Time, limit int) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -446,6 +486,48 @@ func (r *SpannerRepository) ApplyPayment(ctx context.Context, invoiceID string, 
 
 func (r *SpannerRepository) ApplyCreditNote(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error {
 	return r.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey)
+}
+
+func (r *SpannerRepository) ListOpenForDunning(ctx context.Context, limit int) ([]Invoice, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	stmt := spanner.Statement{
+		SQL: fmt.Sprintf(`SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt
+FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') ORDER BY DueAt ASC LIMIT %d`, limit),
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	out := make([]Invoice, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		inv, err := scanInvoice(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, inv)
+	}
+	return out, nil
+}
+
+func (r *SpannerRepository) UpdateDunning(ctx context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error {
+	_, err := r.client.Apply(ctx, []*spanner.Mutation{
+		spanner.UpdateMap("ArInvoices", map[string]any{
+			"InvoiceId":    invoiceID,
+			"DunningStep":  step,
+			"AgingBucket":  agingBucket,
+			"LastDunnedAt": lastDunnedAt,
+			"Version":      version + 1,
+			"UpdatedAt":    spanner.CommitTimestamp,
+		}),
+	})
+	return err
 }
 
 func (r *SpannerRepository) RecomputeAging(ctx context.Context, now time.Time, limit int) (int, error) {

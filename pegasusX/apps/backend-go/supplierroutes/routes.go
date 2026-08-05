@@ -135,6 +135,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/analytics/revenue", d.Service.HandleAnalyticsRevenue)
 		gr.Get("/v1/supplier/analytics/demand/today", d.Service.HandleAnalyticsDemandToday)
 		gr.Get("/v1/supplier/analytics/demand/history", d.Service.HandleAnalyticsDemandHistory)
+		gr.Get("/v1/supplier/analytics/demand/accuracy", d.Service.HandleAnalyticsDemandAccuracy)
 		// B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (distinct from planning DemandSignals).
 		gr.Get("/v1/supplier/analytics/demand/flywheel", d.Service.HandleAnalyticsDemandFlywheel)
 		gr.Get("/v1/supplier/orders", d.Service.HandleOrders)
@@ -170,6 +171,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/broadcast", d.Service.HandleBroadcast)
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
+		gr.Patch("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
 		gr.Get("/v1/supplier/replenishment/traceability", d.Service.HandleReplenishmentTraceability)
 
 		if d.Spanner != nil && d.OrderService != nil {

@@ -3,8 +3,7 @@ import UIKit
 
 struct ProfileView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @AppStorage("aiAutoOrder") private var aiAutoOrder = false
-    @AppStorage("globalAutoOrder") private var globalAutoOrder = false
+    @State private var globalAutoOrder = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @State private var showHistoryAlert = false
     @State private var profileName: String = ""
@@ -79,7 +78,17 @@ struct ProfileView: View {
                     SettingsItem(icon: "person.2.fill", title: "Family contacts", subtitle: "Legacy name/phone list", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
 
-                PreferencesSection(aiAutoOrder: $aiAutoOrder, notificationsEnabled: $notificationsEnabled).slideIn(delay: 0.15)
+                PreferencesSection(
+                    aiAutoOrder: $globalAutoOrder,
+                    notificationsEnabled: $notificationsEnabled,
+                    onAutoOrderToggle: { enabled in
+                        if enabled {
+                            showHistoryAlert = true
+                        } else {
+                            Task { await toggleGlobalAutoOrder(enabled: false, useHistory: false) }
+                        }
+                    }
+                ).slideIn(delay: 0.15)
 
                 SettingsSectionView(title: "Support", icon: "questionmark.circle.fill", items: [
                     SettingsItem(icon: "questionmark.circle", title: "Help Center", subtitle: nil),

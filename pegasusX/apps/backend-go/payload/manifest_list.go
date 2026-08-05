@@ -146,6 +146,7 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 		wire = s.listManifestWiresLocked(stateFilter, truckFilter)
 		s.mu.Unlock()
 	}
+	s.attachInboundDriverLocations(r.Context(), wire)
 
 	writeJSON(w, http.StatusOK, map[string]any{"manifests": wire})
 }
@@ -172,5 +173,52 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	wire = s.enrichManifestWireExpectations(r.Context(), wire)
-	writeJSON(w, http.StatusOK, wire)
+	wires := []manifest.Wire{wire}
+	s.attachInboundDriverLocations(r.Context(), wires)
+	writeJSON(w, http.StatusOK, wires[0])
+}
+
+// attachInboundDriverLocations fills thin inbound map coords on payload manifest wires.
+func (s *Service) attachInboundDriverLocations(ctx context.Context, wires []manifest.Wire) {
+	if s == nil || s.locations == nil || len(wires) == 0 {
+		return
+	}
+	now := s.now()
+	cache := make(map[string]struct {
+		lat, lng float64
+		live     bool
+	}, len(wires))
+	for i := range wires {
+		driverID := strings.TrimSpace(wires[i].DriverID)
+		if driverID == "" {
+			continue
+		}
+		cached, ok := cache[driverID]
+		if !ok {
+			loc, found, err := s.locations.GetDriverLocation(ctx, driverID)
+			if err != nil || !found {
+				cache[driverID] = cached
+				continue
+			}
+			lat, lng := loc.Lat, loc.Lng
+			if lat == 0 {
+				lat = loc.Latitude
+			}
+			if lng == 0 {
+				lng = loc.Longitude
+			}
+			cached = struct {
+				lat, lng float64
+				live     bool
+			}{lat: lat, lng: lng, live: loc.IsLive(now)}
+			cache[driverID] = cached
+		}
+		if cached.lat == 0 && cached.lng == 0 {
+			continue
+		}
+		lat, lng := cached.lat, cached.lng
+		wires[i].DriverLat = &lat
+		wires[i].DriverLng = &lng
+		wires[i].LiveLocationAvailable = cached.live
+	}
 }

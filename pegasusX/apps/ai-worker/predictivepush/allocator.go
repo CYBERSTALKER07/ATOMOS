@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -89,6 +91,10 @@ func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEv
 	if a == nil || a.spannerClient == nil || len(events) == 0 {
 		return nil
 	}
+	// §8.1: Croston/HW nightly job owns DemandForecastBaseline when enabled.
+	if forecastAlgoEnabled() {
+		return nil
+	}
 	day := now.Truncate(24 * time.Hour)
 	for _, event := range events {
 		if event == nil || event.SupplierId == "" || event.ProductId == "" {
@@ -112,4 +118,9 @@ func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEv
 		}
 	}
 	return nil
+}
+
+func forecastAlgoEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("FORECAST_ALGO_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }

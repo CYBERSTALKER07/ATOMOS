@@ -6,6 +6,8 @@ export type ProfileDraft = {
   contact_name: string;
   email: string;
   phone: string;
+  gln: string;
+  gs1_company_prefix: string;
 };
 
 export function draftFromProfile(profile: SupplierProfile): ProfileDraft {
@@ -14,6 +16,8 @@ export function draftFromProfile(profile: SupplierProfile): ProfileDraft {
     contact_name: profile.contact_name ?? "",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
+    gln: profile.gln ?? "",
+    gs1_company_prefix: profile.gs1_company_prefix ?? "",
   };
 }
 
@@ -84,6 +88,18 @@ export function ContactDetailsForm({
           label="Phone"
           value={draft.phone}
           onChange={(value) => setDraft((prev) => (prev ? { ...prev, phone: value } : prev))}
+        />
+        <EditableField
+          label="GLN (13 digits)"
+          value={draft.gln}
+          onChange={(value) => setDraft((prev) => (prev ? { ...prev, gln: value } : prev))}
+        />
+        <EditableField
+          label="GS1 company prefix (7–10 digits)"
+          value={draft.gs1_company_prefix}
+          onChange={(value) =>
+            setDraft((prev) => (prev ? { ...prev, gs1_company_prefix: value } : prev))
+          }
         />
       </div>
 

@@ -22,7 +22,7 @@ Before coding, identify:
 - **Cross-role consumers** (who reads this state next in the order/dispatch/payment chain)
 - **Realtime path** (outbox event → Kafka → WS hub → client inbox)
 
-Reference: `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`, `pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`.
+Reference: `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`, `pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`, `pegasusX/docs/OPTIMIZER_AND_ROUTING_RUNTIME.md` (OR-Tools + Google Routes: code vs cloud).
 
 ## 2. Backend mutation checklist
 

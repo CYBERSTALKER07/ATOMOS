@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate schema-drift-gate apply-shop-closed-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -32,6 +32,8 @@ help:
 	@echo "  parity-contract-full   PX12-A full client path vs backend route check"
 	@echo "  gap-hunter-gate        PX12-C event producer/consumer shape gate"
 	@echo "  gen-contracts-gate     verify contracts/events.schema.json matches gen-contracts"
+	@echo "  partner-openapi-gate   verify contracts/partner.openapi.yaml exists + path markers"
+	@echo "  jwt-openapi-gate       verify contracts/jwt-core.openapi.yaml exists + path markers"
 	@echo "  px12-preflight         PX12 automated QA gates (contract + gap-hunter + launch-readiness)"
 	@echo "  p0-preflight           P0 launch gates (prod profile + k8s + SSMR; see docs/P0_LAUNCH_CHECKLIST.md)"
 	@echo "  p1-pilot-weekly        P1 weeks 1–8 weekly gate (see docs/P1_PILOT_CHECKLIST.md)"
@@ -147,6 +149,19 @@ gap-hunter-gate:
 
 gen-contracts-gate:
 	bash scripts/parity/gen_contracts_gate.sh
+
+partner-openapi-gate:
+	@test -f contracts/partner.openapi.yaml || (echo "missing contracts/partner.openapi.yaml" && exit 1)
+	@grep -q '/partner/v1/orders' contracts/partner.openapi.yaml || (echo "partner.openapi.yaml missing /partner/v1/orders" && exit 1)
+	@echo "partner-openapi-gate-ok"
+
+jwt-openapi-gate:
+	@test -f contracts/jwt-core.openapi.yaml || (echo "missing contracts/jwt-core.openapi.yaml" && exit 1)
+	@grep -q '/v1/warehouse/ops/dashboard' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/warehouse/ops/dashboard" && exit 1)
+	@grep -q '/v1/supplier/inventory' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/supplier/inventory" && exit 1)
+	@grep -q '/v1/order' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/order" && exit 1)
+	@grep -q '/v1/payloader/manifests' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/payloader/manifests" && exit 1)
+	@echo "jwt-openapi-gate-ok"
 
 px12-preflight:
 	bash scripts/qa/px12_preflight.sh

@@ -20,6 +20,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -45,6 +46,7 @@ type Service struct {
 	log           *slog.Logger
 	spannerClient *spanner.Client
 	idem          idempotency.Store
+	locations     telemetry.LastLocationReader
 
 	supplierID       string
 	factoryNodeID    string
@@ -77,6 +79,7 @@ type ServiceConfig struct {
 	FactoryHub  *ws.Hub
 	Log         *slog.Logger
 	Spanner     *spanner.Client
+	Locations   telemetry.LastLocationReader
 
 	SupplierID       string
 	FactoryNodeID    string
@@ -264,6 +267,7 @@ func NewService(c ServiceConfig) *Service {
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
 		idem:                  c.Idem,
+		locations:             c.Locations,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),

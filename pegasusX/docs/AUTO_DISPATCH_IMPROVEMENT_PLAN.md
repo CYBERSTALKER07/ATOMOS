@@ -84,9 +84,9 @@ Optional AI optimizer (`ai-worker` via `optimizerclient`) with a hard **~2.5 s t
 |-------|------|--------|-------|
 | **A (quick)** | Improve existing heuristic | Low | Add **2-opt / 3-opt** local search after greedy construction. Pure Go, no new deps. |
 | **B (recommended first)** | Make AI optimizer **primary** for dense batches | Medium | `optimizerclient` + timeout + fallback already exist. Promote from enhancement → preferred. |
-| **C (strong)** | Embed real solver | Higher | OR-Tools (or equivalent) via `ai-worker` gRPC. Pure Go binpack remains hard fallback. |
+| **C (ops)** | Run OR-Tools in cloud | Ops | `optimizer-core` already exists (`services/optimizer-core` + `optimizerclient`). Publish AR image, set replicas ≥ 1, keep H3 BinPack as hard fallback. **Not** “OR-Tools via ai-worker gRPC”. |
 
-**Concrete recommendation:** Do **B first**. Raise confidence / batch threshold so AI is default for batches **≥ 12 stops**. Keep pure Go as safety net. Then layer **A** (2-opt) on the pure path so fallback quality rises too.
+**Concrete recommendation:** **B is already the code path.** Remaining work is **C (ops)**: deploy the sidecar in SSMR/prod. Then layer **A** (2-opt) on the pure path so fallback quality rises too. Runtime SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md).
 
 ---
 

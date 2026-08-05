@@ -683,8 +683,40 @@ data class UpdateSettingsRequest(
 
 @Serializable
 data class UpdateGlobalSettingsRequest(
-    @SerialName("global_auto_order_enabled") val globalAutoOrderEnabled: Boolean,
-    @SerialName("use_history") val useHistory: Boolean = true,
+    @SerialName("global_auto_order_enabled") val globalAutoOrderEnabled: Boolean? = null,
+    @SerialName("global_enabled") val globalEnabled: Boolean? = null,
+    @SerialName("execution_mode") val executionMode: String? = null,
+    @SerialName("use_history") val useHistory: Boolean? = null,
+)
+
+@Serializable
+data class AutoOrderShadowStats(
+    @SerialName("proposal_count") val proposalCount: Long = 0,
+    @SerialName("matched_orders") val matchedOrders: Long = 0,
+    @SerialName("wape") val wape: Double = 0.0,
+    @SerialName("unmodified_accept_rate") val unmodifiedAcceptRate: Double = 0.0,
+    @SerialName("window_days") val windowDays: Int = 30,
+)
+
+@Serializable
+data class AutoOrderShadowProposal(
+    @SerialName("proposal_id") val proposalId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("sku") val sku: String = "",
+    @SerialName("supplier_id") val supplierId: String? = null,
+    @SerialName("proposed_qty") val proposedQty: Long = 0,
+    @SerialName("ip") val ip: Double = 0.0,
+    @SerialName("reorder_point") val reorderPoint: Double = 0.0,
+    @SerialName("order_up_to") val orderUpTo: Double = 0.0,
+    @SerialName("confidence") val confidence: Double? = null,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("bucket_date") val bucketDate: String = "",
+    @SerialName("status") val status: String = "",
+)
+
+@Serializable
+data class AutoOrderShadowProposalsResponse(
+    @SerialName("items") val items: List<AutoOrderShadowProposal> = emptyList(),
 )
 
 // ── Auto-Order Full Settings Response ──
@@ -692,7 +724,7 @@ data class UpdateGlobalSettingsRequest(
 @Serializable
 data class AutoOrderSettings(
     @SerialName("global_enabled") val globalEnabled: Boolean = false,
-    /** draft | place — place creates real supplier orders when server flag is on */
+    /** off | shadow | draft | place — place creates real supplier orders when server flag is on */
     @SerialName("execution_mode") val executionMode: String? = null,
     @SerialName("analytics_start_date") val analyticsStartDate: String? = null,
     @SerialName("has_any_history") val hasAnyHistory: Boolean = false,
@@ -700,6 +732,7 @@ data class AutoOrderSettings(
     @SerialName("category_overrides") val categoryOverrides: List<CategoryOverride> = emptyList(),
     @SerialName("product_overrides") val productOverrides: List<ProductOverride> = emptyList(),
     @SerialName("variant_overrides") val variantOverrides: List<VariantOverride> = emptyList(),
+    @SerialName("shadow_stats") val shadowStats: AutoOrderShadowStats? = null,
 )
 
 @Serializable
@@ -748,6 +781,7 @@ data class RetailerReorderSuggestion(
     @SerialName("adjusted_demand_per_day") val adjustedDemandPerDay: Double = 0.0,
     @SerialName("current_stock") val currentStock: Long = 0,
     @SerialName("in_flight_qty") val inFlightQty: Long = 0,
+    @SerialName("safety_stock") val safetyStock: Double = 0.0,
     @SerialName("status") val status: String? = null,
     @SerialName("sources") val sources: List<String> = emptyList(),
     @SerialName("sell_through_velocity") val sellThroughVelocity: Double = 0.0,
@@ -994,6 +1028,21 @@ data class TrackingOrderItem(
 )
 
 @Serializable
+data class RouteGeometryWire(
+    @SerialName("route_id") val routeId: String = "",
+    @SerialName("encoded_polyline") val encodedPolyline: String = "",
+    val coordinates: List<RouteLatLng> = emptyList(),
+    val source: String = "",
+    @SerialName("stop_count") val stopCount: Int = 0,
+)
+
+@Serializable
+data class RouteLatLng(
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
 data class TrackingOrder(
     @SerialName("order_id") val orderId: String,
     @SerialName("supplier_id") val supplierId: String,
@@ -1014,6 +1063,7 @@ data class TrackingOrder(
     @SerialName("fiscal_qr") val fiscalQr: String = "",
     @SerialName("latest_fiscal_receipt_id") val latestFiscalReceiptId: String = "",
     val items: List<TrackingOrderItem> = emptyList(),
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
 ) {
     /** Retailer receipt label for tracking / recent receipts. */
     val fiscalReceiptLabel: String

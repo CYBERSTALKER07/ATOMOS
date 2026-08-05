@@ -195,6 +195,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		// Auto-order execution (Retail OS close-out)
 		rr.Post("/v1/retailer/settings/auto-order/run", d.Service.HandleAutoOrderRun)
 		rr.Get("/v1/retailer/settings/auto-order/runs", d.Service.HandleAutoOrderRuns)
+		rr.Get("/v1/retailer/settings/auto-order/shadow-proposals", d.Service.HandleAutoOrderShadowProposals)
+		rr.Get("/v1/retailer/settings/auto-order/shadow-stats", d.Service.HandleAutoOrderShadowStats)
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)

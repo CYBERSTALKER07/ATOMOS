@@ -67,6 +67,13 @@ struct DeliveryMapView: View {
                 set: { id in selectedOrder = visibleOrders.first { $0.orderId == id } }
             )) {
                 ForEach(visibleOrders) { order in
+                    if let geometry = order.routeGeometry, geometry.coordinates.count >= 2 {
+                        let coords = geometry.coordinates.map {
+                            CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)
+                        }
+                        MapPolyline(coordinates: coords)
+                            .stroke(.blue, lineWidth: 4)
+                    }
                     if let lat = order.driverLatitude, let lng = order.driverLongitude {
                         Annotation(order.supplierName, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)) {
                             Button {

@@ -36,11 +36,13 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
@@ -105,6 +107,10 @@ func main() {
 	r.Use(telemetry.HTTPMetricsMiddleware)
 	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
+	// Partner API keys (pxk_*) — attach principal before rate limiting so KeyId is the actor.
+	if app.PartnerKeys != nil {
+		r.Use(partner.AuthMiddleware(app.PartnerKeys))
+	}
 
 	// Phase 1/2 Integration: Auth0 Identity Middleware
 	if os.Getenv("AUTH0_DOMAIN") != "" {
@@ -241,7 +247,31 @@ func main() {
 		Service:       app.CreditService,
 		PolicyService: app.CreditPolicyService,
 		ARService:     app.ARService,
+		DunningWorker: app.ARDunningWorker,
 	})
+	if app.ForecastAccuracy != nil || app.ForecastRunner != nil || app.Spanner != nil {
+		auth.ProtectMutations(r, auth.MutationGuardConfig{}, func(gr chi.Router) {
+			if app.ForecastAccuracy != nil {
+				gr.With(auth.RequireRole(auth.RoleAdmin)).Post(
+					"/v1/admin/planning/accuracy/run-once",
+					app.ForecastAccuracy.HandleRunAccuracyOnce,
+				)
+			}
+			if app.ForecastRunner != nil {
+				gr.With(auth.RequireRole(auth.RoleAdmin)).Post(
+					"/v1/admin/planning/forecast/run-once",
+					app.ForecastRunner.HandleRunForecastOnce,
+				)
+			}
+			if app.Spanner != nil {
+				replayAPI := &replenishment.FillRateReplayAPI{Client: app.Spanner}
+				gr.With(auth.RequireRole(auth.RoleAdmin)).Post(
+					"/v1/admin/planning/safety-stock/replay",
+					replayAPI.HandleReplay,
+				)
+			}
+		})
+	}
 	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
 		Handlers:            app.CashReconHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -301,6 +331,10 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
+	if app.PartnerHandlers != nil && app.PartnerKeys != nil {
+		partner.RegisterPartnerRoutes(r, app.PartnerKeys, app.PartnerHandlers)
+		partner.RegisterAdminKeyRoutes(r, app.PartnerHandlers)
+	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,
 		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub,

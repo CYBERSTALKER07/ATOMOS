@@ -183,7 +183,21 @@ variable "stripe_webhook_secret" {
 }
 
 variable "google_maps_api_key" {
-  description = "Google Maps Platform API key for Places autocomplete and geocoding (stored in Secret Manager)."
+  description = "Server-side Google Maps Platform API key (Geocoding, Places, Routes). Restrict to backend egress IPs / GKE NAT. Stored in Secret Manager."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "maps_android_api_key" {
+  description = "Optional Android Maps SDK key (package name + SHA-1 restricted). Not used by backend-go."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "maps_ios_api_key" {
+  description = "Optional iOS Maps SDK key (bundle ID restricted). Not used by backend-go."
   type        = string
   default     = ""
   sensitive   = true

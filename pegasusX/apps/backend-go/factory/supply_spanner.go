@@ -330,6 +330,9 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 			"CreatedAt":       spanner.CommitTimestamp,
 			"UpdatedAt":       spanner.CommitTimestamp,
 		}
+		if initialTransferState == "RECEIVED" {
+			transferRow["ReceivedAt"] = spanner.CommitTimestamp
+		}
 		if driverID := strings.TrimSpace(driverID); driverID != "" && transferMode != supplier.TransferModeInternal {
 			transferRow["DriverId"] = driverID
 		}

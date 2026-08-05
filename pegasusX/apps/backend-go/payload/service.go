@@ -23,6 +23,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
 )
@@ -67,6 +68,7 @@ type Service struct {
 	orders         []OrderRow
 	manifests      []ManifestRow
 	manifestOrders map[string][]ManifestOrder
+	shipUnits      map[string][]ShipUnit
 	overflowCount  map[string]int64
 	exceptions     []ManifestException
 	reassignments  []Reassignment
@@ -75,6 +77,7 @@ type Service struct {
 	portalLister  PortalManifestLister
 	manifestStore *manifest.Store
 	orderReader   OrderExpectationReader
+	locations     telemetry.LastLocationReader
 }
 
 // ServiceConfig is the constructor input.
@@ -95,6 +98,7 @@ type ServiceConfig struct {
 	FirebaseVerifier auth.FirebaseVerifier
 	ManifestStore    *manifest.Store
 	Idem               idempotency.Store
+	Locations          telemetry.LastLocationReader
 }
 
 type payloaderTruckWire struct {
@@ -235,6 +239,7 @@ func NewService(c ServiceConfig) *Service {
 		now:              c.Now,
 		firebaseVerifier: c.FirebaseVerifier,
 		manifestStore:    c.ManifestStore,
+		locations:        c.Locations,
 		manifestOrders:   make(map[string][]ManifestOrder),
 		overflowCount:    make(map[string]int64),
 	}
@@ -1639,6 +1644,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 				})
 			}
+			s.afterSealAssignSSCC(r.Context(), manifestID)
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "sealed",
@@ -1749,6 +1755,8 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"volume_vu":   float64(manifest.TotalVolumeVU),
 		"max_vu":      float64(manifest.MaxVolumeVU),
 	}
+	s.afterSealAssignSSCC(r.Context(), manifestID)
+
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 	writeJSONBytes(w, http.StatusOK, respBytes)
@@ -1832,6 +1840,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			"order_count": manifest.StopCount,
 			"updated_at":  manifest.UpdatedAt,
 		})
+		s.afterSealAssignSSCC(r.Context(), req.ManifestID)
 		resp := map[string]any{
 			"status":      "PAYLOAD_MANIFEST_SEALED",
 			"manifest_id": manifest.ManifestID,
@@ -1859,8 +1868,10 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		s.orders[oIdx].UpdatedAt = now
 	}
 
+	var sealedOrderManifestID string
 	if oIdx >= 0 && s.orders[oIdx].ManifestID != "" {
 		manifestID := s.orders[oIdx].ManifestID
+		sealedOrderManifestID = manifestID
 		orders := s.manifestOrders[manifestID]
 		moIdx := s.findManifestOrderIndexLocked(manifestID, req.OrderID)
 		if moIdx >= 0 {
@@ -1870,6 +1881,9 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.mu.Unlock()
+	if sealedOrderManifestID != "" {
+		s.afterSealAssignSSCC(r.Context(), sealedOrderManifestID)
+	}
 	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
 	s.broadcastPayloadEvent(r.Context(), "ORDER_DISPATCHED", map[string]any{"order_id": req.OrderID})
 	resp := map[string]any{
@@ -2014,6 +2028,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 				})
 			}
+			s.afterSealAssignSSCC(r.Context(), manifestID)
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "sealed",

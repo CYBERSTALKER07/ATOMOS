@@ -181,6 +181,8 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
 	fmt.Println("PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK")
 
+	runGS1LabelsE2E(ctx, client, base, token, manifestID)
+
 	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, driverID, manifestID, true); err != nil {
 		return fmt.Errorf("driver manifest-gate post-seal: %w", err)
 	}

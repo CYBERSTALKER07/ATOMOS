@@ -230,6 +230,9 @@ export default function App() {
   const [manifestMaxVolume, setManifestMaxVolume] = useState(0);
   const [manifestStopCount, setManifestStopCount] = useState(0);
   const [manifestRegionCode, setManifestRegionCode] = useState('');
+  const [inboundDriverLat, setInboundDriverLat] = useState<number | null>(null);
+  const [inboundDriverLng, setInboundDriverLng] = useState<number | null>(null);
+  const [inboundLive, setInboundLive] = useState(false);
   const [deliveryLabelsByOrder, setDeliveryLabelsByOrder] = useState<Record<string, string>>({});
   const [isStartingLoad, setIsStartingLoad] = useState(false);
   const [isSealingManifest, setIsSealingManifest] = useState(false);
@@ -993,9 +996,17 @@ export default function App() {
               if (label) labels[row.order_id] = label;
             }
             setDeliveryLabelsByOrder(labels);
+            const lat = typeof detail.driver_lat === 'number' ? detail.driver_lat : null;
+            const lng = typeof detail.driver_lng === 'number' ? detail.driver_lng : null;
+            setInboundDriverLat(lat);
+            setInboundDriverLng(lng);
+            setInboundLive(Boolean(detail.live_location_available));
           }
         } catch {
           setDeliveryLabelsByOrder({});
+          setInboundDriverLat(null);
+          setInboundDriverLng(null);
+          setInboundLive(false);
         }
       }
     } catch {}
@@ -2050,6 +2061,9 @@ export default function App() {
         handleManifestSeal={handleManifestSeal}
         isSealingManifest={isSealingManifest}
         isLoading={isLoading}
+        inboundDriverLat={inboundDriverLat}
+        inboundDriverLng={inboundDriverLng}
+        inboundLive={inboundLive}
       />
       {false && (
       <View className="flex-1 flex-col">

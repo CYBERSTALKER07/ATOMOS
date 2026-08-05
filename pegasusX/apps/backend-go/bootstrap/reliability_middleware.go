@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -270,6 +271,10 @@ func isReliabilityRateLimitExempt(path string, r *http.Request) bool {
 	if strings.TrimSpace(r.Header.Get(loadBootstrapHeader)) != secret {
 		return false
 	}
+	// Never exempt partner machine API — keys must rate-limit by KeyId.
+	if strings.HasPrefix(lower, "/partner/") {
+		return false
+	}
 	return strings.HasPrefix(lower, "/v1/auth/")
 }
 
@@ -294,6 +299,14 @@ func classifyReliabilityPath(path string) reliabilityClass {
 func reliabilityActorKey(r *http.Request) string {
 	if r == nil {
 		return "anonymous"
+	}
+	if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+		return "partner:" + p.KeyID
+	}
+	if token := auth.BearerToken(r); strings.HasPrefix(token, "pxk_") {
+		if prefix, ok := partner.ParseBearerKey(token); ok {
+			return "partner_prefix:" + prefix
+		}
 	}
 	if claims, ok := auth.FromContext(r.Context()); ok {
 		subject := strings.TrimSpace(claims.Subject)

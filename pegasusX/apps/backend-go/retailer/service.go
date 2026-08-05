@@ -25,6 +25,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
@@ -224,6 +225,8 @@ type TrackingOrder struct {
 	Currency              string                   `json:"currency"`
 	LiveLocationAvailable bool                     `json:"live_location_available"`
 	DriverLocation        *TrackingLocation        `json:"driver_location,omitempty"`
+	// RouteGeometry is the planned sealed-route overlay (from SupplierTruckManifests).
+	RouteGeometry         *routing.RouteGeometryWire `json:"route_geometry,omitempty"`
 	PaymentEvidence       *TrackingPaymentEvidence `json:"payment_evidence,omitempty"`
 	ReceiptDossier        *TrackingReceiptDossier  `json:"receipt_dossier,omitempty"`
 	CreatedAt             string                   `json:"created_at"`
@@ -345,6 +348,7 @@ type Service struct {
 	// Close-out: auto-order execution
 	autoOrderWorker     *autoOrderWorkerState
 	autoOrderCandidates map[string][]AutoOrderCandidate
+	shadowProposalsMem  map[string][]AutoOrderShadowProposal // tests without Spanner
 	// L3 sell-through (memory)
 	sellThroughDaily   map[sellThroughKey]SellThroughDayDTO
 	sellThroughFactors map[string]float64 // retailer|sku|day → SELL_THROUGH

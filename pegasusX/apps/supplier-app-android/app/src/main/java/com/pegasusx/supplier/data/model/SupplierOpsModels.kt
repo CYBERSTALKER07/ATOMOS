@@ -1054,6 +1054,9 @@ data class SupplierReplenishmentPolicy(
     @SerialName("auto_approve_predictive_push") val autoApprovePredictivePush: Boolean = false,
     @SerialName("max_daily_transfer_units") val maxDailyTransferUnits: Long = 0,
     @SerialName("min_confidence_score") val minConfidenceScore: Double = 0.0,
+    @SerialName("target_service_level") val targetServiceLevel: Double = 0.98,
+    @SerialName("lead_time_days") val leadTimeDays: Long = 2,
+    @SerialName("lead_time_sigma_days") val leadTimeSigmaDays: Double = 1.0,
 )
 
 @Serializable

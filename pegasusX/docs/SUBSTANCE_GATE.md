@@ -297,7 +297,7 @@ Until SG passes, these stay **Theatre / Partial** (see `PLATFORM_AUDIT.md` §2):
 | AI confidence gate always-pass | CONTROL cannot reject | Fix threshold math + test |
 | Seasonality multipliers | READERS missing | Multiply in forecast qty or remove UI |
 | Weather/POS “signals” | SOURCES fake constants | Real feed or delete |
-| Forecast MAPE in portal | PROOF/LABEL wrong grain | Server WAPE job or remove metric |
+| Forecast MAPE in portal | **WIRED** server WAPE/bias/TS (`ForecastAccuracyDaily`) | Enable `FORECAST_ACCURACY_ENABLED` + migration |
 | Billing meter | SOURCES schema mismatch | Fix columns + e2e meter event |
 | Soliq legal OFD | PROOF skipped | `PX_E2E_SOLIQ_SANDBOX_OK` required |
 | Cold chain sensors | SOURCES absent | Ingest + excursion or rename |

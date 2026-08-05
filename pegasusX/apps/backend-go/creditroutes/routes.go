@@ -15,6 +15,7 @@ type Deps struct {
 	Service       *credit.Service
 	PolicyService *credit.PolicyService
 	ARService     *ar.Service
+	DunningWorker *ar.DunningWorker
 }
 
 // RegisterRoutes mounts credit profile + policy + AR endpoints.
@@ -49,6 +50,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		if d.ARService != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/invoices", d.ARService.HandleListRetailerInvoices)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/invoices", d.ARService.HandleListSupplierInvoices)
+		}
+		if d.DunningWorker != nil {
+			gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
 		}
 	}
 

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
@@ -50,6 +51,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
@@ -141,6 +143,8 @@ type Config struct {
 
 	OptimizerBaseURL string
 	RoutingOSRMURL   string
+	// RoutingProvider selects geometry backends: auto|google|osrm (default auto).
+	RoutingProvider  string
 	InternalAPIKey   string
 	GCSBucketName    string
 	GoogleMapsAPIKey string
@@ -226,7 +230,18 @@ type App struct {
 	RouteAnalyticsWorker  *analytics.RouteAnalyticsWorker
 	AnalyticsHandlers     *analytics.Handlers
 	NotificationPreferences *notifications.PreferenceHandlers
-	cleanup                []func()
+	PartnerService          *partner.Service
+	PartnerHandlers         *partner.Handlers
+	PartnerKeys             partner.KeyRepository
+	PartnerWebhookDelivery  *partner.DeliveryWorker
+	PartnerExportWorker     *partner.ExportWorker
+	PartnerEdiInbound       *partner.EdiInboundWorker
+	PartnerEdiOutbound      *partner.EdiOutboundWorker
+	PartnerEventConsumer    *kafka.Consumer
+	ARDunningWorker         *ar.DunningWorker
+	ForecastAccuracy        *planning.AccuracyService
+	ForecastRunner          *planning.ForecastRunner
+	cleanup                 []func()
 	// Spanner *spanner.Client (added when the Spanner client lands)
 	// Kafka   *kafka.SyncWriter
 	// Outbox  *outbox.Relay
@@ -291,6 +306,7 @@ func LoadConfig() (*Config, error) {
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 10),
 		OptimizerBaseURL:                envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
 		RoutingOSRMURL:                  envOr("ROUTING_OSRM_URL", ""),
+		RoutingProvider:                 envOr("ROUTING_PROVIDER", "auto"),
 		InternalAPIKey:                  envOr("INTERNAL_API_KEY", "dev-internal-key"),
 		GCSBucketName:                   envOr("GCS_BUCKET_NAME", ""),
 		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
@@ -431,9 +447,17 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		})
 		log.Info("spanner outbox store enabled", "database", spannerDatabasePath(cfg))
 		manifestStore = manifest.NewStore(spannerClient)
+		googleRoutesClient := routing.NewGoogleRoutesClient(cfg.GoogleMapsAPIKey, "", outboundCircuits.GoogleRoutes)
 		osrmClient := routing.NewOSRMClient(cfg.RoutingOSRMURL, outboundCircuits.OSRM)
-		routeGeometryBuilder = routing.NewGeometryBuilder(osrmClient)
+		routeGeometryBuilder = routing.NewGeometryBuilder(
+			googleRoutesClient,
+			osrmClient,
+			routing.ParseRoutingProviderMode(cfg.RoutingProvider),
+		)
 		manifestStore.SetGeometryBuilder(routeGeometryBuilder)
+		if googleRoutesClient != nil {
+			log.Info("Google Routes geometry enabled", "provider_mode", cfg.RoutingProvider)
+		}
 		if osrmClient != nil {
 			log.Info("OSRM routing enabled", "base_url", cfg.RoutingOSRMURL)
 		}
@@ -671,6 +695,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	creditPolicySvc := credit.NewPolicyService(creditPolicyRepo, creditSvc)
 	creditSvc.SetPolicyGate(creditPolicySvc)
 	arSvc := ar.NewService(arRepo)
+	arDunning := ar.NewDunningWorker(arSvc, log)
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -857,6 +882,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FactoryHub:    factoryHub,
 		Log:           log,
 		Spanner:       spannerClient,
+		Locations:     driverLocations,
 		SupplierID:    supplierSeed.SupplierID,
 		FactoryNodeID: factoryNodeID,
 		Currency:      cfg.SeedSupplierCurrency,
@@ -878,6 +904,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTIssuer:     cfg.JWTIssuer,
 		ManifestStore: manifest.NewStore(spannerClient),
 		Idem:          idemStore,
+		Locations:     driverLocations,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.SetOrderExpectationReader(orderRepo)
@@ -1169,11 +1196,80 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	pushBridge := notifications.NewPushBridge(fcmClient, tokenRepo, log)
 
+	// Collections substance: dunning auto-hold + delinquency + inbox/FCM fanout.
+	arDunning.SetAutoHold(func(ctx context.Context, supplierID, retailerID string) error {
+		return creditPolicySvc.HoldRelationship(ctx, supplierID, retailerID, "system:dunning", "SYSTEM")
+	})
+	arDunning.SetDelinquencyBump(func(ctx context.Context, supplierID, retailerID string) error {
+		return creditSvc.BumpDelinquency(ctx, retailerID, supplierID)
+	})
+	arDunning.SetNotify(func(ctx context.Context, inv ar.Invoice, prevStep, nextStep int64) error {
+		eventType, title, body := ar.NotifyMessage(inv, nextStep)
+		deep := "/credit/invoices/" + inv.InvoiceID
+		if notifSvc != nil {
+			_ = notifSvc.CreateNotification(ctx, inv.RetailerID, "RETAILER", eventType, title, body, deep)
+			_ = notifSvc.CreateNotification(ctx, inv.SupplierID, "ADMIN", eventType, title, body, "/credit/collections")
+		}
+		if pushBridge != nil {
+			data := map[string]string{
+				"type": eventType, "invoice_id": inv.InvoiceID, "order_id": inv.OrderID,
+				"step": ar.StepName(nextStep), "prev_step": ar.StepName(prevStep),
+			}
+			pushBridge.NotifyActor(ctx, inv.RetailerID, "RETAILER", data)
+			pushBridge.NotifyActor(ctx, inv.SupplierID, "ADMIN", data)
+		}
+		return nil
+	})
+
+	forecastAccuracy := &planning.AccuracyService{Client: spannerClient, Log: log}
+	forecastAccuracy.Notify = func(ctx context.Context, supplierID, warehouseID, productID string, ts float64, day civil.Date) error {
+		title := "Forecast tracking signal alert"
+		body := "Product " + productID + " warehouse " + warehouseID + " |TS|=" + fmt.Sprintf("%.2f", ts) + " on " + day.String()
+		if notifSvc != nil {
+			_ = notifSvc.CreateNotification(ctx, supplierID, "ADMIN", "FORECAST_TS_ALERT", title, body, "/analytics/demand")
+		}
+		log.Warn("forecast tracking signal out of control",
+			"supplier_id", supplierID, "warehouse_id", warehouseID, "product_id", productID,
+			"day", day.String(), "ts", ts)
+		return nil
+	}
+	forecastRunner := &planning.ForecastRunner{Client: spannerClient, Log: log}
+
 	var notificationConsumer *kafka.Consumer
 	var orderEventConsumer *kafka.Consumer
 	var warehouseEventConsumer *kafka.Consumer
 	var returnsEventConsumer *kafka.Consumer
 	var billingTierConsumer *kafka.Consumer
+	var partnerEventConsumer *kafka.Consumer
+
+	var partnerKeys partner.KeyRepository = partner.NewMemoryKeyRepository()
+	var partnerWebhooks partner.WebhookRepository = partner.NewMemoryWebhookRepository()
+	var partnerExports partner.ExportRepository = partner.NewMemoryExportRepository()
+	var partnerSftp partner.SftpConfigRepository = partner.NewMemorySftpConfigRepository()
+	var partnerEdiDocs partner.EdiDocumentRepository = partner.NewMemoryEdiDocumentRepository()
+	if spannerClient != nil {
+		partnerKeys = partner.NewSpannerKeyRepository(spannerClient)
+		partnerWebhooks = partner.NewSpannerWebhookRepository(spannerClient)
+		partnerExports = partner.NewSpannerExportRepository(spannerClient)
+		partnerSftp = partner.NewSpannerSftpConfigRepository(spannerClient)
+		partnerEdiDocs = partner.NewSpannerEdiDocumentRepository(spannerClient)
+	}
+	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
+	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
+	partnerDelivery := partner.NewDeliveryWorker(partnerWebhooks, log)
+	partnerExportWorker := partner.NewExportWorker(partnerExports, partnerSftp, spannerClient, log)
+	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, log)
+	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
+	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
+	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
+		loc, err := retailerSvc.EnsurePrimaryLocation(ctx, retailerID)
+		if err != nil {
+			return partner.RetailerGeo{}, err
+		}
+		return partner.RetailerGeo{Lat: loc.Lat, Lng: loc.Lng, H3Cell: loc.H3Cell}, nil
+	}
+	partnerHandlers := &partner.Handlers{Svc: partnerSvc, Delivery: partnerDelivery}
+
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
 		if err != nil {
@@ -1260,12 +1356,27 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 					Auth:      kafkaAuth,
 				})
 			}
+			const partnerWebhookConsumerGroup = "void-partner-webhooks"
+			partnerHandler := kafka.WithEventDedup(kafkaEventDedup, partnerWebhookConsumerGroup, partner.NewEventConsumer(partnerSvc, log).HandleEvent)
+			partnerEventConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
+				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+				GroupID:   partnerWebhookConsumerGroup,
+				Topics:    []string{events.OrderConsumerTopic(), events.TopicExceptions},
+				Handler:   partnerHandler,
+				DLQWriter: dlqWriter,
+				Auth:      kafkaAuth,
+			})
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {
 					log.Warn("notification consumer close failed", "err", err)
 				}
 				if err := orderEventConsumer.Close(); err != nil {
 					log.Warn("order event consumer close failed", "err", err)
+				}
+				if partnerEventConsumer != nil {
+					if err := partnerEventConsumer.Close(); err != nil {
+						log.Warn("partner webhook consumer close failed", "err", err)
+					}
 				}
 				if err := warehouseEventConsumer.Close(); err != nil {
 					log.Warn("warehouse event consumer close failed", "err", err)
@@ -1442,6 +1553,17 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		RouteAnalyticsWorker:    routeAnalyticsWorker,
 		AnalyticsHandlers:       analyticsHandlers,
 		NotificationPreferences: notifPrefHandlers,
+		PartnerService:          partnerSvc,
+		PartnerHandlers:         partnerHandlers,
+		PartnerKeys:             partnerKeys,
+		PartnerWebhookDelivery:  partnerDelivery,
+		PartnerExportWorker:     partnerExportWorker,
+		PartnerEdiInbound:       partnerEdiIn,
+		PartnerEdiOutbound:      partnerEdiOut,
+		PartnerEventConsumer:    partnerEventConsumer,
+		ARDunningWorker:         arDunning,
+		ForecastAccuracy:        forecastAccuracy,
+		ForecastRunner:          forecastRunner,
 		cleanup:                 cleanup,
 	}, nil
 }

@@ -2,7 +2,9 @@
 
 Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-08-04. No repo markdown was trusted; every claim below traces to code, schema, or config. File:line references are given so each finding can be re-checked.
 
-**Re-aligned 2026-08-04 (post Phase A/B G1–G3 + Gate-0 hygiene):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal env-selected (`PEGASUS` default); billing workers constructed but schema-broken; credit scoring removed; Firebase client configs committed. **Gate-0 closed:** Claims in `spanner.ddl`, iOS snake_case decode, OrgFleet Android compile, optimizer minutes Time dim + empty-route reject, worker replicas=1, AutoConfirm sweeper flag, orphan `ledger/` deleted. Still open: single-supplier runtime, no partner API/ML, Spanner backup TF, outbox leases, P0-4 iOS offline.
+> **Runtime supersession (2026-08-06 / Gate-3 Wave 2C GS1 + 1C journals + 2B EDI-lite + collections):** OR-Tools code-wired but cloud heuristic-only — [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Geometry: Google Routes → OSRM → dense. Gate-0 Track A closed Spanner PITR/backup TF, outbox leases + Kafka `event_id` dedupe, SchemaMigrations, P0-4 iOS offline enqueue. **§8.6 credit terms/AR/aging + dunning step machine + `DelinquencyCount` bump + CREDIT_HOLD auto-freeze are live** behind flags — [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](./docs/CREDIT_ECOSYSTEM_BEHAVIOR.md); residual: no SMS/email/WhatsApp. **§8.9 Partner Integration Wave 1+2A+2B+2C + 1C journals shipped** — keys + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + GLN/SSCC/ZPL + **journals CSV/XML** ([`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md), [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md), [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md)); AS2 / configurable CoA still open. Integration scorecard **8/10**.
+
+**Re-aligned 2026-08-04 (post Phase A/B G1–G3 + Gate-0 hygiene):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal env-selected (`PEGASUS` default); credit scoring removed; Firebase client configs committed. **Gate-0 closed:** Claims in `spanner.ddl`, iOS snake_case decode, OrgFleet Android compile, optimizer minutes Time dim + empty-route reject, worker replicas=1, AutoConfirm sweeper flag, orphan `ledger/` deleted, Spanner backup/PITR, outbox leases, SchemaMigrations, P0-4 offline. Still open: single-supplier runtime, partner API (Gate 3 in progress), ML forecasting theatre.
 
 ---
 
@@ -14,13 +16,13 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 
 1. **It is a single-supplier system, at runtime, by construction.** The schema is multi-tenant-shaped (`SupplierId` leads most keys), and supplier registration will mint up to 10 tenants — but `bootstrap/bootstrap.go` injects one `supplierSeed.SupplierID` into ~15 service constructors at process start, and `order.Service` holds it as a private `supplierID` field (`order/service.go` ~351) used as a constant on create/list paths. **The supplier the retailer picks in the UI is discarded during order creation.** Registering a second supplier today produces a tenant whose orders are attributed to the seed supplier. The data plane can hold 10 suppliers; the request plane can serve exactly 1.
 
-2. **There is zero machine learning, and the "AI" layer is arithmetic.** The Python service's entire dependency list is one line: `ortools==9.15.6755`. No Vertex, Gemini, OpenAI, TensorFlow, PyTorch, ONNX, sklearn, XGBoost, Prophet, statsmodels, embeddings, or vector search anywhere in Go modules, requirements, Cargo, or package.json. The code says so itself: `planning/baseline_sources.go:14` — *"Never returns 'ml' — training inference is deferred"*; `cmd/planning-training-export/main.go:24` — *"collect-only; no training"*. The auto-order quantity is `line.Quantity / 2` (`ai-worker/synthesis/engine.go:310`).
+2. **There is zero machine learning, and the "AI" layer is arithmetic.** The Python service's entire dependency list is one line: `ortools==9.15.6755`. No Vertex, Gemini, OpenAI, TensorFlow, PyTorch, ONNX, sklearn, XGBoost, Prophet, statsmodels, embeddings, or vector search anywhere in Go modules, requirements, Cargo, or package.json. The code says so itself: `planning/baseline_sources.go:14` — *"Never returns 'ml' — training inference is deferred"*; `cmd/planning-training-export/main.go:24` — *"collect-only; no training"*. Legacy synthesis still had `line.Quantity / 2` — **diverted** when `AUTO_ORDER_INVENTORY_GROUNDED` (§8.3); inventory `(R,s,S)` is the preferred qty path.
 
 3. **There is no machine-to-machine integration surface at all.** Zero matches across the backend for `openapi`, `swagger`, `oauth2`, `client_credentials`, EDIFACT, X12, SSCC, GLN, ZPL, SAP, 1C, Odoo, NetSuite, BigQuery, SFTP. No outbound webhooks (the 5 webhook routes are inbound gateway receivers). No export endpoint of any kind. **A retailer with an ERP cannot integrate today by any path.** The only automated inbound channel is a human uploading a spreadsheet through a browser wizard and clicking approve.
 
 **Scale, for calibration:** ~410k lines of real code — 131,670 Go / 81,116 TSX / 94,332 Kotlin / 74,434 Swift / 22,858 TS / 1,826 Python / 988 Rust / 32,118 YAML / 1,507 Terraform. 411 distinct HTTP endpoints, 73 Spanner tables, 12 native apps, 6 web surfaces. This is 18–30 months of competent engineering, not a prototype.
 
-**Can it replace the field sales agent?** It replaces the agent's **order pad**, not the agent. The commercial loop (demand signal → proposal → confirmation → credit → pricing → allocation → dispatch) is genuinely automatable with flags that already exist. But picking, loading, driving, the delivery handshake, cash collection, and every exception path terminate in a human — and **dunning happens entirely outside the system** because there are no payment terms, no due dates, and no SMS or email transport. Honest number: **~35–40% of the agent's job is automatable with what exists, ~65% with the P1 work in §8, and the cash-collection half is structural, not a gap.**
+**Can it replace the field sales agent?** It replaces the agent's **order pad**, not the agent. The commercial loop (demand signal → proposal → confirmation → credit → pricing → allocation → dispatch) is genuinely automatable with flags that already exist. But picking, loading, driving, the delivery handshake, cash collection, and every exception path terminate in a human — and **off-app dunning** still needs SMS/email (in-app terms/aging/step machine/hold/FCM are wired). Honest number: **~35–40% of the agent's job is automatable with what exists, ~65% with the P1 work in §8, and the cash-collection half is structural, not a gap.**
 
 **Scorecard:**
 
@@ -32,8 +34,8 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 | iOS | **5/10** | Modern SwiftUI/`@Observable`; Gate-0 removed convertFromSnakeCase decoder bug. Background location still misconfigured; P0-4 offline enqueue remains. |
 | Android | **6/10** | Best offline queue in the repo; supplier Android compiles again (Gate-0 OrgFleet). |
 | Infra / DevOps | **3/10** | Well-authored manifests, zero operationalization: no Spanner backup, local Terraform state, prod overlay renders placeholder images, no CD. |
-| AI / optimization | **2.5/10** | Real OR-Tools and a correct Clarke-Wright exist; the deployed solver has a fatal unit bug and forecasting is a 7-day mean. |
-| Integration surface | **0.5/10** | A spreadsheet wizard. |
+| AI / optimization | **2.5/10** *(code quality higher post minutes-fix; cloud still undeployed)* | OR-Tools sidecar + Clarke-Wright exist; cloud dispatch is heuristic until AR image/replicas; forecasting remains a 7-day mean. |
+| Integration surface | **8/10** *(GS1/ZPL + 1C journals CSV/XML + EDI-lite; AS2/configurable CoA still open)* | Partner keys + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + GLN/SSCC/ZPL + journals + OpenAPI. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). |
 | Multi-tenancy (runtime) | **1/10** | One supplier, bound at startup. |
 
 ---
@@ -73,10 +75,10 @@ The single most important pattern in this codebase: **features ship the *interfa
 | 5 | **AI confidence gate** | `MinConfidence` knob, debug log for rejections | Minimum possible score is `0.4 + 0.15 + 0 + 0 = 0.55`; the gate is `score < 0.55`. **`0.55 < 0.55` is false — every event passes.** | `synthesis/engine.go:181` vs `:99, 451-455` |
 | 6 | **Touchless replenishment policy** | `MinConfidenceScore FLOAT64 DEFAULT 0.85` | Loaded, written, and **never used in any decision**. A supplier setting "only auto-approve above 95%" is silently ignored. | `replenishment/policies.go:52,83` vs `touchless.go:41-52,242-253` |
 | 7 | **Auto-confirm of AI preorders** | `AutoConfirmAt` set to +24h; `AutoConfirmDueOrders` + worker ticker | **Wired behind `AUTO_CONFIRM_PREORDERS_ENABLED=1`** (Gate-0; default off). Without the flag, preorders stay PENDING until human confirm. | `runtime_workers.go`; `order/preorder_service.go` |
-| 8 | **Seasonality** | Two templates with `Multiplier` ×1.35 / ×1.15 | The `Multiplier` field is **never read by any quantity calculation** — only serialized and cached. Seasonality is decorative. | `planning/seasonal_templates.go:46-49` |
-| 9 | **Weather & POS demand signals** | A `CompositeSignalProvider` "demand sensing stack" | `externalWeatherSignals` returns hardcoded `Qty: 2` if the month is June–August. `externalPOSSignals` returns `Qty: 3` on the 1st, 15th, and last of the month. No API calls. | `predictivepush/signals.go:96-130` |
+| 8 | **Seasonality** | Two templates with `Multiplier` ×1.35 / ×1.15 | **Partial:** applied on §8.1 baseline writes + replenishment suggested qty; HW-estimated template library still open. | `planning/forecast_runner.go`; `replenishment/seasonal.go` |
+| 9 | **Weather & POS demand signals** | A `CompositeSignalProvider` "demand sensing stack" | Fake qty stubs **removed** (§8.1); providers return empty until real weather/POS APIs. | `predictivepush/signals.go` |
 | 10 | **Price elasticity / promo simulation** | Promo simulator with projected volume, margin, and a "closed-loop score" | Fixed 0.5 elasticity for every product and season. The actual-vs-projected scorer does `_ = promotionID` — it **counts all completed orders in 30 days** and calls that the promotion's result, comparing an order *count* against a projected unit *volume*. | `planning/promo_eval.go:59`, `:156-163` |
-| 11 | **Forecast accuracy** | A MAPE figure shown to suppliers | Computed client-side in React, never persisted, mislabeled (it's WAPE), and joins a **per-product baseline against a per-warehouse order count** — it measures nothing coherent. | `supplier-portal/app/(portal)/analytics/demand/page.tsx:82-85` |
+| 11 | **Forecast accuracy** | A MAPE figure shown to suppliers | **Wired (§8.4):** `ForecastAccuracyDaily` + nightly job; portal reads server WAPE/bias/TS. Residual: enable `FORECAST_ACCURACY_ENABLED` + apply migration in each env. | `planning/accuracy.go`; `GET .../demand/accuracy` |
 | 12 | **Cold chain** | `RequiresColdChain`, `StorageTempMinC/MaxC`, a `TEMPERATURE_BREACH` condition type | **No temperature ingestion, no sensor integration, no reading table, no excursion detection.** A human reports a breach after the fact. The flags never reach the route solver. | ddl:625-633; `order/condition.go:25` |
 | 13 | **Multi-currency** | 17 `Currency STRING(3)` columns threaded through orders and payments | No FX rate table, no conversion, no multi-currency arithmetic. | `schema/spanner.ddl` |
 | 14 | **i18n** | 738 keys × en/ru/uz, generated to web JSON + iOS `.strings` + Android `strings.xml` | **~1,582 hardcoded English strings and 0 translation calls in the portals**; 0 `NSLocalizedString` in 453 Swift files; 1,125 hardcoded `Text("...")` in Kotlin. The generated catalogs are referenced by nothing. | `packages/i18n/generated/*`; portal `.tsx` scan |
@@ -100,13 +102,13 @@ Deleted wrecked `orgfleet/components/*` duplicates; parent `OrgFleetScreen` + `F
 **P0-3 — ~~Driver iOS cannot decode any response.~~ Fixed (Gate-0).**
 Removed `.convertFromSnakeCase` from driver + payload `APIClient.swift` so explicit snake_case `CodingKeys` match.
 
-**P0-4 — Server rejections become "successful" offline deliveries on iOS.** `FleetServiceLive.swift:57-64` treats only `FleetServiceError` as a business rejection, but `APIClient` never throws that type — it throws `APIError`. A 403 "you are 4 km from the customer" is caught by the `else` branch, queued offline, and **reported to the driver as a completed delivery**, then replayed forever with coordinates `(0, 0)` (`:266-272`, directly beneath a comment claiming it refuses to fabricate coordinates).
+**P0-4 — ~~Server rejections become "successful" offline deliveries on iOS.~~ Fixed (Gate-0 / client parity).** `FleetServiceLive` enqueues only via `DriverOfflineActionCatalog.isNetworkEnqueueable`; business 4xx re-thrown; `requireCurrentLocation` refuses `(0,0)`.
 
-**P0-5 — Outbox double-publish — short-term mitigated (Gate-0).** Worker `replicas: 1` in manifest + SSMR scaled. Full lease (`ClaimedBy`/`ClaimedUntil`) + EventID Kafka dedupe still open before safe multi-replica relay.
+**P0-5 — ~~Outbox double-publish.~~ Mitigated + leased (Gate-0 Track A).** Worker replicas=1 short-term; `ClaimedBy`/`ClaimedUntil` lease on fetch + Kafka `event_id` dedupe landed. Multi-replica relay still needs ops soak before scaling workers.
 
-**P0-6 — No Spanner backup exists.** No `google_spanner_backup_schedule`, no `version_retention_period`, zero backup resources in state. No documented RPO/RTO, no restore script, no restore rehearsal. Combined with P0-7, there is an unbounded-loss path with no recovery mechanism.
+**P0-6 — ~~No Spanner backup exists.~~ Closed (Gate-0 Batch B).** PITR 7d + backup schedule TF + restore rehearsal RTO ~30 min; GCS remote TF state. See `artifacts/GATE0_SPANNER_BACKUP_RESTORE_*`.
 
-**P0-7 — Failed migrations report success.** `cmd/apply-migration/main.go:258-277` treats `AlreadyExists`, **all of `FailedPrecondition`**, and any `InvalidArgument` mentioning "already exists" as benign. `FailedPrecondition` is what Spanner returns for genuine failures like adding a `NOT NULL` column to a populated table. The Job exits 0 and the rollout proceeds against a schema the code doesn't expect. There is **no migration version tracking table** — for an existing database, `cmd/setup` reapplies all 1,292 DDL lines on every invocation.
+**P0-7 — ~~Failed migrations report success / no version table.~~ Closed (Gate-0 Track A).** `SchemaMigrations` + narrowed benign DDL set in `cmd/apply-migration`.
 
 **P0-8 — The prod overlay is undeployable.** `kustomize build infra/k8s/overlays/prod` emits literal `PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER` for 3 workloads, `pegasusx-optimizer-core:local`, and two `:latest` images from a **different GCP project**. The `backend-go-secrets` ExternalSecret requires 12 keys; Terraform provisions 5 of those names and only 5 of all 19 secrets have any version — none of them JWT, GlobalPay, Adyen, Stripe, or Maps. ESO sync is atomic, so no pod starts. The Ingress references TLS secret `pegasusx-api-tls` that nothing creates.
 
@@ -127,7 +129,7 @@ Removed `.convertFromSnakeCase` from driver + payload `APIClient.swift` so expli
 - **An app update wipes unsynced deliveries.** `NetworkModule.kt:88-91` uses `.fallbackToDestructiveMigration()` on a DB already at version 4.
 - **Push / Firebase OTP still ops-blocked.** Client configs are now committed (`google-services.json` / `GoogleService-Info.plist` under each mobile app; Android google-services plugin wired). Remaining blockers: missing/incomplete `.entitlements` / `aps-environment` for APNs, uneven `FirebaseMessagingService` manifests, and **owner** Firebase Phone SHA-1 + real SMS. Do not treat configs as “push works in release.”
 - **`AIPredictions.AggregateId` overflow.** `predictivepush/audit.go:51` writes `retailerId + ":" + productId` (73 chars) into `STRING(36)`. Step 3 of the daily cron fails on every run with real UUIDs. The synthesis engine already hit this and worked around it; nobody fixed this path.
-- **`DelinquencyCount` is never computed.** It is read and persisted verbatim; nothing increments it. **Credit risk scoring was deliberately removed** (Phase A) — CREDIT_LEAVE / placement use status + available only — so this is no longer “the risk engine’s primary input,” but aging/dunning still cannot start without it.
+- **`DelinquencyCount` is now bumped** on first OVERDUE via dunning (`credit.BumpDelinquency`). **Credit risk scoring remains deliberately removed** (Phase A) — CREDIT_LEAVE / placement use status + available only.
 - **HPA targets 7 millicores.** `hpa.yaml:21` sets 70% CPU against a `cpu: 10m` request. An idle pod exceeds it and pins to `maxReplicas: 12`, which a 1–3 node e2-medium cluster cannot schedule.
 - **OSRM will crash-loop** — `osrm/deployment.yaml:26` runs `osrm-routed /data/region.osrm` with no volume, no PVC, no init container, 512Mi for a multi-GB extract, and no liveness probe. And the solver never calls OSRM anyway: distances are haversine (`contract_solver.py:34-43`), which underestimates by 20–40% in a dense street grid, so every route is over-committed on time.
 - **No CI compiles the 167k lines of mobile code**, no linter runs anywhere (no `.golangci.yml`, no ESLint step, no SwiftLint/detekt/ktlint config in the repo), no `-race`, and no security scanning of any kind. This is *why* P0-2 and P0-3 are in `HEAD`.
@@ -156,7 +158,7 @@ Twenty-two steps from need-detection to cash in the bank. "Automatable" means a 
 | 1 | Detect the reorder need | No | **Automated** — `AIPredictions`, predictive push |
 | 2 | Retailer confirms the suggestion | Default yes | **Automatable** — 5 per-scope auto-order toggles (global/category/supplier/product/variant) |
 | 3 | Supplier accepts the order | Default yes | **Automatable** — midnight-guard sweeper → `AUTO_ACCEPTED` |
-| 4 | Credit decision | No | **Automated** at placement — **limit + status only** (scoring removed); `DelinquencyCount` still never incremented |
+| 4 | Credit decision | No | **Automated** at placement — **limit + status only** (scoring removed); `DelinquencyCount` bumped by dunning on first OVERDUE |
 | 5 | Price determination | No | **Automated** — override → promotion → list |
 | 6 | Stock allocation / backorder | No | **Automated** — per-SKU policy over warehouse default |
 | 7 | Delivery date agreement | Sometimes | **Partial** — auto by default; the negotiation path needs a human on both sides |
@@ -174,13 +176,13 @@ Twenty-two steps from need-detection to cash in the bank. "Automatable" means a 
 | 19 | Reconciliation | On exception | Partial — detection automated, resolution manual |
 | 20 | Returns disposition | Yes | **Stronger** — FileClaim + approve/reject + stock hold + reverse open; human still confirms disposition |
 | 21 | Exceptions (shop closed, delay, overflow, rescue) | **YES** | Absent — every path ends in a human decision |
-| 22 | **Dunning / collections** | **YES, entirely offline** | **Absent.** No `PaymentTerms`, no `DueDate`, no aging, and no SMS/email transport to send a reminder through |
+| 22 | **Dunning / collections** | Partial | **In-app wired** (terms/due/aging/step machine/hold/FCM+inbox) behind `AR_DUNNING_ENABLED`; **off-app SMS/email still absent** |
 
 **The honest read.** Steps 1–9 — the whole commercial decision loop — are genuinely automatable today, and that is more than most SFA vendors ship. But the automation is only as good as its inputs, and right now step 1 produces `last_order / 2` even though **retailer on-hand balances now exist** — the auto-order path still does not consult them. An agent walks in, looks at the shelf, knows what sells, knows what's near expiry, knows the promo calendar, and negotiates. This halves the last invoice.
 
 Two blockers are structural rather than unbuilt:
 - **Cash collection.** In a COD-dominant market the driver *is* the collections function. The platform doesn't remove that human, it instruments him — arguably the correct product decision, but it converts field headcount from sales to logistics rather than eliminating it.
-- **Dunning.** The single most valuable field-agent activity the platform does nothing about, and it's blocked by two small absences (a due-date field and an SMS provider), not by anything architectural. **This is the highest ROI-per-line-of-code item in the entire report.**
+- **Dunning.** In-app step machine + hold + FCM/inbox are wired; the remaining gap for field-agent replacement is **off-app SMS/email** so retailers without the app still get reached.
 
 ---
 
@@ -196,7 +198,7 @@ The premise that "there is no such system in the world" is **not accurate**, and
 
 **The critical lesson from that landscape, and it is directly relevant.** The pure marketplace/e-commerce thesis largely *failed*. MaxAB-Wasoko retreated from 8 markets to 5 and is betting the company on **embedded fintech**; in Egypt fintech transactions already outpace e-commerce. TradeDepot pivoted to **advertising and data**. MarketForce shut its e-commerce arm. Sabi went to commodity exports. Udaan survived by abandoning geographic breadth for **city-level density** and private label (now 15% of revenue). Ankorstore gave up reorder commission entirely and monetizes via **subscription + fintech**.
 
-Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** And credit is precisely where the code is weakest — `RetailerCreditProfiles` exists with limits and status, but **risk scoring was deliberately removed** (Phase A; `RiskTier` cleared / ignored), `DelinquencyCount` is never computed, there are no payment terms, no due dates, no aging, no dunning, and no channel to reach a retailer who hasn't installed the app.
+Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** Terms/AR/aging/dunning/`DelinquencyCount`/CREDIT_HOLD are now code-wired (flag-gated); **risk scoring stays removed** (Phase A). The remaining collections gap is **off-app reach** (SMS/email) for retailers without the app.
 
 **What is genuinely defensible here.** Not "a platform connecting all suppliers and retailers" — that exists and has been expensively fought over. What is unusual is the **vertical depth of a single stack from factory floor to shop shelf**: factory manifests → inter-hub transfers → warehouse loading bay with a dedicated terminal role → volumetric truck packing in VU → geofenced driver handshake → COD/split-payment/credit-delivery with ledger and reconciliation → fiscal receipt. Most competitors are a marketplace bolted onto 3PL, or an SFA app bolted onto someone else's ERP. **Nobody has the whole physical chain in one transactional model with one event bus.** That is the asset. It happens to be worth more as *deep software for one large distributor* than as a thin marketplace for many.
 
@@ -212,18 +214,18 @@ What the code offers them today:
 
 | They need | PegasusX has |
 |---|---|
-| An API their ERP can call | **Nothing.** No OpenAPI, no API keys, no OAuth client credentials. Auth is phone/PIN JWT — human sessions only. |
-| Events pushed to their system | **Nothing outbound.** The 5 webhook routes are inbound gateway receivers. |
-| A file drop | **No SFTP, no export endpoint of any kind.** |
-| EDI (ORDERS/ORDRSP/DESADV/INVOIC) | **Zero matches** for EDIFACT, X12, or any EDI message type. |
+| An API their ERP can call | **Partner API keys + `/partner/v1` + OpenAPI** (Wave 1). OAuth client_credentials still absent; human JWT remains for portal. |
+| Events pushed to their system | **Outbound HMAC webhooks** (Wave 1) + list/deactivate/replay (Wave 2A). Inbound payment gateway webhooks unchanged. |
+| A file drop | **Bulk export API + optional SFTP** (Wave 2A). EDI/AS2 still open. |
+| EDI (ORDERS/ORDRSP/DESADV/INVOIC) | **EDI-lite over SFTP** (Wave 2B) — UNA segment dialect; no AS2 / certified EDIFACT. See [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). |
 | Bulk load | **The one real primitive:** a 9-state import wizard (`supplier/import_sessions.go:177`) with signed-URL upload, column auto-discovery, mapping, staging with raw+cleaned JSON, and error summaries. Production-grade — but **inventory/product only, one-way, human-driven**. |
-| GS1 identifiers | **GTIN only.** `returns/barcode.go:10-55` validates EAN-8/12/13 and GTIN-14 checksums correctly. **SSCC: 0 matches. GLN: 0 matches.** No ASN, no pallet labels. |
+| GS1 identifiers | **GTIN + GLN + SSCC + ZPL (Wave 2C).** Shared `gs1/` package; GLN on org profiles; SSCC-18 on `ManifestShipUnits` at seal; ZPL label API. See [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md). No ASN/EDI SSCC segments. |
 | Label printing | **No ZPL.** Scanning in, nothing out. |
 | Accounting export | `PaymentLedgerEntries` and `MasterInvoices` internally; **no journal export, no chart-of-accounts mapping**. |
 | Legal receipt | `FISCAL_PROVIDER=PEGASUS` issues platform commercial receipts; **`MY_SOLIQ` OFD adapter exists but needs sandbox/prod creds.** You cannot legally close a Soliq-mandated sale until L5 lands. |
 | Data warehouse | **Zero BigQuery references.** |
 
-**Direct answer: no retailer or supplier with existing systems can integrate today, by any path, with any amount of effort on their side.** Every order requires a human typing into a mobile app.
+**Superseded (Wave 1+2A+2B+2C + journals):** partner keys, `/partner/v1`, webhooks, bulk export/SFTP, EDI-lite, GLN/SSCC/ZPL, and **1C journals CSV/JSON/XML** — see [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). Residual: AS2, configurable CoA / certified 1C exchange, OAuth client_credentials, EDI SSCC segments.
 
 The fix is small relative to its impact, because the hard part is already built: `OutboxEvents` + Kafka + a typed event registry (`registry.json`, 107KB of event shapes) is exactly the substrate an outbound webhook system needs. Items 1–4 in §8.9 are perhaps **5% of the engineering already invested** and are the difference between selling to one distributor's field team and selling to a retail chain.
 
@@ -263,71 +265,40 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 ---
 
-### 8.1 Demand forecasting — replace the 7-day mean
+### 8.1 Demand forecasting — WIRED (Croston / SES / Holt–Winters)
 
-**Why.** Every downstream decision — reorder point, suggested quantity, auto-order, transfer, dispatch volume — inherits the forecast's error. Today it is an unweighted trailing mean divided by a hardcoded `7` regardless of how many days had data (`replenishment/engine.go:471-475`), so a SKU with one order 6 days ago gets `qty/7` instead of `qty/1`. Intermittent and new SKUs are systematically under-forecast, which in FMCG distribution is *most* SKU-store pairs.
+**Shipped.** Package `planning/forecast` (classify + Croston SBA + SES + Holt–Winters m=7 + holdout fit). Nightly `cmd/planning-forecast` (CronJob 02:00 UTC) loads COMPLETED `LineItemsJson` via `LoadCompletedActuals`, writes `DemandForecastBaseline` through `WriteBaselineWithOutbox` with residual p10/p90 bands, seasonal `Multiplier`, and §8.4 WAPE confidence when available. Flag `FORECAST_ALGO_ENABLED`; ops `POST /v1/admin/planning/forecast/run-once`; backtest `-mode=backtest` (+ optional `FORECAST_ALGO_REQUIRE_GATE`). Predictive-push skips baseline overwrite when algo on; fake weather/POS qty stubs removed. Docs: [`docs/FORECAST_ALGO.md`](./docs/FORECAST_ALGO.md). Marker: `PX_E2E_FORECAST_ALGO_OK` / `_SKIPPED`.
 
-**Algorithm.** Classify each `(warehouse, product)` pair by ADI (average inter-demand interval) and CV² of non-zero demand — the Syntetos–Boylan–Croston quadrants:
-
-- **Smooth** (ADI < 1.32, CV² < 0.49) → Holt–Winters triple exponential smoothing with weekly seasonality:
-  `L_t = α(y_t / S_{t-m}) + (1-α)(L_{t-1} + T_{t-1})`, `T_t = β(L_t - L_{t-1}) + (1-β)T_{t-1}`, `S_t = γ(y_t / L_t) + (1-γ)S_{t-m}`, forecast `ŷ_{t+h} = (L_t + hT_t)·S_{t-m+h}`
-- **Erratic** (ADI < 1.32, CV² ≥ 0.49) → simple exponential smoothing on level only, wider intervals
-- **Intermittent / lumpy** (ADI ≥ 1.32) → **Croston with the Syntetos–Boylan bias correction**: maintain separate smoothed estimates of demand size `z_t` and inter-arrival interval `p_t`, updated only on non-zero periods, then `ŷ = (1 - α/2)·z_t / p_t`. The `(1 - α/2)` factor removes the positive bias in classic Croston — this matters because a biased-high forecast silently inflates every retailer's working capital.
-
-Fit `α, β, γ` per series by minimizing one-step-ahead squared error on a holdout, with sane bounds (0.05–0.4) and a global fallback for short series.
-
-**Inputs.** Daily units per `(WarehouseId, ProductId)` from `Orders.LineItemsJson` where `Status='COMPLETED'`, ≥60 days. Exogenous flags from `SupplierPromotions` (active window) and `SeasonalTemplateOverrides`.
-**Outputs.** `DemandForecastBaseline.BaselineQty` = point forecast; `LowUnits`/`HighUnits` from the **empirical residual quantiles**, not the current ±10% constant; `Confidence` from measured historical accuracy for that series, not `orderCount/8`.
-**Where.** New `apps/backend-go/planning/forecast/{classify,croston,holtwinters}.go`. Replace the `AVG(ci.Quantity)` SQL in `ai-worker/predictivepush/analyzer.go:52-66`. Keep `WriteBaselineWithOutbox` as the sink; delete the ±10% defaults at `planning/baseline_write.go:37-44` and `planning/forecast_confidence.go:153`, and the magic-number table at `:225-237`.
-**Validation.** Rolling-origin backtest: for each of the last 90 days, fit on `[0,t)`, predict `t+lead`, score. Report **WAPE and bias** (`Σ(forecast−actual)/Σactual`) per demand class. Gate deployment on beating the current 7-day mean by >15% WAPE on ≥80% of series. Bias is the metric that matters most — a consistently +15% forecast bankrupts a retailer regardless of WAPE.
-
-**Then make seasonality real:** multiply the baseline by `SeasonalTemplateOverrides.Multiplier` (currently defined and never read) and replace the two hardcoded templates with multipliers *estimated* from the Holt–Winters `S_t` indices. Replace the fake weather/POS signals (`predictivepush/signals.go:96-130`) with either a real weather API and real POS feed, or nothing — a hardcoded `Qty: 2` in summer is worse than no signal because it looks like one.
+**Residual.** HW-estimated seasonal template library; real weather/POS feeds; replenishment burn still uses 7-day mean until §8.2.
 
 ---
 
-### 8.2 Safety stock with an explicit service level
+### 8.2 Safety stock with an explicit service level — WIRED
 
-**Why.** The current reorder point is `burn·lead·1.15` — a flat 15% buffer with no notion of variability or target service level (`replenishment/engine.go:259`). Two SKUs with identical mean demand but wildly different volatility get identical protection. Suppliers cannot answer "what fill rate am I buying?"
+**Shipped.** Flag `SAFETY_STOCK_V2_ENABLED`: when on, `SS = z_α · √(L·σ_d² + d̄²·σ_L²)` and `ReorderPoint = d̄·L + SS` in `replenishment/safety_stock.go` + `engine.go` (MEIO/echelon share the helper). Flag off keeps legacy `burn·lead·1.15`.
 
-**Algorithm.** `SS = z_α · √(L·σ_d² + d̄²·σ_L²)` and `ReorderPoint = d̄·L + SS`, where `z_α` is the normal quantile for the target cycle service level (98% → 2.054), **`σ_d` is the standard deviation of forecast residuals from §8.1's backtest** — not of raw demand, which is the mistake most implementations make — `d̄` is mean daily demand, `L` is mean lead time, `σ_L` is lead-time standard deviation.
+- `FactoryInternalTransfers.ReceivedAt` written on warehouse receive + factory INTERNAL create-as-RECEIVED; observed L/σ_L when ≥10 samples
+- `ReplenishmentPolicies`: `TargetServiceLevel` / `LeadTimeDays` / `LeadTimeSigmaDays`; GET/PATCH + supplier portal knobs
+- `InTransitQty` from open transfers ⋈ insights; `DemandBreakdown` carries `safety_stock`, `z_alpha`, `sigma_*`, `*_assumed`
+- Docs: [`docs/SAFETY_STOCK.md`](./docs/SAFETY_STOCK.md). Marker: `PX_E2E_SAFETY_STOCK_OK` / `_SKIPPED`
 
-**Prerequisite that does not exist.** `FactoryLeadDays` is hardcoded to `2` (`engine.go:207`) because **there is no observed lead-time data**. `FactoryInternalTransfers` has no `ReceivedAt` column, so actual transfer duration is unmeasurable. Add `ReceivedAt TIMESTAMP` and start collecting before this formula can be honest; until then run with a conservative `σ_L` and label it as assumed.
-
-**Inputs.** Residual σ from §8.1; observed lead times from the new column; `TargetServiceLevel FLOAT64`, `LeadTimeDays`, `LeadTimeSigmaDays` added to `ReplenishmentPolicies`.
-**Outputs.** Replaces `reorderPoint` at `engine.go:259`, feeding `computeSuggestedQty`. Also fix `InTransitQty`, declared at `engine.go:148` and **never populated by any code path** — it should sum open transfer quantities, and its permanent zero currently inflates every suggestion.
-**Validation.** Replay the last 90 days of inventory positions under both policies; report achieved fill rate and average on-hand. The new policy must hit target ±2pp at equal or lower inventory.
-
----
-
-### 8.3 Ground the auto-order in inventory, not in the last invoice
-
-**This is the single change that moves autonomous replenishment from toy to credible.**
-
-**Why.** `qty := line.Quantity / 2` (`synthesis/engine.go:310`) reads no inventory, no burn rate, no forecast, no lead time. The `DemandForecastBaseline` table the system already computes is **never consulted by the order-creation path**. And because the write is a raw `spanner.InsertMap` (`:336`) rather than `order.Service.Create`, an order the system generates for itself gets **no stock reservation, no price re-quote, no promotion application, and no credit check**.
-
-**Algorithm.** Periodic-review `(R, s, S)`: at review interval `R`, if inventory position `IP = on_hand + on_order − backorders ≤ s` (the reorder point from §8.2), order up to `S = s + D(R)` where `D(R)` is forecast demand over the review period, then round up to case/pallet quantity using `UnitsPerPack`.
-
-**The missing input, and how to get it.** The platform does not know the retailer's shelf. Three options in preference order:
-- **(a) POS integration** — the correct answer, and `externalPOSSignals` (`signals.go:114`) is exactly where it belongs.
-- **(b) Periodic shelf counts** from the retailer app — cheap, low-friction, gives ground truth.
-- **(c) Inferred position** — cumulative deliveries minus forecast consumption since the last known count, with **confidence decaying by days-since-count**. Buildable now with zero external dependency.
-
-Option (c) is what should gate touchless: high inferred confidence → auto-confirm; low → propose-and-ask. That makes the confidence score *mean something* instead of being the always-passing arithmetic at `engine.go:181`.
-
-**Outputs.** Replaces `synthesis/engine.go:306-326`, and critically routes through `order.Service.Create` instead of the raw insert at `:336`. Link the order to its rationale — the `AI_PREORDER` row carries `DerivedFromOrderId` but **no reference to the `AIPredictions.PredictionId` that justified it**, even though both are written in the same `Apply` batch (`:125`). Add `SourcePredictionId` so a retailer can ask "why?".
-**Validation.** **Shadow mode for 60 days**: generate proposals, don't send them, record what the retailer actually ordered. Report proposal-vs-actual WAPE per retailer and the fraction a human would have accepted unmodified. **Do not enable touchless below 80% acceptance.** This is also the mechanism that tells you whether the whole autonomy thesis is real.
+**Residual.** Fill-rate replay: `cmd/safety-stock-replay` + `POST /v1/admin/planning/safety-stock/replay` (gate via `SAFETY_STOCK_REPLAY_REQUIRE_GATE`). Retailer `ReorderSuggestions.SafetyStock` uses the same SS helper when `SAFETY_STOCK_V2_ENABLED` (else legacy `demand·0.15`). §8.3 inventory-grounded shadow auto-order — **wired**.
 
 ---
 
-### 8.4 Forecast accuracy monitoring — build this before anything else in §8.1–8.3
+### 8.3 Ground the auto-order in inventory, not in the last invoice — WIRED
 
-**Why.** Right now nothing in the backend measures whether a prediction was right. The only accuracy figure in the product is computed in React, never persisted, mislabeled, and joins per-product baselines against per-warehouse order counts (§2.11). **Without this you cannot know whether §8.1–8.3 helped.** It is the cheapest item here and it gates the value of the three most expensive ones.
+**Shipped.** Inventory-grounded `(R,s,S)` proposals from `RetailerStockBalances` + sell-through / OPEN `ReorderSuggestions` + §8.2 ROP; confidence decay from stock `UpdatedAt` (option c). Global `execution_mode`: `off|shadow|draft|place`. Scoped enable/disable (variant → product → category → supplier → global) with disable-under-global fixed. Shadow ledger `RetailerAutoOrderShadowProposals` + 30d WAPE / unmodified-accept stats. When `AUTO_ORDER_INVENTORY_GROUNDED=true`, synthesis skips `AI_PREORDER` `/2` insert (advisory `AIPredictions` only). Place still via `order.Service.Create` + `AUTO_ORDER_PLACE_ENABLED`. Clients: desktop / Android / iOS mode + scopes + shadow inbox. Docs: [`docs/AUTO_ORDER.md`](docs/AUTO_ORDER.md). Markers: `PX_E2E_AUTO_ORDER_SHADOW_OK` / `_SKIPPED` (draft marker retained).
 
-**Algorithm.** Nightly job joining `DemandForecastBaseline(supplier, warehouse, product, date)` to actual units shipped **at the same grain**. Compute per-SKU and per-warehouse rolling 7/28-day WAPE, bias, and the **tracking signal** `TS = cumulative_error / MAD` — alert when `|TS| > 4`, the classic out-of-control threshold that catches a series whose model has stopped fitting.
+**Residual.** POS feed (a) / full shelf-count UX (b); auto-flip place at ≥80% acceptance without human+env; per-scope execution mode; `SourcePredictionId` on place path.
 
-**First, fix the join.** `cmd/planning-training-export/main.go:146-155` aggregates `COUNT(*)` of orders grouped by warehouse-day, so **every product row for a warehouse-day gets the same label** — the number of orders that warehouse completed. It must be `SUM(quantity)` from `LineItemsJson` grouped by `ProductId`. As it stands the export is unusable as training data, which makes the `-min-rows` flag on the cronjob purely decorative.
-**Outputs.** New `ForecastAccuracyDaily` table. Feed measured reliability into `AggregateDemandConfidence` so `ConfidencePct` becomes an empirical number instead of `{75, 72, 65}`.
-**Where.** New `apps/backend-go/planning/accuracy.go`; replace the client-side calc at `supplier-portal/.../analytics/demand/page.tsx:67-86`.
+---
+
+### 8.4 Forecast accuracy monitoring — WIRED (measure before §8.1–8.3)
+
+**Shipped.** Nightly `cmd/planning-accuracy` (CronJob 03:00 UTC) joins `DemandForecastBaseline` to completed `LineItemsJson` SUM qty at SKU-day grain → `ForecastAccuracyDaily` (WAPE7/28, bias, tracking signal; `|TS|>4` → supplier ADMIN inbox). Training export uses the same actuals helper (`actual_units`, not warehouse-day order counts). `AggregateDemandConfidence` prefers WAPE28 → `ConfidencePct` (magic 65/72/75 removed when accuracy path applies). Supplier portal KPIs from `GET /v1/supplier/analytics/demand/accuracy`. Flag: `FORECAST_ACCURACY_ENABLED`. Ops: `POST /v1/admin/planning/accuracy/run-once`. Marker: `PX_E2E_FORECAST_ACCURACY_OK` / `_SKIPPED`.
+
+**Gate 2 intelligence (§8.1–8.4):** **wired** behind flags. Residual: soak acceptance ≥80% before touchless place auto-flip.
 
 ---
 
@@ -355,15 +326,15 @@ Option (c) is what should gate touchless: high inferred confidence → auto-conf
 
 **Per §6, this is where the money is.** It is also the thinnest layer relative to its importance.
 
-**Payment terms and aging.** Add to `Orders`: `PaymentTermsDays INT64`, `DueDate TIMESTAMP`. Add `RetailerPaymentTerms(RetailerId, SupplierId, TermsDays, GracePeriodDays, EarlyPayDiscountBps)`. Compute a nightly aging bucket per retailer (current / 1-30 / 31-60 / 61-90 / 90+) into a new `ARAging` table. Without a due date there is no such thing as overdue, which is why collections currently happens entirely off-platform.
+**Payment terms and aging — LIVE.** `RetailerPaymentTerms`, `ArInvoices.DueAt`/`AgingBucket`/`DunningStep`, aging pass, credit policy portals — [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](./docs/CREDIT_ECOSYSTEM_BEHAVIOR.md). No separate `ARAging` rollup (buckets on invoices).
 
-**Compute `DelinquencyCount`.** Nothing increments it today (`credit` persists the field verbatim). On the nightly aging job: increment when an invoice crosses its grace period, decrement or decay on sustained on-time payment. Required for dunning even though **score-based `RiskTier` gating was removed**.
+**Compute `DelinquencyCount` — WIRED (collections substance).** Bumped once when dunning first enters OVERDUE (`credit.Service.BumpDelinquency`).
 
-**Risk scoring (product decision).** Phase A removed the scoring desk / worker / `RiskTier` gates — CREDIT_LEAVE and placement are **status + available only**. Do **not** re-add a scorecard unless product explicitly reverses that decision. Prefer aging + dunning + hard status holds over resurrecting ML-ish tiers.
+**Risk scoring (product decision).** Phase A removed the scoring desk / worker / `RiskTier` gates — CREDIT_LEAVE and placement are **status + available only**. Do **not** re-add a scorecard unless product explicitly reverses that decision.
 
-**Dunning.** A state machine per overdue invoice: `DUE_SOON` (T−3) → `OVERDUE` (T+1) → `ESCALATED_1` (T+7) → `ESCALATED_2` (T+14) → `CREDIT_HOLD` (T+21) → `COLLECTIONS`. Each transition emits a notification and, at `CREDIT_HOLD`, sets `RetailerCreditProfiles.Status` so `credit.CheckOrder` blocks new orders automatically. This is a small amount of code with a direct revenue effect.
+**Dunning — WIRED behind `AR_DUNNING_ENABLED`.** Full step machine `DUE_SOON → … → COLLECTIONS`, auto-hold at CREDIT_HOLD via `HoldRelationship`, inbox + FCM notify on step advances. Ops: `POST /v1/admin/ar/dunning/run-once`. Residual: **no SMS/email/WhatsApp** transports for off-app reach.
 
-**Which requires notification transports that do not exist.** `notifications/` has exactly two: real FCM and a `LogTransport` (`transport.go:15`). **No SMS, no email, no WhatsApp** — zero references to Twilio, SendGrid, SMTP, or WhatsApp Business API in the repo. A retailer who hasn't installed the app is unreachable. Add an `SMSTransport` (local aggregator for UZ), an `EmailTransport`, and — given WhatsApp's dominance in this market segment — a WhatsApp Business API transport. Route by channel preference with fallback. **This is a prerequisite for dunning, for OTP reliability, and for onboarding retailers who don't have the app yet.**
+**Notification transports.** FCM + inbox + `LogTransport`. **No SMS, no email, no WhatsApp** — still open for retailers without the app.
 
 **Fiscalization, for real (Soliq).** `ProviderFromEnv` already selects `PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`. Finish L5: Soliq sandbox SUCCESS with real creds behind `FISCAL_PROVIDER=MY_SOLIQ`. PEGASUS remains the non-legal commercial path. Retry state machine + `OrderFiscalReceipts` + hard gate are already built.
 
@@ -429,17 +400,17 @@ InventoryAdjustments(AdjustmentId, WarehouseId, ProductId, LotId,
 
 Per §7 this is the highest-leverage work in the report relative to its cost, because the hard substrate already exists.
 
-**1. Machine identity.** Per-tenant API keys or OAuth2 client credentials with scopes and per-key rate limits. This blocks everything else. The Redis sliding-window limiter (`bootstrap/redis_rate_limiter.go`) and request-class differentiation already exist; this is mostly issuance, storage, and a middleware. Also remove or tightly gate `LOAD_BOOTSTRAP_SECRET`, which currently exempts requests from rate limiting entirely (`reliability_middleware.go:261-267`).
+**1. Machine identity — WIRED (Wave 1).** `PartnerApiKeys` + bcrypt `pxk_` keys + scopes + rate limit by KeyId; `LOAD_BOOTSTRAP_SECRET` does not exempt `/partner/*`. Issue via `POST /v1/admin/partner-keys`. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md).
 
-**2. OpenAPI 3 spec + generated SDKs, published.** Zero `openapi` references exist today. No integration team will start without a contract. Generate from the Go handlers so it cannot drift — and note this also fixes the frontend's 374 hand-written TS types against 774 Go `json:` tags reconciled by nothing.
+**2. OpenAPI 3 — WIRED (partner + JWT core).** Partner: [`contracts/partner.openapi.yaml`](./contracts/partner.openapi.yaml). Human JWT core (~45 high-traffic ops): [`contracts/jwt-core.openapi.yaml`](./contracts/jwt-core.openapi.yaml) — [`docs/JWT_CORE_OPENAPI.md`](./docs/JWT_CORE_OPENAPI.md); `make jwt-openapi-gate`. Residual: expand coverage to full ~411-path catalog + replace hand-written `@pegasusx/api-client` with generated SDK.
 
-**3. Partner order API.** `POST /partner/v1/orders` (idempotency-keyed — the infrastructure exists), `GET /partner/v1/orders/{id}`, `GET /partner/v1/catalog` with the authenticated retailer's resolved prices, `GET /partner/v1/inventory/availability`. **This alone eliminates most manual entry** and is the single feature that makes a chain retailer able to buy.
+**3. Partner order API — WIRED (Wave 1).** `POST/GET /partner/v1/orders`, `GET /partner/v1/catalog`, `GET /partner/v1/inventory/availability` via `order.Service.Create` / catalog enrichers; tenant-scoped IDOR fail-closed.
 
-**4. Outbound webhooks.** The hard part is done: `OutboxEvents` + Kafka + a typed event registry. What's needed is `WebhookSubscriptions(TenantId, Url, EventTypes, Secret, IsActive)`, an HTTP delivery worker with HMAC-SHA256 signing over the raw body, exponential backoff, and a dead-letter view with replay. **Realistically 1–2 weeks on top of existing plumbing**, and it is what lets a customer's ERP react without polling.
+**4. Outbound webhooks — WIRED (Wave 1 + 2A ops).** `WebhookSubscriptions` + Kafka enqueue + HMAC-SHA256 delivery worker + dead-letter list + ping + list/deactivate + dead-letter replay (partner key + supplier JWT) + supplier portal Integrations UI.
 
-**5. Bidirectional bulk data.** Reuse the import wizard's staging machinery for the missing **export** side — orders, invoices, inventory snapshots, ledger — over both API and SFTP. There is currently no export endpoint of any kind.
+**5. Bidirectional bulk data — WIRED (Wave 2A, export side).** `PartnerExportJobs` + `POST/GET /partner/v1/exports` (`exports:read`); CSV/JSON for orders/invoices/inventory/ledger; GCS or `PARTNER_EXPORT_LOCAL_ROOT`; optional SFTP via `PartnerSftpConfigs` + `PARTNER_SFTP_ENABLED` (GSM `SecretRef`). Import/spreadsheet wizard already existed.
 
-**6. Then, for enterprise accounts:** EDI mapping (ORDERS / ORDRSP / DESADV / INVOIC) over AS2 or SFTP; **GLN** party identifiers and **SSCC** logistic-unit identifiers (both entirely absent) to enable ASNs and pallet labels; ZPL label printing; and a 1C connector (journal export with chart-of-accounts mapping), which in this market matters more than SAP.
+**6. Enterprise EDI + GS1 + 1C journals — partial WIRED.** ORDERS inbound + ORDRSP/DESADV/INVOIC outbound — [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). **GLN / SSCC / ZPL WIRED** — [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md). **1C journals CSV/JSON/XML WIRED** (`resource=journals`) — [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). **Still open:** AS2, certified EDIFACT/X12, EDI SSCC segments, configurable CoA / certified 1C exchange package.
 
 ---
 
@@ -483,9 +454,9 @@ Cross-cutting, all surfaces: localization (0% on web, 0% on iOS, ~1% on Android 
 
 **Gate 0 — Stop the bleeding (2–4 weeks).** All of §8.0. Non-negotiable end state: CI compiles and tests all 12 mobile apps and lints everything; Spanner backups exist and a restore has been *executed*; Terraform state is remote; the prod overlay renders real digest-pinned images; the optimizer either solves or provably falls back; `supplier-app-android` and `driver-app-ios` work.
 
-**Gate 1 — Make it legal and reachable (4–6 weeks).** Soliq OFD SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ` (§8.6; PEGASUS commercial path already live). SMS + email transports (§8.6). Payment terms, due dates, aging, `DelinquencyCount`, dunning state machine (§8.6) — **without re-adding removed credit scoring**. Finish push/OTP ops (APNs entitlements, SHA-1, real SMS) on top of committed Firebase configs (§8.8). Without this gate you cannot legally OFD-transact and cannot collect.
+**Gate 1 — Make it legal and reachable (4–6 weeks).** Soliq OFD SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ` (§8.6; PEGASUS commercial path already live). SMS + email transports (§8.6) — **still open**. Payment terms / due / aging / `DelinquencyCount` / dunning state machine (§8.6) — **wired** behind `AR_*` flags (no credit scoring re-add). Finish push/OTP ops (APNs entitlements, SHA-1, real SMS) on top of committed Firebase configs (§8.8). Without legal OFD + off-app notify you cannot fully collect outside the app.
 
-**Gate 2 — Make the intelligence real (6–10 weeks).** §8.4 **first** — accuracy measurement, because it is how you evaluate everything after it. Then §8.1 forecasting, §8.2 safety stock (with lead-time capture started immediately, since it needs history), §8.3 inventory-grounded auto-order **in shadow mode**. Ship touchless only when shadow-mode acceptance exceeds 80%.
+**Gate 2 — Make the intelligence real (6–10 weeks).** §8.4 accuracy + §8.1 Croston/SES/HW + §8.2 safety stock + §8.3 inventory-grounded shadow auto-order — **wired** (flags; soak `ReceivedAt` / shadow acceptance). Ship touchless place only when shadow-mode acceptance exceeds 80% + human + env.
 
 **Gate 3 — Make it integrable (4–6 weeks).** §8.9 items 1–5. This is the gate that changes who you can sell to.
 

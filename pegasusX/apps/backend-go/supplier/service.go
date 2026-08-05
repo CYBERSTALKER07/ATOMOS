@@ -107,6 +107,8 @@ type Profile struct {
 	IBAN              string
 	SelectedGateways  []string
 	PaymentAcceptor     string
+	Gln                 string
+	Gs1CompanyPrefix    string
 	RegisteredAt        time.Time
 	ConfiguredAt      time.Time
 	UpdatedAt         time.Time

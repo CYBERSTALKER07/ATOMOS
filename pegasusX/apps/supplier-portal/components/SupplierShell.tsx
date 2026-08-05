@@ -99,6 +99,7 @@ const NAV: NavSection[] = [
       { href: "/settings/planning", icon: "overview", label: "Planning" },
       { href: "/settings/return-policy", icon: "returns", label: "Return policy" },
       { href: "/settings/notification-preferences", icon: "overview", label: "Notifications" },
+      { href: "/settings/integrations", icon: "overview", label: "Integrations" },
       { href: "/settings/segmentation", icon: "overview", label: "Segmentation" },
       { href: "/settings/playbooks", icon: "overview", label: "Playbooks" },
       { href: "/org-fleet", icon: "person-add", label: "Org & Fleet" },

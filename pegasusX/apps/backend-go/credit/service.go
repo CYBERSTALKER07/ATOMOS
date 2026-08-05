@@ -183,6 +183,21 @@ func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string)
 	return s.repo.GetProfile(ctx, retailerID, supplierID)
 }
 
+// BumpDelinquency increments DelinquencyCount by 1 for collections (first OVERDUE).
+// Idempotent only at the call-site (dunning worker bumps once per step transition).
+func (s *Service) BumpDelinquency(ctx context.Context, retailerID, supplierID string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	p.DelinquencyCount++
+	p.LastEvaluatedAt = s.now()
+	return s.UpsertProfile(ctx, p, "system:dunning", "delinquency_bump")
+}
+
 // UpsertProfile creates or updates a credit profile.
 func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason string) error {
 	now := s.now()

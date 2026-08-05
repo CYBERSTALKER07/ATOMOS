@@ -206,6 +206,7 @@ export default function ReorderSuggestionsPage() {
                 <th className="px-3 py-2">Adj. demand / day</th>
                 <th className="px-3 py-2">Stock</th>
                 <th className="px-3 py-2">In-flight</th>
+                <th className="px-3 py-2">Safety stock</th>
                 <th className="px-3 py-2">By date</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Actions</th>
@@ -249,6 +250,11 @@ export default function ReorderSuggestionsPage() {
                     <td className="px-3 py-2">{row.adjusted_demand_per_day.toFixed(2)}</td>
                     <td className="px-3 py-2">{row.current_stock}</td>
                     <td className="px-3 py-2">{row.in_flight_qty}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {row.safety_stock != null && row.safety_stock > 0
+                        ? row.safety_stock.toFixed(1)
+                        : "—"}
+                    </td>
                     <td className="px-3 py-2">{row.suggested_by_date}</td>
                     <td className="px-3 py-2">{row.status}</td>
                     <td className="px-3 py-2 flex gap-2">

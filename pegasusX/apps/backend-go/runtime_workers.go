@@ -98,6 +98,30 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.BillingTierConsumer.Start(ctx)
 		slog.Info("billing tier consumer started")
 	}
+	if app.PartnerEventConsumer != nil {
+		go app.PartnerEventConsumer.Start(ctx)
+		slog.Info("partner webhook event consumer started")
+	}
+	if app.PartnerWebhookDelivery != nil {
+		go app.PartnerWebhookDelivery.Start(ctx, 15*time.Second)
+		slog.Info("partner webhook delivery worker started")
+	}
+	if app.PartnerExportWorker != nil {
+		go app.PartnerExportWorker.Start(ctx, 20*time.Second)
+		slog.Info("partner export worker started")
+	}
+	if app.PartnerEdiInbound != nil {
+		go app.PartnerEdiInbound.Start(ctx, 30*time.Second)
+		slog.Info("partner edi inbound worker started")
+	}
+	if app.PartnerEdiOutbound != nil {
+		go app.PartnerEdiOutbound.Start(ctx, 20*time.Second)
+		slog.Info("partner edi outbound worker started")
+	}
+	if app.ARDunningWorker != nil {
+		go app.ARDunningWorker.Start(ctx, time.Hour)
+		slog.Info("ar dunning worker started", "enabled", os.Getenv("AR_DUNNING_ENABLED"))
+	}
 	// Gate-0: auto-confirm due AI preorders (default off until smoke).
 	if app.OrderService != nil && os.Getenv("AUTO_CONFIRM_PREORDERS_ENABLED") == "1" {
 		go func() {

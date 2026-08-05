@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
@@ -28,6 +29,7 @@ type RetailerLocation struct {
 	H3Cell               string
 	ReceivingWindowOpen  string
 	ReceivingWindowClose string
+	Gln                  string
 	IsPrimary            bool
 	IsActive             bool
 	CreatedAt            time.Time
@@ -46,6 +48,7 @@ type LocationDTO struct {
 	H3Cell               string  `json:"h3_cell,omitempty"`
 	ReceivingWindowOpen  string  `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose string  `json:"receiving_window_close,omitempty"`
+	Gln                  string  `json:"gln,omitempty"`
 	IsPrimary            bool    `json:"is_primary"`
 	IsActive             bool    `json:"is_active"`
 	CreatedAt            string  `json:"created_at,omitempty"`
@@ -79,6 +82,7 @@ type locationUpdateRequest struct {
 	H3Cell               *string  `json:"h3_cell,omitempty"`
 	ReceivingWindowOpen  *string  `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose *string  `json:"receiving_window_close,omitempty"`
+	Gln                  *string  `json:"gln,omitempty"`
 	IsActive             *bool    `json:"is_active,omitempty"`
 }
 
@@ -420,6 +424,19 @@ func (s *Service) handleLocationPatch(w http.ResponseWriter, r *http.Request, lo
 	if req.ReceivingWindowClose != nil {
 		loc.ReceivingWindowClose = strings.TrimSpace(*req.ReceivingWindowClose)
 	}
+	if req.Gln != nil {
+		raw := strings.TrimSpace(*req.Gln)
+		if raw == "" {
+			loc.Gln = ""
+		} else {
+			norm, err := gs1.NormalizeGLN(raw)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			loc.Gln = norm
+		}
+	}
 	if req.IsActive != nil {
 		if loc.IsPrimary && !*req.IsActive {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "cannot_deactivate_primary"})
@@ -584,6 +601,7 @@ func (s *Service) listLocations(ctx context.Context, retailerID string) ([]Retai
 		SQL: `SELECT LocationId, RetailerId, Name, IFNULL(DeliveryAddress, ''), IFNULL(PlaceId, ''),
 			IFNULL(Lat, 0), IFNULL(Lng, 0), IFNULL(H3Cell, ''),
 			IFNULL(ReceivingWindowOpen, ''), IFNULL(ReceivingWindowClose, ''),
+			IFNULL(Gln, ''),
 			IsPrimary, IsActive, CreatedAt, UpdatedAt
 			FROM RetailerLocations@{FORCE_INDEX=Idx_RetailerLocations_ByRetailer}
 			WHERE RetailerId = @rid
@@ -625,7 +643,7 @@ func (s *Service) getLocation(ctx context.Context, locationID string) (RetailerL
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerLocations", spanner.Key{locationID},
 		[]string{"LocationId", "RetailerId", "Name", "DeliveryAddress", "PlaceId", "Lat", "Lng", "H3Cell",
-			"ReceivingWindowOpen", "ReceivingWindowClose", "IsPrimary", "IsActive", "CreatedAt", "UpdatedAt"})
+			"ReceivingWindowOpen", "ReceivingWindowClose", "Gln", "IsPrimary", "IsActive", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		if isNotFound(err) {
 			return RetailerLocation{}, false, nil
@@ -641,23 +659,23 @@ func (s *Service) getLocation(ctx context.Context, locationID string) (RetailerL
 
 func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 	var loc RetailerLocation
-	var addr, place, h3, open, close spanner.NullString
+	var addr, place, h3, open, close, gln spanner.NullString
 	var lat, lng spanner.NullFloat64
 	var created, updated time.Time
 	// Try flexible column decode.
 	var name string
 	err := row.Columns(
 		&loc.LocationID, &loc.RetailerID, &name,
-		&addr, &place, &lat, &lng, &h3, &open, &close,
+		&addr, &place, &lat, &lng, &h3, &open, &close, &gln,
 		&loc.IsPrimary, &loc.IsActive, &created, &updated,
 	)
 	if err != nil {
 		// Query path uses IFNULL strings/floats
-		var addrS, placeS, h3S, openS, closeS string
+		var addrS, placeS, h3S, openS, closeS, glnS string
 		var latF, lngF float64
 		if err2 := row.Columns(
 			&loc.LocationID, &loc.RetailerID, &name,
-			&addrS, &placeS, &latF, &lngF, &h3S, &openS, &closeS,
+			&addrS, &placeS, &latF, &lngF, &h3S, &openS, &closeS, &glnS,
 			&loc.IsPrimary, &loc.IsActive, &created, &updated,
 		); err2 != nil {
 			return RetailerLocation{}, err
@@ -670,6 +688,7 @@ func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 		loc.H3Cell = h3S
 		loc.ReceivingWindowOpen = openS
 		loc.ReceivingWindowClose = closeS
+		loc.Gln = glnS
 		loc.CreatedAt = created
 		loc.UpdatedAt = updated
 		return loc, nil
@@ -695,6 +714,9 @@ func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 	}
 	if close.Valid {
 		loc.ReceivingWindowClose = close.StringVal
+	}
+	if gln.Valid {
+		loc.Gln = gln.StringVal
 	}
 	loc.CreatedAt = created
 	loc.UpdatedAt = updated
@@ -739,6 +761,9 @@ func (s *Service) insertLocation(ctx context.Context, loc RetailerLocation) erro
 		}
 		if loc.ReceivingWindowClose != "" {
 			row["ReceivingWindowClose"] = loc.ReceivingWindowClose
+		}
+		if loc.Gln != "" {
+			row["Gln"] = loc.Gln
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertMap("RetailerLocations", row)}); err != nil {
 			return err
@@ -785,6 +810,7 @@ func (s *Service) updateLocation(ctx context.Context, loc RetailerLocation) erro
 				H3Cell = @h3,
 				ReceivingWindowOpen = @open,
 				ReceivingWindowClose = @close,
+				Gln = @gln,
 				IsActive = @active,
 				IsPrimary = @primary,
 				UpdatedAt = PENDING_COMMIT_TIMESTAMP()
@@ -798,6 +824,7 @@ func (s *Service) updateLocation(ctx context.Context, loc RetailerLocation) erro
 				"h3":      nullableStr(loc.H3Cell),
 				"open":    nullableStr(loc.ReceivingWindowOpen),
 				"close":   nullableStr(loc.ReceivingWindowClose),
+				"gln":     nullableStr(loc.Gln),
 				"active":  loc.IsActive,
 				"primary": loc.IsPrimary,
 				"id":      loc.LocationID,
@@ -973,6 +1000,7 @@ func dtoFromLocation(loc RetailerLocation) LocationDTO {
 		H3Cell:               loc.H3Cell,
 		ReceivingWindowOpen:  loc.ReceivingWindowOpen,
 		ReceivingWindowClose: loc.ReceivingWindowClose,
+		Gln:                  loc.Gln,
 		IsPrimary:            loc.IsPrimary,
 		IsActive:             loc.IsActive,
 		CreatedAt:            formatTimeOpt(loc.CreatedAt),

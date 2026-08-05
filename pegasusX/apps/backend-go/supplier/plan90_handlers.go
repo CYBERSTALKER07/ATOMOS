@@ -176,24 +176,96 @@ func (s *Service) HandleGovernedAgentHook(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, result)
 }
 
-// HandleReplenishmentPolicies serves GET /v1/supplier/replenishment/policies.
+// HandleReplenishmentPolicies serves GET/PATCH /v1/supplier/replenishment/policies.
 func (s *Service) HandleReplenishmentPolicies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
 	if s.portalSpanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "policies_unavailable"})
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	_ = replenishment.EnsurePolicy(r.Context(), s.portalSpanner, sid)
-	policy, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
-		return
+	switch r.Method {
+	case http.MethodGet:
+		_ = replenishment.EnsurePolicy(r.Context(), s.portalSpanner, sid)
+		policy, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, policy)
+	case http.MethodPatch:
+		body, ok := readMutationBody(w, r, 8*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		cur, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
+			return
+		}
+		var patch struct {
+			AutoApproveStable         *bool    `json:"auto_approve_stable"`
+			AutoApprovePredictivePush *bool    `json:"auto_approve_predictive_push"`
+			MaxDailyTransferUnits     *int64   `json:"max_daily_transfer_units"`
+			MinConfidenceScore        *float64 `json:"min_confidence_score"`
+			TargetServiceLevel        *float64 `json:"target_service_level"`
+			LeadTimeDays              *int64   `json:"lead_time_days"`
+			LeadTimeSigmaDays         *float64 `json:"lead_time_sigma_days"`
+		}
+		if err := json.Unmarshal(body, &patch); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		if patch.AutoApproveStable != nil {
+			cur.AutoApproveStable = *patch.AutoApproveStable
+		}
+		if patch.AutoApprovePredictivePush != nil {
+			cur.AutoApprovePredictivePush = *patch.AutoApprovePredictivePush
+		}
+		if patch.MaxDailyTransferUnits != nil {
+			cur.MaxDailyTransferUnits = *patch.MaxDailyTransferUnits
+		}
+		if patch.MinConfidenceScore != nil {
+			cur.MinConfidenceScore = *patch.MinConfidenceScore
+		}
+		if patch.TargetServiceLevel != nil {
+			sl := *patch.TargetServiceLevel
+			if sl < 0.5 || sl > 0.999 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "target_service_level_out_of_range"})
+				return
+			}
+			cur.TargetServiceLevel = sl
+		}
+		if patch.LeadTimeDays != nil {
+			if *patch.LeadTimeDays < 1 || *patch.LeadTimeDays > 90 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lead_time_days_out_of_range"})
+				return
+			}
+			cur.LeadTimeDays = *patch.LeadTimeDays
+		}
+		if patch.LeadTimeSigmaDays != nil {
+			if *patch.LeadTimeSigmaDays < 0 || *patch.LeadTimeSigmaDays > 30 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lead_time_sigma_days_out_of_range"})
+				return
+			}
+			cur.LeadTimeSigmaDays = *patch.LeadTimeSigmaDays
+		}
+		cur.SupplierID = sid
+		if err := replenishment.UpsertPolicy(r.Context(), s.portalSpanner, cur); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_upsert_failed"})
+			return
+		}
+		respBytes, _ := json.Marshal(cur)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(respBytes)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
-	writeJSON(w, http.StatusOK, policy)
 }
 
 func (s *Service) broadcastSupplierPlanningEvent(ctx context.Context, supplierID, warehouseID string, payload map[string]any) {

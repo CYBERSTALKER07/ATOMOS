@@ -1,7 +1,9 @@
 # pegasusX Role-Row Parity Matrix
 
-**Last updated:** 2026-08-05 (Client Parity Closure)  
+**Last updated:** 2026-08-06 (Partner Integration Wave 2C GS1 labels)  
 **SoT for feature inventory:** [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md)  
+**Optimizer + maps runtime:** [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md)  
+**Partner API:** [`PARTNER_API.md`](./PARTNER_API.md) · [`../contracts/partner.openapi.yaml`](../contracts/partner.openapi.yaml) · **JWT core OpenAPI:** [`JWT_CORE_OPENAPI.md`](./JWT_CORE_OPENAPI.md) · [`../contracts/jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)  
 **Divergences:** [`../context/parity-ledger.md`](../context/parity-ledger.md)  
 **Full status report:** [`../artifacts/PegasusX_Ecosystem_Status_Report.md`](../artifacts/PegasusX_Ecosystem_Status_Report.md)  
 **Client walks:** [`../artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md`](../artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md)  
@@ -38,6 +40,46 @@
 | FCM / device-token | Env-dependent |
 | BillingTierWorker on ORDER_FINALIZED | Wired |
 | gen-contracts strict | Green |
+| Partner API keys + `/partner/v1` | **Wired** (apply Spanner migration for cloud) |
+| Outbound webhooks (HMAC) | **Wired** (Kafka enqueue + delivery worker + list/deactivate/replay) |
+| Partner bulk export + optional SFTP | **Wired** (`exports:read`, `20260806_partner_exports.ddl`, flags) |
+| Partner 1C journals export | **Wired** (`resource=journals`, CSV/JSON/XML — [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)) |
+| Partner EDI-lite (ORDERS/ORDRSP/DESADV/INVOIC) | **Wired** (`20260806_partner_edi.ddl`, SFTP/local root; no AS2) |
+| GS1 GLN + SSCC + ZPL labels | **Wired** (`20260806_gs1_labels.ddl`, `docs/GS1_LABELS.md`; no EDI SSCC) |
+| Supplier portal Integrations | **Wired** (`/settings/integrations` — keys/webhooks/exports/SFTP/EDI) |
+| OpenAPI partner contract | [`partner.openapi.yaml`](../contracts/partner.openapi.yaml) |
+| OpenAPI JWT core (~45 ops) | **Wired** — [`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml); `make jwt-openapi-gate`; residual = full catalog + SDK replace of ApiClient |
+| AR dunning / DelinquencyCount / CREDIT_HOLD | **Wired** behind `AR_DUNNING_ENABLED` |
+| Off-app SMS/email dunning | Deferred (FCM + inbox only) |
+| Forecast accuracy (WAPE/bias/TS) | **Wired** behind `FORECAST_ACCURACY_ENABLED` (supplier portal) |
+| Croston / SES / Holt–Winters baselines | **Wired** behind `FORECAST_ALGO_ENABLED` |
+| Safety stock (service level / lead σ) | **Wired** behind `SAFETY_STOCK_V2_ENABLED` (supplier portal knobs; Android/iOS read policy; retailer reorder batch shares SS helper) |
+| Shadow auto-order (§8.3) | **Wired** — `off\|shadow\|draft\|place`; inventory `(R,s,S)`; desktop/Android/iOS; `AUTO_ORDER_INVENTORY_GROUNDED` diverts synthesis `/2` |
+
+## Maps / route geometry (world-scale)
+
+| Surface | Status |
+|---------|--------|
+| Backend geometry (Google Routes → OSRM → dense) | **Wired** (`ROUTING_PROVIDER=auto`) |
+| Persist on seal / driver geometry GET | Wired (stored polyline preferred) |
+| Supplier / warehouse live-map + dispatch preview | Wired (existing clients) |
+| Driver map polyline | Wired |
+| Retailer tracking planned route overlay | **Wired** (`route_geometry` on tracking) |
+| Factory fleet live-map (pins) | **Wired** portal + Android + iOS |
+| Payload inbound truck lat/lng | **Wired** (thin; terminal + Android) |
+| OSRM PVC regional extract | Ops optional fallback only |
+| Factory polyline columns | Deferred (pins-first) |
+
+## Dispatch optimizer (OR-Tools)
+
+| Surface | Status |
+|---------|--------|
+| Code path (`optimizerclient` → `optimizer-core`) | **Wired** (supplier + warehouse dispatch) |
+| Local compose (`docker-compose.ssmr.yml`) | OR-Tools available when service up |
+| SSMR GKE overlay | **Heuristic only** (sidecar not in overlay) |
+| Prod GKE overlay | Manifest present, **`replicas: 0`**, no real AR image |
+| Client apps call solver | **No** — `optimizer_source` on API only |
+| Exit criteria for cloud OR-Tools | Publish image + replicas ≥ 1 + `"optimizer_source":"optimizer"` |
 
 ## Retail OS capability packs (retailer role-row)
 
@@ -62,6 +104,7 @@
 | Soliq OFD (state tax; Pegasus branded receipts Wired) | Tax / ops | `FISCAL_PROVIDER=SOLIQ` + sandbox readiness |
 | Offline POS | Product | Offline Retail OS flag; online-required v1 until then |
 | GP card SUCCESS + Firebase SMS | Cloud ops | Merchant password + SHA-1 / Blaze |
+| optimizer-core live in SSMR/prod | Cloud ops | AR image + replicas ≥ 1 (see runtime SoT) |
 | Interactive UI walk PASS cells | Operator | Flip READY_FOR_WALK → PASS in client signoff |
 
 Historical snapshot (pre-delete, not current truth): [`../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md`](../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md)

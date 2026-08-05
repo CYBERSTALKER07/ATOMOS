@@ -24,6 +24,9 @@ data:
   SPANNER_INSTANCE: "pegasusx-instance"
   SPANNER_DATABASE: "pegasusx-db"
   GCS_BUCKET_NAME: "pegasusx-prod-catalog"
+  # Geometry: Google Routes (GOOGLE_MAPS_API_KEY) → OSRM → dense. auto|google|osrm
+  ROUTING_PROVIDER: "auto"
+  # Optional regional fallback when OSRM PVC extract is loaded.
   ROUTING_OSRM_URL: "http://osrm.pegasusx.svc.cluster.local:5000"
   OPTIMIZER_BASE_URL: "http://optimizer-core.pegasusx.svc.cluster.local:8082"
   GLOBAL_PAY_ENV: "production"
@@ -39,9 +42,19 @@ data:
   CLAIM_WINDOW_HOURS: "48"
   CLAIM_AUTO_APPROVE_MAX_MINOR: "0"
   CREDIT_NOTE_AUTO_FROM_CLAIM: "false"
+  # AR / collections — enable on SSMR after credit policy soak; prod flip is ops-owned.
+  AR_INVOICES_ENABLED: "false"
+  AR_DUNNING_ENABLED: "false"
+  # §8.4 forecast accuracy — enable after ForecastAccuracyDaily migration + soak.
+  FORECAST_ACCURACY_ENABLED: "false"
+  # §8.1 Croston/SES/HW — enable after backtest gate soak on real history.
+  FORECAST_ALGO_ENABLED: "false"
+  FORECAST_ALGO_REQUIRE_GATE: "false"
+  # §8.2 service-level safety stock — enable after ReceivedAt history + policy soak.
+  SAFETY_STOCK_V2_ENABLED: "false"
   CLAIM_EVIDENCE_MAX_BYTES: "10485760"
   # PEGASUSX_RUN_MODE: api | worker | all (default all). Worker Deployment sets worker.
   PEGASUSX_RUN_MODE: "api"
-  # GOOGLE_MAPS_API_KEY is injected from backend-go-secrets (GSM) — enables Places autocomplete in prod.
+  # GOOGLE_MAPS_API_KEY from backend-go-secrets (GSM) — Geocoding, Places, and Routes geometry.
   AIRWALLEX_DIRECT_EXECUTION_ENABLED: "false"
   # DDL runs via infra/k8s/backend-go/migrate-job.yaml — never on pod boot.
