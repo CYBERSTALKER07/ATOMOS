@@ -13,6 +13,8 @@
   PNPM_FLAGS = "--version"
   NPM_FLAGS = "--version"
   NODE_VERSION = "20"
+  # Site assistant (xAI / Grok): set XAI_API_KEY in Netlify UI → Site configuration →
+  # Environment variables (never commit the key). Optional: XAI_MODEL=grok-3-mini
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
