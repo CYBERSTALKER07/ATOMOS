@@ -1,33 +1,18 @@
 import { MOCK_DELIVERIES, MOCK_ORDERS } from '../lib/mockData';
+import { DemoPageHeader, KpiCard } from '../components/DemoUi';
 
 export default function RetailerDashboard() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-medium tracking-tight mb-2">Retailer Command Center</h1>
-        <p className="text-white/50 text-sm">Inbound shipment tracking, route ETAs, and receiving workflows.</p>
-      </div>
+      <DemoPageHeader
+        title="Retailer Command Center"
+        subtitle="Inbound shipment tracking, route ETAs, and receiving workflows."
+      />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
-          <div className="text-xs font-mono text-white/40 uppercase mb-4 relative z-10">In-Transit Volume</div>
-          <div className="text-4xl font-light mb-1 relative z-10">4.2M</div>
-          <div className="text-xs text-white/40 font-mono relative z-10">UNITS ARRIVING TODAY</div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded">
-          <div className="text-xs font-mono text-white/40 uppercase mb-4">On-Time Delivery</div>
-          <div className="text-4xl font-light mb-1">96.8%</div>
-          <div className="text-xs text-green-400 font-mono">+1.2% vs trailing 30d</div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded">
-          <div className="text-xs font-mono text-white/40 uppercase mb-4">Stockouts Prevented</div>
-          <div className="text-4xl font-light mb-1">24</div>
-          <div className="text-xs text-white/40 font-mono">VIA SMART ROUTING</div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard label="In-transit volume" value="4.2M" delta="Units arriving today" />
+        <KpiCard label="On-time delivery" value="96.8%" delta="+1.2% vs trailing 30d" />
+        <KpiCard label="Stockouts prevented" value="24" delta="Via smart routing" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

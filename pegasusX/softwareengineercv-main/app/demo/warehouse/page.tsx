@@ -1,49 +1,19 @@
 import { MOCK_INVENTORY, MOCK_GATES } from '../lib/mockData';
+import { DemoPageHeader, KpiCard } from '../components/DemoUi';
 
 export default function WarehouseDashboard() {
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-medium tracking-tight mb-2">Warehouse Operations</h1>
-          <p className="text-white/50 text-sm">Live dock utilization, inbound/outbound queues, and inventory health.</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-white/40 uppercase tracking-widest">Facility: West Coast DC</span>
-        </div>
-      </div>
+      <DemoPageHeader
+        title="Warehouse Operations"
+        subtitle="Live dock utilization, inbound/outbound queues, and inventory health."
+      />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0a0a0a] border border-white/5 p-5 rounded">
-          <div className="text-[10px] font-mono text-white/40 uppercase mb-3">Live Gate Util</div>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-light">85%</span>
-            <span className="text-xs text-white/40 font-mono mb-1">12/14 GATES</span>
-          </div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-5 rounded">
-          <div className="text-[10px] font-mono text-white/40 uppercase mb-3">Avg Cross-dock</div>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-light">42m</span>
-            <span className="text-xs text-green-400 font-mono mb-1">-3m</span>
-          </div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-5 rounded">
-          <div className="text-[10px] font-mono text-white/40 uppercase mb-3">Throughput (1h)</div>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-light">840</span>
-            <span className="text-xs text-white/40 font-mono mb-1">PALLETS</span>
-          </div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-5 rounded border-l-2 border-l-red-500/50">
-          <div className="text-[10px] font-mono text-white/40 uppercase mb-3">Critical SKUs</div>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-light text-red-400">12</span>
-            <span className="text-xs text-white/40 font-mono mb-1">ACTION REQ</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <KpiCard label="Live gate util" value="85%" delta="12/14 gates" />
+        <KpiCard label="Avg cross-dock" value="42m" delta="-3m vs SLA" />
+        <KpiCard label="Throughput (1h)" value="840" delta="Pallets" />
+        <KpiCard label="Critical SKUs" value="12" delta="Action required" deltaPositive={false} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -1,77 +1,49 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import Link from 'next/link';
-import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
-import { useIsMobile } from '../hooks/useDevice';
-import Lanyard from '../components/Lanyard';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import PixelDualHero from '@/app/components/visuals/PixelDualHero';
+import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
+import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
+import ChamferButton from '@/app/components/ChamferButton';
+import { usePerfProfile } from '@/app/hooks/useDevice';
+import LazyWhenInView from '@/app/components/LazyWhenInView';
+import { O9TourCTA } from '@/app/components/page-sections/o9/O9PageChrome';
+
+const Lanyard = dynamic(() => import('@/app/components/Lanyard'), { ssr: false });
 
 export default function JoinPage() {
-  const { isMobile } = useIsMobile();
-  const titleRef = useRef<HTMLDivElement>(null);
-  const subtitleRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
-  const lanyardRef = useRef<HTMLDivElement>(null);
-
+  const { allowHeavyFx } = usePerfProfile();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     position: 'Supplier Operations',
     portfolio: '',
-    message: ''
+    message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     document.title = 'Request Demo | Pegasus';
-    
-    // Mobile: Skip all GSAP animations, use simple CSS fade-in
-    if (isMobile) {
-      gsap.set([titleRef.current, subtitleRef.current, contentRef.current, formRef.current, lanyardRef.current], {
-        opacity: 1,
-        x: 0,
-        y: 0,
-        scale: 1
-      });
-      return;
-    }
+  }, []);
 
-    // Desktop: Use GSAP animations
-    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-    timeline
-      .fromTo(titleRef.current,
-        { opacity: 0, y: -50 },
-        { opacity: 1, y: 0, duration: 1 }
-      )
-      .fromTo(subtitleRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.5'
-      )
-      .fromTo(contentRef.current,
-        { opacity: 0, x: -50 },
-        { opacity: 1, x: 0, duration: 1 },
-        '-=0.4'
-      )
-      .fromTo(formRef.current,
-        { opacity: 0, x: -50 },
-        { opacity: 1, x: 0, duration: 1 },
-        '-=0.6'
-      )
-      .fromTo(lanyardRef.current,
-        { opacity: 0, scale: 0.8 },
-        { opacity: 1, scale: 1, duration: 1.2 },
-        '-=0.8'
-      );
-  }, [isMobile]);
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!formData.name.trim()) next.name = 'Enter your full name.';
+    if (!formData.email.trim()) next.email = 'Enter a work email.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) next.email = 'Enter a valid email.';
+    if (!formData.position.trim()) next.position = 'Select your role.';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setIsSubmitting(true);
     setSubmitStatus('idle');
     setErrorMessage('');
@@ -79,17 +51,11 @@ export default function JoinPage() {
     try {
       const response = await fetch('/api/apply', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit application');
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to submit');
 
       const stored = localStorage.getItem('team_applications');
       const applications = stored ? JSON.parse(stored) : [];
@@ -97,19 +63,8 @@ export default function JoinPage() {
       localStorage.setItem('team_applications', JSON.stringify(applications));
 
       setSubmitStatus('success');
-      setFormData({
-        name: '',
-        email: '',
-        position: 'Frontend Developer',
-        portfolio: '',
-        message: ''
-      });
-
-      // Success animation works on all devices
-      gsap.fromTo('.success-message', 
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out' }
-      );
+      setFormData({ name: '', email: '', position: 'Supplier Operations', portfolio: '', message: '' });
+      setFieldErrors({});
     } catch (error) {
       setSubmitStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Something went wrong');
@@ -118,195 +73,162 @@ export default function JoinPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Navigation */}
-      <nav className="fixed top-8 left-8 z-50">
-        <Link href="/" className="editorial-btn editorial-btn--sm">
-          <span>←</span>
-          <span>Back to Home</span>
-        </Link>
-      </nav>
-
-      <div className="container mx-auto px-4 py-20 min-h-screen flex items-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto w-full">
-          {/* Left Content */}
-          <div className="space-y-8 relative z-10">
-            <div ref={titleRef}>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-light mb-6 text-white">
-                Request a Demo
-              </h1>
-              <div className="w-24 h-1 bg-white mb-8" />
-            </div>
-
-            <div ref={subtitleRef}>
-              <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-                See how Pegasus runs dispatch, tracking, and payments for supplier-led logistics networks.
-              </p>
-            </div>
-
-            <div ref={contentRef} className="editorial-grid grid grid-cols-1">
-              <ContentCard
-                variant="split"
-                tone="dark"
-                tag="Dispatch"
-                title="Dispatch Accuracy"
-                description="Visual warehouse boards with smart truck-and-order matching at peak hours."
-                image={EDITORIAL_IMAGES[0]}
-              />
-              <ContentCard
-                variant="split"
-                tone="light"
-                tag="Visibility"
-                title="Fleet Visibility"
-                description="Live maps with planned-vs-actual routes and deviation alerts before complaints."
-                image={EDITORIAL_IMAGES[1]}
-              />
-              <ContentCard
-                variant="split"
-                tone="dark"
-                tag="Finance"
-                title="Payment Confidence"
-                description="Checkout through driver collection to supplier treasury — one reconciled flow."
-                image={EDITORIAL_IMAGES[2]}
-              />
-            </div>
-
-            {/* Application Form */}
-            <div ref={formRef} className="editorial-card editorial-card--dark border border-white/20 p-8">
-              <h3 className="text-2xl font-light mb-6">Book Your Walkthrough</h3>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Full Name *</label>
-                  <input 
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
-                    placeholder="John Doe"
+    <FleekSecondaryLayout
+      activeHref="/join"
+      sectionTitle="REQUEST DEMO"
+      title="Request a Demo"
+      summary="See dispatch, tracking, and payments for supplier-led logistics networks — Spanner truth, six roles, portal and native."
+      primaryHref="#demo-form"
+      primaryLabel="BOOK WALKTHROUGH"
+      secondaryHref="/platform"
+      secondaryLabel="PLATFORM TOUR"
+      showStack={false}
+      dataExtra={<PixelDualHero />}
+      section06={
+        <>
+          <section className="docs-section">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">what you will see</p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">Walkthrough coverage</h2>
+            <div className="mt-10 grid gap-12 lg:grid-cols-2 lg:gap-16">
+              <div className="space-y-3">
+                {[
+                  { tag: 'Dispatch', title: 'Dispatch Accuracy', desc: 'Visual warehouse boards with smart truck matching.', img: 0 },
+                  { tag: 'Visibility', title: 'Fleet Visibility', desc: 'Live maps with planned-vs-actual routes.', img: 1 },
+                  { tag: 'Finance', title: 'Payment Confidence', desc: 'One reconciled flow from checkout to treasury.', img: 2 },
+                ].map((card) => (
+                  <ContentCard
+                    key={card.title}
+                    variant="split"
+                    tone="dark"
+                    tag={card.tag}
+                    title={card.title}
+                    description={card.desc}
+                    image={EDITORIAL_IMAGES[card.img]}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Email *</label>
-                  <input 
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
-                    placeholder="john@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Your Role *</label>
-                  <select 
-                    name="position"
-                    value={formData.position}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
-                  >
-                    <option>Supplier Operations</option>
-                    <option>Warehouse Manager</option>
-                    <option>Fleet / Dispatch Lead</option>
-                    <option>IT / Platform Owner</option>
-                    <option>Executive / Founder</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Company Website</label>
-                  <input 
-                    type="url"
-                    name="portfolio"
-                    value={formData.portfolio}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
-                    placeholder="https://yourcompany.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Tell us about your network</label>
-                  <textarea 
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    rows={4}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors resize-none disabled:opacity-50"
-                    placeholder="Sites, fleet size, dispatch volume..."
-                  />
-                </div>
-
-                {submitStatus === 'success' && (
-                  <div className="success-message bg-[#8DDC96] text-black p-4 rounded-lg font-semibold text-center">
-                    ✓ Demo request submitted! Our team will reach out within one business day.
-                  </div>
-                )}
-
-                {submitStatus === 'error' && (
-                  <div className="bg-[#FE5934] text-white p-4 rounded-lg font-semibold text-center">
-                    ✗ {errorMessage}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="editorial-btn editorial-btn--full"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Request Demo'}
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Right Side - Lanyard 3D - Hidden on mobile */}
-          {!isMobile && (
-            <div ref={lanyardRef} className="relative h-[600px] lg:h-screen hidden lg:block">
-              <div className="absolute inset-0">
-                <Lanyard
-                  position={[0, 0, 30]}
-                  gravity={[0, -40, 0]}
-                  fov={20}
-                  transparent={true}
-                />
+                ))}
               </div>
-              
-              {/* Decorative frame */}
-              <div className="absolute inset-0 border-2 border-white rounded-2xl opacity-20 pointer-events-none" />
-              <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white rounded-tl-2xl" />
-              <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-white rounded-tr-2xl" />
-              <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-white rounded-bl-2xl" />
-              <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-white rounded-br-2xl" />
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Decorative Background Elements */}
-      <div className="absolute top-20 right-20 w-40 h-40 border-2 border-white rounded-2xl opacity-10 pointer-events-none" />
-      <div className="absolute bottom-20 left-20 w-32 h-32 border-2 border-white rounded-2xl opacity-10 pointer-events-none" />
-      <div className="absolute top-1/2 left-10 w-2 h-2 bg-white rounded-full opacity-30" />
-      <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-white rounded-full opacity-30" />
-      <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-white rounded-full opacity-30" />
-    </div>
+              <div id="demo-form">
+                {allowHeavyFx && (
+                  <LazyWhenInView
+                    className="docs-surface relative mb-8 hidden h-48 overflow-hidden lg:block lg:h-64"
+                    minHeight="256px"
+                  >
+                    <Lanyard position={[0, 0, 30]} gravity={[0, -40, 0]} fov={20} transparent />
+                  </LazyWhenInView>
+                )}
+
+                <form onSubmit={handleSubmit} className="docs-surface docs-grain p-6 md:p-8" noValidate>
+                <h2 className="text-xl font-semibold">Book your walkthrough</h2>
+                <div className="mt-6 space-y-4">
+                  {[
+                    { name: 'name', label: 'Full name', type: 'text', required: true, autoComplete: 'name' },
+                    { name: 'email', label: 'Email', type: 'email', required: true, autoComplete: 'email' },
+                    { name: 'portfolio', label: 'Company website', type: 'url', required: false, autoComplete: 'url' },
+                  ].map((f) => (
+                    <div key={f.name} className="docs-form-field">
+                      <label htmlFor={`join-${f.name}`} className="text-xs font-mono uppercase tracking-wider text-white/50">
+                        {f.label}
+                        {f.required ? ' *' : ''}
+                      </label>
+                      <input
+                        id={`join-${f.name}`}
+                        type={f.type}
+                        name={f.name}
+                        value={formData[f.name as keyof typeof formData]}
+                        onChange={handleChange}
+                        required={f.required}
+                        disabled={isSubmitting}
+                        autoComplete={f.autoComplete}
+                        aria-invalid={Boolean(fieldErrors[f.name])}
+                        aria-describedby={fieldErrors[f.name] ? `join-${f.name}-error` : undefined}
+                        className="docs-input disabled:opacity-50"
+                      />
+                      {fieldErrors[f.name] ? (
+                        <p id={`join-${f.name}-error`} className="text-sm text-[#FE5934]" role="alert">
+                          {fieldErrors[f.name]}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                  <div className="docs-form-field">
+                    <label htmlFor="join-position" className="text-xs font-mono uppercase tracking-wider text-white/50">
+                      Your role *
+                    </label>
+                    <select
+                      id="join-position"
+                      name="position"
+                      value={formData.position}
+                      onChange={handleChange}
+                      disabled={isSubmitting}
+                      aria-invalid={Boolean(fieldErrors.position)}
+                      className="docs-select disabled:opacity-50"
+                    >
+                      <option>Supplier Operations</option>
+                      <option>Warehouse Manager</option>
+                      <option>Fleet / Dispatch Lead</option>
+                      <option>IT / Platform Owner</option>
+                      <option>Executive / Founder</option>
+                    </select>
+                    {fieldErrors.position ? (
+                      <p className="text-sm text-[#FE5934]" role="alert">
+                        {fieldErrors.position}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="docs-form-field">
+                    <label htmlFor="join-message" className="text-xs font-mono uppercase tracking-wider text-white/50">
+                      Tell us about your network
+                    </label>
+                    <textarea
+                      id="join-message"
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
+                      rows={4}
+                      disabled={isSubmitting}
+                      className="docs-textarea disabled:opacity-50"
+                      placeholder="Sites, fleet size, dispatch volume..."
+                    />
+                  </div>
+                </div>
+                {submitStatus === 'success' && (
+                  <p className="mt-4 border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm font-medium text-[#8DDC96]" role="status">
+                    Demo request submitted — we&apos;ll reach out within one business day.
+                  </p>
+                )}
+                {submitStatus === 'error' && (
+                  <p className="mt-4 border border-[#FE5934]/40 bg-[#FE5934]/15 p-3 text-center text-sm text-[#FE5934]" role="alert">
+                    {errorMessage}
+                  </p>
+                )}
+                <div className="mt-6">
+                  <ChamferButton type="submit" variant="fill" className="w-full justify-center" disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : 'Request demo'}
+                  </ChamferButton>
+                </div>
+              </form>
+              </div>
+            </div>
+          </section>
+        <O9TourCTA />
+        </>
+      }
+    />
   );
 }
