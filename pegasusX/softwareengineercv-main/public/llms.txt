@@ -13,7 +13,7 @@
 
 ## Client surfaces
 
-- [Desktop apps](https://pegasus.io/desktop-apps): Tauri desktop clients for retailer, supplier, warehouse, and factory.
+- [Desktop apps](https://pegasus.io/desktop-apps): desktop app clients for retailer, supplier, warehouse, and factory.
 - [Web apps](https://pegasus.io/web-apps): Browser portals for operations teams.
 - [Mobile apps](https://pegasus.io/mobile-apps): Native Android and iOS apps per role.
 

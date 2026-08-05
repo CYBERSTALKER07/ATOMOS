@@ -27,7 +27,7 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     intro: {
       eyebrow: 'Platform',
       title: 'One control plane across six roles',
-      body: 'Order lifecycle, payments, topology, and treasury on Cloud Spanner — with outbox fanout so every role sees the same commit.',
+      body: 'Order lifecycle, payments, topology, and treasury on one shared record — so every role sees the same confirmed status.',
     },
   },
   technology: {
@@ -38,8 +38,8 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     laneIndex: '02',
     intro: {
       eyebrow: 'Stack',
-      title: 'Spanner, outbox, Redis, Kafka, WebSocket',
-      body: 'Mutating handlers follow verify → validate → save → refresh → notify. Cache invalidation and Kafka stay in the same write transaction as domain state.',
+      title: 'Reliable core, live sync, instant updates',
+      body: 'Every change is checked, saved, then pushed live — so dashboards stay accurate under load.',
     },
   },
   operations: {
@@ -50,8 +50,8 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     laneIndex: '03',
     intro: {
       eyebrow: 'Floor',
-      title: 'Dispatch, exceptions, and live telemetry',
-      body: 'Visual boards, Smart Fit overflow, SHOP_CLOSED_PENDING, freeze-lock, and fiscal hard-gate — playbooks grounded in the order state machine.',
+      title: 'Dispatch, exceptions, and live tracking',
+      body: 'Visual boards, Smart Fit overflow, shop-closed handling, freeze-lock, and payment hard-gates — playbooks grounded in the order lifecycle.',
     },
   },
   capabilities: {
@@ -62,7 +62,7 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     intro: {
       eyebrow: 'Capabilities',
       title: 'What the network runs on',
-      body: 'Smarter dispatch, reliable updates, pay-at-delivery, live fleet tracking, and topology — modules that share contracts across portal and native apps.',
+      body: 'Smarter dispatch, reliable updates, pay-at-delivery, live fleet tracking, and topology — modules that work the same on portal and native apps.',
     },
   },
   'ai-vision': {
@@ -72,8 +72,8 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     laneIndex: '05',
     intro: {
       eyebrow: 'AI',
-      title: 'Assist with deterministic fallback',
-      body: 'ai-worker VRP, pre-order assist, and supplier recommendations never block the floor — every path degrades to pure deterministic engines.',
+      title: 'Assist with proven fallback',
+      body: 'Route assist and recommendations never block the floor — if AI is slow, proven planning rules take over.',
     },
   },
   'apps-deploy': {
@@ -85,8 +85,8 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     laneIndex: '06',
     intro: {
       eyebrow: 'Deploy',
-      title: 'Portal, mobile, and desktop per role row',
-      body: 'Supplier and warehouse portals, driver Kotlin/Swift apps, retailer Tauri desktop, payload terminals — same API contracts, WS silent refresh.',
+      title: 'Portal, mobile, and desktop for every role',
+      body: 'Supplier and warehouse portals, driver mobile apps, retailer desktop, gate terminals — same workflows, automatic live refresh.',
     },
   },
   roles: {
@@ -96,7 +96,7 @@ export const hubLayoutConfigs: Record<string, HubLayoutConfig> = {
     intro: {
       eyebrow: 'Roles',
       title: 'Six roles, one order truth',
-      body: 'Supplier, warehouse, factory, driver, retailer, and payload/gate — each surface mapped from FEATURES_BY_APP_ROLE and the JWT role matrix.',
+      body: 'Supplier, warehouse, factory, driver, retailer, and payload/gate — each surface mapped with clear features and role-based access.',
     },
   },
 };

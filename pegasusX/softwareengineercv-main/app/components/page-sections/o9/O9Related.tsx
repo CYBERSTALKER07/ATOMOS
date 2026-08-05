@@ -65,7 +65,7 @@ export function O9TourCTA({
         </h2>
         <p className="docs-body mx-auto mt-4 max-w-xl text-white/65">
           See dispatch, fleet tracking, payments, and role apps on one control plane — grounded in
-          the same Spanner truth your teams will run.
+          the same shared order truth your teams will run.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <ChamferButton href="/join" variant="fill">

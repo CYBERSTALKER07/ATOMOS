@@ -53,7 +53,7 @@ export type TopicContent = {
   whyItMatters?: WhyItMatters;
   /** Exception / edge-case paths from order flow docs */
   edgeCases?: TopicCard[];
-  /** AI workers + Spanner/Redis/Kafka/WS data layer */
+  /** AI assist + live data layer */
   aiAndData?: TopicCard[];
   /** Proof strip facts */
   proofItems?: ProofItem[];

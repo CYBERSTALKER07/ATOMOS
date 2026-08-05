@@ -12,7 +12,7 @@ type FleekCtaBandProps = {
 
 export default function FleekCtaBand({
   title = 'SUPERCHARGE YOUR LOGISTICS STACK',
-  body = 'Dispatch boards, live fleet maps, and treasury on one Spanner truth — portal and native apps for every role row.',
+  body = 'Dispatch boards, live fleet maps, and treasury on one shared order truth — portal and native apps for every role.',
   href = '/join',
   label = 'Request demo',
 }: FleekCtaBandProps) {

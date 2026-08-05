@@ -35,7 +35,7 @@ export default function RolesPage() {
         categoryLabel="Roles"
         categoryHref="/roles"
         title="Six roles, one order truth"
-        summary="Supplier, warehouse, factory, driver, retailer, and payload/gate — features mapped across portal, mobile, and desktop on one Spanner spine."
+        summary="Supplier, warehouse, factory, driver, retailer, and payload/gate — features mapped across portal, mobile, and desktop on one shared order record."
         heroImageSrc={EDITORIAL_IMAGES[0]}
         proofItems={DEFAULT_PROOF}
         hubId="roles"

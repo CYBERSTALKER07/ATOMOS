@@ -1,6 +1,6 @@
 import { seedContent, defaultHowItWorks, cards, DEFAULT_PROOF, DEFAULT_AI_DATA } from './helpers';
 
-/** Role topics grounded in FEATURES_BY_APP_ROLE + ECOSYSTEM_FEATURES_BY_ROLE. */
+/** Role topics grounded in role feature map + ECOSYSTEM_FEATURES_BY_ROLE. */
 export const rolesTopics = {
   supplier: seedContent({
     title: 'Supplier',
@@ -11,7 +11,7 @@ export const rolesTopics = {
     outcomes: [
       'Vet / reject / negotiate before warehouse dispatch',
       'Dispatch preview and reassign without leaving the portal',
-      'Topology, catalog, pricing, and treasury on one Spanner truth',
+      'Topology, catalog, pricing, and treasury on one shared order truth',
       'Shop-closed resolve, early-complete, and chargeback workflows',
     ],
     howItWorks: defaultHowItWorks([
@@ -39,7 +39,7 @@ export const rolesTopics = {
     ]),
     whyItMatters: {
       headline: 'The network owner needs one place to gate fulfillment',
-      body: 'Supplier is the commercial and topological authority. FEATURES_BY_APP_ROLE maps ADMIN to supplier-portal surfaces spanning orders, fleet, topology, and finance — not a thin “approve” button.',
+      body: 'Supplier is the commercial and topological authority. role feature map maps ADMIN to supplier-portal surfaces spanning orders, fleet, topology, and finance — not a thin “approve” button.',
       insights: [
         {
           title: 'Gate before pick',
@@ -47,7 +47,7 @@ export const rolesTopics = {
         },
         {
           title: 'Finance on the same truth',
-          body: 'Treasury and chargebacks read the same Spanner order/payment rows the driver completed at the door.',
+          body: 'Treasury and chargebacks read the same order and payment records the driver completed at the door.',
         },
       ],
     },
@@ -60,7 +60,7 @@ export const rolesTopics = {
     proofItems: [
       { label: 'Role', value: 'ADMIN (JWT)' },
       { label: 'Clients', value: 'Portal · Android' },
-      { label: 'System of record', value: 'Cloud Spanner' },
+      { label: 'System of record', value: 'shared system of record' },
       { label: 'Surfaces', value: 'Orders · Fleet · Treasury' },
     ],
   }),
@@ -75,12 +75,12 @@ export const rolesTopics = {
       'Visual truck selector with order checkboxes',
       'Optional Smart Fit / AI suggestions — human always commits',
       'Live fleet map after trucks leave the gate',
-      'Stock reservations stay consistent with Spanner writes',
+      'Stock reservations stay consistent with confirmed saves',
     ],
     howItWorks: defaultHowItWorks([
       ['Open dispatch board', 'Eligible orders filtered by payment, zone, and stock.'],
       ['Load and commit', 'Assign orders; Smart Fit handles overflow across trucks.'],
-      ['Track departure', 'After payload seal, fleet map shows live progress vs OSRM plan.'],
+      ['Track departure', 'After payload seal, fleet map shows live progress vs routing plan.'],
     ]),
     flow: 'roleJourney',
     flowConfig: { roles: ['Warehouse', 'Open board', 'Load trucks', 'Track fleet'] },
@@ -94,13 +94,13 @@ export const rolesTopics = {
     differentiators: cards([
       ['Human-in-the-loop', 'AI suggestions are opt-in; force-dispatch is audited.'],
       ['Portal + mobile floor', 'warehouse-portal and native apps share contracts.'],
-      ['Same outbox fanout', 'Board silent-refreshes when supplier vets or retailer cancels.'],
+      ['Same live role updates', 'Board silent-refreshes when supplier vets or retailer cancels.'],
     ]),
     whyItMatters: {
       headline: 'Morning dispatch is the highest-stakes minute',
       body: 'Warehouse owns load planning. AUTO_DISPATCH_IMPROVEMENT_PLAN and FEATURES docs keep suggestions advisory — the commit path is always a warehouse lead action.',
       insights: [
-        { title: 'Eligibility first', body: 'Payment state, zone, and stock filter the board before any binpack runs.' },
+        { title: 'Eligibility first', body: 'Payment state, zone, and stock filter the board before any load packing runs.' },
         { title: 'Overflow is a playbook', body: 'Smart Fit / truck-too-small paths split loads instead of silent overfill.' },
       ],
     },
@@ -145,7 +145,7 @@ export const rolesTopics = {
     ]),
     whyItMatters: {
       headline: 'Production must speak the same order language',
-      body: 'Factory apps sit on the same Spanner/outbox spine so warehouse boards and payload terminals never disagree about which SKUs are READY.',
+      body: 'Factory apps sit on the same shared order record so warehouse boards and payload terminals never disagree about which SKUs are READY.',
       insights: [
         { title: 'ACK is the contract', body: 'Warehouse demand is acknowledged before production capacity is assumed.' },
         { title: 'Manifest before wheels', body: 'Seal ownership stays with payload/gate after factory stages.' },
@@ -161,7 +161,7 @@ export const rolesTopics = {
   driver: seedContent({
     title: 'Driver',
     summary:
-      'DRIVER — mission view with OSRM geometry, geofenced arrival, shop-closed flows, and COD/card at the door. No portal; Android/iOS only.',
+      'DRIVER — mission view with routing geometry, geofenced arrival, shop-closed flows, and COD/card at the door. No portal; Android/iOS only.',
     problem:
       'Drivers need stop-by-stop guidance and simple cash collection — not another ERP screen that fails offline at the curb.',
     outcomes: [
@@ -185,14 +185,14 @@ export const rolesTopics = {
       ['Telemetry', 'HTTP posts designed for lossy field networks.'],
     ]),
     differentiators: cards([
-      ['No driver portal', 'Native-only — FEATURES_BY_APP_ROLE lists driver apps without a web shell.'],
+      ['No driver portal', 'Native-only — role feature map lists driver apps without a web shell.'],
       ['Payment at curb', 'No pre-pay at checkout; obligation clears on collection.'],
     ]),
     whyItMatters: {
       headline: 'Execution quality is the customer experience',
       body: 'Retailer tracking and supplier treasury only stay honest if the driver app enforces geofence and payment states on the same order aggregate.',
       insights: [
-        { title: 'Plan vs actual', body: 'OSRM geometry on the manifest makes “delayed” measurable.' },
+        { title: 'Plan vs actual', body: 'routing geometry on the manifest makes “delayed” measurable.' },
         { title: 'Shop closed is a state', body: 'SHOP_CLOSED_PENDING holds the stop until retailer/supplier resolve.' },
       ],
     },
@@ -243,7 +243,7 @@ export const rolesTopics = {
     ]),
     whyItMatters: {
       headline: 'The store is both buyer and last-mile customer',
-      body: 'FEATURES_BY_APP_ROLE lists 145+ retailer route registrations — procurement, claims, credit, and retail OS — on the same Spanner order spine.',
+      body: 'role feature map lists 145+ retailer route registrations — procurement, claims, credit, and retail OS — on the same shared order record.',
       insights: [
         { title: 'Status without calls', body: 'Plain-language banners map lifecycle codes to store-manager copy.' },
         { title: 'Shop-closed respond', body: 'Retailer can answer a mid-route closed-shop hold without phone tag.' },
@@ -296,7 +296,7 @@ export const rolesTopics = {
     ]),
     whyItMatters: {
       headline: 'The gate is the system boundary between plan and reality',
-      body: 'Payload seal turns warehouse load plans into immutable manifests for drivers — outbox events fan that truth to every role.',
+      body: 'Payload seal turns warehouse load plans into immutable manifests for drivers — change events fan that truth to every role.',
       insights: [
         { title: 'No silent departure', body: 'Without seal, tracking and COD paths should not start.' },
         { title: 'Reassign is audited', body: 'Override paths keep capacity and driver match consistent.' },
@@ -312,7 +312,7 @@ export const rolesTopics = {
   finance: seedContent({
     title: 'Finance & Treasury',
     summary:
-      'Pay-at-delivery, driver collection, supplier treasury, chargebacks, and reconciliation on the same Spanner order truth.',
+      'Pay-at-delivery, driver collection, supplier treasury, chargebacks, and reconciliation on the same shared order truth.',
     problem:
       'Finance cannot close books when cash-at-door, card sessions, and disputes live outside the order system.',
     outcomes: [
@@ -338,16 +338,16 @@ export const rolesTopics = {
       ['Pay-at-delivery', 'Cash and card collection only after arrival — never at catalog checkout.'],
       ['Treasury hub', 'Supplier ledger, earnings, payments, and export views.'],
       ['Chargebacks & disputes', 'Exception quarantine with audited resolve paths.'],
-      ['Reconciliation', 'Driver collections matched to expected invoices on Spanner rows.'],
+      ['Reconciliation', 'Driver collections matched to expected invoices on the shared record rows.'],
     ]),
     differentiators: cards([
       ['Same order aggregate', 'Finance reads the delivery/payment state drivers and retailers already committed.'],
       ['Integer money', 'Money handled as integer minor units — no float drift in settlement.'],
-      ['Outbox fanout', 'Payment mutations notify supplier and retailer WS rooms in the same write path.'],
+      ['Live role updates', 'Payment mutations notify supplier and retailer WS rooms in the same write path.'],
     ]),
     whyItMatters: {
       headline: 'Settlement has to share the delivery state machine',
-      body: 'FEATURES_BY_APP_ROLE maps supplier finance packs (ledger, treasury, chargebacks, reconciliation) to the same Spanner order that drivers complete at the curb. Split systems create end-of-day ghosts.',
+      body: 'role feature map maps supplier finance packs (ledger, treasury, chargebacks, reconciliation) to the same order record that drivers complete at the curb. Split systems create end-of-day ghosts.',
       insights: [
         {
           title: 'Obligation ≠ payment',
@@ -367,7 +367,7 @@ export const rolesTopics = {
     aiAndData: DEFAULT_AI_DATA,
     proofItems: [
       { label: 'Payment model', value: 'Pay-at-delivery' },
-      { label: 'SoR', value: 'Cloud Spanner' },
+      { label: 'Source of truth', value: 'Shared order record' },
       { label: 'Surfaces', value: 'Supplier treasury · Driver collect' },
       { label: 'Integrity', value: 'Integer money · audited disputes' },
     ],
@@ -430,13 +430,13 @@ export const rolesTopics = {
     problem: 'Warehouse gets a great app while retailers are stuck on a broken mobile web wrapper.',
     outcomes: [
       'Shared types and API client across clients',
-      'Silent WS refresh on every platform',
+      'Silent live refresh on every platform',
       'Role-row parity tracked in ROLE_ROW_PARITY_MATRIX',
     ],
     howItWorks: defaultHowItWorks([
       ['Define contracts', 'packages/types and api-client lead every feature.'],
-      ['Ship per role row', 'Portal, Android, iOS, desktop as applicable.'],
-      ['Verify parity', 'SSMR markers gate cross-role flows.'],
+      ['Ship per role', 'Portal, Android, iOS, desktop as applicable.'],
+      ['Verify parity', 'Release checks gate cross-role flows.'],
     ]),
     flow: 'appsMatrix',
     crossRole: [{ role: 'All roles', touchpoint: 'Each row ships on every required client' }],
@@ -448,7 +448,7 @@ export const rolesTopics = {
     proofItems: [
       { label: 'Roles', value: '6 connected' },
       { label: 'Parity doc', value: 'ROLE_ROW_PARITY_MATRIX' },
-      { label: 'Realtime', value: 'Outbox → Kafka → WS' },
+      { label: 'Realtime', value: 'live sync after every change' },
       { label: 'Surfaces', value: 'Portal · Mobile · Desktop' },
     ],
   }),

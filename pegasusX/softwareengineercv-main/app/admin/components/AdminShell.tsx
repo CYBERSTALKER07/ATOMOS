@@ -34,7 +34,7 @@ export default function AdminShell({ title, subtitle, badge, nav, children }: Ad
           <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-widest text-white/40">
             <span>6 roles</span>
             <span className="text-white/20">·</span>
-            <span>Spanner SoR</span>
+            <span>One source of truth</span>
             <span className="text-white/20">·</span>
             <span>Ops console</span>
           </div>

@@ -96,12 +96,12 @@ export default function ResumePage() {
           <p className="editorial-eyebrow">Platform overview</p>
           <h1 className="docs-hero-title mt-4 text-4xl font-semibold tracking-tight md:text-5xl">Pegasus at a glance</h1>
           <p className="docs-body mx-auto mt-4 max-w-xl text-white/60">
-            Six roles · Cloud Spanner · Outbox → Kafka → WS · Portal · Mobile · Desktop
+            Six roles · shared system of record · live sync after every change · Portal · Mobile · Desktop
           </p>
           <div className="mx-auto mt-8 grid max-w-2xl grid-cols-2 gap-2 font-mono text-[10px] uppercase tracking-wider text-white/45 sm:grid-cols-4">
             {[
               ['Roles', '6 connected'],
-              ['SoR', 'Cloud Spanner'],
+              ['Source of truth', 'Shared order record'],
               ['Realtime', 'Outbox → WS'],
               ['Surfaces', 'All channels'],
             ].map(([l, v]) => (
@@ -226,7 +226,7 @@ export default function ResumePage() {
               <div>
                 <h3 className="text-lg font-light mb-3 text-gray-800">Realtime</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['Live Sync', 'WebSocket', 'Event Contracts', 'Cache Invalidation'].map((skill, idx) => (
+                  {['Live Sync', 'live updates', 'Event Contracts', 'Cache Invalidation'].map((skill, idx) => (
                     <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>

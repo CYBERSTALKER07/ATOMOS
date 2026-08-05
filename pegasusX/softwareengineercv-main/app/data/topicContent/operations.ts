@@ -6,7 +6,7 @@ export const operationsTopics = {
     title: 'Zone Miss Handling',
     summary: 'Retailer outside delivery zone — clear errors at checkout, not after dispatch.',
     problem: 'New shops order before topology teams add their zone — trucks get planned for unreachable destinations.',
-    outcomes: ['H3 zone_miss at checkout', 'Supplier topology workflow', 'Clear retailer messaging'],
+    outcomes: ['outside delivery area at checkout', 'Supplier topology workflow', 'Clear retailer messaging'],
     howItWorks: defaultHowItWorks([
       ['Validate zone', 'Checkout checks retailer coords against service area.'],
       ['Block with guidance', 'Error explains zone miss; supplier can extend topology.'],
@@ -21,7 +21,7 @@ export const operationsTopics = {
     ],
     edgeCases: cards([
       ['zone_miss sentinel', 'Checkout returns a typed error — not a generic 400.'],
-      ['Partial topology update', 'New zone live only after Spanner commit + cache bust.'],
+      ['Partial topology update', 'New zone live only after the confirmed save and cache refresh.'],
     ]),
   }),
   'concurrent-stock-reject': seedContent({
@@ -30,7 +30,7 @@ export const operationsTopics = {
     problem: 'Oversell during flash demand destroys retailer trust and creates phantom manifests.',
     outcomes: ['Atomic stock reservation', 'Second checkout gets REJECT', 'Warehouse sees true available qty'],
     howItWorks: defaultHowItWorks([
-      ['Reserve on checkout', 'Spanner transaction decrements available stock.'],
+      ['Reserve on checkout', 'Confirmed checkout decrements available stock.'],
       ['Reject concurrent', 'Second order fails with clear stock error.'],
       ['Release on cancel', 'Cancelled orders return reservation.'],
     ]),
@@ -44,9 +44,9 @@ export const operationsTopics = {
   }),
   'truck-too-small': seedContent({
     title: 'Truck Too Small',
-    summary: 'Capacity overflow with partial dispatch recovery — Smart Fit + VU binpack.',
+    summary: 'Capacity overflow with partial dispatch recovery — Smart Fit + VU load packing.',
     problem: 'Oversized order batches cannot fit one truck during peak; packing without overflow playbooks strands orders.',
-    outcomes: ['Binpack overflow detection', 'Split across trucks', 'Force-dispatch audit trail'],
+    outcomes: ['Load packing overflow detection', 'Split across trucks', 'Force-dispatch audit trail'],
     howItWorks: defaultHowItWorks([
       ['Detect overflow', 'Volumetric units (VU) + 5% Tetris buffer on dispatch commit.'],
       ['Offer split', 'Multi-truck plan while keeping retailer super-orders atomic by default.'],
@@ -57,8 +57,8 @@ export const operationsTopics = {
     relatedProjectSlug: 'dispatch-engine',
     capabilities: cards([
       ['Smart Fit rules', 'Same-cell consolidate → greedy first-fit at 95% → split/overflow → override.'],
-      ['Pure dispatch package', 'H3 + scored BinPack + 2-opt with no Spanner inside scoring.'],
-      ['AI with fallback', 'Batches ≥12 prefer ai-worker; ~2.5s timeout falls back to deterministic engine.'],
+      ['Pure dispatch package', 'zone-aware scored load packing + route polish without slowing the shared record during scoring.'],
+      ['AI with fallback', 'Batches ≥12 prefer AI assist; ~2.5s timeout falls back to proven planning rules.'],
       ['Freeze-lock', 'Humans and AI cannot race mid-plan.'],
     ]),
   }),
@@ -68,9 +68,9 @@ export const operationsTopics = {
     problem: 'Half-loaded trucks should not strand orders in ambiguous states between LOADED and IN_TRANSIT.',
     outcomes: ['Partial batch commit API', 'Remainder stays eligible', 'Retailers see split shipments'],
     howItWorks: defaultHowItWorks([
-      ['Commit partial', 'Loaded orders move toward in-transit with outbox events.'],
+      ['Commit partial', 'Loaded orders move toward in-transit with change events.'],
       ['Hold remainder', 'Unloaded lines stay on board under freeze-lock rules.'],
-      ['Notify roles', 'Retailers see multi-truck plan via WS refresh.'],
+      ['Notify roles', 'Retailers see multi-truck plan with live refresh.'],
     ]),
     flow: 'dispatchBoard',
     relatedProjectSlug: 'warehouse-operations',
@@ -91,9 +91,9 @@ export const operationsTopics = {
   }),
   'driver-reassignment': seedContent({
     title: 'Driver Reassignment',
-    summary: 'Mid-load sick driver — capacity-safe replay with idempotency.',
+    summary: 'Mid-load sick driver — capacity-safe replay with safe retries.',
     problem: 'Driver calls in sick after half the manifest is loaded — naive reassign duplicates side effects.',
-    outcomes: ['Reassign API with capacity check', 'Idempotent replay safe', 'Factory and payload notified'],
+    outcomes: ['Reassign API with capacity check', 'Safe-retry replay safe', 'Factory and payload notified'],
     howItWorks: defaultHowItWorks([
       ['Initiate reassign', 'Payload or ops selects replacement driver.'],
       ['Validate capacity', 'New driver credentials and truck match.'],
@@ -122,20 +122,20 @@ export const operationsTopics = {
   }),
   'cash-at-door-cod': seedContent({
     title: 'Cash at Door / COD',
-    summary: 'Geofenced collection, integer money, webhook idempotency, fiscal hard-gate.',
+    summary: 'Geofenced collection, integer money, webhook safe retries, fiscal hard-gate.',
     problem: 'Declined cards and duplicate webhooks create ledger ghosts; floats make money wrong.',
-    outcomes: ['Geofenced collect-cash', 'Card session on arrival', 'Webhook idempotency keys'],
+    outcomes: ['Geofenced collect-cash', 'Card session on arrival', 'Webhook safe-retry keys'],
     howItWorks: defaultHowItWorks([
       ['Gate on arrival', 'Payment UI unlocks in geofence after ARRIVED.'],
       ['Collect', 'PENDING_CASH_COLLECTION or AWAITING_PAYMENT → FISCALIZING.'],
-      ['Reconcile safely', 'Idempotent webhooks; COMPLETED only after fiscal success.'],
+      ['Reconcile safely', 'Safe-retry webhooks; COMPLETED only after fiscal success.'],
     ]),
     flow: 'paymentFlow',
     flowConfig: { highlightStep: 3 },
     relatedProjectSlug: 'payment-integrity',
     edgeCases: cards([
       ['cash_amount_required', 'Cash path rejects empty amounts.'],
-      ['Duplicate webhook', 'Idempotency prevents double ledger posts.'],
+      ['Duplicate webhook', 'Safe retries prevent double ledger posts.'],
       ['FISCAL_FAILED', 'Retry FISCALIZING without inventing COMPLETED.'],
     ]),
   }),
@@ -147,7 +147,7 @@ export const operationsTopics = {
     howItWorks: defaultHowItWorks([
       ['Scan return', 'Barcode matched to return manifest.'],
       ['Reject invalid', 'Clear error to gate operator.'],
-      ['Hand off valid', 'Warehouse credits; supplier notified via outbox.'],
+      ['Hand off valid', 'Warehouse credits; supplier notified via change log.'],
     ]),
     flow: 'exceptionPlaybook',
     relatedProjectSlug: 'payload-gate-control',

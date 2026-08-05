@@ -35,7 +35,7 @@ export default function AllProjectsPage() {
       activeHref="/projects"
       sectionTitle="MODULES"
       title="All Modules"
-      summary={`Explore ${filteredProjects.length} modules powering supplier-led logistics — dispatch, payments, fleet, and role apps on one Spanner spine.`}
+      summary={`Explore ${filteredProjects.length} modules powering supplier-led logistics — dispatch, payments, fleet, and role apps on one shared order record.`}
       secondaryHref="/platform"
       secondaryLabel="EXPLORE PLATFORM"
       hubId="capabilities"

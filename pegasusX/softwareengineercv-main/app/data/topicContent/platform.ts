@@ -3,9 +3,9 @@ import { seedContent, defaultHowItWorks, cards, DEFAULT_PROOF } from './helpers'
 /** Platform topics — grounded in ECOSYSTEM_FEATURES_BY_ROLE + ORDER_FLOW docs */
 export const platformTopics = {
   'atomos-control-plane': seedContent({
-    title: 'ATOMOS Control Plane',
+    title: 'Pegasus Control Plane',
     summary:
-      'One platform. Six roles. Zero blind spots across supplier-led logistics networks — Spanner truth, outbox events, role-scoped apps.',
+      'One platform. Six roles. Zero blind spots across supplier-led logistics networks — shared order truth, change events, role-scoped apps.',
     problem:
       'Operations teams juggle spreadsheets, radios, and siloed apps while orders move through six handoffs. Tribal knowledge lives in people, not systems — and every status mismatch becomes a support call.',
     outcomes: [
@@ -17,15 +17,15 @@ export const platformTopics = {
     howItWorks: defaultHowItWorks([
       [
         'Connect every role',
-        'Supplier, warehouse, factory, driver, retailer, and payload each get purpose-built portal/mobile/desktop surfaces wired to the same backend-go API.',
+        'Supplier, warehouse, factory, driver, retailer, and payload each get purpose-built portal/mobile/desktop surfaces wired to the same platform.',
       ],
       [
         'Centralize truth',
-        'Cloud Spanner holds order, fleet, inventory, and payment state. Mutations go through guarded handlers with idempotency keys.',
+        'shared system of record holds order, fleet, inventory, and payment state. Mutations go through guarded handlers with safe-retry keys.',
       ],
       [
         'Coordinate in real time',
-        'Outbox events in the same RW transaction fan out to Kafka, Redis cache invalidation, and WebSocket rooms so every screen stays aligned.',
+        'Outbox events in the same confirmed save fan out to every role’s boards, maps, and caches so every screen stays aligned.',
       ],
     ]),
     flow: 'controlPlane',
@@ -43,7 +43,7 @@ export const platformTopics = {
       ],
       [
         'Mutation contract',
-        'Verify → Validate → Save (Spanner + outbox) → Refresh cache → Notify WS. Every mutating route follows the same pipeline.',
+        'Check → Confirm → Save → Refresh screens → Notify teams. Every critical change follows the same pipeline.',
       ],
       [
         'Multi-tenant perimeter',
@@ -74,7 +74,7 @@ export const platformTopics = {
       insights: [
         {
           title: 'From siloed apps to one spine',
-          body: 'Client → HTTPS /v1 → Spanner RW txn (domain + outbox) → Kafka → workers + WS hub. One architecture for every role.',
+          body: 'Client → secure API → confirmed save (domain + change log) → background jobs + live screen updates. One architecture for every role.',
         },
         {
           title: 'Prevention over firefighting',
@@ -84,8 +84,8 @@ export const platformTopics = {
     },
     edgeCases: cards([
       [
-        'Idempotent mutations',
-        'Mutating POSTs accept Idempotency-Key so retries never double-dispatch or double-charge.',
+        'Safe retries',
+        'Mutating POSTs accept safe-retry key so retries never double-dispatch or double-charge.',
       ],
       [
         'Stale inventory release',
@@ -94,16 +94,16 @@ export const platformTopics = {
     ]),
     aiAndData: cards([
       [
-        'Spanner system of record',
+        'Shared system of record',
         'Strongly consistent order, inventory, and ledger rows — the only place domain truth may live.',
       ],
       [
-        'Outbox → Kafka → consumers',
-        'Fiscal apply, warehouse mutators, notification dispatcher, and ai-worker consume durable events — never dual-write.',
+        'Outbox → live events → consumers',
+        'Fiscal apply, warehouse workers, notification dispatcher, and AI assist consume durable events — never write twice.',
       ],
       [
-        'WebSocket fanout',
-        'Role hubs at /v1/ws push silent refresh envelopes so boards and maps update without polling storms.',
+        'instant updates',
+        'Role hubs at live channels push automatic refresh envelopes so boards and maps update without polling storms.',
       ],
     ]),
     proofItems: DEFAULT_PROOF,
@@ -145,7 +145,7 @@ export const platformTopics = {
       body: 'When “delivered” means different things to finance and drivers, payments misfire and support multiplies. Pegasus makes the state machine the product.',
       insights: [
         { title: 'Atomic retailer super-orders', body: 'Retailer orders stay atomic by default for B2B last-mile — split only via explicit overflow rules.' },
-        { title: 'Realtime after commit', body: 'Screens refresh from outbox events, not optimistic UI guesses.' },
+        { title: 'Realtime after commit', body: 'Screens refresh from change events, not optimistic UI guesses.' },
       ],
     },
     edgeCases: cards([
@@ -171,7 +171,7 @@ export const platformTopics = {
       'Every role reads the same status labels from one source of truth',
       'Terminal states trigger inventory and ledger side effects',
       'Cancel paths release stock and notify downstream roles',
-      'Tracking updates without manual refresh via WS envelopes',
+      'Tracking updates without manual refresh with live alerts',
     ],
     howItWorks: defaultHowItWorks([
       ['Placed & vetted', 'Retailer checkout creates PENDING; supplier approves or rejects before dispatch.'],
@@ -211,7 +211,7 @@ export const platformTopics = {
       { label: 'Source of truth', value: 'order/state_machine.go' },
       { label: 'Money unit', value: 'Integer minor units' },
       { label: 'Fiscal', value: 'ADR-009 hard-gate' },
-      { label: 'Idempotency', value: 'Required on mutating POSTs' },
+      { label: 'Safe retries', value: 'Required on critical save actions' },
     ],
   }),
 
@@ -243,7 +243,7 @@ export const platformTopics = {
     differentiators: cards([
       ['JWT-scoped perimeter', 'ResolveSupplierID from claims — never trust body supplier_id.'],
       ['Role parity matrix', 'Desktop/portal features tracked against Android/iOS for the same role.'],
-      ['Double-entry ledger', 'Money movements write debit+credit in the same Spanner transaction as business state.'],
+      ['Double-entry ledger', 'Money movements post debit and credit with the same confirmed save as business state.'],
     ]),
     whyItMatters: {
       headline: 'Suppliers need a cockpit, not another spreadsheet',
@@ -260,26 +260,26 @@ export const platformTopics = {
   }),
 
   'mutating-handler-contract': seedContent({
-    title: 'Mutating Handler Contract',
+    title: 'Safe Updates',
     summary: 'Verify → Validate → Save → Refresh → Notify — every state change follows the same guarded pipeline.',
     problem:
-      'Ad-hoc API handlers skip cache invalidation or emit events outside transactions, leaving clients showing stale data while Spanner disagrees.',
+      'Ad-hoc API handlers skip screen refresh or emit events outside transactions, leaving clients showing stale data while the shared record disagrees.',
     outcomes: [
       'Consistent mutation path across all role routes',
       'Outbox writes in the same transaction as row updates',
       'Cache keys invalidated post-commit',
-      'WebSocket fanout after durable persistence',
+      'instant updates after durable persistence',
     ],
     howItWorks: defaultHowItWorks([
-      ['Verify & validate', 'Auth claims, idempotency keys, and business rules before any write.'],
-      ['Save in one transaction', 'Spanner read-write with outbox row in the same commit.'],
-      ['Refresh & notify', 'Kafka consumers bust Redis cache and push WS envelopes to role rooms.'],
+      ['Verify & validate', 'Auth claims, safe-retry keys, and business rules before any write.'],
+      ['Save in one transaction', 'Confirmed save with the change event in the same step.'],
+      ['Refresh & notify', 'background jobs refresh caches and push live updates to each role.'],
     ]),
     flow: 'mutatingHandler',
     flowConfig: { highlightStep: 2 },
     capabilities: cards([
-      ['Idempotency-Key', 'Required pattern on mutating POSTs to make retries safe.'],
-      ['Same-txn outbox', 'No dual-write: event durability equals row durability.'],
+      ['safe-retry key', 'Required on critical save actions so retries never double-run.'],
+      ['Same-txn change log', 'No write twice: event durability equals row durability.'],
       ['Post-commit only', 'Cache and WS happen after commit — clients never celebrate rolled-back writes.'],
       ['Role-scoped notify', 'Hubs fan out only to rooms that should see the aggregate.'],
     ]),
@@ -292,36 +292,36 @@ export const platformTopics = {
       body: 'If dispatch boards show LOADED while the database still says PENDING, drivers leave empty and finance chases ghosts. The mutation contract is how Pegasus keeps screens honest.',
       insights: [
         { title: 'Events after truth', body: 'Outbox relay publishes only what committed.' },
-        { title: 'Replay-safe consumers', body: 'Workers are idempotent under Kafka redelivery.' },
+        { title: 'Replay-safe consumers', body: 'Workers are idempotent under live events redelivery.' },
       ],
     },
     edgeCases: cards([
       ['Partial failure after commit', 'Consumers retry; handlers do not re-insert conflicting domain rows.'],
-      ['Missing idempotency key', 'Route rejects rather than risk duplicate side effects.'],
+      ['Missing safe retries key', 'Route rejects rather than risk duplicate side effects.'],
     ]),
     specs: [
-      { label: 'DB', value: 'Cloud Spanner RW' },
-      { label: 'Events', value: 'Transactional outbox' },
-      { label: 'Cache', value: 'Redis invalidate' },
-      { label: 'Push', value: 'WebSocket hubs' },
+      { label: 'DB', value: 'shared system of record RW' },
+      { label: 'Events', value: 'Reliable change events' },
+      { label: 'Cache', value: 'Cache refresh' },
+      { label: 'Push', value: 'live coordination' },
     ],
   }),
 
   'reliable-updates': seedContent({
     title: 'Reliable Updates',
-    summary: 'Transactional outbox — no mismatched screens after mutations.',
+    summary: 'Reliable change events — no mismatched screens after mutations.',
     problem:
       'Dual-write failures leave apps showing orders as dispatched when the database still says loading — the classic logistics trust killer.',
     outcomes: [
       'Events emitted only after commit succeeds',
-      'Idempotent consumers safe under replay',
-      'Silent WS refresh on connected clients',
+      'Safe-retry consumers safe under replay',
+      'Silent live refresh on connected clients',
       'Cross-role parity on order and fleet state',
     ],
     howItWorks: defaultHowItWorks([
-      ['Write once', 'Row update and outbox insert share a Spanner transaction.'],
-      ['Publish async', 'Kafka picks up outbox events with per-aggregate ordering.'],
-      ['Invalidate & push', 'Redis keys drop; WebSocket hubs fan out role-scoped envelopes.'],
+      ['Write once', 'Row update and change log insert share one confirmed save.'],
+      ['Publish async', 'live events picks up change events with per-aggregate ordering.'],
+      ['Invalidate & push', 'caches refresh; live updates reach every role.'],
     ]),
     flow: 'realtimePipeline',
     relatedProjectSlug: 'realtime-coordination',
@@ -332,7 +332,7 @@ export const platformTopics = {
       ['Cross-role sync', 'Supplier preview, warehouse board, and retailer tracking converge on the same IDs.'],
     ]),
     differentiators: cards([
-      ['No dual-write', 'Kafka is downstream of Spanner commit, never beside it.'],
+      ['No write twice', 'live updates follow the confirmed save — never write beside it.'],
       ['Ordering per aggregate', 'Order and fleet updates do not leapfrog incorrectly.'],
     ]),
     whyItMatters: {
@@ -340,11 +340,11 @@ export const platformTopics = {
       body: 'Logistics UIs that lie under load are worse than slow UIs. Reliable updates make “live” mean committed.',
       insights: [
         { title: 'Replay is normal', body: 'Consumers must tolerate at-least-once delivery.' },
-        { title: 'Notify after durable', body: 'WS envelopes never advertise uncommitted state.' },
+        { title: 'Notify after durable', body: 'Live updates never show unconfirmed status.' },
       ],
     },
     edgeCases: cards([
-      ['Consumer lag', 'Boards may be briefly stale but never invent states Spanner does not hold.'],
+      ['Consumer lag', 'Boards may be briefly stale but never invent statuses the shared record does not hold.'],
       ['Reconnect storm', 'Clients re-subscribe to hubs; snapshots repair gaps.'],
     ]),
   }),
@@ -355,7 +355,7 @@ export const platformTopics = {
     problem:
       'Delivery zones drawn on paper do not stop retailers outside service areas from checking out — until a truck is already loaded for a zone-miss.',
     outcomes: [
-      'H3 zone validation at checkout',
+      'delivery zones zone validation at checkout',
       'Warehouse-factory co-location for internal transfers',
       'Fleet and service area tied to topology nodes',
       'Clear zone-miss errors for retailers and suppliers',
@@ -363,12 +363,12 @@ export const platformTopics = {
     howItWorks: defaultHowItWorks([
       ['Model the network', 'Suppliers define warehouses, factories, zones, and fleet home bases.'],
       ['Enforce at checkout', 'Retailers outside zones see actionable errors, not silent failures.'],
-      ['Drive dispatch rules', 'Eligibility, fees, and Smart Fit routing respect topology edges and H3 cells.'],
+      ['Drive dispatch rules', 'Eligibility, fees, and Smart Fit routing respect topology edges and delivery zones cells.'],
     ]),
     flow: 'topologyMap',
     relatedProjectSlug: 'network-topology',
     capabilities: cards([
-      ['H3 spatial model', 'Uber H3 (res 7 class) underpins zone checks and dispatch clustering.'],
+      ['delivery zones spatial model', 'Uber delivery zones (res 7 class) underpins zone checks and dispatch clustering.'],
       ['Node types', 'Warehouse, factory, and home-node scoping for drivers and payload.'],
       ['Gate seals', 'Payload terminal confirms load integrity before departure.'],
       ['Service areas', 'Checkout and dispatch share the same geography contract.'],
@@ -382,7 +382,7 @@ export const platformTopics = {
       body: 'If topology is wrong, every downstream system invents workarounds. Pegasus treats the network graph as operational truth.',
       insights: [
         { title: 'Prevent bad checkouts', body: 'Stop impossible deliveries before payment authorization.' },
-        { title: 'Same graph for AI', body: 'Dispatch optimizer and deterministic Smart Fit read the same cells.' },
+        { title: 'Same graph for AI', body: 'Dispatch optimizer and proven Smart Fit rules read the same plan data.' },
       ],
     },
     edgeCases: cards([
@@ -411,7 +411,7 @@ export const platformTopics = {
     flowConfig: { highlightStep: 5 },
     capabilities: cards([
       ['Freeze-lock', 'Manual intervention and AI cannot race — locks are the single source of override truth.'],
-      ['Deterministic AI fallback', 'Optimizer timeouts fall back to pure H3 + binpack engines.'],
+      ['Deterministic AI fallback', 'Optimizer timeouts fall back to pure zone-aware  load packing engines.'],
       ['Geofenced money', 'Cash collection requires proximity when policy says so.'],
       ['Auditability', 'Force paths leave trails operators and finance can reconstruct.'],
     ]),
@@ -430,7 +430,7 @@ export const platformTopics = {
     edgeCases: cards([
       ['force_complete_forbidden', 'Code blocks completes that would skip fiscal integrity.'],
       ['proximity_required', 'Arrival/payment rejected outside geofence when required.'],
-      ['AI timeout', 'Dispatch continues on deterministic Smart Fit path.'],
+      ['AI timeout', 'Dispatch continues on the proven Smart Fit path.'],
     ]),
   }),
 };

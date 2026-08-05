@@ -20,7 +20,7 @@ type FleekHeroSectionProps = {
 
 export default function FleekHeroSection({
   sectionNumber = '01',
-  sectionTitle = 'DECENTRALIZED EDGE NETWORK',
+  sectionTitle = 'CONNECTED LOGISTICS NETWORK',
   title,
   summary,
   primaryHref = '/join',

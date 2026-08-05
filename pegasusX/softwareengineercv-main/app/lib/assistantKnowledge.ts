@@ -12,9 +12,9 @@ export function buildAssistantKnowledge(): string {
 Pegasus is the logistics operating system for supplier-led networks.
 Core jobs: dispatch, fleet tracking, payments, and realtime coordination across six roles —
 supplier, warehouse, retailer, driver, factory, and payload/gate.
-Surfaces: web portals, native Android/iOS apps, and Tauri desktop clients.
-Backend spine: Go API, Google Spanner, Kafka outbox, Redis cache, WebSockets.
-AI paths (dispatch optimizer, recommendations) always degrade to deterministic engines — never block the floor.
+Surfaces: web portals, native Android/iOS apps, and desktop app clients.
+Backend: one reliable core with live sync across every role app.
+AI paths (dispatch optimizer, recommendations) always fall back to proven planning rules — never block the floor.
 Primary CTAs: /join (request demo / careers), /contact, /platform (tour), /demo, /roles, /solutions.`);
 
   parts.push('# Site map (mega navigation)');

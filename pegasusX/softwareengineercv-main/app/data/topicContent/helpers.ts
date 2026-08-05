@@ -8,26 +8,26 @@ import type {
 
 export const DEFAULT_PROOF: ProofItem[] = [
   { label: 'Roles', value: '6 connected' },
-  { label: 'System of record', value: 'Cloud Spanner' },
-  { label: 'Realtime', value: 'Outbox → Kafka → WS' },
+  { label: 'System of record', value: 'One shared truth' },
+  { label: 'Live updates', value: 'Boards stay in sync' },
   { label: 'Surfaces', value: 'Portal · Mobile · Desktop' },
 ];
 
 export const DEFAULT_AI_DATA: TopicCard[] = [
   {
-    title: 'Transactional outbox',
+    title: 'Reliable change events',
     description:
-      'Every Spanner write emits outbox events in the same RW transaction — cache invalidation and Kafka fanout stay consistent with domain state.',
+      'Every confirmed update notifies the right apps in the same step — screens never diverge from the order truth.',
   },
   {
-    title: 'Realtime coordination',
+    title: 'Live coordination',
     description:
-      'Redis + WebSocket hubs per role keep dispatch boards, fleet maps, and retailer tracking aligned without manual refresh.',
+      'Dispatch boards, fleet maps, and retailer tracking stay aligned automatically — no manual refresh.',
   },
   {
-    title: 'AI with deterministic fallback',
+    title: 'AI with proven fallback',
     description:
-      'ai-worker paths (dispatch optimizer, pre-orders, freeze locks) always degrade to pure deterministic engines — never block operations on model latency.',
+      'Smart assist for dispatch and recommendations always falls back to proven planning rules — never blocks the floor if models are slow.',
   },
 ];
 
@@ -101,11 +101,11 @@ export function seedContent(seed: ContentSeed): TopicContent {
       [
         'Recovery path',
         seed.howItWorks[seed.howItWorks.length - 1]?.description ??
-          'Operators resolve via audited override while Spanner and outbox stay consistent.',
+          'Operators resolve via audited override while the shared order record and live updates stay consistent.',
       ],
       [
         'Cross-role notify',
-        'Downstream roles receive WS / notification envelopes so screens do not diverge after recovery.',
+        'Downstream roles receive live alerts and screen refreshes so views do not diverge after recovery.',
       ],
     ]);
 

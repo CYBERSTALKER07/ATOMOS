@@ -24,7 +24,7 @@ export type FleekImpactMetric = {
 
 export const DEFAULT_TICKER: FleekTickerItem[] = [
   { text: 'LIVE DISPATCH BOARDS' },
-  { text: 'SPANNER SYSTEM OF RECORD' },
+  { text: 'ONE SOURCE OF TRUTH' },
   { text: 'SIX ROLE SURFACES' },
   { text: 'REQUEST DEMO' },
 ];
@@ -32,13 +32,13 @@ export const DEFAULT_TICKER: FleekTickerItem[] = [
 export const HUB_TICKERS: Record<string, FleekTickerItem[]> = {
   platform: [
     { text: 'ORDER LIFECYCLE' },
-    { text: 'OUTBOX FANOUT' },
+    { text: 'LIVE ROLE UPDATES' },
     { text: 'ONE CONTROL PLANE' },
   ],
   technology: [
-    { text: 'SPANNER + KAFKA + WS' },
-    { text: 'MUTATING HANDLERS' },
-    { text: 'CACHE INVALIDATION' },
+    { text: 'LIVE SYNC ACROSS APPS' },
+    { text: 'GUARDED UPDATES' },
+    { text: 'ALWAYS-FRESH SCREENS' },
   ],
   operations: [
     { text: 'VISUAL DISPATCH' },
@@ -52,13 +52,13 @@ export const HUB_TICKERS: Record<string, FleekTickerItem[]> = {
   ],
   'ai-vision': [
     { text: 'GOVERNED AI ASSIST' },
-    { text: 'DETERMINISTIC FALLBACK' },
+    { text: 'PROVEN FALLBACK RULES' },
     { text: 'HUMAN IN THE LOOP' },
   ],
   'apps-deploy': [
     { text: 'PORTAL + MOBILE + DESKTOP' },
-    { text: 'ROLE ROW PARITY' },
-    { text: 'SILENT WS REFRESH' },
+    { text: 'SAME FEATURES EVERYWHERE' },
+    { text: 'AUTO SCREEN REFRESH' },
   ],
   roles: [
     { text: 'SUPPLIER · WAREHOUSE · DRIVER' },
@@ -75,8 +75,8 @@ export const DEFAULT_AXIOM_STATS: FleekStat[] = [
 
 export const DEFAULT_BLOB_STATS: FleekBlobStat[] = [
   { value: '12+', label: 'dispatch surfaces including portal and native apps' },
-  { value: '100+', label: 'route registrations mapped per role row', highlight: true },
-  { value: '200+', label: 'API endpoints across supplier-led logistics' },
+  { value: '100+', label: 'route registrations mapped per role', highlight: true },
+  { value: '200+', label: 'workflows across supplier-led logistics' },
 ];
 
 export const DEFAULT_IMPACT_METRIC: FleekImpactMetric = {
@@ -94,9 +94,9 @@ export function getTickerForHub(hubId?: string): FleekTickerItem[] {
 
 export const FLEEK_STACK_FEATURES = [
   'HIGH PERFORMANCE',
-  'LOW LATENCY',
+  'FAST RESPONSE',
   'GEO-AWARE',
   'HUMAN IN THE LOOP',
-  'IDEMPOTENT WRITES',
-  'SILENT WS REFRESH',
+  'SAFE RETRIES',
+  'AUTO SCREEN REFRESH',
 ] as const;

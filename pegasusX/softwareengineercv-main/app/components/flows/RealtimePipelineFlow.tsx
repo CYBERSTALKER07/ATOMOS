@@ -9,7 +9,7 @@ import { FlowShell, StepNode } from './FlowShell';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const STEPS = ['RW Txn', 'Outbox', 'Kafka', 'Cache', 'WebSocket'];
+const STEPS = ['Confirm', 'Change event', 'Notify', 'Refresh', 'Live update'];
 
 type Props = { config?: FlowConfig };
 

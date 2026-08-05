@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useReducedMotion } from '@/app/hooks/useDevice';
-import { FLEET_TRUCK_IMAGES, SKETCHFAB_SEMI_EMBED } from '@/app/lib/fleetAssets';
+import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -17,8 +17,7 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
   const prefersReducedMotion = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
-  const modelRef = useRef<HTMLDivElement>(null);
-  const [embedReady, setEmbedReady] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
 
   const images =
     mode === 'fleet'
@@ -46,13 +45,16 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
 
       imageEls.forEach((el, i) => {
         if (i === 0) return;
-        tl.to(imageEls[i - 1], { opacity: 0, duration: 0.4 }, i * 0.45)
-          .to(el, { opacity: 1, duration: 0.4 }, i * 0.45);
+        tl.to(imageEls[i - 1], { opacity: 0, duration: 0.4 }, i * 0.45).to(
+          el,
+          { opacity: 1, duration: 0.4 },
+          i * 0.45,
+        );
       });
 
-      if (modelRef.current) {
+      if (heroRef.current) {
         gsap.fromTo(
-          modelRef.current,
+          heroRef.current,
           { y: 24, opacity: 0.85 },
           {
             y: 0,
@@ -63,7 +65,7 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
               end: 'top 40%',
               scrub: 1,
             },
-          }
+          },
         );
       }
     }, panelRef);
@@ -76,24 +78,15 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
       ref={panelRef}
       className="fleet-visual-panel relative flex h-full min-h-[18rem] flex-col bg-[#141414] border-l border-white/10"
     >
-      <div ref={modelRef} className="relative h-40 shrink-0 border-b border-white/10 md:h-48">
-        {!embedReady ? (
-          <Image
-            src={images[0].src}
-            alt=""
-            fill
-            className="object-cover object-center opacity-50"
-            sizes="50vw"
-          />
-        ) : null}
-        <iframe
-          title="Fleet 3D model preview"
-          src={SKETCHFAB_SEMI_EMBED}
-          className={`absolute inset-0 h-full w-full border-0 pointer-events-none ${embedReady ? 'opacity-90' : 'opacity-0'}`}
-          allow="autoplay"
-          loading="lazy"
-          onLoad={() => setEmbedReady(true)}
+      <div ref={heroRef} className="relative h-40 shrink-0 border-b border-white/10 md:h-48 overflow-hidden">
+        <Image
+          src={images[0].src}
+          alt={images[0].alt}
+          fill
+          className="object-cover object-center"
+          sizes="50vw"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <p className="absolute left-4 top-4 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-white/50">
           {mode === 'fleet' ? 'Live fleet map' : 'Dispatch board'}
         </p>

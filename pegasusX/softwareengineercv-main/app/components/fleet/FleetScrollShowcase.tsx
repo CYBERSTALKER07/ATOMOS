@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { gsap } from 'gsap';
@@ -10,8 +10,6 @@ import { useInView } from '@/app/hooks/useInView';
 import {
   FLEET_SHOWCASE_CAPTIONS,
   FLEET_TRUCK_IMAGES,
-  SKETCHFAB_SEMI_EMBED,
-  SKETCHFAB_SEMI_PAGE,
 } from '@/app/lib/fleetAssets';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -26,7 +24,7 @@ type FleetScrollShowcaseProps = {
 export default function FleetScrollShowcase({
   eyebrow = 'Fleet & dispatch',
   title = 'See the fleet before it moves',
-  subtitle = 'Scroll through load planning, gate accountability, and live route tracking — with an interactive rig you can orbit.',
+  subtitle = 'Scroll through load planning, gate accountability, and live route tracking — one honest picture of every truck in the network.',
   learnMoreHref = '/solutions/fleet-visibility',
 }: FleetScrollShowcaseProps) {
   const { isMobile } = useIsMobile();
@@ -34,26 +32,21 @@ export default function FleetScrollShowcase({
   const { ref: inViewRef, isInView } = useInView<HTMLElement>({ rootMargin: '400px', exit: true });
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
-  const modelWrapRef = useRef<HTMLDivElement>(null);
+  const heroWrapRef = useRef<HTMLDivElement>(null);
   const filmstripRef = useRef<HTMLDivElement>(null);
   const captionRef = useRef<HTMLParagraphElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const [embedReady, setEmbedReady] = useState(false);
-
-  useEffect(() => {
-    if (!isInView) setEmbedReady(false);
-  }, [isInView]);
 
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current || isMobile || prefersReducedMotion || !isInView) return;
 
     const ctx = gsap.context(() => {
       const filmstrip = filmstripRef.current;
-      const modelWrap = modelWrapRef.current;
+      const heroWrap = heroWrapRef.current;
       const caption = captionRef.current;
       const progress = progressRef.current;
 
-      if (!filmstrip || !modelWrap) return;
+      if (!filmstrip || !heroWrap) return;
 
       const slideCount = FLEET_TRUCK_IMAGES.length;
       const stripWidth = filmstrip.scrollWidth - filmstrip.clientWidth;
@@ -73,7 +66,7 @@ export default function FleetScrollShowcase({
         },
       });
 
-      tl.to(modelWrap, { scale: 1.04, rotateY: 8, duration: 1, ease: 'none' }, 0)
+      tl.to(heroWrap, { scale: 1.03, duration: 1, ease: 'none' }, 0)
         .to(filmstrip, { x: () => -stripWidth, ease: 'none', duration: 1 }, 0)
         .to(progress, { scaleX: 1, ease: 'none', duration: 1 }, 0);
 
@@ -84,7 +77,7 @@ export default function FleetScrollShowcase({
             if (caption) caption.textContent = text;
           },
           [],
-          at
+          at,
         );
       });
     }, sectionRef);
@@ -93,6 +86,7 @@ export default function FleetScrollShowcase({
   }, [isMobile, prefersReducedMotion, isInView]);
 
   const showStatic = isMobile || prefersReducedMotion;
+  const hero = FLEET_TRUCK_IMAGES[0];
 
   return (
     <section
@@ -125,43 +119,21 @@ export default function FleetScrollShowcase({
             </div>
 
             <div
-              ref={modelWrapRef}
-              className="fleet-scroll-showcase__model relative aspect-[4/3] w-full border border-white/15 bg-[#0a0a0a]"
-              style={{ transformStyle: 'preserve-3d', perspective: '1200px' }}
+              ref={heroWrapRef}
+              className="fleet-scroll-showcase__model relative aspect-[4/3] w-full border border-white/15 bg-[#0a0a0a] overflow-hidden"
             >
-              {!embedReady ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Image
-                    src={FLEET_TRUCK_IMAGES[0].src}
-                    alt={FLEET_TRUCK_IMAGES[0].alt}
-                    fill
-                    className="object-cover opacity-60"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                  <span className="relative z-10 font-mono text-xs uppercase tracking-widest text-white/50">
-                    {isInView ? 'Loading 3D rig…' : 'Scroll to load 3D'}
-                  </span>
-                </div>
-              ) : null}
-              {isInView ? (
-                <iframe
-                  title="Tesla Semi truck — interactive 3D fleet model by ZIRODESIGN on Sketchfab"
-                  src={SKETCHFAB_SEMI_EMBED}
-                  className={`absolute inset-0 h-full w-full border-0 ${embedReady ? 'opacity-100' : 'opacity-0'}`}
-                  allow="autoplay; fullscreen; xr-spatial-tracking"
-                  allowFullScreen
-                  loading="lazy"
-                  onLoad={() => setEmbedReady(true)}
-                />
-              ) : null}
-              <a
-                href={SKETCHFAB_SEMI_PAGE}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute bottom-3 right-3 z-10 font-mono text-[10px] uppercase tracking-wider text-white/40 hover:text-white/70"
-              >
-                3D model ↗
-              </a>
+              <Image
+                src={hero.src}
+                alt={hero.alt}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <p className="absolute bottom-3 left-3 right-3 font-mono text-[10px] uppercase tracking-wider text-white/70">
+                {hero.caption}
+              </p>
             </div>
           </div>
 

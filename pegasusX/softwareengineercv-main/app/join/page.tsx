@@ -91,7 +91,7 @@ export default function JoinPage() {
       activeHref="/join"
       sectionTitle="REQUEST DEMO"
       title="Request a Demo"
-      summary="See dispatch, tracking, and payments for supplier-led logistics networks — Spanner truth, six roles, portal and native."
+      summary="See dispatch, tracking, and payments for supplier-led logistics networks — shared order truth, six roles, portal and native."
       primaryHref="#demo-form"
       primaryLabel="BOOK WALKTHROUGH"
       secondaryHref="/platform"

@@ -65,7 +65,7 @@ export const DEFAULT_INDUSTRIES: AxionIndustryCard[] = [
 export const DEFAULT_TECH_FEATURES: AxionTechFeature[] = [
   {
     title: 'Real-Time Tracking',
-    description: 'Live fleet and order state on one Spanner truth — portal, mobile, and gate.',
+    description: 'Live fleet and order state on one shared order truth — portal, mobile, and gate.',
     href: '/technology/redis-kafka',
   },
   {
@@ -75,7 +75,7 @@ export const DEFAULT_TECH_FEATURES: AxionTechFeature[] = [
   },
   {
     title: 'Automated Updates',
-    description: 'Outbox → Kafka → WebSocket refresh so every role sees the same status.',
+    description: 'live sync after every change refresh so every role sees the same status.',
     href: '/platform/reliable-updates',
   },
   {

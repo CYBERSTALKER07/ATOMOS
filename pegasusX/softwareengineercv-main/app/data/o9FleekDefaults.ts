@@ -31,12 +31,12 @@ const DEFAULT_STATS: O9ValueStat[] = [
   {
     value: '6',
     label: 'Roles connected',
-    context: 'Supplier, warehouse, factory, driver, retailer, and gate on one Spanner spine.',
+    context: 'Supplier, warehouse, factory, driver, retailer, and gate on one shared order record.',
   },
   {
     value: '<2s',
-    label: 'Realtime fanout',
-    context: 'Outbox → Kafka → WebSocket keeps boards and maps aligned without refresh.',
+    label: 'Live updates',
+    context: 'Boards and maps stay aligned automatically — no manual refresh.',
   },
 ];
 
@@ -73,7 +73,7 @@ export const DEFAULT_TESTIMONIALS: O9Testimonial[] = [
   {
     company: 'Retailer chain',
     quote:
-      'Shop-closed respond and pay-at-delivery wired through the same API our desktop team uses — parity without duplicate builds.',
+      'Shop-closed respond and pay-at-delivery work the same on desktop and mobile — no duplicate workflows to maintain.',
     name: 'Retail ops',
     title: 'Last-mile delivery',
   },

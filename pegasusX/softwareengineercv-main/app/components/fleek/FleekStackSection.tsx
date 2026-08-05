@@ -25,7 +25,7 @@ export default function FleekStackSection({
             </div>
           </div>
           <div className="fleek-stack__layer fleek-stack__layer--edge">
-            <span>02 CDN / EDGE</span>
+            <span>02 FAST DELIVERY</span>
             <div className="fleek-stack__bolt">⚡</div>
           </div>
           <div className="fleek-stack__layer fleek-stack__layer--service">
