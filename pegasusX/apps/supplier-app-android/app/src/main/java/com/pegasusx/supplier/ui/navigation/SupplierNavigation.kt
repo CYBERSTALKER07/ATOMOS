@@ -62,6 +62,7 @@ import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.settings.NotificationPreferencesScreen
+import com.pegasusx.supplier.ui.screens.settings.ReturnPolicySettingsScreen
 import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrderDetailScreen
@@ -123,6 +124,7 @@ object SupplierRoutes {
     const val DEMAND_HISTORY = "demand_history"
     const val PLANNING_BRAIN = "planning_brain"
     const val PLANNING_SETTINGS = "planning_settings"
+    const val RETURN_POLICY = "return_policy"
     const val KNOWLEDGE_GRAPH = "knowledge_graph"
     const val REPLENISHMENT_POLICIES = "replenishment_policies"
     const val FACTORIES = "factories"
@@ -377,6 +379,7 @@ fun SupplierNavigation(
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
                     onNotificationPrefs = { navController.navigate(SupplierRoutes.NOTIFICATION_PREFS) },
+                    onReturnPolicy = { navController.navigate(SupplierRoutes.RETURN_POLICY) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
                     onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
@@ -497,6 +500,7 @@ fun SupplierNavigation(
                     onOpenPlanningBrain = { navController.navigate(SupplierRoutes.PLANNING_BRAIN) },
                     onOpenKnowledgeGraph = { navController.navigate(SupplierRoutes.KNOWLEDGE_GRAPH) },
                     onOpenPlanningSettings = { navController.navigate(SupplierRoutes.PLANNING_SETTINGS) },
+                    onOpenReturnPolicy = { navController.navigate(SupplierRoutes.RETURN_POLICY) },
                     onOpenRoutePerformance = { navController.navigate(SupplierRoutes.ROUTE_PERFORMANCE) },
                  )
             }
@@ -604,6 +608,9 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.PLANNING_SETTINGS) {
                 PlanningSettingsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.RETURN_POLICY) {
+                ReturnPolicySettingsScreen(ops) { navController.popBackStack() }
             }
             composable(SupplierRoutes.KNOWLEDGE_GRAPH) {
                 KnowledgeGraphScreen(ops) { navController.popBackStack() }

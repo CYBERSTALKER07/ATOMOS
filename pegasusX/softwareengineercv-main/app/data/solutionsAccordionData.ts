@@ -149,7 +149,7 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
     title: 'Payload / Gate',
     overview:
       'Secure facility entries and exits with returns handling and seamless barcode gate control.',
-    solutionHref: '/roles/gate',
+    solutionHref: '/roles/payload-gate',
     useCases: [
       { 
         title: 'Returns & Barcode Gate Control', 

@@ -189,6 +189,8 @@ struct SupplierAdaptiveShell: View {
             PlanningBrainView()
         case .planningSettings:
             PlanningSettingsView()
+        case .returnPolicy:
+            ReturnPolicySettingsView()
         case .knowledgeGraph:
             KnowledgeGraphView()
         case .replenishmentPolicies:

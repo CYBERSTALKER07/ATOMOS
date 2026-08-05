@@ -498,6 +498,21 @@ struct WarehouseOpsSettingsResponse: Decodable {
     }
 }
 
+/// GET/PUT /v1/warehouse/return-policy
+struct WarehouseReturnPolicy: Codable {
+    var supplierId: String
+    var reverseDockSlaHours: Int64?
+    var retailerFileWindowHours: Int64?
+    var canOverrideRetailerWindow: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case reverseDockSlaHours = "reverse_dock_sla_hours"
+        case retailerFileWindowHours = "retailer_file_window_hours"
+        case canOverrideRetailerWindow = "can_override_retailer_window"
+    }
+}
+
 struct WarehouseOpsSettingsPatchRequest: Encodable {
     let defaultOutOfStockPolicy: String
     let showStockCountsToRetailers: Bool?

@@ -153,3 +153,41 @@ struct OrderImmutabilityTests {
         #expect(original.state == .IN_TRANSIT, "Original should still be IN_TRANSIT")
     }
 }
+
+// MARK: - Offline enqueue classifier (P0-4)
+
+struct DriverOfflineEnqueueTests {
+
+    @Test func networkError_isEnqueueable() {
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.networkError))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(URLError(.timedOut)))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(URLError(.notConnectedToInternet)))
+    }
+
+    @Test func retryableHTTP_isEnqueueable() {
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(503)))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(429)))
+        let problem = ProblemDetail(
+            type: nil, title: nil, status: 503, detail: nil, traceId: nil,
+            instance: nil, code: nil, messageKey: nil, retryable: true, action: nil
+        )
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.problemDetail(problem)))
+    }
+
+    @Test func geofenceAndBusinessReject_neverEnqueue() {
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.forbidden))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.unauthorized))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(403)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(422)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.decodingError))
+        let geofence = ProblemDetail(
+            type: nil, title: "Forbidden", status: 403, detail: "too far",
+            traceId: nil, instance: nil, code: "geofence_violation",
+            messageKey: nil, retryable: false, action: nil
+        )
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.problemDetail(geofence)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(
+            FleetServiceError.deliveryRejected("denied")
+        ))
+    }
+}

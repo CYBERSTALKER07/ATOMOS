@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Route } from 'next';
+import { cn } from '@/lib/utils';
 
 type ChamferButtonProps = {
   href?: string;
@@ -9,6 +10,7 @@ type ChamferButtonProps = {
   size?: 'md' | 'sm' | 'icon';
   className?: string;
   type?: 'button' | 'submit';
+  disabled?: boolean;
   'aria-label'?: string;
 };
 
@@ -20,23 +22,32 @@ export default function ChamferButton({
   size = 'md',
   className = '',
   type = 'button',
+  disabled = false,
   'aria-label': ariaLabel,
 }: ChamferButtonProps) {
-  const classes = [
+  const classes = cn(
     'chamfer-btn',
     variant === 'ghost' ? 'chamfer-btn--ghost' : 'chamfer-btn--fill',
-    size === 'sm' ? 'chamfer-btn--sm' : '',
-    size === 'icon' ? 'chamfer-btn--icon' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+    size === 'sm' && 'chamfer-btn--sm',
+    size === 'icon' && 'chamfer-btn--icon',
+    disabled && 'pointer-events-none opacity-50',
+    className
+  );
 
   if (href) {
     const isExternal = href.startsWith('http');
+    const isHashOrSpecial =
+      href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:');
     if (isExternal) {
       return (
         <a href={href} className={classes} aria-label={ariaLabel} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
+      );
+    }
+    if (isHashOrSpecial) {
+      return (
+        <a href={href} className={classes} aria-label={ariaLabel}>
           {children}
         </a>
       );
@@ -49,7 +60,7 @@ export default function ChamferButton({
   }
 
   return (
-    <button type={type} onClick={onClick} className={classes} aria-label={ariaLabel}>
+    <button type={type} onClick={onClick} className={classes} aria-label={ariaLabel} disabled={disabled}>
       {children}
     </button>
   );

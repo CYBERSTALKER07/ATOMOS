@@ -214,6 +214,13 @@ class SupplierOperationsRepository @Inject constructor(
         idempotencyKey: String,
     ): Response<SeasonalOverrideRow> = api.createSeasonalOverride(body, idempotencyKey)
 
+    suspend fun getReturnPolicy(): Response<SupplierReturnPolicy> = api.getReturnPolicy()
+
+    suspend fun putReturnPolicy(
+        body: SupplierReturnPolicy,
+        idempotencyKey: String,
+    ): Response<SupplierReturnPolicy> = api.putReturnPolicy(body, idempotencyKey)
+
     suspend fun getKnowledgeGraph(): Response<SupplierKnowledgeGraph> = api.getKnowledgeGraph()
 
     suspend fun getReplenishmentPolicies(): Response<SupplierReplenishmentPolicy> = api.getReplenishmentPolicies()

@@ -272,17 +272,37 @@ class NavigationViewModel @Inject constructor(
         _uiState.update { it.copy(shopClosedAlert = null) }
     }
 
-    suspend fun respondToShopClosed(orderId: String, response: String): Result<Unit> {
+    suspend fun respondToShopClosed(
+        orderId: String,
+        response: String,
+        photoUrl: String? = null,
+    ): Result<Unit> {
         return try {
+            if (response == "AUTHORIZE_BYPASS" && photoUrl.isNullOrBlank()) {
+                return Result.failure(
+                    IllegalArgumentException("Doorway / drop-off photo is required to authorize bypass."),
+                )
+            }
+            val body = mutableMapOf("order_id" to orderId, "response" to response)
+            if (!photoUrl.isNullOrBlank()) {
+                body["photo_url"] = photoUrl.trim()
+            }
             api.shopClosedResponse(
-                mapOf("order_id" to orderId, "response" to response),
+                body,
                 "shop-closed-response:$orderId:$response",
             )
             clearShopClosedAlert()
             loadActiveOrders()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            val msg = e.message.orEmpty()
+            if (msg.contains("photo_url_required_for_bypass")) {
+                Result.failure(
+                    IllegalArgumentException("Doorway / drop-off photo is required to authorize bypass."),
+                )
+            } else {
+                Result.failure(e)
+            }
         }
     }
 

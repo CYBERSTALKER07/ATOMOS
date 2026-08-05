@@ -29,7 +29,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="fleek-docs min-h-screen bg-black text-white">
       <FleekNav activeHref="/demo" />
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
+      <div className="flex min-h-[calc(100vh-5rem)] flex-col md:flex-row pt-[4.5rem] md:pt-20">
         <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-[#0a0a0a] md:w-56 md:border-b-0 md:border-r md:border-white/10">
           <div className="border-b border-white/10 p-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">Demo portal</p>

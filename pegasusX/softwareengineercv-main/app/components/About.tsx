@@ -1,17 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TextType from './TextType';
+import DigitalizedImage from './DigitalizedImage';
 import { useIsMobile } from '../hooks/useDevice';
-import { useInView } from '../hooks/useInView';
 import PageSection from './layout/PageSection';
-
-const ASCIIText = dynamic(() => import('./ASCIIText'), { ssr: false });
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,17 +15,16 @@ const PEGASUS_LOGO = '/pegasus.jpg';
 
 export default function About() {
   const { isMobile } = useIsMobile();
-  const { ref: aboutRef, isInView } = useInView<HTMLElement>({ exit: true, rootMargin: '0px' });
+  const aboutRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const asciiRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!aboutRef.current) return;
 
     const ctx = gsap.context(() => {
       if (isMobile) {
-        gsap.set([asciiRef.current, imageRef.current, contentRef.current], {
+        gsap.set([imageRef.current, contentRef.current], {
           opacity: 1,
           x: 0,
           scale: 1,
@@ -45,8 +40,7 @@ export default function About() {
           toggleActions: 'play none none reverse',
         },
       })
-        .fromTo(asciiRef.current, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.2 })
-        .fromTo(imageRef.current, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 1 }, '-=0.8')
+        .fromTo(imageRef.current, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 1 })
         .fromTo(contentRef.current, { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 1 }, '-=0.7');
     }, aboutRef);
 
@@ -55,41 +49,16 @@ export default function About() {
 
   return (
     <PageSection id="about" ref={aboutRef}>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 lg:gap-12 items-center">
         <div ref={imageRef} className="relative">
-          <div ref={asciiRef}>
-            <div className="relative h-[400px] md:h-[500px] overflow-hidden border border-white/10 bg-black">
-              {isMobile ? (
-                <div className="relative flex h-full w-full items-center justify-center bg-black p-12">
-                  <Image
-                    src={PEGASUS_LOGO}
-                    alt="Pegasus"
-                    width={320}
-                    height={320}
-                    className="h-auto w-full max-w-[280px] object-contain"
-                    priority
-                  />
-                </div>
-              ) : isInView ? (
-                <ASCIIText
-                  imageSrc={PEGASUS_LOGO}
-                  asciiFontSize={10}
-                  planeBaseHeight={14}
-                  enableWaves={false}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-black">
-                  <Image
-                    src={PEGASUS_LOGO}
-                    alt=""
-                    width={200}
-                    height={200}
-                    className="h-auto w-32 object-contain opacity-20"
-                    aria-hidden
-                  />
-                </div>
-              )}
-            </div>
+          <div className="relative h-[240px] sm:h-[320px] md:h-[400px] lg:h-[500px] overflow-hidden border border-white/10 bg-black">
+            <DigitalizedImage
+              src={PEGASUS_LOGO}
+              alt="Pegasus"
+              color="#e8e4e3"
+              backgroundColor="#000000"
+              threshold={0.2}
+            />
           </div>
         </div>
 

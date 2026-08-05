@@ -3898,22 +3898,22 @@ a.editorial-card--interactive:hover .chamfer-btn *,
    Fleek docs layout (.fleek-docs)
    ============================================================================= */
 .fleek-docs {
-  --fleek-bg: #f3f4f6;
-  --fleek-text: #1a1a1a;
-  --fleek-charcoal: #2d2d2d;
-  --fleek-accent: #6b7a5f;
-  --fleek-accent-dark: #556048;
-  --fleek-teal: #6b7a5f;
-  --fleek-teal-dark: #556048;
-  --fleek-purple: #2d2d2d;
+  --fleek-bg: #000000;
+  --fleek-text: #ffffff;
+  --fleek-charcoal: #111111;
+  --fleek-accent: #8fa882;
+  --fleek-accent-dark: #6b7a5f;
+  --fleek-teal: #8fa882;
+  --fleek-teal-dark: #6b7a5f;
+  --fleek-purple: #ffffff;
   --fleek-coral: #ff5e62;
   --fleek-blue: #2d8cff;
-  --fleek-surface: #ffffff;
-  --fleek-surface-raised: #ececec;
+  --fleek-surface: #0a0a0a;
+  --fleek-surface-raised: #111111;
   --fleek-orange: var(--fleek-coral);
-  --fleek-lavender: #b8c0d4;
-  --fleek-grid: rgba(0, 0, 0, 0.08);
-  --fleek-muted: rgba(0, 0, 0, 0.55);
+  --fleek-lavender: #4a5568;
+  --fleek-grid: rgba(255, 255, 255, 0.1);
+  --fleek-muted: rgba(255, 255, 255, 0.55);
   --fleek-max: 72rem;
   background: var(--fleek-bg);
   color: var(--fleek-text);
@@ -5229,4 +5229,89 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 
 .fleek-docs .logistics-analytics__bar.is-highlight {
   background: var(--fleek-accent);
+}
+
+/* Dark fleek pages — AXION controls & reference cards */
+.fleek-docs .axion-btn--primary {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.fleek-docs .axion-btn--primary:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.fleek-docs .axion-btn--outline {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.fleek-docs .axion-btn--outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fleek-docs .axion-industry-card.is-highlight {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--fleek-accent);
+  color: #ffffff;
+}
+
+.fleek-docs .axion-industry-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.fleek-docs .impact-card {
+  background: var(--fleek-surface-raised);
+  color: var(--fleek-text);
+  border-color: var(--fleek-grid);
+}
+
+.fleek-docs .impact-card__header {
+  border-bottom-color: var(--fleek-grid);
+}
+
+.fleek-docs .blob-panel__label {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.fleek-docs .blob-panel__blob--main {
+  background: var(--fleek-accent);
+}
+
+.fleek-docs .docs-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fleek-docs .docs-input,
+.fleek-docs .docs-textarea,
+.fleek-docs .docs-select {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--fleek-grid);
+  background: #000000;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.fleek-docs .docs-textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.fleek-docs .docs-input:focus,
+.fleek-docs .docs-textarea:focus,
+.fleek-docs .docs-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.fleek-docs .docs-hero-title {
+  color: var(--fleek-text);
 }

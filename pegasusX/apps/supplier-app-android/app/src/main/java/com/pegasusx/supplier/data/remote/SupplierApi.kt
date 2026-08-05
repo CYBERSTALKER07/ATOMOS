@@ -247,6 +247,15 @@ interface SupplierApi {
         @Header("X-Idempotency-Key") idempotencyKey: String,
     ): Response<SeasonalOverrideRow>
 
+    @GET("v1/supplier/return-policy")
+    suspend fun getReturnPolicy(): Response<SupplierReturnPolicy>
+
+    @PUT("v1/supplier/return-policy")
+    suspend fun putReturnPolicy(
+        @Body body: SupplierReturnPolicy,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<SupplierReturnPolicy>
+
     @GET("v1/supplier/knowledge-graph")
     suspend fun getKnowledgeGraph(): Response<SupplierKnowledgeGraph>
 

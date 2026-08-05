@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
+import SiteNav from '@/app/components/explore/SiteNav';
 import { SOLUTIONS_ACCORDION_DATA, AccordionSolution } from '../data/solutionsAccordionData';
 
 const AccordionItem = ({ 
@@ -47,7 +48,7 @@ const AccordionItem = ({
           <span className="text-sm md:text-base font-mono text-white/60 group-hover:text-white transition-colors">
             {item.numberLabel}
           </span>
-          <h2 className="text-3xl md:text-5xl font-normal tracking-tight text-white group-hover:text-gray-300 transition-colors">
+          <h2 className="text-3xl md:text-5xl font-normal tracking-tight text-white group-hover:text-[#FBFF63] transition-colors">
             {item.title}
           </h2>
         </div>
@@ -123,7 +124,9 @@ export default function SolutionsAccordion() {
   const [openIndex, setOpenIndex] = useState<number>(0);
 
   return (
-    <div className="min-h-screen bg-black text-white pt-32 pb-24 selection:bg-white/30">
+    <div className="min-h-screen bg-black text-white pb-24 selection:bg-white/30">
+      <SiteNav activeHref="/solutions" />
+      <div className="pt-32">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         
         {/* Breadcrumb */}
@@ -157,6 +160,7 @@ export default function SolutionsAccordion() {
           ))}
         </div>
 
+      </div>
       </div>
     </div>
   );

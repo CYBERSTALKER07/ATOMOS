@@ -1,8 +1,18 @@
 'use client';
 
+import { useState, type ReactNode } from 'react';
 import PageSection from './layout/PageSection';
+import DigitalCardHover from './DigitalCardHover';
+import { usePerfProfile } from '../hooks/useDevice';
 
-const capabilityCards = [
+type CapabilityCard = {
+  title: string;
+  description: string;
+  className?: string;
+  icon: ReactNode;
+};
+
+const capabilityCards: CapabilityCard[] = [
   {
     title: 'Visual Dispatch\nEngine',
     description: 'Map out multi-step routing behaviors on a high-precision grid. Drag and drop triggers, logic gates, and actions to craft custom paths with complete flexibility and control over your entire operation.',
@@ -145,7 +155,45 @@ const capabilityCards = [
   }
 ];
 
-import PixelBlast from './PixelBlast';
+function CapabilityCardItem({ card }: { card: CapabilityCard }) {
+  const { allowHoverFx } = usePerfProfile();
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      className={`relative overflow-hidden bg-[#050505] p-8 sm:p-10 md:p-12 lg:p-16 cursor-pointer group flex flex-col ${card.className || ''}`}
+      onMouseEnter={() => allowHoverFx && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => allowHoverFx && setHovered(true)}
+      onBlur={() => setHovered(false)}
+      tabIndex={0}
+    >
+      {allowHoverFx && (
+        <div
+          className={`absolute inset-0 z-0 transition-opacity duration-500 ${
+            hovered ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <DigitalCardHover active={hovered} color="#b8b4b3" />
+        </div>
+      )}
+      {!allowHoverFx && (
+        <div className="absolute inset-0 z-0 opacity-0 group-active:opacity-100 group-focus-within:opacity-100 bg-[radial-gradient(ellipse_at_center,rgba(180,180,180,0.12),transparent_70%)] transition-opacity duration-300" />
+      )}
+
+      <div className="relative z-10 mb-6 sm:mb-8 md:mb-10 opacity-90 group-hover:opacity-100 transition-opacity transform group-hover:-translate-y-1 duration-300 pointer-events-none drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
+        {card.icon}
+      </div>
+      <h3 className="relative z-10 font-mono text-base sm:text-lg font-bold text-white mb-4 sm:mb-6 leading-snug whitespace-pre-line pointer-events-none transition-colors duration-300 group-hover:text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+        {card.title}
+      </h3>
+      <p className="relative z-10 text-[13px] md:text-sm text-white/60 leading-relaxed font-sans max-w-md pointer-events-none group-hover:text-white/90 transition-colors duration-300 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">
+        {card.description}
+      </p>
+    </div>
+  );
+}
+
 export default function Skills() {
   return (
     <PageSection
@@ -156,42 +204,7 @@ export default function Skills() {
     >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 bg-white/10 gap-px border-b border-white/10">
         {capabilityCards.map((card, index) => (
-          <div 
-            key={index} 
-            className={`relative overflow-hidden bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col ${card.className || ''}`}
-          >
-            <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-              <PixelBlast
-                variant="circle"
-                pixelSize={6}
-                color="#4a4a4a"
-                patternScale={3}
-                patternDensity={1.2}
-                pixelSizeJitter={0.5}
-                enableRipples
-                rippleSpeed={0.4}
-                rippleThickness={0.12}
-                rippleIntensityScale={1.5}
-                liquid
-                liquidStrength={0.12}
-                liquidRadius={1.2}
-                liquidWobbleSpeed={5}
-                speed={0.6}
-                edgeFade={0.25}
-                transparent
-              />
-            </div>
-            
-            <div className="relative z-10 mb-10 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:-translate-y-1 duration-300 pointer-events-none">
-              {card.icon}
-            </div>
-            <h3 className="relative z-10 font-mono text-lg font-bold text-white mb-6 leading-snug whitespace-pre-line pointer-events-none">
-              {card.title}
-            </h3>
-            <p className="relative z-10 text-[13px] md:text-sm text-white/50 leading-relaxed font-sans max-w-md pointer-events-none">
-              {card.description}
-            </p>
-          </div>
+          <CapabilityCardItem key={index} card={card} />
         ))}
       </div>
     </PageSection>

@@ -11,6 +11,7 @@ import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications } from '@/lib/useNotifications';
 import { clearSession, readTokenFromCookie } from '@/lib/auth';
+import { usePortalT } from '@/lib/i18n';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
@@ -96,6 +97,7 @@ const NAV: NavSection[] = [
       { href: "/profile", icon: "supplier", label: "Profile" },
       { href: "/settings/tax-regimes", icon: "overview", label: "Tax Regimes" },
       { href: "/settings/planning", icon: "overview", label: "Planning" },
+      { href: "/settings/return-policy", icon: "returns", label: "Return policy" },
       { href: "/settings/notification-preferences", icon: "overview", label: "Notifications" },
       { href: "/settings/segmentation", icon: "overview", label: "Segmentation" },
       { href: "/settings/playbooks", icon: "overview", label: "Playbooks" },
@@ -171,6 +173,7 @@ const DrawerContent = memo(function DrawerContent({
 }) {
   const isRail = collapsed && !isMobile;
   const filteredNav = NAV;
+  const t = usePortalT();
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -272,11 +275,11 @@ const DrawerContent = memo(function DrawerContent({
             <button
               onClick={onLogout}
               className="desk-sidebar-item flex-1"
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
             >
               <Icon name="logout" size={18} />
-              <span>Sign Out</span>
+              <span>{t("common.action.sign_out")}</span>
             </button>
           )}
         </div>
@@ -323,6 +326,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
+  const t = usePortalT();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -542,7 +546,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                   <div style={{ height: 1, background: 'var(--desk-border)', margin: '4px 12px' }} />
                   <button className="md-menu-item" style={{ color: 'var(--desk-danger)' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
                     <Icon name="logout" />
-                    <span>Sign Out</span>
+                    <span>{t("common.action.sign_out")}</span>
                   </button>
                 </div>
               )}

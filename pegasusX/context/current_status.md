@@ -1,12 +1,13 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-04 (Substance Gate API pass)*
+*Last Updated: 2026-08-05 (Client Parity Closure)*
 
 ## 1. Code completeness (this closure)
 
-Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
+Closed in monorepo (see `artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md`):
 
-- **2026-08-04 Substance Gate (backend-first)** SSMR preflight green; full `ssmr-smokecheck e2e` + `ssmr-ecosystem-marker-gate-ok` on image `ssmr-substance-gate-a66868b8-084112` (worker replicas=1). Claims spine required markers green (`CLAIM_ELIGIBILITY` / `CLAIM_WINDOW_SNAPSHOT` / media GCS / file / reverse). Sign-off: [`artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md`](../artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md). Client UI walks DEFERRED; client-policy HTTP 200 all roles×platforms. Ops still: GP card SUCCESS, Firebase SMS.
+- **2026-08-05 Client Parity Closure** P0-4 iOS offline classifier + GPS fail-closed; AUTHORIZE_BYPASS photo ×3 retailer; supplier/WH return-policy portal+mobile; driver PoD credit gate; empty chart unmount + SpendAnalytics thin wire; portal i18n bootstrap (supplier/warehouse). Interactive UI walks READY_FOR_WALK (human PASS pending). Product-deferred unchanged: negotiations / Soliq / offline POS.
+- **2026-08-04 Substance Gate (backend-first)** SSMR preflight green; full `ssmr-smokecheck e2e` + `ssmr-ecosystem-marker-gate-ok` on image `ssmr-substance-gate-a66868b8-084112` (worker replicas=1). Claims spine required markers green (`CLAIM_ELIGIBILITY` / `CLAIM_WINDOW_SNAPSHOT` / media GCS / file / reverse). Sign-off: [`artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md`](../artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md). Client UI walks were DEFERRED; client-policy HTTP 200 all roles×platforms. Ops still: GP card SUCCESS, Firebase SMS.
 - **2026-08-04 Gate-0 hygiene** `Claims`/`ClaimEvidences` in `spanner.ddl`; iOS driver/payload drop `convertFromSnakeCase`; supplier Android OrgFleet wreckage deleted (Enterprise+Store Kotlin compile green); optimizer Time dimension in minutes + empty-route fallback; worker `replicas:1` (SSMR scaled); `AUTO_CONFIRM_PREORDERS_ENABLED` sweeper; orphan `ledger/` package deleted. Deferred: multi-tenant seed, partner API/ML, Spanner backup TF, outbox leases.
 - **2026-08-04 G3 (backend)** Supplier/WH return-policy tables + resolve_window; immutable `ClaimWindowHours`/`EndsAt`/`PolicySource` on COMPLETED; eligibility/FileClaim prefer snapshot; GET/PUT `/v1/supplier/return-policy` + `/v1/warehouse/return-policy`. Portal/mobile settings UX still open. E2e asserts non-empty `policy_source` (`PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK`).
 - **2026-08-04 G2** `GET /v1/orders/{id}/claim-eligibility` (shared window math with file-claim); retailer countdown + CTA hide on desktop/Android/iOS; e2e `PX_E2E_CLAIM_ELIGIBILITY_OK`.

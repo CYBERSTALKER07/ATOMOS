@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useIsMobile, useReducedMotion } from '@/app/hooks/useDevice';
+import { useInView } from '@/app/hooks/useInView';
 import {
   FLEET_SHOWCASE_CAPTIONS,
   FLEET_TRUCK_IMAGES,
@@ -30,6 +31,7 @@ export default function FleetScrollShowcase({
 }: FleetScrollShowcaseProps) {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
+  const { ref: inViewRef, isInView } = useInView<HTMLElement>({ rootMargin: '400px', exit: true });
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const modelWrapRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,11 @@ export default function FleetScrollShowcase({
   const [embedReady, setEmbedReady] = useState(false);
 
   useEffect(() => {
-    if (!sectionRef.current || !pinRef.current || isMobile || prefersReducedMotion) return;
+    if (!isInView) setEmbedReady(false);
+  }, [isInView]);
+
+  useEffect(() => {
+    if (!sectionRef.current || !pinRef.current || isMobile || prefersReducedMotion || !isInView) return;
 
     const ctx = gsap.context(() => {
       const filmstrip = filmstripRef.current;
@@ -84,13 +90,16 @@ export default function FleetScrollShowcase({
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [isMobile, prefersReducedMotion]);
+  }, [isMobile, prefersReducedMotion, isInView]);
 
   const showStatic = isMobile || prefersReducedMotion;
 
   return (
     <section
-      ref={sectionRef}
+      ref={(node) => {
+        sectionRef.current = node;
+        inViewRef.current = node;
+      }}
       className="fleet-scroll-showcase relative bg-black text-white"
       aria-label="Fleet visual showcase"
     >
@@ -128,22 +137,23 @@ export default function FleetScrollShowcase({
                     fill
                     className="object-cover opacity-60"
                     sizes="(max-width: 1024px) 100vw, 50vw"
-                    priority
                   />
                   <span className="relative z-10 font-mono text-xs uppercase tracking-widest text-white/50">
-                    Loading 3D rig…
+                    {isInView ? 'Loading 3D rig…' : 'Scroll to load 3D'}
                   </span>
                 </div>
               ) : null}
-              <iframe
-                title="Tesla Semi truck — interactive 3D fleet model by ZIRODESIGN on Sketchfab"
-                src={SKETCHFAB_SEMI_EMBED}
-                className={`absolute inset-0 h-full w-full border-0 ${embedReady ? 'opacity-100' : 'opacity-0'}`}
-                allow="autoplay; fullscreen; xr-spatial-tracking"
-                allowFullScreen
-                loading="lazy"
-                onLoad={() => setEmbedReady(true)}
-              />
+              {isInView ? (
+                <iframe
+                  title="Tesla Semi truck — interactive 3D fleet model by ZIRODESIGN on Sketchfab"
+                  src={SKETCHFAB_SEMI_EMBED}
+                  className={`absolute inset-0 h-full w-full border-0 ${embedReady ? 'opacity-100' : 'opacity-0'}`}
+                  allow="autoplay; fullscreen; xr-spatial-tracking"
+                  allowFullScreen
+                  loading="lazy"
+                  onLoad={() => setEmbedReady(true)}
+                />
+              ) : null}
               <a
                 href={SKETCHFAB_SEMI_PAGE}
                 target="_blank"

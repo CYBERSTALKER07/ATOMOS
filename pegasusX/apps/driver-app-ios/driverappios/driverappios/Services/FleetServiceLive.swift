@@ -43,7 +43,7 @@ final class FleetServiceLive: FleetServiceProtocol {
     // MARK: - Deliver Order (with offline queue fallback)
 
     func deliverOrder(orderId: String, scannedToken: String) async throws {
-        let location = await currentLocation()
+        let location = try await requireCurrentLocation()
         do {
             let response = try await api.submitDelivery(
                 orderId: orderId,
@@ -55,12 +55,21 @@ final class FleetServiceLive: FleetServiceProtocol {
                 throw FleetServiceError.deliveryRejected(response.message)
             }
         } catch let error as FleetServiceError {
-            // Business rejection — do NOT queue offline, propagate immediately
+            // Business rejection / queued — do NOT re-enqueue
             throw error
         } catch {
-            // Network/transport error — queue for offline sync
-            await enqueueOfflineDelivery(orderId: orderId, scannedToken: scannedToken)
+            // Transport / retryable only — never enqueue geofence or other business 4xx (P0-4)
+            guard DriverOfflineActionCatalog.isNetworkEnqueueable(error) else {
+                throw error
+            }
+            await enqueueOfflineDelivery(
+                orderId: orderId,
+                scannedToken: scannedToken,
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
             print("[FleetServiceLive] Delivery queued offline for order \(orderId)")
+            throw FleetServiceError.queuedForSync(orderId)
         }
     }
 
@@ -85,7 +94,7 @@ final class FleetServiceLive: FleetServiceProtocol {
     /// Collect cash from retailer with geofence validation.
     /// Sends driver GPS coords; backend rejects if > 500m from retailer.
     func collectCash(orderId: String, amountReceivedMinor: Int64? = nil) async throws -> CollectCashResponse {
-        let location = await currentLocation()
+        let location = try await requireCurrentLocation()
         return try await api.collectCash(
             orderId: orderId,
             latitude: location.latitude,
@@ -196,7 +205,12 @@ final class FleetServiceLive: FleetServiceProtocol {
     // MARK: - Offline Delivery Queue
 
     @MainActor
-    private func enqueueOfflineDelivery(orderId: String, scannedToken: String) {
+    private func enqueueOfflineDelivery(
+        orderId: String,
+        scannedToken: String,
+        latitude: Double,
+        longitude: Double
+    ) {
         if let container = modelContainer {
             DriverOfflineQueue.shared.attach(container: container)
         }
@@ -204,6 +218,9 @@ final class FleetServiceLive: FleetServiceProtocol {
             "order_id": orderId,
             "scanned_token": scannedToken,
             "signature": scannedToken,
+            "latitude": latitude,
+            "longitude": longitude,
+            "client_timestamp": DriverOfflineActionCatalog.nowIso(),
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: body),
               let json = String(data: data, encoding: .utf8) else { return }
@@ -231,12 +248,14 @@ final class FleetServiceLive: FleetServiceProtocol {
 
     // MARK: - GPS Helper
 
-    private func currentLocation() async -> CLLocationCoordinate2D {
-        // Read from CLLocationManager via FleetViewModel's shared location
-        // Refuse to fabricate coordinates — GPS must be available for geofence integrity
-        await MainActor.run {
-            FleetViewModel.lastKnownLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+    /// Fail-closed: never fabricate (0,0) — that skips backend geofence and poisons offline replay.
+    private func requireCurrentLocation() async throws -> CLLocationCoordinate2D {
+        let coord = await MainActor.run { FleetViewModel.lastKnownLocation }
+        guard let coord,
+              !(coord.latitude == 0 && coord.longitude == 0) else {
+            throw FleetServiceError.locationUnavailable
         }
+        return coord
     }
 }
 
@@ -245,11 +264,16 @@ final class FleetServiceLive: FleetServiceProtocol {
 enum FleetServiceError: LocalizedError {
     case deliveryRejected(String)
     case amendmentRejected(String)
+    case locationUnavailable
+    /// Delivery was persisted for sync — not a completed delivery.
+    case queuedForSync(String)
 
     var errorDescription: String? {
         switch self {
         case .deliveryRejected(let msg): return "Delivery rejected: \(msg)"
         case .amendmentRejected(let msg): return "Amendment rejected: \(msg)"
+        case .locationUnavailable: return "GPS location unavailable — move outdoors and try again"
+        case .queuedForSync(let orderId): return "Delivery queued for sync (order \(orderId))"
         }
     }
 }

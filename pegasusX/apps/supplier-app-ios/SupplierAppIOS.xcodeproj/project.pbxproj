@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B237351B8441491EB54AB0BE /* ReturnPolicySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */; };
 		087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5693C9F4B187B5F6696EA133 /* LoginView.swift */; };
 		0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */; };
 		0A8F27FC313C8077D3F86874 /* WarehouseList.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8035EF21F86C4E8A385FC48 /* WarehouseList.swift */; };
@@ -225,6 +226,7 @@
 		904A11698EBCBEBC619AF2D4 /* ExceptionsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionsList.swift; sourceTree = "<group>"; };
 		9325CEAB4AC498EF3BAD280F /* FinanceGapViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinanceGapViews.swift; sourceTree = "<group>"; };
 		963BEC019C5183B5152AEB2C /* NotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreferencesView.swift; sourceTree = "<group>"; };
+		6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnPolicySettingsView.swift; sourceTree = "<group>"; };
 		964AB8865ABD9B9C839E97C3 /* OrderDetailPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailPanel.swift; sourceTree = "<group>"; };
 		9816A15765F282F275B61E77 /* FleetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetView.swift; sourceTree = "<group>"; };
 		986314CF8E99424F076D194A /* WarehousesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousesView.swift; sourceTree = "<group>"; };
@@ -427,6 +429,7 @@
 			isa = PBXGroup;
 			children = (
 				963BEC019C5183B5152AEB2C /* NotificationPreferencesView.swift */,
+				6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -954,6 +957,7 @@
 				747C944551C4D83C7285CBB3 /* NetworkPulseStrip.swift in Sources */,
 				1FC6743CDD84CBB7B5BEA241 /* NotificationInboxView.swift in Sources */,
 				F7FC661A5C406CF3D41D352F /* NotificationPreferencesView.swift in Sources */,
+				B237351B8441491EB54AB0BE /* ReturnPolicySettingsView.swift in Sources */,
 				0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */,
 				5A1C621A2A44402CDBF0C1C6 /* OperationsView.swift in Sources */,
 				6156BFFB20322539EDBEDD8C /* OperatorBroadcastView.swift in Sources */,

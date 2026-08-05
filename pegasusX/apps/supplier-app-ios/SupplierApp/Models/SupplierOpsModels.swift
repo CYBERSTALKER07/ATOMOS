@@ -916,6 +916,23 @@ struct SeasonalTemplatesResponse: Decodable {
     }
 }
 
+/// GET/PUT /v1/supplier/return-policy
+struct SupplierReturnPolicy: Codable {
+    var defaultWindowHours: Int64
+    var concealedDamageWindowHours: Int64?
+    var requirePhoto: Bool
+    var allowExpiredClaims: Bool
+    var policySourceHint: String?
+
+    enum CodingKeys: String, CodingKey {
+        case defaultWindowHours = "default_window_hours"
+        case concealedDamageWindowHours = "concealed_damage_window_hours"
+        case requirePhoto = "require_photo"
+        case allowExpiredClaims = "allow_expired_claims"
+        case policySourceHint = "policy_source_hint"
+    }
+}
+
 struct KnowledgeGraphNode: Decodable, Identifiable {
     var id: String
     let type: String

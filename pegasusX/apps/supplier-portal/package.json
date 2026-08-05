@@ -31,6 +31,7 @@
     "@pegasusx/desktop-bridge": "workspace:*",
     "@pegasusx/desktop-cache": "workspace:*",
     "@pegasusx/explain-ui": "workspace:*",
+    "@pegasusx/i18n": "workspace:*",
     "@pegasusx/pulse-ui": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",

@@ -9,7 +9,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { PageSection } from '@/components/PageSection';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
-import ProductionForecastChart from './ProductionForecastChart';
+// ProductionForecastChart unmounted — no burn/stock series on factory overview SoT
 
 interface AnalyticsOverview {
   daily_activity: unknown[];
@@ -136,11 +136,7 @@ export default function FactoryAnalyticsPage() {
               </PageSection>
             )}
 
-            <PageSection title="Production Forecast" description="Expected raw material burn rate versus actual stock over the next 7 days." className="mt-8">
-              <div className="h-80 w-full p-4 border rounded-lg" style={{ borderColor: 'var(--color-md-outline-variant)', background: 'var(--color-md-surface-container)' }}>
-                <ProductionForecastChart className="w-full h-full" />
-              </div>
-            </PageSection>
+            {/* Production forecast chart unmounted — no burn/stock SoT on overview API yet */}
           </>
         ) : null}
       </PageChrome>

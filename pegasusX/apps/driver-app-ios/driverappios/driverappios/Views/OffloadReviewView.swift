@@ -18,7 +18,8 @@ struct OffloadReviewView: View {
     let onConfirm: (ConfirmOffloadResponse) -> Void
     let onCancel: () -> Void
     var onShopClosed: ((String) -> Void)?
-    var onCreditDelivery: ((String) -> Void)?
+    /// orderId + PoD photo public URL (required for credit leave).
+    var onCreditDelivery: ((String, String) -> Void)?
     var onReportMissing: ((String) -> Void)?
 
     @State private var rejectedQty: [String: Int] = [:]
@@ -191,44 +192,42 @@ struct OffloadReviewView: View {
                 }
             }
 
-            // MARK: - Damage photo proof
-            if hasRejections && needsPhotoProof {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("DAMAGE PHOTO")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(LabTheme.fgTertiary)
-                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
-                        Label(
-                            evidencePhotoURL.isEmpty ? "Take or choose photo" : "Photo ready — change",
-                            systemImage: "camera.fill"
-                        )
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(LabTheme.fg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    }
-                    .onChange(of: pickedPhoto) { _, item in
-                        Task { await uploadPickedPhoto(item) }
-                    }
-                    if isUploadingPhoto {
-                        ProgressView("Uploading proof…")
-                            .tint(LabTheme.fg)
-                    }
-                    if let previewImage {
-                        Image(uiImage: previewImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 140)
-                            .clipShape(.rect(cornerRadius: 10))
-                    }
-                    Text("Required for damaged or wrong-item rejections.")
-                        .font(.caption2)
-                        .foregroundStyle(LabTheme.fgTertiary)
+            // MARK: - PoD / damage photo proof
+            VStack(alignment: .leading, spacing: 8) {
+                Text("PROOF OF DELIVERY PHOTO")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(LabTheme.fgTertiary)
+                PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                    Label(
+                        evidencePhotoURL.isEmpty ? "Take or choose photo" : "Photo ready — change",
+                        systemImage: "camera.fill"
+                    )
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LabTheme.fg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
                 }
-                .padding(.horizontal, LabTheme.s24)
-                .padding(.bottom, LabTheme.s12)
+                .onChange(of: pickedPhoto) { _, item in
+                    Task { await uploadPickedPhoto(item) }
+                }
+                if isUploadingPhoto {
+                    ProgressView("Uploading proof…")
+                        .tint(LabTheme.fg)
+                }
+                if let previewImage {
+                    Image(uiImage: previewImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 140)
+                        .clipShape(.rect(cornerRadius: 10))
+                }
+                Text("Required for credit leave and for damaged or wrong-item rejections.")
+                    .font(.caption2)
+                    .foregroundStyle(LabTheme.fgTertiary)
             }
+            .padding(.horizontal, LabTheme.s24)
+            .padding(.bottom, LabTheme.s12)
 
             // MARK: - Error
             if let error = errorMessage {
@@ -242,9 +241,15 @@ struct OffloadReviewView: View {
             OffloadActionFooter(
                 orderId: response.orderId,
                 hasRejections: hasRejections,
-                isSubmitting: isSubmitting,
+                isSubmitting: isSubmitting || isUploadingPhoto,
                 onShopClosed: onShopClosed,
-                onCreditDelivery: onCreditDelivery,
+                onCreditDelivery: { orderId in
+                    guard !evidencePhotoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                        errorMessage = "PoD photo required for credit leave — take a photo of the handoff first."
+                        return
+                    }
+                    onCreditDelivery?(orderId, evidencePhotoURL)
+                },
                 onReportMissing: onReportMissing,
                 onConfirm: { confirmOffload() }
             )

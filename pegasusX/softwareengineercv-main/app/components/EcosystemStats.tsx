@@ -118,7 +118,7 @@ export default function EcosystemStats() {
                   </div>
 
                   {/* Secondary large widget */}
-                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 group- group-hover:bg-[#0000000]">
+                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 hover:border-white/15">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -141,7 +141,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -187,7 +187,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -219,7 +219,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">

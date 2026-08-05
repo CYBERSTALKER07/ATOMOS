@@ -1,5 +1,8 @@
 package com.pegasusx.retailer.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -14,25 +17,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pegasusx.retailer.data.api.MediaUploadService
 import com.pegasusx.retailer.data.api.ShopClosedAlert
 import com.pegasusx.retailer.ui.theme.MotionTokens
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import kotlinx.coroutines.launch
 
 private fun shopClosedOptionLabel(option: String): String = when (option) {
     "OPEN_NOW" -> "I am open now"
@@ -51,8 +60,37 @@ fun ShopClosedSheet(
     alert: ShopClosedAlert,
     isSubmitting: Boolean,
     errorMessage: String?,
-    onRespond: (String) -> Unit,
+    mediaUpload: MediaUploadService,
+    onRespond: (option: String, photoUrl: String?) -> Unit,
 ) {
+    var bypassPending by remember(alert.orderId) { mutableStateOf(false) }
+    var bypassPhotoUrl by remember(alert.orderId) { mutableStateOf<String?>(null) }
+    var uploading by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            uploading = true
+            localError = null
+            try {
+                bypassPhotoUrl = mediaUpload.uploadJpegUri(
+                    uri = uri,
+                    purpose = "claim_evidence",
+                    orderId = alert.orderId,
+                )
+            } catch (e: Exception) {
+                bypassPhotoUrl = null
+                localError = e.message ?: "Photo upload failed"
+            } finally {
+                uploading = false
+            }
+        }
+    }
+
     AnimatedVisibility(
         visible = true,
         enter = fadeIn(tween(MotionTokens.DurationShort4)) +
@@ -97,17 +135,64 @@ fun ShopClosedSheet(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (!errorMessage.isNullOrBlank()) {
+                    val displayError = localError ?: errorMessage
+                    if (!displayError.isNullOrBlank()) {
                         Text(
-                            text = errorMessage,
+                            text = displayError,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
+                    if (bypassPending) {
+                        Text(
+                            text = "Doorway / drop-off proof is required for authorize bypass.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = { photoPicker.launch("image/*") },
+                            enabled = !isSubmitting && !uploading,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Rounded.CameraAlt, contentDescription = null)
+                            Text(
+                                if (uploading) "Uploading…"
+                                else if (bypassPhotoUrl != null) "Replace photo"
+                                else "Take or choose photo",
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                        if (bypassPhotoUrl != null) {
+                            Button(
+                                onClick = { onRespond("AUTHORIZE_BYPASS", bypassPhotoUrl) },
+                                enabled = !isSubmitting && !uploading,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Confirm bypass")
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                bypassPending = false
+                                bypassPhotoUrl = null
+                                localError = null
+                            },
+                            enabled = !isSubmitting,
+                        ) {
+                            Text("Cancel bypass")
+                        }
+                    }
                     alert.options.forEach { option ->
                         Button(
-                            onClick = { onRespond(option) },
-                            enabled = !isSubmitting,
+                            onClick = {
+                                if (option == "AUTHORIZE_BYPASS") {
+                                    bypassPending = true
+                                    localError = null
+                                    return@Button
+                                }
+                                onRespond(option, null)
+                            },
+                            enabled = !isSubmitting && !uploading,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             if (isSubmitting) {

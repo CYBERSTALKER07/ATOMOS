@@ -1314,6 +1314,23 @@ export interface ShopClosedRetailerResponseRequest {
   photo_url?: string;
 }
 
+/** GET/PUT /v1/supplier/return-policy */
+export interface SupplierReturnPolicy {
+  default_window_hours: number;
+  concealed_damage_window_hours?: number | null;
+  require_photo?: boolean;
+  allow_expired_claims?: boolean;
+  policy_source_hint?: string;
+}
+
+/** GET/PUT /v1/warehouse/return-policy */
+export interface WarehouseReturnPolicy {
+  supplier_id: string;
+  reverse_dock_sla_hours?: number | null;
+  retailer_file_window_hours?: number | null;
+  can_override_retailer_window: boolean;
+}
+
 /** Proximity unlock before cash/credit/split (POST /v1/delivery/proximity-unlock). */
 export type ProximityMethod = "H3" | "GEOFENCE_100M" | "MANUAL" | "FORCE_BYPASS";
 

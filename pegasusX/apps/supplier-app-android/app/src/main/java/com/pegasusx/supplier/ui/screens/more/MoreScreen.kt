@@ -48,6 +48,7 @@ fun MoreScreen(
     onProfile: () -> Unit,
     onNotifications: () -> Unit,
     onNotificationPrefs: () -> Unit,
+    onReturnPolicy: () -> Unit = {},
     onBilling: () -> Unit,
     onBusinessSetup: () -> Unit,
     onChargebacks: () -> Unit,
@@ -96,6 +97,7 @@ fun MoreScreen(
     val account = listOf(
         MoreDestination("Notifications", "Inbox & alerts", Icons.Default.Notifications, onNotifications),
         MoreDestination("Notification preferences", "Channels per event", Icons.Default.Tune, onNotificationPrefs),
+        MoreDestination("Return policy", "Claim filing windows", Icons.Default.Policy, onReturnPolicy),
         MoreDestination("Catalog", "Product unit VU for dispatch", Icons.Default.Category, onCatalog),
         MoreDestination("Inventory", "SKU levels", Icons.Default.Inventory2, onInventory),
         MoreDestination("Inventory import", "Bulk CSV wizard", Icons.Default.Upload, onInventoryImport),

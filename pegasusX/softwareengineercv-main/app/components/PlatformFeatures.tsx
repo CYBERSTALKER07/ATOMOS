@@ -119,7 +119,7 @@ export default function PlatformFeatures() {
           {FEATURES.map((feature, index) => (
             <div
               key={feature.title}
-              className={`p-8 md:p-12 relative flex flex-col items-center text-center border-white/5
+              className={`group p-8 md:p-12 relative flex flex-col items-center text-center border-white/5 transition-colors duration-300 hover:bg-white/[0.03]
                 ${index < FEATURES.length - 1 ? 'border-b lg:border-b-0 lg:border-r' : ''}
                 ${index === 1 ? 'md:border-r-0 lg:border-r' : ''}
                 ${index === 0 || index === 2 ? 'md:border-r' : ''}
@@ -135,10 +135,10 @@ export default function PlatformFeatures() {
               </div>
 
               {/* Text Content */}
-              <h3 className="text-white font-mono text-sm tracking-widest uppercase mb-4 relative z-10">
+              <h3 className="text-white font-mono text-sm tracking-widest uppercase mb-4 relative z-10 transition-colors duration-300 group-hover:text-[#FBFF63]">
                 {feature.title}
               </h3>
-              <p className="text-white/60 text-sm leading-relaxed relative z-10">
+              <p className="text-white/60 text-sm leading-relaxed relative z-10 transition-colors duration-300 group-hover:text-white/90">
                 {feature.description}
               </p>
             </div>

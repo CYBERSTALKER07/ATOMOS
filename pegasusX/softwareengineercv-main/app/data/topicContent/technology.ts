@@ -1,17 +1,18 @@
-import { seedContent, defaultHowItWorks } from './helpers';
+import { seedContent, defaultHowItWorks, cards } from './helpers';
 
+/** Technology — Spanner, Redis, Kafka, WS, Go modular monolith */
 export const technologyTopics = {
   'go-backend-platform': seedContent({
     title: 'Go Backend Platform',
-    summary: 'Modular monolith with role-scoped routes and shared mutation discipline.',
-    problem: 'Microservice sprawl slows cross-role transactions that must commit atomically.',
+    summary: 'Modular monolith with role-scoped routes and shared mutation discipline — ~400+ /v1 routes.',
+    problem: 'Microservice sprawl slows cross-role transactions that must commit atomically across order, stock, and money.',
     outcomes: [
       'Role packages with dedicated route owners',
       'Shared Spanner and outbox infrastructure',
       'Consistent handler contract across domains',
     ],
     howItWorks: defaultHowItWorks([
-      ['Route by role', 'supplierroutes, warehouseroutes, driverroutes, etc.'],
+      ['Route by role', 'supplierroutes, warehouseroutes, driverroutes, retailerroutes, etc.'],
       ['Domain services', 'Repository + service per bounded context.'],
       ['Guarded mutations', 'Verify, validate, save, refresh, notify.'],
     ]),
@@ -22,6 +23,11 @@ export const technologyTopics = {
       { label: 'Pattern', value: 'Modular monolith' },
       { label: 'Auth', value: 'JWT claims per role' },
     ],
+    capabilities: cards([
+      ['Role packages', 'Each role owns routes without forking the database.'],
+      ['Shared mutation spine', 'One contract for inventory, orders, and payments.'],
+      ['Simulator + tests', 'Lifecycle tests pin state_machine behavior.'],
+    ]),
   }),
   'cloud-spanner': seedContent({
     title: 'Cloud Spanner',
@@ -39,12 +45,17 @@ export const technologyTopics = {
     specs: [
       { label: 'Engine', value: 'Google Cloud Spanner' },
       { label: 'Pattern', value: 'Transactional outbox' },
+      { label: 'Money', value: 'Integer minor units' },
     ],
+    differentiators: cards([
+      ['Double-entry in same txn', 'Ledger debit+credit commit with business state.'],
+      ['No dual-write to Kafka', 'Outbox is the bridge — Spanner remains SoR.'],
+    ]),
   }),
   'redis-kafka': seedContent({
     title: 'Redis & Kafka',
     summary: 'Cache invalidation and event bus fanout after durable writes.',
-    problem: 'Clients cache catalog and dispatch views; stale cache causes wrong decisions.',
+    problem: 'Clients cache catalog and dispatch views; stale cache causes wrong decisions at peak.',
     outcomes: ['Post-commit cache bust', 'Kafka topic per domain event', 'Idempotent consumers'],
     howItWorks: defaultHowItWorks([
       ['Emit on commit', 'Outbox relay publishes to Kafka.'],
@@ -61,7 +72,7 @@ export const technologyTopics = {
   }),
   'websocket-hubs': seedContent({
     title: 'WebSocket Hubs',
-    summary: 'Per-role live coordination rooms with claims-scoped envelopes.',
+    summary: 'Per-role live coordination rooms with claims-scoped envelopes at /v1/ws.',
     problem: 'HTTP polling cannot keep dispatch boards fresh during peak windows.',
     outcomes: ['Role-scoped WS rooms', 'Typed envelope contract', 'Silent client refresh'],
     howItWorks: defaultHowItWorks([
@@ -107,7 +118,7 @@ export const technologyTopics = {
     problem: 'Inconsistent web UIs erode trust in the control plane.',
     outcomes: ['Supplier and warehouse portals', 'Marketing and docs site', 'Component system parity'],
     howItWorks: defaultHowItWorks([
-      ['App router', 'Next.js 16 with server components where safe.'],
+      ['App router', 'Next.js with server components where safe.'],
       ['Shared API client', 'packages/api-client for all web apps.'],
       ['Live refresh', 'WebSocket hooks on ops boards.'],
     ]),
@@ -117,7 +128,7 @@ export const technologyTopics = {
   }),
   'native-mobile-desktop': seedContent({
     title: 'Native Mobile & Desktop',
-    summary: 'Android, iOS, and Tauri retailer desktop with generated contract stubs.',
+    summary: 'Android, iOS, and Tauri retailer desktop — role-row parity.',
     problem: 'Web wrappers fail offline, push, and peak-hour performance on the floor.',
     outcomes: ['Kotlin/Swift native apps per role', 'Tauri desktop for retailer counters', 'Quicktype-generated models'],
     howItWorks: defaultHowItWorks([
@@ -127,5 +138,9 @@ export const technologyTopics = {
     ]),
     flow: 'appsMatrix',
     flowConfig: { highlightStep: 4 },
+    differentiators: cards([
+      ['Role is a product', 'Parity matrix tracks portal/Android/iOS for each role feature.'],
+      ['Generated models', 'Contract drift is a build failure, not a production surprise.'],
+    ]),
   }),
 };

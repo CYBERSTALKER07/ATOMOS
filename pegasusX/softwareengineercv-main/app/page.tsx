@@ -1,7 +1,6 @@
 import dynamic from 'next/dynamic';
 import Hero from './components/Hero';
 import About from './components/About';
-import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
 import LaneDivider from './components/layout/LaneDivider';
@@ -14,11 +13,11 @@ import {
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 
-const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions'));
-const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
+const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
+const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPromptSection'));
 const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
@@ -61,12 +60,13 @@ export default function Home() {
         <OrderCycleVisualSection />
         <DispatchVisualSection />
         <PlatformFeatures />
+        <PromptDashboardSection />
+        <AskPromptSection />
         <EcosystemStats />
         <LogisticsWorkflow />
         <OurApproach />
         <LaneDivider index="03" label="Operations" />
         <Skills />
-        <LogisticsSolutions />
         <DevelopmentTools />
         <LaneDivider index="04" label="Proof" />
         <Projects />

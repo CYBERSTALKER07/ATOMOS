@@ -225,18 +225,28 @@ final class APIClient {
 
     // MARK: - Shop Closed
 
-    func respondToShopClosed(orderId: String, response: String) async throws {
+    func respondToShopClosed(orderId: String, response: String, photoURL: String? = nil) async throws {
         struct ShopClosedRequest: Encodable {
             let orderId: String
             let response: String
+            let photoURL: String?
             enum CodingKeys: String, CodingKey {
                 case orderId = "order_id"
                 case response
+                case photoURL = "photo_url"
+            }
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(orderId, forKey: .orderId)
+                try c.encode(response, forKey: .response)
+                if let photoURL, !photoURL.isEmpty {
+                    try c.encode(photoURL, forKey: .photoURL)
+                }
             }
         }
         let _: APIResponse<String> = try await post(
             path: "/v1/retailer/shop-closed-response",
-            body: ShopClosedRequest(orderId: orderId, response: response),
+            body: ShopClosedRequest(orderId: orderId, response: response, photoURL: photoURL),
             headers: ["Idempotency-Key": RetailerIdempotency.shopClosedResponse(orderId: orderId, response: response)]
         )
     }

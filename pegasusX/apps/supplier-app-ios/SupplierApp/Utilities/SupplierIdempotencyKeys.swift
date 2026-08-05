@@ -96,6 +96,10 @@ enum SupplierIdempotencyKeys {
         "supplier-seasonal-override:\(scopeId):\(stableHash("\(startDate):\(endDate)"))"
     }
 
+    static func returnPolicyPut(scopeId: String, hours: Int64) -> String {
+        "supplier-return-policy:\(scopeId):\(hours)"
+    }
+
     static func controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String) -> String {
         "supplier-control-tower-override:\(scopeId):\(stableHash("\(action):\(polygonFingerprint)"))"
     }

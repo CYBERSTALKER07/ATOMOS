@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FaLinkedinIn, FaYoutube, FaInstagram } from 'react-icons/fa';
-import { FaXTwitter } from 'react-icons/fa6';
+import { Linkedin, Youtube, Instagram } from 'lucide-react';
 
 const PLATFORM_LINKS = [
   { name: 'Platform overview', href: '/platform' },
@@ -12,22 +11,30 @@ const PLATFORM_LINKS = [
 ];
 
 const COMPANY_LINKS = [
-  { name: 'About Us', href: '/about' },
+  { name: 'Request demo', href: '/join' },
   { name: 'Contact Us', href: '/contact' },
-  { name: 'Book A Call', href: '/book' },
-  { name: 'More Templates', href: '/templates' },
+  { name: 'Roles', href: '/roles' },
+  { name: 'Modules', href: '/projects' },
 ];
 
 const POLICIES_LINKS = [
-  { name: 'Terms & Conditions', href: '/terms' },
-  { name: 'Privacy Policy', href: '/privacy' },
+  { name: 'Platform tour', href: '/platform' },
+  { name: 'Apps & Deploy', href: '/apps-deploy' },
 ];
 
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
 const SOCIAL_LINKS = [
-  { name: 'X', href: 'https://twitter.com', Icon: FaXTwitter },
-  { name: 'LinkedIn', href: 'https://linkedin.com', Icon: FaLinkedinIn },
-  { name: 'YouTube', href: 'https://youtube.com', Icon: FaYoutube },
-  { name: 'Instagram', href: 'https://instagram.com', Icon: FaInstagram },
+  { name: 'X', href: 'https://twitter.com', Icon: XIcon },
+  { name: 'LinkedIn', href: 'https://linkedin.com', Icon: Linkedin },
+  { name: 'YouTube', href: 'https://youtube.com', Icon: Youtube },
+  { name: 'Instagram', href: 'https://instagram.com', Icon: Instagram },
 ];
 
 export default function Footer() {

@@ -107,6 +107,9 @@ object SupplierIdempotencyKeys {
     fun seasonalOverrideCreate(scopeId: String, startDate: String, endDate: String): String =
         "supplier-seasonal-override:$scopeId:${stableHash("$startDate:$endDate")}"
 
+    fun returnPolicyPut(scopeId: String, hours: Long): String =
+        "supplier-return-policy:$scopeId:$hours"
+
     fun controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String): String =
         "supplier-control-tower-override:$scopeId:${stableHash("$action:$polygonFingerprint")}"
 

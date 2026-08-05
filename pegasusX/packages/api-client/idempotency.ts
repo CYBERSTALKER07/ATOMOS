@@ -281,6 +281,14 @@ export function supplierSeasonalOverrideCreateKey(supplierId: string, startDate:
   return `supplier-seasonal-override:${supplierId}:${stableHash(`${startDate}:${endDate}`)}`;
 }
 
+export function supplierReturnPolicyPutKey(supplierId: string, hours: number): string {
+  return `supplier-return-policy:${supplierId}:${hours}`;
+}
+
+export function warehouseReturnPolicyPutKey(warehouseId: string, supplierId: string): string {
+  return `warehouse-return-policy:${warehouseId}:${supplierId || "default"}`;
+}
+
 export function supplierGovernedAgentKey(supplierId: string, action: string, idempotencyKey: string): string {
   return `supplier-planning-agent:${supplierId}:${action}:${stableHash(idempotencyKey)}`;
 }

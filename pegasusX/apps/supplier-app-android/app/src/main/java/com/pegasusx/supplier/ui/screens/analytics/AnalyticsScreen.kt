@@ -52,6 +52,7 @@ fun AnalyticsScreen(
     onOpenPlanningBrain: () -> Unit = {},
     onOpenKnowledgeGraph: () -> Unit = {},
     onOpenPlanningSettings: () -> Unit = {},
+    onOpenReturnPolicy: () -> Unit = {},
     onOpenRoutePerformance: () -> Unit = {},
 ) {
     var loading by remember { mutableStateOf(true) }
@@ -222,6 +223,9 @@ fun AnalyticsScreen(
                         }
                         OutlinedButton(onClick = onOpenPlanningSettings, modifier = Modifier.fillMaxWidth()) {
                             Text("Planning settings")
+                        }
+                        OutlinedButton(onClick = onOpenReturnPolicy, modifier = Modifier.fillMaxWidth()) {
+                            Text("Return policy")
                         }
                         OutlinedButton(onClick = onOpenRoutePerformance, modifier = Modifier.fillMaxWidth()) {
                             Text("Route performance")

@@ -4,6 +4,7 @@ import { SOLUTIONS_ACCORDION_DATA } from '@/app/data/solutionsAccordionData';
 import { SOLUTIONS_DEFAULT_IMAGE } from '@/app/lib/siteAssets';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import Link from 'next/link';
+import SiteNav from '@/app/components/explore/SiteNav';
 
 function findSolution(slug: string) {
   for (const sol of SOLUTIONS_ACCORDION_DATA) {
@@ -55,8 +56,9 @@ export default async function SolutionDetailPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(breadcrumb)} />
-      <div className="min-h-screen bg-black text-white pt-32 pb-24 selection:bg-white/30">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
+      <div className="min-h-screen bg-black text-white pb-24 selection:bg-white/30">
+        <SiteNav activeHref="/solutions" />
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-32">
           <nav
             aria-label="Breadcrumb"
             className="flex items-center gap-2 text-xs font-mono tracking-widest text-white/50 mb-12 uppercase"

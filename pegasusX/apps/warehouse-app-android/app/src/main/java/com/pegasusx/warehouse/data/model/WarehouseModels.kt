@@ -221,6 +221,15 @@ data class WarehouseOpsSettingsResponse(
     @SerialName("delivery_fee_rules") val deliveryFeeRules: DeliveryFeeRules? = null,
 )
 
+/** GET/PUT /v1/warehouse/return-policy */
+@Serializable
+data class WarehouseReturnPolicy(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("reverse_dock_sla_hours") val reverseDockSlaHours: Long? = null,
+    @SerialName("retailer_file_window_hours") val retailerFileWindowHours: Long? = null,
+    @SerialName("can_override_retailer_window") val canOverrideRetailerWindow: Boolean = false,
+)
+
 @Serializable
 data class WarehouseOpsSettingsPatchRequest(
     @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String,

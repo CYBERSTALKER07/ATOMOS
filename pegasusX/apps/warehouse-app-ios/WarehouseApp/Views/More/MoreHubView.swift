@@ -46,6 +46,9 @@ struct MoreHubView: View {
                 NavigationLink { OpsSettingsView() } label: {
                     Label("Ops settings", systemImage: "gearshape")
                 }
+                NavigationLink { ReturnPolicySettingsView() } label: {
+                    Label("Returns & reverse SLA", systemImage: "arrow.uturn.backward.circle")
+                }
                 NavigationLink { LocationSettingsView() } label: {
                     Label("Depot location", systemImage: "mappin.and.ellipse")
                 }

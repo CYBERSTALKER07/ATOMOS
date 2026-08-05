@@ -57,6 +57,8 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   ShopClosedResolveRequest,
   ShopClosedReportRequest,
   ShopClosedReportResponse,
+  SupplierReturnPolicy,
+  WarehouseReturnPolicy,
   ProximityUnlockRequest,
   ProximityUnlockResponse,
   PartialOffloadRequest,
@@ -330,6 +332,8 @@ export {
   warehouseReplenishmentInsightActionKey,
   warehouseDispatchSettingsKey,
   warehouseOpsSettingsKey,
+  supplierReturnPolicyPutKey,
+  warehouseReturnPolicyPutKey,
   warehouseOpsLocationKey,
   warehouseBroadcastKey,
   warehouseBroadcastTemplateCreateKey,
@@ -2247,6 +2251,46 @@ export class ApiClient {
     return this.request<ClaimChargebacksResponse>(
       appendQuery("/v1/supplier/claim-chargebacks", query as Record<string, unknown>),
       "GET",
+    );
+  }
+
+  /** GET /v1/supplier/return-policy */
+  async getSupplierReturnPolicy(): Promise<SupplierReturnPolicy> {
+    return this.request<SupplierReturnPolicy>("/v1/supplier/return-policy", "GET");
+  }
+
+  /** PUT /v1/supplier/return-policy */
+  async putSupplierReturnPolicy(
+    body: SupplierReturnPolicy,
+    idempotencyKey?: string,
+  ): Promise<SupplierReturnPolicy> {
+    return this.request<SupplierReturnPolicy>("/v1/supplier/return-policy", "PUT", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  /** GET /v1/warehouse/return-policy */
+  async getWarehouseReturnPolicy(query: {
+    warehouse_id?: string;
+    supplier_id?: string;
+  } = {}): Promise<WarehouseReturnPolicy> {
+    return this.request<WarehouseReturnPolicy>(
+      appendQuery("/v1/warehouse/return-policy", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  /** PUT /v1/warehouse/return-policy */
+  async putWarehouseReturnPolicy(
+    body: WarehouseReturnPolicy,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<WarehouseReturnPolicy> {
+    return this.request<WarehouseReturnPolicy>(
+      appendQuery("/v1/warehouse/return-policy", query as Record<string, unknown>),
+      "PUT",
+      { body, idempotencyKey },
     );
   }
 

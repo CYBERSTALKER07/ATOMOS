@@ -135,7 +135,7 @@ function WorkflowIcon({ type, className = "" }: { type: string, className?: stri
 const WorkflowCustomNode = ({ data }: any) => {
   return (
     <div className={`
-      w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
+      group w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
       flex items-center relative transition-all duration-300
       hover:border-white/70 hover:bg-[#151515] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
     `}>
@@ -147,8 +147,8 @@ const WorkflowCustomNode = ({ data }: any) => {
           <WorkflowIcon type={data.icon} className="w-6 h-6" />
         </div>
         <div className="flex flex-col text-left truncate leading-tight">
-          <span className="text-sm font-mono text-white/90">{data.title}</span>
-          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1">{data.subtitle}</span>}
+          <span className="text-sm font-mono text-white/90 transition-colors duration-300 group-hover:text-white">{data.title}</span>
+          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1 transition-colors duration-300 group-hover:text-white/80">{data.subtitle}</span>}
         </div>
       </div>
     </div>
@@ -194,7 +194,7 @@ export default function LogisticsWorkflow() {
       label: c.items,
       labelStyle: { fill: '#888', fontSize: 10, fontFamily: 'monospace' },
       labelBgStyle: { fill: '#111', stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, rx: 10 },
-      labelBgPadding: [20, 8],
+      labelBgPadding: [20, 8] as [number, number],
       animated: true,
       style: { stroke: 'rgba(255,255,255,0.15)', strokeWidth: 2, strokeDasharray: '4 4' },
       markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.3)' }

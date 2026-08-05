@@ -33,9 +33,13 @@ function buildTopicPage(category: MegaNavCategory, link: MegaNavLink): TopicPage
 }
 
 export const ALL_TOPICS: TopicPage[] = MEGA_NAV_CATEGORIES.flatMap((category) =>
-  category.links
-    .map((link) => buildTopicPage(category, link))
-    .filter((t): t is TopicPage => t !== null)
+  // Solutions accordion owns /solutions — do not register mega-nav solution
+  // topics as explore TopicPages (their hrefs now point at live O9 hubs).
+  category.id === 'solutions'
+    ? []
+    : category.links
+        .map((link) => buildTopicPage(category, link))
+        .filter((t): t is TopicPage => t !== null)
 );
 
 export function getTopicByPath(categoryId: string, slug: string): TopicPage | undefined {

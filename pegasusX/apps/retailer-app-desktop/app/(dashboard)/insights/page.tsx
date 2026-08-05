@@ -412,7 +412,34 @@ export default function InsightsPage() {
       />
 
       <div className="mb-8">
-        <SpendAnalytics />
+        <SpendAnalytics
+          spendTrend={detailedSeries.map((row) => ({
+            day: row.created_at?.slice(0, 10) || row.order_id,
+            spend: (row.total_minor ?? 0) / 100,
+          }))}
+          categorySpend={
+            Array.isArray(detailedAnalytics?.by_category)
+              ? detailedAnalytics.by_category
+                  .map((row) => {
+                    if (!row || typeof row !== "object") return null;
+                    const r = row as Record<string, unknown>;
+                    const name =
+                      (typeof r.name === "string" && r.name) ||
+                      (typeof r.category === "string" && r.category) ||
+                      "";
+                    const value =
+                      typeof r.value === "number"
+                        ? r.value
+                        : typeof r.total_minor === "number"
+                          ? r.total_minor / 100
+                          : NaN;
+                    if (!name || Number.isNaN(value)) return null;
+                    return { name, value };
+                  })
+                  .filter((x): x is { name: string; value: number } => x != null)
+              : []
+          }
+        />
       </div>
 
       <div className="flex gap-8 min-h-[520px]">

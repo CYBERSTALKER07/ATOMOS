@@ -11,9 +11,9 @@ type FleekPageShellProps = {
 
 export default function FleekPageShell({ activeHref, children }: FleekPageShellProps) {
   return (
-    <main className="fleek-docs min-h-screen">
+    <main className="fleek-docs min-h-screen bg-black text-white">
       <FleekNav activeHref={activeHref} />
-      <div className="axion-page">
+      <div className="axion-page pt-[4.5rem] md:pt-20">
         <div className="axion-page__main">{children}</div>
       </div>
       <Footer />

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0EFEF00B542474D8958CBEA /* ReturnPolicySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70631F320E45BD8AB551DD /* ReturnPolicySettingsView.swift */; };
 		01384C9B79B567F1F72BC249 /* WarehouseLocationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2609561D9AA56F496B5921FC /* WarehouseLocationModels.swift */; };
 		024E670C70C3EAC531A5B22A /* OrderOpsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52DB625DC4A7551A59A8C33F /* OrderOpsActions.swift */; };
 		06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C562B270DA26FA42E315270 /* CRMView.swift */; };
@@ -156,6 +157,7 @@
 		57C9CF70E5113B4CF702D63C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5CFBEE0707B2DD71C2643166 /* PegasusMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMotion.swift; sourceTree = "<group>"; };
 		5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpsSettingsView.swift; sourceTree = "<group>"; };
+		DF70631F320E45BD8AB551DD /* ReturnPolicySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnPolicySettingsView.swift; sourceTree = "<group>"; };
 		61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseAdaptiveShell.swift; sourceTree = "<group>"; };
 		625F9C13FD7C9A8D3D681D4A /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
 		6289F01B0ED06843BF4E2654 /* ReplenishmentList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplenishmentList.swift; sourceTree = "<group>"; };
@@ -656,6 +658,7 @@
 				F0479B1DE97BD11E44FD3E67 /* LocationSettingsView.swift */,
 				8837F98493BFC68F99818E0F /* OpsSettingsForm.swift */,
 				5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */,
+				DF70631F320E45BD8AB551DD /* ReturnPolicySettingsView.swift */,
 			);
 			path = Inventory;
 			sourceTree = "<group>";
@@ -861,6 +864,7 @@
 				5A8DB31AA145934DD541D87E /* OperationsView.swift in Sources */,
 				4B82F68CAAB7985ED8E1ADEB /* OpsSettingsForm.swift in Sources */,
 				9C0BC628A2F31E782E4BA17E /* OpsSettingsView.swift in Sources */,
+				C0EFEF00B542474D8958CBEA /* ReturnPolicySettingsView.swift in Sources */,
 				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,
 				9C0A92A5A81C595B758CA6F8 /* OrderLineItems.swift in Sources */,
 				024E670C70C3EAC531A5B22A /* OrderOpsActions.swift in Sources */,

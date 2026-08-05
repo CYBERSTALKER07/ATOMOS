@@ -38,6 +38,7 @@ enum class WarehouseSection(
     RESCUES(WarehouseRoutes.RESCUES, "Rescues", Icons.Default.Build),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
     OPS_SETTINGS(WarehouseRoutes.OPS_SETTINGS, "Ops settings", Icons.Default.Settings),
+    RETURN_POLICY(WarehouseRoutes.RETURN_POLICY, "Returns & reverse SLA", Icons.AutoMirrored.Filled.Undo),
     LOCATION_SETTINGS(WarehouseRoutes.LOCATION_SETTINGS, "Depot location", Icons.Default.Place),
     NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Business),
@@ -66,6 +67,7 @@ enum class WarehouseSection(
             REPLENISHMENT,
             DEMAND_FORECAST,
             OPS_SETTINGS,
+            RETURN_POLICY,
             LOCATION_SETTINGS,
         )
 

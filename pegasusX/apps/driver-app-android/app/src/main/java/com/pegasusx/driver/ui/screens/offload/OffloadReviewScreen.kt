@@ -270,16 +270,15 @@ fun OffloadReviewScreen(
             }
         }
 
-        // Damage photo proof (required for DAMAGED / WRONG_ITEM)
-        if (state.hasRejections && state.needsPhotoProof) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+        // PoD / damage photo proof (required for credit leave; also for DAMAGED / WRONG_ITEM)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
                 Text(
-                    text = "DAMAGE PHOTO",
+                    text = "PROOF OF DELIVERY PHOTO",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -328,12 +327,11 @@ fun OffloadReviewScreen(
                         contentScale = ContentScale.Crop,
                     )
                 }
-                Text(
-                    text = "Required for damaged or wrong-item rejections.",
-                    fontSize = 11.sp,
-                    color = lab.fgTertiary,
-                )
-            }
+            Text(
+                text = "Required for credit leave and for damaged or wrong-item rejections.",
+                fontSize = 11.sp,
+                color = lab.fgTertiary,
+            )
         }
 
         // Error

@@ -115,6 +115,20 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
 
+    @GET("v1/warehouse/return-policy")
+    suspend fun getReturnPolicy(
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
+
+    @PUT("v1/warehouse/return-policy")
+    suspend fun putReturnPolicy(
+        @Body body: WarehouseReturnPolicy,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
+
     @GET("v1/warehouse/ops/location")
     suspend fun getWarehouseLocation(): Response<WarehouseLocationResponse>
 

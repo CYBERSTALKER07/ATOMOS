@@ -23,7 +23,7 @@ import type {
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import PlanningBrainPanel from "@/components/PlanningBrainPanel";
-import RevenueHeatmap from "./RevenueHeatmap";
+// RevenueHeatmap unmounted — no H3 revenue density SoT yet
 
 const api = createSupplierApi();
 
@@ -249,11 +249,7 @@ export default function AnalyticsPage() {
       <section className="desk-card p-0 mt-6 overflow-hidden min-h-[320px]">
         <PlanningBrainPanel />
       </section>
-
-      <section className="desk-card p-0 mt-6 overflow-hidden h-[400px]">
-        <h2 className="bento-card-title p-6 pb-0">Revenue spatial distribution</h2>
-        <RevenueHeatmap className="w-full h-full p-4" />
-      </section>
+      {/* RevenueHeatmap unmounted — no H3 revenue density SoT (analytics/revenue is time series only) */}
     </PageChrome>
   );
 }

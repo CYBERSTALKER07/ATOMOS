@@ -12,6 +12,7 @@ import type { DeliveryFeeRules, WarehouseOpsSettings, WarehouseOpsSettingsPatchR
 import { warehouseOpsLocationKey, warehouseOpsSettingsKey } from '@pegasusx/api-client';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { OpsSettingsForm } from '@/components/settings/OpsSettingsForm';
+import { ReturnPolicySettingsSection } from '@/components/settings/ReturnPolicySettingsSection';
 
 type WarehouseLocation = {
   warehouse_id: string;
@@ -280,6 +281,8 @@ export default function WarehouseSettingsPage() {
           >
             {saving ? 'Saving…' : 'Save settings'}
           </button>
+
+          <ReturnPolicySettingsSection />
 
           {settings?.ops_always_available && (
             <p className="text-xs text-[var(--muted)]">

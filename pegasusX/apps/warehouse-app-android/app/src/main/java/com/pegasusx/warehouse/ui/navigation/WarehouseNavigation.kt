@@ -64,6 +64,7 @@ import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.LocationSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
+import com.pegasusx.warehouse.ui.screens.inventory.ReturnPolicySettingsScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
@@ -117,6 +118,7 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val RETURN_POLICY = "return_policy"
     const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
@@ -496,6 +498,9 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.OPS_SETTINGS) {
                     OpsSettingsScreen(api = api, onBack = backFor(WarehouseRoutes.OPS_SETTINGS))
+                }
+                composable(WarehouseRoutes.RETURN_POLICY) {
+                    ReturnPolicySettingsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURN_POLICY))
                 }
                 composable(WarehouseRoutes.LOCATION_SETTINGS) {
                     LocationSettingsScreen(

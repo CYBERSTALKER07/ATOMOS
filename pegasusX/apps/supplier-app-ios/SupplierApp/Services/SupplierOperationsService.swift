@@ -330,6 +330,18 @@ enum SupplierOperationsService {
         )
     }
 
+    static func returnPolicy() async throws -> SupplierReturnPolicy {
+        try await APIClient.shared.get("v1/supplier/return-policy")
+    }
+
+    static func putReturnPolicy(_ body: SupplierReturnPolicy, idempotencyKey: String) async throws -> SupplierReturnPolicy {
+        try await APIClient.shared.put(
+            "v1/supplier/return-policy",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func knowledgeGraph() async throws -> SupplierKnowledgeGraph {
         try await APIClient.shared.get("v1/supplier/knowledge-graph")
     }

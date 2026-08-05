@@ -58,12 +58,12 @@ const CompanyCard = ({ company }: { company: Company }) => (
           </div>
           <div>
             <h3 className="text-2xl font-light">{company.name}</h3>
-            <p className="text-sm text-gray-600 group-hover:text-white transition-colors duration-300">{company.role}</p>
+            <p className="text-sm text-gray-600 group-hover:text-black/80 transition-colors duration-300">{company.role}</p>
           </div>
         </div>
       </div>
       
-      <p className="text-sm text-gray-600 group-hover:text-white transition-colors duration-300 mb-4">
+      <p className="text-sm text-gray-600 group-hover:text-black/80 transition-colors duration-300 mb-4">
         {company.tags}
       </p>
       
@@ -71,7 +71,7 @@ const CompanyCard = ({ company }: { company: Company }) => (
         <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-light rounded-xl border-2 border-black transition-all duration-300">
           {company.badge}
         </span>
-        <span className="text-xs text-gray-500 group-hover:text-white transition-colors duration-300">
+        <span className="text-xs text-gray-500 group-hover:text-black/70 transition-colors duration-300">
           • {company.remote}
         </span>
       </div>

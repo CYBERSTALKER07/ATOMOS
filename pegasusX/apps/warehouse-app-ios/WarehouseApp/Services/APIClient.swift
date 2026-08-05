@@ -117,6 +117,28 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
+    // MARK: - PUT
+    func put<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        query: [String: String] = [:],
+        idempotencyKey: String? = nil
+    ) async throws -> T {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
+        request.httpBody = try encoder.encode(body)
+        await attachToken(&request)
+        return try await execute(request)
+    }
+
     func patchVoid<B: Encodable>(_ path: String, body: B, idempotencyKey: String? = nil) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"

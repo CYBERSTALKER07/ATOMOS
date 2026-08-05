@@ -1016,6 +1016,16 @@ data class SeasonalTemplatesResponse(
     val overrides: List<SeasonalOverrideRow> = emptyList(),
 )
 
+/** GET/PUT /v1/supplier/return-policy */
+@Serializable
+data class SupplierReturnPolicy(
+    @SerialName("default_window_hours") val defaultWindowHours: Long = 48,
+    @SerialName("concealed_damage_window_hours") val concealedDamageWindowHours: Long? = null,
+    @SerialName("require_photo") val requirePhoto: Boolean = true,
+    @SerialName("allow_expired_claims") val allowExpiredClaims: Boolean = false,
+    @SerialName("policy_source_hint") val policySourceHint: String? = null,
+)
+
 @Serializable
 data class KnowledgeGraphNode(
     val id: String = "",

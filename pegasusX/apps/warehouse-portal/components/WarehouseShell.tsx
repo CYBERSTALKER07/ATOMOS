@@ -11,6 +11,7 @@ import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
 import { clearSession, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
+import { usePortalT } from '@/lib/i18n';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
@@ -146,6 +147,7 @@ const DrawerContent = memo(function DrawerContent({
   onLogout: () => void;
 }) {
   const isRail = collapsed && !isMobile;
+  const t = usePortalT();
   const filteredNav = NAV;
   return (
     <div className="flex flex-col h-full">
@@ -250,11 +252,11 @@ const DrawerContent = memo(function DrawerContent({
             <button
               onClick={onLogout}
               className="desk-sidebar-item flex-1"
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
             >
               <Icon name="logout" size={18} />
-              <span>Sign Out</span>
+              <span>{t("common.action.sign_out")}</span>
             </button>
           )}
         </div>
@@ -304,6 +306,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
     enabled: notificationsEnabled,
   });
   const liveIndicator = liveIndicatorCopy(wsState);
+  const t = usePortalT();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -537,7 +540,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                   <div style={{ height: 1, background: 'var(--desk-border)', margin: '4px 12px' }} />
                   <button className="md-menu-item" style={{ color: 'var(--desk-danger)' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
                     <Icon name="logout" />
-                    <span>Sign Out</span>
+                    <span>{t("common.action.sign_out")}</span>
                   </button>
                 </div>
               )}

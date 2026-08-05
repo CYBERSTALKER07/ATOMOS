@@ -133,6 +133,32 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/settings")
     }
 
+    static func getReturnPolicy(
+        warehouseId: String? = nil,
+        supplierId: String? = nil
+    ) async throws -> WarehouseReturnPolicy {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty { query["warehouse_id"] = warehouseId }
+        if let supplierId, !supplierId.isEmpty { query["supplier_id"] = supplierId }
+        return try await api.get("v1/warehouse/return-policy", query: query)
+    }
+
+    static func putReturnPolicy(
+        _ body: WarehouseReturnPolicy,
+        warehouseId: String? = nil,
+        supplierId: String? = nil
+    ) async throws -> WarehouseReturnPolicy {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty { query["warehouse_id"] = warehouseId }
+        if let supplierId, !supplierId.isEmpty { query["supplier_id"] = supplierId }
+        return try await api.put(
+            "v1/warehouse/return-policy",
+            body: body,
+            query: query,
+            idempotencyKey: WarehouseIdempotency.returnPolicyPut(supplierId: body.supplierId)
+        )
+    }
+
     static func preorders() async throws -> WarehousePreordersResponse {
         try await api.get("v1/warehouse/ops/preorders")
     }

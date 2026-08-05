@@ -169,6 +169,17 @@ class OffloadReviewViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
+                val proof = photoProofUrl?.takeIf { it.isNotBlank() }
+                    ?: _state.value.evidencePhotoUrl.takeIf { it.isNotBlank() }
+                if (proof.isNullOrBlank()) {
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "PoD photo required for credit leave — take a photo of the handoff first.",
+                        )
+                    }
+                    return@launch
+                }
                 if (!_state.value.proximityUnlocked && forceBypassToken.isNullOrBlank()) {
                     _state.update {
                         it.copy(
@@ -182,7 +193,7 @@ class OffloadReviewViewModel @Inject constructor(
                 val body = buildMap<String, Any?> {
                     put("order_id", orderId)
                     put("client_timestamp", ts)
-                    photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
+                    put("photo_proof_url", proof)
                     forceBypassToken?.takeIf { it.isNotBlank() }?.let { put("force_bypass_token", it) }
                 }
                 val key = DriverIdempotencyKeys.creditDelivery(orderId)

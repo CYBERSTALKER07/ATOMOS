@@ -115,6 +115,9 @@ struct AnalyticsView: View {
                                 NavigationLink { PlanningSettingsView() } label: {
                                     Label("Planning settings", systemImage: "calendar")
                                 }
+                                NavigationLink { ReturnPolicySettingsView() } label: {
+                                    Label("Return policy", systemImage: "arrow.uturn.backward.circle")
+                                }
                             }
                         }
                         .supplierReadableWidth()

@@ -42,6 +42,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case demandForecast = "Demand forecast"
     case planningBrain = "Planning sandbox"
     case planningSettings = "Planning settings"
+    case returnPolicy = "Return policy"
     case knowledgeGraph = "Knowledge graph"
     case replenishmentPolicies = "Replenishment policies"
     case factories = "Factories"
@@ -93,6 +94,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .demandForecast: "chart.xyaxis.line"
         case .planningBrain: "brain.head.profile"
         case .planningSettings: "calendar"
+        case .returnPolicy: "arrow.uturn.backward.circle"
         case .knowledgeGraph: "point.3.connected.trianglepath.dotted"
         case .replenishmentPolicies: "doc.text"
         case .factories: "building.2"
@@ -122,7 +124,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings, .returnPolicy]
     }
 
     static var networkSections: [SupplierSection] {

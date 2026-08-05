@@ -48,6 +48,7 @@ import com.pegasusx.retailer.ui.components.PegasusBottomBar
 import com.pegasusx.retailer.ui.components.PegasusTab
 import com.pegasusx.retailer.ui.components.PegasusTopBar
 import com.pegasusx.retailer.ui.components.FileClaimHost
+import com.pegasusx.retailer.ui.components.FileClaimDepsViewModel
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.PaymentPhase
 import com.pegasusx.retailer.ui.components.QROverlay
@@ -748,19 +749,26 @@ fun RetailerNavigation(
         }
 
         if (shopClosedAlert != null) {
+            val shopClosedDeps: FileClaimDepsViewModel = hiltViewModel()
             ShopClosedSheet(
                 alert = shopClosedAlert,
                 isSubmitting = shopClosedSubmitting,
                 errorMessage = shopClosedError,
-                onRespond = { option ->
+                mediaUpload = shopClosedDeps.mediaUpload,
+                onRespond = { option, photoUrl ->
                     if (shopClosedSubmitting) return@ShopClosedSheet
                     shopClosedSubmitting = true
                     shopClosedError = null
                     coroutineScope.launch {
-                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
+                        val result = navigationViewModel.respondToShopClosed(
+                            shopClosedAlert.orderId,
+                            option,
+                            photoUrl,
+                        )
                         shopClosedSubmitting = false
                         if (result.isFailure) {
-                            shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"
+                            shopClosedError = result.exceptionOrNull()?.message
+                                ?: "Could not submit response"
                         }
                     }
                 },

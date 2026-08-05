@@ -78,13 +78,13 @@ export default function ResumePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-black text-white no-print">
+      <div className="pegasus-docs min-h-screen bg-black text-white no-print">
         <SiteNav activeHref="/resume" />
 
         {/* Action Buttons */}
         <div className="fixed top-24 right-8 z-50 flex flex-col gap-4 no-print">
           <button type="button" onClick={handleDownloadPDF} className="editorial-btn editorial-btn--inverted editorial-btn--shadow">
-            📄 Download PDF
+            Download PDF
           </button>
           <Link href="/" className="editorial-btn editorial-btn--shadow text-center">
             ← Back Home
@@ -92,12 +92,25 @@ export default function ResumePage() {
         </div>
 
         {/* Header */}
-        <div ref={headerRef} className="text-center pt-32 pb-12 px-4 no-print">
-          <h1 className="text-4xl md:text-6xl font-light mb-4">Platform Overview</h1>
-          <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6" />
-          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            Pegasus at a glance — click &quot;Download PDF&quot; to save a copy
+        <div ref={headerRef} className="border-b border-white/10 px-4 pb-12 pt-28 text-center no-print md:pt-32">
+          <p className="editorial-eyebrow">Platform overview</p>
+          <h1 className="docs-hero-title mt-4 text-4xl font-semibold tracking-tight md:text-5xl">Pegasus at a glance</h1>
+          <p className="docs-body mx-auto mt-4 max-w-xl text-white/60">
+            Six roles · Cloud Spanner · Outbox → Kafka → WS · Portal · Mobile · Desktop
           </p>
+          <div className="mx-auto mt-8 grid max-w-2xl grid-cols-2 gap-2 font-mono text-[10px] uppercase tracking-wider text-white/45 sm:grid-cols-4">
+            {[
+              ['Roles', '6 connected'],
+              ['SoR', 'Cloud Spanner'],
+              ['Realtime', 'Outbox → WS'],
+              ['Surfaces', 'All channels'],
+            ].map(([l, v]) => (
+              <div key={l} className="border border-white/15 px-2 py-3 text-left sm:text-center">
+                <p className="text-white/30">{l}</p>
+                <p className="mt-1 text-white/80">{v}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

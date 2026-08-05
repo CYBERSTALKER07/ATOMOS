@@ -133,6 +133,8 @@ struct WarehouseAdaptiveShell: View {
             NavigationStack { PaymentConfigView() }
         case .opsSettings:
             NavigationStack { OpsSettingsView() }
+        case .returnPolicy:
+            NavigationStack { ReturnPolicySettingsView() }
         case .notifications:
             NavigationStack { NotificationInboxView() }
         case .portalSetup, .portalProfile, .portalSearch:

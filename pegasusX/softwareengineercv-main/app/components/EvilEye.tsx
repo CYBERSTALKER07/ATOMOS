@@ -1,6 +1,5 @@
 "use client";
 
-import { Renderer, Program, Mesh, Triangle, Texture } from 'ogl';
 import { useEffect, useRef } from 'react';
 
 interface EvilEyeProps {
@@ -14,267 +13,278 @@ interface EvilEyeProps {
   pupilFollow?: number;
   flameSpeed?: number;
   backgroundColor?: string;
+  /** Character cell size in CSS pixels. Default 11. */
+  pixelSize?: number;
+  scanlineStrength?: number;
+  /** Digits & symbols used to draw the eye. */
+  characters?: string;
 }
 
-function hexToVec3(hex: string): [number, number, number] {
+const DEFAULT_CHARS = '0123456789#$%@&*+=<>/\\|[];:^~IOXZ';
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const h = hex.replace('#', '');
-  return [
-    parseInt(h.slice(0, 2), 16) / 255,
-    parseInt(h.slice(2, 4), 16) / 255,
-    parseInt(h.slice(4, 6), 16) / 255
-  ];
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
 }
 
-function generateNoiseTexture(size = 256): Uint8Array {
-  const data = new Uint8Array(size * size * 4);
+type Zone = 'void' | 'lid' | 'sclera' | 'iris' | 'pupil';
 
-  function hash(x: number, y: number, s: number): number {
-    let n = x * 374761393 + y * 668265263 + s * 1274126177;
-    n = Math.imul(n ^ (n >>> 13), 1274126177);
-    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
-  }
-
-  function noise(px: number, py: number, freq: number, seed: number): number {
-    const fx = (px / size) * freq;
-    const fy = (py / size) * freq;
-    const ix = Math.floor(fx);
-    const iy = Math.floor(fy);
-    const tx = fx - ix;
-    const ty = fy - iy;
-    const w = freq | 0;
-    const v00 = hash(((ix % w) + w) % w, ((iy % w) + w) % w, seed);
-    const v10 = hash((((ix + 1) % w) + w) % w, ((iy % w) + w) % w, seed);
-    const v01 = hash(((ix % w) + w) % w, (((iy + 1) % w) + w) % w, seed);
-    const v11 = hash((((ix + 1) % w) + w) % w, (((iy + 1) % w) + w) % w, seed);
-    return v00 * (1 - tx) * (1 - ty) + v10 * tx * (1 - ty) + v01 * (1 - tx) * ty + v11 * tx * ty;
-  }
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let v = 0;
-      let amp = 0.4;
-      let totalAmp = 0;
-      for (let o = 0; o < 8; o++) {
-        const f = 32 * (1 << o);
-        v += amp * noise(x, y, f, o * 31);
-        totalAmp += amp;
-        amp *= 0.65;
-      }
-      v /= totalAmp;
-      v = (v - 0.5) * 2.2 + 0.5;
-      v = Math.max(0, Math.min(1, v));
-      const val = Math.round(v * 255);
-      const i = (y * size + x) * 4;
-      data[i] = val;
-      data[i + 1] = val;
-      data[i + 2] = val;
-      data[i + 3] = 255;
-    }
-  }
-
-  return data;
-}
-
-const vertexShader = `
-attribute vec2 uv;
-attribute vec2 position;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0, 1);
-}
-`;
-
-const fragmentShader = `
-precision highp float;
-
-uniform float uTime;
-uniform vec3 uResolution;
-uniform sampler2D uNoiseTexture;
-uniform float uPupilSize;
-uniform float uIrisWidth;
-uniform float uGlowIntensity;
-uniform float uIntensity;
-uniform float uScale;
-uniform float uNoiseScale;
-uniform vec2 uMouse;
-uniform float uPupilFollow;
-uniform float uFlameSpeed;
-uniform vec3 uEyeColor;
-uniform vec3 uBgColor;
-
-void main() {
-  vec2 uv = (gl_FragCoord.xy * 2.0 - uResolution.xy) / uResolution.y;
-  uv /= uScale;
-  float ft = uTime * uFlameSpeed;
-
-  float polarRadius = length(uv) * 2.0;
-  float polarAngle = (2.0 * atan(uv.x, uv.y)) / 6.28 * 0.3;
-  vec2 polarUv = vec2(polarRadius, polarAngle);
-
-  vec4 noiseA = texture2D(uNoiseTexture, polarUv * vec2(0.2, 7.0) * uNoiseScale + vec2(-ft * 0.1, 0.0));
-  vec4 noiseB = texture2D(uNoiseTexture, polarUv * vec2(0.3, 4.0) * uNoiseScale + vec2(-ft * 0.2, 0.0));
-  vec4 noiseC = texture2D(uNoiseTexture, polarUv * vec2(0.1, 5.0) * uNoiseScale + vec2(-ft * 0.1, 0.0));
-
-  float distanceMask = 1.0 - length(uv);
-
-  // Inner ring
-  float innerRing = clamp(-1.0 * ((distanceMask - 0.7) / uIrisWidth), 0.0, 1.0);
-  innerRing = (innerRing * distanceMask - 0.2) / 0.28;
-  innerRing += noiseA.r - 0.5;
-  innerRing *= 1.3;
-  innerRing = clamp(innerRing, 0.0, 1.0);
-
-  float outerRing = clamp(-1.0 * ((distanceMask - 0.5) / 0.2), 0.0, 1.0);
-  outerRing = (outerRing * distanceMask - 0.1) / 0.38;
-  outerRing += noiseC.r - 0.5;
-  outerRing *= 1.3;
-  outerRing = clamp(outerRing, 0.0, 1.0);
-
-  innerRing += outerRing;
-
-  // Inner eye
-  float innerEye = distanceMask - 0.1 * 2.0;
-  innerEye *= noiseB.r * 2.0;
-
-  // Pupil with cursor tracking
-  vec2 pupilOffset = uMouse * uPupilFollow * 0.12;
-  vec2 pupilUv = uv - pupilOffset;
-  float pupil = 1.0 - length(pupilUv * vec2(9.0, 2.3));
-  pupil *= uPupilSize;
-  pupil = clamp(pupil, 0.0, 1.0);
-  pupil /= 0.35;
-
-  // Outer eye
-  float outerEyeGlow = 1.0 - length(uv * vec2(0.5, 1.5));
-  outerEyeGlow = clamp(outerEyeGlow + 0.5, 0.0, 1.0);
-  outerEyeGlow += noiseC.r - 0.5;
-  float outerBgGlow = outerEyeGlow;
-  outerEyeGlow = pow(outerEyeGlow, 2.0);
-  outerEyeGlow += distanceMask;
-  outerEyeGlow *= uGlowIntensity;
-  outerEyeGlow = clamp(outerEyeGlow, 0.0, 1.0);
-  outerEyeGlow *= pow(1.0 - distanceMask, 2.0) * 2.5;
-
-  // Outer eye bg glow
-  outerBgGlow += distanceMask;
-  outerBgGlow = pow(outerBgGlow, 0.5);
-  outerBgGlow *= 0.15;
-
-  vec3 color = uEyeColor * uIntensity * clamp(max(innerRing + innerEye, outerEyeGlow + outerBgGlow) - pupil, 0.0, 3.0);
-  color += uBgColor;
-
-  gl_FragColor = vec4(color, 1.0);
-}
-`;
+type Cell = {
+  char: string;
+  brightness: number;
+  targetBrightness: number;
+  scramble: number;
+  zone: Zone;
+};
 
 export default function EvilEye({
-  eyeColor = '#FF6F37',
-  intensity = 1.5,
-  pupilSize = 0.6,
-  irisWidth = 0.25,
-  glowIntensity = 0.35,
-  scale = 0.8,
-  noiseScale = 1.0,
-  pupilFollow = 1.0,
-  flameSpeed = 1.0,
-  backgroundColor = '#000000'
+  eyeColor = '#d4d0cf',
+  intensity = 1.25,
+  pupilSize = 0.7,
+  irisWidth = 0.42,
+  glowIntensity = 0.55,
+  scale = 0.78,
+  pupilFollow = 0.75,
+  flameSpeed = 1.4,
+  backgroundColor = '#000000',
+  pixelSize = 10,
+  characters = DEFAULT_CHARS,
 }: EvilEyeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
     const container = containerRef.current;
-    const renderer = new Renderer({ alpha: true, premultipliedAlpha: false });
-    const gl = renderer.gl;
-    gl.clearColor(0, 0, 0, 0);
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-    const noiseData = generateNoiseTexture(256);
-    const noiseTexture = new Texture(gl, {
-      image: noiseData,
-      width: 256,
-      height: 256,
-      generateMipmaps: false,
-      flipY: false,
-    });
-    noiseTexture.minFilter = gl.LINEAR;
-    noiseTexture.magFilter = gl.LINEAR;
-    noiseTexture.wrapS = gl.REPEAT;
-    noiseTexture.wrapT = gl.REPEAT;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const charset = Array.from(characters);
+    const digitset = Array.from('0123456789');
+    const symbolset = Array.from('#$%@&*+=<>/\\|[];:^~');
+    const eyeRgb = hexToRgb(eyeColor);
+    const bgRgb = hexToRgb(backgroundColor);
+
+    let cols = 0;
+    let rows = 0;
+    let cells: Cell[] = [];
+    let cellW = pixelSize;
+    let cellH = pixelSize * 1.55;
+    let cssW = 0;
+    let cssH = 0;
 
     const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
 
-    function onMouseMove(e: MouseEvent) {
+    const pick = (set: string[]) => set[Math.floor(Math.random() * set.length)] ?? '0';
+    const randChar = () => pick(charset);
+
+    /**
+     * Classic Sauron silhouette:
+     * - sharp horizontal almond lid
+     * - bright dense iris ring
+     * - dark horizontal slit pupil that tracks the cursor
+     * - sparse sclera so the iris reads clearly
+     */
+    const eyeMask = (
+      nx: number,
+      ny: number,
+      pupilOx: number,
+      pupilOy: number,
+      t: number
+    ): { bright: number; zone: Zone } => {
+      const sx = nx / scale;
+      const sy = ny / scale;
+
+      // Almond eyelid (wide, flat) — hard cut outside
+      const lid = Math.hypot(sx * 0.48, sy * 1.55);
+      if (lid > 1.0) return { bright: 0, zone: 'void' };
+
+      // Soft lid rim (bright edge of the eye)
+      const lidRim = lid > 0.88;
+
+      const irisR = Math.hypot(sx * 1.05, sy * 1.05);
+      const irisInner = 0.16 + pupilSize * 0.12;
+      const irisOuter = irisInner + 0.22 + irisWidth * 0.38;
+
+      // Horizontal slit pupil (Sauron-style), tracks mouse
+      const px = sx - pupilOx;
+      const py = sy - pupilOy;
+      const pupilDist = Math.hypot(px * 3.6, py * 1.05);
+      const pupilEdge = 0.18 + pupilSize * 0.16;
+
+      const angle = Math.atan2(sy, sx);
+      const swirl = 0.5 + 0.5 * Math.sin(angle * 8 + t * flameSpeed * 2.4 + irisR * 12);
+      const pulse = 0.7 + 0.3 * Math.sin(t * flameSpeed * 3.2 + irisR * 16);
+
+      // Pupil = near-black void (almost no glyphs)
+      if (pupilDist < pupilEdge) {
+        const fade = pupilDist / pupilEdge;
+        return {
+          bright: fade < 0.55 ? 0 : 0.08 * swirl,
+          zone: 'pupil',
+        };
+      }
+
+      // Dense bright iris ring of symbols
+      if (irisR >= irisInner && irisR <= irisOuter) {
+        const mid = (irisInner + irisOuter) * 0.5;
+        const half = (irisOuter - irisInner) * 0.5;
+        const ring = 1 - Math.abs(irisR - mid) / Math.max(half, 0.001);
+        const spokes = 0.55 + 0.45 * Math.pow(Math.abs(Math.sin(angle * 10 + t * flameSpeed)), 0.35);
+        const bright = (0.55 + ring * 0.7) * intensity * spokes * pulse * (0.85 + swirl * 0.2);
+        return { bright: Math.min(1.55, bright), zone: 'iris' };
+      }
+
+      // Lid rim highlight
+      if (lidRim) {
+        return {
+          bright: 0.55 * intensity * glowIntensity * (0.8 + swirl * 0.2),
+          zone: 'lid',
+        };
+      }
+
+      // Sparse sclera / fill inside the almond
+      const field = Math.pow(Math.max(0, 1 - lid), 1.2);
+      const sparse = field * glowIntensity * intensity * 0.22 * (0.5 + swirl * 0.5);
+      return { bright: sparse, zone: 'sclera' };
+    };
+
+    const rebuild = () => {
+      const rect = container.getBoundingClientRect();
+      cssW = rect.width;
+      cssH = rect.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      cellW = Math.max(8, pixelSize);
+      cellH = cellW * 1.55;
+      cols = Math.max(1, Math.ceil(cssW / cellW));
+      rows = Math.max(1, Math.ceil(cssH / cellH));
+
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      cells = Array.from({ length: cols * rows }, () => ({
+        char: randChar(),
+        brightness: 0,
+        targetBrightness: 0,
+        scramble: Math.random(),
+        zone: 'void' as Zone,
+      }));
+    };
+
+    const onMove = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
       mouse.tx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.ty = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-    }
-
-    function onMouseLeave() {
+    };
+    const onLeave = () => {
       mouse.tx = 0;
       mouse.ty = 0;
-    }
+    };
 
-    container.addEventListener('mousemove', onMouseMove);
-    container.addEventListener('mouseleave', onMouseLeave);
+    container.addEventListener('mousemove', onMove);
+    container.addEventListener('mouseleave', onLeave);
+    window.addEventListener('resize', rebuild);
+    rebuild();
 
-    let program: Program;
+    let raf = 0;
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      const t = now * 0.001;
 
-    function resize() {
-      renderer.setSize(container.offsetWidth, container.offsetHeight);
-      if (program) {
-        program.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height];
+      mouse.x += (mouse.tx - mouse.x) * 0.07;
+      mouse.y += (mouse.ty - mouse.y) * 0.07;
+
+      const pupilOx = mouse.x * pupilFollow * 0.2;
+      const pupilOy = mouse.y * pupilFollow * 0.12;
+
+      ctx.fillStyle = `rgb(${bgRgb.r},${bgRgb.g},${bgRgb.b})`;
+      ctx.fillRect(0, 0, cssW, cssH);
+      ctx.font = `600 ${Math.floor(cellW * 0.92)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const aspect = cssW / Math.max(cssH, 1);
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const i = row * cols + col;
+          const cell = cells[i];
+          if (!cell) continue;
+
+          const nx = ((col + 0.5) / cols - 0.5) * 2 * aspect;
+          const ny = ((row + 0.5) / rows - 0.5) * 2;
+
+          const { bright, zone } = eyeMask(nx, ny, pupilOx, pupilOy, t);
+          cell.targetBrightness = bright;
+          cell.zone = zone;
+          cell.brightness += (cell.targetBrightness - cell.brightness) * 0.28;
+
+          // Density control: skip most sclera cells so iris reads clearly
+          if (zone === 'sclera' && ((col + row) % 3 !== 0)) {
+            continue;
+          }
+          if (zone === 'pupil' && cell.brightness < 0.06) {
+            continue;
+          }
+          if (cell.brightness < 0.05) continue;
+
+          const scrambleRate =
+            zone === 'iris' ? 0.28 : zone === 'lid' ? 0.12 : zone === 'sclera' ? 0.08 : 0.03;
+          cell.scramble += scrambleRate * flameSpeed;
+          if (cell.scramble >= 1 || Math.random() < scrambleRate * 0.4) {
+            if (zone === 'iris') cell.char = pick(symbolset);
+            else if (zone === 'pupil' || zone === 'lid') cell.char = pick(digitset);
+            else cell.char = randChar();
+            cell.scramble = 0;
+          }
+
+          const a = Math.min(1, cell.brightness);
+          const boost = zone === 'iris' ? 1.25 : zone === 'lid' ? 1.05 : zone === 'pupil' ? 0.4 : 0.75;
+          const r = Math.min(255, Math.round(eyeRgb.r * a * boost));
+          const g = Math.min(255, Math.round(eyeRgb.g * a * boost));
+          const b = Math.min(255, Math.round(eyeRgb.b * a * boost));
+
+          ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(1, 0.4 + a * 0.6)})`;
+          ctx.fillText(cell.char, (col + 0.5) * cellW, (row + 0.5) * cellH);
+        }
       }
-    }
-    window.addEventListener('resize', resize);
-    resize();
+    };
 
-    const geometry = new Triangle(gl);
-    program = new Program(gl, {
-      vertex: vertexShader,
-      fragment: fragmentShader,
-      uniforms: {
-        uTime: { value: 0 },
-        uResolution: { value: [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height] },
-        uNoiseTexture: { value: noiseTexture },
-        uPupilSize: { value: pupilSize },
-        uIrisWidth: { value: irisWidth },
-        uGlowIntensity: { value: glowIntensity },
-        uIntensity: { value: intensity },
-        uScale: { value: scale },
-        uNoiseScale: { value: noiseScale },
-        uMouse: { value: [0, 0] },
-        uPupilFollow: { value: pupilFollow },
-        uFlameSpeed: { value: flameSpeed },
-        uEyeColor: { value: hexToVec3(eyeColor) },
-        uBgColor: { value: hexToVec3(backgroundColor) }
-      }
-    });
-
-    const mesh = new Mesh(gl, { geometry, program });
-    container.appendChild(gl.canvas);
-
-    let animationFrameId: number;
-
-    function update(time: number) {
-      animationFrameId = requestAnimationFrame(update);
-      mouse.x += (mouse.tx - mouse.x) * 0.05;
-      mouse.y += (mouse.ty - mouse.y) * 0.05;
-      program.uniforms.uMouse.value = [mouse.x, mouse.y];
-      program.uniforms.uTime.value = time * 0.001;
-      renderer.render({ scene: mesh });
-    }
-    animationFrameId = requestAnimationFrame(update);
+    raf = requestAnimationFrame(tick);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-      container.removeEventListener('mousemove', onMouseMove);
-      container.removeEventListener('mouseleave', onMouseLeave);
-      container.removeChild(gl.canvas);
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', rebuild);
+      container.removeEventListener('mousemove', onMove);
+      container.removeEventListener('mouseleave', onLeave);
     };
-  }, [eyeColor, intensity, pupilSize, irisWidth, glowIntensity, scale, noiseScale, pupilFollow, flameSpeed, backgroundColor]);
+  }, [
+    eyeColor,
+    intensity,
+    pupilSize,
+    irisWidth,
+    glowIntensity,
+    scale,
+    pupilFollow,
+    flameSpeed,
+    backgroundColor,
+    pixelSize,
+    characters,
+  ]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return (
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-black">
+      <canvas ref={canvasRef} className="absolute inset-0 block w-full h-full" aria-hidden />
+    </div>
+  );
 }

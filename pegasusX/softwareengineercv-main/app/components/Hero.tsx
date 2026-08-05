@@ -164,8 +164,8 @@ export default function Hero() {
         </>
       )}
 
-      <div className="page-shell py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="page-shell py-12 sm:py-16 lg:py-20 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
           {/* Content Side - Left */}
           <div ref={textRef} className="space-y-8 order-2 lg:order-1">
             <div>
@@ -213,10 +213,12 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
-          <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
-              {/* Video replacing Atom image and LaserFlow */}
+          {/* Visual Side — break out to viewport with 70px side gutters on small screens */}
+          <div
+            ref={visualRef}
+            className="relative order-1 lg:order-2 w-[calc(100vw-140px)] max-w-[calc(100vw-140px)] ml-[calc(50%-50vw+70px)] lg:ml-0 lg:w-full lg:max-w-none"
+          >
+            <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[120px] sm:rounded-tl-[160px] lg:rounded-tl-[200px] rounded-br-[60px] sm:rounded-br-[80px] lg:rounded-br-[100px] border-none">
               <div className="absolute inset-0">
                 <video
                   ref={videoRef}
@@ -230,7 +232,6 @@ export default function Hero() {
                 />
               </div>
 
-              {/* Decorative border overlay - show on mobile only */}
               {isMobile && (
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />

@@ -30,6 +30,9 @@ struct MoreHubView: View {
                 NavigationLink { PlanningSettingsView() } label: {
                     Label("Planning settings", systemImage: "calendar")
                 }
+                NavigationLink { ReturnPolicySettingsView() } label: {
+                    Label("Return policy", systemImage: "arrow.uturn.backward.circle")
+                }
                 NavigationLink { ActivityView() } label: {
                     Label("Activity", systemImage: "clock.arrow.circlepath")
                 }

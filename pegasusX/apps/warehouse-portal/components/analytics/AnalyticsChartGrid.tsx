@@ -1,5 +1,4 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import VelocityGauge from '@/app/analytics/VelocityGauge';
 
 interface AnalyticsChartGridProps {
   dailySeries: { date: string; revenue: number; orders: number }[];
@@ -8,8 +7,8 @@ interface AnalyticsChartGridProps {
 
 export default function AnalyticsChartGrid({ dailySeries, fmtCurrency }: AnalyticsChartGridProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Daily Revenue Chart */}
+    <div className="grid grid-cols-1 gap-6">
+      {/* Daily Revenue Chart — VelocityGauge unmounted (no avg-dispatch SoT) */}
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
         <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
         {dailySeries.length > 0 ? (
@@ -32,11 +31,6 @@ export default function AnalyticsChartGrid({ dailySeries, fmtCurrency }: Analyti
             No completed-order revenue in this period. Daily breakdown populates from Spanner `daily_breakdown`.
           </p>
         )}
-      </div>
-
-      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-        <h2 className="text-sm font-semibold mb-4 text-center">Fulfillment Velocity (Time to Dispatch)</h2>
-        <VelocityGauge className="w-full" />
       </div>
     </div>
   );

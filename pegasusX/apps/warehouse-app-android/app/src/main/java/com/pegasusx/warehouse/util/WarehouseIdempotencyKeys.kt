@@ -72,6 +72,9 @@ object WarehouseIdempotencyKeys {
 
     fun opsSettings(): String = "warehouse-ops-settings:${warehouseId()}"
 
+    fun returnPolicyPut(supplierId: String = ""): String =
+        "warehouse-return-policy:${warehouseId()}:${supplierId.ifBlank { "default" }}"
+
     fun opsLocation(lat: Double, lng: Double, placeId: String? = null): String {
         val fingerprint = stableHash("${"%.6f".format(lat)}:${"%.6f".format(lng)}:${placeId.orEmpty()}")
         return "warehouse-ops-location:${warehouseId()}:$fingerprint"

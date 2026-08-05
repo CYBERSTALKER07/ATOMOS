@@ -18,6 +18,22 @@ export type FlowConfig = {
   roles?: string[];
 };
 
+export type TopicCard = {
+  title: string;
+  description: string;
+};
+
+export type WhyItMatters = {
+  headline: string;
+  body: string;
+  insights?: { title: string; body: string }[];
+};
+
+export type ProofItem = {
+  label: string;
+  value: string;
+};
+
 export type TopicContent = {
   title: string;
   summary: string;
@@ -29,6 +45,18 @@ export type TopicContent = {
   flow: FlowVariant;
   flowConfig?: FlowConfig;
   relatedProjectSlug?: string;
+  /** o9 CORE CAPABILITIES */
+  capabilities?: TopicCard[];
+  /** o9 KEY DIFFERENTIATORS */
+  differentiators?: TopicCard[];
+  /** o9 why it matters block */
+  whyItMatters?: WhyItMatters;
+  /** Exception / edge-case paths from order flow docs */
+  edgeCases?: TopicCard[];
+  /** AI workers + Spanner/Redis/Kafka/WS data layer */
+  aiAndData?: TopicCard[];
+  /** Proof strip facts */
+  proofItems?: ProofItem[];
 };
 
 export type TopicPage = {
@@ -44,7 +72,6 @@ export type TopicPage = {
 
 export const EXPLORE_CATEGORY_IDS = [
   'platform',
-  'solutions',
   'roles',
   'capabilities',
   'technology',

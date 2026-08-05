@@ -6,8 +6,8 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import VelocityGauge from './VelocityGauge';
 import AnalyticsChartGrid from '@/components/analytics/AnalyticsChartGrid';
+// VelocityGauge unmounted — no avg-dispatch SoT on warehouse ops analytics
 
 interface AnalyticsData {
   period: string;
