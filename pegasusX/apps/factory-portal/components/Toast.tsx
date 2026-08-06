@@ -25,7 +25,6 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue>({ toast: () => {} });
 
 export function useToast() {
-  const t = usePortalT();
   return useContext(ToastContext);
 }
 

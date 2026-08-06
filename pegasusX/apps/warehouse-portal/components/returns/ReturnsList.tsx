@@ -19,7 +19,6 @@ export type InboundRow = {
 };
 
 export function isClaimTicket(row: InboundRow): boolean {
-  const t = usePortalT();
   const notes = (row.driver_notes || '').toLowerCase();
   return notes.includes('claim_id=') || notes.includes('source=retailer_claim') || notes.includes('source=claim');
 }
@@ -33,6 +32,7 @@ export interface ReturnsListProps {
 }
 
 export function ReturnsList({ tab, loading, list, selected, onToggleSelect }: ReturnsListProps) {
+  const t = usePortalT();
   if (loading) {
     return (
       <div className="space-y-1">

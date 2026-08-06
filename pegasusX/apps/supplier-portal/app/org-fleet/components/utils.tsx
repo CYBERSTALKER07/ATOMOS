@@ -10,7 +10,6 @@ import type {
 } from "@pegasusx/types";
 
 export function supplierScopeId(): string {
-  const t = usePortalT();
   if (typeof window === "undefined") {
     return "supplier";
   }

@@ -1012,6 +1012,7 @@ function OrdersPageContent() {
 }
 
 export default function OrdersPage() {
+  const t = usePortalT();
   return (
     <Suspense fallback={<div className="p-8">{t("retailer_desktop.orders.text.loading_orders")}</div>}>
       <OrdersPageContent />

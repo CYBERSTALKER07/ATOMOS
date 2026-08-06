@@ -71,7 +71,7 @@ export default function PlanningOutcomesPanel() {
   const stages: PipelineStage[] = [
     {
       key: "baseline",
-      title: t("supplier_portal.residual.text.demand_baseline"),
+      title: "Demand baseline",
       metric: demand ? `${demand.prediction_count.toLocaleString()} SKUs` : "—",
       detail: demand
         ? `${demand.total_pallets.toLocaleString()} pallets · ${demand.total_retailers} retailers`
@@ -80,14 +80,14 @@ export default function PlanningOutcomesPanel() {
     },
     {
       key: "insights",
-      title: t("factory_portal.insights.text.replenishment_insights"),
+      title: "Replenishment insights",
       metric: meio ? meio.insights_generated.toLocaleString() : "—",
       detail: "Predictive push and warehouse scan outputs",
       href: "/operations" as Route,
     },
     {
       key: "touchless",
-      title: t("supplier_portal.residual.text.touchless_transfers"),
+      title: "Touchless transfers",
       metric: meio ? meio.transfer_recommendations.toLocaleString() : "—",
       detail: touchlessEnabled
         ? `Auto-approve on · max ${policy?.max_daily_transfer_units?.toLocaleString() ?? "—"} units/day`
@@ -96,7 +96,7 @@ export default function PlanningOutcomesPanel() {
     },
     {
       key: "meio",
-      title: t("supplier_portal.residual.text.meio_network"),
+      title: "MEIO network",
       metric: meio ? `${meio.warehouses_scanned} WH` : "—",
       detail: meio
         ? `${meio.skus_analyzed.toLocaleString()} SKUs · ${criticalSkus} critical`

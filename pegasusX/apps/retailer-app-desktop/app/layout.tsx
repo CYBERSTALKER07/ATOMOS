@@ -20,8 +20,8 @@ const fontGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: t("retailer_desktop.residual.text.pegasus_retailer"),
-  description: t("retailer_desktop.residual.text.retailer_desktop_app_for_pegasus"),
+  title: "Pegasus Retailer",
+  description: "Retailer Desktop App for Pegasus",
 };
 
 export default function RootLayout({

@@ -24,6 +24,7 @@ export function MetricsOverview({
   orgMembers: number;
   fleetEntities: number;
 }) {
+  const t = usePortalT();
   return (
     <section className="grid gap-4 md:grid-cols-4 mb-6">
       <MetricCard label={t("portal.nav.warehouses")} value={warehouses} />

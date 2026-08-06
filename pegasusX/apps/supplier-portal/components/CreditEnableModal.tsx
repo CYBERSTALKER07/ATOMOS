@@ -1,11 +1,10 @@
 "use client";
 
-import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 
 const COPY = {
   en: {
-    title: t("supplier_portal.residual.text.enable_trade_credit_irreversible_in_app"),
+    title: "Enable trade credit — irreversible in-app",
     body: "Once enabled, credit cannot be turned off from this portal. Contact Pegaus support to disable. Temporary holds remain available for collections.",
     checkbox: "I understand this cannot be reversed in-app",
     typeLabel: "Type ENABLE to confirm",
@@ -13,7 +12,7 @@ const COPY = {
     cancel: "Cancel",
   },
   ru: {
-    title: t("supplier_portal.residual.text.text"),
+    title: "Включить торговый кредит — необратимо в приложении",
     body: "После включения кредит нельзя отключить в портале. Для отключения обратитесь в поддержку Pegaus. Временные блокировки для взыскания остаются доступны.",
     checkbox: "Я понимаю, что это нельзя отменить в приложении",
     typeLabel: "Введите ENABLE для подтверждения",
@@ -21,7 +20,7 @@ const COPY = {
     cancel: "Отмена",
   },
   uz: {
-    title: t("supplier_portal.residual.text.savdo_kreditini_yoqish_ilovada_qaytarib_bo_lmaydi"),
+    title: "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi",
     body: "Yoqilgandan keyin kreditni portalda o‘chirib bo‘lmaydi. O‘chirish uchun Pegaus qo‘llab-quvvatlashiga murojaat qiling. Undirish uchun vaqtinchalik bloklashlar mavjud.",
     checkbox: "Ilovada qaytarib bo‘lmasligini tushunaman",
     typeLabel: "Tasdiqlash uchun ENABLE yozing",
@@ -40,7 +39,6 @@ export function CreditEnableModal(props: {
   onConfirm: (ackAt: string) => void;
   busy?: boolean;
 }) {
-  const t = usePortalT();
   const { open, onCancel, onConfirm, busy } = props;
   const locale = props.locale ?? "en";
   const token = (props.confirmToken || "ENABLE").toUpperCase();

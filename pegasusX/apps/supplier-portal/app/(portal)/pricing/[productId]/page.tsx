@@ -105,7 +105,7 @@ export default function ProductPricingPage() {
         if (!Number.isFinite(bps) || bps <= 0) throw new Error("Sale discount must be greater than zero.");
         const promoBody = {
           name: `Sale · ${product.name}`,
-          description: t("supplier_portal.residual.text.product_sale_pricing"),
+          description: "Product sale pricing",
           discount_bps: bps,
           scope_type: "PRODUCT",
           scope_product_id: product.product_id,

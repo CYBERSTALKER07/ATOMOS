@@ -22,25 +22,25 @@ const GATEWAYS = [
   {
     id: "GLOBAL_PAY",
     label: t("supplier_portal.billing_setup.gateway.global_pay.label"),
-    description: t("supplier_portal.residual.text.card_payments_via_the_pegasusx_global_rail"),
+    description: "Card payments via the pegasusX global rail.",
     icon: "global",
   },
   {
     id: "ADYEN",
     label: t("supplier_portal.residual.text.adyen"),
-    description: t("supplier_portal.residual.text.enterprise_card_acquiring_with_local_payment_methods"),
+    description: "Enterprise card acquiring with local payment methods.",
     icon: "payment",
   },
   {
     id: "AIRWALLEX",
     label: t("supplier_portal.residual.text.airwallex"),
-    description: t("supplier_portal.residual.text.cross_border_payouts_and_multi_currency_settlement"),
+    description: "Cross-border payouts and multi-currency settlement.",
     icon: "treasury",
   },
   {
     id: "CASH",
     label: t("supplier_portal.residual.text.cash_on_delivery"),
-    description: t("supplier_portal.residual.text.retailers_collect_cash_reconcile_manually"),
+    description: "Retailers collect cash; reconcile manually.",
     icon: "pricing",
   },
 ] as const;
@@ -71,13 +71,13 @@ const ACCEPTOR_OPTIONS = [
   {
     id: "SUPPLIER" as const,
     label: t("supplier_portal.residual.text.supplier_accepts_payments"),
-    description: t("supplier_portal.residual.text.card_revenue_settles_to_your_supplier_treasury_account"),
+    description: "Card revenue settles to your supplier treasury account.",
     icon: "supplier",
   },
   {
     id: "WAREHOUSE" as const,
     label: t("supplier_portal.residual.text.warehouse_accepts_payments"),
-    description: t("supplier_portal.residual.text.fulfilling_nodes_collect_payment_per_dispatch_lane"),
+    description: "Fulfilling nodes collect payment per dispatch lane.",
     icon: "warehouse",
   },
 ];

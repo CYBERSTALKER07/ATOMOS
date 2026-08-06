@@ -26,8 +26,8 @@ const fontPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: t("warehouse_portal.residual.text.warehouse_portal_pegasusx"),
-  description: t("warehouse_portal.residual.text.single_tenant_logistics_control_plane"),
+  title: "Warehouse Portal - pegasusX",
+  description: "Single-tenant logistics control plane.",
 };
 
 export default function RootLayout({

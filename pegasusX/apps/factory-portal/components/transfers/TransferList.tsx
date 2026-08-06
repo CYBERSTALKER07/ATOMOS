@@ -20,7 +20,6 @@ export interface Transfer {
 }
 
 export function stateClass(state: string): string {
-  const t = usePortalT();
   const map: Record<string, string> = {
     DRAFT: 'status-chip--draft',
     APPROVED: 'status-chip--approved',
@@ -45,6 +44,7 @@ interface TransferListProps {
 }
 
 export function TransferList({ transfers }: TransferListProps) {
+  const t = usePortalT();
   return (
     <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">
       <div className="overflow-x-auto">

@@ -14,7 +14,6 @@ export type ProfileDraft = {
 };
 
 export function draftFromProfile(profile: SupplierProfile): ProfileDraft {
-  const t = usePortalT();
   return {
     legal_name: profile.legal_name ?? "",
     contact_name: profile.contact_name ?? "",
@@ -68,6 +67,7 @@ export function ContactDetailsForm({
   onSave,
   onReset,
 }: ContactDetailsFormProps) {
+  const t = usePortalT();
   return (
     <div className="md-card p-6 space-y-4">
       <h2 className="md-typescale-title-medium font-semibold">{t("supplier_portal.profile.contact_details_form.text.edit_contact_details")}</h2>

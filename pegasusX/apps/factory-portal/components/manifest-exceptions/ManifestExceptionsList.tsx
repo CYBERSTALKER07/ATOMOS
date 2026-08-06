@@ -23,7 +23,6 @@ const REASON_COLORS: Record<string, string> = {
 };
 
 export function shortId(id: string): string {
-  const t = usePortalT();
   return id.length > 12 ? `${id.slice(0, 8)}…` : id;
 }
 
@@ -52,6 +51,7 @@ export function ManifestExceptionsList({
   resolvingId = null,
   onResolve,
 }: ManifestExceptionsListProps) {
+  const t = usePortalT();
   return (
     <PageSection title={t("factory_portal.manifest_exceptions.manifest_exceptions_list.text.exception_inbox")} description={t("factory_portal.residual.text.rows_highlighted_when_attempt_count_reaches_dlq_threshold")} className="mt-6">
       <div className="overflow-x-auto -mx-5 px-5">

@@ -63,7 +63,7 @@ export default function PaydayCalendarPage() {
       multiplier: form.multiplier,
       meta: {
         title: form.title || "Payday Spike",
-        description: t("supplier_portal.residual.text.monthly_salary_payout")
+        description: "Monthly salary payout"
       }
     };
 

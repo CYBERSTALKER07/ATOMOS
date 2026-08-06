@@ -20,8 +20,8 @@ const fontGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: t("factory_portal.residual.text.factory_portal_pegasus"),
-  description: t("factory_portal.residual.text.factory_loading_bay_transfer_management_and_dispatch_operations"),
+  title: "Factory Portal — Pegasus",
+  description: "Factory loading bay, transfer management, and dispatch operations.",
 };
 
 export default function RootLayout({

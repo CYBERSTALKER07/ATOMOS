@@ -20,8 +20,8 @@ const fontGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: t("supplier_portal.residual.text.supplier_portal_pegasusx"),
-  description: t("supplier_portal.residual.text.single_tenant_logistics_control_plane"),
+  title: "Supplier Portal - pegasusX",
+  description: "Single-tenant logistics control plane.",
 };
 
 export default function RootLayout({

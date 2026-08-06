@@ -1,5 +1,7 @@
 'use client';
 
+
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef } from 'react';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
@@ -16,6 +18,7 @@ type Props = {
 };
 
 export default function FleetLiveMap({ routes, className, loading, error }: Props) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {

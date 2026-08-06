@@ -148,6 +148,7 @@ export default function LiveOpsMap({
 }
 
 export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) {
+  const t = usePortalT();
   if (!route) {
     return (
       <div className="p-4 text-sm" style={{ color: "var(--desk-text-secondary)" }}>

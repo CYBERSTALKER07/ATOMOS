@@ -19,6 +19,7 @@ interface SupplierIdentityCardProps {
 }
 
 export function SupplierIdentityCard({ profile }: SupplierIdentityCardProps) {
+  const t = usePortalT();
   return (
     <dl className="md-card p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md-typescale-body-medium">
       <ReadOnlyField label={t("supplier_portal.residual.text.supplier_id")} value={profile.supplier_id} />
