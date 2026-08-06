@@ -131,19 +131,12 @@ fun TreasuryScreen(
                             }
                         }
                     }
-<<<<<<< HEAD
-                    1 -> TreasuryTransactionList(
-                        invoices = invoices,
-                        fmt = fmt
-                    )
-=======
                     1 -> {
                         TreasuryTransactionList(
                             invoices = invoices,
                             fmt = fmt
                         )
                     }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 }
             }
         }

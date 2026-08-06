@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../external-secrets/backend-go-externalsecret.yaml
   - ../../planning_training_export_cronjob.yaml
   - ../../predictive_push_cronjob.yaml
   - ../../ai-worker/configmap.yaml
@@ -39,10 +40,12 @@ images:
 
 patches:
   - path: ingress-managed-cert-patch.yaml
+  - path: backend-go-externalsecret-patch.yaml
   - target:
       kind: Deployment
       name: optimizer-core
     patch: |-
+      # Keep scaled to 0 until a real optimizer-core AR image exists; then raise ≥ 1.
       - op: replace
         path: /spec/replicas
         value: 0

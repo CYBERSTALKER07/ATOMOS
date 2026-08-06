@@ -99,6 +99,41 @@ output "google_maps_api_key_secret_id" {
   value       = google_secret_manager_secret.google_maps_api_key.secret_id
 }
 
+output "internal_api_key_secret_id" {
+  description = "Secret Manager secret id for INTERNAL_API_KEY."
+  value       = google_secret_manager_secret.internal_api_key.secret_id
+}
+
+output "payme_webhook_secret_id" {
+  description = "Secret Manager secret id for Payme webhook secret."
+  value       = google_secret_manager_secret.payme_webhook_secret.secret_id
+}
+
+output "click_webhook_secret_id" {
+  description = "Secret Manager secret id for Click webhook secret."
+  value       = google_secret_manager_secret.click_webhook_secret.secret_id
+}
+
+output "global_pay_service_id_secret_id" {
+  description = "Secret Manager secret id for Global Pay service id."
+  value       = google_secret_manager_secret.global_pay_service_id.secret_id
+}
+
+output "global_pay_username_secret_id" {
+  description = "Secret Manager secret id for Global Pay username."
+  value       = google_secret_manager_secret.global_pay_username.secret_id
+}
+
+output "global_pay_password_secret_id" {
+  description = "Secret Manager secret id for Global Pay password."
+  value       = google_secret_manager_secret.global_pay_password.secret_id
+}
+
+output "redis_auth_secret_id" {
+  description = "Secret Manager secret id for Redis AUTH (maps to K8s redis-password)."
+  value       = google_secret_manager_secret.redis_auth.secret_id
+}
+
 output "maps_android_api_key_secret_id" {
   description = "GSM secret id for Android Maps SDK API key."
   value       = google_secret_manager_secret.maps_android_api_key.secret_id
@@ -136,5 +171,5 @@ output "windows_codesign_password_secret_id" {
 
 output "artifact_registry_url" {
   description = "Artifact Registry repository URL when enable_gke=true."
-  value = var.enable_gke ? "${google_artifact_registry_repository.pegasusx[0].location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.pegasusx[0].repository_id}" : ""
+  value       = var.enable_gke ? "${google_artifact_registry_repository.pegasusx[0].location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.pegasusx[0].repository_id}" : ""
 }

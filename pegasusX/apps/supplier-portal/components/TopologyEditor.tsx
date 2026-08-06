@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type {
@@ -209,6 +210,7 @@ type TopologyEditorProps = {
 };
 
 export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
+  const t = usePortalT();
   const baseline = useMemo(() => draftsFromTopology(initial), [initial]);
   const [warehouses, setWarehouses] = useState(baseline.warehouses);
   const [factories, setFactories] = useState(baseline.factories);
@@ -242,7 +244,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
       setWarehouses(next.warehouses);
       setFactories(next.factories);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_topology_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_topology_failed"));
     } finally {
       setSaving(false);
     }
@@ -261,7 +263,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="md-typescale-title-medium">Warehouses</h2>
+          <h2 className="md-typescale-title-medium">{t("portal.nav.warehouses")}</h2>
           <button
             type="button"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
@@ -299,7 +301,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                       const idx = warehouses.findIndex(w => w.key === warehouse.key);
                       setWarehouses((prev) => prev.filter((row) => row.key !== warehouse.key));
                       push(`Removed warehouse ${warehouse.name || "Untitled"}`, "info", {
-                        label: "Undo",
+                        label: t("supplier_portal.residual.text.undo"),
                         onClick: () => {
                           setWarehouses((prev) => {
                             const copy = [...prev];
@@ -313,7 +315,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
               }
             >
               <Field
-                label="Name"
+                label={t("supplier_portal.analytics.knowledge_graph.text.name")}
                 value={warehouse.name}
                 onChange={(value) =>
                   setWarehouses((prev) =>
@@ -322,7 +324,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 }
               />
               <LocationPicker
-                label="Warehouse address"
+                label={t("supplier_portal.residual.text.warehouse_address")}
                 value={{
                   address: warehouse.address,
                   lat: warehouse.lat,
@@ -346,7 +348,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 }
               />
               <Field
-                label="Coverage radius (km)"
+                label={t("supplier_portal.residual.text.coverage_radius_km")}
                 value={warehouse.coverage_radius_km}
                 onChange={(value) =>
                   setWarehouses((prev) =>
@@ -356,11 +358,11 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <SelectField
-                  label="Transfer mode"
+                  label={t("supplier_portal.residual.text.transfer_mode")}
                   value={warehouse.transfer_mode}
                   options={[
-                    { value: "TRUCK", label: "Truck replenishment" },
-                    { value: "INTERNAL", label: "Internal / co-located" },
+                    { value: "TRUCK", label: t("supplier_portal.residual.text.truck_replenishment") },
+                    { value: "INTERNAL", label: t("supplier_portal.residual.text.internal_co_located") },
                   ]}
                   onChange={(value) =>
                     setWarehouses((prev) =>
@@ -373,10 +375,10 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   }
                 />
                 <SelectField
-                  label="Co-locate with factory"
+                  label={t("supplier_portal.residual.text.co_locate_with_factory")}
                   value={warehouse.co_locate_with_factory_id}
                   options={[
-                    { value: "", label: "None" },
+                    { value: "", label: t("supplier_portal.residual.text.none") },
                     ...factoryOptions.map((factory) => ({ value: factory.id, label: factory.name })),
                   ]}
                   onChange={(value) =>
@@ -389,11 +391,11 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 />
               </div>
               <SelectField
-                label="Default out-of-stock policy"
+                label={t("supplier_portal.residual.text.default_out_of_stock_policy")}
                 value={warehouse.default_out_of_stock_policy}
                 options={[
-                  { value: "REJECT", label: "Reject orders when out of stock" },
-                  { value: "ACCEPT_BACKORDER", label: "Accept backorders when out of stock" },
+                  { value: "REJECT", label: t("supplier_portal.residual.text.reject_orders_when_out_of_stock") },
+                  { value: "ACCEPT_BACKORDER", label: t("supplier_portal.residual.text.accept_backorders_when_out_of_stock") },
                 ]}
                 onChange={(value) =>
                   setWarehouses((prev) =>
@@ -440,7 +442,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 {warehouse.initial_inventory.map((seed) => (
                   <div key={seed.key} className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-end">
                     <Field
-                      label="Product ID"
+                      label={t("supplier_portal.analytics.demand.signals.text.product_id")}
                       value={seed.product_id}
                       onChange={(value) =>
                         setWarehouses((prev) =>
@@ -458,7 +460,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                       }
                     />
                     <Field
-                      label="Quantity"
+                      label={t("warehouse_portal.inventory.inventory_stock_list.text.quantity")}
                       value={seed.quantity}
                       onChange={(value) =>
                         setWarehouses((prev) =>
@@ -497,7 +499,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 ))}
               </div>
               <ToggleRow
-                label="Active"
+                label={t("retailer_desktop.stock.local_skus.text.active")}
                 checked={warehouse.is_active}
                 onChange={(checked) =>
                   setWarehouses((prev) =>
@@ -506,7 +508,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 }
               />
               <ToggleRow
-                label="On shift"
+                label={t("supplier_portal.residual.text.on_shift")}
                 checked={warehouse.is_on_shift}
                 onChange={(checked) =>
                   setWarehouses((prev) =>
@@ -521,7 +523,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="md-typescale-title-medium">Factories</h2>
+          <h2 className="md-typescale-title-medium">{t("portal.nav.factories")}</h2>
           <button
             type="button"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
@@ -556,7 +558,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 const idx = factories.findIndex(f => f.key === factory.key);
                 setFactories((prev) => prev.filter((row) => row.key !== factory.key));
                 push(`Removed factory ${factory.name || "Untitled"}`, "info", {
-                  label: "Undo",
+                  label: t("supplier_portal.residual.text.undo"),
                   onClick: () => {
                     setFactories((prev) => {
                       const copy = [...prev];
@@ -568,7 +570,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
               }}
             >
               <Field
-                label="Name"
+                label={t("supplier_portal.analytics.knowledge_graph.text.name")}
                 value={factory.name}
                 onChange={(value) =>
                   setFactories((prev) =>
@@ -577,7 +579,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 }
               />
               <LocationPicker
-                label="Factory address"
+                label={t("supplier_portal.residual.text.factory_address")}
                 value={{
                   address: factory.address,
                   lat: factory.lat,
@@ -601,7 +603,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 }
               />
               <ToggleRow
-                label="Active"
+                label={t("retailer_desktop.stock.local_skus.text.active")}
                 checked={factory.is_active}
                 onChange={(checked) =>
                   setFactories((prev) =>

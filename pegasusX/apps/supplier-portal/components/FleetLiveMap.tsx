@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef } from 'react';
 import type { SupplierFleetLiveRoute } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
@@ -48,6 +49,7 @@ export default function FleetLiveMap({
   error,
   enable3DView = false,
 }: FleetLiveMapProps) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
   const pointCollection = useAnimatedDriverMarkers(routes);
 
@@ -92,7 +94,7 @@ export default function FleetLiveMap({
   if (loading && routes.length === 0) {
     return (
       <div className={className} style={{ color: 'var(--color-md-outline, var(--muted))' }}>
-        <p className="text-sm text-center px-4 py-8">Loading live fleet map…</p>
+        <p className="text-sm text-center px-4 py-8">{t("supplier_portal.fleet_live_map.text.loading_live_fleet_map")}</p>
       </div>
     );
   }

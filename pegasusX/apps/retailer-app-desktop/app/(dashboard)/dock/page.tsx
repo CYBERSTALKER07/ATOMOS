@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Chip } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
@@ -39,24 +40,24 @@ const chipCfg: Record<
     label: string;
   }
 > = {
-  DISPATCHED: { color: "warning", label: "Dispatched" },
-  IN_TRANSIT: { color: "warning", label: "In Transit" },
-  ARRIVING: { color: "accent", label: "Arriving" },
-  ARRIVED: { color: "success", label: "Arrived" },
-  ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
-  AWAITING_PAYMENT: { color: "danger", label: "Awaiting Payment" },
-  PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
-  PENDING: { color: "default", label: "Pending" },
-  PENDING_REVIEW: { color: "default", label: "Pending Review" },
-  LOADED: { color: "default", label: "Loaded" },
-  COMPLETED: { color: "success", label: "Completed" },
-  CANCELLED: { color: "danger", label: "Cancelled" },
-  CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
-  NO_CAPACITY: { color: "danger", label: "No Capacity" },
-  SCHEDULED: { color: "default", label: "Scheduled" },
-  AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
-  QUARANTINE: { color: "danger", label: "Quarantined" },
-  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  DISPATCHED: { color: "warning", label: t("supplier_portal.dispatch.text.dispatched") },
+  IN_TRANSIT: { color: "warning", label: t("retailer_desktop.residual.text.in_transit") },
+  ARRIVING: { color: "accent", label: t("retailer_desktop.residual.text.arriving") },
+  ARRIVED: { color: "success", label: t("retailer_desktop.residual.text.arrived") },
+  ARRIVED_SHOP_CLOSED: { color: "warning", label: t("retailer_desktop.residual.text.shop_closed") },
+  AWAITING_PAYMENT: { color: "danger", label: t("retailer_desktop.residual.text.awaiting_payment") },
+  PENDING_CASH_COLLECTION: { color: "warning", label: t("retailer_desktop.residual.text.cash_collection") },
+  PENDING: { color: "default", label: t("retailer_desktop.residual.text.pending") },
+  PENDING_REVIEW: { color: "default", label: t("retailer_desktop.residual.text.pending_review") },
+  LOADED: { color: "default", label: t("retailer_desktop.residual.text.loaded") },
+  COMPLETED: { color: "success", label: t("portal.page.orders.filter.completed") },
+  CANCELLED: { color: "danger", label: t("portal.page.orders.filter.cancelled") },
+  CANCEL_REQUESTED: { color: "danger", label: t("retailer_desktop.residual.text.cancel_requested") },
+  NO_CAPACITY: { color: "danger", label: t("retailer_desktop.residual.text.no_capacity") },
+  SCHEDULED: { color: "default", label: t("supplier_portal.demand.signals.text.scheduled") },
+  AUTO_ACCEPTED: { color: "default", label: t("retailer_desktop.residual.text.auto_accepted") },
+  QUARANTINE: { color: "danger", label: t("retailer_desktop.residual.text.quarantined") },
+  DELIVERED_ON_CREDIT: { color: "success", label: t("retailer_desktop.residual.text.delivered_credit") },
 };
 
 const EXPANDED_SUPPLIERS_KEY = "retailer_dock_expanded_suppliers";
@@ -96,6 +97,7 @@ interface SupplierGroup {
 /* ── Page ── */
 
 export default function DockPage() {
+  const t = usePortalT();
   const { data, loading, error, isRefreshing, mutate } = useLiveData<TrackingResponse>(
     "/v1/retailer/tracking",
     15_000,
@@ -123,28 +125,28 @@ export default function DockPage() {
       return {
         kind: "offline" as const,
         icon: WifiOff,
-        message: "Network offline. Showing the latest cached dock queue.",
+        message: t("retailer_desktop.residual.text.network_offline_showing_the_latest_cached_dock_queue"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Updates may arrive with delay.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_updates_may_arrive_with_delay"),
       };
     }
     if (error) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Queue refresh failed. Retrying in the background.",
+        message: t("retailer_desktop.residual.text.queue_refresh_failed_retrying_in_the_background"),
       };
     }
     if (isRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing live dock updates...",
+        message: t("retailer_desktop.residual.text.syncing_live_dock_updates"),
       };
     }
     return null;
@@ -422,8 +424,8 @@ export default function DockPage() {
 
       <PageChrome
         icon="dock"
-        title="Dock Control"
-        description="Real-time arrival queue and proximity-locked secure verification."
+        title={t("retailer_desktop.dock.text.dock_control")}
+        description={t("retailer_desktop.residual.text.real_time_arrival_queue_and_proximity_locked_secure_verification")}
         loading={loading}
         skeletonVariant="table"
       >
@@ -481,7 +483,7 @@ export default function DockPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between mb-2">
               <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Arrived
+                {t("retailer_desktop.residual.text.arrived")}
               </span>
               <MapPin size={18} style={{ color: "var(--desk-success)" }} />
             </div>
@@ -499,7 +501,7 @@ export default function DockPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between mb-2">
               <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                In Transit
+                {t("retailer_desktop.residual.text.in_transit")}
               </span>
               <Truck size={18} style={{ color: "var(--desk-info)" }} />
             </div>

@@ -933,3 +933,111 @@ data class ClientPolicyResponse(
     @SerialName("defer_reason") val deferReason: String? = null,
     val outdated: Boolean = false,
 )
+
+/** §8.7 Wave 1A stock lot putaway. */
+@Serializable
+data class StockLotPutawayRequest(
+    @SerialName("product_id") val productId: String,
+    @SerialName("location_id") val locationId: String,
+    val quantity: Long,
+    @SerialName("lot_code") val lotCode: String? = null,
+    @SerialName("expiry_date") val expiryDate: String? = null,
+)
+
+@Serializable
+data class StockLotPutawayResponse(
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("quantity_on_hand") val quantityOnHand: Long = 0,
+    val status: String = "",
+)
+
+@Serializable
+data class WarehouseBinCreateRequest(
+    @SerialName("location_id") val locationId: String? = null,
+    val zone: String? = null,
+    @SerialName("location_type") val locationType: String = "PICK",
+    @SerialName("pick_sequence") val pickSequence: Long = 0,
+)
+
+@Serializable
+data class WarehouseBinLocation(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    val zone: String? = null,
+    @SerialName("location_type") val locationType: String = "PICK",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class WarehouseBinListResponse(
+    val bins: List<WarehouseBinLocation> = emptyList(),
+    @SerialName("lots_enabled") val lotsEnabled: Boolean = false,
+)
+
+/** §8.7 Wave 1B pick waves. */
+@Serializable
+data class PickTask(
+    @SerialName("task_id") val taskId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("quantity_requested") val quantityRequested: Long = 0,
+    @SerialName("quantity_picked") val quantityPicked: Long = 0,
+    val status: String = "PENDING",
+    @SerialName("pick_sequence") val pickSequence: Long = 0,
+)
+
+@Serializable
+data class PickWave(
+    @SerialName("wave_id") val waveId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    val status: String = "",
+    val tasks: List<PickTask> = emptyList(),
+)
+
+@Serializable
+data class PickWaveListResponse(
+    val waves: List<PickWave> = emptyList(),
+    @SerialName("pick_waves_enabled") val pickWavesEnabled: Boolean = false,
+)
+
+@Serializable
+data class PickWaveCreateRequest(
+    @SerialName("manifest_id") val manifestId: String,
+)
+
+@Serializable
+data class PickTaskConfirmRequest(
+    @SerialName("quantity_picked") val quantityPicked: Long? = null,
+)
+
+@Serializable
+data class CycleCount(
+    @SerialName("count_id") val countId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("expected_qty") val expectedQty: Long = 0,
+    @SerialName("counted_qty") val countedQty: Long? = null,
+    val status: String = "OPEN",
+)
+
+@Serializable
+data class CycleCountListResponse(
+    val counts: List<CycleCount> = emptyList(),
+)
+
+@Serializable
+data class CycleCountCreateRequest(
+    @SerialName("location_id") val locationId: String,
+    @SerialName("product_id") val productId: String,
+    @SerialName("expected_qty") val expectedQty: Long? = null,
+)
+
+@Serializable
+data class CycleCountSubmitRequest(
+    @SerialName("counted_qty") val countedQty: Long,
+)

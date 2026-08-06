@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-client';
@@ -15,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import { ReplenishmentList } from '@/components/replenishment/ReplenishmentList';
 
 export default function ReplenishmentPage() {
+  const t = usePortalT();
   const [insights, setInsights] = useState<WarehouseReplenishmentInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,8 +73,8 @@ export default function ReplenishmentPage() {
     <PageTransition>
       <PageChrome
         icon="forecast"
-        title="Replenishment insights"
-        description="Stock velocity alerts with approve/dismiss actions for this warehouse node."
+        title={t("warehouse_portal.replenishment.text.replenishment_insights")}
+        description={t("warehouse_portal.residual.text.stock_velocity_alerts_with_approve_dismiss_actions_for_this_ware")}
         loading={loading}
         skeletonVariant="table"
         error={loadError}
@@ -97,23 +99,23 @@ export default function ReplenishmentPage() {
         )}
 
         <KpiStatGrid columns={3}>
-          <KpiStatCard label="Open insights" value={openInsights.length} sub="Awaiting warehouse action" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.open_insights")} value={openInsights.length} sub="Awaiting warehouse action" />
           <KpiStatCard
-            label="Critical urgency"
+            label={t("warehouse_portal.residual.text.critical_urgency")}
             value={criticalCount}
             sub={criticalCount > 0 ? 'Auto-transfer may apply' : 'No critical SKUs'}
           />
-          <KpiStatCard label="Warning / high" value={warningCount} sub="Monitor burn rate" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.warning_high")} value={warningCount} sub="Monitor burn rate" />
         </KpiStatGrid>
 
         {insights.length === 0 ? (
           <EmptyState
             variant="no-data"
-            headline="No replenishment insights"
-            body="The replenishment engine will surface stock velocity alerts when burn thresholds are crossed."
+            headline={t("warehouse_portal.residual.text.no_replenishment_insights")}
+            body={t("warehouse_portal.residual.text.the_replenishment_engine_will_surface_stock_velocity_alerts_when")}
           />
         ) : (
-          <PageSection title="Insight queue" description="Approve to create factory transfer rows; dismiss to clear." className="mt-6">
+          <PageSection title={t("warehouse_portal.replenishment.text.insight_queue")} description={t("warehouse_portal.residual.text.approve_to_create_factory_transfer_rows_dismiss_to_clear")} className="mt-6">
             <ReplenishmentList
               insights={insights}
               actingId={actingId}

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Building2, Download, Loader2, RefreshCw } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
@@ -50,6 +51,7 @@ function todayUTC() {
  * Honest empty when no HQ writers data or HQ_ANALYTICS_ENABLED off (404).
  */
 export default function HqPage() {
+  const t = usePortalT();
   const [day, setDay] = useState(todayUTC);
   const [summary, setSummary] = useState<HqSummary | null>(null);
   const [byLoc, setByLoc] = useState<LocItem[]>([]);
@@ -132,8 +134,8 @@ export default function HqPage() {
 
   return (
     <PageChrome
-      title="Franchise HQ"
-      description="Multi-location POS sales rollup. Sum of locations equals org net (C2.1 writers)."
+      title={t("portal.nav.franchise_hq")}
+      description={t("retailer_desktop.residual.text.multi_location_pos_sales_rollup_sum_of_locations_equals_org_net_")}
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -178,7 +180,7 @@ export default function HqPage() {
         {disabled ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
             <Building2 className="h-10 w-10 opacity-40" />
-            <p className="text-sm">HQ analytics not enabled for this environment.</p>
+            <p className="text-sm">{t("retailer_desktop.hq.text.hq_analytics_not_enabled_for_this_environment")}</p>
           </div>
         ) : (
           <>
@@ -207,7 +209,7 @@ export default function HqPage() {
 
             <section className="rounded-xl border border-border bg-card p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-semibold">Sales by location</h2>
+                <h2 className="font-semibold">{t("retailer_desktop.hq.text.sales_by_location")}</h2>
                 <span
                   className={`text-xs ${balanced ? "text-emerald-600" : "text-red-600"}`}
                 >
@@ -217,15 +219,15 @@ export default function HqPage() {
                 </span>
               </div>
               {byLoc.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No locations with sales.</p>
+                <p className="text-sm text-muted-foreground">{t("retailer_desktop.hq.text.no_locations_with_sales")}</p>
               ) : (
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
-                      <th className="py-2 font-medium">Location</th>
-                      <th className="py-2 font-medium">Sold</th>
-                      <th className="py-2 font-medium">Voided</th>
-                      <th className="py-2 font-medium">Net</th>
+                      <th className="py-2 font-medium">{t("portal.nav.location")}</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.sold")}</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.voided")}</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.net")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -243,17 +245,17 @@ export default function HqPage() {
             </section>
 
             <section className="rounded-xl border border-border bg-card p-4">
-              <h2 className="mb-3 font-semibold">Sales by SKU</h2>
+              <h2 className="mb-3 font-semibold">{t("retailer_desktop.hq.text.sales_by_sku")}</h2>
               {bySku.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No SKUs.</p>
+                <p className="text-sm text-muted-foreground">{t("retailer_desktop.hq.text.no_skus")}</p>
               ) : (
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
                       <th className="py-2 font-medium">SKU</th>
-                      <th className="py-2 font-medium">Sold</th>
-                      <th className="py-2 font-medium">Voided</th>
-                      <th className="py-2 font-medium">Net</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.sold")}</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.voided")}</th>
+                      <th className="py-2 font-medium">{t("retailer_desktop.hq.text.net")}</th>
                     </tr>
                   </thead>
                   <tbody>

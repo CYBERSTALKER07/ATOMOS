@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef } from 'react';
 import type { DispatchProposedRoute, RouteGeometryWire } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
@@ -46,6 +47,7 @@ function toLineFeature(
 }
 
 export default function DispatchPreviewMap({ routes, className }: DispatchPreviewMapProps) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   const featureCollection = useMemo<RouteFeatureCollection>(() => {
@@ -80,7 +82,7 @@ export default function DispatchPreviewMap({ routes, className }: DispatchPrevie
           color: 'var(--color-md-outline, var(--muted))',
         }}
       >
-        <p className="text-sm text-center px-4">Route preview unavailable until optimizer proposes stops with coordinates.</p>
+        <p className="text-sm text-center px-4">{t("supplier_portal.dispatch_preview_map.text.route_preview_unavailable_until_optimizer_proposes_stops_with_co")}</p>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { warehouseCreateSupplyRequestKey, warehouseSupplyRequestTransitionKey } from '@pegasusx/api-client';
@@ -21,6 +22,7 @@ interface ForecastItem {
 }
 
 export default function NewSupplyRequestPage() {
+  const t = usePortalT();
   const router = useRouter();
   const { toast } = useToast();
   const [factoryId, setFactoryId] = useState('');
@@ -109,8 +111,8 @@ export default function NewSupplyRequestPage() {
     <PageTransition>
       <PageChrome
         icon="supplyRequests"
-        title="New Supply Request"
-        description="Create a factory replenishment request from forecast or manual line items."
+        title={t("warehouse_portal.supply_requests.new.text.new_supply_request")}
+        description={t("warehouse_portal.residual.text.create_a_factory_replenishment_request_from_forecast_or_manual_l")}
         actions={
           <button type="button" onClick={() => router.back()} className="p-1 rounded-lg hover:bg-[var(--surface)]">
             <Icon name="left" size={20} />
@@ -121,12 +123,12 @@ export default function NewSupplyRequestPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Factory selector */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Factory ID</label>
+          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.factory_id")}</label>
           <input
             type="text"
             value={factoryId}
             onChange={e => setFactoryId(e.target.value)}
-            placeholder="Enter factory UUID"
+            placeholder={t("warehouse_portal.supply_requests.new.text.enter_factory_uuid")}
             required
             className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
             style={{
@@ -139,7 +141,7 @@ export default function NewSupplyRequestPage() {
 
         {/* Delivery date */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Requested Delivery Date</label>
+          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.requested_delivery_date")}</label>
           <input
             type="date"
             value={deliveryDate}
@@ -162,16 +164,16 @@ export default function NewSupplyRequestPage() {
               onChange={e => setUseForecast(e.target.checked)}
               className="w-4 h-4 rounded"
             />
-            <span className="text-sm font-medium">Use AI demand forecast</span>
+            <span className="text-sm font-medium">{t("warehouse_portal.supply_requests.new.text.use_ai_demand_forecast")}</span>
           </label>
-          <span className="text-xs text-[var(--muted)]">Auto-fill items from demand engine</span>
+          <span className="text-xs text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.auto_fill_items_from_demand_engine")}</span>
         </div>
 
         {/* Forecast preview */}
         {useForecast && (
           <div className="border border-[var(--border)] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between" style={{ background: 'var(--surface)' }}>
-              <span className="text-sm font-semibold">Demand Forecast (7-day)</span>
+              <span className="text-sm font-semibold">{t("warehouse_portal.supply_requests.new.text.demand_forecast_7_day")}</span>
               <button type="button" onClick={loadForecast} className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
                 <Icon name="refresh" size={14} />
               </button>
@@ -190,11 +192,11 @@ export default function NewSupplyRequestPage() {
               <table className="desk-table w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">Product</th>
-                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">Stock</th>
-                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">Recommended</th>
-                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">Stockout In</th>
-                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">Priority</th>
+                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">{t("portal.nav.stock")}</th>
+                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.recommended")}</th>
+                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.stockout_in")}</th>
+                    <th className="text-left px-4 py-2 text-xs text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.priority")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -226,7 +228,7 @@ export default function NewSupplyRequestPage() {
         {!useForecast && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Manual Items</span>
+              <span className="text-sm font-medium">{t("warehouse_portal.supply_requests.new.text.manual_items")}</span>
               <button
                 type="button"
                 onClick={() => setManualItems(prev => [...prev, { product_id: '', quantity: 0, unit: 'units' }])}
@@ -239,7 +241,7 @@ export default function NewSupplyRequestPage() {
               <div key={idx} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Product ID"
+                  placeholder={t("warehouse_portal.supply_requests.new.text.product_id")}
                   value={item.product_id}
                   onChange={e => {
                     const next = [...manualItems];
@@ -251,7 +253,7 @@ export default function NewSupplyRequestPage() {
                 />
                 <input
                   type="number"
-                  placeholder="Qty"
+                  placeholder={t("warehouse_portal.pick_waves.text.qty")}
                   min={1}
                   value={item.quantity || ''}
                   onChange={e => {
@@ -276,12 +278,12 @@ export default function NewSupplyRequestPage() {
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Notes</label>
+          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.notes")}</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            placeholder="Optional notes for the factory..."
+            placeholder={t("warehouse_portal.supply_requests.new.text.optional_notes_for_the_factory")}
             className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none resize-y"
             style={{
               background: 'var(--field-background)',

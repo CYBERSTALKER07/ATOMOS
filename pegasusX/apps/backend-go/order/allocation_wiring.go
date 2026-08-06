@@ -231,7 +231,13 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 		}
 	}
 
-	if err := ReserveLineItemsInTxn(ctx, txn, order.SupplierID, targetWarehouse, order.LineItems); err != nil {
+	expected := time.Time{}
+	if order.RequestedDeliveryDate != nil {
+		expected = order.RequestedDeliveryDate.UTC()
+	} else if order.DeliverBefore != nil {
+		expected = order.DeliverBefore.UTC()
+	}
+	if err := ReserveLineItemsForOrderInTxn(ctx, txn, order.SupplierID, targetWarehouse, order.OrderID, order.RetailerID, expected, order.LineItems); err != nil {
 		return fmt.Errorf("reserve stock race: %w", err)
 	}
 	if err := insertStockReservationMarkerInTxn(txn, order.OrderID); err != nil {

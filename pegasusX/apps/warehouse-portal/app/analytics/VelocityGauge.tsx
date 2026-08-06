@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import {
   RadialBarChart,
   RadialBar,
@@ -14,6 +15,7 @@ type VelocityGaugeProps = {
 };
 
 export default function VelocityGauge({ className, avgDispatchMinutes }: VelocityGaugeProps) {
+  const t = usePortalT();
   if (avgDispatchMinutes == null || Number.isNaN(avgDispatchMinutes)) {
     return (
       <div
@@ -27,7 +29,7 @@ export default function VelocityGauge({ className, avgDispatchMinutes }: Velocit
           color: 'var(--desk-text-secondary)',
         }}
       >
-        <p className="md-typescale-body-medium">No dispatch velocity data</p>
+        <p className="md-typescale-body-medium">{t("warehouse_portal.analytics.velocity_gauge.text.no_dispatch_velocity_data")}</p>
       </div>
     );
   }

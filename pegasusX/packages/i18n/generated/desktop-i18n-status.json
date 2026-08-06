@@ -1,0 +1,23 @@
+{
+  "status": "desktop_wired_draft",
+  "generated_at": "2026-08-06",
+  "catalog_keys": 2754,
+  "scripts": [
+    "packages/i18n/scripts/extract-desktop-portals.mjs",
+    "packages/i18n/scripts/merge-desktop-catalog.mjs",
+    "packages/i18n/scripts/wire-desktop-portals.mjs",
+    "packages/i18n/scripts/residual-desktop-portals.mjs",
+    "packages/i18n/scripts/repair-desktop-wire.mjs"
+  ],
+  "known_false_positives": [
+    "ISO date placeholders in forms",
+    "ALL_CAPS lifecycle/status enum codes left as codes",
+    "Developer console strings",
+    "Some residual.ru==en short technical labels pending linguistic QA"
+  ],
+  "non_claims": [
+    "Not full platform i18n Done",
+    "Not mobile NSLocalizedString/strings.xml consumers",
+    "Not certified human translation sign-off"
+  ]
+}

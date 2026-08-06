@@ -117,6 +117,8 @@
       "description": "Gate-3 Partner API keys, /partner/v1 orders, IDOR, outbound webhook ping, export + replay + EDI-lite (SKIPPED until Partner migrations applied)",
       "markers": [
         "PX_E2E_PARTNER_KEY_AUTH_OK",
+        "PX_E2E_PARTNER_OAUTH_OK",
+        "PX_E2E_PARTNER_OAUTH_SKIPPED",
         "PX_E2E_PARTNER_ORDER_CREATE_OK",
         "PX_E2E_PARTNER_IDOR_DENIED",
         "PX_E2E_WEBHOOK_DELIVERED_OK",
@@ -140,6 +142,47 @@
         "PX_E2E_GS1_SSCC_SKIPPED",
         "PX_E2E_GS1_ZPL_OK",
         "PX_E2E_GS1_ZPL_SKIPPED"
+      ]
+    },
+    "wms_lots": {
+      "description": "§8.7 Wave 1A bin locations + StockLots putaway + FEFO ordering (flag-gated WMS_LOTS_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_PUTAWAY_OK",
+        "PX_E2E_WMS_PUTAWAY_SKIPPED",
+        "PX_E2E_WMS_FEFO_OK",
+        "PX_E2E_WMS_FEFO_SKIPPED"
+      ]
+    },
+    "wms_pick_waves": {
+      "description": "§8.7 Wave 1B PickWaves/PickTasks + payload seal gate (flag-gated WMS_PICK_WAVES_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_PICK_WAVE_OK",
+        "PX_E2E_WMS_PICK_WAVE_SKIPPED",
+        "PX_E2E_WMS_SEAL_GATE_OK",
+        "PX_E2E_WMS_SEAL_GATE_SKIPPED"
+      ]
+    },
+    "wms_cycle_counts": {
+      "description": "§8.7 Wave 1C/PR-4 CycleCounts + apply-on-approve adjustments (flag-gated WMS_CYCLE_COUNTS_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_CYCLE_COUNT_OK",
+        "PX_E2E_WMS_CYCLE_COUNT_SKIPPED",
+        "PX_E2E_WMS_ADJUST_APPLY_OK",
+        "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
+      ]
+    },
+    "wms_cold_chain": {
+      "description": "§8.7 PR-6 TemperatureReadings + quarantine (flag-gated WMS_COLD_CHAIN_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_COLD_CHAIN_OK",
+        "PX_E2E_WMS_COLD_CHAIN_SKIPPED"
+      ]
+    },
+    "optimizer_constraints": {
+      "description": "§8.5 OR-Tools cold-chain vehicle filter via optimizer-core (soft-skip when sidecar absent)",
+      "markers": [
+        "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
+        "PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED"
       ]
     },
     "collections": {
@@ -231,6 +274,7 @@
     "PX_E2E_CLAIMS_MEDIA_TICKET_OK",
     "PX_E2E_CLAIMS_FILE_OK",
     "PX_E2E_PARTNER_KEY_AUTH_OK",
+    "PX_E2E_PARTNER_OAUTH_OK",
     "PX_E2E_PARTNER_ORDER_CREATE_OK",
     "PX_E2E_PARTNER_IDOR_DENIED",
     "PX_E2E_WEBHOOK_DELIVERED_OK"
@@ -314,6 +358,8 @@
     ],
     "partner_integration": [
       "PX_E2E_PARTNER_KEY_AUTH_OK",
+      "PX_E2E_PARTNER_OAUTH_OK",
+      "PX_E2E_PARTNER_OAUTH_SKIPPED",
       "PX_E2E_PARTNER_SKIPPED"
     ],
     "partner_order": [
@@ -360,6 +406,38 @@
     "gs1_zpl": [
       "PX_E2E_GS1_ZPL_OK",
       "PX_E2E_GS1_ZPL_SKIPPED"
+    ],
+    "wms_putaway": [
+      "PX_E2E_WMS_PUTAWAY_OK",
+      "PX_E2E_WMS_PUTAWAY_SKIPPED"
+    ],
+    "wms_fefo": [
+      "PX_E2E_WMS_FEFO_OK",
+      "PX_E2E_WMS_FEFO_SKIPPED"
+    ],
+    "wms_pick_wave": [
+      "PX_E2E_WMS_PICK_WAVE_OK",
+      "PX_E2E_WMS_PICK_WAVE_SKIPPED"
+    ],
+    "wms_seal_gate": [
+      "PX_E2E_WMS_SEAL_GATE_OK",
+      "PX_E2E_WMS_SEAL_GATE_SKIPPED"
+    ],
+    "wms_cycle_count": [
+      "PX_E2E_WMS_CYCLE_COUNT_OK",
+      "PX_E2E_WMS_CYCLE_COUNT_SKIPPED"
+    ],
+    "wms_adjust_apply": [
+      "PX_E2E_WMS_ADJUST_APPLY_OK",
+      "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
+    ],
+    "wms_cold_chain": [
+      "PX_E2E_WMS_COLD_CHAIN_OK",
+      "PX_E2E_WMS_COLD_CHAIN_SKIPPED"
+    ],
+    "optimizer_constraints": [
+      "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
+      "PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED"
     ],
     "collections_dunning": [
       "PX_E2E_COLLECTIONS_DUNNING_OK",

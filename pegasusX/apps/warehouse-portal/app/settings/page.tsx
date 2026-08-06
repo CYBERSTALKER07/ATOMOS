@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { apiFetch } from '@/lib/auth';
 import PageTransition from '@/components/PageTransition';
@@ -25,6 +26,7 @@ type WarehouseLocation = {
 };
 
 export default function WarehouseSettingsPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [settings, setSettings] = useState<WarehouseOpsSettings | null>(null);
   const [policy, setPolicy] = useState<'REJECT' | 'ACCEPT_BACKORDER'>('REJECT');
@@ -226,17 +228,17 @@ export default function WarehouseSettingsPage() {
     <PageTransition>
       <PageChrome
         icon="settings"
-        title="Warehouse settings"
-        description="Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing."
+        title={t("warehouse_portal.settings.text.warehouse_settings")}
+        description={t("warehouse_portal.residual.text.checkout_policy_pre_order_lead_window_per_line_quantity_limits_d")}
       >
         <div className="max-w-2xl space-y-6">
-          <PortalSection icon="warehouse" title="Depot location" description="Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.">
-            <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
-            <PortalField label="GLN (13 digits)">
+          <PortalSection icon="warehouse" title={t("warehouse_portal.settings.text.depot_location")} description={t("warehouse_portal.residual.text.delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del")}>
+            <LocationPicker value={location} onChange={setLocation} label={t("warehouse_portal.residual.text.warehouse_address")} />
+            <PortalField label={t("warehouse_portal.residual.text.gln_13_digits")}>
               <PortalInput
                 value={gln}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setGln(e.target.value)}
-                placeholder="Optional GS1 location number"
+                placeholder={t("warehouse_portal.settings.text.optional_gs1_location_number")}
               />
             </PortalField>
             <button

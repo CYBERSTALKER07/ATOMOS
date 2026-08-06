@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect } from "react";
 
 
@@ -17,6 +18,7 @@ interface DemandSignal {
 }
 
 export default function PaydayCalendarPage() {
+  const t = usePortalT();
   const [signals, setSignals] = useState<DemandSignal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +63,7 @@ export default function PaydayCalendarPage() {
       multiplier: form.multiplier,
       meta: {
         title: form.title || "Payday Spike",
-        description: "Monthly salary payout"
+        description: t("supplier_portal.residual.text.monthly_salary_payout")
       }
     };
 
@@ -103,8 +105,8 @@ export default function PaydayCalendarPage() {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payday Calendar</h1>
-          <p className="text-gray-500 mt-2">Manage predictable demand spikes across the region.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("portal.nav.payday_calendar")}</h1>
+          <p className="text-gray-500 mt-2">{t("supplier_portal.demand.payday_calendar.text.manage_predictable_demand_spikes_across_the_region")}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -118,18 +120,18 @@ export default function PaydayCalendarPage() {
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4">Title</th>
-              <th className="px-6 py-4">Scope</th>
-              <th className="px-6 py-4">Dates</th>
-              <th className="px-6 py-4">Multiplier</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+              <th className="px-6 py-4">{t("supplier_portal.admin.control_center.field.title")}</th>
+              <th className="px-6 py-4">{t("supplier_portal.analytics.demand.signals.text.scope")}</th>
+              <th className="px-6 py-4">{t("supplier_portal.demand.payday_calendar.text.dates")}</th>
+              <th className="px-6 py-4">{t("supplier_portal.analytics.demand.signals.text.multiplier")}</th>
+              <th className="px-6 py-4 text-right">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading calendar...</td></tr>
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">{t("supplier_portal.demand.payday_calendar.text.loading_calendar")}</td></tr>
             ) : signals.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No paydays scheduled.</td></tr>
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">{t("supplier_portal.demand.payday_calendar.text.no_paydays_scheduled")}</td></tr>
             ) : signals.map(sig => (
               <tr key={sig.signalId} className="hover:bg-gray-50/50">
                 <td className="px-6 py-4 font-medium text-gray-900">{sig.meta?.title || 'Payday'}</td>
@@ -143,7 +145,7 @@ export default function PaydayCalendarPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDeactivate(sig.signalId)} className="text-red-600 hover:text-red-800 font-medium text-xs">Remove</button>
+                  <button onClick={() => handleDeactivate(sig.signalId)} className="text-red-600 hover:text-red-800 font-medium text-xs">{t("supplier_portal.demand.payday_calendar.text.remove")}</button>
                 </td>
               </tr>
             ))}
@@ -155,25 +157,25 @@ export default function PaydayCalendarPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Schedule Payday Spike</h2>
+              <h2 className="text-lg font-semibold">{t("supplier_portal.demand.payday_calendar.text.schedule_payday_spike")}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
             </div>
             
             <div className="p-6 space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Title</label>
+                <label className="text-xs font-medium text-gray-700">{t("supplier_portal.admin.control_center.field.title")}</label>
                 <input 
                   type="text" 
                   value={form.title}
                   onChange={e => setForm({...form, title: e.target.value})}
                   className="w-full border rounded-md px-3 py-2 text-sm"
-                  placeholder="e.g. August State Pension Payout"
+                  placeholder={t("supplier_portal.demand.payday_calendar.text.e_g_august_state_pension_payout")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Start Time</label>
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.start_time")}</label>
                   <input 
                     type="datetime-local" 
                     value={form.startAt}
@@ -182,7 +184,7 @@ export default function PaydayCalendarPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">End Time</label>
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.end_time")}</label>
                   <input 
                     type="datetime-local" 
                     value={form.endAt}
@@ -193,7 +195,7 @@ export default function PaydayCalendarPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Demand Multiplier (Expected Lift)</label>
+                <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.demand_multiplier_expected_lift")}</label>
                 <input 
                   type="number" 
                   step="0.1"

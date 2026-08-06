@@ -12,10 +12,23 @@ Apply migration `20260806_partner_edi.ddl` (extends `PartnerSftpConfigs`, adds `
 |---------|-----------|---------|
 | ORDERS | IN | Drop file in inbound dir |
 | ORDRSP | OUT | `ORDER_CREATED`; status → CONFIRMED / CANCELLED / REJECTED / BACKORDERED / SCHEDULED / … |
-| DESADV | OUT | Status → `LOADED` or `IN_TRANSIT` |
+| DESADV | OUT | Status → `LOADED` or `IN_TRANSIT` — includes **CPS/PAC/GIN SSCC** from `ManifestShipUnits` when sealed |
 | INVOIC | OUT | Status → `DELIVERED_ON_CREDIT`; also `PAYMENT_CLEARED` |
 
 Inbound ORDERS maps to `order.Service.Create` with `order_source=PARTNER_EDI`. Geo from `LOC+DEL+lat:lng:h3` or retailer primary location.
+
+### DESADV SSCC packing (EDI-lite)
+
+When `ManifestShipUnits` exist for the order (minted at payload seal):
+
+| Segment | Meaning |
+|---------|---------|
+| `RFF+PK:{manifestId}` | Manifest / packing reference |
+| `CPS+1` / `PAC+n++CT` | Root packing node + unit count |
+| `CPS+{i}+1` / `PAC+1++CT` / `GIN+BJ:{sscc}` | Child logistics unit (BJ = SSCC-18) |
+| `GIN+BN:{gtin}` | Optional GTIN when present on the ship unit |
+
+Still not certified EDIFACT / AS2.
 
 ## File naming
 
@@ -54,4 +67,4 @@ Portal: Settings → Integrations (EDI toggle + recent documents).
 
 ## Still open
 
-AS2, full EDIFACT certification. (GLN/SSCC/ZPL and 1C journals are separate partner surfaces — see [`GS1_LABELS.md`](./GS1_LABELS.md) / [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md).)
+AS2, full EDIFACT certification. GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md).

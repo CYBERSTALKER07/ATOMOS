@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
 import Providers from "@/components/Providers";
@@ -17,8 +20,8 @@ const fontGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Supplier Portal - pegasusX",
-  description: "Single-tenant logistics control plane.",
+  title: t("supplier_portal.residual.text.supplier_portal_pegasusx"),
+  description: t("supplier_portal.residual.text.single_tenant_logistics_control_plane"),
 };
 
 export default function RootLayout({
@@ -26,6 +29,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const t = usePortalT();
   return (
     <html lang="en" suppressHydrationWarning className={`${fontJakarta.variable} ${fontGaramond.variable}`}>
       <head>

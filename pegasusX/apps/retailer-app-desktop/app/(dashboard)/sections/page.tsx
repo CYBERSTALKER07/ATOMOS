@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, LayoutGrid } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
@@ -16,6 +17,7 @@ type Section = {
 };
 
 export default function SectionsPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<Section[]>([]);
   const [name, setName] = useState("Dairy");
   const [aisle, setAisle] = useState("");
@@ -64,7 +66,7 @@ export default function SectionsPage() {
       setBanner("Section created (SECTIONS + STORE_STOCK auto-enabled if needed)");
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Create failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.create_failed"));
     } finally {
       setBusy(false);
     }
@@ -97,7 +99,7 @@ export default function SectionsPage() {
       await loadDetail(selectedId);
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "SKU update failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.sku_update_failed"));
     } finally {
       setBusy(false);
     }
@@ -119,7 +121,7 @@ export default function SectionsPage() {
       if (!res.ok) throw new Error("staff_assign_failed");
       setBanner("Staff assigned");
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Staff update failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.staff_update_failed"));
     } finally {
       setBusy(false);
     }
@@ -127,8 +129,8 @@ export default function SectionsPage() {
 
   return (
     <PageChrome
-      title="Sections"
-      description="Departments and shelves — map SKUs and assign staff. Enables SECTIONS pack."
+      title={t("portal.nav.sections")}
+      description={t("retailer_desktop.residual.text.departments_and_shelves_map_skus_and_assign_staff_enables_sectio")}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         {banner && (
@@ -139,20 +141,20 @@ export default function SectionsPage() {
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-            <h2 className="font-semibold">New section</h2>
+            <h2 className="font-semibold">{t("retailer_desktop.sections.text.new_section")}</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               className="rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder={t("retailer_desktop.pos.text.name")}
             />
             <input
               className="rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={aisle}
               onChange={(e) => setAisle(e.target.value)}
-              placeholder="Aisle tag"
+              placeholder={t("retailer_desktop.sections.text.aisle_tag")}
             />
           </div>
           <button
@@ -167,9 +169,9 @@ export default function SectionsPage() {
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Sections</h2>
+          <h2 className="mb-3 font-semibold">{t("portal.nav.sections")}</h2>
           {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sections yet.</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.sections.text.no_sections_yet")}</p>
           ) : (
             <ul className="space-y-2">
               {items.map((s) => (
@@ -194,14 +196,14 @@ export default function SectionsPage() {
 
         {selectedId && (
           <section className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-3 font-semibold">Map SKUs / staff</h2>
+            <h2 className="mb-3 font-semibold">{t("retailer_desktop.sections.text.map_skus_staff")}</h2>
             <p className="mb-2 text-xs text-muted-foreground">
               Current SKUs: {skus.join(", ") || "none"}
             </p>
             <textarea
               className="mb-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               rows={2}
-              placeholder="SKU list (comma-separated) — replaces map"
+              placeholder={t("retailer_desktop.sections.text.sku_list_comma_separated_replaces_map")}
               value={skuInput}
               onChange={(e) => setSkuInput(e.target.value)}
             />
@@ -215,7 +217,7 @@ export default function SectionsPage() {
             </button>
             <input
               className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Staff user IDs (comma-separated)"
+              placeholder={t("retailer_desktop.sections.text.staff_user_ids_comma_separated")}
               value={staffIds}
               onChange={(e) => setStaffIds(e.target.value)}
             />
@@ -231,7 +233,7 @@ export default function SectionsPage() {
         )}
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Unassigned SKUs</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.sections.text.unassigned_skus")}</h2>
           <p className="text-sm text-muted-foreground">
             {unassigned.length === 0 ? "None (or no stock yet)." : unassigned.join(", ")}
           </p>

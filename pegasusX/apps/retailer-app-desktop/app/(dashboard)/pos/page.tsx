@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Loader2,
@@ -81,6 +82,7 @@ function formatMoney(minor: number, currency = "UZS") {
 }
 
 export default function POSPage() {
+  const t = usePortalT();
   const [registers, setRegisters] = useState<Register[]>([]);
   const [registerId, setRegisterId] = useState("");
   const [session, setSession] = useState<Session | null>(null);
@@ -207,7 +209,7 @@ export default function POSPage() {
   const parkServerHold = async () => {
     if (!session || cart.length === 0 || !activeLocationId) return;
     if (!online) {
-      setError("Park hold requires network (use local auto-park offline).");
+      setError(t("retailer_desktop.residual.text.park_hold_requires_network_use_local_auto_park_offline"));
       return;
     }
     setBusy(true);
@@ -242,7 +244,7 @@ export default function POSPage() {
       setBanner("Cart parked on server (no stock held)");
       await loadServerHolds();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Park failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.park_failed"));
     } finally {
       setBusy(false);
     }
@@ -250,11 +252,11 @@ export default function POSPage() {
 
   const resumeServerHold = async (hold: ServerHold) => {
     if (!session || !online) {
-      setError("Resume requires open session and network.");
+      setError(t("retailer_desktop.residual.text.resume_requires_open_session_and_network"));
       return;
     }
     if (cart.length > 0) {
-      setError("Clear or park current cart before resuming a hold.");
+      setError(t("retailer_desktop.residual.text.clear_or_park_current_cart_before_resuming_a_hold"));
       return;
     }
     setBusy(true);
@@ -287,7 +289,7 @@ export default function POSPage() {
       setBanner(`Resumed hold ${hold.hold_id.slice(0, 8)}…`);
       await loadServerHolds();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Resume failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.resume_failed"));
     } finally {
       setBusy(false);
     }
@@ -310,7 +312,7 @@ export default function POSPage() {
       setBanner("Hold voided (no stock change)");
       await loadServerHolds();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Void hold failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.void_hold_failed"));
     } finally {
       setBusy(false);
     }
@@ -333,7 +335,7 @@ export default function POSPage() {
       setBanner("Register created (POS + stock packs auto-enabled if needed)");
       await loadRegisters();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Create register failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.create_register_failed"));
     } finally {
       setBusy(false);
     }
@@ -342,7 +344,7 @@ export default function POSPage() {
   const openSession = async () => {
     if (!registerId) return;
     if (!online) {
-      setError("Open session requires network. Connect, then open till.");
+      setError(t("retailer_desktop.residual.text.open_session_requires_network_connect_then_open_till"));
       return;
     }
     setBusy(true);
@@ -369,7 +371,7 @@ export default function POSPage() {
       setBanner("Session open — ready to sell");
       setLastSale(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Open failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.open_failed"));
     } finally {
       setBusy(false);
     }
@@ -384,7 +386,7 @@ export default function POSPage() {
       return;
     }
     if (!online) {
-      setError("Close session requires network.");
+      setError(t("retailer_desktop.residual.text.close_session_requires_network"));
       return;
     }
     setBusy(true);
@@ -408,7 +410,7 @@ export default function POSPage() {
         `Session closed. Variance: ${formatMoney((json as Session & { variance_minor?: number }).variance_minor ?? 0)}`,
       );
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Close failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.close_failed"));
     } finally {
       setBusy(false);
     }
@@ -443,7 +445,7 @@ export default function POSPage() {
   const completeSale = async () => {
     if (!session || cart.length === 0) return;
     if (!online && tender === "CARD") {
-      setError("Card sales require network. Use cash offline.");
+      setError(t("retailer_desktop.residual.text.card_sales_require_network_use_cash_offline"));
       return;
     }
     setBusy(true);
@@ -519,7 +521,7 @@ export default function POSPage() {
       setBanner(`Sale ${(json as Sale).receipt_number} · ${formatMoney((json as Sale).total_minor)}`);
     } catch (e) {
       // If online request failed due to network, queue cash sales
-      const msg = e instanceof Error ? e.message : "Sale failed";
+      const msg = e instanceof Error ? e.message : t("retailer_desktop.residual.text.sale_failed");
       if (
         tender === "CASH" &&
         (/failed to fetch|network|load failed|offline/i.test(msg) || !navigator.onLine)
@@ -577,7 +579,7 @@ export default function POSPage() {
   const voidLast = async () => {
     if (!lastSale || lastSale.status === "VOIDED") return;
     if (lastSale.origin === "offline" || lastSale.sale_id === lastSale.client_sale_id) {
-      setError("Void requires a synced server sale. Sync first or discard from pending queue.");
+      setError(t("retailer_desktop.residual.text.void_requires_a_synced_server_sale_sync_first_or_discard_from_pe"));
       return;
     }
     if (!confirm("Void last sale and restock?")) return;
@@ -596,7 +598,7 @@ export default function POSPage() {
       setLastSale(json as Sale);
       setBanner("Sale voided — stock restored");
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Void failed (manager role may be required)");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.void_failed_manager_role_may_be_required"));
     } finally {
       setBusy(false);
     }
@@ -604,8 +606,8 @@ export default function POSPage() {
 
   return (
     <PageChrome
-      title="Point of sale"
-      description="Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network."
+      title={t("retailer_desktop.pos.text.point_of_sale")}
+      description={t("retailer_desktop.residual.text.cashier_mode_open_till_online_sell_cash_offline_when_needed_sync")}
     >
       <div className="mx-auto grid max-w-5xl gap-4 px-4 pb-16 pt-2 lg:grid-cols-2">
         {!online && (
@@ -631,10 +633,10 @@ export default function POSPage() {
 
         {/* Session control */}
         <section className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <h2 className="font-semibold">Till session</h2>
+          <h2 className="font-semibold">{t("retailer_desktop.pos.text.till_session")}</h2>
           {registers.length === 0 ? (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">No registers yet.</p>
+              <p className="text-sm text-muted-foreground">{t("retailer_desktop.pos.text.no_registers_yet")}</p>
               <input
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 value={newRegLabel}
@@ -755,32 +757,32 @@ export default function POSPage() {
             )}
           </h2>
           {!session && (
-            <p className="text-sm text-muted-foreground">Open a session to sell.</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.pos.text.open_a_session_to_sell")}</p>
           )}
           {session && (
             <>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="SKU / barcode"
+                  placeholder={t("retailer_desktop.pos.text.sku_barcode")}
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                 />
                 <input
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="Name"
+                  placeholder={t("retailer_desktop.pos.text.name")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
                 <input
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="Qty"
+                  placeholder={t("retailer_desktop.pos.text.qty")}
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
                 />
                 <input
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="Price (major e.g. 150.00)"
+                  placeholder={t("retailer_desktop.pos.text.price_major_e_g_150_00")}
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                 />
@@ -814,7 +816,7 @@ export default function POSPage() {
                 ))}
               </ul>
               <div className="flex items-center justify-between font-semibold text-lg">
-                <span>Total</span>
+                <span>{t("retailer_desktop.pos.text.total")}</span>
                 <span>{formatMoney(totalMinor)}</span>
               </div>
               {holdsEnabled && (
@@ -825,7 +827,7 @@ export default function POSPage() {
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                       value={holdNote}
                       onChange={(e) => setHoldNote(e.target.value)}
-                      placeholder="Customer returns…"
+                      placeholder={t("retailer_desktop.pos.text.customer_returns")}
                     />
                   </label>
                   <button
@@ -895,7 +897,7 @@ export default function POSPage() {
         {holdsEnabled && session && (
           <section className="lg:col-span-2 rounded-xl border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Parked carts (server)</h2>
+              <h2 className="font-semibold">{t("retailer_desktop.pos.text.parked_carts_server")}</h2>
               <button
                 type="button"
                 disabled={busy || !online}

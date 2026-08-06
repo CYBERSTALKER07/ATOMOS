@@ -405,6 +405,64 @@ func (h *Handlers) HandlePutSftp(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// HandleGetCoa GET /partner/v1/coa or /v1/supplier/partner-coa
+func (h *Handlers) HandleGetCoa(w http.ResponseWriter, r *http.Request) {
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	m, err := h.Svc.GetCoa(r.Context(), tt, tid)
+	if err != nil {
+		writePartnerError(w, http.StatusInternalServerError, "coa_load_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, coaDTO(m))
+}
+
+// HandlePutCoa PUT /partner/v1/coa or /v1/supplier/partner-coa
+func (h *Handlers) HandlePutCoa(w http.ResponseWriter, r *http.Request) {
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	body, err := readBody(r)
+	if err != nil {
+		writePartnerError(w, http.StatusBadRequest, "read_body_error")
+		return
+	}
+	var req struct {
+		AccountAR       string `json:"account_ar"`
+		AccountRevenue  string `json:"account_revenue"`
+		AccountBankCash string `json:"account_bank_cash"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writePartnerError(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	updatedBy := ""
+	if p, pok := PrincipalFromContext(r.Context()); pok {
+		updatedBy = p.KeyID
+	} else if c, cok := auth.FromContext(r.Context()); cok {
+		updatedBy = c.Subject
+	}
+	m, err := h.Svc.UpsertCoa(r.Context(), tt, tid, updatedBy, CoaMap{
+		AccountAR: req.AccountAR, AccountRevenue: req.AccountRevenue, AccountBankCash: req.AccountBankCash,
+	})
+	if err != nil {
+		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, coaDTO(m))
+}
+
+// tenantFromPartnerOrJWT resolves tenant from partner key principal or JWT claims.
+func (h *Handlers) tenantFromPartnerOrJWT(w http.ResponseWriter, r *http.Request) (tenantType, tenantID string, ok bool) {
+	if p, pok := PrincipalFromContext(r.Context()); pok {
+		return p.TenantType, p.TenantID, true
+	}
+	return h.jwtTenant(w, r)
+}
+
 // HandleListEdiDocuments GET /partner/v1/edi/documents
 func (h *Handlers) HandleListEdiDocuments(w http.ResponseWriter, r *http.Request) {
 	p, ok := h.principalOrClaims(w, r)

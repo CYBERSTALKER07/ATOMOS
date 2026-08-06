@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 
 interface DispatchSidebarNavProps {
@@ -13,6 +14,7 @@ export const DispatchSidebarNav: React.FC<DispatchSidebarNavProps> = ({
   onTabSelect,
   onRequestClick,
 }) => {
+  const t = usePortalT();
   return (
     <aside className="w-64 bg-[#121417] text-gray-300 flex flex-col h-full border-r border-gray-800 p-4 select-none">
       {/* Brand Header */}
@@ -21,8 +23,8 @@ export const DispatchSidebarNav: React.FC<DispatchSidebarNavProps> = ({
           ➔
         </div>
         <div>
-          <h1 className="font-semibold text-white text-base leading-tight">Right Direction</h1>
-          <p className="text-xs text-gray-500">Since 2022</p>
+          <h1 className="font-semibold text-white text-base leading-tight">{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.right_direction")}</h1>
+          <p className="text-xs text-gray-500">{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.since_2022")}</p>
         </div>
       </div>
 
@@ -82,19 +84,19 @@ export const DispatchSidebarNav: React.FC<DispatchSidebarNavProps> = ({
         {/* Collapsible Requests Sub-menu */}
         <div className="pt-2">
           <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            <span>Requests</span>
+            <span>{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.requests")}</span>
             <span className="bg-gray-800 text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium">3</span>
           </div>
           <div className="pl-4 space-y-1 mt-1 border-l border-gray-800/60 ml-3">
-            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">Trucks</button>
+            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">{t("portal.nav.trucks")}</button>
             <button className="w-full flex items-center justify-between px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">
-              <span>Cargos</span>
+              <span>{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.cargos")}</span>
               <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.2 rounded-full">2</span>
             </button>
-            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">Repair</button>
-            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">Drivers</button>
+            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.repair")}</button>
+            <button className="w-full text-left px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">{t("portal.nav.drivers")}</button>
             <button className="w-full flex items-center justify-between px-3 py-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800/40 text-xs">
-              <span>Reports</span>
+              <span>{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.reports")}</span>
               <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.2 rounded-full">1</span>
             </button>
           </div>

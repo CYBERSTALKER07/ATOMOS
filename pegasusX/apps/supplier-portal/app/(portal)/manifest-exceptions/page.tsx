@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { useCallback, useEffect, useState } from "react";
@@ -21,6 +22,7 @@ function shortId(id: string): string {
 }
 
 export default function ManifestExceptionsPage() {
+  const t = usePortalT();
   const [exceptions, setExceptions] = useState<SupplierManifestExceptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function ManifestExceptionsPage() {
     api
       .getSupplierManifestExceptions({ escalated: escalatedOnly })
       .then((resp) => setExceptions(resp.exceptions))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_manifest_exceptions_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_manifest_exceptions_failed")))
       .finally(() => setLoading(false));
   }, [escalatedOnly]);
 
@@ -45,12 +47,12 @@ export default function ManifestExceptionsPage() {
   return (
     <PageChrome
       icon="warning"
-      title="Manifest gate exceptions"
-      description="Loading-gate overflows, damage reports, and manual removals raised during manifest execution."
+      title={t("supplier_portal.manifest_exceptions.text.manifest_gate_exceptions")}
+      description={t("supplier_portal.residual.text.loading_gate_overflows_damage_reports_and_manual_removals_raised")}
       loading={loading}
       error={error}
       empty={!loading && exceptions.length === 0}
-      emptyMessage="No manifest exceptions in the current window."
+      emptyMessage={t("supplier_portal.residual.text.no_manifest_exceptions_in_the_current_window")}
     >
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className="flex items-center gap-2 md-typescale-body-medium">
@@ -72,11 +74,11 @@ export default function ManifestExceptionsPage() {
         <table className="desk-table w-full">
           <thead>
             <tr className="border-b border-[var(--color-md-outline-variant)] text-[var(--color-md-outline)]">
-              <th className="md-typescale-label-medium p-4 font-medium">Reason</th>
-              <th className="md-typescale-label-medium p-4 font-medium">Manifest</th>
-              <th className="md-typescale-label-medium p-4 font-medium">Order</th>
-              <th className="md-typescale-label-medium p-4 font-medium text-right">Attempts</th>
-              <th className="md-typescale-label-medium p-4 font-medium">When</th>
+              <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.admin.control_center.field.reason")}</th>
+              <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.manifest_exceptions.text.manifest")}</th>
+              <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.chargebacks.claims.text.order")}</th>
+              <th className="md-typescale-label-medium p-4 font-medium text-right">{t("supplier_portal.manifest_exceptions.text.attempts")}</th>
+              <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.analytics.demand.flywheel.text.when")}</th>
             </tr>
           </thead>
           <tbody>

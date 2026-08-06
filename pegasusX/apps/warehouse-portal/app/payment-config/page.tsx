@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
@@ -15,6 +16,7 @@ interface PaymentGateway {
 }
 
 export default function PaymentConfigPage() {
+  const t = usePortalT();
   const [gateways, setGateways] = useState<PaymentGateway[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,8 +37,8 @@ export default function PaymentConfigPage() {
     <PageTransition>
       <PageChrome
         icon="payment"
-        title="Payment Config"
-        description="Read-only view. Payment gateways are configured by the supplier admin."
+        title={t("portal.nav.payment_config")}
+        description={t("warehouse_portal.residual.text.read_only_view_payment_gateways_are_configured_by_the_supplier_a")}
         actions={
           <button type="button" onClick={() => { setLoading(true); load(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -51,7 +53,7 @@ export default function PaymentConfigPage() {
       ) : gateways.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-[var(--muted)]">
           <Icon name="payment" size={48} className="mb-3 opacity-40" />
-          <p className="text-sm">No payment gateways configured</p>
+          <p className="text-sm">{t("warehouse_portal.payment_config.text.no_payment_gateways_configured")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -65,16 +67,16 @@ export default function PaymentConfigPage() {
               </div>
               <div className="space-y-1 text-xs text-[var(--muted)]">
                 <div className="flex justify-between">
-                  <span>Provider</span>
+                  <span>{t("warehouse_portal.payment_config.text.provider")}</span>
                   <span className="font-medium text-[var(--foreground)]">{gw.provider}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Mode</span>
+                  <span>{t("warehouse_portal.payment_config.text.mode")}</span>
                   <span className="font-mono">{gw.mode}</span>
                 </div>
                 {gw.last_updated && (
                   <div className="flex justify-between">
-                    <span>Updated</span>
+                    <span>{t("warehouse_portal.payment_config.text.updated")}</span>
                     <span>{new Date(gw.last_updated).toLocaleDateString()}</span>
                   </div>
                 )}

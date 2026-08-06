@@ -10,6 +10,8 @@ metadata:
     # Attach BackendConfig for REST timeouts (smart dispatch execute).
     cloud.google.com/backend-config: '{"default": "pegasusx-api-backendconfig"}'
 spec:
+  # Legacy: secretName pegasusx-api-tls. Prod/SSMR overlays patch this away and
+  # attach networking.gke.io/managed-certificates (GCE ManagedCertificate).
   tls:
     - hosts:
         - api.pegasusx.app

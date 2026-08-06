@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useEffect, useRef } from "react";
 import { Truck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,26 +26,26 @@ const chipCfg: Record<
     label: string;
   }
 > = {
-  IN_TRANSIT: { color: "warning", label: "In Transit" },
-  DISPATCHED: { color: "warning", label: "Dispatched" },
-  PENDING: { color: "default", label: "Pending" },
-  PENDING_REVIEW: { color: "default", label: "Pending Review" },
-  LOADED: { color: "default", label: "Loaded" },
-  ARRIVED: { color: "success", label: "Arrived" },
-  ARRIVING: { color: "accent", label: "Arriving" },
-  ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
-  AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
-  PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
-  COMPLETED: { color: "success", label: "Completed" },
-  FISCALIZING: { color: "warning", label: "Pending fiscal" },
-  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
-  CANCELLED: { color: "danger", label: "Cancelled" },
-  CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
-  NO_CAPACITY: { color: "danger", label: "No Capacity" },
-  SCHEDULED: { color: "default", label: "Scheduled" },
-  AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
-  QUARANTINE: { color: "danger", label: "Quarantined" },
-  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  IN_TRANSIT: { color: "warning", label: t("retailer_desktop.residual.text.in_transit") },
+  DISPATCHED: { color: "warning", label: t("supplier_portal.dispatch.text.dispatched") },
+  PENDING: { color: "default", label: t("retailer_desktop.residual.text.pending") },
+  PENDING_REVIEW: { color: "default", label: t("retailer_desktop.residual.text.pending_review") },
+  LOADED: { color: "default", label: t("retailer_desktop.residual.text.loaded") },
+  ARRIVED: { color: "success", label: t("retailer_desktop.residual.text.arrived") },
+  ARRIVING: { color: "accent", label: t("retailer_desktop.residual.text.arriving") },
+  ARRIVED_SHOP_CLOSED: { color: "warning", label: t("retailer_desktop.residual.text.shop_closed") },
+  AWAITING_PAYMENT: { color: "warning", label: t("retailer_desktop.residual.text.awaiting_payment") },
+  PENDING_CASH_COLLECTION: { color: "warning", label: t("retailer_desktop.residual.text.cash_collection") },
+  COMPLETED: { color: "success", label: t("portal.page.orders.filter.completed") },
+  FISCALIZING: { color: "warning", label: t("retailer_desktop.residual.text.pending_fiscal") },
+  FISCAL_FAILED: { color: "danger", label: t("retailer_desktop.residual.text.fiscal_failed") },
+  CANCELLED: { color: "danger", label: t("portal.page.orders.filter.cancelled") },
+  CANCEL_REQUESTED: { color: "danger", label: t("retailer_desktop.residual.text.cancel_requested") },
+  NO_CAPACITY: { color: "danger", label: t("retailer_desktop.residual.text.no_capacity") },
+  SCHEDULED: { color: "default", label: t("supplier_portal.demand.signals.text.scheduled") },
+  AUTO_ACCEPTED: { color: "default", label: t("retailer_desktop.residual.text.auto_accepted") },
+  QUARANTINE: { color: "danger", label: t("retailer_desktop.residual.text.quarantined") },
+  DELIVERED_ON_CREDIT: { color: "success", label: t("retailer_desktop.residual.text.delivered_credit") },
 };
 
 function formatAmount(amount: number): string {
@@ -76,6 +79,7 @@ export function TrackingMap({
   selectedOrder,
   setSelectedOrder,
 }: TrackingMapProps) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   const routeLines = useMemo(() => {
@@ -118,8 +122,8 @@ export function TrackingMap({
 
   return (
       <PageSection
-        title="Live map"
-        description="Driver positions for active inbound deliveries."
+        title={t("retailer_desktop.tracking.tracking_map.text.live_map")}
+        description={t("retailer_desktop.residual.text.driver_positions_for_active_inbound_deliveries")}
         className="flex-1 min-h-[500px] flex flex-col"
       >
       <div className="relative flex-1 min-h-[500px] rounded-2xl overflow-hidden border border-[var(--desk-border)] !mt-0 !p-0">

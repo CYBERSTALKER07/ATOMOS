@@ -70,6 +70,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -233,6 +234,7 @@ type App struct {
 	PartnerService          *partner.Service
 	PartnerHandlers         *partner.Handlers
 	PartnerKeys             partner.KeyRepository
+	PartnerJWTSecret        string
 	PartnerWebhookDelivery  *partner.DeliveryWorker
 	PartnerExportWorker     *partner.ExportWorker
 	PartnerEdiInbound       *partner.EdiInboundWorker
@@ -427,6 +429,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var spannerClient *spanner.Client
 	var manifestStore *manifest.Store
 	var routeGeometryBuilder *routing.GeometryBuilder
+	var osrmClient *routing.OSRMClient
 	outboxPublisher := outbox.Publisher(&loggingOutboxPublisher{log: log})
 	cleanup := make([]func(), 0, 3)
 	if client, store, err := tryNewSpannerOutboxStore(ctx, cfg); err != nil {
@@ -448,7 +451,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("spanner outbox store enabled", "database", spannerDatabasePath(cfg))
 		manifestStore = manifest.NewStore(spannerClient)
 		googleRoutesClient := routing.NewGoogleRoutesClient(cfg.GoogleMapsAPIKey, "", outboundCircuits.GoogleRoutes)
-		osrmClient := routing.NewOSRMClient(cfg.RoutingOSRMURL, outboundCircuits.OSRM)
+		osrmClient = routing.NewOSRMClient(cfg.RoutingOSRMURL, outboundCircuits.OSRM)
 		routeGeometryBuilder = routing.NewGeometryBuilder(
 			googleRoutesClient,
 			osrmClient,
@@ -792,8 +795,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
-		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)
-		log.Info("dispatch optimiser client enabled", "base_url", cfg.OptimizerBaseURL)
+		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey).WithOSRM(osrmClient)
+		log.Info("dispatch optimiser client enabled", "base_url", cfg.OptimizerBaseURL, "osrm_matrix", osrmClient != nil)
 	}
 	dispatchCounters := &plan.SourceCounters{}
 
@@ -1114,6 +1117,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		whOpsDrivers = warehouseOpsDriversQuery(spannerClient)
 		whOpsVehicles = warehouseOpsVehiclesQuery(spannerClient)
 	}
+	stocklots.SetLotsEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_LOTS_ENABLED")), "true"))
+	stocklots.SetPickWavesEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_WAVES_ENABLED")), "true"))
+	stocklots.SetCycleCountsEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_CYCLE_COUNTS_ENABLED")), "true"))
+	stocklots.SetPickSShapeEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_SSHAPE_ENABLED")), "true"))
+	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
+	stocklots.SetColdChainEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_COLD_CHAIN_ENABLED")), "true"))
+
 	warehouseSvc := warehouse.NewService(warehouse.ServiceConfig{
 		Repo:                 warehouseRepo,
 		Planner:              orderSvc,
@@ -1256,9 +1266,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
 	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
+	var partnerCoa partner.CoaRepository = partner.NewMemoryCoaRepository()
+	if spannerClient != nil {
+		partnerCoa = partner.NewSpannerCoaRepository(spannerClient)
+	}
+	partnerSvc.SetCoaRepository(partnerCoa)
 	partnerDelivery := partner.NewDeliveryWorker(partnerWebhooks, log)
 	partnerExportWorker := partner.NewExportWorker(partnerExports, partnerSftp, spannerClient, log)
-	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, log)
+	partnerExportWorker.SetCoaRepository(partnerCoa)
+	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, spannerClient, log)
 	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
 	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
 	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
@@ -1269,6 +1285,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return partner.RetailerGeo{Lat: loc.Lat, Lng: loc.Lng, H3Cell: loc.H3Cell}, nil
 	}
 	partnerHandlers := &partner.Handlers{Svc: partnerSvc, Delivery: partnerDelivery}
+	partnerJWTSecret := partner.ResolvePartnerJWTSecret(cfg.JWTSecret)
+	partnerSvc.SetOAuthJWT(partnerJWTSecret, partner.PartnerOAuthIssuer(), partner.PartnerOAuthTTL())
 
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
@@ -1556,6 +1574,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PartnerService:          partnerSvc,
 		PartnerHandlers:         partnerHandlers,
 		PartnerKeys:             partnerKeys,
+		PartnerJWTSecret:        partnerJWTSecret,
 		PartnerWebhookDelivery:  partnerDelivery,
 		PartnerExportWorker:     partnerExportWorker,
 		PartnerEdiInbound:       partnerEdiIn,

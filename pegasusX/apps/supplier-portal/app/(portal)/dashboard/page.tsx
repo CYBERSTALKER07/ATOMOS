@@ -8,9 +8,11 @@ import NetworkPulsePanel from "@/components/NetworkPulsePanel";
 import { PageChrome } from "@/components/PageChrome";
 import StatusBadge from "@/components/StatusBadge";
 import { FormAlert } from "@/components/portal";
+import { usePortalT } from "@/lib/i18n";
 import { useDashboardData } from "./use-dashboard-data";
 
 export default function DashboardPage() {
+  const t = usePortalT();
   const { metrics, recentManifests, recentEvents, isPaymentConfigured, loading, error } = useDashboardData();
 
   const formatCurrency = (minor: number) =>
@@ -21,10 +23,10 @@ export default function DashboardPage() {
     }).format(minor / 100);
 
   const liveOrderStats = [
-    { label: "Pending", count: metrics.ordersByStatus.PENDING ?? 0, color: "var(--desk-text-secondary)" },
-    { label: "Loaded", count: metrics.ordersByStatus.LOADED ?? 0, color: "var(--desk-warning)" },
-    { label: "In transit", count: metrics.ordersByStatus.IN_TRANSIT ?? 0, color: "var(--desk-info)" },
-    { label: "Arrived", count: metrics.ordersByStatus.ARRIVED ?? 0, color: "var(--desk-success)" },
+    { label: t("supplier_portal.residual.text.pending"), count: metrics.ordersByStatus.PENDING ?? 0, color: "var(--desk-text-secondary)" },
+    { label: t("supplier_portal.residual.text.loaded"), count: metrics.ordersByStatus.LOADED ?? 0, color: "var(--desk-warning)" },
+    { label: t("supplier_portal.residual.text.in_transit"), count: metrics.ordersByStatus.IN_TRANSIT ?? 0, color: "var(--desk-info)" },
+    { label: t("supplier_portal.residual.text.arrived"), count: metrics.ordersByStatus.ARRIVED ?? 0, color: "var(--desk-success)" },
   ];
   const maxLive = Math.max(1, ...liveOrderStats.map((s) => s.count));
   const driverPct = metrics.totalDrivers > 0 ? metrics.activeDrivers / metrics.totalDrivers : 0;
@@ -33,8 +35,8 @@ export default function DashboardPage() {
   return (
     <PageChrome
       icon="overview"
-      title="Overview"
-      description="Live operational command center."
+      title={t("portal.page.dashboard.supplier.title")}
+      description={t("portal.page.dashboard.supplier.description")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -127,7 +129,7 @@ export default function DashboardPage() {
               style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
             >
               <div>
-                <h2 className="md-typescale-title-medium">Live fleet map</h2>
+                <h2 className="md-typescale-title-medium">{t("supplier_portal.dashboard.text.live_fleet_map")}</h2>
                 <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
                   Sealed manifest polylines and driver GPS.
                 </p>
@@ -172,7 +174,7 @@ export default function DashboardPage() {
               className="p-4 border-b flex justify-between items-center gap-3"
               style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
             >
-              <h2 className="md-typescale-title-medium">Dispatch queue</h2>
+              <h2 className="md-typescale-title-medium">{t("supplier_portal.dashboard.text.dispatch_queue")}</h2>
               <Link href="/dispatch" className="portal-btn portal-btn--ghost text-sm h-8 px-2 shrink-0">
                 View all
               </Link>
@@ -254,7 +256,7 @@ export default function DashboardPage() {
               className="p-4 border-b sticky top-0"
               style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
             >
-              <h2 className="md-typescale-title-medium">Live event stream</h2>
+              <h2 className="md-typescale-title-medium">{t("supplier_portal.dashboard.text.live_event_stream")}</h2>
             </div>
             <div className="overflow-y-auto p-4 space-y-3 flex-1">
               {recentEvents.length === 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 import { PartnerFilterMetric } from "@pegasusx/types";
 
@@ -28,15 +29,16 @@ export const PartnerFilterBar: React.FC<PartnerFilterBarProps> = ({
   searchQuery = "",
   onSearchChange,
 }) => {
+  const t = usePortalT();
   return (
     <div className="space-y-4 mb-4 select-none">
       {/* Title & Search Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Tracking</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">{t("portal.nav.tracking")}</h2>
         <div className="relative">
           <input
             type="text"
-            placeholder="Search vehicle or route..."
+            placeholder={t("supplier_portal.dispatch.partner_filter_bar.text.search_vehicle_or_route")}
             value={searchQuery}
             onChange={(e) => onSearchChange?.(e.target.value)}
             className="bg-[#1a1d21] text-xs text-white placeholder-gray-500 pl-8 pr-3 py-2 rounded-lg border border-gray-800 focus:outline-none focus:border-blue-500 transition-colors w-52"
@@ -49,7 +51,7 @@ export const PartnerFilterBar: React.FC<PartnerFilterBarProps> = ({
 
       {/* Filter by Partners */}
       <div>
-        <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wider">Filter by Partners</p>
+        <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wider">{t("supplier_portal.dispatch.partner_filter_bar.text.filter_by_partners")}</p>
         <div className="flex flex-wrap gap-2">
           {partnerFilters.map((partner) => {
             const isSelected = selectedPartnerId === partner.id;
@@ -75,7 +77,7 @@ export const PartnerFilterBar: React.FC<PartnerFilterBarProps> = ({
 
       {/* Show Status Filter */}
       <div className="flex items-center gap-2 pt-1">
-        <span className="text-xs text-gray-400 font-medium mr-1 uppercase tracking-wider">Show</span>
+        <span className="text-xs text-gray-400 font-medium mr-1 uppercase tracking-wider">{t("supplier_portal.dispatch.partner_filter_bar.text.show")}</span>
         <button
           onClick={() => onStatusFilterChange("ALL")}
           className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${

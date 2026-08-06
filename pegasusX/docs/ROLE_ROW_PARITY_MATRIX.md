@@ -15,7 +15,7 @@
 |------|---------|---------|-----------|-------------|
 | SUPPLIER | portal, Android, iOS | supplierroutes + finance/claims/pulse + return-policy | **Wired** | Return-policy settings on all 3; negotiations product-deferred |
 | RETAILER | desktop, Android, iOS | retailerroutes, order, payment, credit + Retail OS packs 0–6 | **Wired** | AUTHORIZE_BYPASS photo wired; CT pulse honest empty/live |
-| DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | P0-4 offline classifier fixed; PoD required for credit leave |
+| DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | P0-4 offline classifier fixed; PoD required for credit leave; §8.8 kit + capture-time coords |
 | WAREHOUSE | portal, Android, iOS | warehouseroutes + return-policy | **Wired** | Returns & reverse SLA settings on all 3 |
 | FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Staff POST + exception resolve; empty forecast chart unmounted |
 | PAYLOAD | terminal, Android, iOS | payloaderroutes | **Wired** | Seal/inject/reassign/returns |
@@ -43,12 +43,18 @@
 | Partner API keys + `/partner/v1` | **Wired** (apply Spanner migration for cloud) |
 | Outbound webhooks (HMAC) | **Wired** (Kafka enqueue + delivery worker + list/deactivate/replay) |
 | Partner bulk export + optional SFTP | **Wired** (`exports:read`, `20260806_partner_exports.ddl`, flags) |
-| Partner 1C journals export | **Wired** (`resource=journals`, CSV/JSON/XML — [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)) |
-| Partner EDI-lite (ORDERS/ORDRSP/DESADV/INVOIC) | **Wired** (`20260806_partner_edi.ddl`, SFTP/local root; no AS2) |
-| GS1 GLN + SSCC + ZPL labels | **Wired** (`20260806_gs1_labels.ddl`, `docs/GS1_LABELS.md`; no EDI SSCC) |
+| Partner 1C journals export | **Wired** (`resource=journals`, CSV/JSON/XML + configurable CoA — [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)) |
+| Partner EDI-lite (ORDERS/ORDRSP/DESADV/INVOIC) | **Wired** (`20260806_partner_edi.ddl`, SFTP/local root; DESADV SSCC CPS/PAC/GIN; no AS2) |
+| GS1 GLN + SSCC + ZPL labels | **Wired** (`20260806_gs1_labels.ddl`, `docs/GS1_LABELS.md`; DESADV GIN+BJ from ship units) |
 | Supplier portal Integrations | **Wired** (`/settings/integrations` — keys/webhooks/exports/SFTP/EDI) |
 | OpenAPI partner contract | [`partner.openapi.yaml`](../contracts/partner.openapi.yaml) |
 | OpenAPI JWT core (~45 ops) | **Wired** — [`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml); `make jwt-openapi-gate`; residual = full catalog + SDK replace of ApiClient |
+| WMS bins/lots/FEFO (§8.7 Wave 1A) | **Wired** behind `WMS_LOTS_ENABLED` — [`WMS_LOTS_FEFO.md`](./WMS_LOTS_FEFO.md); portal + Android/iOS putaway |
+| WMS pick waves + seal gate (§8.7 Wave 1B) | **Wired** behind `WMS_PICK_WAVES_ENABLED` — [`WMS_PICK_WAVES.md`](./WMS_PICK_WAVES.md); portal `/pick-waves` + Android/iOS |
+| WMS cycle counts (§8.7 Wave 1C/PR-4) | **Wired** behind `WMS_CYCLE_COUNTS_ENABLED` — apply-on-approve + ABC + accuracy; portal + Android/iOS |
+| WMS S-shape / LIFO + soft seal (PR-5) | **Wired** behind `WMS_PICK_SSHAPE_ENABLED` / `WMS_SEAL_SOFT_WARN` |
+| WMS cold chain (PR-6) | **Wired** behind `WMS_COLD_CHAIN_ENABLED` — [`WMS_COLD_CHAIN.md`](./WMS_COLD_CHAIN.md) |
+| WMS Gate 4 ops / harden (PR-7) | Reconcile endpoint + [`WMS_GATE4_OPS.md`](./WMS_GATE4_OPS.md); scan UX residual |
 | AR dunning / DelinquencyCount / CREDIT_HOLD | **Wired** behind `AR_DUNNING_ENABLED` |
 | Off-app SMS/email dunning | Deferred (FCM + inbox only) |
 | Forecast accuracy (WAPE/bias/TS) | **Wired** behind `FORECAST_ACCURACY_ENABLED` (supplier portal) |
@@ -75,8 +81,9 @@
 | Surface | Status |
 |---------|--------|
 | Code path (`optimizerclient` → `optimizer-core`) | **Wired** (supplier + warehouse dispatch) |
+| Constraint fields + multi-depot + OSRM `/table` matrix | **Wired** (§8.5; haversine fallback) |
 | Local compose (`docker-compose.ssmr.yml`) | OR-Tools available when service up |
-| SSMR GKE overlay | **Heuristic only** (sidecar not in overlay) |
+| SSMR GKE overlay | **Manifest included, `replicas: 0`** until AR image; heuristic until then |
 | Prod GKE overlay | Manifest present, **`replicas: 0`**, no real AR image |
 | Client apps call solver | **No** — `optimizer_source` on API only |
 | Exit criteria for cloud OR-Tools | Publish image + replicas ≥ 1 + `"optimizer_source":"optimizer"` |

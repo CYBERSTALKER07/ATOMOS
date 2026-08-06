@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
@@ -36,6 +37,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
+  const t = usePortalT();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30d');
@@ -83,8 +85,8 @@ export default function AnalyticsPage() {
     <PageTransition>
       <PageChrome
         icon="analytics"
-        title="Analytics"
-        description="Warehouse revenue, order health, fleet utilization, and import telemetry."
+        title={t("portal.nav.analytics")}
+        description={t("warehouse_portal.residual.text.warehouse_revenue_order_health_fleet_utilization_and_import_tele")}
         loading={loading}
         actions={
           <div className="flex gap-2">
@@ -105,19 +107,19 @@ export default function AnalyticsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Revenue</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.revenue")}</div>
           <div className="text-2xl font-light">{fmtCurrency(d.total_revenue)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Orders</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("portal.nav.orders")}</div>
           <div className="text-2xl font-light">{fmt(d.total_orders)}</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Avg Order Value</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.avg_order_value")}</div>
           <div className="text-2xl font-light">{fmtCurrency(d.avg_order_value)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Fleet Utilization</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.fleet_utilization")}</div>
           <div className="text-2xl font-light">{fleetUtilizationPct.toFixed(0)}%</div>
         </div>
       </div>
@@ -125,19 +127,19 @@ export default function AnalyticsPage() {
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
         <div className="flex items-center gap-2 mb-3">
           <Icon name="refresh" size={16} className="text-[var(--accent)]" />
-          <h2 className="text-sm font-semibold">Import Freshness</h2>
+          <h2 className="text-sm font-semibold">{t("warehouse_portal.analytics.text.import_freshness")}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <div className="text-xs text-[var(--muted)]">Rows Imported (30d)</div>
+            <div className="text-xs text-[var(--muted)]">{t("warehouse_portal.analytics.text.rows_imported_30d")}</div>
             <div className="text-xl font-light">{fmt(importFreshness.applied_rows_30d)}</div>
           </div>
           <div>
-            <div className="text-xs text-[var(--muted)]">SKUs Updated (30d)</div>
+            <div className="text-xs text-[var(--muted)]">{t("warehouse_portal.analytics.text.skus_updated_30d")}</div>
             <div className="text-xl font-light">{fmt(importFreshness.applied_skus_30d)}</div>
           </div>
           <div>
-            <div className="text-xs text-[var(--muted)]">Quantity Delta (30d)</div>
+            <div className="text-xs text-[var(--muted)]">{t("warehouse_portal.analytics.text.quantity_delta_30d")}</div>
             <div className="text-xl font-light">{fmt(importFreshness.quantity_delta_30d)}</div>
           </div>
         </div>
@@ -149,15 +151,15 @@ export default function AnalyticsPage() {
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
         <div className="flex items-center gap-2 mb-3">
           <Icon name="warning" size={16} className="text-[var(--warning)]" />
-          <h2 className="text-sm font-semibold">Import Anomaly Queue</h2>
+          <h2 className="text-sm font-semibold">{t("warehouse_portal.analytics.text.import_anomaly_queue")}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-[var(--muted)]">Open Anomaly Rows (30d)</div>
+            <div className="text-xs text-[var(--muted)]">{t("warehouse_portal.analytics.text.open_anomaly_rows_30d")}</div>
             <div className="text-xl font-light">{fmt(importAnomalyQueue.open_rows_30d)}</div>
           </div>
           <div>
-            <div className="text-xs text-[var(--muted)]">Affected Sessions (30d)</div>
+            <div className="text-xs text-[var(--muted)]">{t("warehouse_portal.analytics.text.affected_sessions_30d")}</div>
             <div className="text-xl font-light">{fmt(importAnomalyQueue.affected_sessions_30d)}</div>
           </div>
         </div>
@@ -175,14 +177,14 @@ export default function AnalyticsPage() {
       {/* Top Products */}
       {d.top_products.length > 0 && (
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <h2 className="text-sm font-semibold mb-3">Top Products</h2>
+          <h2 className="text-sm font-semibold mb-3">{t("warehouse_portal.analytics.text.top_products")}</h2>
           <div className="overflow-x-auto">
             <table className="desk-table w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)]">
-                  <th className="text-left py-2 px-3 font-medium">Product</th>
-                  <th className="text-right py-2 px-3 font-medium">Units Sold</th>
-                  <th className="text-right py-2 px-3 font-medium">Revenue (UZS)</th>
+                  <th className="text-left py-2 px-3 font-medium">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                  <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.analytics.text.units_sold")}</th>
+                  <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.analytics.text.revenue_uzs")}</th>
                 </tr>
               </thead>
               <tbody>

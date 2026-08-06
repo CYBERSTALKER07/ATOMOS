@@ -115,7 +115,7 @@ Derived from delinquency count + balance vs limit (`deriveRiskTier` / `EvaluateR
 - Retailers sit in **H3 cells**; delivery zone is a precomputed set of cells around supplier center + radius + resolution.  
 - Driver telemetry updates location; proximity / geo-report use H3 aggregates.  
 - Route geometry: **Google Routes → OSRM → dense** (`ROUTING_PROVIDER=auto`); clients render backend polylines.  
-- Dispatch plan: **optimizer-core (OR-Tools)** when `OPTIMIZER_BASE_URL` is healthy; else H3 BinPack (`fallback_phase1`). **Cloud SSMR/prod: heuristic-only until sidecar image + replicas ≥ 1.** SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md).
+- Dispatch plan: **optimizer-core (OR-Tools)** when `OPTIMIZER_BASE_URL` is healthy — §8.5 constraints/multi-depot/OSRM matrix wired; else H3 BinPack (`fallback_phase1`). **Cloud SSMR/prod: heuristic-only until sidecar image + replicas ≥ 1** (overlay manifests ready). SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md).
 
 ---
 

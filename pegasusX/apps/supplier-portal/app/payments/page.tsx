@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { ApiClient } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
@@ -21,6 +22,7 @@ type LoadState =
   | { status: "error"; message: string };
 
 export default function PaymentsAuthorityPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshTick, setRefreshTick] = useState(0);
@@ -68,8 +70,8 @@ export default function PaymentsAuthorityPage() {
   return (
     <PageChrome
       icon="payment"
-      title="Payment settlement authority"
-      description="Immutable ledger-derived settlement and reconciliation view for supplier finance and support."
+      title={t("supplier_portal.payments.text.payment_settlement_authority")}
+      description={t("supplier_portal.residual.text.immutable_ledger_derived_settlement_and_reconciliation_view_for_")}
       loading={state.status === "loading"}
       skeletonVariant="table"
       error={state.status === "error" ? state.message : null}
@@ -83,7 +85,7 @@ export default function PaymentsAuthorityPage() {
         </button>
       }
     >
-      <PortalSection title="Live finance stream" icon="treasury">
+      <PortalSection title={t("supplier_portal.payments.text.live_finance_stream")} icon="treasury">
         <p className="md-typescale-body-medium">{liveState.message}</p>
         {(liveState.lastEventType || liveState.lastEventAt) && (
           <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
@@ -96,7 +98,7 @@ export default function PaymentsAuthorityPage() {
       {state.status === "ready" && (
         <>
           {state.snapshot.source === "ledger_fallback" && (
-            <FormAlert>Settlement summary endpoint unavailable. Showing derived fallback from payment ledger entries.</FormAlert>
+            <FormAlert>{t("supplier_portal.payments.text.settlement_summary_endpoint_unavailable_showing_derived_fallback")}</FormAlert>
           )}
 
           <section className="grid gap-4 md:grid-cols-4 mb-6">
@@ -127,7 +129,7 @@ export default function PaymentsAuthorityPage() {
           </section>
 
           <section className="md-card md-shape-md p-6 mb-6">
-            <h2 className="md-typescale-title-large">Totals by currency</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.totals_by_currency")}</h2>
             {state.snapshot.authority.totals_by_currency.length === 0 ? (
               <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                 No totals available for the current filter window.
@@ -137,9 +139,9 @@ export default function PaymentsAuthorityPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-                      <th className="py-2 pr-4">Currency</th>
-                      <th className="py-2 pr-4">Entry count</th>
-                      <th className="py-2 pr-4">Amount (minor units)</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.currency")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.payments.text.entry_count")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.amount_minor_units")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -157,7 +159,7 @@ export default function PaymentsAuthorityPage() {
           </section>
 
           <section className="md-card md-shape-md p-6 mb-6">
-            <h2 className="md-typescale-title-large">Reconciliation mismatches</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.reconciliation_mismatches")}</h2>
             {state.snapshot.mismatches.length === 0 ? (
               <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                 No non-zero mismatches detected for current ledger authority scope.
@@ -167,13 +169,13 @@ export default function PaymentsAuthorityPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-                      <th className="py-2 pr-4">Gateway</th>
-                      <th className="py-2 pr-4">Currency</th>
-                      <th className="py-2 pr-4">Net (minor units)</th>
-                      <th className="py-2 pr-4">Credit total</th>
-                      <th className="py-2 pr-4">Debit total</th>
-                      <th className="py-2 pr-4">Entries</th>
-                      <th className="py-2 pr-4">Last occurred</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.gateway")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.currency")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.payments.text.net_minor_units")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.credit_total")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.debit_total")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.entries")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.payments.text.last_occurred")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -195,7 +197,7 @@ export default function PaymentsAuthorityPage() {
           </section>
 
           <section className="md-card md-shape-md p-6">
-            <h2 className="md-typescale-title-large">Settlement groups</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.payments.text.settlement_groups")}</h2>
             {state.snapshot.authority.items.length === 0 ? (
               <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                 No settlement groups found for the active filters.
@@ -205,13 +207,13 @@ export default function PaymentsAuthorityPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-                      <th className="py-2 pr-4">Gateway</th>
-                      <th className="py-2 pr-4">Entry type</th>
-                      <th className="py-2 pr-4">Currency</th>
-                      <th className="py-2 pr-4">Entries</th>
-                      <th className="py-2 pr-4">Amount (minor units)</th>
-                      <th className="py-2 pr-4">First occurred</th>
-                      <th className="py-2 pr-4">Last occurred</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.gateway")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.entry_type")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.currency")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.entries")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.amount_minor_units")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.payments.text.first_occurred")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.payments.text.last_occurred")}</th>
                     </tr>
                   </thead>
                   <tbody>

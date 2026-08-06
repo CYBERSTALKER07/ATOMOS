@@ -34,7 +34,7 @@ Payload       PASS  N/A             READY_FOR_WALK  READY_FOR_WALK
 | Return-policy settings | Portal + mobile supplier/WH |
 | Driver PoD photo gate (credit leave) | Wired Android + iOS |
 | Empty chart theatre | Unmounted / SpendAnalytics thin-wired |
-| Portal i18n bootstrap | Supplier + warehouse LocaleBootstrap + shell `sign_out` |
+| Portal i18n bootstrap | Partial — shell + dashboard/orders PageChrome on 4 portals; not full i18n / no mobile |
 
 ## Minimal walk pack (operator)
 

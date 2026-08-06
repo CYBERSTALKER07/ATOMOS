@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 import Link from "next/link";
 import { PageSection } from "../PageSection";
@@ -14,10 +17,11 @@ export function AiPredictionSection({
   predictionList,
   onRefresh,
 }: AiPredictionSectionProps) {
+  const t = usePortalT();
   return (
     <PageSection
-      title="AI Restock"
-      description="High-confidence replenishment signals for this cycle."
+      title={t("retailer_desktop.dashboard.ai_prediction_section.text.ai_restock")}
+      description={t("retailer_desktop.residual.text.high_confidence_replenishment_signals_for_this_cycle")}
       actions={
         <Link
           href="/insights"
@@ -30,8 +34,8 @@ export function AiPredictionSection({
       <div className="flex flex-col gap-3 !mt-0">
         {predictionList.length === 0 ? (
           <EmptyState
-            headline="No AI restock signals"
-            body="Prediction feed is currently empty for this cycle."
+            headline={t("retailer_desktop.residual.text.no_ai_restock_signals")}
+            body={t("retailer_desktop.residual.text.prediction_feed_is_currently_empty_for_this_cycle")}
             variant="no-predictions"
             action="Sync"
             onAction={onRefresh}

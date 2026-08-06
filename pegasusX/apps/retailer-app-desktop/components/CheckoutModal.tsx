@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import {
   X,
@@ -48,6 +49,7 @@ export default function CheckoutModal({
   onClose,
   total,
 }: CheckoutModalProps) {
+  const t = usePortalT();
   const { items, clearCart, applyPreviewOrderableCaps, checkoutPolicyToken } = useCart();
   const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
@@ -119,12 +121,12 @@ export default function CheckoutModal({
 
         if (loading) {
           setLoading(false);
-          setError("Connection restored. Confirm checkout status before retrying.");
+          setError(t("retailer_desktop.residual.text.connection_restored_confirm_checkout_status_before_retrying"));
         }
       } catch {
         if (!cancelled && loading) {
           setLoading(false);
-          setError("Connection restored. Confirm checkout status before retrying.");
+          setError(t("retailer_desktop.residual.text.connection_restored_confirm_checkout_status_before_retrying"));
         }
       }
     }
@@ -153,7 +155,7 @@ export default function CheckoutModal({
       }
       setPendingCardToken(data.card_token);
     } catch (err) {
-      setCardSetupError(err instanceof Error ? err.message : "Could not start card tokenization");
+      setCardSetupError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_start_card_tokenization"));
     } finally {
       setAddingCard(false);
     }
@@ -179,7 +181,7 @@ export default function CheckoutModal({
       setCardOtpCode("");
       setHasCardConfigured(true);
     } catch (err) {
-      setCardSetupError(err instanceof Error ? err.message : "Could not confirm card");
+      setCardSetupError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_confirm_card"));
     } finally {
       setAddingCard(false);
     }
@@ -402,7 +404,7 @@ export default function CheckoutModal({
         }
         setError(pendingCheckoutQueuedMessage(err));
       } else {
-        setError(err instanceof Error ? err.message : "Checkout failed");
+        setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.checkout_failed"));
       }
     } finally {
       setLoading(false);
@@ -463,7 +465,7 @@ export default function CheckoutModal({
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex gap-3 text-orange-800">
                   <AlertTriangle size={20} className="shrink-0 mt-0.5" />
                   <div>
-                     <h3 className="font-light text-sm uppercase tracking-wide">Card Payments Temporarily Unavailable</h3>
+                     <h3 className="font-light text-sm uppercase tracking-wide">{t("retailer_desktop.checkout_modal.text.card_payments_temporarily_unavailable")}</h3>
                      <p className="text-xs mt-1 font-medium opacity-90">
                        {degradedBanner.gateway} is currently experiencing issues ({degradedBanner.reason}). We have automatically switched your payment method to cash.
                      </p>
@@ -481,16 +483,16 @@ export default function CheckoutModal({
                     onClick={() => setDeliveryMode("STANDARD")}
                     className={`p-4 rounded-2xl border text-left ${deliveryMode === "STANDARD" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
                   >
-                    <span className="font-light text-sm">Standard (ASAP)</span>
-                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Earliest T+1 business day</span>
+                    <span className="font-light text-sm">{t("retailer_desktop.checkout_modal.text.standard_asap")}</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.checkout_modal.text.earliest_t_1_business_day")}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeliveryMode("SCHEDULED")}
                     className={`p-4 rounded-2xl border text-left ${deliveryMode === "SCHEDULED" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
                   >
-                    <span className="font-light text-sm">Scheduled pre-order</span>
-                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Delivery day T+3 or later</span>
+                    <span className="font-light text-sm">{t("retailer_desktop.checkout_modal.text.scheduled_pre_order")}</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.checkout_modal.text.delivery_day_t_3_or_later")}</span>
                   </button>
                 </div>
                 <input
@@ -579,7 +581,7 @@ export default function CheckoutModal({
               {method === "global_pay" && !hasCardConfigured && (
                 <div className="p-5 border border-[var(--desk-border)] rounded-2xl bg-[var(--desk-surface-subtle)] space-y-4">
                   <div>
-                    <h3 className="md-typescale-body-large font-light text-[var(--desk-text-primary)]">Setup Payment Card</h3>
+                    <h3 className="md-typescale-body-large font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.checkout_modal.text.setup_payment_card")}</h3>
                     <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
                       Tokenize a card via OTP confirmation (same flow as Settings → Saved Cards).
                     </p>
@@ -601,7 +603,7 @@ export default function CheckoutModal({
                       <input
                         type="text"
                         inputMode="numeric"
-                        placeholder="OTP code"
+                        placeholder={t("retailer_desktop.settings.cards.text.otp_code")}
                         value={cardOtpCode}
                         onChange={(e) => setCardOtpCode(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm"
@@ -663,7 +665,7 @@ export default function CheckoutModal({
                 <div className="p-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-light rounded-xl flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} />
-                    <span>The following items are out of stock:</span>
+                    <span>{t("retailer_desktop.checkout_modal.text.the_following_items_are_out_of_stock")}</span>
                   </div>
                   <ul className="list-disc list-inside pl-6 space-y-1">
                     {oosItems.map((id) => (

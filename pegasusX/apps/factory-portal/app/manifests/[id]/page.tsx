@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -68,6 +69,7 @@ function stateClass(state: string): string {
 }
 
 export default function ManifestDetailPage() {
+  const t = usePortalT();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [detail, setDetail] = useState<ManifestDetailPayload | null>(null);
@@ -152,7 +154,7 @@ export default function ManifestDetailPage() {
   if (loading) {
     return (
       <PageTransition>
-        <PageChrome icon="manifests" title="Manifest detail" description="Loading manifest snapshot." loading skeletonVariant="form">
+        <PageChrome icon="manifests" title={t("factory_portal.manifests._id_.text.manifest_detail")} description={t("factory_portal.residual.text.loading_manifest_snapshot")} loading skeletonVariant="form">
           <span />
         </PageChrome>
       </PageTransition>
@@ -162,7 +164,7 @@ export default function ManifestDetailPage() {
   if (error || !detail) {
     return (
       <PageTransition>
-        <PageChrome icon="manifests" title="Manifest detail" error={error || 'Manifest not found'}>
+        <PageChrome icon="manifests" title={t("factory_portal.manifests._id_.text.manifest_detail")} error={error || 'Manifest not found'}>
           {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} /> : null}
         </PageChrome>
       </PageTransition>
@@ -185,7 +187,7 @@ export default function ManifestDetailPage() {
       <div className="mt-6 space-y-6">
 
       <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6 space-y-4">
-        <h2 className="text-lg font-semibold">LEO lifecycle</h2>
+        <h2 className="text-lg font-semibold">{t("factory_portal.manifests._id_.text.leo_lifecycle")}</h2>
         <div className="flex flex-wrap gap-2">
           {MANIFEST_STATE_ORDER.slice(0, 5).map((state, index) => (
             <span
@@ -209,15 +211,15 @@ export default function ManifestDetailPage() {
             {acting ? 'Applying…' : next.label}
           </button>
         ) : (
-          <p className="text-sm text-[var(--muted)]">No further lifecycle transitions for this state.</p>
+          <p className="text-sm text-[var(--muted)]">{t("factory_portal.manifests._id_.text.no_further_lifecycle_transitions_for_this_state")}</p>
         )}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="md-card md-elevation-1 md-shape-md p-4">
-          <h3 className="md-typescale-title-medium mb-3">Transfers</h3>
+          <h3 className="md-typescale-title-medium mb-3">{t("portal.nav.transfers")}</h3>
           {detail.transfers.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No transfers on this manifest.</p>
+            <p className="text-sm text-[var(--muted)]">{t("factory_portal.manifests._id_.text.no_transfers_on_this_manifest")}</p>
           ) : (
             <ul className="space-y-2">
               {detail.transfers.map((transfer) => (
@@ -230,9 +232,9 @@ export default function ManifestDetailPage() {
           )}
         </div>
         <div className="md-card md-elevation-1 md-shape-md p-4">
-          <h3 className="md-typescale-title-medium mb-3">Transitions</h3>
+          <h3 className="md-typescale-title-medium mb-3">{t("factory_portal.manifests._id_.text.transitions")}</h3>
           {detail.transitions.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No transitions recorded yet.</p>
+            <p className="text-sm text-[var(--muted)]">{t("factory_portal.manifests._id_.text.no_transitions_recorded_yet")}</p>
           ) : (
             <ul className="space-y-2">
               {detail.transitions.map((transition, index) => (
@@ -250,7 +252,7 @@ export default function ManifestDetailPage() {
 
       {detail.exceptions.length > 0 && (
         <section className="md-card md-elevation-1 md-shape-md p-4">
-          <h3 className="md-typescale-title-medium mb-3">Exceptions</h3>
+          <h3 className="md-typescale-title-medium mb-3">{t("portal.nav.exceptions")}</h3>
           <ul className="space-y-2">
             {detail.exceptions.map((exception) => (
               <li key={exception.exception_id} className="text-sm">

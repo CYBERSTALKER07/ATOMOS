@@ -5018,6 +5018,16 @@ export interface PartnerSftpConfig {
   edi_enabled?: boolean;
 }
 
+/** Per-tenant 1C chart of accounts for journals exports. */
+export interface PartnerCoaMap {
+  account_ar: string;
+  account_revenue: string;
+  account_bank_cash: string;
+  using_defaults?: boolean;
+  updated_at?: string;
+  updated_by?: string;
+}
+
 export interface PartnerEdiDocument {
   document_id: string;
   tenant_type?: string;
@@ -5073,4 +5083,172 @@ export interface RetailerAutoOrderSettings {
   product_overrides?: Array<{ product_id: string; enabled: boolean }>;
   variant_overrides?: Array<{ variant_id: string; enabled: boolean }>;
   shadow_stats?: AutoOrderShadowStats;
+}
+
+/** §8.7 Wave 1A warehouse bin / slot location. */
+export interface WarehouseBinLocation {
+  warehouse_id: string;
+  location_id: string;
+  zone?: string;
+  aisle?: string;
+  rack?: string;
+  level?: string;
+  bin?: string;
+  location_type: "PICK" | "BULK" | "STAGE" | "QUARANTINE" | string;
+  pick_sequence: number;
+  max_volume_vu?: number;
+  is_active: boolean;
+  updated_at?: string;
+}
+
+export interface WarehouseBinListResponse {
+  bins: WarehouseBinLocation[];
+  lots_enabled?: boolean;
+}
+
+export interface WarehouseBinCreateRequest {
+  location_id?: string;
+  zone?: string;
+  aisle?: string;
+  rack?: string;
+  level?: string;
+  bin?: string;
+  location_type?: string;
+  pick_sequence?: number;
+  max_volume_vu?: number;
+}
+
+/** §8.7 Wave 1A stock lot with expiry. */
+export interface StockLot {
+  lot_id: string;
+  supplier_id: string;
+  warehouse_id: string;
+  product_id: string;
+  location_id: string;
+  lot_code?: string;
+  expiry_date?: string;
+  manufactured_date?: string;
+  quantity_on_hand: number;
+  quantity_reserved: number;
+  status: "AVAILABLE" | "QUARANTINE" | "EXPIRED" | "DEPLETED" | string;
+  received_at?: string;
+}
+
+export interface StockLotListResponse {
+  lots: StockLot[];
+  lots_enabled?: boolean;
+}
+
+export interface StockLotPutawayRequest {
+  product_id: string;
+  location_id: string;
+  quantity: number;
+  lot_code?: string;
+  expiry_date?: string;
+  manufactured_date?: string;
+  lot_id?: string;
+}
+
+export interface StockLotPutawayResponse {
+  lot_id: string;
+  product_id: string;
+  location_id: string;
+  lot_code?: string;
+  quantity_on_hand: number;
+  quantity_reserved: number;
+  status: string;
+  expiry_date?: string;
+  received_at?: string;
+}
+
+/** §8.7 Wave 1B pick wave (manifest strategy). */
+export interface PickWave {
+  wave_id: string;
+  warehouse_id: string;
+  supplier_id: string;
+  manifest_id: string;
+  strategy: "MANIFEST" | string;
+  status: "OPEN" | "PICKING" | "READY_TO_SEAL" | "CANCELLED" | string;
+  created_at?: string;
+  ready_at?: string;
+  tasks?: PickTask[];
+}
+
+export interface PickTask {
+  task_id: string;
+  order_id: string;
+  product_id: string;
+  lot_id: string;
+  location_id: string;
+  quantity_requested: number;
+  quantity_picked: number;
+  picker_id?: string;
+  status: "PENDING" | "CONFIRMED" | "SHORT" | "SHORT_WAIVED" | string;
+  pick_sequence: number;
+}
+
+export interface PickWaveListResponse {
+  waves: PickWave[];
+  pick_waves_enabled?: boolean;
+}
+
+export interface PickWaveCreateRequest {
+  manifest_id: string;
+}
+
+export interface PickTaskConfirmRequest {
+  quantity_picked?: number;
+}
+
+/** §8.7 Wave 1C cycle count stub. */
+export interface CycleCount {
+  count_id: string;
+  warehouse_id: string;
+  location_id: string;
+  product_id: string;
+  lot_id?: string;
+  expected_qty: number;
+  counted_qty?: number;
+  variance_qty?: number;
+  reason_code?: string;
+  status: "OPEN" | "SUBMITTED" | "CANCELLED" | string;
+  counted_by?: string;
+  counted_at?: string;
+  created_at?: string;
+}
+
+export interface CycleCountListResponse {
+  counts: CycleCount[];
+  cycle_counts_enabled?: boolean;
+}
+
+export interface CycleCountCreateRequest {
+  location_id: string;
+  product_id: string;
+  lot_id?: string;
+  expected_qty?: number;
+}
+
+export interface CycleCountSubmitRequest {
+  counted_qty: number;
+  reason_code?: string;
+}
+
+export interface InventoryAdjustment {
+  adjustment_id: string;
+  warehouse_id: string;
+  product_id: string;
+  lot_id?: string;
+  count_id?: string;
+  delta_qty: number;
+  reason_code?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | string;
+  actor_id?: string;
+  approved_by?: string;
+  created_at?: string;
+}
+
+export interface InventoryAdjustmentListResponse {
+  adjustments: InventoryAdjustment[];
+  cycle_counts_enabled?: boolean;
 }

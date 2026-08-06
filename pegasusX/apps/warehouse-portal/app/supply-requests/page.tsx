@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { ApiError } from '@pegasusx/api-client';
@@ -30,6 +31,7 @@ function chipClass(state: string): string {
 }
 
 export default function SupplyRequestsPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [requests, setRequests] = useState<WarehouseSupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,8 +89,8 @@ export default function SupplyRequestsPage() {
     <PageTransition>
       <PageChrome
         icon="supplyRequests"
-        title="Supply Requests"
-        description="Factory replenishment requests scoped to this warehouse node."
+        title={t("portal.nav.supply_requests")}
+        description={t("warehouse_portal.residual.text.factory_replenishment_requests_scoped_to_this_warehouse_node")}
         loading={loading}
         skeletonVariant="table"
         error={
@@ -170,7 +172,7 @@ export default function SupplyRequestsPage() {
         {loading ? null : filtered.length === 0 ? (
           <EmptyState
             variant={filter !== 'ALL' ? 'no-results' : 'no-data'}
-            headline="No supply requests found"
+            headline={t("warehouse_portal.residual.text.no_supply_requests_found")}
             body={filter !== 'ALL' ? `No requests found with state "${filter}".` : "You haven't made any supply requests yet."}
           />
         ) : (
@@ -183,12 +185,12 @@ export default function SupplyRequestsPage() {
               <thead>
                 <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
                   <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">ID</th>
-                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">Factory</th>
-                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">State</th>
-                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">Priority</th>
-                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">Delivery Date</th>
-                  <th className="table__column text-right px-4 py-3 font-medium uppercase tracking-wider text-[11px]">Volume</th>
-                  <th className="table__column text-right px-4 py-3 font-medium uppercase tracking-wider text-[11px]">Created</th>
+                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.supply_requests.text.factory")}</th>
+                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.supply_requests.text.state")}</th>
+                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.supply_requests._id_.text.priority")}</th>
+                  <th className="table__column text-left px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.supply_requests._id_.text.delivery_date")}</th>
+                  <th className="table__column text-right px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.supply_requests.text.volume")}</th>
+                  <th className="table__column text-right px-4 py-3 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.manifests.text.created")}</th>
                 </tr>
               </thead>
               <tbody>

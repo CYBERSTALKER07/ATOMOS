@@ -17,9 +17,9 @@ kubectl kustomize infra/k8s/overlays/staging --load-restrictor LoadRestrictionsN
 
 | Overlay | Namespace | Notes |
 |---------|-----------|-------|
-| `prod/` | `pegasusx` | HA API/worker + ai-worker; **optimizer-core included but `replicas: 0`** until a real AR image exists (placeholder pin today) |
+| `prod/` | `pegasusx` | HA API/worker + ai-worker; digest-pinned images; ManagedCertificate TLS; **ExternalSecret included**; optimizer-core `replicas: 0` until real AR image |
 | `staging/` | `pegasusx-staging` | Dual-write Kafka topics; remaps optimizer image; live only if image published + deployed |
-| `ssmr/` | `pegasusx-ssmr` | Cloud cutover; **no optimizer-core** — dispatch uses H3 BinPack fallback |
+| `ssmr/` | `pegasusx-ssmr` | Cloud cutover; **optimizer-core included, `replicas: 0`** until AR image — dispatch uses H3 BinPack fallback until then |
 | `dev/` | `pegasusx-dev` | Single replica, debug logging |
 
 **Optimizer + routing runtime SoT:** [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md)

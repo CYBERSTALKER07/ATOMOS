@@ -625,6 +625,10 @@ data class PendingMutationEntity(
     val lastError: String = "",
     val status: String = "PENDING",       // PENDING | DEAD
     val orderId: String = "",
+    /** Capture-time GPS — replay on flush; never replace with live location. */
+    val capturedLat: Double? = null,
+    val capturedLng: Double? = null,
+    val capturedAtMs: Long? = null,
 )
 
 @Serializable

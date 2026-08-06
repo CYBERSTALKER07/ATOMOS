@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, Plus } from "lucide-react";
@@ -16,6 +17,7 @@ type SavedCard = {
 };
 
 export default function SavedCardsPage() {
+  const t = usePortalT();
   return (
     <Suspense
       fallback={
@@ -65,7 +67,7 @@ function SavedCardsPageContent() {
       const data = (await res.json()) as { cards?: SavedCard[] };
       setCards(Array.isArray(data.cards) ? data.cards : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load saved cards");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_load_saved_cards"));
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ function SavedCardsPageContent() {
       }
       setPendingToken(data.card_token);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start card tokenization");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_start_card_tokenization"));
     } finally {
       setAdding(false);
     }
@@ -126,7 +128,7 @@ function SavedCardsPageContent() {
         returnToPayment();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not confirm card");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_confirm_card"));
     } finally {
       setAdding(false);
     }
@@ -142,7 +144,7 @@ function SavedCardsPageContent() {
       }
       await loadCards();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not deactivate card");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_deactivate_card"));
     } finally {
       setCardActionId(null);
     }
@@ -158,7 +160,7 @@ function SavedCardsPageContent() {
       }
       await loadCards();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not set default card");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_set_default_card"));
     } finally {
       setCardActionId(null);
     }
@@ -167,7 +169,7 @@ function SavedCardsPageContent() {
   return (
     <PageChrome
       icon="settings"
-      title="Saved Cards"
+      title={t("retailer_desktop.settings.cards.text.saved_cards")}
       description={
         isDeliveryPaymentReturn
           ? `Add a card, then return to complete delivery payment for order #${orderId.slice(-8) || "pending"}.`
@@ -180,7 +182,7 @@ function SavedCardsPageContent() {
           type="button"
           onClick={() => router.push(isDeliveryPaymentReturn ? returnPath : "/settings")}
           className="portal-btn portal-btn--ghost desk-icon-btn"
-          aria-label="Back"
+          aria-label={t("common.action.back")}
         >
           <ArrowLeft size={18} />
         </button>
@@ -281,7 +283,7 @@ function SavedCardsPageContent() {
             onChange={(e) => setOtpCode(e.target.value)}
             inputMode="numeric"
             className="w-full h-11 rounded-xl border border-[var(--desk-border)] px-3"
-            placeholder="OTP code"
+            placeholder={t("retailer_desktop.settings.cards.text.otp_code")}
           />
           <div className="flex gap-3">
             <button

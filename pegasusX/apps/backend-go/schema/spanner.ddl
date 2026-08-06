@@ -141,6 +141,7 @@ CREATE TABLE Retailers (
   ReceivingWindowClose    STRING(10),
   Timezone              STRING(64),
   Gln                     STRING(13),
+  MinShelfLifeDays        INT64,
 
   RegionId                STRING(36),
   CreatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -690,6 +691,7 @@ CREATE TABLE Products (
   RequiresColdChain  BOOL          NOT NULL DEFAULT (FALSE),
   IsHazardous        BOOL          NOT NULL DEFAULT (FALSE),
   IsPerishable       BOOL          NOT NULL DEFAULT (FALSE),
+  MinShelfLifeDays   INT64,
   StorageTempMinC    FLOAT64,
   StorageTempMaxC    FLOAT64,
   IsActive           BOOL          NOT NULL DEFAULT (TRUE),
@@ -828,6 +830,7 @@ CREATE TABLE SupplierTruckManifests (
   ReplanReason      STRING(64),
   EncodedRoutePolyline STRING(MAX),
   RouteGeometrySource STRING(32),
+  PickWaveId        STRING(36),
   CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (ManifestId);
@@ -1052,6 +1055,7 @@ CREATE TABLE BillingMeterEvents (
 ) PRIMARY KEY (EventId);
 
 CREATE INDEX Idx_BillingMeterEvents_BySupplier ON BillingMeterEvents(SupplierId, ProcessedAt DESC);
+CREATE INDEX Idx_BillingMeterEvents_ByOrderId ON BillingMeterEvents(OrderId);
 
 CREATE TABLE BillingSupplierMeters (
   SupplierId       STRING(36)    NOT NULL,
@@ -1106,6 +1110,155 @@ CREATE TABLE SupplierInventoryV2 (
 ) PRIMARY KEY (SupplierId, WarehouseId, ProductId);
 
 CREATE INDEX Idx_SupplierInventoryV2_ByH3Cell ON SupplierInventoryV2(H3Cell);
+
+-- §8.7 Wave 1A: bin locations + stock lots (FEFO); SupplierInventoryV2 is roll-up when WMS_LOTS_ENABLED.
+CREATE TABLE WarehouseLocations (
+  WarehouseId   STRING(36)    NOT NULL,
+  LocationId    STRING(36)    NOT NULL,
+  Zone          STRING(64),
+  Aisle         STRING(32),
+  Rack          STRING(32),
+  Level         STRING(32),
+  Bin           STRING(32),
+  LocationType  STRING(24)    NOT NULL DEFAULT ('PICK'),
+  PickSequence  INT64         NOT NULL DEFAULT (0),
+  MaxVolumeVU   FLOAT64,
+  IsActive      BOOL          NOT NULL DEFAULT (TRUE),
+  CreatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (WarehouseId, LocationId);
+
+CREATE INDEX Idx_WarehouseLocations_ByZoneSeq
+  ON WarehouseLocations(WarehouseId, Zone, PickSequence);
+
+CREATE TABLE StockLots (
+  LotId              STRING(36)    NOT NULL,
+  SupplierId         STRING(36)    NOT NULL,
+  WarehouseId        STRING(36)    NOT NULL,
+  ProductId          STRING(36)    NOT NULL,
+  LocationId         STRING(36)    NOT NULL,
+  LotCode            STRING(64),
+  ExpiryDate         DATE,
+  ManufacturedDate   DATE,
+  QuantityOnHand     INT64         NOT NULL DEFAULT (0),
+  QuantityReserved   INT64         NOT NULL DEFAULT (0),
+  ReceivedAt         TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  Status             STRING(24)    NOT NULL DEFAULT ('AVAILABLE'),
+  CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LotId);
+
+CREATE INDEX Idx_StockLots_ByWarehouseProductExpiry
+  ON StockLots(WarehouseId, ProductId, ExpiryDate);
+
+CREATE INDEX Idx_StockLots_ByWarehouseLocation
+  ON StockLots(WarehouseId, LocationId);
+
+CREATE INDEX Idx_StockLots_BySupplierWarehouseProduct
+  ON StockLots(SupplierId, WarehouseId, ProductId, Status);
+
+CREATE TABLE OrderLotReservations (
+  OrderId    STRING(36)    NOT NULL,
+  LotId      STRING(36)    NOT NULL,
+  Quantity   INT64         NOT NULL,
+  CreatedAt  TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (OrderId, LotId);
+
+-- §8.7 Wave 1B: pick waves + seal gate.
+CREATE TABLE PickWaves (
+  WaveId       STRING(36)    NOT NULL,
+  WarehouseId  STRING(36)    NOT NULL,
+  SupplierId   STRING(36)    NOT NULL,
+  ManifestId   STRING(36)    NOT NULL,
+  Strategy     STRING(24)    NOT NULL DEFAULT ('MANIFEST'),
+  Status       STRING(24)    NOT NULL DEFAULT ('OPEN'),
+  CreatedAt    TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ReleasedAt   TIMESTAMP,
+  ReadyAt      TIMESTAMP,
+  UpdatedAt    TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (WaveId);
+
+CREATE UNIQUE INDEX UQ_PickWaves_ByManifest ON PickWaves(ManifestId);
+
+CREATE INDEX Idx_PickWaves_ByWarehouseStatus
+  ON PickWaves(WarehouseId, Status, CreatedAt DESC);
+
+CREATE TABLE PickTasks (
+  WaveId             STRING(36)    NOT NULL,
+  TaskId             STRING(36)    NOT NULL,
+  OrderId            STRING(36)    NOT NULL,
+  ProductId          STRING(36)    NOT NULL,
+  LotId              STRING(36)    NOT NULL,
+  LocationId         STRING(36)    NOT NULL,
+  QuantityRequested  INT64         NOT NULL,
+  QuantityPicked     INT64         NOT NULL DEFAULT (0),
+  PickerId           STRING(36),
+  Status             STRING(24)    NOT NULL DEFAULT ('PENDING'),
+  PickSequence       INT64         NOT NULL DEFAULT (0),
+  CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (WaveId, TaskId),
+  INTERLEAVE IN PARENT PickWaves ON DELETE CASCADE;
+
+CREATE INDEX Idx_PickTasks_ByWaveStatus
+  ON PickTasks(WaveId, Status, PickSequence);
+
+-- §8.7 Wave 1C: cycle counts + inventory adjustments (stub apply deferred).
+CREATE TABLE CycleCounts (
+  CountId       STRING(36)    NOT NULL,
+  WarehouseId   STRING(36)    NOT NULL,
+  LocationId    STRING(36)    NOT NULL,
+  ProductId     STRING(36)    NOT NULL,
+  LotId         STRING(36),
+  ExpectedQty   INT64         NOT NULL DEFAULT (0),
+  CountedQty    INT64,
+  VarianceQty   INT64,
+  ReasonCode    STRING(64),
+  Status        STRING(24)    NOT NULL DEFAULT ('OPEN'),
+  CountedBy     STRING(36),
+  CountedAt     TIMESTAMP,
+  CreatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (CountId);
+
+CREATE INDEX Idx_CycleCounts_ByWarehouseStatus
+  ON CycleCounts(WarehouseId, Status, CreatedAt DESC);
+
+CREATE INDEX Idx_CycleCounts_ByWarehouseLocationProduct
+  ON CycleCounts(WarehouseId, LocationId, ProductId);
+
+CREATE TABLE InventoryAdjustments (
+  AdjustmentId  STRING(36)    NOT NULL,
+  WarehouseId   STRING(36)    NOT NULL,
+  ProductId     STRING(36)    NOT NULL,
+  LotId         STRING(36),
+  CountId       STRING(36),
+  DeltaQty      INT64         NOT NULL,
+  ReasonCode    STRING(64),
+  Status        STRING(24)    NOT NULL DEFAULT ('PENDING'),
+  ActorId       STRING(36),
+  ApprovedBy    STRING(36),
+  CreatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AdjustmentId);
+
+CREATE INDEX Idx_InventoryAdjustments_ByWarehouseStatus
+  ON InventoryAdjustments(WarehouseId, Status, CreatedAt DESC);
+
+-- §8.7 Gate 4 PR-6: cold-chain temperature readings.
+CREATE TABLE TemperatureReadings (
+  ReadingId    STRING(36)    NOT NULL,
+  ManifestId   STRING(36)    NOT NULL,
+  SensorId     STRING(64),
+  RecordedAt   TIMESTAMP     NOT NULL,
+  TempC        FLOAT64       NOT NULL,
+  Lat          FLOAT64,
+  Lng          FLOAT64,
+  CreatedAt    TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ReadingId);
+
+CREATE INDEX Idx_TemperatureReadings_ByManifest
+  ON TemperatureReadings(ManifestId, RecordedAt DESC);
 
 -- Supplier bulk-import staging substrate (warehouse analytics anomaly queue + future session wizard).
 CREATE TABLE SupplierImportSessions (
@@ -2420,3 +2573,14 @@ CREATE INDEX Idx_PartnerEdiDocuments_ByTenantCreated
 
 CREATE INDEX Idx_PartnerEdiDocuments_ByStatusDir
   ON PartnerEdiDocuments (Status, Direction, CreatedAt);
+
+-- Gate-3: configurable 1C chart of accounts for partner journals exports
+CREATE TABLE PartnerCoaMaps (
+  TenantType      STRING(16)  NOT NULL,
+  TenantId        STRING(36)  NOT NULL,
+  AccountAR       STRING(32)  NOT NULL,
+  AccountRevenue  STRING(32)  NOT NULL,
+  AccountBankCash STRING(32)  NOT NULL,
+  UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedBy       STRING(128),
+) PRIMARY KEY (TenantType, TenantId);

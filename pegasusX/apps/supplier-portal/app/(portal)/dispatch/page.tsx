@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
@@ -32,6 +33,7 @@ const TETRIS_BUFFER = 0.95;
 type DispatchMode = "auto" | "manual";
 
 export default function DispatchPage() {
+  const t = usePortalT();
   const { manifests, loading, error, refresh } = useDispatchData();
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export default function DispatchPage() {
     api
       .getSupplierDispatchPreview(warehouseQuery(selectedWarehouseId))
       .then(setPreview)
-      .catch((err) => setPreviewError(err instanceof Error ? err.message : "preview_failed"));
+      .catch((err) => setPreviewError(err instanceof Error ? err.message : t("supplier_portal.residual.text.preview_failed")));
   }, [selectedWarehouseId]);
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export default function DispatchPage() {
       await refresh();
       loadPreview();
     } catch (err) {
-      setExecuteError(err instanceof ApiError ? err.message : "dispatch_execute_failed");
+      setExecuteError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.dispatch_execute_failed"));
     } finally {
       setExecuting(false);
     }
@@ -167,7 +169,7 @@ export default function DispatchPage() {
       await refresh();
       loadPreview();
     } catch (err) {
-      setExecuteError(err instanceof ApiError ? err.message : "dispatch_execute_failed");
+      setExecuteError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.dispatch_execute_failed"));
     } finally {
       setExecuting(false);
     }
@@ -219,8 +221,8 @@ export default function DispatchPage() {
   return (
     <PageChrome
       icon="dispatch"
-      title="Dispatch queue"
-      description="Manage manifests and dispatch operations."
+      title={t("supplier_portal.dashboard.text.dispatch_queue")}
+      description={t("supplier_portal.residual.text.manage_manifests_and_dispatch_operations")}
       loading={loading}
       skeletonVariant="table"
       error={error}
@@ -264,11 +266,11 @@ export default function DispatchPage() {
           <div className="relative">
             <input
               type="search"
-              placeholder="Search manifest…"
+              placeholder={t("supplier_portal.dispatch.text.search_manifest")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="md-input-outlined h-10 w-64 pl-10"
-              aria-label="Search manifests"
+              aria-label={t("supplier_portal.dispatch.text.search_manifests")}
             />
             <Icon name="search" size={18} className="absolute left-3 top-2.5" style={{ color: "var(--desk-text-secondary)" }} />
           </div>
@@ -282,7 +284,7 @@ export default function DispatchPage() {
       <div className="space-y-6 flex flex-col min-h-0">
       {warehouses.length > 0 ? (
         <div className="md-card p-4 space-y-3">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Warehouse scope</p>
+          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.dispatch.text.warehouse_scope")}</p>
           <div className="flex flex-wrap gap-2">
             {warehouses.map((warehouse) => {
               const selected = selectedWarehouseId === warehouse.warehouse_id;
@@ -320,9 +322,9 @@ export default function DispatchPage() {
       ) : null}
 
       <KpiStatGrid columns={3}>
-        <KpiStatCard label="Pending dispatch" value={preview?.pending_count ?? "—"} />
-        <KpiStatCard label="Available drivers" value={preview?.available_driver_count ?? "—"} />
-        <KpiStatCard label="Unavailable drivers" value={preview?.unavailable_drivers?.length ?? "—"} />
+        <KpiStatCard label={t("supplier_portal.residual.text.pending_dispatch")} value={preview?.pending_count ?? "—"} />
+        <KpiStatCard label={t("supplier_portal.residual.text.available_drivers")} value={preview?.available_driver_count ?? "—"} />
+        <KpiStatCard label={t("supplier_portal.residual.text.unavailable_drivers")} value={preview?.unavailable_drivers?.length ?? "—"} />
       </KpiStatGrid>
 
       {previewError ? (
@@ -379,7 +381,7 @@ export default function DispatchPage() {
       {dispatchMode === "manual" && (preview?.undispatched_orders?.length ?? 0) > 0 ? (
         <div className="md-card p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="md-typescale-title-medium">Manual truck assignment</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.dispatch.text.manual_truck_assignment")}</h2>
             {truckMaxVU > 0 ? (
               <span className="md-typescale-label-small text-[var(--color-md-outline)]">
                 Selected {selectedVolumeVU.toFixed(1)} / {truckEffectiveVU.toFixed(1)} VU (95% of {truckMaxVU.toFixed(1)})
@@ -399,7 +401,7 @@ export default function DispatchPage() {
           ) : null}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="md-typescale-label-medium" htmlFor="manual-driver">Driver / truck</label>
+              <label className="md-typescale-label-medium" htmlFor="manual-driver">{t("supplier_portal.dispatch.text.driver_truck")}</label>
               <select
                 id="manual-driver"
                 className="md-input-outlined w-full h-10"
@@ -416,7 +418,7 @@ export default function DispatchPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="md-typescale-label-medium">Pending orders</span>
+                <span className="md-typescale-label-medium">{t("supplier_portal.dispatch.text.pending_orders")}</span>
                 <button
                   type="button"
                   className="md-btn md-btn-text h-8 text-sm"
@@ -484,7 +486,7 @@ export default function DispatchPage() {
       {preview?.proposed_routes && preview.proposed_routes.length > 0 ? (
         <div className="md-card p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="md-typescale-title-medium">Smart suggest route map</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.dispatch.text.smart_suggest_route_map")}</h2>
             {preview.optimizer_source ? (
               <span className="md-typescale-label-small text-[var(--color-md-outline)]">
                 Source: {preview.optimizer_source}
@@ -502,7 +504,7 @@ export default function DispatchPage() {
         {/* Draft Column */}
         <div className="flex flex-col bg-[var(--color-md-surface-container-low)] rounded-xl border border-[var(--color-md-outline-variant)] overflow-hidden">
           <div className="p-4 border-b border-[var(--color-md-outline-variant)] flex justify-between items-center bg-[var(--color-md-surface-container)]">
-            <h2 className="font-semibold">Draft</h2>
+            <h2 className="font-semibold">{t("supplier_portal.dispatch.text.draft")}</h2>
             <span className="bg-[var(--color-md-surface-container-high)] text-sm px-2 py-0.5 rounded-full">{draft.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -515,7 +517,7 @@ export default function DispatchPage() {
         {/* Loading Column */}
         <div className="flex flex-col bg-[#fff8e1]/20 dark:bg-[#fff8e1]/5 rounded-xl border border-[var(--color-md-outline-variant)] overflow-hidden">
           <div className="p-4 border-b border-[var(--color-md-outline-variant)] flex justify-between items-center bg-[#fff8e1]/50 dark:bg-[#fff8e1]/10">
-            <h2 className="font-semibold">Loading</h2>
+            <h2 className="font-semibold">{t("supplier_portal.dispatch.text.loading")}</h2>
             <span className="bg-[#fff8e1] dark:bg-[#410e0b] text-[#b15a00] dark:text-[#ffb4a9] text-sm px-2 py-0.5 rounded-full">{loadingColumn.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -528,7 +530,7 @@ export default function DispatchPage() {
         {/* Dispatched Column */}
         <div className="flex flex-col bg-[var(--color-md-primary-container)]/10 rounded-xl border border-[var(--color-md-outline-variant)] overflow-hidden">
           <div className="p-4 border-b border-[var(--color-md-outline-variant)] flex justify-between items-center bg-[var(--color-md-primary-container)]/30">
-            <h2 className="font-semibold">Dispatched</h2>
+            <h2 className="font-semibold">{t("supplier_portal.dispatch.text.dispatched")}</h2>
             <span className="bg-[var(--color-md-primary-container)] text-[var(--color-md-on-primary-container)] text-sm px-2 py-0.5 rounded-full">{dispatched.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -581,11 +583,11 @@ function ManifestCard({ data }: { data: ManifestData }) {
       <div className="flex justify-between items-end border-t border-[var(--color-md-outline-variant)] pt-3">
         <div className="flex gap-4">
           <div className="flex flex-col">
-            <span className="text-[10px] text-[var(--color-md-outline)] uppercase">Orders</span>
+            <span className="text-[10px] text-[var(--color-md-outline)] uppercase">{t("portal.nav.orders")}</span>
             <span className="text-sm font-medium">{data.orderCount}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-[var(--color-md-outline)] uppercase">Vol. Units</span>
+            <span className="text-[10px] text-[var(--color-md-outline)] uppercase">{t("supplier_portal.dispatch.text.vol_units")}</span>
             <span className="text-sm font-medium">{data.totalVu}</span>
           </div>
         </div>

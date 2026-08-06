@@ -23,6 +23,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
@@ -396,6 +397,18 @@ func (s *Service) findManifestOrderIndexLocked(manifestID, orderID string) int {
 		}
 	}
 	return -1
+}
+
+// assertPickWaveReadyForSeal enforces §8.7 Wave 1B seal gate when enabled.
+// Soft-warn mode returns nil and stashes warning on context via side channel is not used;
+// callers should use assertPickWaveReadyForSealResult.
+func (s *Service) assertPickWaveReadyForSeal(ctx context.Context, manifestID string) error {
+	_, err := s.assertPickWaveReadyForSealResult(ctx, manifestID)
+	return err
+}
+
+func (s *Service) assertPickWaveReadyForSealResult(ctx context.Context, manifestID string) (warn string, err error) {
+	return stocklots.AssertManifestPickReady(ctx, s.spannerClient(), manifestID)
 }
 
 func (s *Service) sealManifestLocked(manifestID string) (ManifestRow, error) {
@@ -1585,6 +1598,14 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		if manifestID == "" {
 			continue
 		}
+		if gateErr := s.assertPickWaveReadyForSeal(r.Context(), manifestID); gateErr != nil {
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "pick_wave_blocked",
+				"error":       gateErr.Error(),
+			})
+			continue
+		}
 		var manifest ManifestRow
 		err := s.apply(r.Context(), func() error {
 			s.mu.Lock()
@@ -1685,6 +1706,11 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
 	}
+	sealPickWarn, gateErr := s.assertPickWaveReadyForSealResult(r.Context(), manifestID)
+	if gateErr != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
+		return
+	}
 
 	var manifest ManifestRow
 	err = s.apply(r.Context(), func() error {
@@ -1755,6 +1781,9 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"volume_vu":   float64(manifest.TotalVolumeVU),
 		"max_vu":      float64(manifest.MaxVolumeVU),
 	}
+	if sealPickWarn != "" {
+		resp["pick_wave_warning"] = sealPickWarn
+	}
 	s.afterSealAssignSSCC(r.Context(), manifestID)
 
 	respBytes, _ := json.Marshal(resp)
@@ -1786,6 +1815,12 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	if req.OrderID == "" && req.ManifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
 		return
+	}
+	if req.ManifestID != "" {
+		if gateErr := s.assertPickWaveReadyForSeal(r.Context(), req.ManifestID); gateErr != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
+			return
+		}
 	}
 
 	s.mu.Lock()
@@ -1966,6 +2001,14 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 	sealedCount := 0
 
 	for _, manifestID := range candidateIDs {
+		if gateErr := s.assertPickWaveReadyForSeal(r.Context(), manifestID); gateErr != nil {
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "pick_wave_blocked",
+				"error":       gateErr.Error(),
+			})
+			continue
+		}
 		var sealed ManifestRow
 		sealErr := s.apply(r.Context(), func() error {
 			s.mu.Lock()

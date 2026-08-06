@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRouter } from "next/navigation";
@@ -109,6 +110,7 @@ function validateProfileFields(
 /* ── Main Page ── */
 
 export default function SettingsPage() {
+  const t = usePortalT();
   const {
     data: autoOrder,
     loading,
@@ -159,7 +161,7 @@ export default function SettingsPage() {
       .catch((err: unknown) => {
         setPricingRulesSummary(null);
         setPricingRulesError(
-          err instanceof Error ? err.message : "Pricing rules unavailable",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.pricing_rules_unavailable"),
         );
       });
   }, []);
@@ -251,7 +253,7 @@ export default function SettingsPage() {
       setProfileErrors(validation);
       setSaveBanner({
         kind: "error",
-        message: "Fix validation errors before saving profile changes.",
+        message: t("retailer_desktop.residual.text.fix_validation_errors_before_saving_profile_changes"),
       });
       return;
     }
@@ -293,7 +295,7 @@ export default function SettingsPage() {
       }
 
       setProfileEditing(false);
-      setSaveBanner({ kind: "success", message: "Profile saved successfully." });
+      setSaveBanner({ kind: "success", message: t("retailer_desktop.residual.text.profile_saved_successfully") });
       await mergeRetailerProfile({
         name: profileName,
         company: profileCompany,
@@ -331,7 +333,7 @@ export default function SettingsPage() {
         }),
       });
       mutateAutoOrder();
-      setSaveBanner({ kind: "success", message: "Global AI settings updated." });
+      setSaveBanner({ kind: "success", message: t("retailer_desktop.residual.text.global_ai_settings_updated") });
     } catch (err) {
       setSaveBanner({
         kind: "error",
@@ -386,35 +388,35 @@ export default function SettingsPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Settings access is partially restricted for this account.",
+        message: t("retailer_desktop.residual.text.settings_access_is_partially_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing latest cached configuration.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_configuration"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Settings sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.settings_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Setting events may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_setting_events_may_be_delayed"),
       };
     }
     if (isSyncing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing settings feeds...",
+        message: t("retailer_desktop.residual.text.syncing_settings_feeds"),
       };
     }
     return null;
@@ -431,8 +433,8 @@ export default function SettingsPage() {
     >
       <PageChrome
         icon="settings"
-        title="System Configuration"
-        description="Account identity, notification parameters, and AI-driven logic controls."
+        title={t("supplier_portal.configuration.system.title")}
+        description={t("retailer_desktop.residual.text.account_identity_notification_parameters_and_ai_driven_logic_con")}
         loading={loading}
         skeletonVariant="form"
         actions={
@@ -531,7 +533,7 @@ export default function SettingsPage() {
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-6 shadow-[var(--shadow-sm)] flex flex-col gap-6">
                   <div className="grid grid-cols-1 gap-6">
                     <ProfileField
-                      label="Entity Name"
+                      label={t("retailer_desktop.residual.text.entity_name")}
                       value={profileName}
                       icon={User}
                       editing={profileEditing}
@@ -542,7 +544,7 @@ export default function SettingsPage() {
                       }}
                     />
                     <ProfileField
-                      label="Company"
+                      label={t("retailer_desktop.residual.text.company")}
                       value={profileCompany}
                       icon={Building2}
                       editing={profileEditing}
@@ -553,28 +555,28 @@ export default function SettingsPage() {
                       }}
                     />
                     <ProfileField
-                      label="Primary Contact"
+                      label={t("retailer_desktop.residual.text.primary_contact")}
                       value={profileEmail}
                       icon={Mail}
                       editing={false}
                       onChange={setProfileEmail}
                     />
                     <ProfileField
-                      label="Operational Region"
+                      label={t("retailer_desktop.residual.text.operational_region")}
                       value={profileLocation}
                       icon={MapPin}
                       editing={profileEditing}
                       onChange={setProfileLocation}
                     />
                     <ProfileField
-                      label="Country Code"
+                      label={t("supplier_portal.configuration.countries.field.country_code")}
                       value={profileCountryCode}
                       icon={Globe}
                       editing={profileEditing}
                       onChange={setProfileCountryCode}
                     />
                     <ProfileTimeField
-                      label="Receiving window opens"
+                      label={t("retailer_desktop.residual.text.receiving_window_opens")}
                       value={profileReceivingWindowOpen}
                       icon={Clock}
                       editing={profileEditing}
@@ -585,7 +587,7 @@ export default function SettingsPage() {
                       }}
                     />
                     <ProfileTimeField
-                      label="Receiving window closes"
+                      label={t("retailer_desktop.residual.text.receiving_window_closes")}
                       value={profileReceivingWindowClose}
                       icon={Clock}
                       editing={profileEditing}
@@ -844,7 +846,7 @@ export default function SettingsPage() {
                   {/* Overrides */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <OverrideSection
-                      title="Node Overrides"
+                      title={t("retailer_desktop.settings.text.node_overrides")}
                       icon={Building2}
                       items={autoOrder.supplier_overrides}
                       getId={(s) => s.supplier_id}
@@ -859,7 +861,7 @@ export default function SettingsPage() {
                       savingId={savingId}
                     />
                     <OverrideSection
-                      title="Category Overrides"
+                      title={t("retailer_desktop.settings.text.category_overrides")}
                       icon={Layers}
                       items={autoOrder.category_overrides}
                       getId={(c) => c.category_id}

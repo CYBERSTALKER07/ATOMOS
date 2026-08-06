@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +24,7 @@ import {
 } from "./wizard-state";
 
 export default function WarehouseRegisterPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,7 +65,7 @@ export default function WarehouseRegisterPage() {
           verification: { otpCode: "", idToken: "" },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+        setSubmitError(err instanceof Error ? err.message : t("warehouse_portal.residual.text.failed_to_send_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -81,7 +83,7 @@ export default function WarehouseRegisterPage() {
           verification: { ...s.verification, idToken },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+        setSubmitError(err instanceof Error ? err.message : t("warehouse_portal.residual.text.invalid_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -142,7 +144,7 @@ export default function WarehouseRegisterPage() {
 
   return (
     <AuthRegisterShell
-      title="Set up your warehouse account"
+      title={t("warehouse_portal.auth.register.text.set_up_your_warehouse_account")}
       subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
       stepOrder={STEP_ORDER}
       stepLabels={STEP_LABELS}

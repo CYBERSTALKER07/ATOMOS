@@ -13,15 +13,41 @@ Otherwise e2e may print `PX_E2E_PARTNER_SKIPPED` / `PX_E2E_PARTNER_EXPORT_SKIPPE
 
 - Keys: `pxk_<prefix>_<secret>` — bcrypt hashed at rest (`PartnerApiKeys`)
 - Issue (human JWT): `POST /v1/admin/partner-keys` or `POST /v1/supplier/partner-keys`
-- Auth: `Authorization: Bearer pxk_…` on `/partner/v1/*`
+- Auth on `/partner/v1/*` (except token endpoint):
+  - `Authorization: Bearer pxk_…` (long-lived key), **or**
+  - `Authorization: Bearer <access_token>` from OAuth2 `client_credentials`
 - Rate limit actor: `partner:<KeyId>` (prefix before verify)
 - `LOAD_BOOTSTRAP_SECRET` never exempts `/partner/*`
 - Default scopes include `exports:read` for supplier/retailer keys
+
+### OAuth2 client_credentials
+
+| Field | Value |
+|-------|--------|
+| Endpoint | `POST /partner/v1/oauth/token` (no partner auth) |
+| Grant | `client_credentials` only |
+| `client_id` | `KeyId` (or `KeyPrefix`) |
+| `client_secret` | full `pxk_…` plaintext |
+| Body | JSON or `application/x-www-form-urlencoded`; HTTP Basic also accepted |
+| Access token | Short-lived HS256 JWT (`token_use=partner_access`), default TTL 15m (max 60m) |
+| Secret | `PARTNER_JWT_SECRET` or derived from `JWT_SECRET` (never verifies as human session) |
+| Revoke | Revoking the API key invalidates subsequent JWT use (live key status check) |
+
+Example:
+
+```bash
+curl -s -X POST "$API/partner/v1/oauth/token" \
+  -H 'Content-Type: application/json' \
+  -d '{"grant_type":"client_credentials","client_id":"<key_id>","client_secret":"pxk_…","scope":"orders:read catalog:read"}'
+```
+
+Marker: `PX_E2E_PARTNER_OAUTH_OK` / `_SKIPPED`.
 
 ## Partner HTTP
 
 | Method | Path | Scope |
 |--------|------|-------|
+| POST | `/partner/v1/oauth/token` | *(public — client auth in body)* |
 | POST | `/partner/v1/orders` | `orders:write` + Idempotency-Key |
 | GET | `/partner/v1/orders/{id}` | `orders:read` (IDOR fail-closed) |
 | GET | `/partner/v1/catalog` | `catalog:read` |
@@ -103,4 +129,4 @@ Markers: `PX_E2E_PARTNER_EDI_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_EDI_ORDRSP
 
 ## Still open
 
-AS2, certified EDIFACT, configurable 1C chart-of-accounts, certified 1C exchange package. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.
+AS2, certified EDIFACT, certified 1C exchange package. OAuth2 `client_credentials` is WIRED. Configurable CoA for journals is WIRED ([`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)). DESADV SSCC (CPS/PAC/GIN+BJ) is WIRED. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.

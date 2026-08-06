@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
@@ -10,6 +11,7 @@ import { persistSession } from "@/lib/auth";
 type LoginStep = "phone" | "otp";
 
 export default function SupplierLoginPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
   const [countryCode, setCountryCode] = useState("UZ");
@@ -24,7 +26,7 @@ export default function SupplierLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6,14}$/.test(phoneLocal)) {
-      setError("Enter a valid phone number (6-14 digits)");
+      setError(t("supplier_portal.residual.text.enter_a_valid_phone_number_6_14_digits"));
       return;
     }
     setStep("otp");
@@ -34,7 +36,7 @@ export default function SupplierLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(otpCode)) {
-      setError("Enter the 6-digit code");
+      setError(t("supplier_portal.residual.text.enter_the_6_digit_code"));
       return;
     }
 
@@ -53,7 +55,7 @@ export default function SupplierLoginPage() {
         router.push(`/auth/register?phone=${encodeURIComponent(dialCode + phoneLocal)}`);
         return;
       }
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.error.login_failed"));
     } finally {
       setLoading(false);
     }
@@ -61,11 +63,11 @@ export default function SupplierLoginPage() {
 
   return (
     <AuthLoginCard
-      title="Supplier sign in"
+      title={t("supplier_portal.auth.login.text.supplier_sign_in")}
       subtitle={
         step === "phone"
-          ? "Enter your registered phone number."
-          : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`
+          ? t("supplier_portal.auth.login.text.enter_registered_phone")
+          : t("supplier_portal.auth.login.text.enter_otp_sent_to", { phone: `${dialCode}${phoneLocal}` })
       }
       step={step}
       countryCode={countryCode}
@@ -74,8 +76,8 @@ export default function SupplierLoginPage() {
       error={error}
       loading={loading}
       registerHref="/auth/register"
-      registerPrompt="New supplier?"
-      registerLabel="Register"
+      registerPrompt={t("supplier_portal.residual.text.new_supplier")}
+      registerLabel={t("supplier_portal.residual.text.register")}
       onCountryChange={setCountryCode}
       onPhoneChange={setPhoneLocal}
       onOtpChange={setOtpCode}

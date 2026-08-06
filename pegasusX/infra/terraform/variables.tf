@@ -189,6 +189,55 @@ variable "google_maps_api_key" {
   sensitive   = true
 }
 
+variable "internal_api_key" {
+  description = "Shared INTERNAL_API_KEY for optimizer-core / ai-worker (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "payme_webhook_secret" {
+  description = "Payme webhook secret. Unused rails may use unused-rail-placeholder via phase0_sync."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "click_webhook_secret" {
+  description = "Click webhook secret. Unused rails may use unused-rail-placeholder via phase0_sync."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "global_pay_service_id" {
+  description = "Global Pay merchant service id (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "global_pay_username" {
+  description = "Global Pay merchant username (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "global_pay_password" {
+  description = "Global Pay merchant password (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "redis_auth" {
+  description = "Memorystore AUTH string mirrored into GSM for ExternalSecret redis-password."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "maps_android_api_key" {
   description = "Optional Android Maps SDK key (package name + SHA-1 restricted). Not used by backend-go."
   type        = string

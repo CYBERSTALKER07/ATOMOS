@@ -643,6 +643,180 @@ struct InventoryAdjustRequest: Encodable {
     }
 }
 
+// MARK: - §8.7 Wave 1A bins / lots
+
+struct WarehouseBinCreateRequest: Encodable {
+    var locationId: String?
+    var zone: String?
+    var locationType: String
+    var pickSequence: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case locationId = "location_id"
+        case zone
+        case locationType = "location_type"
+        case pickSequence = "pick_sequence"
+    }
+}
+
+struct WarehouseBinLocation: Decodable {
+    let warehouseId: String?
+    let locationId: String
+    let zone: String?
+    let locationType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case locationId = "location_id"
+        case zone
+        case locationType = "location_type"
+    }
+}
+
+struct StockLotPutawayRequest: Encodable {
+    let productId: String
+    let locationId: String
+    let quantity: Int
+    var lotCode: String?
+    var expiryDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case locationId = "location_id"
+        case quantity
+        case lotCode = "lot_code"
+        case expiryDate = "expiry_date"
+    }
+}
+
+struct StockLotPutawayResponse: Decodable {
+    let lotId: String
+    let productId: String?
+    let locationId: String?
+    let quantityOnHand: Int?
+    let status: String?
+
+    enum CodingKeys: String, CodingKey {
+        case lotId = "lot_id"
+        case productId = "product_id"
+        case locationId = "location_id"
+        case quantityOnHand = "quantity_on_hand"
+        case status
+    }
+}
+
+// MARK: - §8.7 Wave 1B pick waves
+
+struct PickTask: Decodable, Identifiable {
+    var id: String { taskId }
+    let taskId: String
+    let orderId: String?
+    let productId: String
+    let lotId: String
+    let locationId: String?
+    let quantityRequested: Int
+    let quantityPicked: Int?
+    let status: String
+    let pickSequence: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case orderId = "order_id"
+        case productId = "product_id"
+        case lotId = "lot_id"
+        case locationId = "location_id"
+        case quantityRequested = "quantity_requested"
+        case quantityPicked = "quantity_picked"
+        case status
+        case pickSequence = "pick_sequence"
+    }
+}
+
+struct PickWave: Decodable {
+    let waveId: String
+    let warehouseId: String?
+    let manifestId: String
+    let status: String
+    let tasks: [PickTask]?
+
+    enum CodingKeys: String, CodingKey {
+        case waveId = "wave_id"
+        case warehouseId = "warehouse_id"
+        case manifestId = "manifest_id"
+        case status
+        case tasks
+    }
+}
+
+struct PickWaveListResponse: Decodable {
+    let waves: [PickWave]
+    let pickWavesEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case waves
+        case pickWavesEnabled = "pick_waves_enabled"
+    }
+}
+
+struct PickWaveCreateRequest: Encodable {
+    let manifestId: String
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+    }
+}
+
+struct PickTaskConfirmRequest: Encodable {
+    var quantityPicked: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case quantityPicked = "quantity_picked"
+    }
+}
+
+struct CycleCount: Decodable, Identifiable {
+    var id: String { countId }
+    let countId: String
+    let locationId: String?
+    let productId: String
+    let expectedQty: Int
+    let countedQty: Int?
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case countId = "count_id"
+        case locationId = "location_id"
+        case productId = "product_id"
+        case expectedQty = "expected_qty"
+        case countedQty = "counted_qty"
+        case status
+    }
+}
+
+struct CycleCountListResponse: Decodable {
+    let counts: [CycleCount]
+}
+
+struct CycleCountCreateRequest: Encodable {
+    let locationId: String
+    let productId: String
+    var expectedQty: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case locationId = "location_id"
+        case productId = "product_id"
+        case expectedQty = "expected_qty"
+    }
+}
+
+struct CycleCountSubmitRequest: Encodable {
+    let countedQty: Int
+
+    enum CodingKeys: String, CodingKey {
+        case countedQty = "counted_qty"
+    }
+}
+
 // MARK: - Product
 
 struct Product: Decodable, Identifiable {

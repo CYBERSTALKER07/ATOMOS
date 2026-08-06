@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
@@ -22,6 +23,7 @@ const STATE_FILTERS = ['ALL', 'DRAFT', 'APPROVED', 'LOADING', 'DISPATCHED', 'IN_
 
 
 export default function TransfersPage() {
+  const t = usePortalT();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,8 +123,8 @@ export default function TransfersPage() {
     <PageTransition>
       <PageChrome
         icon="transfers"
-        title="Transfers"
-        description="Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor."
+        title={t("portal.nav.transfers")}
+        description={t("factory_portal.residual.text.review_warehouse_destination_movements_filter_by_state_and_open_")}
         loading={loading}
         skeletonVariant="table"
         error={error && transfers.length === 0 ? error : null}
@@ -147,18 +149,18 @@ export default function TransfersPage() {
         {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} className="mb-4" /> : null}
         <KpiStatGrid columns={4}>
           <KpiStatCard
-            label="Visible transfers"
+            label={t("factory_portal.residual.text.visible_transfers")}
             value={transfers.length}
             sub={stateFilter === 'ALL' ? 'Across the full pipeline' : `Filtered to ${stateFilter}`}
           />
-          <KpiStatCard label="Approved" value={approvedCount} sub="Waiting to enter loading" />
-          <KpiStatCard label="In flight" value={inFlightCount} sub="Loading, dispatched, or in transit" />
-          <KpiStatCard label="High priority" value={highPriorityCount} sub="Require close operator attention" />
+          <KpiStatCard label={t("factory_portal.residual.text.approved")} value={approvedCount} sub="Waiting to enter loading" />
+          <KpiStatCard label={t("factory_portal.residual.text.in_flight")} value={inFlightCount} sub="Loading, dispatched, or in transit" />
+          <KpiStatCard label={t("factory_portal.residual.text.high_priority")} value={highPriorityCount} sub="Require close operator attention" />
         </KpiStatGrid>
 
         <PageSection
-          title="Pipeline view"
-          description="Filter by transfer state. Total volume reflects the current view."
+          title={t("factory_portal.transfers.text.pipeline_view")}
+          description={t("factory_portal.residual.text.filter_by_transfer_state_total_volume_reflects_the_current_view")}
           className="mt-6"
           actions={
             <span className="rounded-full px-4 py-2 text-sm" style={{ background: 'var(--desk-surface-subtle)', color: 'var(--desk-text-secondary)' }}>

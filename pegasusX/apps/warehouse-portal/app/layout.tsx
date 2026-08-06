@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond, IBM_Plex_Mono } from "next/font/google";
 import Providers from "@/components/Providers";
@@ -23,8 +26,8 @@ const fontPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Warehouse Portal - pegasusX",
-  description: "Single-tenant logistics control plane.",
+  title: t("warehouse_portal.residual.text.warehouse_portal_pegasusx"),
+  description: t("warehouse_portal.residual.text.single_tenant_logistics_control_plane"),
 };
 
 export default function RootLayout({
@@ -32,6 +35,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const t = usePortalT();
   return (
     <html
       lang="en"

@@ -10,7 +10,8 @@ Logistics identifiers and Zebra ZPL without EDI/AS2.
 | `Gs1CompanyPrefix` on supplier profile | Wired (7–10 digits) |
 | SSCC-18 on `ManifestShipUnits` at payload seal | Wired (one SSCC per manifest order) |
 | ZPL `text/plain` GS1-128 `(00)` SSCC | Wired |
-| EDI DESADV SSCC segments / AS2 / 1C / registry sync | **Out of scope** |
+| EDI DESADV SSCC segments (CPS/PAC/GIN+BJ) | **Wired** (from `ManifestShipUnits` at emit) |
+| AS2 / certified EDIFACT / 1C / registry sync | **Out of scope** |
 
 Migration: `apps/backend-go/schema/migrations/20260806_gs1_labels.ddl`.
 

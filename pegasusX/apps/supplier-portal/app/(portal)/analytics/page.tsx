@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { Route } from "next";
@@ -40,6 +41,7 @@ function formatMoney(minor: number, currency: string) {
 }
 
 export default function AnalyticsPage() {
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
@@ -62,7 +64,7 @@ export default function AnalyticsPage() {
         setDemand(demandResp);
       })
       .catch(() => {
-        if (!cancelled) setError("load_supplier_analytics_failed");
+        if (!cancelled) setError(t("supplier_portal.residual.text.load_supplier_analytics_failed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -94,8 +96,8 @@ export default function AnalyticsPage() {
   return (
     <PageChrome
       icon="analytics"
-      title="Analytics"
-      description="Financial overview and operational intelligence."
+      title={t("portal.nav.analytics")}
+      description={t("supplier_portal.residual.text.financial_overview_and_operational_intelligence")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -149,10 +151,10 @@ export default function AnalyticsPage() {
           </div>
 
           <KpiStatGrid columns={3}>
-            <KpiStatCard label="Retailers" value={demand.total_retailers} />
-            <KpiStatCard label="Total pallets" value={demand.total_pallets.toLocaleString()} />
+            <KpiStatCard label={t("portal.nav.retailers")} value={demand.total_retailers} />
+            <KpiStatCard label={t("supplier_portal.residual.text.total_pallets")} value={demand.total_pallets.toLocaleString()} />
             <KpiStatCard
-              label="Forecast value"
+              label={t("supplier_portal.residual.text.forecast_value")}
               value={new Intl.NumberFormat("uz-UZ").format(demand.total_value)}
             />
           </KpiStatGrid>
@@ -188,16 +190,16 @@ export default function AnalyticsPage() {
 
       <KpiStatGrid columns={3}>
         <KpiStatCard
-          label="30-day revenue"
+          label={t("supplier_portal.residual.text.30_day_revenue")}
           value={revenue ? formatMoney(revenue.total_minor, revenue.currency) : "—"}
         />
-        <KpiStatCard label="Demand predictions" value={demand?.prediction_count ?? 0} />
-        <KpiStatCard label="Forecast units (24h)" value={demand?.total_pallets ?? 0} />
+        <KpiStatCard label={t("supplier_portal.residual.text.demand_predictions")} value={demand?.prediction_count ?? 0} />
+        <KpiStatCard label={t("supplier_portal.residual.text.forecast_units_24h")} value={demand?.total_pallets ?? 0} />
       </KpiStatGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <section className="desk-card p-6">
-          <h2 className="bento-card-title">Order velocity (7d)</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.analytics.text.order_velocity_7d")}</h2>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={velocityChart}>
@@ -213,7 +215,7 @@ export default function AnalyticsPage() {
         </section>
 
         <section className="desk-card p-6">
-          <h2 className="bento-card-title">Revenue trend (30d)</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.analytics.text.revenue_trend_30d")}</h2>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={revenueChart}>
@@ -230,7 +232,7 @@ export default function AnalyticsPage() {
 
       {demand && demand.items.length > 0 ? (
         <section className="desk-card p-6 mt-6">
-          <h2 className="bento-card-title">Top demand SKUs (today)</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.analytics.text.top_demand_skus_today")}</h2>
           <ul className="mt-4 divide-y" style={{ borderColor: "var(--desk-border)" }}>
             {demand.items.slice(0, 8).map((item) => (
               <li

@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import type { CatalogProduct, SaleUnit } from "./types";
 import { ALLOWED_IMAGE_TYPES } from "./types";
@@ -12,6 +15,7 @@ interface CatalogTableProps {
 }
 
 export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTableProps) {
+  const t = usePortalT();
   const pagination = usePagination(products, 20);
   
   const [draftVU, setDraftVU] = useState<Record<string, string>>({});
@@ -86,7 +90,7 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
       setDraftSaleUnit(prev => { const next = { ...prev }; delete next[product.product_id]; return next; });
     } catch (err) {
       setErrorId(product.product_id);
-      setErrorMsg(err instanceof Error ? err.message : "Failed to save product");
+      setErrorMsg(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_save_product"));
     } finally {
       setSavingId(null);
     }
@@ -129,15 +133,15 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
         <table className="min-w-full text-left">
           <thead className="border-b border-[var(--color-md-outline-variant)]">
             <tr>
-              <th className="px-4 py-3 md-typescale-label-large">Product</th>
-              <th className="px-4 py-3 md-typescale-label-large">Image</th>
-              <th className="px-4 py-3 md-typescale-label-large">Category</th>
-              <th className="px-4 py-3 md-typescale-label-large">Barcode</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Price (minor)</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Unit VU</th>
-              <th className="px-4 py-3 md-typescale-label-large">Sale unit</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Units/case</th>
-              <th className="px-4 py-3 md-typescale-label-large text-right">Actions</th>
+              <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+              <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.catalog.components.catalog_table.text.image")}</th>
+              <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.catalog.components.catalog_table.text.category")}</th>
+              <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.catalog.components.catalog_table.text.barcode")}</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.catalog.components.catalog_table.text.price_minor")}</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.catalog.components.catalog_table.text.unit_vu")}</th>
+              <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.catalog.components.catalog_table.text.sale_unit")}</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.catalog.components.catalog_table.text.units_case")}</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -176,7 +180,7 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                           className="h-12 w-12 object-cover border border-[var(--color-md-outline-variant)]"
                         />
                       ) : (
-                        <span className="text-xs text-[var(--color-md-outline)]">No image</span>
+                        <span className="text-xs text-[var(--color-md-outline)]">{t("supplier_portal.catalog.components.catalog_table.text.no_image")}</span>
                       )}
                       <button
                         type="button"
@@ -200,7 +204,7 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                       onChange={event =>
                         setDraftBarcode(prev => ({ ...prev, [product.product_id]: event.target.value }))
                       }
-                      placeholder="EAN / GTIN"
+                      placeholder={t("supplier_portal.catalog._product_id_.text.ean_gtin")}
                       className="w-36 px-2 py-1 rounded border font-mono text-sm"
                       style={{
                         background: "var(--field-background)",
@@ -245,8 +249,8 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                         color: "var(--field-foreground)",
                       }}
                     >
-                      <option value="UNIT">Unit</option>
-                      <option value="CASE">Case</option>
+                      <option value="UNIT">{t("supplier_portal.catalog.components.catalog_table.text.unit")}</option>
+                      <option value="CASE">{t("supplier_portal.catalog.components.catalog_table.text.case")}</option>
                     </select>
                   </td>
                   <td className="px-4 py-3 text-right">

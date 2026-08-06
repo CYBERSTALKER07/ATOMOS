@@ -29,6 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.EmergencyTransferRequest
 import com.pegasusx.warehouse.data.model.ForceReceiveRequest
+import com.pegasusx.warehouse.data.model.PickTask
+import com.pegasusx.warehouse.data.model.PickWave
+import com.pegasusx.warehouse.data.model.StockLotPutawayRequest
+import com.pegasusx.warehouse.data.model.WarehouseBinCreateRequest
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
@@ -47,6 +51,13 @@ fun TransferActionsScreen(
     var volumeInput by remember { mutableStateOf("20") }
     var transferIdInput by remember { mutableStateOf("") }
     var notesInput by remember { mutableStateOf("") }
+    var putawayProduct by remember { mutableStateOf("") }
+    var putawayLocation by remember { mutableStateOf("") }
+    var putawayQty by remember { mutableStateOf("1") }
+    var putawayExpiry by remember { mutableStateOf("") }
+    var pickManifestId by remember { mutableStateOf("") }
+    var pickScan by remember { mutableStateOf("") }
+    var activeWave by remember { mutableStateOf<PickWave?>(null) }
     var busy by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -163,6 +174,265 @@ fun TransferActionsScreen(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Receive transfer") }
+
+            WarehouseSectionTitle("WMS putaway (lots)")
+            OutlinedTextField(
+                value = putawayProduct,
+                onValueChange = { putawayProduct = it },
+                label = { Text("Product ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = putawayLocation,
+                onValueChange = { putawayLocation = it },
+                label = { Text("Location / bin ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = putawayQty,
+                onValueChange = { putawayQty = it },
+                label = { Text("Quantity") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = putawayExpiry,
+                onValueChange = { putawayExpiry = it },
+                label = { Text("Expiry YYYY-MM-DD (perishable)") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    runAction("Create STAGE bin") {
+                        opsRepository.createBin(
+                            WarehouseBinCreateRequest(
+                                locationId = putawayLocation.ifBlank { null },
+                                zone = "RECV",
+                                locationType = "STAGE",
+                            ),
+                        )
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Ensure bin") }
+            Button(
+                onClick = {
+                    val pid = putawayProduct.trim()
+                    val lid = putawayLocation.trim()
+                    val qty = putawayQty.trim().toLongOrNull() ?: 0L
+                    if (pid.isEmpty() || lid.isEmpty() || qty <= 0L) {
+                        scope.launch { snackbarHostState.showSnackbar("Product, location, qty required") }
+                        return@Button
+                    }
+                    runAction("Putaway lot") {
+                        opsRepository.putawayLot(
+                            StockLotPutawayRequest(
+                                productId = pid,
+                                locationId = lid,
+                                quantity = qty,
+                                expiryDate = putawayExpiry.trim().ifEmpty { null },
+                            ),
+                        )
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Putaway lot") }
+
+            WarehouseSectionTitle("WMS pick waves")
+            OutlinedTextField(
+                value = pickManifestId,
+                onValueChange = { pickManifestId = it },
+                label = { Text("Manifest ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    val mid = pickManifestId.trim()
+                    if (mid.isEmpty()) {
+                        scope.launch { snackbarHostState.showSnackbar("Manifest ID required") }
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        try {
+                            val res = opsRepository.createPickWave(mid)
+                            if (res.isSuccessful) {
+                                activeWave = res.body()
+                                snackbarHostState.showSnackbar("Pick wave ${activeWave?.status ?: "created"}")
+                            } else {
+                                snackbarHostState.showSnackbar("Create wave failed (${res.code()})")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "Create wave failed")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Create pick wave") }
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val res = opsRepository.listPickWaves(pickManifestId.trim().ifEmpty { null })
+                            val wave = res.body()?.waves?.firstOrNull()
+                            if (res.isSuccessful && wave != null) {
+                                val detail = opsRepository.getPickWave(wave.waveId)
+                                activeWave = detail.body() ?: wave
+                                snackbarHostState.showSnackbar("Loaded ${activeWave?.tasks?.size ?: 0} tasks")
+                            } else {
+                                snackbarHostState.showSnackbar("No pick waves")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "List failed")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Load pick waves") }
+            OutlinedTextField(
+                value = pickScan,
+                onValueChange = { pickScan = it },
+                label = { Text("Scan product / lot ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            val pending: PickTask? = activeWave?.tasks?.firstOrNull { t ->
+                t.status == "PENDING" && (
+                    pickScan.isBlank() ||
+                        t.productId.equals(pickScan.trim(), ignoreCase = true) ||
+                        t.lotId.equals(pickScan.trim(), ignoreCase = true)
+                    )
+            }
+            if (activeWave != null) {
+                Text(
+                    "Wave ${activeWave!!.waveId.take(8)}… · ${activeWave!!.status}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                pending?.let { task ->
+                    Text(
+                        "Next: ${task.productId} @ ${task.locationId} qty ${task.quantityRequested}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                try {
+                                    val res = opsRepository.confirmPickTask(
+                                        activeWave!!.waveId,
+                                        task.taskId,
+                                        task.quantityRequested,
+                                    )
+                                    if (res.isSuccessful) {
+                                        activeWave = res.body()
+                                        pickScan = ""
+                                        snackbarHostState.showSnackbar("Confirmed · ${activeWave?.status}")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Confirm failed (${res.code()})")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar(e.message ?: "Confirm failed")
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Confirm pick") }
+                }
+            }
+
+            WarehouseSectionTitle("WMS cycle counts")
+            OutlinedTextField(
+                value = putawayLocation,
+                onValueChange = { putawayLocation = it },
+                label = { Text("Count location ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = putawayProduct,
+                onValueChange = { putawayProduct = it },
+                label = { Text("Count product ID") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    val lid = putawayLocation.trim()
+                    val pid = putawayProduct.trim()
+                    if (lid.isEmpty() || pid.isEmpty()) {
+                        scope.launch { snackbarHostState.showSnackbar("Location + product required") }
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        try {
+                            val res = opsRepository.createCycleCount(lid, pid, null)
+                            if (res.isSuccessful) {
+                                snackbarHostState.showSnackbar("Count ${res.body()?.countId?.take(8)}…")
+                            } else {
+                                snackbarHostState.showSnackbar("Create count failed (${res.code()})")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "Create count failed")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Create cycle count") }
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val res = opsRepository.listCycleCounts()
+                            val open = res.body()?.counts?.firstOrNull { it.status == "OPEN" }
+                            if (open != null) {
+                                val sub = opsRepository.submitCycleCount(open.countId, open.expectedQty)
+                                if (sub.isSuccessful) {
+                                    snackbarHostState.showSnackbar("Submitted ${sub.body()?.status}")
+                                } else {
+                                    snackbarHostState.showSnackbar("Submit failed (${sub.code()})")
+                                }
+                            } else {
+                                snackbarHostState.showSnackbar("No OPEN counts")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "List/submit failed")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Submit first OPEN count @ expected") }
         }
     }
 }

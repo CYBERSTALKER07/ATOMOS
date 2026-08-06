@@ -8,27 +8,29 @@ import (
 )
 
 func TestMapARJournalAccounts(t *testing.T) {
-	d, c := mapARJournalAccounts("OPEN")
-	if d != coaAR || c != coaRevenue {
+	coa := DefaultCoa()
+	d, c := mapARJournalAccounts(coa, "OPEN")
+	if d != DefaultCoaAR || c != DefaultCoaRevenue {
 		t.Fatalf("OPEN: debit=%s credit=%s", d, c)
 	}
-	d, c = mapARJournalAccounts("PAYMENT")
-	if d != coaBankCash || c != coaAR {
+	d, c = mapARJournalAccounts(coa, "PAYMENT")
+	if d != DefaultCoaBankCash || c != DefaultCoaAR {
 		t.Fatalf("PAYMENT: debit=%s credit=%s", d, c)
 	}
 }
 
 func TestMapPaymentJournalAccounts(t *testing.T) {
-	d, c := mapPaymentJournalAccounts("SESSION_CAPTURED")
-	if d != coaBankCash || c != coaAR {
+	coa := DefaultCoa()
+	d, c := mapPaymentJournalAccounts(coa, "SESSION_CAPTURED")
+	if d != DefaultCoaBankCash || c != DefaultCoaAR {
 		t.Fatalf("capture: debit=%s credit=%s", d, c)
 	}
-	d, c = mapPaymentJournalAccounts("GATEWAY_REFUND")
-	if d != coaAR || c != coaBankCash {
+	d, c = mapPaymentJournalAccounts(coa, "GATEWAY_REFUND")
+	if d != DefaultCoaAR || c != DefaultCoaBankCash {
 		t.Fatalf("refund: debit=%s credit=%s", d, c)
 	}
-	d, c = mapPaymentJournalAccounts("CHARGEBACK_RECORDED")
-	if d != coaAR || c != coaBankCash {
+	d, c = mapPaymentJournalAccounts(coa, "CHARGEBACK_RECORDED")
+	if d != DefaultCoaAR || c != DefaultCoaBankCash {
 		t.Fatalf("chargeback: debit=%s credit=%s", d, c)
 	}
 }
@@ -40,8 +42,8 @@ func TestEncodeExportXMLJournal(t *testing.T) {
 			"source":         "ar",
 			"entry_id":       "e1",
 			"entry_type":     "OPEN",
-			"debit_account":  coaAR,
-			"credit_account": coaRevenue,
+			"debit_account":  DefaultCoaAR,
+			"credit_account": DefaultCoaRevenue,
 			"amount_minor":   int64(1000),
 			"currency":       "UZS",
 			"supplier_id":    "sup1",
@@ -95,9 +97,12 @@ func TestExportJournalsWorkerEmptySpanner(t *testing.T) {
 
 	exports := NewMemoryExportRepository()
 	sftp := NewMemorySftpConfigRepository()
+	coa := NewMemoryCoaRepository()
 	svc := NewService(NewMemoryKeyRepository(), NewMemoryWebhookRepository(), nil, nil, nil)
 	svc.SetExportRepos(exports, sftp)
+	svc.SetCoaRepository(coa)
 	worker := NewExportWorker(exports, sftp, nil, nil)
+	worker.SetCoaRepository(coa)
 
 	p := Principal{TenantType: TenantSupplier, TenantID: "sup-j2", Scopes: []string{ScopeExportsRead}}
 	j, err := svc.CreateExportJob(context.Background(), p, ExportResourceJournals, ExportFormatCSV, nil, nil)

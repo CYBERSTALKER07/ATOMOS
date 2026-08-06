@@ -20,6 +20,7 @@ import { useOptionalWebSocket } from "../../../lib/ws";
 import { getRetailerId } from "@/lib/retailer-profile";
 import type { Order, Prediction, Product } from "../../../lib/types";
 import { isPredictionBlocked } from "../../../lib/types";
+import { usePortalT } from "@/lib/i18n";
 
 const EMPTY_ORDERS: Order[] = [];
 const EMPTY_PREDICTIONS: Prediction[] = [];
@@ -28,6 +29,7 @@ const EMPTY_PRODUCTS: Product[] = [];
 type LoadIssue = "restricted" | "offline" | "error";
 
 export default function DashboardPage() {
+  const t = usePortalT();
   const retailerID = getRetailerId();
   const ordersPath = retailerID
     ? `/v1/retailers/${retailerID}/orders`
@@ -113,35 +115,35 @@ export default function DashboardPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Dashboard access is partially restricted for this account.",
+        message: t("retailer_desktop.residual.text.dashboard_access_is_partially_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing the latest cached operations data.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_the_latest_cached_operations_data"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Operations sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.operations_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Event updates may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_event_updates_may_be_delayed"),
       };
     }
     if (isRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing dashboard feeds...",
+        message: t("retailer_desktop.residual.text.syncing_dashboard_feeds"),
       };
     }
     return null;
@@ -160,8 +162,8 @@ export default function DashboardPage() {
     >
       <PageChrome
         icon="dashboard"
-        title="Operations Hub"
-        description="Active deliveries, restock signals, and fleet telemetry."
+        title={t("portal.page.dashboard.retailer.title")}
+        description={t("portal.page.dashboard.retailer.description")}
         loading={loading}
         skeletonVariant="dashboard"
         actions={
@@ -176,16 +178,18 @@ export default function DashboardPage() {
                 size={16}
                 className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
               />
-              {isRefreshing ? "Syncing" : "Sync"}
+              {isRefreshing
+                ? t("portal.page.dashboard.action.syncing")
+                : t("portal.page.dashboard.action.sync")}
             </button>
             <Link href="/orders">
               <button type="button" className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-light">
-                Review Orders
+                {t("portal.page.dashboard.action.review_orders")}
               </button>
             </Link>
             <Link href="/catalog">
               <button type="button" className="portal-btn portal-btn--primary h-10 px-5 rounded-xl font-light shadow-[var(--shadow-sm)]">
-                Open Catalog
+                {t("portal.page.dashboard.action.open_catalog")}
               </button>
             </Link>
           </div>

@@ -13,10 +13,12 @@ import { FactoryStats } from '@/components/dashboard/types';
 import { DashboardActionGrid } from '@/components/dashboard/DashboardActionGrid';
 import { DashboardMetrics } from '@/components/dashboard/DashboardMetrics';
 import { DashboardAlerts } from '@/components/dashboard/DashboardAlerts';
+import { usePortalT } from '@/lib/i18n';
 const LIVE_REFRESH_MS = 30_000;
 type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
 
 export default function FactoryDashboard() {
+  const t = usePortalT();
   const [stats, setStats] = useState<FactoryStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
@@ -95,8 +97,8 @@ export default function FactoryDashboard() {
       <PageTransition>
         <PageChrome
           icon="dashboard"
-          title="Factory dashboard"
-          description="Transfer, bay, fleet, and staffing metrics for this node."
+          title={t('portal.page.dashboard.factory.title')}
+          description={t('portal.page.dashboard.factory.description')}
           loading
           skeletonVariant="dashboard"
         />
@@ -124,7 +126,7 @@ export default function FactoryDashboard() {
 
     return (
       <PageTransition>
-        <PageChrome icon="dashboard" title="Factory dashboard" description="Transfer, bay, fleet, and staffing metrics for this node.">
+        <PageChrome icon="dashboard" title={t('portal.page.dashboard.factory.title')} description={t('portal.page.dashboard.factory.description')}>
           <EmptyState
             variant={loadIssue}
             headline={content.headline}
@@ -144,11 +146,11 @@ export default function FactoryDashboard() {
   if (!stats) {
     return (
       <PageTransition>
-        <PageChrome icon="dashboard" title="Factory dashboard" description="Transfer, bay, fleet, and staffing metrics for this node.">
+        <PageChrome icon="dashboard" title={t('portal.page.dashboard.factory.title')} description={t('portal.page.dashboard.factory.description')}>
           <EmptyState
             variant="no-data"
-            headline="No factory metrics yet"
-            body="Once transfer and loading activity starts, operational metrics will appear here."
+            headline={t("factory_portal.residual.text.no_factory_metrics_yet")}
+            body={t("factory_portal.residual.text.once_transfer_and_loading_activity_starts_operational_metrics_wi")}
             action="Refresh"
             onAction={() => {
               setLoading(true);
@@ -164,15 +166,15 @@ export default function FactoryDashboard() {
     <PageTransition>
       <PageChrome
         icon="dashboard"
-        title="Factory dashboard"
-        description="Transfer, bay, fleet, and staffing metrics for this node."
+        title={t('portal.page.dashboard.factory.title')}
+        description={t('portal.page.dashboard.factory.description')}
       >
         <div className="space-y-8">
           <DashboardActionGrid stats={stats} />
 
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Network pulse</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Cross-role timeline</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.app.text.network_pulse")}</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">{t("factory_portal.app.text.cross_role_timeline")}</h2>
             <div className="mt-5">
               <NetworkPulsePanel />
             </div>

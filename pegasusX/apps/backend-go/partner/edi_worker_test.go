@@ -97,7 +97,7 @@ func TestEdiOutboundLocalEmit(t *testing.T) {
 
 	// Minimal fake order service is hard; skip full emit without orders.
 	// Enqueue + MapEvent coverage is enough with codec tests.
-	w := NewEdiOutboundWorker(docs, sftpRepo, nil, nil)
+	w := NewEdiOutboundWorker(docs, sftpRepo, nil, nil, nil)
 	if err := w.EnqueueOutbound(context.Background(), TenantSupplier, "sup-out", EdiDocORDRSP, "o1:CREATED", "o1"); err != nil {
 		t.Fatal(err)
 	}

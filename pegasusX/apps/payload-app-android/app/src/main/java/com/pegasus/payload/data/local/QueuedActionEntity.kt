@@ -10,5 +10,12 @@ data class QueuedActionEntity(
     val endpoint: String,
     val method: String,
     val bodyJson: String?,
-    val timestamp: Long
+    val timestamp: Long,
+    /** Capture-time GPS — replay on flush (§8.8). */
+    val capturedLat: Double? = null,
+    val capturedLng: Double? = null,
+    val capturedAtMs: Long? = null,
+    val attemptCount: Int = 0,
+    val lastError: String = "",
+    val status: String = "PENDING",
 )

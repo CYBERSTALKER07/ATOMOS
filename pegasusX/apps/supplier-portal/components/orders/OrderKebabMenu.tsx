@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useRef, useState } from 'react';
 import Icon from '@/components/Icon';
 
@@ -30,6 +31,7 @@ export function OrderKebabMenu({
   reassignLabel = 'Reassign order',
   disabled = false,
 }: OrderKebabMenuProps) {
+  const t = usePortalT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +48,7 @@ export function OrderKebabMenu({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label="Order actions"
+        aria-label={t("supplier_portal.orders.order_kebab_menu.text.order_actions")}
         disabled={disabled}
         className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-[var(--default)] transition-colors disabled:opacity-40"
         onClick={(e) => {

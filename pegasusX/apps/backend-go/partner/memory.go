@@ -37,6 +37,13 @@ func (r *MemoryKeyRepository) GetByPrefix(_ context.Context, prefix string) (Api
 	return k, ok, nil
 }
 
+func (r *MemoryKeyRepository) GetByID(_ context.Context, keyID string) (ApiKey, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	k, ok := r.byID[strings.TrimSpace(keyID)]
+	return k, ok, nil
+}
+
 func (r *MemoryKeyRepository) ListByTenant(_ context.Context, tenantType, tenantID string, limit int) ([]ApiKey, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

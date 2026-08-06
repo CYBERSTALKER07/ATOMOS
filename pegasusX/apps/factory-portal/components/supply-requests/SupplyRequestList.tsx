@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { Fragment, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PageSection } from '@/components/PageSection';
@@ -21,10 +24,11 @@ export function SupplyRequestList({
   handleToggleOne,
   handleTransition,
 }: SupplyRequestListProps) {
+  const t = usePortalT();
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
 
   return (
-    <PageSection title="Demand queue" description="Advance requests through ACK → production → ready → fulfill.">
+    <PageSection title={t("factory_portal.supply_requests.supply_request_list.text.demand_queue")} description={t("factory_portal.residual.text.advance_requests_through_ack_production_ready_fulfill")}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -41,15 +45,15 @@ export function SupplyRequestList({
                   onChange={handleToggleAll}
                 />
               </th>
-              <th className="text-left px-4 py-3 font-medium">Warehouse</th>
-              <th className="text-left px-4 py-3 font-medium">Priority</th>
-              <th className="text-left px-4 py-3 font-medium">State</th>
-              <th className="text-left px-4 py-3 font-medium">Items</th>
-              <th className="text-left px-4 py-3 font-medium">Notes</th>
-              <th className="text-left px-4 py-3 font-medium">Volume (VU)</th>
-              <th className="text-left px-4 py-3 font-medium">Delivery Date</th>
-              <th className="text-left px-4 py-3 font-medium">Created</th>
-              <th className="text-right px-4 py-3 font-medium">Actions</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.insights.text.warehouse")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.priority")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.state")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.loading_bay.loading_bay_grid.text.items")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.transfers._id_.text.notes")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.payload_override.payload_list.text.volume_vu")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.delivery_date")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.created")}</th>
+              <th className="text-right px-4 py-3 font-medium">{t("factory_portal.insights.text.actions")}</th>
             </tr>
           </thead>
           <tbody>

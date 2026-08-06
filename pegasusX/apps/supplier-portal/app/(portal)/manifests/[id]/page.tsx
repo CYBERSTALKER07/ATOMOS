@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -18,6 +19,7 @@ import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcil
 const api = createSupplierApi();
 
 export default function ManifestDetailPage() {
+  const t = usePortalT();
   const params = useParams<{ id: string }>();
   const manifestId = decodeURIComponent(params.id);
   const [manifest, setManifest] = useState<SupplierManifestDetail | null>(null);
@@ -33,7 +35,7 @@ export default function ManifestDetailPage() {
     api
       .getSupplierManifestDetail(manifestId)
       .then(setManifest)
-      .catch((err) => setError(err instanceof Error ? err.message : "load_manifest_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_manifest_failed")))
       .finally(() => setLoading(false));
   }, [manifestId]);
 
@@ -67,7 +69,7 @@ export default function ManifestDetailPage() {
   return (
     <PageChrome
       icon="manifests"
-      title="Manifest detail"
+      title={t("supplier_portal.manifests._id_.text.manifest_detail")}
       description={manifestId}
       loading={loading}
       error={error}
@@ -76,13 +78,13 @@ export default function ManifestDetailPage() {
       {manifest ? (
         <div className="space-y-6">
           <div className="md-card p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Metric label="Status" value={<StatusBadge state={manifest.status} />} />
-            <Metric label="Orders" value={String(manifest.orders_count)} />
-            <Metric label="Driver" value={manifest.driver_name || manifest.driver_id || "—"} />
-            <Metric label="Vehicle" value={manifest.vehicle_plate || manifest.vehicle_id || "—"} />
-            <Metric label="Volume VU" value={String(manifest.total_volume_vu ?? manifest.total_vu)} />
-            <Metric label="Max VU" value={String(manifest.max_volume_vu ?? "—")} />
-            <Metric label="Updated" value={new Date(manifest.updated_at).toLocaleString()} />
+            <Metric label={t("supplier_portal.compliance.text.status")} value={<StatusBadge state={manifest.status} />} />
+            <Metric label={t("portal.nav.orders")} value={String(manifest.orders_count)} />
+            <Metric label={t("supplier_portal.analytics.route_performance.text.driver")} value={manifest.driver_name || manifest.driver_id || "—"} />
+            <Metric label={t("supplier_portal.org_fleet.components.driver_table.text.vehicle")} value={manifest.vehicle_plate || manifest.vehicle_id || "—"} />
+            <Metric label={t("supplier_portal.residual.text.volume_vu")} value={String(manifest.total_volume_vu ?? manifest.total_vu)} />
+            <Metric label={t("supplier_portal.residual.text.max_vu")} value={String(manifest.max_volume_vu ?? "—")} />
+            <Metric label={t("warehouse_portal.payment_config.text.updated")} value={new Date(manifest.updated_at).toLocaleString()} />
           </div>
 
           {actionError ? (
@@ -113,12 +115,12 @@ export default function ManifestDetailPage() {
               <>
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="block">
-                    <div className="md-typescale-label-medium text-[var(--color-md-outline)]">Inject order ID</div>
+                    <div className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.manifests._id_.text.inject_order_id")}</div>
                     <input
                       className="md-input-outlined mt-1 px-3 py-2"
                       value={injectOrderId}
                       onChange={(event) => setInjectOrderId(event.target.value)}
-                      placeholder="order uuid"
+                      placeholder={t("supplier_portal.manifests._id_.text.order_uuid")}
                     />
                   </label>
                   <button
@@ -170,9 +172,9 @@ export default function ManifestDetailPage() {
               <table className="desk-table w-full">
                 <thead>
                   <tr className="border-b border-[var(--color-md-outline-variant)] text-[var(--color-md-outline)]">
-                    <th className="md-typescale-label-medium p-4 font-medium">Order</th>
-                    <th className="md-typescale-label-medium p-4 font-medium">Status</th>
-                    <th className="md-typescale-label-medium p-4 font-medium text-right">Amount</th>
+                    <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.chargebacks.claims.text.order")}</th>
+                    <th className="md-typescale-label-medium p-4 font-medium">{t("supplier_portal.compliance.text.status")}</th>
+                    <th className="md-typescale-label-medium p-4 font-medium text-right">{t("supplier_portal.ledger.text.amount")}</th>
                   </tr>
                 </thead>
                 <tbody>

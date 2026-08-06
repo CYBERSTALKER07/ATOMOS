@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -32,26 +33,26 @@ const chipCfg: Record<
     label: string;
   }
 > = {
-  IN_TRANSIT: { color: "warning", label: "In Transit" },
-  DISPATCHED: { color: "warning", label: "Dispatched" },
-  PENDING: { color: "default", label: "Pending" },
-  PENDING_REVIEW: { color: "default", label: "Pending Review" },
-  LOADED: { color: "default", label: "Loaded" },
-  ARRIVED: { color: "success", label: "Arrived" },
-  ARRIVING: { color: "accent", label: "Arriving" },
-  ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
-  AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
-  PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
-  COMPLETED: { color: "success", label: "Completed" },
-  FISCALIZING: { color: "warning", label: "Pending fiscal" },
-  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
-  CANCELLED: { color: "danger", label: "Cancelled" },
-  CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
-  NO_CAPACITY: { color: "danger", label: "No Capacity" },
-  SCHEDULED: { color: "default", label: "Scheduled" },
-  AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
-  QUARANTINE: { color: "danger", label: "Quarantined" },
-  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  IN_TRANSIT: { color: "warning", label: t("retailer_desktop.residual.text.in_transit") },
+  DISPATCHED: { color: "warning", label: t("supplier_portal.dispatch.text.dispatched") },
+  PENDING: { color: "default", label: t("retailer_desktop.residual.text.pending") },
+  PENDING_REVIEW: { color: "default", label: t("retailer_desktop.residual.text.pending_review") },
+  LOADED: { color: "default", label: t("retailer_desktop.residual.text.loaded") },
+  ARRIVED: { color: "success", label: t("retailer_desktop.residual.text.arrived") },
+  ARRIVING: { color: "accent", label: t("retailer_desktop.residual.text.arriving") },
+  ARRIVED_SHOP_CLOSED: { color: "warning", label: t("retailer_desktop.residual.text.shop_closed") },
+  AWAITING_PAYMENT: { color: "warning", label: t("retailer_desktop.residual.text.awaiting_payment") },
+  PENDING_CASH_COLLECTION: { color: "warning", label: t("retailer_desktop.residual.text.cash_collection") },
+  COMPLETED: { color: "success", label: t("portal.page.orders.filter.completed") },
+  FISCALIZING: { color: "warning", label: t("retailer_desktop.residual.text.pending_fiscal") },
+  FISCAL_FAILED: { color: "danger", label: t("retailer_desktop.residual.text.fiscal_failed") },
+  CANCELLED: { color: "danger", label: t("portal.page.orders.filter.cancelled") },
+  CANCEL_REQUESTED: { color: "danger", label: t("retailer_desktop.residual.text.cancel_requested") },
+  NO_CAPACITY: { color: "danger", label: t("retailer_desktop.residual.text.no_capacity") },
+  SCHEDULED: { color: "default", label: t("supplier_portal.demand.signals.text.scheduled") },
+  AUTO_ACCEPTED: { color: "default", label: t("retailer_desktop.residual.text.auto_accepted") },
+  QUARANTINE: { color: "danger", label: t("retailer_desktop.residual.text.quarantined") },
+  DELIVERED_ON_CREDIT: { color: "success", label: t("retailer_desktop.residual.text.delivered_credit") },
 };
 
 type LoadIssue = "restricted" | "offline" | "error";
@@ -74,6 +75,7 @@ function useColorScheme(): "light" | "dark" {
 }
 
 export default function TrackingPage() {
+  const t = usePortalT();
   const {
     data: trackingData,
     loading,
@@ -234,35 +236,35 @@ export default function TrackingPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Tracking access restricted for this account.",
+        message: t("retailer_desktop.residual.text.tracking_access_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing the latest known telemetry.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_the_latest_known_telemetry"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Telemetry sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.telemetry_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Event updates may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_event_updates_may_be_delayed"),
       };
     }
     if (isRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing live telemetry...",
+        message: t("retailer_desktop.residual.text.syncing_live_telemetry"),
       };
     }
     return null;
@@ -305,8 +307,8 @@ export default function TrackingPage() {
     >
       <PageChrome
         icon="tracking"
-        title="Telemetry Control"
-        description="Live fleet orchestration and inbound logistics monitoring."
+        title={t("retailer_desktop.tracking.text.telemetry_control")}
+        description={t("retailer_desktop.residual.text.live_fleet_orchestration_and_inbound_logistics_monitoring")}
         loading={loading && orders.length === 0}
         skeletonVariant="table"
         actions={
@@ -325,7 +327,7 @@ export default function TrackingPage() {
         }
       >
 
-      <PageSection title="Network pulse" description="Recent order and notification activity for your account.">
+      <PageSection title={t("retailer_desktop.tracking.text.network_pulse")} description={t("retailer_desktop.residual.text.recent_order_and_notification_activity_for_your_account")}>
         <NetworkPulsePanel />
       </PageSection>
 

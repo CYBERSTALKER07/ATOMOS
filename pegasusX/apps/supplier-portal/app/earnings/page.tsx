@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { ApiClient, supplierChargebackKey, supplierChargebackReversalKey } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
@@ -32,6 +33,7 @@ type ActionState =
 const gatewayOptions = ["ADYEN", "GLOBAL_PAY", "STRIPE", "PAYME", "CLICK", "CASH"];
 
 export default function EarningsPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshTick, setRefreshTick] = useState(0);
@@ -56,13 +58,13 @@ export default function EarningsPage() {
     if (chargebackState.status === "submitting") {
       setChargebackState({
         status: "error",
-        message: "Connection restored — verify chargeback status before retrying.",
+        message: t("supplier_portal.residual.text.connection_restored_verify_chargeback_status_before_retrying"),
       });
     }
     if (reversalState.status === "submitting") {
       setReversalState({
         status: "error",
-        message: "Connection restored — verify reversal status before retrying.",
+        message: t("supplier_portal.residual.text.connection_restored_verify_reversal_status_before_retrying"),
       });
     }
     setRefreshTick((value) => value + 1);
@@ -111,7 +113,7 @@ export default function EarningsPage() {
         chargebackForm,
         supplierChargebackKey(chargebackForm.order_id, chargebackForm.order_id),
       );
-      setChargebackState({ status: "success", message: "Chargeback recorded. Live finance refresh queued." });
+      setChargebackState({ status: "success", message: t("supplier_portal.residual.text.chargeback_recorded_live_finance_refresh_queued") });
       setRefreshTick((value) => value + 1);
     } catch (error) {
       setChargebackState({ status: "error", message: errorToMessage(error) });
@@ -126,7 +128,7 @@ export default function EarningsPage() {
         reversalForm,
         supplierChargebackReversalKey(reversalForm.session_id, reversalForm.session_id),
       );
-      setReversalState({ status: "success", message: "Chargeback reversal recorded. Live finance refresh queued." });
+      setReversalState({ status: "success", message: t("supplier_portal.residual.text.chargeback_reversal_recorded_live_finance_refresh_queued") });
       setRefreshTick((value) => value + 1);
     } catch (error) {
       setReversalState({ status: "error", message: errorToMessage(error) });
@@ -136,8 +138,8 @@ export default function EarningsPage() {
   return (
     <PageChrome
       icon="treasury"
-      title="Earnings & Treasury"
-      description="Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state."
+      title={t("supplier_portal.earnings.text.earnings_and_treasury")}
+      description={t("supplier_portal.residual.text.supplier_treasury_authority_disputes_and_reconciliation_operatio")}
       loading={state.status === "loading"}
       skeletonVariant="table"
       error={state.status === "error" ? state.message : null}
@@ -147,7 +149,7 @@ export default function EarningsPage() {
         </button>
       }
     >
-      <PortalSection title="Live treasury stream" icon="treasury">
+      <PortalSection title={t("supplier_portal.earnings.text.live_treasury_stream")} icon="treasury">
         <p className="md-typescale-body-medium">{liveState.message}</p>
         {(liveState.lastEventType || liveState.lastEventAt) && (
           <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
@@ -168,15 +170,15 @@ export default function EarningsPage() {
           )}
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
-            <MetricCard label="Supplier scope" value={state.snapshot.authority.supplier_id || "(global)"} />
-            <MetricCard label="Ledger rows" value={String(state.snapshot.ledger.count)} />
-            <MetricCard label="Dispute rows" value={String(disputeEntries.length)} />
-            <MetricCard label="Mismatch groups" value={String(state.snapshot.mismatches.length)} />
+            <MetricCard label={t("supplier_portal.residual.text.supplier_scope")} value={state.snapshot.authority.supplier_id || "(global)"} />
+            <MetricCard label={t("supplier_portal.residual.text.ledger_rows")} value={String(state.snapshot.ledger.count)} />
+            <MetricCard label={t("supplier_portal.residual.text.dispute_rows")} value={String(disputeEntries.length)} />
+            <MetricCard label={t("supplier_portal.residual.text.mismatch_groups")} value={String(state.snapshot.mismatches.length)} />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[2fr,1fr] mb-6">
             <article className="md-card md-shape-md p-6">
-              <h2 className="md-typescale-title-large">Totals by currency</h2>
+              <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.totals_by_currency")}</h2>
               {state.snapshot.authority.totals_by_currency.length === 0 ? (
                 <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                   No currency totals available for the active finance window.
@@ -199,22 +201,22 @@ export default function EarningsPage() {
             </article>
 
             <aside className="md-card md-shape-md p-6">
-              <h2 className="md-typescale-title-large">Finance actions</h2>
+              <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.finance_actions")}</h2>
               <p className="md-typescale-body-small mt-2" style={{ color: "var(--color-md-outline)" }}>
                 Use only for verified dispute handling and gateway-authorized reversals.
               </p>
 
               <form className="mt-5 grid gap-3" onSubmit={submitChargeback}>
-                <h3 className="md-typescale-title-medium">Record chargeback</h3>
+                <h3 className="md-typescale-title-medium">{t("supplier_portal.earnings.text.record_chargeback")}</h3>
                 <input
                   className="md-input-outlined"
-                  placeholder="Order ID"
+                  placeholder={t("supplier_portal.admin.control_center.field.order_id")}
                   value={chargebackForm.order_id}
                   onChange={(event) => setChargebackForm((current) => ({ ...current, order_id: event.target.value }))}
                 />
                 <input
                   className="md-input-outlined"
-                  placeholder="Retailer ID"
+                  placeholder={t("supplier_portal.chargebacks.text.retailer_id")}
                   value={chargebackForm.retailer_id}
                   onChange={(event) => setChargebackForm((current) => ({ ...current, retailer_id: event.target.value }))}
                 />
@@ -232,7 +234,7 @@ export default function EarningsPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <input
                     className="md-input-outlined"
-                    placeholder="Amount (minor units)"
+                    placeholder={t("supplier_portal.chargebacks.text.amount_minor_units")}
                     inputMode="numeric"
                     value={chargebackForm.amount === 0 ? "" : String(chargebackForm.amount)}
                     onChange={(event) =>
@@ -244,7 +246,7 @@ export default function EarningsPage() {
                   />
                   <input
                     className="md-input-outlined"
-                    placeholder="Currency"
+                    placeholder={t("supplier_portal.chargebacks.text.currency")}
                     value={chargebackForm.currency ?? "UZS"}
                     onChange={(event) => setChargebackForm((current) => ({ ...current, currency: event.target.value || "UZS" }))}
                   />
@@ -256,10 +258,10 @@ export default function EarningsPage() {
               </form>
 
               <form className="mt-6 grid gap-3" onSubmit={submitReversal}>
-                <h3 className="md-typescale-title-medium">Record reversal</h3>
+                <h3 className="md-typescale-title-medium">{t("supplier_portal.earnings.text.record_reversal")}</h3>
                 <input
                   className="md-input-outlined"
-                  placeholder="Session ID"
+                  placeholder={t("supplier_portal.admin.control_center.field.session_id")}
                   value={reversalForm.session_id}
                   onChange={(event) => setReversalForm({ session_id: event.target.value })}
                 />
@@ -272,7 +274,7 @@ export default function EarningsPage() {
           </section>
 
           <section className="md-card md-shape-md p-6 mb-6">
-            <h2 className="md-typescale-title-large">Recent dispute history</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.recent_dispute_history")}</h2>
             {disputeEntries.length === 0 ? (
               <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                 No recorded chargebacks or reversals for the current finance window.
@@ -283,12 +285,12 @@ export default function EarningsPage() {
           </section>
 
           <section className="md-card md-shape-md p-6 mb-6">
-            <h2 className="md-typescale-title-large">Recent ledger activity</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.recent_ledger_activity")}</h2>
             <FinanceEntryTable entries={recentEntries} emptyLabel="No recent ledger activity." />
           </section>
 
           <section className="md-card md-shape-md p-6">
-            <h2 className="md-typescale-title-large">Reconciliation mismatches</h2>
+            <h2 className="md-typescale-title-large">{t("supplier_portal.earnings.text.reconciliation_mismatches")}</h2>
             {state.snapshot.mismatches.length === 0 ? (
               <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
                 No mismatch groups detected for the current supplier scope.
@@ -298,12 +300,12 @@ export default function EarningsPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-                      <th className="py-2 pr-4">Gateway</th>
-                      <th className="py-2 pr-4">Currency</th>
-                      <th className="py-2 pr-4">Net</th>
-                      <th className="py-2 pr-4">Credit total</th>
-                      <th className="py-2 pr-4">Debit total</th>
-                      <th className="py-2 pr-4">Entries</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.gateway")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.currency")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.net")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.credit_total")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.debit_total")}</th>
+                      <th className="py-2 pr-4">{t("supplier_portal.earnings.text.entries")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -375,11 +377,11 @@ function FinanceEntryTable({ entries, emptyLabel }: { entries: PaymentLedgerEntr
       <table className="w-full text-left">
         <thead>
           <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-            <th className="py-2 pr-4">Occurred</th>
-            <th className="py-2 pr-4">Gateway</th>
-            <th className="py-2 pr-4">Entry type</th>
-            <th className="py-2 pr-4">Reference</th>
-            <th className="py-2 pr-4">Amount</th>
+            <th className="py-2 pr-4">{t("supplier_portal.earnings.text.occurred")}</th>
+            <th className="py-2 pr-4">{t("supplier_portal.chargebacks.text.gateway")}</th>
+            <th className="py-2 pr-4">{t("supplier_portal.earnings.text.entry_type")}</th>
+            <th className="py-2 pr-4">{t("supplier_portal.earnings.text.reference")}</th>
+            <th className="py-2 pr-4">{t("supplier_portal.ledger.text.amount")}</th>
           </tr>
         </thead>
         <tbody>

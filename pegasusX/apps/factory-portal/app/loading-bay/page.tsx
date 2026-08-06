@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
@@ -33,6 +34,7 @@ const COLUMNS: { key: TransferState; label: string; css: string }[] = [
 ];
 
 export default function LoadingBayPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,8 +125,8 @@ export default function LoadingBayPage() {
     <PageTransition>
       <PageChrome
         icon="loadingBay"
-        title="Loading bay"
-        description="Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context."
+        title={t("factory_portal.loading_bay.text.loading_bay")}
+        description={t("factory_portal.residual.text.review_approved_factory_transfers_advance_active_loading_and_dis")}
         loading={loading}
         skeletonVariant="dashboard"
         actions={
@@ -139,19 +141,19 @@ export default function LoadingBayPage() {
           <ExplainStatusBanner explain={dispatchExplain} className="mb-4" />
         ) : null}
         <KpiStatGrid columns={4}>
-          <KpiStatCard label="Ready to load" value={readyCount} sub="Awaiting operator attention" />
-          <KpiStatCard label="Now loading" value={loadingCount} sub="Active bay work" />
-          <KpiStatCard label="Dispatched" value={dispatchedCount} sub="Already moved out" />
+          <KpiStatCard label={t("factory_portal.residual.text.ready_to_load")} value={readyCount} sub="Awaiting operator attention" />
+          <KpiStatCard label={t("factory_portal.residual.text.now_loading")} value={loadingCount} sub="Active bay work" />
+          <KpiStatCard label={t("supplier_portal.dispatch.text.dispatched")} value={dispatchedCount} sub="Already moved out" />
           <KpiStatCard
-            label="Total volume"
+            label={t("factory_portal.residual.text.total_volume")}
             value={`${totalVolume.toFixed(1)} m³`}
             sub={latestUpdatedAt ? `Updated ${new Date(latestUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No updates yet'}
           />
         </KpiStatGrid>
 
         <PageSection
-          title="Handoff timeline"
-          description="Preorder → accept → dispatch → seal events from the factory pulse feed."
+          title={t("factory_portal.loading_bay.text.handoff_timeline")}
+          description={t("factory_portal.residual.text.preorder_accept_dispatch_seal_events_from_the_factory_pulse_feed")}
           className="mt-6"
         >
           <HandoffTimelinePanel />
@@ -160,8 +162,8 @@ export default function LoadingBayPage() {
         {transfers.length === 0 ? (
           <EmptyState
             imageUrl="/images/empty-production-line.png"
-            headline="No active transfers in the loading bay"
-            body="Approved transfers will appear here as soon as warehouse demand is accepted."
+            headline={t("factory_portal.residual.text.no_active_transfers_in_the_loading_bay")}
+            body={t("factory_portal.residual.text.approved_transfers_will_appear_here_as_soon_as_warehouse_demand_")}
           />
         ) : (
           <LoadingBayGrid grouped={grouped} />

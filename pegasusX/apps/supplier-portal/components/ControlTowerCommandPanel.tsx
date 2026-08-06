@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useState } from "react";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
 import { supplierFetch } from "@/lib/auth";
@@ -18,6 +19,7 @@ const DEFAULT_POLYGON = {
 };
 
 export default function ControlTowerCommandPanel({ className = "" }: { className?: string }) {
+  const t = usePortalT();
   const [action, setAction] = useState<"REROUTE" | "FREEZE_DISPATCH" | "PRIORITY_BOOST">("REROUTE");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +43,7 @@ export default function ControlTowerCommandPanel({ className = "" }: { className
       const row = await res.json();
       setStatus(`Override ${row.override_id} active (${row.action})`);
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Override failed");
+      setStatus(err instanceof Error ? err.message : t("supplier_portal.residual.text.override_failed"));
     } finally {
       setBusy(false);
     }
@@ -53,15 +55,15 @@ export default function ControlTowerCommandPanel({ className = "" }: { className
         className="flex flex-wrap items-center gap--2 px-5 py-3 border-b"
         style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
       >
-        <span className="md-typescale-title-medium mr-2">Control tower</span>
+        <span className="md-typescale-title-medium mr-2">{t("supplier_portal.control_tower_command_panel.text.control_tower")}</span>
         <select
           className="portal-input text-sm"
           value={action}
           onChange={(e) => setAction(e.target.value as typeof action)}
         >
-          <option value="REROUTE">Reroute</option>
-          <option value="FREEZE_DISPATCH">Freeze dispatch</option>
-          <option value="PRIORITY_BOOST">Priority boost</option>
+          <option value="REROUTE">{t("supplier_portal.control_tower_command_panel.text.reroute")}</option>
+          <option value="FREEZE_DISPATCH">{t("supplier_portal.control_tower_command_panel.text.freeze_dispatch")}</option>
+          <option value="PRIORITY_BOOST">{t("supplier_portal.control_tower_command_panel.text.priority_boost")}</option>
         </select>
         <button
           type="button"

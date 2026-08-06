@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -17,6 +20,7 @@ export interface Transfer {
 }
 
 export function stateClass(state: string): string {
+  const t = usePortalT();
   const map: Record<string, string> = {
     DRAFT: 'status-chip--draft',
     APPROVED: 'status-chip--approved',
@@ -47,13 +51,13 @@ export function TransferList({ transfers }: TransferListProps) {
         <table className="w-full min-w-[880px] text-sm">
           <thead>
             <tr className="table__header border-b border-[var(--border)]">
-              <th className="table__column px-4 py-3 text-left font-medium">Warehouse</th>
-              <th className="table__column px-4 py-3 text-left font-medium">State</th>
-              <th className="table__column px-4 py-3 text-left font-medium">Priority</th>
-              <th className="table__column px-4 py-3 text-right font-medium">Items</th>
-              <th className="table__column px-4 py-3 text-right font-medium">Volume</th>
-              <th className="table__column px-4 py-3 text-right font-medium">Created</th>
-              <th className="table__column px-4 py-3 text-right font-medium">Action</th>
+              <th className="table__column px-4 py-3 text-left font-medium">{t("factory_portal.insights.text.warehouse")}</th>
+              <th className="table__column px-4 py-3 text-left font-medium">{t("factory_portal.supply_requests.supply_request_list.text.state")}</th>
+              <th className="table__column px-4 py-3 text-left font-medium">{t("factory_portal.supply_requests.supply_request_list.text.priority")}</th>
+              <th className="table__column px-4 py-3 text-right font-medium">{t("factory_portal.loading_bay.loading_bay_grid.text.items")}</th>
+              <th className="table__column px-4 py-3 text-right font-medium">{t("factory_portal.transfers._id_.text.volume")}</th>
+              <th className="table__column px-4 py-3 text-right font-medium">{t("factory_portal.supply_requests.supply_request_list.text.created")}</th>
+              <th className="table__column px-4 py-3 text-right font-medium">{t("supplier_portal.admin.audit_log.table.action")}</th>
             </tr>
           </thead>
           <motion.tbody

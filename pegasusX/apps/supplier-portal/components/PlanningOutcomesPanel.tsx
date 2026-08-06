@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ type PipelineStage = {
 };
 
 export default function PlanningOutcomesPanel() {
+  const t = usePortalT();
   const [demand, setDemand] = useState<SupplierDemandSummaryResponse | null>(null);
   const [meio, setMeio] = useState<SupplierMEIONetworkSummary | null>(null);
   const [policy, setPolicy] = useState<SupplierReplenishmentPolicy | null>(null);
@@ -49,7 +51,7 @@ export default function PlanningOutcomesPanel() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "planning_outcomes_unavailable");
+          setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.planning_outcomes_unavailable"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -69,7 +71,7 @@ export default function PlanningOutcomesPanel() {
   const stages: PipelineStage[] = [
     {
       key: "baseline",
-      title: "Demand baseline",
+      title: t("supplier_portal.residual.text.demand_baseline"),
       metric: demand ? `${demand.prediction_count.toLocaleString()} SKUs` : "—",
       detail: demand
         ? `${demand.total_pallets.toLocaleString()} pallets · ${demand.total_retailers} retailers`
@@ -78,14 +80,14 @@ export default function PlanningOutcomesPanel() {
     },
     {
       key: "insights",
-      title: "Replenishment insights",
+      title: t("factory_portal.insights.text.replenishment_insights"),
       metric: meio ? meio.insights_generated.toLocaleString() : "—",
       detail: "Predictive push and warehouse scan outputs",
       href: "/operations" as Route,
     },
     {
       key: "touchless",
-      title: "Touchless transfers",
+      title: t("supplier_portal.residual.text.touchless_transfers"),
       metric: meio ? meio.transfer_recommendations.toLocaleString() : "—",
       detail: touchlessEnabled
         ? `Auto-approve on · max ${policy?.max_daily_transfer_units?.toLocaleString() ?? "—"} units/day`
@@ -94,7 +96,7 @@ export default function PlanningOutcomesPanel() {
     },
     {
       key: "meio",
-      title: "MEIO network",
+      title: t("supplier_portal.residual.text.meio_network"),
       metric: meio ? `${meio.warehouses_scanned} WH` : "—",
       detail: meio
         ? `${meio.skus_analyzed.toLocaleString()} SKUs · ${criticalSkus} critical`

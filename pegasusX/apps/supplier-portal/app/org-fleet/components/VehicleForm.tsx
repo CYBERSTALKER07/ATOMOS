@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import type { HomeNodeType, SupplierFleetVehicleCreateRequest } from "@pegasusx/types";
 import { supplierFleetVehicleCreateKey } from "@pegasusx/api-client";
@@ -27,6 +30,7 @@ export function VehicleForm({
   const [vehicleMessage, setVehicleMessage] = useState<string | null>(null);
 
   async function submitVehicle(event: React.FormEvent<HTMLFormElement>) {
+  const t = usePortalT();
     event.preventDefault();
     setVehicleSubmitting(true);
     setVehicleMessage(null);
@@ -53,18 +57,18 @@ export function VehicleForm({
 
   return (
     <article className="md-card md-shape-md p-6">
-      <h2 className="md-typescale-title-large">Vehicles</h2>
+      <h2 className="md-typescale-title-large">{t("supplier_portal.org_fleet.components.vehicle_form.text.vehicles")}</h2>
       <form className="grid gap-3 mt-4" onSubmit={submitVehicle}>
         <input
           className="md-input-outlined"
-          placeholder="Vehicle label"
+          placeholder={t("supplier_portal.org_fleet.components.vehicle_form.text.vehicle_label")}
           value={vehicleForm.label}
           onChange={(event) => setVehicleForm((current) => ({ ...current, label: event.target.value }))}
           disabled={vehicleSubmitting}
         />
         <input
           className="md-input-outlined"
-          placeholder="License plate"
+          placeholder={t("supplier_portal.org_fleet.components.vehicle_form.text.license_plate")}
           value={vehicleForm.licensePlate}
           onChange={(event) => setVehicleForm((current) => ({ ...current, licensePlate: event.target.value.toUpperCase() }))}
           disabled={vehicleSubmitting}
@@ -81,8 +85,8 @@ export function VehicleForm({
           }
           disabled={vehicleSubmitting}
         >
-          <option value="WAREHOUSE">Warehouse-based vehicle</option>
-          <option value="FACTORY">Factory-based vehicle</option>
+          <option value="WAREHOUSE">{t("supplier_portal.org_fleet.components.vehicle_form.text.warehouse_based_vehicle")}</option>
+          <option value="FACTORY">{t("supplier_portal.org_fleet.components.vehicle_form.text.factory_based_vehicle")}</option>
         </select>
         <select
           className="md-input-outlined"
@@ -90,7 +94,7 @@ export function VehicleForm({
           onChange={(event) => setVehicleForm((current) => ({ ...current, homeNodeID: event.target.value }))}
           disabled={vehicleSubmitting}
         >
-          <option value="">Select home node</option>
+          <option value="">{t("supplier_portal.org_fleet.components.driver_form.text.select_home_node")}</option>
           {nodeOptionsFor(vehicleForm.homeNodeType, state.topology).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

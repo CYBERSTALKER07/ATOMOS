@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { supplierFetch } from "@/lib/auth";
@@ -12,6 +13,7 @@ import { CreateProductForm } from "./components/CreateProductForm";
 import { CatalogTable } from "./components/CatalogTable";
 
 export default function CatalogPage() {
+  const t = usePortalT();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [currency, setCurrency] = useState("UZS");
@@ -41,7 +43,7 @@ export default function CatalogPage() {
       setProducts(Array.isArray(rows) ? rows : []);
       setCategories(Array.isArray(cats) ? cats : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load catalog");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_catalog"));
     } finally {
       setLoading(false);
     }
@@ -157,8 +159,8 @@ export default function CatalogPage() {
   return (
     <PageChrome
       icon="catalog"
-      title="Catalog"
-      description="Create products and set volumetric units (VU) for warehouse dispatch capacity."
+      title={t("portal.nav.catalog")}
+      description={t("supplier_portal.residual.text.create_products_and_set_volumetric_units_vu_for_warehouse_dispat")}
       loading={loading}
       error={error}
       empty={!showCreate && products.length === 0}

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +29,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 // Store location and tax setup live at /setup/* post-registration.
 
 export default function RetailerRegisterPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,7 +71,7 @@ export default function RetailerRegisterPage() {
           verification: { otpCode: "", idToken: "" },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+        setSubmitError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.failed_to_send_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -87,7 +89,7 @@ export default function RetailerRegisterPage() {
           verification: { ...s.verification, idToken },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+        setSubmitError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.invalid_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -157,7 +159,7 @@ export default function RetailerRegisterPage() {
 
       router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Registration failed");
+      setSubmitError(err instanceof Error ? err.message : t("supplier_portal.auth.register.error.registration_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +167,7 @@ export default function RetailerRegisterPage() {
 
   return (
     <AuthRegisterShell
-      title="Set up your retailer account"
+      title={t("retailer_desktop.auth.register.text.set_up_your_retailer_account")}
       subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
       stepOrder={STEP_ORDER}
       stepLabels={STEP_LABELS}

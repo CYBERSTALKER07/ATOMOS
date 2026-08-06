@@ -20,7 +20,9 @@ Gate-3 accounting export via the existing partner export job pipeline.
 
 AR rows are preferred until `MaxExportRows` (50k); payment fills the remainder.
 
-## Fixed chart of accounts (v1)
+## Chart of accounts
+
+Default 1C-style accounts (when no tenant map):
 
 | Event | Debit | Credit |
 |-------|-------|--------|
@@ -29,7 +31,19 @@ AR rows are preferred until `MaxExportRows` (50k); payment fills the remainder.
 | Payment capture/settle | `51.01` | `62.01` |
 | Payment refund / chargeback / void | `62.01` | `51.01` |
 
-Configurable CoA mapping is not shipped; constants live in `partner/export_journals.go`.
+**Configurable (2026-08-06):** per-tenant override in `PartnerCoaMaps` (`account_ar`, `account_revenue`, `account_bank_cash`).
+
+| Method | Path | Auth |
+|--------|------|------|
+| GET/PUT | `/partner/v1/coa` | Partner key `exports:read` |
+| GET/PUT | `/v1/supplier/partner-coa` | Supplier ADMIN JWT |
+| GET/PUT | `/v1/admin/partner-coa` | Admin / retailer JWT |
+
+Empty fields on PUT resolve to platform defaults. Optional env defaults: `PARTNER_COA_AR`, `PARTNER_COA_REVENUE`, `PARTNER_COA_BANK`.
+
+Migration: `apps/backend-go/schema/migrations/20260806_partner_coa.ddl`.
+
+Portal: Settings → Integrations → **1C chart of accounts**.
 
 ## Columns
 

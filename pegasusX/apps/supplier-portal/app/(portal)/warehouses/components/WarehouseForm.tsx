@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
@@ -13,6 +16,7 @@ const DEFAULT_LOCATION: LocationValue = {
 };
 
 export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
+  const t = usePortalT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -26,7 +30,7 @@ export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
     const radiusValue = Number.parseFloat(radius);
     
     if (!trimmed || !location.address.trim() || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
-      setError("Name and address are required.");
+      setError(t("supplier_portal.residual.text.name_and_address_are_required"));
       return;
     }
     
@@ -35,7 +39,7 @@ export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
     try {
       await onSave(trimmed, location, Number.isFinite(radiusValue) && radiusValue > 0 ? radiusValue : 50);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_warehouse_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_warehouse_failed"));
     } finally {
       setSaving(false);
     }
@@ -43,15 +47,15 @@ export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
 
   return (
     <div className="md-card p-6 space-y-4 mb-6">
-      <h2 className="md-typescale-title-medium">Add warehouse</h2>
+      <h2 className="md-typescale-title-medium">{t("supplier_portal.warehouses.components.warehouse_form.text.add_warehouse")}</h2>
       {error && <div className="text-red-600 md-typescale-body-medium">{error}</div>}
       <label className="block space-y-1">
-        <span className="md-typescale-label-medium">Name</span>
-        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Main warehouse" />
+        <span className="md-typescale-label-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</span>
+        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.warehouses.components.warehouse_form.text.main_warehouse")} />
       </label>
-      <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
+      <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.warehouse_address")} />
       <label className="block space-y-1">
-        <span className="md-typescale-label-medium">Coverage km</span>
+        <span className="md-typescale-label-medium">{t("supplier_portal.warehouses.components.warehouse_form.text.coverage_km")}</span>
         <input className="md-input w-full max-w-xs" value={radius} onChange={(e) => setRadius(e.target.value)} />
       </label>
       <div className="flex gap-2">

@@ -1,0 +1,112 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "PackageStructure": ["<PackageStructure>"]
+  "PegasusKit-arm64-apple-macosx-debug.module": ["<PegasusKit-arm64-apple-macosx-debug.module>"]
+  "PegasusKitPackageTests-arm64-apple-macosx-debug.module": ["<PegasusKitPackageTests-arm64-apple-macosx-debug.module>"]
+  "PegasusKitPackageTests-arm64-apple-macosx-debug.test": ["<PegasusKitPackageTests-arm64-apple-macosx-debug.test>"]
+  "PegasusKitTests-arm64-apple-macosx-debug.module": ["<PegasusKitTests-arm64-apple-macosx-debug.module>"]
+  "main": ["<PegasusKit-arm64-apple-macosx-debug.module>"]
+  "test": ["<PegasusKit-arm64-apple-macosx-debug.module>","<PegasusKitPackageTests-arm64-apple-macosx-debug.test>","<PegasusKitTests-arm64-apple-macosx-debug.module>"]
+default: "main"
+nodes:
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Tests/PegasusKitTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Net/ReconnectBackoff.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/OfflineHttpSemantics.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/QueuedMutationRecord.swift"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/sources"]
+    description: "Write auxiliary file /Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/sources"
+
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.derived/runner.swift"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/sources"]
+    description: "Write auxiliary file /Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/sources"
+
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.derived/runner.swift":
+    tool: test-entry-point-tool
+    inputs: []
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.derived/runner.swift"]
+
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/runner.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/OfflineHttpSemanticsTests.swift.o"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.product/Objects.LinkFileList"
+
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Tests/PegasusKitTests/OfflineHttpSemanticsTests.swift"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/sources"]
+    description: "Write auxiliary file /Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/sources"
+
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+
+  "<PegasusKit-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKit.swiftmodule"]
+    outputs: ["<PegasusKit-arm64-apple-macosx-debug.module>"]
+
+  "<PegasusKitPackageTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/runner.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitPackageTests.swiftmodule"]
+    outputs: ["<PegasusKitPackageTests-arm64-apple-macosx-debug.module>"]
+
+  "<PegasusKitPackageTests-arm64-apple-macosx-debug.test>":
+    tool: phony
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.xctest/Contents/MacOS/PegasusKitPackageTests"]
+    outputs: ["<PegasusKitPackageTests-arm64-apple-macosx-debug.test>"]
+
+  "<PegasusKitTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/OfflineHttpSemanticsTests.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitTests.swiftmodule"]
+    outputs: ["<PegasusKitTests-arm64-apple-macosx-debug.module>"]
+
+  "C.PegasusKit-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Net/ReconnectBackoff.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/OfflineHttpSemantics.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/QueuedMutationRecord.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/sources"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKit.swiftmodule"]
+    description: "Compiling Swift Module 'PegasusKit' (3 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","PegasusKit","-emit-dependencies","-emit-module","-emit-module-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKit.swiftmodule","-output-file-map","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/sources","-I","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j14","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/include/PegasusKit-Swift.h","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mobile_ios_kit"]
+
+  "C.PegasusKitPackageTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.derived/runner.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitTests.swiftmodule","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/sources"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/runner.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitPackageTests.swiftmodule"]
+    description: "Compiling Swift Module 'PegasusKitPackageTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","PegasusKitPackageTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitPackageTests.swiftmodule","-output-file-map","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/sources","-I","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j14","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/include/PegasusKitPackageTests-Swift.h","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mobile_ios_kit"]
+
+  "C.PegasusKitPackageTests-arm64-apple-macosx-debug.test":
+    tool: shell
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.build/runner.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/OfflineHttpSemanticsTests.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.product/Objects.LinkFileList"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.xctest/Contents/MacOS/PegasusKitPackageTests"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/PegasusKitPackageTests.xctest/Contents/MacOS/PegasusKitPackageTests"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug","-o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.xctest/Contents/MacOS/PegasusKitPackageTests","-module-name","PegasusKitPackageTests","-Xlinker","-no_warn_duplicate_libraries","-Xlinker","-bundle","-Xlinker","-rpath","-Xlinker","@loader_path/../../../","@/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitPackageTests.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKit.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitPackageTests.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitTests.swiftmodule","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.PegasusKitTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Tests/PegasusKitTests/OfflineHttpSemanticsTests.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKit.swiftmodule","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/sources"]
+    outputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/OfflineHttpSemanticsTests.swift.o","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitTests.swiftmodule"]
+    description: "Compiling Swift Module 'PegasusKitTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","PegasusKitTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules/PegasusKitTests.swiftmodule","-output-file-map","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKitTests.build/sources","-I","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j14","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mobile_ios_kit"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Tests/PegasusKitTests/","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Package.swift","/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

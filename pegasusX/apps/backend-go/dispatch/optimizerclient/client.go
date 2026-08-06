@@ -1,11 +1,11 @@
 // Package optimizerclient is the backend-side HTTP client for the Phase 2
-// dispatch optimiser hosted in apps/ai-worker. It is the only call site for
-// `POST /v1/optimizer/solve` and the single source of truth for the 2.5 s
-// timeout, header convention, and graceful-fallback contract.
+// dispatch optimiser hosted in services/optimizer-core. It is the only call
+// site for `POST /v1/optimizer/solve` and the single source of truth for the
+// HTTP timeout, header convention, and graceful-fallback contract.
 //
 // On any of: network error, HTTP 5xx, contract.ErrCodeTimeout, malformed JSON,
 // or a Go context deadline, Solve returns (nil, error). The caller is
-// expected to fall back to the legacy K-Means + binpack pipeline in
+// expected to fall back to the legacy H3 + binpack pipeline in
 // dispatch.BinPack — the optimiser is an enhancement, never a hard dependency.
 package optimizerclient
 
@@ -21,12 +21,15 @@ import (
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
-// Default solver budget. Anything above ~2.5 s starves request handlers; the
-// ai-worker side has its own internal cap at 2 s so the overall ceiling is
-// honoured even on cold-start latency.
-const DefaultTimeout = 2500 * time.Millisecond
+// DefaultTimeout is the HTTP soft timeout. Must stay strictly greater than the
+// solver default time_limit_ms (5s) so OR-Tools can finish before the wire cuts.
+const DefaultTimeout = 8 * time.Second
+
+// DefaultSolverTimeLimitMs is embedded in SolveRequest.Tunables.
+const DefaultSolverTimeLimitMs = 5000
 
 // Default per-stop service time when the caller does not specify.
 const defaultServiceMinutes = 5
@@ -40,16 +43,25 @@ type Client struct {
 	httpClient *http.Client
 	endpoint   string
 	apiKey     string
+	osrm       *routing.OSRMClient
 }
 
 // New returns a Client. endpoint must include the scheme + host, e.g.
-// "http://ai-worker:8081". The path contract.SolvePath is appended internally.
+// "http://optimizer-core:8082". The path contract.SolvePath is appended internally.
 func New(endpoint, apiKey string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: DefaultTimeout},
 		endpoint:   endpoint,
 		apiKey:     apiKey,
 	}
+}
+
+// WithOSRM attaches an OSRM client used to build distance_matrix_m before Solve.
+func (c *Client) WithOSRM(osrm *routing.OSRMClient) *Client {
+	if c != nil {
+		c.osrm = osrm
+	}
+	return c
 }
 
 // SolveInput is the backend-domain request shape. Solve() converts it into
@@ -83,14 +95,20 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 		return nil, errors.New("optimizerclient: empty fleet")
 	}
 
+	vehicles := buildVehicles(in.Fleet, in.DepotLat, in.DepotLng)
+	stops := buildStops(in.Orders)
 	req := contract.SolveRequest{
-		V:             contract.V,
-		TraceID:       in.TraceID,
-		SupplierID:    in.SupplierID,
-		HomeNodeID:    in.HomeNodeID,
-		DepartureTime: in.DepartureTime.UTC().Format(time.RFC3339),
-		Stops:         buildStops(in.Orders),
-		Vehicles:      buildVehicles(in.Fleet, in.DepotLat, in.DepotLng),
+		V:               contract.V,
+		TraceID:         in.TraceID,
+		SupplierID:      in.SupplierID,
+		HomeNodeID:      in.HomeNodeID,
+		DepartureTime:   in.DepartureTime.UTC().Format(time.RFC3339),
+		Stops:           stops,
+		Vehicles:        vehicles,
+		DistanceMatrixM: buildDistanceMatrix(ctx, c.osrm, vehicles, stops),
+		Tunables: &contract.Tunables{
+			TimeLimitMs: DefaultSolverTimeLimitMs,
+		},
 	}
 
 	body, err := json.Marshal(req)
@@ -141,9 +159,7 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 // overflow-bounced orders so they get first dibs on vehicle volume.
 const recoverySavingsBoost = 10_000
 
-// buildStops projects backend GeoOrders into wire-format Stops. Any field the
-// solver treats as "no constraint" is left at its zero value (empty string for
-// HH:MM, zero for ServiceMinutes which the solver fills in).
+// buildStops projects backend GeoOrders into wire-format Stops.
 func buildStops(orders []dispatch.GeoOrder) []contract.Stop {
 	out := make([]contract.Stop, 0, len(orders))
 	for _, o := range orders {
@@ -152,43 +168,92 @@ func buildStops(orders []dispatch.GeoOrder) []contract.Stop {
 			priority = recoverySavingsBoost
 		}
 		out = append(out, contract.Stop{
-			OrderID:        o.OrderID,
-			RetailerID:     o.RetailerID,
-			Lat:            o.Lat,
-			Lng:            o.Lng,
-			VolumeVU:       o.Volume,
-			WindowOpen:     o.ReceivingWindowOpen,
-			WindowClose:    o.ReceivingWindowClose,
-			ServiceMinutes: defaultServiceMinutes,
-			Priority:       priority,
+			OrderID:           o.OrderID,
+			RetailerID:        o.RetailerID,
+			Lat:               o.Lat,
+			Lng:               o.Lng,
+			VolumeVU:          o.Volume,
+			WindowOpen:        o.ReceivingWindowOpen,
+			WindowClose:       o.ReceivingWindowClose,
+			ServiceMinutes:    defaultServiceMinutes,
+			Priority:          priority,
+			HandlingClass:     o.HandlingClass,
+			RequiresColdChain: o.RequiresColdChain,
+			IsHazardous:       o.IsHazardous,
+			AccessRestriction: o.AccessRestriction,
 		})
 	}
 	return out
 }
 
 // buildVehicles projects AvailableDriver rows into wire-format Vehicles.
-// All vehicles share the depot start coordinate — fleet units depart from
-// the same home node (warehouse or factory).
+// Per-driver StartLat/StartLng win when set; otherwise the warehouse depot.
 func buildVehicles(fleet []dispatch.AvailableDriver, depotLat, depotLng float64) []contract.Vehicle {
 	out := make([]contract.Vehicle, 0, len(fleet))
 	for _, v := range fleet {
+		startLat, startLng := depotLat, depotLng
+		if v.StartLat != 0 || v.StartLng != 0 {
+			startLat, startLng = v.StartLat, v.StartLng
+		}
+		endLat, endLng := v.EndLat, v.EndLng
+		if endLat == 0 && endLng == 0 {
+			endLat, endLng = startLat, startLng
+		}
 		out = append(out, contract.Vehicle{
-			VehicleID:    v.VehicleID,
-			DriverID:     v.DriverID,
-			MaxVolumeVU:  v.MaxVolumeVU,
-			StartLat:     depotLat,
-			StartLng:     depotLng,
-			AvgSpeedKmph: defaultAvgSpeedKmph,
+			VehicleID:        v.VehicleID,
+			DriverID:         v.DriverID,
+			MaxVolumeVU:      v.MaxVolumeVU,
+			StartLat:         startLat,
+			StartLng:         startLng,
+			EndLat:           endLat,
+			EndLng:           endLng,
+			AvgSpeedKmph:     defaultAvgSpeedKmph,
+			HasRefrigeration: v.HasRefrigeration,
+			HazmatCertified:  v.HazmatCertified,
+			ShiftStart:       v.ShiftStart,
+			ShiftEnd:         v.ShiftEnd,
+			MaxRouteMinutes:  v.MaxRouteMinutes,
 		})
 	}
 	return out
 }
 
+// buildDistanceMatrix builds the multi-depot node layout matching the Python
+// solver: one start node per vehicle, optional distinct end node, then
+// customer stops. OSRM /table when available; haversine otherwise.
+func buildDistanceMatrix(ctx context.Context, osrm *routing.OSRMClient, vehicles []contract.Vehicle, stops []contract.Stop) [][]int {
+	points := make([]routing.LatLng, 0, len(vehicles)*2+len(stops))
+	for _, v := range vehicles {
+		points = append(points, routing.LatLng{Lat: v.StartLat, Lng: v.StartLng})
+		if v.EndLat != 0 || v.EndLng != 0 {
+			if absFloat(v.EndLat-v.StartLat) > 1e-9 || absFloat(v.EndLng-v.StartLng) > 1e-9 {
+				points = append(points, routing.LatLng{Lat: v.EndLat, Lng: v.EndLng})
+			}
+		}
+	}
+	for _, s := range stops {
+		points = append(points, routing.LatLng{Lat: s.Lat, Lng: s.Lng})
+	}
+	fallback := routing.HaversineDistanceMatrixM(points)
+	if osrm == nil {
+		return fallback
+	}
+	matrix, err := osrm.DistanceMatrix(ctx, points)
+	if err != nil || len(matrix) != len(points) {
+		return fallback
+	}
+	return routing.MergeDistanceMatrix(matrix, fallback)
+}
+
+func absFloat(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // mapResponse converts a contract.SolveResponse back into the
 // dispatch.AssignmentResult shape the rest of the backend already speaks.
-// The reverse-lookup from OrderID → original GeoOrder preserves invoice
-// totals, retailer names, and any operator overrides we stripped on the
-// outbound projection.
 func mapResponse(resp contract.SolveResponse, original []dispatch.GeoOrder) *dispatch.AssignmentResult {
 	byOrderID := make(map[string]dispatch.GeoOrder, len(original))
 	for _, o := range original {

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from 'next/navigation';
 import type { WarehouseDispatchOrder } from '@pegasusx/types';
 import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
@@ -44,10 +45,11 @@ export default function DispatchOrderList({
   onProposeDate,
   onReject,
 }: DispatchOrderListProps) {
+  const t = usePortalT();
   return (
     <PageSection
       title={`Undispatched orders (${orders.length})`}
-      description="Select for dispatch. Double-click a card for order detail."
+      description={t("warehouse_portal.residual.text.select_for_dispatch_double_click_a_card_for_order_detail")}
       actions={
         orders.length > 0 ? (
           <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
@@ -58,7 +60,7 @@ export default function DispatchOrderList({
       }
     >
       {orders.length === 0 ? (
-        <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
+        <EmptyState variant="no-data" headline={t("warehouse_portal.residual.text.all_orders_dispatched")} body={t("warehouse_portal.residual.text.no_pending_orders_need_assignment_right_now")} />
       ) : (
         <VirtualScrollList
           className="-mx-5 px-5"

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierPlanningScenarioKey } from "@pegasusx/api-client/idempotency";
@@ -8,6 +9,7 @@ import type { PlanningSAndOPSnapshot, PlanningScenarioResult } from "@pegasusx/t
 const api = createSupplierApi();
 
 export default function PlanningBrainPanel() {
+  const t = usePortalT();
   const [sandop, setSandop] = useState<PlanningSAndOPSnapshot | null>(null);
   const [scenario, setScenario] = useState<PlanningScenarioResult | null>(null);
   const [downtimeHours, setDowntimeHours] = useState(8);
@@ -24,7 +26,7 @@ export default function PlanningBrainPanel() {
         if (!cancelled) setSandop(snap);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "planning_unavailable");
+          setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.planning_unavailable"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -49,7 +51,7 @@ export default function PlanningBrainPanel() {
       );
       setScenario(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "scenario_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.scenario_failed"));
     } finally {
       setRunning(false);
     }
@@ -79,16 +81,16 @@ export default function PlanningBrainPanel() {
           </p>
         ) : sandop ? (
           <>
-            <Stat label="Factory cap (7d)" value={sandop.factory_capacity_units} />
-            <Stat label="WH inbound cap" value={sandop.warehouse_inbound_cap_units} />
-            <Stat label="Utilization" value={Math.round(sandop.utilization_pct)} suffix="%" />
-            <Stat label="Alert" value={sandop.capacity_alert ? 1 : 0} labelOverride={sandop.capacity_alert ? "Breach" : "OK"} />
+            <Stat label={t("supplier_portal.residual.text.factory_cap_7d")} value={sandop.factory_capacity_units} />
+            <Stat label={t("supplier_portal.residual.text.wh_inbound_cap")} value={sandop.warehouse_inbound_cap_units} />
+            <Stat label={t("supplier_portal.residual.text.utilization")} value={Math.round(sandop.utilization_pct)} suffix="%" />
+            <Stat label={t("factory_portal.dashboard.dashboard_alerts.text.alert")} value={sandop.capacity_alert ? 1 : 0} labelOverride={sandop.capacity_alert ? "Breach" : "OK"} />
           </>
         ) : null}
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg p-4" style={{ background: "var(--desk-surface-raised)" }}>
-        <h3 className="md-typescale-title-small">Scenario run</h3>
+        <h3 className="md-typescale-title-small">{t("supplier_portal.planning_brain_panel.text.scenario_run")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="flex flex-col gap-1 md-typescale-body-small">
             Factory downtime (hours)
@@ -129,15 +131,15 @@ export default function PlanningBrainPanel() {
               </span>
             ) : null}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label="SLA risk" value={Math.round(scenario.sla_risk_pct)} suffix="%" />
+              <Stat label={t("supplier_portal.residual.text.sla_risk")} value={Math.round(scenario.sla_risk_pct)} suffix="%" />
               {scenario.baseline_sla_risk_pct != null ? (
-                <Stat label="Baseline SLA" value={Math.round(scenario.baseline_sla_risk_pct)} suffix="%" />
+                <Stat label={t("supplier_portal.residual.text.baseline_sla")} value={Math.round(scenario.baseline_sla_risk_pct)} suffix="%" />
               ) : null}
-              <Stat label="Fleet volume" value={scenario.fleet_volume_orders} />
-              <Stat label="Stockout SKUs" value={scenario.stockout_skus.length} />
-              <Stat label="Capacity breach" value={scenario.capacity_breach ? 1 : 0} labelOverride={scenario.capacity_breach ? "Yes" : "No"} />
+              <Stat label={t("supplier_portal.residual.text.fleet_volume")} value={scenario.fleet_volume_orders} />
+              <Stat label={t("supplier_portal.residual.text.stockout_skus")} value={scenario.stockout_skus.length} />
+              <Stat label={t("supplier_portal.residual.text.capacity_breach")} value={scenario.capacity_breach ? 1 : 0} labelOverride={scenario.capacity_breach ? "Yes" : "No"} />
               {scenario.revenue_at_risk_minor != null && scenario.revenue_at_risk_minor > 0 ? (
-                <Stat label="Revenue at risk" value={scenario.revenue_at_risk_minor} suffix=" tiyin" />
+                <Stat label={t("supplier_portal.residual.text.revenue_at_risk")} value={scenario.revenue_at_risk_minor} suffix=" tiyin" />
               ) : null}
             </div>
             {scenario.stockout_skus.length > 0 ? (

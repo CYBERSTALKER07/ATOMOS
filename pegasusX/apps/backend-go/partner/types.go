@@ -130,6 +130,7 @@ type DeliveryAttempt struct {
 type KeyRepository interface {
 	Insert(ctx context.Context, k ApiKey) error
 	GetByPrefix(ctx context.Context, prefix string) (ApiKey, bool, error)
+	GetByID(ctx context.Context, keyID string) (ApiKey, bool, error)
 	ListByTenant(ctx context.Context, tenantType, tenantID string, limit int) ([]ApiKey, error)
 	Revoke(ctx context.Context, keyID, tenantType, tenantID string) error
 	TouchLastUsed(ctx context.Context, keyID string) error

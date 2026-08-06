@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -20,6 +21,7 @@ interface Vehicle {
 }
 
 export default function FleetPage() {
+  const t = usePortalT();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,13 +73,13 @@ export default function FleetPage() {
     <PageTransition>
       <PageChrome
         icon="fleet"
-        title="Factory fleet"
-        description="Vehicle availability and route assignments for this factory node."
+        title={t("factory_portal.fleet.text.factory_fleet")}
+        description={t("factory_portal.residual.text.vehicle_availability_and_route_assignments_for_this_factory_node")}
         loading={loading}
         skeletonVariant="table"
         error={error && vehicles.length === 0 ? error : null}
         empty={!loading && !error && vehicles.length === 0}
-        emptyMessage="There are no vehicles registered in the factory fleet yet."
+        emptyMessage={t("factory_portal.residual.text.there_are_no_vehicles_registered_in_the_factory_fleet_yet")}
         actions={
           <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-1.5" onClick={() => void load()}>
             <Icon name="refresh" size={16} /> Refresh
@@ -100,11 +102,11 @@ export default function FleetPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Plate</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Driver</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Capacity (m³)</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Current Route</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.plate")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.driver")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.status")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.capacity_m3")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.current_route")}</th>
               </tr>
             </thead>
             <tbody>

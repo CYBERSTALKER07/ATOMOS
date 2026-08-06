@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
@@ -12,6 +13,7 @@ import { PageChrome } from '@/components/PageChrome';
 const api = createSupplierApi();
 
 export default function EarlyCompletePage() {
+  const t = usePortalT();
   const [driverId, setDriverId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,14 +22,14 @@ export default function EarlyCompletePage() {
   useSupplierSessionReconcile(() => {
     if (busy) {
       setBusy(false);
-      setError("Connection restored — verify approval status before retrying.");
+      setError(t("supplier_portal.residual.text.connection_restored_verify_approval_status_before_retrying"));
     }
   });
 
   const approve = async () => {
     const trimmed = driverId.trim();
     if (!trimmed) {
-      setError("Driver ID is required.");
+      setError(t("supplier_portal.residual.text.driver_id_is_required"));
       return;
     }
     setBusy(true);
@@ -41,7 +43,7 @@ export default function EarlyCompletePage() {
       setSuccess(`Early route complete approved for driver ${trimmed.slice(0, 12)}…`);
       setDriverId("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "approve_failed");
+      setError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.approve_failed"));
     } finally {
       setBusy(false);
     }
@@ -50,8 +52,8 @@ export default function EarlyCompletePage() {
   return (
     <PageChrome
       icon="warning"
-      title="Early route complete"
-      description="Approve a driver request to finish the route before all stops are completed."
+      title={t("supplier_portal.exceptions.early_complete.text.early_route_complete")}
+      description={t("supplier_portal.residual.text.approve_a_driver_request_to_finish_the_route_before_all_stops_ar")}
       error={error}
     >
       <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
@@ -64,12 +66,12 @@ export default function EarlyCompletePage() {
       ) : null}
       <div className="md-card p-4 space-y-4 max-w-xl">
         <label className="block space-y-2">
-          <span className="md-typescale-label-medium">Driver ID</span>
+          <span className="md-typescale-label-medium">{t("supplier_portal.exceptions.early_complete.text.driver_id")}</span>
           <input
             type="text"
             value={driverId}
             onChange={(event) => setDriverId(event.target.value)}
-            placeholder="Driver UUID from escalation or telemetry"
+            placeholder={t("supplier_portal.exceptions.early_complete.text.driver_uuid_from_escalation_or_telemetry")}
             className="md-input-outlined w-full h-10 px-3"
           />
         </label>

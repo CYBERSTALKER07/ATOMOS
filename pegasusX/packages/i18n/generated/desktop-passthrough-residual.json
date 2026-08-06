@@ -1,0 +1,3330 @@
+[
+  {
+    "key": "factory_portal.residual.text.active_gate",
+    "en": "Active gate"
+  },
+  {
+    "key": "factory_portal.residual.text.active_manifests",
+    "en": "Active manifests"
+  },
+  {
+    "key": "factory_portal.residual.text.active_users",
+    "en": "Active Users"
+  },
+  {
+    "key": "factory_portal.residual.text.address",
+    "en": "Address"
+  },
+  {
+    "key": "factory_portal.residual.text.advance_requests_through_ack_production_ready_fulfill",
+    "en": "Advance requests through ACK → production → ready → fulfill."
+  },
+  {
+    "key": "factory_portal.residual.text.aggregate_product_demand_and_fulfillment_ratios_across_active_re",
+    "en": "Aggregate product demand and fulfillment ratios across active requests."
+  },
+  {
+    "key": "factory_portal.residual.text.approved",
+    "en": "Approved"
+  },
+  {
+    "key": "factory_portal.residual.text.approved_transfers_will_appear_here_as_soon_as_warehouse_demand_",
+    "en": "Approved transfers will appear here as soon as warehouse demand is accepted."
+  },
+  {
+    "key": "factory_portal.residual.text.avg_lead_time",
+    "en": "Avg lead time"
+  },
+  {
+    "key": "factory_portal.residual.text.could_not_resolve_that_address_try_another_suggestion",
+    "en": "Could not resolve that address. Try another suggestion."
+  },
+  {
+    "key": "factory_portal.residual.text.could_not_resolve_your_location_to_an_address",
+    "en": "Could not resolve your location to an address."
+  },
+  {
+    "key": "factory_portal.residual.text.dispatch_transfers_or_create_a_manifest_to_begin_the_loading_gat",
+    "en": "Dispatch transfers or create a manifest to begin the loading gate workflow."
+  },
+  {
+    "key": "factory_portal.residual.text.dlq_threshold",
+    "en": "DLQ threshold"
+  },
+  {
+    "key": "factory_portal.residual.text.enter_a_valid_phone_number_6_14_digits",
+    "en": "Enter a valid phone number (6-14 digits)"
+  },
+  {
+    "key": "factory_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "factory_portal.residual.text.escalated",
+    "en": "Escalated"
+  },
+  {
+    "key": "factory_portal.residual.text.exception_queue",
+    "en": "Exception queue"
+  },
+  {
+    "key": "factory_portal.residual.text.facility_type",
+    "en": "Facility type"
+  },
+  {
+    "key": "factory_portal.residual.text.factory_address",
+    "en": "Factory address"
+  },
+  {
+    "key": "factory_portal.residual.text.factory_loading_bay_transfer_management_and_dispatch_operations",
+    "en": "Factory loading bay, transfer management, and dispatch operations."
+  },
+  {
+    "key": "factory_portal.residual.text.factory_name",
+    "en": "Factory name"
+  },
+  {
+    "key": "factory_portal.residual.text.factory_operators_review_and_advance_warehouse_demand_from_this_",
+    "en": "Factory operators review and advance warehouse demand from this queue."
+  },
+  {
+    "key": "factory_portal.residual.text.factory_portal_pegasus",
+    "en": "Factory Portal — Pegasus"
+  },
+  {
+    "key": "factory_portal.residual.text.factory_throughput_manifest_pressure_and_exception_queue_from_th",
+    "en": "Factory throughput, manifest pressure, and exception queue from the analytics endpoint."
+  },
+  {
+    "key": "factory_portal.residual.text.failed_to_send_verification_code",
+    "en": "Failed to send verification code"
+  },
+  {
+    "key": "factory_portal.residual.text.filter_by_transfer_state_total_volume_reflects_the_current_view",
+    "en": "Filter by transfer state. Total volume reflects the current view."
+  },
+  {
+    "key": "factory_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "factory_portal.residual.text.high_priority",
+    "en": "High priority"
+  },
+  {
+    "key": "factory_portal.residual.text.in_flight",
+    "en": "In flight"
+  },
+  {
+    "key": "factory_portal.residual.text.in_production",
+    "en": "In production"
+  },
+  {
+    "key": "factory_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "factory_portal.residual.text.kanban_by_supply_request_lifecycle_state",
+    "en": "Kanban by supply-request lifecycle state."
+  },
+  {
+    "key": "factory_portal.residual.text.last_sync",
+    "en": "Last sync"
+  },
+  {
+    "key": "factory_portal.residual.text.leo_loading_gate_advance_manifests_through_draft_loading_sealed_",
+    "en": "LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states."
+  },
+  {
+    "key": "factory_portal.residual.text.loading_fleet_assignment_options",
+    "en": "Loading fleet assignment options."
+  },
+  {
+    "key": "factory_portal.residual.text.loading_manifest_snapshot",
+    "en": "Loading manifest snapshot."
+  },
+  {
+    "key": "factory_portal.residual.text.loading_operator_profile",
+    "en": "Loading operator profile."
+  },
+  {
+    "key": "factory_portal.residual.text.loading_the_current_manifest_and_item_breakdown_for_this_transfe",
+    "en": "Loading the current manifest and item breakdown for this transfer."
+  },
+  {
+    "key": "factory_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "factory_portal.residual.text.new_factory",
+    "en": "New factory?"
+  },
+  {
+    "key": "factory_portal.residual.text.no_active_transfers_in_the_loading_bay",
+    "en": "No active transfers in the loading bay"
+  },
+  {
+    "key": "factory_portal.residual.text.no_data_yet",
+    "en": "No data yet."
+  },
+  {
+    "key": "factory_portal.residual.text.no_factory_metrics_yet",
+    "en": "No factory metrics yet"
+  },
+  {
+    "key": "factory_portal.residual.text.no_manifests",
+    "en": "No manifests"
+  },
+  {
+    "key": "factory_portal.residual.text.no_manifests_currently_in_loading_state",
+    "en": "No manifests currently in LOADING state"
+  },
+  {
+    "key": "factory_portal.residual.text.no_notifications_in_your_inbox_at_this_time",
+    "en": "No notifications in your inbox at this time."
+  },
+  {
+    "key": "factory_portal.residual.text.no_replenishment_insights_at_this_time_insights_are_generated_ba",
+    "en": "No replenishment insights at this time. Insights are generated based on stock velocity."
+  },
+  {
+    "key": "factory_portal.residual.text.now_loading",
+    "en": "Now loading"
+  },
+  {
+    "key": "factory_portal.residual.text.once_transfer_and_loading_activity_starts_operational_metrics_wi",
+    "en": "Once transfer and loading activity starts, operational metrics will appear here."
+  },
+  {
+    "key": "factory_portal.residual.text.open_a_row_to_advance_lifecycle_actions",
+    "en": "Open a row to advance lifecycle actions."
+  },
+  {
+    "key": "factory_portal.residual.text.operators_and_shift_coverage_registered_for_this_factory_node",
+    "en": "Operators and shift coverage registered for this factory node."
+  },
+  {
+    "key": "factory_portal.residual.text.payload_override_is_only_available_during_the_loading_phase_all_",
+    "en": "Payload override is only available during the loading phase. All current manifests are either dispatched or completed."
+  },
+  {
+    "key": "factory_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "factory_portal.residual.text.pick_an_address_from_the_list_or_refine_your_search",
+    "en": "Pick an address from the list or refine your search."
+  },
+  {
+    "key": "factory_portal.residual.text.preorder_accept_dispatch_seal_events_from_the_factory_pulse_feed",
+    "en": "Preorder → accept → dispatch → seal events from the factory pulse feed."
+  },
+  {
+    "key": "factory_portal.residual.text.ready_to_fulfill",
+    "en": "Ready to fulfill"
+  },
+  {
+    "key": "factory_portal.residual.text.ready_to_load",
+    "en": "Ready to load"
+  },
+  {
+    "key": "factory_portal.residual.text.rebalance_or_cancel_transfers_on_manifests_currently_in_loading_",
+    "en": "Rebalance or cancel transfers on manifests currently in LOADING state."
+  },
+  {
+    "key": "factory_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "factory_portal.residual.text.review_approved_factory_transfers_advance_active_loading_and_dis",
+    "en": "Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context."
+  },
+  {
+    "key": "factory_portal.residual.text.review_warehouse_destination_movements_filter_by_state_and_open_",
+    "en": "Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor."
+  },
+  {
+    "key": "factory_portal.residual.text.rows_highlighted_when_attempt_count_reaches_dlq_threshold",
+    "en": "Rows highlighted when attempt count reaches DLQ threshold."
+  },
+  {
+    "key": "factory_portal.residual.text.stage_a_factory_to_warehouse_movement",
+    "en": "Stage a factory-to-warehouse movement."
+  },
+  {
+    "key": "factory_portal.residual.text.stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu_o",
+    "en": "Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading."
+  },
+  {
+    "key": "factory_portal.residual.text.stock_velocity_signals_and_reorder_recommendations_across_connec",
+    "en": "Stock velocity signals and reorder recommendations across connected warehouses."
+  },
+  {
+    "key": "factory_portal.residual.text.street_address",
+    "en": "Street address"
+  },
+  {
+    "key": "factory_portal.residual.text.street_address_used_for_supply_routing_and_loading_bay_operation",
+    "en": "Street address used for supply routing and loading bay operations. Changes sync across the factory network."
+  },
+  {
+    "key": "factory_portal.residual.text.submitted",
+    "en": "Submitted"
+  },
+  {
+    "key": "factory_portal.residual.text.target_manifest",
+    "en": "Target manifest"
+  },
+  {
+    "key": "factory_portal.residual.text.the_selected_transfer_is_no_longer_available_or_could_not_be_loc",
+    "en": "The selected transfer is no longer available or could not be located for this factory."
+  },
+  {
+    "key": "factory_portal.residual.text.there_are_no_staff_members_registered_for_this_factory",
+    "en": "There are no staff members registered for this factory."
+  },
+  {
+    "key": "factory_portal.residual.text.there_are_no_vehicles_registered_in_the_factory_fleet_yet",
+    "en": "There are no vehicles registered in the factory fleet yet."
+  },
+  {
+    "key": "factory_portal.residual.text.total_manifests",
+    "en": "Total manifests"
+  },
+  {
+    "key": "factory_portal.residual.text.total_volume",
+    "en": "Total volume"
+  },
+  {
+    "key": "factory_portal.residual.text.total_volume_vu",
+    "en": "Total volume (VU)"
+  },
+  {
+    "key": "factory_portal.residual.text.transfers_removed_from_manifests_during_loading_overflow_damage_",
+    "en": "Transfers removed from manifests during loading — overflow, damage, or manual pull."
+  },
+  {
+    "key": "factory_portal.residual.text.transfers_total",
+    "en": "Transfers total"
+  },
+  {
+    "key": "factory_portal.residual.text.unable_to_load",
+    "en": "Unable to load"
+  },
+  {
+    "key": "factory_portal.residual.text.vehicle_availability_and_route_assignments_for_this_factory_node",
+    "en": "Vehicle availability and route assignments for this factory node."
+  },
+  {
+    "key": "factory_portal.residual.text.view_and_manage_all_your_factory_notifications_and_alerts",
+    "en": "View and manage all your factory notifications and alerts."
+  },
+  {
+    "key": "factory_portal.residual.text.visible_transfers",
+    "en": "Visible transfers"
+  },
+  {
+    "key": "factory_portal.transfers.create.text.ord",
+    "en": "ord_…"
+  },
+  {
+    "key": "retailer_desktop.residual.text.accept_delivery_proposal_failed",
+    "en": "Accept delivery proposal failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.account_identity_notification_parameters_and_ai_driven_logic_con",
+    "en": "Account identity, notification parameters, and AI-driven logic controls."
+  },
+  {
+    "key": "retailer_desktop.residual.text.action_failed",
+    "en": "Action failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.active_fulfillment",
+    "en": "Active fulfillment"
+  },
+  {
+    "key": "retailer_desktop.residual.text.active_nodes",
+    "en": "Active Nodes"
+  },
+  {
+    "key": "retailer_desktop.residual.text.address",
+    "en": "Address"
+  },
+  {
+    "key": "retailer_desktop.residual.text.adjust_failed",
+    "en": "Adjust failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.ai_signals",
+    "en": "AI Signals"
+  },
+  {
+    "key": "retailer_desktop.residual.text.approved",
+    "en": "Approved"
+  },
+  {
+    "key": "retailer_desktop.residual.text.arrived",
+    "en": "Arrived"
+  },
+  {
+    "key": "retailer_desktop.residual.text.arriving",
+    "en": "Arriving"
+  },
+  {
+    "key": "retailer_desktop.residual.text.assist_tickets",
+    "en": "Assist tickets"
+  },
+  {
+    "key": "retailer_desktop.residual.text.auto_accepted",
+    "en": "Auto-Accepted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.auto_order_run_failed",
+    "en": "Auto-order run failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.awaiting_payment",
+    "en": "Awaiting Payment"
+  },
+  {
+    "key": "retailer_desktop.residual.text.backroom_floor_inventory_separate_from_supplier_warehouse_atp_re",
+    "en": "Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count."
+  },
+  {
+    "key": "retailer_desktop.residual.text.billing_address",
+    "en": "Billing address"
+  },
+  {
+    "key": "retailer_desktop.residual.text.branches_and_delivery_addresses_solo_shops_get_one_primary_autom",
+    "en": "Branches and delivery addresses. Solo shops get one primary automatically."
+  },
+  {
+    "key": "retailer_desktop.residual.text.cancel_order_failed",
+    "en": "Cancel order failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.cancel_requested",
+    "en": "Cancel Requested"
+  },
+  {
+    "key": "retailer_desktop.residual.text.card_checkout_failed",
+    "en": "Card checkout failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.card_sales_require_network_use_cash_offline",
+    "en": "Card sales require network. Use cash offline."
+  },
+  {
+    "key": "retailer_desktop.residual.text.cash_collection",
+    "en": "Cash Collection"
+  },
+  {
+    "key": "retailer_desktop.residual.text.cash_confirmation_failed",
+    "en": "Cash confirmation failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.cashier_mode_open_till_online_sell_cash_offline_when_needed_sync",
+    "en": "Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network."
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_access_restricted",
+    "en": "Catalog access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_access_restricted_for_this_account",
+    "en": "Catalog access restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_feeds_are_still_populating_reorder_candidates",
+    "en": "Catalog feeds are still populating reorder candidates."
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_is_offline",
+    "en": "Catalog is offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_sync_degraded_auto_retry_is_active",
+    "en": "Catalog sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.catalog_unavailable",
+    "en": "Catalog unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.category_suppliers_unavailable",
+    "en": "Category suppliers unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.checkout_failed",
+    "en": "Checkout failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.choose_a_node_from_the_queue_to_inspect_manifest_lines_and_actio",
+    "en": "Choose a node from the queue to inspect manifest lines and actions."
+  },
+  {
+    "key": "retailer_desktop.residual.text.claim_failed",
+    "en": "Claim failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.claim_proof",
+    "en": "Claim proof"
+  },
+  {
+    "key": "retailer_desktop.residual.text.clear_or_park_current_cart_before_resuming_a_hold",
+    "en": "Clear or park current cart before resuming a hold."
+  },
+  {
+    "key": "retailer_desktop.residual.text.clock_in_failed",
+    "en": "Clock-in failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.clock_in_out_open_cash_shifts_reconcile_float_when_shifts_is_on_",
+    "en": "Clock in/out, open cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in."
+  },
+  {
+    "key": "retailer_desktop.residual.text.clock_out_failed",
+    "en": "Clock-out failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.close_failed",
+    "en": "Close failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.close_session_requires_network",
+    "en": "Close session requires network."
+  },
+  {
+    "key": "retailer_desktop.residual.text.close_shift_failed",
+    "en": "Close shift failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.company",
+    "en": "Company"
+  },
+  {
+    "key": "retailer_desktop.residual.text.completed_deliveries_from_the_tracking_feed",
+    "en": "Completed deliveries from the tracking feed."
+  },
+  {
+    "key": "retailer_desktop.residual.text.confirm_ai_order_failed",
+    "en": "Confirm AI order failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.confirm_preorder_failed",
+    "en": "Confirm preorder failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.connection_restored_confirm_checkout_status_before_retrying",
+    "en": "Connection restored. Confirm checkout status before retrying."
+  },
+  {
+    "key": "retailer_desktop.residual.text.connection_restored_verify_response_before_retrying",
+    "en": "Connection restored — verify response before retrying."
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_add_family_member",
+    "en": "Could not add family member"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_confirm_card",
+    "en": "Could not confirm card"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_copy_password_to_clipboard",
+    "en": "Could not copy password to clipboard"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_deactivate_card",
+    "en": "Could not deactivate card"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_load_family_members",
+    "en": "Could not load family members"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_load_runs",
+    "en": "Could not load runs"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_load_saved_cards",
+    "en": "Could not load saved cards"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_remove_family_member",
+    "en": "Could not remove family member"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_resolve_your_location_to_an_address",
+    "en": "Could not resolve your location to an address."
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_select_organization",
+    "en": "Could not select organization"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_set_default_card",
+    "en": "Could not set default card"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_start_card_tokenization",
+    "en": "Could not start card tokenization"
+  },
+  {
+    "key": "retailer_desktop.residual.text.count_failed",
+    "en": "Count failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.create_failed",
+    "en": "Create failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.create_failed_2",
+    "en": "create_failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.create_register_failed",
+    "en": "Create register failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.customer_help_queue_by_section_claim_and_complete_as_section_lea",
+    "en": "Customer help queue by section. Claim and complete as section lead."
+  },
+  {
+    "key": "retailer_desktop.residual.text.dashboard_access_is_partially_restricted_for_this_account",
+    "en": "Dashboard access is partially restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.deactivate_failed",
+    "en": "Deactivate failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.delivered_credit",
+    "en": "Delivered (Credit)"
+  },
+  {
+    "key": "retailer_desktop.residual.text.departments_and_shelves_map_skus_and_assign_staff_enables_sectio",
+    "en": "Departments and shelves — map SKUs and assign staff. Enables SECTIONS pack."
+  },
+  {
+    "key": "retailer_desktop.residual.text.disable_failed",
+    "en": "Disable failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.dock_pending",
+    "en": "Dock pending"
+  },
+  {
+    "key": "retailer_desktop.residual.text.doorway_drop_off_photo_is_required_to_authorize_bypass",
+    "en": "Doorway / drop-off photo is required to authorize bypass."
+  },
+  {
+    "key": "retailer_desktop.residual.text.driver_arrived",
+    "en": "Driver Arrived"
+  },
+  {
+    "key": "retailer_desktop.residual.text.driver_positions_for_active_inbound_deliveries",
+    "en": "Driver positions for active inbound deliveries."
+  },
+  {
+    "key": "retailer_desktop.residual.text.edit_preorder_failed",
+    "en": "Edit preorder failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.empathy_engine_intelligence_with_5_level_granular_control",
+    "en": "Empathy Engine Intelligence with 5-level granular control."
+  },
+  {
+    "key": "retailer_desktop.residual.text.enable_failed",
+    "en": "Enable failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.enter_a_valid_phone_number_6_14_digits",
+    "en": "Enter a valid phone number (6-14 digits)"
+  },
+  {
+    "key": "retailer_desktop.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.entity_name",
+    "en": "Entity Name"
+  },
+  {
+    "key": "retailer_desktop.residual.text.explore_approved_suppliers_and_stage_procurement_orders",
+    "en": "Explore approved suppliers and stage procurement orders."
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_capabilities",
+    "en": "Failed to load capabilities"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_locations",
+    "en": "Failed to load locations"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_order",
+    "en": "Failed to load order"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_orders",
+    "en": "Failed to load orders"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_organizations",
+    "en": "Failed to load organizations"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_pulse",
+    "en": "Failed to load pulse"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_stock",
+    "en": "Failed to load stock"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_load_team",
+    "en": "Failed to load team"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_send_verification_code",
+    "en": "Failed to send verification code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.failed_to_update_execution_mode",
+    "en": "Failed to update execution mode"
+  },
+  {
+    "key": "retailer_desktop.residual.text.find_and_connect_with_new_suppliers",
+    "en": "Find and connect with new suppliers."
+  },
+  {
+    "key": "retailer_desktop.residual.text.fiscal_failed",
+    "en": "Fiscal failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.fix_validation_errors_before_saving_profile_changes",
+    "en": "Fix validation errors before saving profile changes."
+  },
+  {
+    "key": "retailer_desktop.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "retailer_desktop.residual.text.global_ai_settings_updated",
+    "en": "Global AI settings updated."
+  },
+  {
+    "key": "retailer_desktop.residual.text.high_confidence_replenishment_signals_for_this_cycle",
+    "en": "High-confidence replenishment signals for this cycle."
+  },
+  {
+    "key": "retailer_desktop.residual.text.in_transit",
+    "en": "In Transit"
+  },
+  {
+    "key": "retailer_desktop.residual.text.inbox_sync_degraded_retry_is_available",
+    "en": "Inbox sync degraded. Retry is available."
+  },
+  {
+    "key": "retailer_desktop.residual.text.insights_access_is_partially_restricted_for_this_account",
+    "en": "Insights access is partially restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.insights_access_restricted",
+    "en": "Insights access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.insights_are_offline",
+    "en": "Insights are offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.insights_sync_degraded_auto_retry_is_active",
+    "en": "Insights sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.invite_failed",
+    "en": "Invite failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.invite_staff_with_roles_owner_cannot_be_demoted_or_deactivated",
+    "en": "Invite staff with roles. Owner cannot be demoted or deactivated."
+  },
+  {
+    "key": "retailer_desktop.residual.text.legacy_family_list_prefer_team_staff_migrate_when_ready",
+    "en": "Legacy family list. Prefer Team staff — migrate when ready."
+  },
+  {
+    "key": "retailer_desktop.residual.text.lifecycle_management_for_connected_supply_nodes_and_trade_settle",
+    "en": "Lifecycle management for connected supply nodes and trade settlements."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_fleet_orchestration_and_inbound_logistics_monitoring",
+    "en": "Live fleet orchestration and inbound logistics monitoring."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_socket_reconnecting_event_updates_may_be_delayed",
+    "en": "Live socket reconnecting. Event updates may be delayed."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_socket_reconnecting_new_alerts_may_be_delayed",
+    "en": "Live socket reconnecting. New alerts may be delayed."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_socket_reconnecting_new_signals_may_be_delayed",
+    "en": "Live socket reconnecting. New signals may be delayed."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_socket_reconnecting_setting_events_may_be_delayed",
+    "en": "Live socket reconnecting. Setting events may be delayed."
+  },
+  {
+    "key": "retailer_desktop.residual.text.live_socket_reconnecting_updates_may_arrive_with_delay",
+    "en": "Live socket reconnecting. Updates may arrive with delay."
+  },
+  {
+    "key": "retailer_desktop.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.loaded",
+    "en": "Loaded"
+  },
+  {
+    "key": "retailer_desktop.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "retailer_desktop.residual.text.low_stock_bins",
+    "en": "Low stock bins"
+  },
+  {
+    "key": "retailer_desktop.residual.text.manage_your_approved_wholesale_suppliers_and_discover_new_partne",
+    "en": "Manage your approved wholesale suppliers and discover new partners."
+  },
+  {
+    "key": "retailer_desktop.residual.text.mark_all_read_failed",
+    "en": "Mark all read failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.mark_read_failed",
+    "en": "Mark read failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.migration_failed",
+    "en": "Migration failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.multi_location_pos_sales_rollup_sum_of_locations_equals_org_net_",
+    "en": "Multi-location POS sales rollup. Sum of locations equals org net (C2.1 writers)."
+  },
+  {
+    "key": "retailer_desktop.residual.text.network_offline_showing_the_latest_cached_dock_queue",
+    "en": "Network offline. Showing the latest cached dock queue."
+  },
+  {
+    "key": "retailer_desktop.residual.text.new_retailer",
+    "en": "New retailer?"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_actionable_signals_detected",
+    "en": "No actionable signals detected"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_ai_restock_signals",
+    "en": "No AI restock signals"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_approved_products_yet",
+    "en": "No approved products yet"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_assets_match_criteria",
+    "en": "No assets match criteria"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_capacity",
+    "en": "No Capacity"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_data_yet",
+    "en": "No data yet."
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_notifications_yet",
+    "en": "No notifications yet"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_orders_yet",
+    "en": "No orders yet"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_products_ready_for_reorder",
+    "en": "No products ready for reorder"
+  },
+  {
+    "key": "retailer_desktop.residual.text.no_vendors_connected",
+    "en": "No vendors connected"
+  },
+  {
+    "key": "retailer_desktop.residual.text.non_pegasus_goods_for_pos_prefixed_local_never_sent_to_supplier_",
+    "en": "Non-Pegasus goods for POS. Prefixed local: — never sent to supplier reorder."
+  },
+  {
+    "key": "retailer_desktop.residual.text.notifications_access_restricted",
+    "en": "Notifications access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.notifications_access_restricted_for_this_account",
+    "en": "Notifications access restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.notifications_are_offline",
+    "en": "Notifications are offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.notifications_unavailable",
+    "en": "Notifications unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_configuration",
+    "en": "Offline mode active. Showing latest cached configuration."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_inbox_data",
+    "en": "Offline mode active. Showing latest cached inbox data."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_intelligence_signals",
+    "en": "Offline mode active. Showing latest cached intelligence signals."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_order_data",
+    "en": "Offline mode active. Showing latest cached order data."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_latest_procurement_data",
+    "en": "Offline mode active. Showing latest procurement data."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_the_latest_cached_catalog",
+    "en": "Offline mode active. Showing the latest cached catalog."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_the_latest_cached_operations_data",
+    "en": "Offline mode active. Showing the latest cached operations data."
+  },
+  {
+    "key": "retailer_desktop.residual.text.offline_mode_active_showing_the_latest_known_telemetry",
+    "en": "Offline mode active. Showing the latest known telemetry."
+  },
+  {
+    "key": "retailer_desktop.residual.text.open_failed",
+    "en": "Open failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.open_orders",
+    "en": "Open orders"
+  },
+  {
+    "key": "retailer_desktop.residual.text.open_session_requires_network_connect_then_open_till",
+    "en": "Open session requires network. Connect, then open till."
+  },
+  {
+    "key": "retailer_desktop.residual.text.open_shift_failed",
+    "en": "Open shift failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.open_shifts",
+    "en": "Open shifts"
+  },
+  {
+    "key": "retailer_desktop.residual.text.operational_region",
+    "en": "Operational Region"
+  },
+  {
+    "key": "retailer_desktop.residual.text.operations_sync_degraded_auto_retry_is_active",
+    "en": "Operations sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.order_sync_degraded_auto_retry_is_active",
+    "en": "Order sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.orders_access_is_partially_restricted_for_this_account",
+    "en": "Orders access is partially restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.orders_access_restricted",
+    "en": "Orders access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.orders_are_offline",
+    "en": "Orders are offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.orders_unavailable",
+    "en": "Orders unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.park_failed",
+    "en": "Park failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.park_hold_requires_network_use_local_auto_park_offline",
+    "en": "Park hold requires network (use local auto-park offline)."
+  },
+  {
+    "key": "retailer_desktop.residual.text.pegasus_retailer",
+    "en": "Pegasus Retailer"
+  },
+  {
+    "key": "retailer_desktop.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "retailer_desktop.residual.text.pending",
+    "en": "Pending"
+  },
+  {
+    "key": "retailer_desktop.residual.text.pending_fiscal",
+    "en": "Pending fiscal"
+  },
+  {
+    "key": "retailer_desktop.residual.text.pending_payment_requires_completion",
+    "en": "Pending payment requires completion."
+  },
+  {
+    "key": "retailer_desktop.residual.text.pending_review",
+    "en": "Pending Review"
+  },
+  {
+    "key": "retailer_desktop.residual.text.photo_required_for_this_claim_type",
+    "en": "Photo required for this claim type."
+  },
+  {
+    "key": "retailer_desktop.residual.text.photo_upload_failed",
+    "en": "Photo upload failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.pos_open_sessions",
+    "en": "POS open sessions"
+  },
+  {
+    "key": "retailer_desktop.residual.text.postal_code",
+    "en": "Postal code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.prediction_feed_is_currently_empty_for_this_cycle",
+    "en": "Prediction feed is currently empty for this cycle."
+  },
+  {
+    "key": "retailer_desktop.residual.text.predictive_demand_signals_and_network_analytics",
+    "en": "Predictive demand signals and network analytics."
+  },
+  {
+    "key": "retailer_desktop.residual.text.pricing_rules_unavailable",
+    "en": "Pricing rules unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.primary_contact",
+    "en": "Primary Contact"
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_access_is_partially_restricted_for_this_account",
+    "en": "Procurement access is partially restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_access_restricted",
+    "en": "Procurement access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_is_offline",
+    "en": "Procurement is offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_sync_degraded_auto_retry_is_active",
+    "en": "Procurement sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.profile_saved_successfully",
+    "en": "Profile saved successfully."
+  },
+  {
+    "key": "retailer_desktop.residual.text.quarantined",
+    "en": "Quarantined"
+  },
+  {
+    "key": "retailer_desktop.residual.text.queue_refresh_failed_retrying_in_the_background",
+    "en": "Queue refresh failed. Retrying in the background."
+  },
+  {
+    "key": "retailer_desktop.residual.text.real_time_arrival_queue_and_proximity_locked_secure_verification",
+    "en": "Real-time arrival queue and proximity-locked secure verification."
+  },
+  {
+    "key": "retailer_desktop.residual.text.receive_failed",
+    "en": "Receive failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.receiving_window_closes",
+    "en": "Receiving window closes"
+  },
+  {
+    "key": "retailer_desktop.residual.text.receiving_window_opens",
+    "en": "Receiving window opens"
+  },
+  {
+    "key": "retailer_desktop.residual.text.recent_order_and_notification_activity_for_your_account",
+    "en": "Recent order and notification activity for your account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.refresh_failed",
+    "en": "Refresh failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "retailer_desktop.residual.text.reject_ai_order_failed",
+    "en": "Reject AI order failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.reject_delivery_proposal_failed",
+    "en": "Reject delivery proposal failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.reorder_now",
+    "en": "REORDER NOW"
+  },
+  {
+    "key": "retailer_desktop.residual.text.resume_failed",
+    "en": "Resume failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.resume_requires_open_session_and_network",
+    "en": "Resume requires open session and network."
+  },
+  {
+    "key": "retailer_desktop.residual.text.retailer_desktop_app_for_pegasus",
+    "en": "Retailer Desktop App for Pegasus"
+  },
+  {
+    "key": "retailer_desktop.residual.text.sale_failed",
+    "en": "Sale failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.sales_7d",
+    "en": "Sales 7d"
+  },
+  {
+    "key": "retailer_desktop.residual.text.sales_inventory_and_shift_variance_digest_csv_export_for_desktop",
+    "en": "Sales, inventory, and shift variance digest. CSV export for desktop ops."
+  },
+  {
+    "key": "retailer_desktop.residual.text.select_an_order",
+    "en": "Select an order"
+  },
+  {
+    "key": "retailer_desktop.residual.text.select_at_least_one_item_quantity",
+    "en": "Select at least one item quantity."
+  },
+  {
+    "key": "retailer_desktop.residual.text.set_primary_failed",
+    "en": "Set primary failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.settings_access_is_partially_restricted_for_this_account",
+    "en": "Settings access is partially restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.settings_sync_degraded_auto_retry_is_active",
+    "en": "Settings sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.shift_variances_closed",
+    "en": "Shift variances (closed)"
+  },
+  {
+    "key": "retailer_desktop.residual.text.shipping_address_default",
+    "en": "Shipping address (default)"
+  },
+  {
+    "key": "retailer_desktop.residual.text.shop_closed",
+    "en": "Shop Closed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.signals_unavailable",
+    "en": "Signals unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.sku_update_failed",
+    "en": "SKU update failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.staff_update_failed",
+    "en": "Staff update failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.stage_repeat_purchases_from_your_approved_catalog",
+    "en": "Stage repeat purchases from your approved catalog."
+  },
+  {
+    "key": "retailer_desktop.residual.text.staged_cart",
+    "en": "Staged Cart"
+  },
+  {
+    "key": "retailer_desktop.residual.text.suppliers",
+    "en": "Suppliers"
+  },
+  {
+    "key": "retailer_desktop.residual.text.switch_failed",
+    "en": "Switch failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_catalog_feeds",
+    "en": "Syncing catalog feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_dashboard_feeds",
+    "en": "Syncing dashboard feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_intelligence_feeds",
+    "en": "Syncing intelligence feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_live_dock_updates",
+    "en": "Syncing live dock updates..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_live_telemetry",
+    "en": "Syncing live telemetry..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_notifications",
+    "en": "Syncing notifications..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_order_feeds",
+    "en": "Syncing order feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_procurement_feeds",
+    "en": "Syncing procurement feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_settings_feeds",
+    "en": "Syncing settings feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.tax_id_is_required_minimum_5_characters",
+    "en": "Tax ID is required (minimum 5 characters)."
+  },
+  {
+    "key": "retailer_desktop.residual.text.tax_id_vat",
+    "en": "Tax ID / VAT"
+  },
+  {
+    "key": "retailer_desktop.residual.text.telemetry_sync_degraded_auto_retry_is_active",
+    "en": "Telemetry sync degraded. Auto-retry is active."
+  },
+  {
+    "key": "retailer_desktop.residual.text.tracking_access_restricted_for_this_account",
+    "en": "Tracking access restricted for this account."
+  },
+  {
+    "key": "retailer_desktop.residual.text.transfer_failed",
+    "en": "Transfer failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.turn_on_only_what_your_shop_needs_solo_shops_run_on_core_alone",
+    "en": "Turn on only what your shop needs. Solo shops run on Core alone."
+  },
+  {
+    "key": "retailer_desktop.residual.text.unable_to_load",
+    "en": "Unable to load"
+  },
+  {
+    "key": "retailer_desktop.residual.text.vendor_feed_unavailable",
+    "en": "Vendor feed unavailable"
+  },
+  {
+    "key": "retailer_desktop.residual.text.void_failed_manager_role_may_be_required",
+    "en": "Void failed (manager role may be required)"
+  },
+  {
+    "key": "retailer_desktop.residual.text.void_hold_failed",
+    "en": "Void hold failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.void_requires_a_synced_server_sale_sync_first_or_discard_from_pe",
+    "en": "Void requires a synced server sale. Sync first or discard from pending queue."
+  },
+  {
+    "key": "retailer_desktop.residual.text.window_closed_claim_window_has_expired",
+    "en": "Window closed — claim window has expired."
+  },
+  {
+    "key": "retailer_desktop.settings.team.text.998",
+    "en": "+998…"
+  },
+  {
+    "key": "supplier_portal.admin.control_center.role.all",
+    "en": "ALL"
+  },
+  {
+    "key": "supplier_portal.admin.control_center.role.driver",
+    "en": "DRIVER"
+  },
+  {
+    "key": "supplier_portal.admin.control_center.role.retailer",
+    "en": "RETAILER"
+  },
+  {
+    "key": "supplier_portal.admin.empathy.title",
+    "en": "Empathy Engine"
+  },
+  {
+    "key": "supplier_portal.auth.login.brand_title",
+    "en": "Pegasus Hub"
+  },
+  {
+    "key": "supplier_portal.auth.login.email_placeholder",
+    "en": "admin@void.pegasus.uz"
+  },
+  {
+    "key": "supplier_portal.auth.login.http_error",
+    "en": "HTTP {status}"
+  },
+  {
+    "key": "supplier_portal.auth.register.brand_title",
+    "en": "Pegasus Hub"
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.company_name_placeholder",
+    "en": "Pegasus Beverages Ltd."
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.email_placeholder",
+    "en": "info@company.uz"
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.phone_placeholder",
+    "en": "901234567"
+  },
+  {
+    "key": "supplier_portal.auth.register.step3.company_reg_number_placeholder",
+    "en": "MYF-001-UZ"
+  },
+  {
+    "key": "supplier_portal.auth.register.step3.tax_id_placeholder",
+    "en": "STIR-12345678"
+  },
+  {
+    "key": "supplier_portal.billing_setup.gateway.global_pay.label",
+    "en": "Global Pay"
+  },
+  {
+    "key": "supplier_portal.catalog._product_id_.text.ean_gtin",
+    "en": "EAN / GTIN"
+  },
+  {
+    "key": "supplier_portal.compliance.text.ehf_id",
+    "en": "EHF ID"
+  },
+  {
+    "key": "supplier_portal.credit.policy.text.ret",
+    "en": "ret_…"
+  },
+  {
+    "key": "supplier_portal.residual.text.28d_actual_units",
+    "en": "28d actual units"
+  },
+  {
+    "key": "supplier_portal.residual.text.28d_forecast_units",
+    "en": "28d forecast units"
+  },
+  {
+    "key": "supplier_portal.residual.text.30_day_revenue",
+    "en": "30-day revenue"
+  },
+  {
+    "key": "supplier_portal.residual.text.accept_backorders_when_out_of_stock",
+    "en": "Accept backorders when out of stock"
+  },
+  {
+    "key": "supplier_portal.residual.text.accept_failed",
+    "en": "accept_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.account_holder_name",
+    "en": "Account holder name"
+  },
+  {
+    "key": "supplier_portal.residual.text.account_number",
+    "en": "Account number"
+  },
+  {
+    "key": "supplier_portal.residual.text.active_driver_reports_where_the_retailer_did_not_confirm_within_",
+    "en": "Active driver reports where the retailer did not confirm within the grace window."
+  },
+  {
+    "key": "supplier_portal.residual.text.active_routes_from_the_digital_twin_read_only_visibility_with_et",
+    "en": "Active routes from the digital twin — read-only visibility with ETA confidence colouring."
+  },
+  {
+    "key": "supplier_portal.residual.text.address",
+    "en": "Address"
+  },
+  {
+    "key": "supplier_portal.residual.text.adjust_failed",
+    "en": "adjust_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.adyen",
+    "en": "Adyen"
+  },
+  {
+    "key": "supplier_portal.residual.text.airwallex",
+    "en": "Airwallex"
+  },
+  {
+    "key": "supplier_portal.residual.text.amount_must_be_a_number",
+    "en": "Amount must be a number."
+  },
+  {
+    "key": "supplier_portal.residual.text.approve_a_driver_request_to_finish_the_route_before_all_stops_ar",
+    "en": "Approve a driver request to finish the route before all stops are completed."
+  },
+  {
+    "key": "supplier_portal.residual.text.approve_failed",
+    "en": "approve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.arrived",
+    "en": "Arrived"
+  },
+  {
+    "key": "supplier_portal.residual.text.auto_approval_thresholds_transfer_limits_and_service_level_safet",
+    "en": "Auto-approval thresholds, transfer limits, and service-level safety stock."
+  },
+  {
+    "key": "supplier_portal.residual.text.auto_approve_predictive_push",
+    "en": "Auto-approve predictive push"
+  },
+  {
+    "key": "supplier_portal.residual.text.auto_approve_stable",
+    "en": "Auto-approve stable"
+  },
+  {
+    "key": "supplier_portal.residual.text.available_drivers",
+    "en": "Available drivers"
+  },
+  {
+    "key": "supplier_portal.residual.text.bank_name",
+    "en": "Bank name"
+  },
+  {
+    "key": "supplier_portal.residual.text.baseline_rows",
+    "en": "Baseline rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.baseline_sla",
+    "en": "Baseline SLA"
+  },
+  {
+    "key": "supplier_portal.residual.text.bootstrap_failed",
+    "en": "bootstrap_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.bulk_create_failed",
+    "en": "bulk_create_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.cancels_the_order_and_notifies_the_retailer_immediately_reason_i",
+    "en": "Cancels the order and notifies the retailer immediately. Reason is required."
+  },
+  {
+    "key": "supplier_portal.residual.text.capacity_breach",
+    "en": "Capacity breach"
+  },
+  {
+    "key": "supplier_portal.residual.text.card_payments_via_the_pegasusx_global_rail",
+    "en": "Card payments via the pegasusX global rail."
+  },
+  {
+    "key": "supplier_portal.residual.text.card_revenue_settles_to_your_supplier_treasury_account",
+    "en": "Card revenue settles to your supplier treasury account."
+  },
+  {
+    "key": "supplier_portal.residual.text.cash_on_delivery",
+    "en": "Cash on delivery"
+  },
+  {
+    "key": "supplier_portal.residual.text.catalog_skus",
+    "en": "Catalog SKUs"
+  },
+  {
+    "key": "supplier_portal.residual.text.category_id",
+    "en": "Category ID"
+  },
+  {
+    "key": "supplier_portal.residual.text.channel_and_quiet_hour_rules_per_event_type",
+    "en": "Channel and quiet-hour rules per event type."
+  },
+  {
+    "key": "supplier_portal.residual.text.chargeback_recorded_live_finance_refresh_queued",
+    "en": "Chargeback recorded. Live finance refresh queued."
+  },
+  {
+    "key": "supplier_portal.residual.text.chargeback_reversal_recorded_live_finance_refresh_queued",
+    "en": "Chargeback reversal recorded. Live finance refresh queued."
+  },
+  {
+    "key": "supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_",
+    "en": "Claim filing windows applied when orders complete. Retailers see the countdown from this policy."
+  },
+  {
+    "key": "supplier_portal.residual.text.co_locate_with_factory",
+    "en": "Co-locate with factory"
+  },
+  {
+    "key": "supplier_portal.residual.text.coa_save_failed",
+    "en": "CoA save failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.company_registration_number",
+    "en": "Company registration number"
+  },
+  {
+    "key": "supplier_portal.residual.text.complete_setup",
+    "en": "Complete setup"
+  },
+  {
+    "key": "supplier_portal.residual.text.completed_route_efficiency_and_replan_metrics",
+    "en": "Completed route efficiency and replan metrics."
+  },
+  {
+    "key": "supplier_portal.residual.text.configure_where_payouts_land_and_which_checkout_rails_retailers_",
+    "en": "Configure where payouts land and which checkout rails retailers can use."
+  },
+  {
+    "key": "supplier_portal.residual.text.configured",
+    "en": "Configured"
+  },
+  {
+    "key": "supplier_portal.residual.text.connection_restored_escalation_queue_refreshed_from_server",
+    "en": "Connection restored — escalation queue refreshed from server."
+  },
+  {
+    "key": "supplier_portal.residual.text.connection_restored_verify_approval_status_before_retrying",
+    "en": "Connection restored — verify approval status before retrying."
+  },
+  {
+    "key": "supplier_portal.residual.text.connection_restored_verify_chargeback_status_before_retrying",
+    "en": "Connection restored — verify chargeback status before retrying."
+  },
+  {
+    "key": "supplier_portal.residual.text.connection_restored_verify_reversal_status_before_retrying",
+    "en": "Connection restored — verify reversal status before retrying."
+  },
+  {
+    "key": "supplier_portal.residual.text.connection_restored_verify_status_before_retrying",
+    "en": "Connection restored — verify status before retrying."
+  },
+  {
+    "key": "supplier_portal.residual.text.contact_name",
+    "en": "Contact name"
+  },
+  {
+    "key": "supplier_portal.residual.text.could_not_load_orders",
+    "en": "Could not load orders"
+  },
+  {
+    "key": "supplier_portal.residual.text.could_not_resolve_your_location_to_an_address",
+    "en": "Could not resolve your location to an address."
+  },
+  {
+    "key": "supplier_portal.residual.text.country",
+    "en": "Country"
+  },
+  {
+    "key": "supplier_portal.residual.text.coverage_radius_km",
+    "en": "Coverage radius (km)"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_and_edit_warehouse_and_factory_nodes_coverage_radius_and_",
+    "en": "Create and edit warehouse and factory nodes. Coverage radius and co-location drive delivery zones and supply lanes."
+  },
+  {
+    "key": "supplier_portal.residual.text.create_draft_failed",
+    "en": "create_draft_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_failed",
+    "en": "Create failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_failed_2",
+    "en": "create_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_products_and_set_volumetric_units_vu_for_warehouse_dispat",
+    "en": "Create products and set volumetric units (VU) for warehouse dispatch capacity."
+  },
+  {
+    "key": "supplier_portal.residual.text.create_webhook_failed",
+    "en": "Create webhook failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.cross_border_payouts_and_multi_currency_settlement",
+    "en": "Cross-border payouts and multi-currency settlement."
+  },
+  {
+    "key": "supplier_portal.residual.text.custom_seasonal_windows_override_global_forecast_baselines_for_d",
+    "en": "Custom seasonal windows override global forecast baselines for date ranges."
+  },
+  {
+    "key": "supplier_portal.residual.text.deactivate_failed",
+    "en": "Deactivate failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.deactivate_failed_2",
+    "en": "deactivate_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.default_out_of_stock_policy",
+    "en": "Default out-of-stock policy"
+  },
+  {
+    "key": "supplier_portal.residual.text.default_window_must_be_between_1_and_168_hours",
+    "en": "Default window must be between 1 and 168 hours"
+  },
+  {
+    "key": "supplier_portal.residual.text.defaults_failed",
+    "en": "defaults_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.delivery_time_line_qty_propose_resolve_driver_supplier",
+    "en": "Delivery-time line qty propose/resolve (driver → supplier)."
+  },
+  {
+    "key": "supplier_portal.residual.text.demand_baseline",
+    "en": "Demand baseline"
+  },
+  {
+    "key": "supplier_portal.residual.text.demand_predictions",
+    "en": "Demand predictions"
+  },
+  {
+    "key": "supplier_portal.residual.text.discount_bps_500_5",
+    "en": "Discount (bps, 500 = 5%)"
+  },
+  {
+    "key": "supplier_portal.residual.text.dismiss_failed",
+    "en": "dismiss_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.dispatch_execute_failed",
+    "en": "dispatch_execute_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.dispute_rows",
+    "en": "Dispute rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.distribution_nodes_and_coverage_for_retailer_serviceability",
+    "en": "Distribution nodes and coverage for retailer serviceability."
+  },
+  {
+    "key": "supplier_portal.residual.text.draft_credit_notes_and_issue_reverse_logistics_tasks",
+    "en": "Draft credit notes and issue reverse-logistics tasks."
+  },
+  {
+    "key": "supplier_portal.residual.text.driver_declared_cash_vs_captured_cash_payment_legs_resolve_open_",
+    "en": "Driver-declared cash vs captured CASH payment legs — resolve open discrepancies."
+  },
+  {
+    "key": "supplier_portal.residual.text.driver_id_is_required",
+    "en": "Driver ID is required."
+  },
+  {
+    "key": "supplier_portal.residual.text.driver_rejected_quantities_awaiting_write_off_or_return_to_stock",
+    "en": "Driver-rejected quantities awaiting write-off or return-to-stock."
+  },
+  {
+    "key": "supplier_portal.residual.text.edi_replay_failed",
+    "en": "EDI replay failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.empathy_adoption_operator_broadcast_replenishment_trigger_and_pa",
+    "en": "Empathy adoption, operator broadcast, replenishment trigger, and payment bypass."
+  },
+  {
+    "key": "supplier_portal.residual.text.enable_failed",
+    "en": "enable_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.enable_the_supplier_credit_program_and_per_retailer_net_terms_di",
+    "en": "Enable the supplier credit program and per-retailer Net terms. Disable requires Pegaus support."
+  },
+  {
+    "key": "supplier_portal.residual.text.enable_trade_credit_irreversible_in_app",
+    "en": "Enable trade credit — irreversible in-app"
+  },
+  {
+    "key": "supplier_portal.residual.text.ends_at_rfc3339",
+    "en": "Ends at (RFC3339)"
+  },
+  {
+    "key": "supplier_portal.residual.text.enter_a_non_zero_quantity_delta",
+    "en": "Enter a non-zero quantity delta"
+  },
+  {
+    "key": "supplier_portal.residual.text.enter_a_valid_list_price",
+    "en": "Enter a valid list price."
+  },
+  {
+    "key": "supplier_portal.residual.text.enter_a_valid_phone_number_6_14_digits",
+    "en": "Enter a valid phone number (6-14 digits)"
+  },
+  {
+    "key": "supplier_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "supplier_portal.residual.text.enterprise_card_acquiring_with_local_payment_methods",
+    "en": "Enterprise card acquiring with local payment methods."
+  },
+  {
+    "key": "supplier_portal.residual.text.export_failed",
+    "en": "Export failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.external_events_and_promotions_that_adjust_base_ai_predictions",
+    "en": "External events and promotions that adjust base AI predictions."
+  },
+  {
+    "key": "supplier_portal.residual.text.factory_address",
+    "en": "Factory address"
+  },
+  {
+    "key": "supplier_portal.residual.text.factory_admin",
+    "en": "Factory admin"
+  },
+  {
+    "key": "supplier_portal.residual.text.factory_cap_7d",
+    "en": "Factory cap (7d)"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed",
+    "en": "failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_create_override",
+    "en": "Failed to create override"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_create_product",
+    "en": "Failed to create product"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_delete_override",
+    "en": "Failed to delete override"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_catalog",
+    "en": "Failed to load catalog"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_compliance_stats",
+    "en": "Failed to load compliance stats"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_exception_map",
+    "en": "Failed to load exception map"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_fleet_tracking",
+    "en": "Failed to load fleet tracking"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_integrations",
+    "en": "Failed to load integrations"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_inventory",
+    "en": "Failed to load inventory"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_overrides",
+    "en": "Failed to load overrides"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_product",
+    "en": "Failed to load product"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_promotions",
+    "en": "Failed to load promotions"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_return_policy",
+    "en": "Failed to load return policy"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_seasonal_overrides",
+    "en": "Failed to load seasonal overrides"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_load_topology",
+    "en": "Failed to load topology"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_save_product",
+    "en": "Failed to save product"
+  },
+  {
+    "key": "supplier_portal.residual.text.failed_to_send_verification_code",
+    "en": "Failed to send verification code"
+  },
+  {
+    "key": "supplier_portal.residual.text.fan_out_a_message_to_supplier_ws_rooms_by_role",
+    "en": "Fan out a message to supplier WS rooms by role."
+  },
+  {
+    "key": "supplier_portal.residual.text.feed_unavailable_apply_ddl_or_wait_for_pos",
+    "en": "feed_unavailable_apply_ddl_or_wait_for_pos"
+  },
+  {
+    "key": "supplier_portal.residual.text.filter_product_id",
+    "en": "Filter product ID"
+  },
+  {
+    "key": "supplier_portal.residual.text.filter_retailer_id",
+    "en": "Filter retailer ID"
+  },
+  {
+    "key": "supplier_portal.residual.text.financial_overview_and_operational_intelligence",
+    "en": "Financial overview and operational intelligence."
+  },
+  {
+    "key": "supplier_portal.residual.text.fleet_entities",
+    "en": "Fleet entities"
+  },
+  {
+    "key": "supplier_portal.residual.text.fleet_orders_failed",
+    "en": "fleet_orders_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.fleet_volume",
+    "en": "Fleet volume"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_units",
+    "en": "Forecast units"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_units_24h",
+    "en": "Forecast units (24h)"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_value",
+    "en": "Forecast value"
+  },
+  {
+    "key": "supplier_portal.residual.text.fulfilling_nodes_collect_payment_per_dispatch_lane",
+    "en": "Fulfilling nodes collect payment per dispatch lane."
+  },
+  {
+    "key": "supplier_portal.residual.text.full_ledger_chargebacks_and_reconciliation_tools",
+    "en": "Full ledger, chargebacks, and reconciliation tools."
+  },
+  {
+    "key": "supplier_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "supplier_portal.residual.text.gln_13_digits",
+    "en": "GLN (13 digits)"
+  },
+  {
+    "key": "supplier_portal.residual.text.gs1_company_prefix_7_10_digits",
+    "en": "GS1 company prefix (7–10 digits)"
+  },
+  {
+    "key": "supplier_portal.residual.text.h3_perimeter_and_warehouse_coverage_configured_via_topology",
+    "en": "H3 perimeter and warehouse coverage configured via topology."
+  },
+  {
+    "key": "supplier_portal.residual.text.h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or",
+    "en": "H3 perimeter coverage and lane utilization from live supplier orders."
+  },
+  {
+    "key": "supplier_portal.residual.text.hold_failed",
+    "en": "hold_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.immutable_ledger_derived_settlement_and_reconciliation_view_for_",
+    "en": "Immutable ledger-derived settlement and reconciliation view for supplier finance and support."
+  },
+  {
+    "key": "supplier_portal.residual.text.import_apply_failed",
+    "en": "import_apply_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.import_approve_failed",
+    "en": "import_approve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.import_wizard_failed",
+    "en": "import_wizard_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.in_transit",
+    "en": "In transit"
+  },
+  {
+    "key": "supplier_portal.residual.text.ingest_lag",
+    "en": "Ingest lag"
+  },
+  {
+    "key": "supplier_portal.residual.text.internal_co_located",
+    "en": "Internal / co-located"
+  },
+  {
+    "key": "supplier_portal.residual.text.invalid_limit",
+    "en": "invalid_limit"
+  },
+  {
+    "key": "supplier_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "supplier_portal.residual.text.issue_a_one_time_driver_token_for_awaiting_payment_orders",
+    "en": "Issue a one-time driver token for AWAITING_PAYMENT orders."
+  },
+  {
+    "key": "supplier_portal.residual.text.issue_failed",
+    "en": "issue_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.issue_key_failed",
+    "en": "Issue key failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.latest_events_across_your_network",
+    "en": "Latest events across your network."
+  },
+  {
+    "key": "supplier_portal.residual.text.ledger_rows",
+    "en": "Ledger rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.legal_and_location_information_used_for_invoicing_compliance_and",
+    "en": "Legal and location information used for invoicing, compliance, and delivery routing."
+  },
+  {
+    "key": "supplier_portal.residual.text.legal_name",
+    "en": "Legal name"
+  },
+  {
+    "key": "supplier_portal.residual.text.lines_failed",
+    "en": "lines_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.list_price_and_optional_product_scoped_sale_discount",
+    "en": "List price and optional product-scoped sale discount."
+  },
+  {
+    "key": "supplier_portal.residual.text.live_finance_stream_chargebacks_and_reconciliation",
+    "en": "Live finance stream, chargebacks, and reconciliation."
+  },
+  {
+    "key": "supplier_portal.residual.text.live_retailer_floor_sell_through_store_pos_kafka_demand_signal_f",
+    "en": "Live retailer floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers."
+  },
+  {
+    "key": "supplier_portal.residual.text.live_sealed_route_execution_exception_weather_and_fleet_onboardi",
+    "en": "Live sealed-route execution, exception weather, and fleet onboarding."
+  },
+  {
+    "key": "supplier_portal.residual.text.load_claims_failed",
+    "en": "load_claims_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_demand_analytics_failed",
+    "en": "load_demand_analytics_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_exceptions_failed",
+    "en": "load_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_factories_failed",
+    "en": "load_factories_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_flywheel_failed",
+    "en": "load_flywheel_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_geo_report_failed",
+    "en": "load_geo_report_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_knowledge_graph_failed",
+    "en": "load_knowledge_graph_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifest_exceptions_failed",
+    "en": "load_manifest_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifest_failed",
+    "en": "load_manifest_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifests_failed",
+    "en": "load_manifests_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_playbook_runs_failed",
+    "en": "load_playbook_runs_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_playbooks_failed",
+    "en": "load_playbooks_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_pricing_failed",
+    "en": "load_pricing_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_profile_failed",
+    "en": "load_profile_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_reconciliation_failed",
+    "en": "load_reconciliation_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_replenishment_policies_failed",
+    "en": "load_replenishment_policies_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_returns_failed",
+    "en": "load_returns_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_scored_exceptions_failed",
+    "en": "load_scored_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_segmentation_failed",
+    "en": "load_segmentation_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_signals_failed",
+    "en": "load_signals_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_suggestions_failed",
+    "en": "load_suggestions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_supplier_analytics_failed",
+    "en": "load_supplier_analytics_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_supply_lanes_failed",
+    "en": "load_supply_lanes_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_topology_failed",
+    "en": "load_topology_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_warehouses_failed",
+    "en": "load_warehouses_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.loaded",
+    "en": "Loaded"
+  },
+  {
+    "key": "supplier_portal.residual.text.loading_gate_overflows_damage_reports_and_manual_removals_raised",
+    "en": "Loading-gate overflows, damage reports, and manual removals raised during manifest execution."
+  },
+  {
+    "key": "supplier_portal.residual.text.loading_manifests_seal_and_dispatch_lifecycle_use_dispatch_for_a",
+    "en": "Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations."
+  },
+  {
+    "key": "supplier_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "supplier_portal.residual.text.manage_historical_and_future_tax_rates",
+    "en": "Manage historical and future tax rates"
+  },
+  {
+    "key": "supplier_portal.residual.text.manage_manifests_and_dispatch_operations",
+    "en": "Manage manifests and dispatch operations."
+  },
+  {
+    "key": "supplier_portal.residual.text.manage_warehouse_coordinates_and_coverage_radius",
+    "en": "Manage warehouse coordinates and coverage radius."
+  },
+  {
+    "key": "supplier_portal.residual.text.max_daily_transfer_units",
+    "en": "Max daily transfer units"
+  },
+  {
+    "key": "supplier_portal.residual.text.max_vu",
+    "en": "Max VU"
+  },
+  {
+    "key": "supplier_portal.residual.text.meio_network",
+    "en": "MEIO network"
+  },
+  {
+    "key": "supplier_portal.residual.text.meio_unavailable",
+    "en": "MEIO unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.min_confidence_score",
+    "en": "Min confidence score"
+  },
+  {
+    "key": "supplier_portal.residual.text.min_line_qty_packs",
+    "en": "Min line qty (packs)"
+  },
+  {
+    "key": "supplier_portal.residual.text.min_order_minor_units",
+    "en": "Min order (minor units)"
+  },
+  {
+    "key": "supplier_portal.residual.text.mismatch_groups",
+    "en": "Mismatch groups"
+  },
+  {
+    "key": "supplier_portal.residual.text.month_earnings",
+    "en": "Month earnings"
+  },
+  {
+    "key": "supplier_portal.residual.text.monthly_salary_payout",
+    "en": "Monthly salary payout"
+  },
+  {
+    "key": "supplier_portal.residual.text.name_and_address_are_required",
+    "en": "Name and address are required."
+  },
+  {
+    "key": "supplier_portal.residual.text.name_and_category_are_required",
+    "en": "Name and category are required."
+  },
+  {
+    "key": "supplier_portal.residual.text.new_supplier",
+    "en": "New supplier?"
+  },
+  {
+    "key": "supplier_portal.residual.text.no_active_fleet_orders",
+    "en": "No active fleet orders."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_active_warehouse_lanes_configure_nodes_on_topology",
+    "en": "No active warehouse lanes. Configure nodes on topology."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_claim_chargebacks_yet_approve_a_claim_in_exceptions_claims_to",
+    "en": "No claim chargebacks yet. Approve a claim in Exceptions → Claims to create one."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_claims_in_this_filter_retailer_post_delivery_claims_appear_he",
+    "en": "No claims in this filter. Retailer post-delivery claims appear here within the 48h window."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_data_yet",
+    "en": "No data yet."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_demand_signals_yet_add_events_or_promos_to_adjust_predictive_",
+    "en": "No demand signals yet. Add events or promos to adjust predictive inventory."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_escalations_in_queue",
+    "en": "No escalations in queue."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_factories_yet_add_a_production_node_linked_to_your_warehouse_",
+    "en": "No factories yet. Add a production node linked to your warehouse network."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_manifest_exceptions_in_the_current_window",
+    "en": "No manifest exceptions in the current window."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_manifests_in_the_current_window",
+    "en": "No manifests in the current window."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_nearby_drivers",
+    "en": "No nearby drivers"
+  },
+  {
+    "key": "supplier_portal.residual.text.no_open_cash_discrepancies_drivers_auto_accept_when_declared_mat",
+    "en": "No open cash discrepancies. Drivers auto-accept when declared matches expected."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_open_exceptions_escalations_appear_here_when_operators_raise_",
+    "en": "No open exceptions. Escalations appear here when operators raise them."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_open_returns_all_rejected_delivery_lines_are_resolved",
+    "en": "No open returns — all rejected delivery lines are resolved."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_products_to_price_create_products_in_catalog_then_return_here",
+    "en": "No products to price. Create products in Catalog, then return here."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_retailer_price_overrides_yet",
+    "en": "No retailer price overrides yet."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_store_pos_flywheel_events_yet_when_retailers_complete_pos_sal",
+    "en": "No STORE_POS flywheel events yet. When retailers complete POS sales for your SKUs, rows appear here."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_supplier_session_sign_in_again_to_load_compliance_for_your_te",
+    "en": "No supplier session. Sign in again to load compliance for your tenant."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_warehouse_coverage_configured",
+    "en": "No warehouse coverage configured."
+  },
+  {
+    "key": "supplier_portal.residual.text.no_warehouses_yet_add_your_first_distribution_node",
+    "en": "No warehouses yet. Add your first distribution node."
+  },
+  {
+    "key": "supplier_portal.residual.text.none",
+    "en": "None"
+  },
+  {
+    "key": "supplier_portal.residual.text.on_shift",
+    "en": "On shift"
+  },
+  {
+    "key": "supplier_portal.residual.text.open_mismatches",
+    "en": "Open mismatches"
+  },
+  {
+    "key": "supplier_portal.residual.text.open_replenishment_suggestions_from_demand_signals_create_draft_",
+    "en": "OPEN replenishment suggestions from demand signals — create draft orders through normal order capture."
+  },
+  {
+    "key": "supplier_portal.residual.text.opens_a_warehouse_supply_request_against_your_primary_active_war",
+    "en": "Opens a warehouse supply request against your primary active warehouse."
+  },
+  {
+    "key": "supplier_portal.residual.text.order_id_required",
+    "en": "order_id required"
+  },
+  {
+    "key": "supplier_portal.residual.text.orders_matching_this_filter_will_appear_here",
+    "en": "Orders matching this filter will appear here."
+  },
+  {
+    "key": "supplier_portal.residual.text.override_failed",
+    "en": "Override failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.override_price_minor_units",
+    "en": "Override price (minor units)"
+  },
+  {
+    "key": "supplier_portal.residual.text.p_and_l_simulation_failed",
+    "en": "P&L simulation failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.partner_api_keys_outbound_webhooks_bulk_exports_and_optional_sft",
+    "en": "Partner API keys, outbound webhooks, bulk exports, and optional SFTP drop."
+  },
+  {
+    "key": "supplier_portal.residual.text.patch_failed",
+    "en": "patch_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.payload_staff",
+    "en": "Payload staff"
+  },
+  {
+    "key": "supplier_portal.residual.text.payments_settlement_authority_earnings_and_reconciliation_health",
+    "en": "Payments, settlement authority, earnings, and reconciliation health."
+  },
+  {
+    "key": "supplier_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "supplier_portal.residual.text.pending",
+    "en": "Pending"
+  },
+  {
+    "key": "supplier_portal.residual.text.pending_dispatch",
+    "en": "Pending dispatch"
+  },
+  {
+    "key": "supplier_portal.residual.text.ping_failed",
+    "en": "Ping failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.pipeline",
+    "en": "Pipeline"
+  },
+  {
+    "key": "supplier_portal.residual.text.planning_outcomes_unavailable",
+    "en": "planning_outcomes_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.planning_unavailable",
+    "en": "planning_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.policy_update_failed",
+    "en": "policy_update_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.post_delivery_damage_missing_and_os_and_d_claims_choose_settleme",
+    "en": "Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve."
+  },
+  {
+    "key": "supplier_portal.residual.text.postal_code",
+    "en": "Postal code"
+  },
+  {
+    "key": "supplier_portal.residual.text.predicted_versus_actual_order_volume_from_supplier_analytics_aut",
+    "en": "Predicted versus actual order volume from supplier analytics authority."
+  },
+  {
+    "key": "supplier_portal.residual.text.predictions",
+    "en": "Predictions"
+  },
+  {
+    "key": "supplier_portal.residual.text.preview",
+    "en": "Preview"
+  },
+  {
+    "key": "supplier_portal.residual.text.preview_failed",
+    "en": "preview_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.price_must_be_a_non_negative_integer_minor_units",
+    "en": "Price must be a non-negative integer (minor units)."
+  },
+  {
+    "key": "supplier_portal.residual.text.priority_higher_wins_ties",
+    "en": "Priority (higher wins ties)"
+  },
+  {
+    "key": "supplier_portal.residual.text.product_category_and_volume_based_sales_with_retailer_targeting_",
+    "en": "Product, category, and volume-based sales with retailer targeting and time windows."
+  },
+  {
+    "key": "supplier_portal.residual.text.product_id",
+    "en": "product_id"
+  },
+  {
+    "key": "supplier_portal.residual.text.product_id_sku",
+    "en": "Product ID (SKU)"
+  },
+  {
+    "key": "supplier_portal.residual.text.product_not_found",
+    "en": "Product not found."
+  },
+  {
+    "key": "supplier_portal.residual.text.product_sale_pricing",
+    "en": "Product sale pricing"
+  },
+  {
+    "key": "supplier_portal.residual.text.production_nodes_for_manifests_and_warehouse_replenishment",
+    "en": "Production nodes for manifests and warehouse replenishment."
+  },
+  {
+    "key": "supplier_portal.residual.text.projections",
+    "en": "Projections"
+  },
+  {
+    "key": "supplier_portal.residual.text.quantity_negotiation_is_disabled_use_shop_closed_claims_or_missi",
+    "en": "Quantity negotiation is disabled. Use shop-closed, claims, or missing-items for delivery exceptions."
+  },
+  {
+    "key": "supplier_portal.residual.text.quantity_on_hand",
+    "en": "quantity_on_hand"
+  },
+  {
+    "key": "supplier_portal.residual.text.read_only_supplier_planning_graph_factories_warehouses_skus_and_",
+    "en": "Read-only supplier planning graph — factories, warehouses, SKUs, and relationships."
+  },
+  {
+    "key": "supplier_portal.residual.text.recent_financial_transactions",
+    "en": "Recent financial transactions."
+  },
+  {
+    "key": "supplier_portal.residual.text.record_payment_disputes_and_reversals_against_the_durable_financ",
+    "en": "Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks."
+  },
+  {
+    "key": "supplier_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "supplier_portal.residual.text.registered",
+    "en": "Registered"
+  },
+  {
+    "key": "supplier_portal.residual.text.reject_failed",
+    "en": "reject_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.reject_orders_when_out_of_stock",
+    "en": "Reject orders when out of stock"
+  },
+  {
+    "key": "supplier_portal.residual.text.reorder_threshold",
+    "en": "reorder_threshold"
+  },
+  {
+    "key": "supplier_portal.residual.text.replay_failed",
+    "en": "Replay failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.required_for_compliance_and_payout_verification",
+    "en": "Required for compliance and payout verification."
+  },
+  {
+    "key": "supplier_portal.residual.text.resolution_queued_for_retry_when_back_online",
+    "en": "Resolution queued for retry when back online."
+  },
+  {
+    "key": "supplier_portal.residual.text.resolve_failed",
+    "en": "resolve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailer_id_required",
+    "en": "retailer_id_required"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailer_ids_one_per_line",
+    "en": "Retailer IDs (one per line)"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailer_scope",
+    "en": "Retailer scope"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailer_segments_and_sku_velocity_classes_for_constrained_alloc",
+    "en": "Retailer segments and SKU velocity classes for constrained allocation (O9-1)."
+  },
+  {
+    "key": "supplier_portal.residual.text.retailers_collect_cash_reconcile_manually",
+    "en": "Retailers collect cash; reconcile manually."
+  },
+  {
+    "key": "supplier_portal.residual.text.retailers_see_these_options_at_checkout_select_all_that_apply",
+    "en": "Retailers see these options at checkout. Select all that apply."
+  },
+  {
+    "key": "supplier_portal.residual.text.revenue_at_risk",
+    "en": "Revenue at risk"
+  },
+  {
+    "key": "supplier_portal.residual.text.review_automated_exception_playbooks_deactivate_rules_you_do_not",
+    "en": "Review automated exception playbooks. Deactivate rules you do not want suggested."
+  },
+  {
+    "key": "supplier_portal.residual.text.review_h3_perimeter_and_warehouse_coverage",
+    "en": "Review H3 perimeter and warehouse coverage."
+  },
+  {
+    "key": "supplier_portal.residual.text.revoke_failed",
+    "en": "Revoke failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.sale_discount_must_be_greater_than_zero",
+    "en": "Sale discount must be greater than zero."
+  },
+  {
+    "key": "supplier_portal.residual.text.savdo_kreditini_yoqish_ilovada_qaytarib_bo_lmaydi",
+    "en": "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_and_continue",
+    "en": "Save & continue"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_factory_failed",
+    "en": "save_factory_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_failed",
+    "en": "save_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_profile_failed",
+    "en": "save_profile_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_replenishment_policies_failed",
+    "en": "save_replenishment_policies_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_topology_failed",
+    "en": "save_topology_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_warehouse_failed",
+    "en": "save_warehouse_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.scenario_failed",
+    "en": "scenario_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.secret_ref",
+    "en": "secret_ref"
+  },
+  {
+    "key": "supplier_portal.residual.text.set_custom_prices_per_retailer_and_product_sku",
+    "en": "Set custom prices per retailer and product SKU."
+  },
+  {
+    "key": "supplier_portal.residual.text.set_list_and_sale_pricing_per_catalog_product_add_products_in_ca",
+    "en": "Set list and sale pricing per catalog product. Add products in Catalog first."
+  },
+  {
+    "key": "supplier_portal.residual.text.settlement_net_authority",
+    "en": "Settlement net (authority)"
+  },
+  {
+    "key": "supplier_portal.residual.text.sftp_save_failed",
+    "en": "SFTP save failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.shop_closed_payment_and_delivery_escalation_queues",
+    "en": "Shop-closed, payment, and delivery escalation queues."
+  },
+  {
+    "key": "supplier_portal.residual.text.signal_status_unavailable",
+    "en": "signal_status_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.single_tenant_logistics_control_plane",
+    "en": "Single-tenant logistics control plane."
+  },
+  {
+    "key": "supplier_portal.residual.text.skip_failed",
+    "en": "skip_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.sku_availability_stock_policy_per_warehouse_and_quantity_adjustm",
+    "en": "SKU availability, stock policy per warehouse, and quantity adjustments."
+  },
+  {
+    "key": "supplier_portal.residual.text.skus",
+    "en": "SKUs"
+  },
+  {
+    "key": "supplier_portal.residual.text.sla_risk",
+    "en": "SLA risk"
+  },
+  {
+    "key": "supplier_portal.residual.text.starts_at_rfc3339",
+    "en": "Starts at (RFC3339)"
+  },
+  {
+    "key": "supplier_portal.residual.text.stockout_skus",
+    "en": "Stockout SKUs"
+  },
+  {
+    "key": "supplier_portal.residual.text.stream_of_operational_events_and_recent_actions",
+    "en": "Stream of operational events and recent actions."
+  },
+  {
+    "key": "supplier_portal.residual.text.street_address",
+    "en": "Street address"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_accepts_payments",
+    "en": "Supplier accepts payments"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_id",
+    "en": "Supplier ID"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_legal_identity_and_registration_state",
+    "en": "Supplier legal identity and registration state."
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_operator",
+    "en": "Supplier operator"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_portal_pegasusx",
+    "en": "Supplier Portal - pegasusX"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_scope",
+    "en": "Supplier scope"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_scoped_active_orders_for_dispatch_oversight",
+    "en": "Supplier-scoped active orders for dispatch oversight."
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_scoped_credit_lines_limits_open_balances_freeze_unfreez",
+    "en": "Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles."
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_scoped_ledger_rows_from_logistics_claim_approve_chargeb",
+    "en": "Supplier-scoped ledger rows from logistics claim approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks."
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_scoped_order_detail_with_warehouse_admin_actions_when_a",
+    "en": "Supplier-scoped order detail with warehouse admin actions when available."
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_treasury",
+    "en": "Supplier Treasury"
+  },
+  {
+    "key": "supplier_portal.residual.text.supplier_treasury_authority_disputes_and_reconciliation_operatio",
+    "en": "Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state."
+  },
+  {
+    "key": "supplier_portal.residual.text.support_only_permanent_disable_requires_ticket_id_reason_open_ar",
+    "en": "Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible."
+  },
+  {
+    "key": "supplier_portal.residual.text.swift_bic",
+    "en": "SWIFT / BIC"
+  },
+  {
+    "key": "supplier_portal.residual.text.tax_id_vat_tin",
+    "en": "Tax ID (VAT / TIN)"
+  },
+  {
+    "key": "supplier_portal.residual.text.text",
+    "en": "Включить торговый кредит — необратимо в приложении"
+  },
+  {
+    "key": "supplier_portal.residual.text.there_are_no_eligible_drivers_nearby_to_take_this_order_right_no",
+    "en": "There are no eligible drivers nearby to take this order right now."
+  },
+  {
+    "key": "supplier_portal.residual.text.this_order_is_not_visible_in_your_supplier_scope",
+    "en": "This order is not visible in your supplier scope."
+  },
+  {
+    "key": "supplier_portal.residual.text.title_and_body_required",
+    "en": "title_and_body_required"
+  },
+  {
+    "key": "supplier_portal.residual.text.total_pallets",
+    "en": "Total pallets"
+  },
+  {
+    "key": "supplier_portal.residual.text.touchless_transfers",
+    "en": "Touchless transfers"
+  },
+  {
+    "key": "supplier_portal.residual.text.traceability_load_failed",
+    "en": "traceability_load_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.tracking_alerts",
+    "en": "Tracking alerts"
+  },
+  {
+    "key": "supplier_portal.residual.text.transfer_mode",
+    "en": "Transfer mode"
+  },
+  {
+    "key": "supplier_portal.residual.text.treasury_splits_and_dispute_operations",
+    "en": "Treasury splits and dispute operations."
+  },
+  {
+    "key": "supplier_portal.residual.text.treasury_splits_settlement_authority_and_payment_mismatches",
+    "en": "Treasury splits, settlement authority, and payment mismatches."
+  },
+  {
+    "key": "supplier_portal.residual.text.truck_replenishment",
+    "en": "Truck replenishment"
+  },
+  {
+    "key": "supplier_portal.residual.text.twin_routes_failed",
+    "en": "twin_routes_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.unable_to_load",
+    "en": "Unable to load"
+  },
+  {
+    "key": "supplier_portal.residual.text.unavailable_drivers",
+    "en": "Unavailable drivers"
+  },
+  {
+    "key": "supplier_portal.residual.text.undo",
+    "en": "Undo"
+  },
+  {
+    "key": "supplier_portal.residual.text.unit_volume_vu",
+    "en": "Unit volume (VU)"
+  },
+  {
+    "key": "supplier_portal.residual.text.unit_vu_must_be_a_positive_number",
+    "en": "Unit VU must be a positive number."
+  },
+  {
+    "key": "supplier_portal.residual.text.units_per_case_must_be_a_positive_integer_when_selling_by_case",
+    "en": "Units per case must be a positive integer when selling by case."
+  },
+  {
+    "key": "supplier_portal.residual.text.update_retailer_failed",
+    "en": "update_retailer_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.update_sku_failed",
+    "en": "update_sku_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.upload_csv_review_column_mapping_approve_and_apply_to_warehouse_",
+    "en": "Upload CSV, review column mapping, approve, and apply to warehouse inventory."
+  },
+  {
+    "key": "supplier_portal.residual.text.utilization",
+    "en": "Utilization"
+  },
+  {
+    "key": "supplier_portal.residual.text.version",
+    "en": "Version"
+  },
+  {
+    "key": "supplier_portal.residual.text.view_your_durable_finance_ledger_and_payment_movements",
+    "en": "View your durable finance ledger and payment movements."
+  },
+  {
+    "key": "supplier_portal.residual.text.volume_vu",
+    "en": "Volume VU"
+  },
+  {
+    "key": "supplier_portal.residual.text.wape_28d",
+    "en": "WAPE (28d)"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_accepts_payments",
+    "en": "Warehouse accepts payments"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_address",
+    "en": "Warehouse address"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_admin",
+    "en": "Warehouse admin"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_id",
+    "en": "warehouse_id"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_lanes_derived_from_topology_and_live_order_volume_lane",
+    "en": "Warehouse lanes derived from topology and live order volume. Lanes are read-only — edit warehouses and coverage on Topology."
+  },
+  {
+    "key": "supplier_portal.residual.text.wh_inbound_cap",
+    "en": "WH inbound cap"
+  },
+  {
+    "key": "supplier_portal.residual.text.where_supplier_earnings_are_deposited_after_settlement",
+    "en": "Where supplier earnings are deposited after settlement."
+  },
+  {
+    "key": "supplier_portal.residual.text.who_receives_card_revenue_when_an_order_is_fulfilled",
+    "en": "Who receives card revenue when an order is fulfilled."
+  },
+  {
+    "key": "supplier_portal.residual.text.write_off_failed",
+    "en": "write_off_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.your_registered_business_address_not_a_warehouse_dispatch_point",
+    "en": "Your registered business address — not a warehouse dispatch point."
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.csv",
+    "en": "csv"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.grant_type_client_credentials",
+    "en": "grant_type=client_credentials"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.json",
+    "en": "json"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.post_partner_v1_oauth_token",
+    "en": "POST /partner/v1/oauth/token"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.pxk",
+    "en": "pxk_…"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.sftp_edi",
+    "en": "SFTP + EDI"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.xml",
+    "en": "xml"
+  },
+  {
+    "key": "warehouse_portal.residual.text.8_7_wave_1a_warehouse_locations_and_stock_lots_fefo",
+    "en": "§8.7 Wave 1A warehouse locations and stock lots (FEFO)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.8_7_wave_1b_manifest_picks_ready_to_seal_before_payload_seal",
+    "en": "§8.7 Wave 1B manifest picks → ready-to-seal before payload seal"
+  },
+  {
+    "key": "warehouse_portal.residual.text.8_7_wave_1c_stub_counts_variance_adjustments_approve_does_not_ch",
+    "en": "§8.7 Wave 1C stub counts + variance adjustments (approve does not change lots yet)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.active_orders_have_not_reserved_stock_yet",
+    "en": "Active orders have not reserved stock yet."
+  },
+  {
+    "key": "warehouse_portal.residual.text.active_sealed_routes_and_driver_positions_for_this_node",
+    "en": "Active sealed routes and driver positions for this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.active_users",
+    "en": "Active Users"
+  },
+  {
+    "key": "warehouse_portal.residual.text.address",
+    "en": "Address"
+  },
+  {
+    "key": "warehouse_portal.residual.text.ai_powered_stock_recommendations_from_4_data_sources",
+    "en": "AI-powered stock recommendations from 4 data sources."
+  },
+  {
+    "key": "warehouse_portal.residual.text.all_drivers_are_on_route_or_blocked",
+    "en": "All drivers are on route or blocked."
+  },
+  {
+    "key": "warehouse_portal.residual.text.all_good",
+    "en": "All Good"
+  },
+  {
+    "key": "warehouse_portal.residual.text.all_orders_dispatched",
+    "en": "All orders dispatched"
+  },
+  {
+    "key": "warehouse_portal.residual.text.approve_to_create_factory_transfer_rows_dismiss_to_clear",
+    "en": "Approve to create factory transfer rows; dismiss to clear."
+  },
+  {
+    "key": "warehouse_portal.residual.text.as_dispatch_fleet_and_inventory_activity_starts_this_dashboard_w",
+    "en": "As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically."
+  },
+  {
+    "key": "warehouse_portal.residual.text.available_drivers",
+    "en": "Available drivers"
+  },
+  {
+    "key": "warehouse_portal.residual.text.base_fee_minor",
+    "en": "Base fee (minor)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.beyond_tier_fee_minor",
+    "en": "Beyond-tier fee (minor)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.built_in_depot_starters_plus_your_saved_custom_messages",
+    "en": "Built-in depot starters plus your saved custom messages."
+  },
+  {
+    "key": "warehouse_portal.residual.text.cancels_the_order_and_notifies_the_retailer_immediately",
+    "en": "Cancels the order and notifies the retailer immediately."
+  },
+  {
+    "key": "warehouse_portal.residual.text.checkout_policy_pre_order_lead_window_per_line_quantity_limits_d",
+    "en": "Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing."
+  },
+  {
+    "key": "warehouse_portal.residual.text.configure_warehouse_auto_dispatch_policy_for_this_node",
+    "en": "Configure warehouse auto-dispatch policy for this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.could_not_resolve_that_address_try_another_suggestion",
+    "en": "Could not resolve that address. Try another suggestion."
+  },
+  {
+    "key": "warehouse_portal.residual.text.could_not_resolve_your_location_to_an_address",
+    "en": "Could not resolve your location to an address."
+  },
+  {
+    "key": "warehouse_portal.residual.text.create_a_factory_replenishment_request_from_forecast_or_manual_l",
+    "en": "Create a factory replenishment request from forecast or manual line items."
+  },
+  {
+    "key": "warehouse_portal.residual.text.create_a_pick_or_stage_location_to_putaway_lots",
+    "en": "Create a pick or stage location to putaway lots."
+  },
+  {
+    "key": "warehouse_portal.residual.text.create_a_wave_from_a_draft_or_loading_manifest",
+    "en": "Create a wave from a draft or loading manifest."
+  },
+  {
+    "key": "warehouse_portal.residual.text.create_an_open_count_for_a_bin_product",
+    "en": "Create an OPEN count for a bin + product."
+  },
+  {
+    "key": "warehouse_portal.residual.text.critical_urgency",
+    "en": "Critical urgency"
+  },
+  {
+    "key": "warehouse_portal.residual.text.cross_role_timeline_for_this_warehouse_node",
+    "en": "Cross-role timeline for this warehouse node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.custom_reason_optional",
+    "en": "Custom reason (optional)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.daily_loading_manifests_for_drivers_and_vehicles_at_this_node",
+    "en": "Daily loading manifests for drivers and vehicles at this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.days_between_order_placement_and_earliest_fulfillment",
+    "en": "Days between order placement and earliest fulfillment."
+  },
+  {
+    "key": "warehouse_portal.residual.text.delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del",
+    "en": "Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout."
+  },
+  {
+    "key": "warehouse_portal.residual.text.depot_scoped_broadcasts_and_read_only_pricing_impact_preview",
+    "en": "Depot-scoped broadcasts and read-only pricing impact preview."
+  },
+  {
+    "key": "warehouse_portal.residual.text.dock_queue_for_truck_returns_and_claim_reverse_logistics_tickets",
+    "en": "Dock queue for truck returns and claim reverse-logistics tickets — restock or write off."
+  },
+  {
+    "key": "warehouse_portal.residual.text.effective_date_optional",
+    "en": "Effective date (optional)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.emergency_inbound_force_receive_and_transfer_receipt_by_id",
+    "en": "Emergency inbound, force receive, and transfer receipt by ID."
+  },
+  {
+    "key": "warehouse_portal.residual.text.enter_a_valid_phone_number_6_14_digits",
+    "en": "Enter a valid phone number (6-14 digits)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "warehouse_portal.residual.text.factory_inbound_transfer_controls_for_warehouse_operators",
+    "en": "Factory inbound transfer controls for warehouse operators."
+  },
+  {
+    "key": "warehouse_portal.residual.text.factory_replenishment_requests_scoped_to_this_warehouse_node",
+    "en": "Factory replenishment requests scoped to this warehouse node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.failed_to_load_warehouse_tracking",
+    "en": "Failed to load warehouse tracking"
+  },
+  {
+    "key": "warehouse_portal.residual.text.failed_to_send_verification_code",
+    "en": "Failed to send verification code"
+  },
+  {
+    "key": "warehouse_portal.residual.text.finance_permission_required",
+    "en": "finance_permission_required"
+  },
+  {
+    "key": "warehouse_portal.residual.text.fleet_drivers_with_vehicle_assignment_and_live_truck_status",
+    "en": "Fleet drivers with vehicle assignment and live truck status."
+  },
+  {
+    "key": "warehouse_portal.residual.text.fleet_trucks_with_capacity_driver_assignment_and_live_availabili",
+    "en": "Fleet trucks with capacity, driver assignment, and live availability."
+  },
+  {
+    "key": "warehouse_portal.residual.text.free_within_km",
+    "en": "Free within km"
+  },
+  {
+    "key": "warehouse_portal.residual.text.full_order_detail_and_warehouse_exception_actions",
+    "en": "Full order detail and warehouse exception actions."
+  },
+  {
+    "key": "warehouse_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "warehouse_portal.residual.text.gln_13_digits",
+    "en": "GLN (13 digits)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "warehouse_portal.residual.text.invoiced_revenue_payouts_and_outstanding_liabilities_for_this_wa",
+    "en": "Invoiced revenue, payouts, and outstanding liabilities for this warehouse."
+  },
+  {
+    "key": "warehouse_portal.residual.text.invoices_appear_when_retailers_are_billed_for_fulfilled_orders",
+    "en": "Invoices appear when retailers are billed for fulfilled orders."
+  },
+  {
+    "key": "warehouse_portal.residual.text.leave_blank_to_clear_a_limit_applies_to_standard_and_scheduled_c",
+    "en": "Leave blank to clear a limit. Applies to standard and scheduled checkout."
+  },
+  {
+    "key": "warehouse_portal.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "warehouse_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "warehouse_portal.residual.text.manage_truck_breakdowns_and_propose_rescue_operations",
+    "en": "Manage truck breakdowns and propose rescue operations"
+  },
+  {
+    "key": "warehouse_portal.residual.text.manifest_and_driver_state_breakdown_for_this_node",
+    "en": "Manifest and driver state breakdown for this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.manifest_order_and_lock_exceptions_in_one_queue",
+    "en": "Manifest, order, and lock exceptions in one queue."
+  },
+  {
+    "key": "warehouse_portal.residual.text.manual_truck_assignment_or_smart_dispatch_across_the_fleet_capac",
+    "en": "Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity."
+  },
+  {
+    "key": "warehouse_portal.residual.text.mark_trucks_unavailable_in_real_time_dispatch_and_smart_suggest_",
+    "en": "Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately."
+  },
+  {
+    "key": "warehouse_portal.residual.text.max_lead_days",
+    "en": "Max lead (days)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.max_per_sku",
+    "en": "Max per SKU"
+  },
+  {
+    "key": "warehouse_portal.residual.text.message",
+    "en": "Message"
+  },
+  {
+    "key": "warehouse_portal.residual.text.min_lead_days",
+    "en": "Min lead (days)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.min_per_sku",
+    "en": "Min per SKU"
+  },
+  {
+    "key": "warehouse_portal.residual.text.new_warehouse",
+    "en": "New warehouse?"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_active_dispatch_locks_dispatch_operations_are_running_freely",
+    "en": "No active dispatch locks. Dispatch operations are running freely."
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_bins",
+    "en": "No bins"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_buyer_data_to_analyze_yet",
+    "en": "No buyer data to analyze yet"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_commitments",
+    "en": "No commitments"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_cycle_counts",
+    "en": "No cycle counts"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_data_yet",
+    "en": "No data yet."
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_drivers_available",
+    "en": "No drivers available"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_inventory_items_found",
+    "en": "No inventory items found"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_invoices_found",
+    "en": "No invoices found"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_lots",
+    "en": "No lots"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_pending_orders_need_assignment_right_now",
+    "en": "No pending orders need assignment right now."
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_pick_waves",
+    "en": "No pick waves"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_pre_orders",
+    "en": "No pre-orders"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_products_found",
+    "en": "No products found"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_replenishment_insights",
+    "en": "No replenishment insights"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_rescuers_available",
+    "en": "No Rescuers Available"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_supply_requests_found",
+    "en": "No supply requests found"
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_trucks_currently_require_a_rescue",
+    "en": "No trucks currently require a rescue."
+  },
+  {
+    "key": "warehouse_portal.residual.text.no_warehouse_metrics_yet",
+    "en": "No warehouse metrics yet"
+  },
+  {
+    "key": "warehouse_portal.residual.text.on_hand_stock_levels_with_live_sync_and_quantity_adjustments",
+    "en": "On-hand stock levels with live sync and quantity adjustments."
+  },
+  {
+    "key": "warehouse_portal.residual.text.open_insights",
+    "en": "Open insights"
+  },
+  {
+    "key": "warehouse_portal.residual.text.open_post_delivery_claims_damage_claims_auto_open_dock_tickets_o",
+    "en": "Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ."
+  },
+  {
+    "key": "warehouse_portal.residual.text.orders_and_manifests_grouped_by_delivery_date",
+    "en": "Orders and manifests grouped by delivery date."
+  },
+  {
+    "key": "warehouse_portal.residual.text.outstanding",
+    "en": "Outstanding"
+  },
+  {
+    "key": "warehouse_portal.residual.text.paid",
+    "en": "Paid"
+  },
+  {
+    "key": "warehouse_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "warehouse_portal.residual.text.pick_an_address_from_the_list_or_refine_your_search",
+    "en": "Pick an address from the list or refine your search."
+  },
+  {
+    "key": "warehouse_portal.residual.text.preorder_accept_dispatch_seal_events_from_the_ops_pulse_feed",
+    "en": "Preorder → accept → dispatch → seal events from the ops pulse feed."
+  },
+  {
+    "key": "warehouse_portal.residual.text.prevent_concurrent_dispatch_operations_during_loading",
+    "en": "Prevent concurrent dispatch operations during loading."
+  },
+  {
+    "key": "warehouse_portal.residual.text.product_sku_id",
+    "en": "Product / SKU ID"
+  },
+  {
+    "key": "warehouse_portal.residual.text.proposed_price_minor_units",
+    "en": "Proposed price (minor units)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.read_only_view_of_supplier_product_catalog",
+    "en": "Read-only view of supplier product catalog."
+  },
+  {
+    "key": "warehouse_portal.residual.text.read_only_view_payment_gateways_are_configured_by_the_supplier_a",
+    "en": "Read-only view. Payment gateways are configured by the supplier admin."
+  },
+  {
+    "key": "warehouse_portal.residual.text.real_time_map_tracking_for_sealed_manifests_in_transit",
+    "en": "Real-time map tracking for sealed manifests in transit."
+  },
+  {
+    "key": "warehouse_portal.residual.text.receive_putaway_with_location_expiry_perishables_when_wms_lots_a",
+    "en": "Receive/putaway with location + expiry (perishables) when WMS lots are enabled."
+  },
+  {
+    "key": "warehouse_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "warehouse_portal.residual.text.replay_the_last_committed_smart_dispatch_runs_for_this_node",
+    "en": "Replay the last committed smart-dispatch runs for this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.retailer_id_optional",
+    "en": "Retailer ID (optional)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.retailer_relationships_and_purchase_histories_will_appear_here_o",
+    "en": "Retailer relationships and purchase histories will appear here once orders are fulfilled by this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.retailer_relationships_order_volume_and_revenue_for_this_warehou",
+    "en": "Retailer relationships, order volume, and revenue for this warehouse."
+  },
+  {
+    "key": "warehouse_portal.residual.text.scheduled_manual_pre_orders_will_appear_here",
+    "en": "Scheduled manual pre-orders will appear here."
+  },
+  {
+    "key": "warehouse_portal.residual.text.sealed_manifest_polylines_and_driver_gps_for_this_warehouse_node",
+    "en": "Sealed manifest polylines and driver GPS for this warehouse node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.select_for_dispatch_double_click_a_card_for_order_detail",
+    "en": "Select for dispatch. Double-click a card for order detail."
+  },
+  {
+    "key": "warehouse_portal.residual.text.single_tenant_logistics_control_plane",
+    "en": "Single-tenant logistics control plane."
+  },
+  {
+    "key": "warehouse_portal.residual.text.sku_level_asap_scheduled_demand_vs_on_hand",
+    "en": "SKU-level ASAP + scheduled demand vs on-hand"
+  },
+  {
+    "key": "warehouse_portal.residual.text.smart_suggest_routes",
+    "en": "Smart suggest routes"
+  },
+  {
+    "key": "warehouse_portal.residual.text.stock_velocity_alerts_with_approve_dismiss_actions_for_this_ware",
+    "en": "Stock velocity alerts with approve/dismiss actions for this warehouse node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.target_role",
+    "en": "Target role"
+  },
+  {
+    "key": "warehouse_portal.residual.text.the_replenishment_engine_will_surface_stock_velocity_alerts_when",
+    "en": "The replenishment engine will surface stock velocity alerts when burn thresholds are crossed."
+  },
+  {
+    "key": "warehouse_portal.residual.text.there_are_no_active_drivers_with_enough_capacity",
+    "en": "There are no active drivers with enough capacity."
+  },
+  {
+    "key": "warehouse_portal.residual.text.total_invoiced",
+    "en": "Total invoiced"
+  },
+  {
+    "key": "warehouse_portal.residual.text.unable_to_load",
+    "en": "Unable to load"
+  },
+  {
+    "key": "warehouse_portal.residual.text.unavailable",
+    "en": "Unavailable"
+  },
+  {
+    "key": "warehouse_portal.residual.text.undispatched_orders",
+    "en": "Undispatched orders"
+  },
+  {
+    "key": "warehouse_portal.residual.text.view_checkout_gateways_and_settlement_routing_for_this_node",
+    "en": "View checkout gateways and settlement routing for this node."
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_address",
+    "en": "Warehouse address"
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_name",
+    "en": "Warehouse name"
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_operator_session_and_scope",
+    "en": "Warehouse operator session and scope."
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_portal_pegasusx",
+    "en": "Warehouse Portal - pegasusX"
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_revenue_order_health_fleet_utilization_and_import_tele",
+    "en": "Warehouse revenue, order health, fleet utilization, and import telemetry."
+  },
+  {
+    "key": "warehouse_portal.residual.text.warehouse_staff_and_payloader_accounts_for_terminal_execution",
+    "en": "Warehouse staff and payloader accounts for terminal execution."
+  },
+  {
+    "key": "warehouse_portal.residual.text.warning_high",
+    "en": "Warning / high"
+  },
+  {
+    "key": "warehouse_portal.residual.text.weekday_close",
+    "en": "Weekday close"
+  },
+  {
+    "key": "warehouse_portal.residual.text.weekday_open",
+    "en": "Weekday open"
+  },
+  {
+    "key": "warehouse_portal.residual.text.when_enforcement_is_on_retailers_cannot_preview_or_create_orders",
+    "en": "When enforcement is on, retailers cannot preview or create orders outside the window."
+  }
+]

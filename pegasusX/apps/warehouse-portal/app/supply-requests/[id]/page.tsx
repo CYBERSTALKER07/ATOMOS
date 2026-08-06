@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { useParams, useRouter } from 'next/navigation';
@@ -44,6 +45,7 @@ function chipClass(state: string): string {
 }
 
 export default function SupplyRequestDetailPage() {
+  const t = usePortalT();
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -177,7 +179,7 @@ export default function SupplyRequestDetailPage() {
     <PageTransition>
       <PageChrome
         icon="supplyRequests"
-        title="Supply Request"
+        title={t("warehouse_portal.supply_requests._id_.text.supply_request")}
         description={detail?.request_id}
         loading={loading}
         error={
@@ -215,14 +217,14 @@ export default function SupplyRequestDetailPage() {
       {/* Metadata grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Priority</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.supply_requests._id_.text.priority")}</div>
           <div className={`text-sm font-semibold ${
             detail.priority === 'CRITICAL' ? 'text-[var(--danger)]' :
             detail.priority === 'URGENT' ? 'text-[var(--warning)]' : ''
           }`}>{detail.priority}</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Delivery Date</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.supply_requests._id_.text.delivery_date")}</div>
           <div className="text-sm font-semibold">
             {detail.requested_delivery_date
               ? new Date(detail.requested_delivery_date).toLocaleDateString()
@@ -230,11 +232,11 @@ export default function SupplyRequestDetailPage() {
           </div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Total Volume</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.supply_requests._id_.text.total_volume")}</div>
           <div className="text-sm font-semibold">{detail.total_volume_vu} VU</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Items</div>
+          <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.supply_requests._id_.text.items")}</div>
           <div className="text-sm font-semibold">{detail.items?.length || 0}</div>
         </div>
       </div>
@@ -242,7 +244,7 @@ export default function SupplyRequestDetailPage() {
       {/* Notes */}
       {detail.notes && (
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
-          <div className="text-xs text-[var(--muted)] mb-2">Notes</div>
+          <div className="text-xs text-[var(--muted)] mb-2">{t("warehouse_portal.supply_requests._id_.text.notes")}</div>
           <p className="text-sm whitespace-pre-wrap">{detail.notes}</p>
         </div>
       )}
@@ -253,12 +255,12 @@ export default function SupplyRequestDetailPage() {
           <table className="desk-table w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Product</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Requested</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Shipped</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Received</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Recommended</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Unit Volume</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.requested")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.shipped")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.received")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.recommended")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.unit_volume")}</th>
               </tr>
             </thead>
             <tbody>

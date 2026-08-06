@@ -9,28 +9,31 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner/edi"
+	"google.golang.org/api/iterator"
 )
 
 // EdiOutboundWorker emits ORDRSP/DESADV/INVOIC files for queued documents.
 type EdiOutboundWorker struct {
-	ediDocs EdiDocumentRepository
-	sftp    SftpConfigRepository
-	orders  *order.Service
-	log     *slog.Logger
-	now     func() time.Time
+	ediDocs      EdiDocumentRepository
+	sftp         SftpConfigRepository
+	orders       *order.Service
+	spanner      *spanner.Client
+	log          *slog.Logger
+	now          func() time.Time
 	SecretLoader func(secretRef string) (string, error)
 	Uploader     func(ctx context.Context, cfg SftpConfig, secret, remoteDir, localPath, remoteName string) error
 }
 
-func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, orders *order.Service, log *slog.Logger) *EdiOutboundWorker {
+func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, orders *order.Service, client *spanner.Client, log *slog.Logger) *EdiOutboundWorker {
 	if log == nil {
 		log = slog.Default()
 	}
 	return &EdiOutboundWorker{
-		ediDocs: docs, sftp: sftp, orders: orders, log: log,
+		ediDocs: docs, sftp: sftp, orders: orders, spanner: client, log: log,
 		now:          func() time.Time { return time.Now().UTC() },
 		SecretLoader: LoadSecretRef,
 		Uploader:     UploadSFTPToDir,
@@ -195,12 +198,61 @@ func (w *EdiOutboundWorker) loadSnapshot(ctx context.Context, orderID string) (e
 	}
 	snap := edi.OrderSnapshot{
 		OrderID: o.OrderID, RetailerID: o.RetailerID, SupplierID: o.SupplierID,
-		Status: string(o.Status), Currency: o.Currency, TotalMinor: o.TotalMinor,
+		ManifestID: o.ManifestID,
+		Status:     string(o.Status), Currency: o.Currency, TotalMinor: o.TotalMinor,
 	}
 	for _, li := range o.LineItems {
 		snap.Lines = append(snap.Lines, edi.Line{SKU: li.SKU, Qty: li.Quantity})
 	}
+	snap.ShipUnits = w.loadShipUnits(ctx, o.OrderID, o.ManifestID)
 	return snap, nil
+}
+
+// loadShipUnits reads ManifestShipUnits for DESADV SSCC segments (best-effort; empty on miss).
+func (w *EdiOutboundWorker) loadShipUnits(ctx context.Context, orderID, manifestID string) []edi.ShipUnit {
+	if w == nil || w.spanner == nil || strings.TrimSpace(orderID) == "" {
+		return nil
+	}
+	var stmt spanner.Statement
+	if mid := strings.TrimSpace(manifestID); mid != "" {
+		stmt = spanner.Statement{
+			SQL: `SELECT ManifestId, Sscc, OrderId, Sequence, Gtin
+			      FROM ManifestShipUnits
+			      WHERE ManifestId = @mid AND OrderId = @oid
+			      ORDER BY Sequence`,
+			Params: map[string]any{"mid": mid, "oid": orderID},
+		}
+	} else {
+		stmt = spanner.Statement{
+			SQL: `SELECT ManifestId, Sscc, OrderId, Sequence, Gtin
+			      FROM ManifestShipUnits
+			      WHERE OrderId = @oid
+			      ORDER BY Sequence`,
+			Params: map[string]any{"oid": orderID},
+		}
+	}
+	iter := w.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	out := make([]edi.ShipUnit, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			w.log.Debug("edi ship units load failed", "order_id", orderID, "err", err)
+			return out
+		}
+		var u edi.ShipUnit
+		var gtin spanner.NullString
+		if err := row.Columns(&u.ManifestID, &u.SSCC, &u.OrderID, &u.Sequence, &gtin); err != nil {
+			w.log.Debug("edi ship units row failed", "order_id", orderID, "err", err)
+			return out
+		}
+		u.GTIN = gtin.StringVal
+		out = append(out, u)
+	}
+	return out
 }
 
 func (w *EdiOutboundWorker) writeLocal(objectPath string, body []byte) (string, error) {

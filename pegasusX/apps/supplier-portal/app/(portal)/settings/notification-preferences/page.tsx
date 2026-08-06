@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
@@ -20,6 +21,7 @@ const DEFAULT_EVENTS = [
 ];
 
 export default function NotificationPreferencesPage() {
+  const t = usePortalT();
   const [prefs, setPrefs] = useState<Pref[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function NotificationPreferencesPage() {
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -61,12 +63,12 @@ export default function NotificationPreferencesPage() {
       setSaved(true);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_failed"));
     }
   };
 
   return (
-    <PageChrome title="Notification preferences" description="Channel and quiet-hour rules per event type." loading={loading} error={error}>
+    <PageChrome title={t("supplier_portal.settings.notification_preferences.text.notification_preferences")} description={t("supplier_portal.residual.text.channel_and_quiet_hour_rules_per_event_type")} loading={loading} error={error}>
       <ul className="md-card divide-y">
         {prefs.map((p, idx) => (
           <li key={`${p.event_type}:${p.channel}`} className="p-4 flex flex-wrap gap-4 items-center">
@@ -86,7 +88,7 @@ export default function NotificationPreferencesPage() {
             </label>
             <input
               className="md-input w-24 text-xs"
-              placeholder="quiet from"
+              placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_from")}
               value={p.quiet_from ?? ""}
               onChange={(e) => {
                 const next = [...prefs];
@@ -96,7 +98,7 @@ export default function NotificationPreferencesPage() {
             />
             <input
               className="md-input w-24 text-xs"
-              placeholder="quiet to"
+              placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_to")}
               value={p.quiet_to ?? ""}
               onChange={(e) => {
                 const next = [...prefs];
@@ -110,7 +112,7 @@ export default function NotificationPreferencesPage() {
       <button type="button" className="md-btn md-btn-filled mt-4" onClick={() => void save()}>
         Save preferences
       </button>
-      {saved ? <p className="mt-2 text-sm text-emerald-700">Saved.</p> : null}
+      {saved ? <p className="mt-2 text-sm text-emerald-700">{t("supplier_portal.settings.notification_preferences.text.saved")}</p> : null}
     </PageChrome>
   );
 }

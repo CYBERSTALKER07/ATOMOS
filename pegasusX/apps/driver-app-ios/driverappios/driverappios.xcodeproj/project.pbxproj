@@ -115,6 +115,7 @@
 			packageProductDependencies = (
 				DR11FB000000000000000002 /* FirebaseAuth */,
 				DR11FB000000000000000003 /* FirebaseCore */,
+				DR11PK000000000000000002 /* PegasusKit */,
 			);
 			productName = driverappios;
 			productReference = 2E5380412F6B10CF00C3D5C6 /* driverappios.app */;
@@ -201,6 +202,7 @@
 			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */,
 			);
 			productRefGroup = 2E5380422F6B10CF00C3D5C6 /* Products */;
 			projectDirPath = "";
@@ -297,6 +299,13 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../packages/mobile-ios-kit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -318,6 +327,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		DR11PK000000000000000002 /* PegasusKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */;
+			productName = PegasusKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 

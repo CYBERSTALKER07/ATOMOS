@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
@@ -17,6 +18,7 @@ type LocalSKU = {
 };
 
 export default function LocalSKUsPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<LocalSKU[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function LocalSKUsPage() {
       setItems(Array.isArray(data.items) ? data.items : []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.load_failed"));
       setItems([]);
     } finally {
       setLoading(false);
@@ -67,7 +69,7 @@ export default function LocalSKUsPage() {
       setBarcode("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create_failed");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.create_failed_2"));
     } finally {
       setSaving(false);
     }
@@ -86,8 +88,8 @@ export default function LocalSKUsPage() {
   return (
     <PageChrome
       icon="cube.box"
-      title="Local SKUs"
-      description="Non-Pegasus goods for POS. Prefixed local: — never sent to supplier reorder."
+      title={t("portal.nav.local_skus")}
+      description={t("retailer_desktop.residual.text.non_pegasus_goods_for_pos_prefixed_local_never_sent_to_supplier_")}
       loading={loading}
       skeletonVariant="table"
       actions={
@@ -120,19 +122,19 @@ export default function LocalSKUsPage() {
           <div className="flex flex-wrap gap-2">
             <input
               className="portal-input flex-1 min-w-[140px]"
-              placeholder="Name"
+              placeholder={t("retailer_desktop.pos.text.name")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
             <input
               className="portal-input w-32"
-              placeholder="Barcode"
+              placeholder={t("retailer_desktop.stock.local_skus.text.barcode")}
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
             />
             <input
               className="portal-input w-28"
-              placeholder="Price minor"
+              placeholder={t("retailer_desktop.stock.local_skus.text.price_minor")}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
@@ -157,10 +159,10 @@ export default function LocalSKUsPage() {
             <thead className="bg-[var(--desk-surface-muted)] text-xs uppercase tracking-wide text-[var(--desk-text-tertiary)]">
               <tr>
                 <th className="px-3 py-2">SKU</th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Barcode</th>
-                <th className="px-3 py-2">Price</th>
-                <th className="px-3 py-2">Active</th>
+                <th className="px-3 py-2">{t("retailer_desktop.pos.text.name")}</th>
+                <th className="px-3 py-2">{t("retailer_desktop.stock.local_skus.text.barcode")}</th>
+                <th className="px-3 py-2">{t("retailer_desktop.stock.local_skus.text.price")}</th>
+                <th className="px-3 py-2">{t("retailer_desktop.stock.local_skus.text.active")}</th>
               </tr>
             </thead>
             <tbody>

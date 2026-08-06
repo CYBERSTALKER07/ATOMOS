@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
 import LocaleBootstrap from "../components/LocaleBootstrap";
@@ -17,8 +20,8 @@ const fontGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Pegasus Retailer",
-  description: "Retailer Desktop App for Pegasus",
+  title: t("retailer_desktop.residual.text.pegasus_retailer"),
+  description: t("retailer_desktop.residual.text.retailer_desktop_app_for_pegasus"),
 };
 
 export default function RootLayout({
@@ -26,6 +29,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = usePortalT();
   return (
     <html lang="en" suppressHydrationWarning className={`${fontJakarta.variable} ${fontGaramond.variable}`}>
       <head>

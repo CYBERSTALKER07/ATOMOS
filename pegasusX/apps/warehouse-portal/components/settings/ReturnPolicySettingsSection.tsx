@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
@@ -7,6 +8,7 @@ import { warehouseReturnPolicyPutKey } from '@pegasusx/api-client';
 import type { WarehouseReturnPolicy } from '@pegasusx/types';
 
 export function ReturnPolicySettingsSection() {
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,18 +96,18 @@ export function ReturnPolicySettingsSection() {
   return (
     <section className="mt-10 space-y-4 rounded-2xl border border-[var(--desk-border)] p-4">
       <div>
-        <h2 className="text-lg font-medium">Returns & reverse SLA</h2>
+        <h2 className="text-lg font-medium">{t("warehouse_portal.settings.return_policy_settings_section.text.returns_and_reverse_sla")}</h2>
         <p className="text-sm text-[var(--muted)]">
           Reverse-dock SLA and optional retailer claim-window override. Override may only
           lengthen the supplier base window.
         </p>
       </div>
       {loading ? (
-        <p className="text-sm text-[var(--muted)]">Loading…</p>
+        <p className="text-sm text-[var(--muted)]">{t("warehouse_portal.bins.text.loading")}</p>
       ) : (
         <>
           {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-          {saved && <p className="text-sm text-emerald-700">Return policy saved.</p>}
+          {saved && <p className="text-sm text-emerald-700">{t("warehouse_portal.settings.return_policy_settings_section.text.return_policy_saved")}</p>}
           <label className="block text-sm">
             Reverse dock SLA (hours)
             <input

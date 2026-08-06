@@ -1,0 +1,26 @@
+{
+  "": {
+    "swift-dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/primary.swiftdeps"
+  },
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Net/ReconnectBackoff.swift": {
+    "dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.d",
+    "object": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swift.o",
+    "swiftmodule": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff~partial.swiftmodule",
+    "swift-dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.swiftdeps",
+    "diagnostics": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/ReconnectBackoff.dia"
+  },
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/OfflineHttpSemantics.swift": {
+    "dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.d",
+    "object": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swift.o",
+    "swiftmodule": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics~partial.swiftmodule",
+    "swift-dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.swiftdeps",
+    "diagnostics": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/OfflineHttpSemantics.dia"
+  },
+  "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/Sources/PegasusKit/Offline/QueuedMutationRecord.swift": {
+    "dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.d",
+    "object": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swift.o",
+    "swiftmodule": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord~partial.swiftmodule",
+    "swift-dependencies": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.swiftdeps",
+    "diagnostics": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/mobile-ios-kit/.build/arm64-apple-macosx/debug/PegasusKit.build/QueuedMutationRecord.dia"
+  }
+}

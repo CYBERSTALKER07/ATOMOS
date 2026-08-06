@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import type { SeasonalTemplatesResponse } from '@pegasusx/types';
 
@@ -25,6 +28,7 @@ export function CreateOverrideForm({
   onFormChange,
   onSubmit,
 }: CreateOverrideFormProps) {
+  const t = usePortalT();
   return (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
       <label className="flex flex-col gap-1 md-typescale-body-small">
@@ -34,7 +38,7 @@ export function CreateOverrideForm({
           value={form.template_id}
           onChange={(e) => onFormChange({ ...form, template_id: e.target.value })}
         >
-          <option value="">Custom</option>
+          <option value="">{t("supplier_portal.settings.planning.create_override_form.text.custom")}</option>
           {(data?.builtin_templates ?? []).map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
@@ -24,6 +25,7 @@ function formatMoney(minor: number) {
 }
 
 export default function ReportsProPage() {
+  const t = usePortalT();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [sales, setSales] = useState<SalesItem[]>([]);
   const [banner, setBanner] = useState<string | null>(null);
@@ -70,8 +72,8 @@ export default function ReportsProPage() {
 
   return (
     <PageChrome
-      title="Reports Pro"
-      description="Sales, inventory, and shift variance digest. CSV export for desktop ops."
+      title={t("portal.nav.reports_pro")}
+      description={t("retailer_desktop.residual.text.sales_inventory_and_shift_variance_digest_csv_export_for_desktop")}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         {banner && (
@@ -115,9 +117,9 @@ export default function ReportsProPage() {
         )}
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Sales by SKU</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.hq.text.sales_by_sku")}</h2>
           {sales.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No POS sales in window (last 7 days).</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.reports.text.no_pos_sales_in_window_last_7_days")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {sales.slice(0, 30).map((row) => (

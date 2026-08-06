@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
@@ -27,6 +28,7 @@ type Claim = {
 
 /** Read-only claims queue for warehouse admin (reverse logistics prep). */
 export default function WarehouseClaimsPage() {
+  const t = usePortalT();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [status, setStatus] = useState('OPEN');
   const [loading, setLoading] = useState(true);
@@ -57,8 +59,8 @@ export default function WarehouseClaimsPage() {
 
   return (
     <PageChrome
-      title="Claims (reverse logistics)"
-      description="Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ."
+      title={t("warehouse_portal.claims.text.claims_reverse_logistics")}
+      description={t("warehouse_portal.residual.text.open_post_delivery_claims_damage_claims_auto_open_dock_tickets_o")}
       loading={loading}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -88,7 +90,7 @@ export default function WarehouseClaimsPage() {
 
       <div className="grid gap-3">
         {claims.length === 0 && !loading ? (
-          <p className="text-sm text-[var(--muted)]">No claims in this filter.</p>
+          <p className="text-sm text-[var(--muted)]">{t("warehouse_portal.claims.text.no_claims_in_this_filter")}</p>
         ) : (
           claims.map((c) => (
             <div key={c.claim_id} className="border border-[var(--border)] rounded-xl p-4">

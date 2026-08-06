@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -13,6 +14,7 @@ const api = createSupplierApi();
 import { SupplierIdentityCard, ContactDetailsForm, draftFromProfile, type ProfileDraft } from "@/components/profile";
 
 export default function ProfilePage() {
+  const t = usePortalT();
   const [profile, setProfile] = useState<SupplierProfile | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function ProfilePage() {
       setProfile(loaded);
       setDraft(draftFromProfile(loaded));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_profile_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_profile_failed"));
       setProfile(null);
       setDraft(null);
     } finally {
@@ -83,7 +85,7 @@ export default function ProfilePage() {
       setProfile(updated);
       setDraft(draftFromProfile(updated));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "save_profile_failed");
+      setSaveError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_profile_failed"));
     } finally {
       setSaving(false);
     }
@@ -92,8 +94,8 @@ export default function ProfilePage() {
   return (
     <PageChrome
       icon="supplier"
-      title="Profile"
-      description="Supplier legal identity and registration state."
+      title={t("portal.nav.profile")}
+      description={t("supplier_portal.residual.text.supplier_legal_identity_and_registration_state")}
       loading={loading}
       error={error}
       empty={!profile || !draft}

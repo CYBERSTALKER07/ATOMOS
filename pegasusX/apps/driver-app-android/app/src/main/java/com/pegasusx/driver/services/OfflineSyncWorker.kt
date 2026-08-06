@@ -168,7 +168,9 @@ class OfflineSyncWorker @AssistedInject constructor(
         }
         val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/" +
             DriverOfflineActionCatalog.normalize(mutation.endpoint)
-        val body = mutation.payloadJson.toRequestBody(JSON_MEDIA)
+        // Replay capture-time coords — never substitute live GPS on flush (§8.8).
+        val payload = applyCapturedCoords(mutation)
+        val body = payload.toRequestBody(JSON_MEDIA)
         val request = Request.Builder()
             .url(url)
             .method(mutation.method.ifBlank { "POST" }, body)
@@ -185,6 +187,19 @@ class OfflineSyncWorker @AssistedInject constructor(
             pendingDao.recordAttempt(mutation.id, e.message ?: "network_error")
             maybeDead(mutation, e.message ?: "network_error")
         }
+    }
+
+    /** Force payload lat/lng to the values stored at enqueue time. */
+    private fun applyCapturedCoords(mutation: PendingMutationEntity): String {
+        val lat = mutation.capturedLat ?: return mutation.payloadJson
+        val lng = mutation.capturedLng ?: return mutation.payloadJson
+        return runCatching {
+            val obj = JSONObject(mutation.payloadJson)
+            obj.put("latitude", lat)
+            obj.put("longitude", lng)
+            mutation.capturedAtMs?.let { obj.put("captured_at_ms", it) }
+            obj.toString()
+        }.getOrDefault(mutation.payloadJson)
     }
 
     private suspend fun handleHttp(mutation: PendingMutationEntity, code: Int, detail: String): FlushOutcome {

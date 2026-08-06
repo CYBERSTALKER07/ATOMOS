@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Icon from '@/components/Icon';
 import React from 'react';
 
@@ -16,6 +19,7 @@ export type InboundRow = {
 };
 
 export function isClaimTicket(row: InboundRow): boolean {
+  const t = usePortalT();
   const notes = (row.driver_notes || '').toLowerCase();
   return notes.includes('claim_id=') || notes.includes('source=retailer_claim') || notes.includes('source=claim');
 }
@@ -56,12 +60,12 @@ export function ReturnsList({ tab, loading, list, selected, onToggleSelect }: Re
         <thead>
           <tr className="border-b border-[var(--border)]">
             {tab === 'inbound' && <th className="w-8" />}
-            <th className="text-left py-2 px-3">Product</th>
+            <th className="text-left py-2 px-3">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
             <th className="text-left py-2 px-3">EAN</th>
-            <th className="text-left py-2 px-3">Driver</th>
-            <th className="text-right py-2 px-3">Qty</th>
-            <th className="text-left py-2 px-3">Reason</th>
-            <th className="text-left py-2 px-3">Status</th>
+            <th className="text-left py-2 px-3">{t("warehouse_portal.manifests.text.driver")}</th>
+            <th className="text-right py-2 px-3">{t("warehouse_portal.pick_waves.text.qty")}</th>
+            <th className="text-left py-2 px-3">{t("supplier_portal.admin.control_center.field.reason")}</th>
+            <th className="text-left py-2 px-3">{t("warehouse_portal.bins.text.status")}</th>
           </tr>
         </thead>
         <tbody>

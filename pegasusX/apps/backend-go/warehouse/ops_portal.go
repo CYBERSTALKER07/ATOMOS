@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
 
@@ -305,11 +306,12 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"inventory": items,
-			"items":     items,
-			"limit":     limit,
-			"offset":    offset,
-			"total":     len(items),
+			"inventory":    items,
+			"items":        items,
+			"limit":        limit,
+			"offset":       offset,
+			"total":        len(items),
+			"lots_enabled": stocklots.LotsEnabled(),
 		})
 	case http.MethodPatch:
 		body, ok := readMutationBody(w, r, 64*1024)

@@ -184,7 +184,7 @@ For each role: **API markers first**, then **WEB / AND / IOS** checklist. Mark e
 1. Portal: topology + org fleet + import one SKU.  
 2. Android/iOS: same org fleet list loads (no crash on Org & fleet).  
 3. After retailer claim: approve → ledger/chargeback visible.  
-4. Settings that claim “auto-approve above X%” — **fail Substance** until touchless reads `MinConfidenceScore` (Theatre §2.6).
+4. Settings that claim “auto-approve above X%” — backend **WIRED** (`TouchlessEligible` reads `MinConfidenceScore`); still verify portal/settings UX shows the live threshold.
 
 ---
 
@@ -293,15 +293,17 @@ Until SG passes, these stay **Theatre / Partial** (see `PLATFORM_AUDIT.md` §2):
 
 | Item | Why it fails SG | Exit |
 |------|-----------------|------|
-| Touchless `MinConfidenceScore` | CONTROL unread | Wire reader + property test |
-| AI confidence gate always-pass | CONTROL cannot reject | Fix threshold math + test |
+| ~~Touchless `MinConfidenceScore`~~ | **WIRED** — `TouchlessEligible` + tests | — |
+| ~~AI confidence gate always-pass~~ | **WIRED** — base 0.15 / rejectable + tests | — |
+| Promo elasticity / closed-loop | **Partial** — elasticity input + line `promotion_id` attribution | Demand-model curves still open; keep `sandbox_only` |
 | Seasonality multipliers | READERS missing | Multiply in forecast qty or remove UI |
 | Weather/POS “signals” | SOURCES fake constants | Real feed or delete |
 | Forecast MAPE in portal | **WIRED** server WAPE/bias/TS (`ForecastAccuracyDaily`) | Enable `FORECAST_ACCURACY_ENABLED` + migration |
-| Billing meter | SOURCES schema mismatch | Fix columns + e2e meter event |
+| Billing meter | WIRED (schema + amount_minor decode) | Residual: fee schedule / invoices; e2e meter event |
 | Soliq legal OFD | PROOF skipped | `PX_E2E_SOLIQ_SANDBOX_OK` required |
-| Cold chain sensors | SOURCES absent | Ingest + excursion or rename |
-| i18n catalogs | READERS absent | Wire catalogs or stop claiming i18n |
+| Cold chain | **Partial** — solver flags + WMS ingest | Always-on prod sensor fleet / full excursion automation |
+| i18n catalogs | **Desktop portals UI: Wired (draft translations)**; mobile still Partial / unwired | Do not claim full-platform or certified-linguistic Done |
+| Mobile shared kit / offline (§8.8) | **Partial→Wired** — kit packages + capture-time coords + Room migrations; scan UX residual | See [`MOBILE_SHARED_KIT.md`](./MOBILE_SHARED_KIT.md); PR-7 scan still open |
 | Supplier/WH claim-window **portal UX** | UI missing (API Done) | Portal/settings screens |
 | Quantity negotiations | Flag off / SKIPPED | Product enable + OK marker |
 

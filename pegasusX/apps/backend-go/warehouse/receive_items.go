@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -13,11 +14,15 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 )
 
 type receiveLineInput struct {
 	ItemID           string
 	ReceivedQuantity int64
+	LocationID       string
+	LotCode          string
+	ExpiryDate       string
 }
 
 func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.WarehouseOps, transferID string, lines []receiveLineInput) error {
@@ -43,9 +48,21 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 		}
 
 		receivedByID := map[string]int64{}
+		receivedByLocation := map[string]string{}
+		receivedByLotCode := map[string]string{}
+		receivedByExpiry := map[string]string{}
 		for _, line := range lines {
 			if id := strings.TrimSpace(line.ItemID); id != "" && line.ReceivedQuantity > 0 {
 				receivedByID[id] = line.ReceivedQuantity
+				if loc := strings.TrimSpace(line.LocationID); loc != "" {
+					receivedByLocation[id] = loc
+				}
+				if lc := strings.TrimSpace(line.LotCode); lc != "" {
+					receivedByLotCode[id] = lc
+				}
+				if exp := strings.TrimSpace(line.ExpiryDate); exp != "" {
+					receivedByExpiry[id] = exp
+				}
 			}
 		}
 
@@ -77,7 +94,34 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 				if received <= 0 {
 					continue
 				}
-				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, productID, received); err != nil {
+				if stocklots.LotsEnabled() {
+					locID := strings.TrimSpace(receivedByLocation[itemID])
+					if locID == "" {
+						locID = "recv-default"
+						if _, err := stocklots.UpsertBinInTxn(ctx, txn, stocklots.CreateBinRequest{
+							WarehouseID: warehouseID, LocationID: locID, Zone: "RECV",
+							LocationType: "STAGE", PickSequence: 0,
+						}); err != nil {
+							return err
+						}
+					}
+					putReq := stocklots.PutawayRequest{
+						SupplierID:  supplierID,
+						WarehouseID: warehouseID,
+						ProductID:   productID,
+						LocationID:  locID,
+						LotCode:     receivedByLotCode[itemID],
+						Quantity:    received,
+					}
+					if exp := receivedByExpiry[itemID]; exp != "" {
+						if t, err := parseReceiveExpiry(exp); err == nil {
+							putReq.ExpiryDate = &t
+						}
+					}
+					if _, err := stocklots.PutawayInTxn(ctx, txn, putReq); err != nil {
+						return err
+					}
+				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, productID, received); err != nil {
 					return err
 				}
 				if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
@@ -132,6 +176,9 @@ func parseReceiveItems(body []byte) []receiveLineInput {
 		Items []struct {
 			ItemID           string `json:"item_id"`
 			ReceivedQuantity int64  `json:"received_quantity"`
+			LocationID       string `json:"location_id"`
+			LotCode          string `json:"lot_code"`
+			ExpiryDate       string `json:"expiry_date"`
 		} `json:"items"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -142,7 +189,20 @@ func parseReceiveItems(body []byte) []receiveLineInput {
 		if strings.TrimSpace(row.ItemID) == "" {
 			continue
 		}
-		out = append(out, receiveLineInput{ItemID: strings.TrimSpace(row.ItemID), ReceivedQuantity: row.ReceivedQuantity})
+		out = append(out, receiveLineInput{
+			ItemID:           strings.TrimSpace(row.ItemID),
+			ReceivedQuantity: row.ReceivedQuantity,
+			LocationID:       strings.TrimSpace(row.LocationID),
+			LotCode:          strings.TrimSpace(row.LotCode),
+			ExpiryDate:       strings.TrimSpace(row.ExpiryDate),
+		})
 	}
 	return out
+}
+
+func parseReceiveExpiry(s string) (time.Time, error) {
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.RFC3339, s)
 }

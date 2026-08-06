@@ -169,6 +169,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation(project(":mobile-design"))
+    implementation(project(":mobile-kit"))
 
     // Compose
     implementation("androidx.compose.ui:ui")

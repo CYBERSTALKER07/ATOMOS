@@ -9,93 +9,103 @@ import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
+import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
 import { clearSession, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
 import { usePortalT } from '@/lib/i18n';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
-type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
-type NavSection = { label?: string; items: NavEntry[] };
+type NavEntry = { href: string; icon: string; labelKey: string; globalOnly?: boolean; factoryHidden?: boolean };
+type NavSection = { labelKey?: string; items: NavEntry[] };
 
 const NAV: NavSection[] = [
   {
     items: [
-      { href: '/', icon: 'dashboard', label: 'Dashboard' },
-      { href: '/control-tower', icon: 'global', label: 'Control Tower' },
-      { href: '/orders', icon: 'orders', label: 'Orders' },
-      { href: '/preorders', icon: 'orders', label: 'Pre-orders' },
-      { href: '/tomorrow-board', icon: 'orders', label: 'Tomorrow board' },
-      { href: '/dispatch', icon: 'dispatch', label: 'Dispatch' },
-      { href: '/dispatch/rescues', icon: 'dispatch', label: 'Rescues' },
-      { href: '/dispatch-settings', icon: 'settings', label: 'Dispatch Settings' },
-      { href: '/manifests', icon: 'manifests', label: 'Manifests' },
+      { href: '/', icon: 'dashboard', labelKey: 'portal.nav.dashboard' },
+      { href: '/control-tower', icon: 'global', labelKey: 'portal.nav.control_tower' },
+      { href: '/orders', icon: 'orders', labelKey: 'portal.nav.orders' },
+      { href: '/preorders', icon: 'orders', labelKey: 'portal.nav.preorders' },
+      { href: '/tomorrow-board', icon: 'orders', labelKey: 'portal.nav.tomorrow_board' },
+      { href: '/dispatch', icon: 'dispatch', labelKey: 'portal.nav.dispatch' },
+      { href: '/dispatch/rescues', icon: 'dispatch', labelKey: 'portal.nav.rescues' },
+      { href: '/dispatch-settings', icon: 'settings', labelKey: 'portal.nav.dispatch_settings' },
+      { href: '/manifests', icon: 'manifests', labelKey: 'portal.nav.manifests' },
     ],
   },
   {
-    label: 'Inventory',
+    labelKey: 'portal.nav.section.inventory',
     items: [
-      { href: '/inventory', icon: 'inventory', label: 'Stock' },
-      { href: '/stock-commitments', icon: 'inventory', label: 'Stock commitments' },
-      { href: '/products', icon: 'catalog', label: 'Products' },
-      { href: '/supply-requests', icon: 'supplyRequests', label: 'Supply Requests' },
-      { href: '/settings', icon: 'settings', label: 'Settings' },
-      { href: '/replenishment', icon: 'forecast', label: 'Replenishment' },
-      { href: '/demand-forecast', icon: 'forecast', label: 'Demand Forecast' },
+      { href: '/inventory', icon: 'inventory', labelKey: 'portal.nav.stock' },
+      { href: '/bins', icon: 'inventory', labelKey: 'portal.nav.bins_lots' },
+      { href: '/pick-waves', icon: 'inventory', labelKey: 'portal.nav.pick_waves' },
+      { href: '/cycle-counts', icon: 'inventory', labelKey: 'portal.nav.cycle_counts' },
+      { href: '/stock-commitments', icon: 'inventory', labelKey: 'portal.nav.stock_commitments' },
+      { href: '/products', icon: 'catalog', labelKey: 'portal.nav.products' },
+      { href: '/supply-requests', icon: 'supplyRequests', labelKey: 'portal.nav.supply_requests' },
+      { href: '/settings', icon: 'settings', labelKey: 'portal.nav.settings' },
+      { href: '/replenishment', icon: 'forecast', labelKey: 'portal.nav.replenishment' },
+      { href: '/demand-forecast', icon: 'forecast', labelKey: 'portal.nav.demand_forecast' },
     ],
   },
   {
-    label: 'Fleet',
+    labelKey: 'portal.nav.section.fleet',
     items: [
-      { href: '/drivers', icon: 'fleet', label: 'Drivers' },
-      { href: '/vehicles', icon: 'fleet', label: 'Trucks' },
-      { href: '/fleet-live-map', icon: 'map', label: 'Live fleet' },
-      { href: '/dispatch-locks', icon: 'lock', label: 'Dispatch Locks' },
+      { href: '/drivers', icon: 'fleet', labelKey: 'portal.nav.drivers' },
+      { href: '/vehicles', icon: 'fleet', labelKey: 'portal.nav.trucks' },
+      { href: '/fleet-live-map', icon: 'map', labelKey: 'portal.nav.live_fleet' },
+      { href: '/dispatch-locks', icon: 'lock', labelKey: 'portal.nav.dispatch_locks' },
     ],
   },
   {
-    label: 'Operations',
+    labelKey: 'portal.nav.section.operations',
     items: [
-      { href: '/staff', icon: 'staff', label: 'Staff' },
-      { href: '/crm', icon: 'crm', label: 'Retailers' },
-      { href: '/operations', icon: 'send', label: 'Operations' },
-      { href: '/returns', icon: 'returns', label: 'Returns' },
-      { href: '/claims', icon: 'warning', label: 'Claims' },
-      { href: '/exceptions', icon: 'warning', label: 'Exceptions' },
-      { href: '/transfers', icon: 'transfers', label: 'Transfers' },
-      { href: '/analytics', icon: 'analytics', label: 'Analytics' },
+      { href: '/staff', icon: 'staff', labelKey: 'portal.nav.staff' },
+      { href: '/crm', icon: 'crm', labelKey: 'portal.nav.retailers' },
+      { href: '/operations', icon: 'send', labelKey: 'portal.nav.operations' },
+      { href: '/returns', icon: 'returns', labelKey: 'portal.nav.returns' },
+      { href: '/claims', icon: 'warning', labelKey: 'portal.nav.claims' },
+      { href: '/exceptions', icon: 'warning', labelKey: 'portal.nav.exceptions' },
+      { href: '/transfers', icon: 'transfers', labelKey: 'portal.nav.transfers' },
+      { href: '/analytics', icon: 'analytics', labelKey: 'portal.nav.analytics' },
     ],
   },
   {
-    label: 'Finance',
+    labelKey: 'portal.nav.section.finance',
     items: [
-      { href: '/treasury', icon: 'treasury', label: 'Treasury' },
-      { href: '/payment-config', icon: 'payment', label: 'Payment Config' },
+      { href: '/treasury', icon: 'treasury', labelKey: 'portal.nav.treasury' },
+      { href: '/payment-config', icon: 'payment', labelKey: 'portal.nav.payment_config' },
     ],
   },
 ];
+
+const BARE_ROUTES = ["/auth/", "/setup/"];
+
+const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
-  if (pathname === '/') return [{ label: 'Dashboard', href: '/' }];
+function buildBreadcrumbs(
+  pathname: string,
+  t: (key: string) => string,
+): { label: string; href: string }[] {
+  if (pathname === '/') return [{ label: t('portal.nav.dashboard'), href: '/' }];
   const crumbs: { label: string; href: string }[] = [
-    { label: 'Home', href: '/' },
+    { label: t('portal.chrome.home'), href: '/' },
   ];
   let path = '';
   for (const seg of pathname.split('/').filter(Boolean)) {
     path += `/${seg}`;
+    const match = ALL_NAV_ITEMS.find((item) => item.href === path);
     crumbs.push({
-      label: seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' '),
+      label: match ? t(match.labelKey) : seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' '),
       href: path,
     });
   }
   return crumbs;
 }
-
-const BARE_ROUTES = ["/auth/", "/setup/"];
 
 function liveIndicatorCopy(state: WarehouseWsState): { label: string; stale: boolean } {
   switch (state) {
@@ -110,23 +120,22 @@ function liveIndicatorCopy(state: WarehouseWsState): { label: string; stale: boo
   }
 }
 
-const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
-
-const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
-  system: { icon: 'autoMode', label: 'System theme', next: 'light' },
-  light: { icon: 'lightMode', label: 'Light theme', next: 'dark' },
-  dark: { icon: 'darkMode', label: 'Dark theme', next: 'system' },
+const THEME_META: Record<ThemeMode, { icon: string; labelKey: string; next: ThemeMode }> = {
+  system: { icon: 'autoMode', labelKey: 'portal.chrome.theme_system', next: 'light' },
+  light: { icon: 'lightMode', labelKey: 'portal.chrome.theme_light', next: 'dark' },
+  dark: { icon: 'darkMode', labelKey: 'portal.chrome.theme_dark', next: 'system' },
 };
 
 function ThemeToggle() {
   const { mode, cycle } = useTheme();
+  const t = usePortalT();
   const meta = THEME_META[mode];
   return (
     <button
       type="button"
       className="portal-btn portal-btn--ghost desk-icon-btn w-10 h-10 min-w-0 p-0"
       onClick={cycle}
-      aria-label={`${meta.label} — switch to ${meta.next}`}
+      aria-label={t(meta.labelKey)}
     >
       <Icon name={meta.icon} />
     </button>
@@ -156,7 +165,7 @@ const DrawerContent = memo(function DrawerContent({
           {isRail ? (
             <button
               onClick={onToggle}
-              aria-label="Open sidebar"
+              aria-label={t("portal.chrome.open_sidebar")}
               className="desk-icon-btn"
             >
               <PanelLeft size={20} strokeWidth={1.75} />
@@ -171,9 +180,9 @@ const DrawerContent = memo(function DrawerContent({
                 P
               </div>
               <div className="min-w-0 flex-1">
-                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>Node ops</p>
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>{t("warehouse_portal.warehouse_shell.text.node_ops")}</p>
                 <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-                  Warehouse
+                  {t("portal.chrome.warehouse_hub")}
                 </h1>
               </div>
               {!isMobile && (
@@ -181,7 +190,7 @@ const DrawerContent = memo(function DrawerContent({
                   onClick={onToggle}
                   className="desk-icon-btn"
                   style={{ width: 28, height: 28 }}
-                  aria-label="Collapse sidebar"
+                  aria-label={t("portal.chrome.collapse_sidebar")}
                 >
                   <PanelLeftClose size={16} strokeWidth={1.75} />
                 </button>
@@ -196,10 +205,10 @@ const DrawerContent = memo(function DrawerContent({
             onClick={() => {
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
             }}
-            aria-label="Search pages (⌘K)"
+            aria-label={t("portal.chrome.search")}
           >
             <Icon name="search" size={16} className="desk-sidebar-search-icon" />
-            <span className="desk-sidebar-search-text">Search…</span>
+            <span className="desk-sidebar-search-text">{t("portal.chrome.search")}</span>
             <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
           </button>
         )}
@@ -208,11 +217,12 @@ const DrawerContent = memo(function DrawerContent({
           {filteredNav.map((section, si) => (
             <div key={si}>
               {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
-              {section.label && !isRail && (
-                <div className="desk-sidebar-section-label">{section.label}</div>
+              {section.labelKey && !isRail && (
+                <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
               )}
               {section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
+                const label = t(item.labelKey);
                 return (
                   <motion.div
                     key={item.href}
@@ -229,13 +239,13 @@ const DrawerContent = memo(function DrawerContent({
                       href={item.href as any}
                       className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
                       data-active={active ? 'true' : undefined}
-                      title={isRail ? item.label : undefined}
-                      aria-label={item.label}
+                      title={isRail ? label : undefined}
+                      aria-label={label}
                       aria-current={active ? 'page' : undefined}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                     >
                       <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
-                      {!isRail && <span className="truncate">{item.label}</span>}
+                      {!isRail && <span className="truncate">{label}</span>}
                     </Link>
                   </motion.div>
                 );
@@ -260,6 +270,7 @@ const DrawerContent = memo(function DrawerContent({
             </button>
           )}
         </div>
+        {!isRail && <div className="mt-2"><LanguageSwitcher /></div>}
         {!isRail && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -268,7 +279,7 @@ const DrawerContent = memo(function DrawerContent({
           >
             <div className="flex items-center gap-2">
               <span className="desk-live-dot" />
-              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>Single-tenant · Live sync</span>
+              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>{t("warehouse_portal.warehouse_shell.text.single_tenant_live_sync")}</span>
             </div>
           </motion.div>
         )}
@@ -368,15 +379,15 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
     window.location.href = '/auth/login';
   }, []);
 
-  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname, t), [pathname, t]);
 
   const searchResults = useMemo(() =>
     searchQuery.trim()
       ? ALL_NAV_ITEMS.filter(item =>
-          item.label.toLowerCase().includes(searchQuery.toLowerCase())
+          t(item.labelKey).toLowerCase().includes(searchQuery.toLowerCase())
         )
     : []
-  , [searchQuery]);
+  , [searchQuery, t]);
 
   if (isBare) return <>{children}</>;
 
@@ -431,12 +442,12 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => setMobileOpen(true)}
-              aria-label="Open navigation"
+              aria-label={t("warehouse_portal.warehouse_shell.text.open_navigation")}
             >
               <Icon name="menu" />
             </button>
 
-            <nav className="desk-breadcrumb hidden md:flex" aria-label="Breadcrumb">
+            <nav className="desk-breadcrumb hidden md:flex" aria-label={t("warehouse_portal.warehouse_shell.text.breadcrumb")}>
               {breadcrumbs.map((crumb, i) => (
                 <span key={crumb.href} className="flex items-center gap-2 min-w-0">
                   {i > 0 && <span className="desk-breadcrumb-sep">/</span>}
@@ -458,17 +469,17 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
             <button
               className="desk-topbar-search hidden md:flex"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
-              aria-label="Search (Ctrl+K)"
+              aria-label={t("warehouse_portal.warehouse_shell.text.search_ctrl_k")}
             >
               <Icon name="search" size={16} />
-              <span style={{ flex: 1, textAlign: 'left' }}>Search…</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>{t("portal.chrome.search")}</span>
               <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
             </button>
 
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
-              aria-label="Search"
+              aria-label={t("warehouse_portal.warehouse_shell.text.search")}
             >
               <Icon name="search" />
             </button>
@@ -493,7 +504,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
             <div className="relative" ref={notifRef}>
               <button
                 className="desk-icon-btn"
-                aria-label="Notifications"
+                aria-label={t("portal.nav.notifications")}
                 onClick={() => setNotifOpen(p => !p)}
               >
                 <Icon name="notifications" />
@@ -517,11 +528,11 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
               <button
                 onClick={() => setProfileOpen(p => !p)}
                 className="desk-profile-pill"
-                aria-label="Profile menu"
+                aria-label={t("warehouse_portal.warehouse_shell.text.profile_menu")}
               >
                 <div className="desk-profile-avatar">WH</div>
                 <div className="desk-profile-info hidden lg:flex">
-                  <span className="desk-profile-name">Warehouse</span>
+                  <span className="desk-profile-name">{t("warehouse_portal.setup.location.text.warehouse")}</span>
                   <span className="desk-profile-role">
                     {hasSession ? "Administrator" : "Guest"}
                   </span>
@@ -530,12 +541,12 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
               {profileOpen && (
                 <div className="md-menu" style={{ right: 0, top: 48, minWidth: 220 }}>
                   <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--desk-border)' }}>
-                    <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>Warehouse Admin</p>
-                    <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>Single-tenant control plane</p>
+                    <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>{t("warehouse_portal.warehouse_shell.text.warehouse_admin")}</p>
+                    <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>{t("warehouse_portal.warehouse_shell.text.single_tenant_control_plane")}</p>
                   </div>
                   <Link href={"/profile" as any} className="md-menu-item" onClick={() => setProfileOpen(false)}>
                     <Icon name="warehouse" />
-                    <span>Profile</span>
+                    <span>{t("portal.nav.profile")}</span>
                   </Link>
                   <div style={{ height: 1, background: 'var(--desk-border)', margin: '4px 12px' }} />
                   <button className="md-menu-item" style={{ color: 'var(--desk-danger)' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
@@ -569,7 +580,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search pages..."
+                    placeholder={t("warehouse_portal.warehouse_shell.text.search_pages")}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     autoFocus
@@ -594,7 +605,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                         onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
                       >
                         <Icon name={item.icon} />
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey)}</span>
                         <span className="ml-auto md-typescale-label-small text-muted">
                           {item.href}
                         </span>

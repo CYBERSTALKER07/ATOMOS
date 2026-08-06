@@ -71,6 +71,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   PartnerEdiDocument,
   PartnerExportJob,
   PartnerIssuedKey,
+  PartnerCoaMap,
   PartnerSftpConfig,
   PartnerWebhookSubscription,
   PartnerApiKeyMeta,
@@ -195,6 +196,23 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   WarehouseEmergencyTransferRequest,
   WarehouseForceReceiveRequest,
   WarehouseInventoryResponse,
+  WarehouseBinLocation,
+  WarehouseBinListResponse,
+  WarehouseBinCreateRequest,
+  StockLot,
+  StockLotListResponse,
+  StockLotPutawayRequest,
+  StockLotPutawayResponse,
+  PickWave,
+  PickWaveListResponse,
+  PickWaveCreateRequest,
+  PickTaskConfirmRequest,
+  CycleCount,
+  CycleCountListResponse,
+  CycleCountCreateRequest,
+  CycleCountSubmitRequest,
+  InventoryAdjustment,
+  InventoryAdjustmentListResponse,
   WarehouseFleetLiveMapResponse,
   FactoryFleetLiveMapResponse,
   WarehouseFleetVehicleDetailResponse,
@@ -1851,6 +1869,195 @@ export class ApiClient {
     return this.request<WarehouseInventoryResponse>(appendQuery("/v1/warehouse/ops/inventory", query as Record<string, unknown>), "GET");
   }
 
+  async listWarehouseBins(query: { warehouse_id?: string } = {}): Promise<WarehouseBinListResponse> {
+    return this.request<WarehouseBinListResponse>(appendQuery("/v1/warehouse/ops/bins", query as Record<string, unknown>), "GET");
+  }
+
+  async createWarehouseBin(
+    request: WarehouseBinCreateRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<WarehouseBinLocation> {
+    return this.request<WarehouseBinLocation>(
+      appendQuery("/v1/warehouse/ops/bins", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async getWarehouseBin(locationId: string, query: { warehouse_id?: string } = {}): Promise<WarehouseBinLocation> {
+    return this.request<WarehouseBinLocation>(
+      appendQuery(`/v1/warehouse/ops/bins/${encodeURIComponent(locationId)}`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async patchWarehouseBin(
+    locationId: string,
+    patch: Partial<WarehouseBinCreateRequest> & { is_active?: boolean },
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<WarehouseBinLocation> {
+    return this.request<WarehouseBinLocation>(
+      appendQuery(`/v1/warehouse/ops/bins/${encodeURIComponent(locationId)}`, query as Record<string, unknown>),
+      "PATCH",
+      { body: patch, idempotencyKey },
+    );
+  }
+
+  async listStockLots(
+    query: { warehouse_id?: string; product_id?: string; location_id?: string; status?: string } = {},
+  ): Promise<StockLotListResponse> {
+    return this.request<StockLotListResponse>(appendQuery("/v1/warehouse/ops/lots", query as Record<string, unknown>), "GET");
+  }
+
+  async getStockLot(lotId: string, query: { warehouse_id?: string } = {}): Promise<StockLot> {
+    return this.request<StockLot>(
+      appendQuery(`/v1/warehouse/ops/lots/${encodeURIComponent(lotId)}`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async putawayStockLot(
+    request: StockLotPutawayRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<StockLotPutawayResponse> {
+    return this.request<StockLotPutawayResponse>(
+      appendQuery("/v1/warehouse/ops/lots/putaway", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async listPickWaves(
+    query: { warehouse_id?: string; manifest_id?: string; status?: string } = {},
+  ): Promise<PickWaveListResponse> {
+    return this.request<PickWaveListResponse>(
+      appendQuery("/v1/warehouse/ops/pick-waves", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async createPickWave(
+    request: PickWaveCreateRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<PickWave> {
+    return this.request<PickWave>(
+      appendQuery("/v1/warehouse/ops/pick-waves", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async getPickWave(waveId: string, query: { warehouse_id?: string } = {}): Promise<PickWave> {
+    return this.request<PickWave>(
+      appendQuery(`/v1/warehouse/ops/pick-waves/${encodeURIComponent(waveId)}`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async confirmPickTask(
+    waveId: string,
+    taskId: string,
+    request: PickTaskConfirmRequest = {},
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<PickWave> {
+    return this.request<PickWave>(
+      appendQuery(
+        `/v1/warehouse/ops/pick-waves/${encodeURIComponent(waveId)}/tasks/${encodeURIComponent(taskId)}/confirm`,
+        query as Record<string, unknown>,
+      ),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async waivePickShorts(
+    waveId: string,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<PickWave> {
+    return this.request<PickWave>(
+      appendQuery(
+        `/v1/warehouse/ops/pick-waves/${encodeURIComponent(waveId)}/waive-shorts`,
+        query as Record<string, unknown>,
+      ),
+      "POST",
+      { body: {}, idempotencyKey },
+    );
+  }
+
+  async listCycleCounts(
+    query: { warehouse_id?: string; status?: string } = {},
+  ): Promise<CycleCountListResponse> {
+    return this.request<CycleCountListResponse>(
+      appendQuery("/v1/warehouse/ops/cycle-counts", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async createCycleCount(
+    request: CycleCountCreateRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<CycleCount> {
+    return this.request<CycleCount>(
+      appendQuery("/v1/warehouse/ops/cycle-counts", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async getCycleCount(countId: string, query: { warehouse_id?: string } = {}): Promise<CycleCount> {
+    return this.request<CycleCount>(
+      appendQuery(`/v1/warehouse/ops/cycle-counts/${encodeURIComponent(countId)}`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async submitCycleCount(
+    countId: string,
+    request: CycleCountSubmitRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<CycleCount> {
+    return this.request<CycleCount>(
+      appendQuery(
+        `/v1/warehouse/ops/cycle-counts/${encodeURIComponent(countId)}/submit`,
+        query as Record<string, unknown>,
+      ),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async listInventoryAdjustments(
+    query: { warehouse_id?: string; status?: string } = {},
+  ): Promise<InventoryAdjustmentListResponse> {
+    return this.request<InventoryAdjustmentListResponse>(
+      appendQuery("/v1/warehouse/ops/inventory-adjustments", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async approveInventoryAdjustment(
+    adjustmentId: string,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<InventoryAdjustment> {
+    return this.request<InventoryAdjustment>(
+      appendQuery(
+        `/v1/warehouse/ops/inventory-adjustments/${encodeURIComponent(adjustmentId)}/approve`,
+        query as Record<string, unknown>,
+      ),
+      "POST",
+      { body: {}, idempotencyKey },
+    );
+  }
+
   async getWarehouseOpsSettings(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsSettings> {
     return this.request<WarehouseOpsSettings>(appendQuery("/v1/warehouse/ops/settings", query as Record<string, unknown>), "GET");
   }
@@ -2537,6 +2744,18 @@ export class ApiClient {
     edi_enabled?: boolean;
   }): Promise<{ ok: boolean }> {
     return this.request("/v1/supplier/partner-sftp", "PUT", { body });
+  }
+
+  async getSupplierPartnerCoa(): Promise<PartnerCoaMap> {
+    return this.request("/v1/supplier/partner-coa", "GET");
+  }
+
+  async putSupplierPartnerCoa(body: {
+    account_ar?: string;
+    account_revenue?: string;
+    account_bank_cash?: string;
+  }): Promise<PartnerCoaMap> {
+    return this.request("/v1/supplier/partner-coa", "PUT", { body });
   }
 
   async listSupplierPartnerEdiDocuments(): Promise<{ documents: PartnerEdiDocument[] }> {

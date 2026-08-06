@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useCallback, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -66,7 +67,7 @@ function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
     gateway: gateway,
     currency: session.currency || "UZS",
     available_card_gateways: gateway === "CASH" ? [] : [gateway],
-    message: "Pending payment requires completion.",
+    message: t("retailer_desktop.residual.text.pending_payment_requires_completion"),
   };
 }
 
@@ -97,6 +98,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
 /* ── Component ── */
 
 export default function PaymentModal() {
+  const t = usePortalT();
   const router = useRouter();
   const pathname = usePathname();
   const { reconnectEpoch } = useWebSocket();
@@ -371,7 +373,7 @@ export default function PaymentModal() {
       }
       setState("cash-pending");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cash confirmation failed");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.cash_confirmation_failed"));
       setState("choosing");
     }
   }, [event, dismiss]);
@@ -417,7 +419,7 @@ export default function PaymentModal() {
           window.open(data.payment_url, "_blank", "noopener");
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Card checkout failed");
+        setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.card_checkout_failed"));
         setState("choosing");
       }
     },

@@ -15,16 +15,20 @@ import (
 
 // Service owns partner key issuance, partner HTTP business logic, and webhook enqueue.
 type Service struct {
-	keys     KeyRepository
-	webhooks WebhookRepository
-	exports  ExportRepository
-	sftp     SftpConfigRepository
-	ediDocs  EdiDocumentRepository
-	ediOut   *EdiOutboundWorker
-	orders   *order.Service
-	catalog  *catalog.Service
-	log      *slog.Logger
-	now      func() time.Time
+	keys           KeyRepository
+	webhooks       WebhookRepository
+	exports        ExportRepository
+	sftp           SftpConfigRepository
+	coa            CoaRepository
+	ediDocs        EdiDocumentRepository
+	ediOut         *EdiOutboundWorker
+	orders         *order.Service
+	catalog        *catalog.Service
+	log            *slog.Logger
+	now            func() time.Time
+	oauthJWTSecret string
+	oauthJWTIssuer string
+	oauthTTL       time.Duration
 }
 
 // NewService constructs the partner service.
@@ -45,6 +49,26 @@ func (s *Service) SetExportRepos(exports ExportRepository, sftp SftpConfigReposi
 	}
 	s.exports = exports
 	s.sftp = sftp
+}
+
+// SetCoaRepository wires configurable journals chart-of-accounts.
+func (s *Service) SetCoaRepository(coa CoaRepository) {
+	if s == nil {
+		return
+	}
+	s.coa = coa
+}
+
+// SetOAuthJWT configures partner client_credentials access-token signing.
+func (s *Service) SetOAuthJWT(secret, issuer string, ttl time.Duration) {
+	if s == nil {
+		return
+	}
+	s.oauthJWTSecret = strings.TrimSpace(secret)
+	s.oauthJWTIssuer = strings.TrimSpace(issuer)
+	if ttl > 0 {
+		s.oauthTTL = ttl
+	}
 }
 
 // SetEdiRepos wire Wave-2B EDI document ledger + outbound worker.
@@ -447,6 +471,51 @@ func (s *Service) GetSftpConfig(ctx context.Context, tenantType, tenantID string
 		return SftpConfig{}, false, nil
 	}
 	return s.sftp.Get(ctx, tenantType, tenantID)
+}
+
+// GetCoa returns the resolved chart of accounts for the tenant (defaults if unset).
+func (s *Service) GetCoa(ctx context.Context, tenantType, tenantID string) (CoaMap, error) {
+	if s.coa == nil {
+		return DefaultCoa(), nil
+	}
+	stored, found, err := s.coa.Get(ctx, tenantType, tenantID)
+	if err != nil {
+		return CoaMap{}, err
+	}
+	out := ResolveCoa(stored, found)
+	out.TenantType = tenantType
+	out.TenantID = tenantID
+	return out, nil
+}
+
+// UpsertCoa stores tenant CoA overrides (empty fields keep previous or become defaults on resolve).
+func (s *Service) UpsertCoa(ctx context.Context, tenantType, tenantID, updatedBy string, m CoaMap) (CoaMap, error) {
+	if s.coa == nil {
+		return CoaMap{}, fmt.Errorf("coa_unavailable")
+	}
+	m.TenantType = tenantType
+	m.TenantID = tenantID
+	m.UpdatedBy = updatedBy
+	NormalizeCoa(&m)
+	if err := ValidateCoaAccounts(m); err != nil {
+		return CoaMap{}, err
+	}
+	// Fill blanks with defaults so Spanner NOT NULL columns are satisfied.
+	def := DefaultCoa()
+	if m.AccountAR == "" {
+		m.AccountAR = def.AccountAR
+	}
+	if m.AccountRevenue == "" {
+		m.AccountRevenue = def.AccountRevenue
+	}
+	if m.AccountBankCash == "" {
+		m.AccountBankCash = def.AccountBankCash
+	}
+	m.UpdatedAt = s.now()
+	if err := s.coa.Upsert(ctx, m); err != nil {
+		return CoaMap{}, err
+	}
+	return s.GetCoa(ctx, tenantType, tenantID)
 }
 
 // ListEdiDocuments returns recent EDI ledger rows for the tenant.

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import { PageChrome } from "@/components/PageChrome";
 const api = createSupplierApi();
 
 export default function ReorderSuggestionsPage() {
+  const t = usePortalT();
   const [suggestions, setSuggestions] = useState<ReorderSuggestionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function ReorderSuggestionsPage() {
       setSuggestions(resp.suggestions ?? []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_suggestions_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_suggestions_failed"));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function ReorderSuggestionsPage() {
       await api.dismissReorderSuggestion({ retailer_id: row.retailer_id, sku: row.sku });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "dismiss_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.dismiss_failed"));
     } finally {
       setActing(null);
     }
@@ -96,7 +98,7 @@ export default function ReorderSuggestionsPage() {
       });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create_draft_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.create_draft_failed"));
     } finally {
       setActing(null);
     }
@@ -113,7 +115,7 @@ export default function ReorderSuggestionsPage() {
       setSelected(new Set());
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "bulk_create_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.bulk_create_failed"));
     } finally {
       setActing(null);
     }
@@ -122,8 +124,8 @@ export default function ReorderSuggestionsPage() {
   return (
     <PageChrome
       icon="inventory"
-      title="Reorder suggestions"
-      description="OPEN replenishment suggestions from demand signals — create draft orders through normal order capture."
+      title={t("supplier_portal.replenishment.suggestions.text.reorder_suggestions")}
+      description={t("supplier_portal.residual.text.open_replenishment_suggestions_from_demand_signals_create_draft_")}
       loading={loading}
       skeletonVariant="table"
       error={error}
@@ -146,13 +148,13 @@ export default function ReorderSuggestionsPage() {
       <div className="flex flex-wrap gap-3 mb-4">
         <input
           className="md-input min-w-[180px]"
-          placeholder="Retailer ID"
+          placeholder={t("supplier_portal.chargebacks.text.retailer_id")}
           value={retailerFilter}
           onChange={(e) => setRetailerFilter(e.target.value)}
         />
         <input
           className="md-input min-w-[180px]"
-          placeholder="SKU search"
+          placeholder={t("supplier_portal.replenishment.suggestions.text.sku_search")}
           value={skuSearch}
           onChange={(e) => setSkuSearch(e.target.value)}
         />
@@ -170,9 +172,9 @@ export default function ReorderSuggestionsPage() {
               setSourceFilter(e.target.value as "ALL" | "STORE_POS" | "WHOLESALE")
             }
           >
-            <option value="ALL">All sources</option>
-            <option value="STORE_POS">Has Store POS</option>
-            <option value="WHOLESALE">Wholesale only</option>
+            <option value="ALL">{t("supplier_portal.replenishment.suggestions.text.all_sources")}</option>
+            <option value="STORE_POS">{t("supplier_portal.replenishment.suggestions.text.has_store_pos")}</option>
+            <option value="WHOLESALE">{t("supplier_portal.replenishment.suggestions.text.wholesale_only")}</option>
           </select>
         </label>
         <button type="button" className="md-btn md-btn-outlined" onClick={() => void load()}>
@@ -194,22 +196,22 @@ export default function ReorderSuggestionsPage() {
                     type="checkbox"
                     checked={selected.size > 0 && selected.size === allKeys.length}
                     onChange={toggleAll}
-                    aria-label="Select all"
+                    aria-label={t("supplier_portal.replenishment.suggestions.text.select_all")}
                   />
                 </th>
-                <th className="px-3 py-2">Retailer</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
                 <th className="px-3 py-2">SKU</th>
-                <th className="px-3 py-2">Sources</th>
-                <th className="px-3 py-2">POS vel / day</th>
-                <th className="px-3 py-2">Base demand / day</th>
-                <th className="px-3 py-2">Suggested qty</th>
-                <th className="px-3 py-2">Adj. demand / day</th>
-                <th className="px-3 py-2">Stock</th>
-                <th className="px-3 py-2">In-flight</th>
-                <th className="px-3 py-2">Safety stock</th>
-                <th className="px-3 py-2">By date</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Actions</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.sources")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.pos_vel_day")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.base_demand_day")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.suggested_qty")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.adj_demand_day")}</th>
+                <th className="px-3 py-2">{t("portal.nav.stock")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.in_flight")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.safety_stock")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.replenishment.suggestions.text.by_date")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.compliance.text.status")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
               </tr>
             </thead>
             <tbody>

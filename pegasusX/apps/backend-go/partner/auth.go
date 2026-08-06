@@ -22,43 +22,113 @@ func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
-// AuthMiddleware authenticates Bearer pxk_* keys (or falls through if not a partner key).
-// Partner routes should use RequirePartner which fails closed when principal is missing.
+// AuthOptions configures partner AuthMiddleware (API keys + OAuth access tokens).
+type AuthOptions struct {
+	Keys      KeyRepository
+	JWTSecret string
+}
+
+// AuthMiddleware authenticates Bearer pxk_* keys or partner_access JWTs.
+// Falls through when the Authorization header is absent / not a partner credential
+// so human SessionAuth can still attach claims on shared routers.
 func AuthMiddleware(keys KeyRepository) func(http.Handler) http.Handler {
+	return AuthMiddlewareOpts(AuthOptions{Keys: keys})
+}
+
+// AuthMiddlewareOpts authenticates with optional partner JWT secret for OAuth tokens.
+func AuthMiddlewareOpts(opts AuthOptions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := auth.BearerToken(r)
-			if token == "" || !strings.HasPrefix(token, "pxk_") {
+			if token == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
-			prefix, ok := ParseBearerKey(token)
-			if !ok || keys == nil {
-				writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
+			if strings.HasPrefix(token, "pxk_") {
+				p, ok := authenticateAPIKey(r.Context(), opts.Keys, token, w)
+				if !ok {
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
 				return
 			}
-			k, found, err := keys.GetByPrefix(r.Context(), prefix)
-			if err != nil || !found {
-				writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
-				return
+			if looksLikeJWT(token) && strings.TrimSpace(opts.JWTSecret) != "" {
+				p, ok := authenticateAccessToken(r.Context(), opts.Keys, opts.JWTSecret, token, w)
+				if !ok {
+					return
+				}
+				if p.KeyID != "" {
+					next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+					return
+				}
 			}
-			if k.Status != KeyStatusActive {
-				writePartnerError(w, http.StatusUnauthorized, "partner_key_revoked")
-				return
-			}
-			if k.ExpiresAt != nil && time.Now().UTC().After(*k.ExpiresAt) {
-				writePartnerError(w, http.StatusUnauthorized, "partner_key_expired")
-				return
-			}
-			if !VerifyAPIKey(token, k.KeyHash) {
-				writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
-				return
-			}
-			_ = keys.TouchLastUsed(r.Context(), k.KeyID)
-			p := Principal{KeyID: k.KeyID, TenantType: k.TenantType, TenantID: k.TenantID, Scopes: k.Scopes}
-			next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func authenticateAPIKey(ctx context.Context, keys KeyRepository, token string, w http.ResponseWriter) (Principal, bool) {
+	prefix, ok := ParseBearerKey(token)
+	if !ok || keys == nil {
+		writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
+		return Principal{}, false
+	}
+	k, found, err := keys.GetByPrefix(ctx, prefix)
+	if err != nil || !found {
+		writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
+		return Principal{}, false
+	}
+	if k.Status != KeyStatusActive {
+		writePartnerError(w, http.StatusUnauthorized, "partner_key_revoked")
+		return Principal{}, false
+	}
+	if k.ExpiresAt != nil && time.Now().UTC().After(*k.ExpiresAt) {
+		writePartnerError(w, http.StatusUnauthorized, "partner_key_expired")
+		return Principal{}, false
+	}
+	if !VerifyAPIKey(token, k.KeyHash) {
+		writePartnerError(w, http.StatusUnauthorized, "invalid_partner_key")
+		return Principal{}, false
+	}
+	_ = keys.TouchLastUsed(ctx, k.KeyID)
+	return Principal{KeyID: k.KeyID, TenantType: k.TenantType, TenantID: k.TenantID, Scopes: k.Scopes}, true
+}
+
+func authenticateAccessToken(ctx context.Context, keys KeyRepository, secret, token string, w http.ResponseWriter) (Principal, bool) {
+	claims, err := ParsePartnerAccessToken(token, secret)
+	if err != nil {
+		// Not a partner token (wrong secret / use) → fall through for human JWT.
+		if err.Error() == "invalid_token_use" || err.Error() == "invalid_token" {
+			return Principal{}, true // ok=true with empty KeyID → fall through
+		}
+		writePartnerError(w, http.StatusUnauthorized, "invalid_partner_token")
+		return Principal{}, false
+	}
+	if strings.TrimSpace(claims.TenantID) == "" || strings.TrimSpace(claims.KeyID) == "" {
+		writePartnerError(w, http.StatusUnauthorized, "invalid_partner_token")
+		return Principal{}, false
+	}
+	// Live revoke: require key still ACTIVE when repository is available.
+	if keys != nil {
+		k, found, gErr := keys.GetByID(ctx, claims.KeyID)
+		if gErr != nil || !found || k.Status != KeyStatusActive {
+			writePartnerError(w, http.StatusUnauthorized, "partner_key_revoked")
+			return Principal{}, false
+		}
+		if k.ExpiresAt != nil && time.Now().UTC().After(*k.ExpiresAt) {
+			writePartnerError(w, http.StatusUnauthorized, "partner_key_expired")
+			return Principal{}, false
+		}
+		_ = keys.TouchLastUsed(ctx, k.KeyID)
+		scopes := claims.Scopes
+		if len(scopes) == 0 {
+			scopes = k.Scopes
+		}
+		return Principal{KeyID: k.KeyID, TenantType: k.TenantType, TenantID: k.TenantID, Scopes: scopes}, true
+	}
+	return Principal{
+		KeyID: claims.KeyID, TenantType: claims.TenantType, TenantID: claims.TenantID, Scopes: claims.Scopes,
+	}, true
 }
 
 // RequirePartner fails closed without a partner principal and optional scopes.

@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { ApiClient, ApiError } from "@pegasusx/api-client";
 import type {
   HomeNodeType,
@@ -7,6 +10,7 @@ import type {
 } from "@pegasusx/types";
 
 export function supplierScopeId(): string {
+  const t = usePortalT();
   if (typeof window === "undefined") {
     return "supplier";
   }
@@ -48,10 +52,10 @@ export type VehicleFormState = {
 };
 
 export const orgRoleOptions: Array<{ value: Role; label: string }> = [
-  { value: "ADMIN", label: "Supplier operator" },
-  { value: "WAREHOUSE_ADMIN", label: "Warehouse admin" },
-  { value: "FACTORY_ADMIN", label: "Factory admin" },
-  { value: "PAYLOAD", label: "Payload staff" },
+  { value: "ADMIN", label: t("supplier_portal.residual.text.supplier_operator") },
+  { value: "WAREHOUSE_ADMIN", label: t("supplier_portal.residual.text.warehouse_admin") },
+  { value: "FACTORY_ADMIN", label: t("supplier_portal.residual.text.factory_admin") },
+  { value: "PAYLOAD", label: t("supplier_portal.residual.text.payload_staff") },
 ];
 
 export const defaultOrgForm: OrgFormState = {

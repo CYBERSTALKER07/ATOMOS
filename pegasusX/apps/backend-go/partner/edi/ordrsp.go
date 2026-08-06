@@ -6,15 +6,27 @@ import (
 	"time"
 )
 
+// ShipUnit is one SSCC logistics unit for DESADV packing segments.
+type ShipUnit struct {
+	ManifestID string
+	SSCC       string
+	OrderID    string
+	Sequence   int64
+	GTIN       string
+}
+
 // OrderSnapshot is the minimal order view for outbound EDI.
 type OrderSnapshot struct {
 	OrderID    string
 	RetailerID string
 	SupplierID string
+	ManifestID string
 	Status     string
 	Currency   string
 	TotalMinor int64
 	Lines      []Line
+	// ShipUnits are SSCC rows from ManifestShipUnits (DESADV CPS/PAC/GIN).
+	ShipUnits []ShipUnit
 }
 
 // BuildORDRSP encodes an order response for the given status.

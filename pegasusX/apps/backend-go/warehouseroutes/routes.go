@@ -8,6 +8,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 )
 
 // Deps is the narrow dependency contract for warehouse routes.
@@ -15,6 +16,7 @@ type Deps struct {
 	Service             *warehouse.Service
 	OrderService        *order.Service
 	PayloadService      *payload.Service
+	WMSHandler          *stocklots.Handler
 	JWTSecret           string
 	Spanner             *spanner.Client
 	FirebaseAuthEnabled bool
@@ -51,6 +53,35 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/ops/dashboard", d.Service.HandleDashboard)
 		rr.HandleFunc("/v1/warehouse/ops/inventory", d.Service.HandleInventory)
 		rr.Patch("/v1/warehouse/ops/inventory/{productID}/policy", d.Service.HandleInventoryPolicy)
+		if d.WMSHandler != nil {
+			rr.Get("/v1/warehouse/ops/bins", d.WMSHandler.HandleBins)
+			rr.Post("/v1/warehouse/ops/bins", d.WMSHandler.HandleBins)
+			rr.Get("/v1/warehouse/ops/bins/{locationID}", d.WMSHandler.HandleBinByID)
+			rr.Patch("/v1/warehouse/ops/bins/{locationID}", d.WMSHandler.HandleBinByID)
+			rr.Get("/v1/warehouse/ops/lots", d.WMSHandler.HandleLots)
+			rr.Post("/v1/warehouse/ops/lots/putaway", d.WMSHandler.HandlePutaway)
+			rr.Get("/v1/warehouse/ops/lots/{lotID}", d.WMSHandler.HandleLotByID)
+			rr.Get("/v1/warehouse/ops/pick-waves", d.WMSHandler.HandlePickWaves)
+			rr.Post("/v1/warehouse/ops/pick-waves", d.WMSHandler.HandlePickWaves)
+			rr.Get("/v1/warehouse/ops/pick-waves/{waveID}", d.WMSHandler.HandlePickWaveByID)
+			rr.Post("/v1/warehouse/ops/pick-waves/{waveID}/tasks/{taskID}/confirm", d.WMSHandler.HandleConfirmPickTask)
+			rr.Get("/v1/warehouse/ops/cycle-counts", d.WMSHandler.HandleCycleCounts)
+			rr.Post("/v1/warehouse/ops/cycle-counts", d.WMSHandler.HandleCycleCounts)
+			rr.Get("/v1/warehouse/ops/cycle-counts/{countID}", d.WMSHandler.HandleCycleCountByID)
+			rr.Post("/v1/warehouse/ops/cycle-counts/{countID}/submit", d.WMSHandler.HandleSubmitCycleCount)
+			rr.Get("/v1/warehouse/ops/inventory-adjustments", d.WMSHandler.HandleInventoryAdjustments)
+			rr.Get("/v1/warehouse/ops/inventory-accuracy", d.WMSHandler.HandleInventoryAccuracy)
+			rr.Get("/v1/warehouse/ops/inventory-reconcile", d.WMSHandler.HandleReconcileInventoryV2)
+			rr.Post("/v1/warehouse/ops/cycle-counts/enqueue-abc", d.WMSHandler.HandleEnqueueABCCounts)
+			rr.Get("/v1/warehouse/ops/temperature-readings", d.WMSHandler.HandleTemperatureReadings)
+			rr.Post("/v1/warehouse/ops/temperature-readings", d.WMSHandler.HandleTemperatureReadings)
+			rr.Group(func(admin chi.Router) {
+				admin.Use(auth.RequireRole(auth.RoleWarehouseAdmin, auth.RoleAdmin))
+				admin.Post("/v1/warehouse/ops/pick-waves/{waveID}/waive-shorts", d.WMSHandler.HandleWaivePickShorts)
+				admin.Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/approve", d.WMSHandler.HandleApproveInventoryAdjustment)
+				admin.Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/reject", d.WMSHandler.HandleRejectInventoryAdjustment)
+			})
+		}
 		rr.Get("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Patch("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Get("/v1/warehouse/ops/location", d.Service.HandleOpsLocation)

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -35,6 +36,7 @@ function formatMoney(minor: number, currency: string) {
 }
 
 export default function SupplierOrderDetailPage() {
+  const t = usePortalT();
   const params = useParams();
   const router = useRouter();
   const { push: toast } = useToast();
@@ -123,7 +125,7 @@ export default function SupplierOrderDetailPage() {
 
   if (!loading && !listRow && !detail) {
     return (
-      <PageChrome icon="orders" title="Order not found" description="This order is not visible in your supplier scope.">
+      <PageChrome icon="orders" title={t("order.error.not_found")} description={t("supplier_portal.residual.text.this_order_is_not_visible_in_your_supplier_scope")}>
         <Link href="/orders" className="md-btn md-btn-tonal inline-flex items-center gap-1.5 px-4 py-2">
           <Icon name="arrow_back" size={16} /> Back to orders
         </Link>
@@ -140,7 +142,7 @@ export default function SupplierOrderDetailPage() {
     <PageChrome
       icon="orders"
       title={`Order ${orderId.slice(0, 8)}…`}
-      description="Supplier-scoped order detail with warehouse admin actions when available."
+      description={t("supplier_portal.residual.text.supplier_scoped_order_detail_with_warehouse_admin_actions_when_a")}
       loading={loading}
       actions={
         <Link href="/orders" className="md-btn md-btn-outlined inline-flex items-center gap-1.5 px-3 py-1.5">
@@ -152,15 +154,15 @@ export default function SupplierOrderDetailPage() {
         <div className="md-card p-5 space-y-4">
           <div className="flex justify-between gap-4 flex-wrap">
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Retailer</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</p>
               <p className="font-medium">{retailerLabel}</p>
             </div>
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Status</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.compliance.text.status")}</p>
               <OrderStateChip state={state} />
             </div>
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Total</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.orders._id_.text.total")}</p>
               <p className="font-mono tabular-nums">
                 {totalUzs != null
                   ? new Intl.NumberFormat('uz-UZ').format(totalUzs)
@@ -209,7 +211,7 @@ export default function SupplierOrderDetailPage() {
         </div>
 
         <div className="md-card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">Status history</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">{t("supplier_portal.orders._id_.text.status_history")}</h2>
           <OrderTimelinePanel orderId={orderId} />
         </div>
 

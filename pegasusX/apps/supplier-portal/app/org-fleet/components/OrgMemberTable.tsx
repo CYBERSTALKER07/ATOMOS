@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { ReadyState, orgRoleOptions, formatRole, describeMemberNode, toErrorMessage, isErrorMessage, supplierScopeId } from "./utils";
 import type { Role, HomeNodeType } from "@pegasusx/types";
@@ -19,6 +22,7 @@ export function OrgMemberTable({
   const [orgMessage, setOrgMessage] = useState<string | null>(null);
 
   async function deactivateOrgMember(userId: string) {
+  const t = usePortalT();
     if (state.status !== "ready") {
       return;
     }
@@ -77,7 +81,7 @@ export function OrgMemberTable({
 
   return (
     <article className="md-card md-shape-md p-6 overflow-x-auto">
-      <h2 className="md-typescale-title-large">Current org roster</h2>
+      <h2 className="md-typescale-title-large">{t("supplier_portal.org_fleet.components.org_member_table.text.current_org_roster")}</h2>
       {orgMessage && <StatusText message={orgMessage} isError={isErrorMessage(orgMessage)} />}
       {state.orgMembers.length === 0 ? (
         <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>
@@ -87,12 +91,12 @@ export function OrgMemberTable({
         <table className="w-full text-left mt-4">
           <thead>
             <tr className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-              <th className="py-2 pr-4">Name</th>
-              <th className="py-2 pr-4">Role</th>
-              <th className="py-2 pr-4">Node</th>
-              <th className="py-2 pr-4">Phone</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Actions</th>
+              <th className="py-2 pr-4">{t("supplier_portal.analytics.knowledge_graph.text.name")}</th>
+              <th className="py-2 pr-4">{t("supplier_portal.org_fleet.components.org_member_table.text.role")}</th>
+              <th className="py-2 pr-4">{t("supplier_portal.org_fleet.components.org_member_table.text.node")}</th>
+              <th className="py-2 pr-4">{t("common.field.phone")}</th>
+              <th className="py-2 pr-4">{t("supplier_portal.compliance.text.status")}</th>
+              <th className="py-2 pr-4">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
             </tr>
           </thead>
           <tbody>

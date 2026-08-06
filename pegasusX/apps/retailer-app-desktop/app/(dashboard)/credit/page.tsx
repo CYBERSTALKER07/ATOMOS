@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { getRetailerToken } from "@/lib/auth";
 
@@ -29,6 +30,7 @@ type Invoice = {
 };
 
 export default function RetailerCreditPartnersPage() {
+  const t = usePortalT();
   const [rels, setRels] = useState<Relationship[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function RetailerCreditPartnersPage() {
         setInvoices(iBody.invoices ?? []);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "load_failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -64,15 +66,15 @@ export default function RetailerCreditPartnersPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-semibold tracking-tight">Credit partners</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t("portal.nav.credit_partners")}</h1>
       <p className="mt-1 text-sm text-[var(--muted, #666)]">
         Suppliers that have enabled trade credit with your store. You cannot enable or disable credit here.
       </p>
-      {loading ? <p className="mt-4 text-sm">Loading…</p> : null}
+      {loading ? <p className="mt-4 text-sm">{t("retailer_desktop.credit.text.loading")}</p> : null}
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
 
       <section className="mt-8">
-        <h2 className="text-base font-medium mb-3">Relationships</h2>
+        <h2 className="text-base font-medium mb-3">{t("retailer_desktop.credit.text.relationships")}</h2>
         <ul className="space-y-3">
           {rels.map((r) => (
             <li key={r.supplier_id} className="border-b border-[var(--border,#ddd)] pb-3">
@@ -81,19 +83,19 @@ export default function RetailerCreditPartnersPage() {
                 Net {r.terms_days} · Available {r.available_credit_minor ?? 0} · Balance{" "}
                 {r.current_balance_minor ?? 0}
                 {r.on_hold || r.profile_status === "FROZEN" ? (
-                  <span className="ml-2 text-amber-700">On hold</span>
+                  <span className="ml-2 text-amber-700">{t("retailer_desktop.credit.text.on_hold")}</span>
                 ) : null}
               </div>
             </li>
           ))}
           {!loading && rels.length === 0 ? (
-            <li className="text-sm text-[var(--muted,#666)]">No credit partners yet.</li>
+            <li className="text-sm text-[var(--muted,#666)]">{t("retailer_desktop.credit.text.no_credit_partners_yet")}</li>
           ) : null}
         </ul>
       </section>
 
       <section className="mt-10">
-        <h2 className="text-base font-medium mb-3">Open invoices</h2>
+        <h2 className="text-base font-medium mb-3">{t("retailer_desktop.credit.text.open_invoices")}</h2>
         <ul className="space-y-3">
           {invoices.map((inv) => (
             <li key={inv.invoice_id} className="border-b border-[var(--border,#ddd)] pb-3 text-sm">
@@ -107,7 +109,7 @@ export default function RetailerCreditPartnersPage() {
             </li>
           ))}
           {!loading && invoices.length === 0 ? (
-            <li className="text-sm text-[var(--muted,#666)]">No open invoices.</li>
+            <li className="text-sm text-[var(--muted,#666)]">{t("retailer_desktop.credit.text.no_open_invoices")}</li>
           ) : null}
         </ul>
       </section>

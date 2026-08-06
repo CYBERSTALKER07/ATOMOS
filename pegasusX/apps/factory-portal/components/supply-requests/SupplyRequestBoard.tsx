@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { PageSection } from '@/components/PageSection';
 import type { SupplyRequest } from './types';
 import { ACTIONS } from './constants';
@@ -13,8 +16,9 @@ export function SupplyRequestBoard({
   transitioning,
   handleTransition,
 }: SupplyRequestBoardProps) {
+  const t = usePortalT();
   return (
-    <PageSection title="Production lane board" description="Kanban by supply-request lifecycle state.">
+    <PageSection title={t("factory_portal.supply_requests.supply_request_board.text.production_lane_board")} description={t("factory_portal.residual.text.kanban_by_supply_request_lifecycle_state")}>
       <div className="grid gap-4 lg:grid-cols-4 overflow-x-auto">
         {(['SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY'] as const).map((lane) => (
           <div key={lane} className="min-w-[220px] rounded-xl border p-3" style={{ borderColor: 'var(--color-md-outline-variant)' }}>

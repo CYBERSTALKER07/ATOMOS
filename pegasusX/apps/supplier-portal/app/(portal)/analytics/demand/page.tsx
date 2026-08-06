@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { Route } from "next";
@@ -37,6 +38,7 @@ function pctLabel(ratio: number | null | undefined): string {
 }
 
 export default function DemandAnalyticsPage() {
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
@@ -59,7 +61,7 @@ export default function DemandAnalyticsPage() {
         setAccuracy(accuracyResp);
       })
       .catch(() => {
-        if (!cancelled) setError("load_demand_analytics_failed");
+        if (!cancelled) setError(t("supplier_portal.residual.text.load_demand_analytics_failed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -82,8 +84,8 @@ export default function DemandAnalyticsPage() {
   return (
     <PageChrome
       icon="analytics"
-      title="Demand forecast"
-      description="Predicted versus actual order volume from supplier analytics authority."
+      title={t("supplier_portal.analytics.demand.text.demand_forecast")}
+      description={t("supplier_portal.residual.text.predicted_versus_actual_order_volume_from_supplier_analytics_aut")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -104,17 +106,17 @@ export default function DemandAnalyticsPage() {
       {summary ? (
         <>
           <KpiStatGrid columns={3}>
-            <KpiStatCard label="Predictions" value={summary.prediction_count} />
-            <KpiStatCard label="Retailers" value={summary.total_retailers} />
-            <KpiStatCard label="Forecast units" value={summary.total_pallets} />
+            <KpiStatCard label={t("supplier_portal.residual.text.predictions")} value={summary.prediction_count} />
+            <KpiStatCard label={t("portal.nav.retailers")} value={summary.total_retailers} />
+            <KpiStatCard label={t("supplier_portal.residual.text.forecast_units")} value={summary.total_pallets} />
           </KpiStatGrid>
           {accuracy?.enabled ? (
             <div className="mt-4">
               <KpiStatGrid columns={4}>
-                <KpiStatCard label="28d forecast units" value={accuracy.forecast_units} />
-                <KpiStatCard label="28d actual units" value={accuracy.actual_units} />
+                <KpiStatCard label={t("supplier_portal.residual.text.28d_forecast_units")} value={accuracy.forecast_units} />
+                <KpiStatCard label={t("supplier_portal.residual.text.28d_actual_units")} value={accuracy.actual_units} />
                 <KpiStatCard
-                  label="WAPE (28d)"
+                  label={t("supplier_portal.residual.text.wape_28d")}
                   value={accuracy.actual_units > 0 ? pctLabel(accuracy.wape_28) : "—"}
                   sub={
                     accuracy.actual_units > 0
@@ -123,7 +125,7 @@ export default function DemandAnalyticsPage() {
                   }
                 />
                 <KpiStatCard
-                  label="Tracking alerts"
+                  label={t("supplier_portal.residual.text.tracking_alerts")}
                   value={accuracy.alert_count}
                   sub={accuracy.alert_count > 0 ? "|TS| > 4 on one or more series" : "All series in control"}
                 />
@@ -141,7 +143,7 @@ export default function DemandAnalyticsPage() {
       ) : null}
 
       <section className="desk-card p-6 mt-6">
-        <h2 className="bento-card-title">Baseline vs actual (14d)</h2>
+        <h2 className="bento-card-title">{t("supplier_portal.analytics.demand.text.baseline_vs_actual_14d")}</h2>
         <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
           Baseline units from DemandForecastBaseline; actual units are completed order line quantities
           (SKU-day grain, rolled to supplier-day). Accuracy KPIs above are server WAPE / bias / tracking
@@ -164,14 +166,14 @@ export default function DemandAnalyticsPage() {
 
       {history && history.upcoming.length > 0 ? (
         <section className="desk-card p-6 mt-6 overflow-x-auto">
-          <h2 className="bento-card-title">Upcoming demand rows</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.analytics.demand.text.upcoming_demand_rows")}</h2>
           <table className="desk-table w-full mt-4">
             <thead>
               <tr style={{ color: "var(--desk-text-secondary)" }}>
                 <th className="md-typescale-label-medium p-3 text-left font-medium">SKU</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Product</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Qty</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">When</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.text.qty")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.flywheel.text.when")}</th>
               </tr>
             </thead>
             <tbody>

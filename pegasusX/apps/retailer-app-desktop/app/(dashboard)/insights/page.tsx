@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
@@ -57,12 +58,13 @@ const urgencyCfg: Record<
   string,
   { color: "danger" | "warning" | "default"; label: string }
 > = {
-  WAITING: { color: "danger", label: "REORDER NOW" },
+  WAITING: { color: "danger", label: t("retailer_desktop.residual.text.reorder_now") },
   DORMANT: { color: "warning", label: "MONITOR" },
   EXECUTED: { color: "default", label: "ORDERED" },
 };
 
 export default function InsightsPage() {
+  const t = usePortalT();
   const {
     data: predictions,
     loading: loadingPred,
@@ -130,35 +132,35 @@ export default function InsightsPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Insights access is partially restricted for this account.",
+        message: t("retailer_desktop.residual.text.insights_access_is_partially_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing latest cached intelligence signals.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_intelligence_signals"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Insights sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.insights_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. New signals may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_new_signals_may_be_delayed"),
       };
     }
     if (isRefreshing && !loadingPred && !loadingAnalytics) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing intelligence feeds...",
+        message: t("retailer_desktop.residual.text.syncing_intelligence_feeds"),
       };
     }
     return null;
@@ -167,27 +169,27 @@ export default function InsightsPage() {
   const aiEmptyState = useMemo(() => {
     if (loadIssue === "restricted") {
       return {
-        headline: "Insights access restricted",
+        headline: t("retailer_desktop.residual.text.insights_access_restricted"),
         body: "Your account cannot load replenishment signals right now.",
         variant: "restricted" as const,
       };
     }
     if (loadIssue === "offline") {
       return {
-        headline: "Insights are offline",
+        headline: t("retailer_desktop.residual.text.insights_are_offline"),
         body: "Reconnect to refresh prediction signals and analytics.",
         variant: "offline" as const,
       };
     }
     if (loadIssue === "error") {
       return {
-        headline: "Signals unavailable",
+        headline: t("retailer_desktop.residual.text.signals_unavailable"),
         body: "Prediction feeds could not be loaded right now.",
         variant: "error" as const,
       };
     }
     return {
-      headline: "No actionable signals detected",
+      headline: t("retailer_desktop.residual.text.no_actionable_signals_detected"),
       body: "AI has no urgent replenishment recommendations for this cycle.",
       variant: "no-predictions" as const,
     };
@@ -337,8 +339,8 @@ export default function InsightsPage() {
     >
       <PageChrome
         icon="insights"
-        title="Intelligence Hub"
-        description="Predictive demand signals and network analytics."
+        title={t("retailer_desktop.insights.text.intelligence_hub")}
+        description={t("retailer_desktop.residual.text.predictive_demand_signals_and_network_analytics")}
         loading={loading}
         skeletonVariant="table"
         actions={

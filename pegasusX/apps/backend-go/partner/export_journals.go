@@ -10,13 +10,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// Fixed 1C-style chart of accounts (Wave 1C journals). Configurable CoA is follow-up.
-const (
-	coaAR       = "62.01" // accounts receivable
-	coaRevenue  = "90.01" // revenue
-	coaBankCash = "51.01" // bank / cash
-)
-
 // journalColumnOrder is the stable CSV/XML attribute order for journals exports.
 var journalColumnOrder = []string{
 	"entry_date",
@@ -36,26 +29,31 @@ var journalColumnOrder = []string{
 	"memo",
 }
 
-func mapARJournalAccounts(entryType string) (debit, credit string) {
+func mapARJournalAccounts(coa CoaMap, entryType string) (debit, credit string) {
+	ar := coa.AccountAR
+	rev := coa.AccountRevenue
+	bank := coa.AccountBankCash
 	switch strings.ToUpper(strings.TrimSpace(entryType)) {
 	case "OPEN":
-		return coaAR, coaRevenue
+		return ar, rev
 	case "PAYMENT":
-		return coaBankCash, coaAR
+		return bank, ar
 	default:
 		// Unknown AR types: treat as AR increase vs suspense revenue.
-		return coaAR, coaRevenue
+		return ar, rev
 	}
 }
 
-func mapPaymentJournalAccounts(entryType string) (debit, credit string) {
+func mapPaymentJournalAccounts(coa CoaMap, entryType string) (debit, credit string) {
+	ar := coa.AccountAR
+	bank := coa.AccountBankCash
 	t := strings.ToUpper(strings.TrimSpace(entryType))
 	if strings.Contains(t, "REFUND") || strings.Contains(t, "CHARGEBACK") ||
 		(strings.Contains(t, "VOID") && !strings.Contains(t, "REVERSAL")) {
-		return coaAR, coaBankCash
+		return ar, bank
 	}
 	// Capture / settle / paid / success / reversal of chargeback → cash from AR.
-	return coaBankCash, coaAR
+	return bank, ar
 }
 
 func absMinor(v int64) int64 {
@@ -77,12 +75,25 @@ func journalRow(cols map[string]any) map[string]any {
 	return out
 }
 
+func (w *ExportWorker) resolveTenantCoa(ctx context.Context, tenantType, tenantID string) CoaMap {
+	if w == nil || w.coa == nil {
+		return DefaultCoa()
+	}
+	stored, found, err := w.coa.Get(ctx, tenantType, tenantID)
+	if err != nil {
+		w.log.Debug("coa load failed; using defaults", "tenant", tenantID, "err", err)
+		return DefaultCoa()
+	}
+	return ResolveCoa(stored, found)
+}
+
 func (w *ExportWorker) exportJournals(ctx context.Context, tenantType, tenantID string, from, to time.Time) ([]map[string]any, error) {
 	out := make([]map[string]any, 0)
 	if w.spanner == nil {
 		return out, nil
 	}
-	arRows, err := w.exportJournalsAR(ctx, tenantType, tenantID, from, to, MaxExportRows)
+	coa := w.resolveTenantCoa(ctx, tenantType, tenantID)
+	arRows, err := w.exportJournalsAR(ctx, tenantType, tenantID, from, to, MaxExportRows, coa)
 	if err != nil {
 		// Best-effort: schema drift → continue with payment side.
 		arRows = nil
@@ -92,7 +103,7 @@ func (w *ExportWorker) exportJournals(ctx context.Context, tenantType, tenantID 
 	if remain <= 0 {
 		return out[:MaxExportRows], nil
 	}
-	payRows, err := w.exportJournalsPayment(ctx, tenantType, tenantID, from, to, remain)
+	payRows, err := w.exportJournalsPayment(ctx, tenantType, tenantID, from, to, remain, coa)
 	if err != nil {
 		return out, nil
 	}
@@ -103,7 +114,7 @@ func (w *ExportWorker) exportJournals(ctx context.Context, tenantType, tenantID 
 	return out, nil
 }
 
-func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantID string, from, to time.Time, lim int) ([]map[string]any, error) {
+func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantID string, from, to time.Time, lim int, coa CoaMap) ([]map[string]any, error) {
 	if lim <= 0 {
 		return nil, nil
 	}
@@ -151,7 +162,7 @@ func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantI
 		if orderID == "" {
 			orderID = refOrder
 		}
-		debit, credit := mapARJournalAccounts(entryType)
+		debit, credit := mapARJournalAccounts(coa, entryType)
 		amt := absMinor(amount)
 		memo := fmt.Sprintf("AR %s invoice=%s", strings.ToUpper(entryType), invID)
 		if invStatus != "" {
@@ -178,7 +189,7 @@ func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantI
 	return out, nil
 }
 
-func (w *ExportWorker) exportJournalsPayment(ctx context.Context, tenantType, tenantID string, from, to time.Time, lim int) ([]map[string]any, error) {
+func (w *ExportWorker) exportJournalsPayment(ctx context.Context, tenantType, tenantID string, from, to time.Time, lim int, coa CoaMap) ([]map[string]any, error) {
 	if lim <= 0 {
 		return nil, nil
 	}
@@ -218,7 +229,7 @@ func (w *ExportWorker) exportJournalsPayment(ctx context.Context, tenantType, te
 			&amount, &currency, &refID, &source, &occurred); err != nil {
 			return nil, err
 		}
-		debit, credit := mapPaymentJournalAccounts(entryType)
+		debit, credit := mapPaymentJournalAccounts(coa, entryType)
 		amt := absMinor(amount)
 		memo := fmt.Sprintf("Payment %s", strings.ToUpper(entryType))
 		if gateway != "" {

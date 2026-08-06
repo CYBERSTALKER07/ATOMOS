@@ -7,26 +7,38 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
-// RegisterPartnerRoutes mounts /partner/v1/* behind partner API key auth.
+// RegisterPartnerRoutes mounts /partner/v1/* behind partner API key / OAuth auth.
 func RegisterPartnerRoutes(r chi.Router, keys KeyRepository, h *Handlers) {
+	RegisterPartnerRoutesOpts(r, AuthOptions{Keys: keys}, h)
+}
+
+// RegisterPartnerRoutesOpts mounts partner routes with OAuth JWT dual-accept.
+func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) {
 	r.Route("/partner/v1", func(pr chi.Router) {
-		pr.Use(AuthMiddleware(keys))
-		pr.With(RequirePartner(ScopeOrdersWrite)).Post("/orders", h.HandleCreateOrder)
-		pr.With(RequirePartner(ScopeOrdersRead)).Get("/orders/{orderID}", h.HandleGetOrder)
-		pr.With(RequirePartner(ScopeCatalogRead)).Get("/catalog", h.HandleCatalog)
-		pr.With(RequirePartner(ScopeInventoryRead)).Get("/inventory/availability", h.HandleAvailability)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Get("/webhooks", h.HandleListWebhooks)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks", h.HandleCreateWebhook)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Delete("/webhooks/{subscriptionID}", h.HandleDeactivateWebhook)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks/{subscriptionID}/ping", h.HandlePingWebhook)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Get("/webhooks/dead-letter", h.HandleListDeadLetter)
-		pr.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks/dead-letter/{attemptID}/replay", h.HandleReplayDeadLetter)
-		pr.With(RequirePartner(ScopeExportsRead)).Post("/exports", h.HandleCreateExport)
-		pr.With(RequirePartner(ScopeExportsRead)).Get("/exports", h.HandleListExports)
-		pr.With(RequirePartner(ScopeExportsRead)).Get("/exports/{jobID}", h.HandleGetExport)
-		pr.With(RequirePartner(ScopeExportsRead)).Get("/edi/documents", h.HandleListEdiDocuments)
-		pr.With(RequirePartner(ScopeExportsRead)).Get("/edi/documents/{documentID}", h.HandleGetEdiDocument)
-		pr.With(RequirePartner(ScopeExportsRead)).Post("/edi/documents/{documentID}/replay", h.HandleReplayEdiDocument)
+		// Token endpoint is unauthenticated (client_credentials).
+		pr.Post("/oauth/token", h.HandleOAuthToken)
+
+		pr.Group(func(ar chi.Router) {
+			ar.Use(AuthMiddlewareOpts(authOpts))
+			ar.With(RequirePartner(ScopeOrdersWrite)).Post("/orders", h.HandleCreateOrder)
+			ar.With(RequirePartner(ScopeOrdersRead)).Get("/orders/{orderID}", h.HandleGetOrder)
+			ar.With(RequirePartner(ScopeCatalogRead)).Get("/catalog", h.HandleCatalog)
+			ar.With(RequirePartner(ScopeInventoryRead)).Get("/inventory/availability", h.HandleAvailability)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Get("/webhooks", h.HandleListWebhooks)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks", h.HandleCreateWebhook)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Delete("/webhooks/{subscriptionID}", h.HandleDeactivateWebhook)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks/{subscriptionID}/ping", h.HandlePingWebhook)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Get("/webhooks/dead-letter", h.HandleListDeadLetter)
+			ar.With(RequirePartner(ScopeWebhooksManage)).Post("/webhooks/dead-letter/{attemptID}/replay", h.HandleReplayDeadLetter)
+			ar.With(RequirePartner(ScopeExportsRead)).Post("/exports", h.HandleCreateExport)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/exports", h.HandleListExports)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/exports/{jobID}", h.HandleGetExport)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/edi/documents", h.HandleListEdiDocuments)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/edi/documents/{documentID}", h.HandleGetEdiDocument)
+			ar.With(RequirePartner(ScopeExportsRead)).Post("/edi/documents/{documentID}/replay", h.HandleReplayEdiDocument)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/coa", h.HandleGetCoa)
+			ar.With(RequirePartner(ScopeExportsRead)).Put("/coa", h.HandlePutCoa)
+		})
 	})
 }
 
@@ -55,9 +67,13 @@ func RegisterAdminKeyRoutes(r chi.Router, h *Handlers) {
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-edi/documents", h.HandleListEdiDocuments)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-edi/documents/{documentID}", h.HandleGetEdiDocument)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-edi/documents/{documentID}/replay", h.HandleReplayEdiDocument)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-coa", h.HandleGetCoa)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-coa", h.HandlePutCoa)
 
 	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-sftp", h.HandleGetSftp)
 	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Put("/v1/admin/partner-sftp", h.HandlePutSftp)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-coa", h.HandleGetCoa)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Put("/v1/admin/partner-coa", h.HandlePutCoa)
 }
 
 // PartnerRateLimitKey returns a limiter key for reliability middleware (KeyId).

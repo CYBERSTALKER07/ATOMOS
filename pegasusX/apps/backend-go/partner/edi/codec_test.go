@@ -51,3 +51,63 @@ func TestOutboundBuilders(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildDESADV_SSCCPacking(t *testing.T) {
+	o := OrderSnapshot{
+		OrderID: "o1", RetailerID: "ret-1", SupplierID: "sup-1",
+		ManifestID: "m1", Status: "LOADED", Currency: "UZS", TotalMinor: 150000,
+		Lines: []Line{{SKU: "A", Qty: 2}},
+		ShipUnits: []ShipUnit{
+			{ManifestID: "m1", SSCC: "003761234567890123", OrderID: "o1", Sequence: 0, GTIN: "01234567890128"},
+		},
+	}
+	body := BuildDESADV(o, "desadv-1")
+	_, segs, err := ParseUNAFile(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"RFF": false, "CPS": false, "PAC": false, "GIN": false}
+	ginBJ, ginBN := false, false
+	for _, s := range segs {
+		switch s.Tag {
+		case "RFF":
+			if s.Elem(0) == "PK:m1" {
+				want["RFF"] = true
+			}
+		case "CPS":
+			want["CPS"] = true
+		case "PAC":
+			want["PAC"] = true
+		case "GIN":
+			want["GIN"] = true
+			if s.Elem(0) == "BJ" && s.Elem(1) == "003761234567890123" {
+				ginBJ = true
+			}
+			if s.Elem(0) == "BN" && s.Elem(1) == "01234567890128" {
+				ginBN = true
+			}
+		}
+	}
+	for tag, ok := range want {
+		if !ok {
+			t.Fatalf("missing %s in DESADV:\n%s", tag, body)
+		}
+	}
+	if !ginBJ {
+		t.Fatalf("missing GIN+BJ+SSCC:\n%s", body)
+	}
+	if !ginBN {
+		t.Fatalf("missing GIN+BN+GTIN:\n%s", body)
+	}
+}
+
+func TestBuildDESADV_NoShipUnitsOmitsPacking(t *testing.T) {
+	o := OrderSnapshot{
+		OrderID: "o1", RetailerID: "ret-1", SupplierID: "sup-1",
+		Status: "LOADED", Lines: []Line{{SKU: "A", Qty: 1}},
+	}
+	body := BuildDESADV(o, "")
+	if strings.Contains(body, "GIN+") || strings.Contains(body, "CPS+") {
+		t.Fatalf("unexpected packing segments:\n%s", body)
+	}
+}

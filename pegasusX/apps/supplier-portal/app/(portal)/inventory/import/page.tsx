@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -38,6 +39,7 @@ function prettyStatus(value: string): string {
 }
 
 export default function InventoryImportPage() {
+  const t = usePortalT();
   const [step, setStep] = useState<WizardStep>("upload");
   const [csvText, setCsvText] = useState(sampleCsv);
   const [fileName, setFileName] = useState("inventory.csv");
@@ -81,7 +83,7 @@ export default function InventoryImportPage() {
       setMappings(mapping.mapping_json?.mappings ?? []);
       setStep("mapping");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "import_wizard_failed");
+      setError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.import_wizard_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -100,7 +102,7 @@ export default function InventoryImportPage() {
       setSession(refreshed);
       setStep("review");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "import_approve_failed");
+      setError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.import_approve_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +122,7 @@ export default function InventoryImportPage() {
       setSession(refreshed);
       setStep("done");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "import_apply_failed");
+      setError(err instanceof ApiError ? err.message : t("supplier_portal.residual.text.import_apply_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -142,8 +144,8 @@ export default function InventoryImportPage() {
   return (
     <PageChrome
       icon="inventory"
-      title="Inventory import wizard"
-      description="Upload CSV, review column mapping, approve, and apply to warehouse inventory."
+      title={t("supplier_portal.inventory.import.text.inventory_import_wizard")}
+      description={t("supplier_portal.residual.text.upload_csv_review_column_mapping_approve_and_apply_to_warehouse_")}
       error={error}
     >
       <div className="mb-4 flex flex-wrap gap-2 md-typescale-label-large">
@@ -160,8 +162,8 @@ export default function InventoryImportPage() {
       {step === "upload" ? (
         <>
           <p className="mb-4 md-typescale-body-medium text-[var(--color-md-outline)]">
-            Required columns: <code>product_id</code>, <code>warehouse_id</code>,{" "}
-            <code>quantity_on_hand</code>. Optional: <code>reorder_threshold</code>. Warehouse ids
+            Required columns: <code>{t("supplier_portal.residual.text.product_id")}</code>, <code>{t("supplier_portal.residual.text.warehouse_id")}</code>,{" "}
+            <code>{t("supplier_portal.residual.text.quantity_on_hand")}</code>. Optional: <code>{t("supplier_portal.residual.text.reorder_threshold")}</code>. Warehouse ids
             must exist in{" "}
             <Link href="/topology" className="text-[var(--color-md-primary)] underline">
               topology
@@ -205,14 +207,14 @@ export default function InventoryImportPage() {
             {session.total_rows ? ` · ${session.total_rows} rows staged` : null}
           </p>
           {mappings.length === 0 ? (
-            <p className="mt-3 text-[var(--color-md-outline)]">No mapping suggestions returned.</p>
+            <p className="mt-3 text-[var(--color-md-outline)]">{t("supplier_portal.inventory.import.text.no_mapping_suggestions_returned")}</p>
           ) : (
             <table className="w-full mt-4 text-sm">
               <thead>
                 <tr className="text-left border-b border-[var(--color-md-outline-variant)]">
-                  <th className="py-2 pr-4">Source column</th>
-                  <th className="py-2 pr-4">Target field</th>
-                  <th className="py-2">Confidence</th>
+                  <th className="py-2 pr-4">{t("supplier_portal.inventory.import.text.source_column")}</th>
+                  <th className="py-2 pr-4">{t("supplier_portal.inventory.import.text.target_field")}</th>
+                  <th className="py-2">{t("supplier_portal.inventory.import.text.confidence")}</th>
                 </tr>
               </thead>
               <tbody>

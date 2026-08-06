@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
@@ -12,6 +13,7 @@ const api = createSupplierApi();
 const PRESETS = [8, 24, 48, 72] as const;
 
 export default function ReturnPolicySettingsPage() {
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function ReturnPolicySettingsPage() {
       setAllowExpired(Boolean(p.allow_expired_claims));
       setSourceHint(p.policy_source_hint || "");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load return policy");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_return_policy"));
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export default function ReturnPolicySettingsPage() {
 
   async function save() {
     if (hours < 1 || hours > 168) {
-      setError("Default window must be between 1 and 168 hours");
+      setError(t("supplier_portal.residual.text.default_window_must_be_between_1_and_168_hours"));
       return;
     }
     setSaving(true);
@@ -73,7 +75,7 @@ export default function ReturnPolicySettingsPage() {
       setSourceHint(savedPolicy.policy_source_hint || "SUPPLIER");
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.configuration.countries.error.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -81,18 +83,18 @@ export default function ReturnPolicySettingsPage() {
 
   return (
     <PageChrome
-      title="Return policy"
-      subtitle="Claim filing windows applied when orders complete. Retailers see the countdown from this policy."
+      title={t("portal.nav.return_policy")}
+      subtitle={t("supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_")}
     >
       {loading ? (
-        <p className="text-sm text-[var(--desk-text-secondary)]">Loading…</p>
+        <p className="text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.loading")}</p>
       ) : (
         <div className="mx-auto max-w-xl space-y-6">
           {error && (
             <p className="text-sm font-semibold text-red-600">{error}</p>
           )}
           {saved && (
-            <p className="text-sm text-emerald-700">Return policy saved.</p>
+            <p className="text-sm text-emerald-700">{t("supplier_portal.settings.return_policy.text.return_policy_saved")}</p>
           )}
           {sourceHint && (
             <p className="text-xs text-[var(--desk-text-secondary)]">
@@ -142,7 +144,7 @@ export default function ReturnPolicySettingsPage() {
               max={168}
               value={concealed}
               onChange={(e) => setConcealed(e.target.value)}
-              placeholder="Same as default"
+              placeholder={t("supplier_portal.settings.return_policy.text.same_as_default")}
               className="w-full rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 py-2"
             />
           </div>

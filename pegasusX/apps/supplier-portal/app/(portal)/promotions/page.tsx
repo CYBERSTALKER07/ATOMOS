@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -38,6 +39,7 @@ const emptyForm = (): SupplierPromotionUpsertRequest => ({
 });
 
 export default function PromotionsPage() {
+  const t = usePortalT();
   const [promotions, setPromotions] = useState<SupplierPromotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function PromotionsPage() {
       const res = await api.listSupplierPromotions();
       setPromotions(res.promotions ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load promotions");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_promotions"));
     } finally {
       setLoading(false);
     }
@@ -93,7 +95,7 @@ export default function PromotionsPage() {
       );
       setSimResults((prev) => ({ ...prev, [promo.promotion_id]: result }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "P&L simulation failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.p_and_l_simulation_failed"));
     } finally {
       setSimulatingId(null);
     }
@@ -153,7 +155,7 @@ export default function PromotionsPage() {
       resetForm();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.configuration.countries.error.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -171,15 +173,15 @@ export default function PromotionsPage() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Deactivate failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.deactivate_failed"));
     }
   }
 
   return (
     <PageChrome
       icon="pricing"
-      title="Promotions"
-      description="Product, category, and volume-based sales with retailer targeting and time windows."
+      title={t("portal.nav.promotions")}
+      description={t("supplier_portal.residual.text.product_category_and_volume_based_sales_with_retailer_targeting_")}
       loading={loading}
       error={error}
       empty={!loading && promotions.length === 0}
@@ -197,7 +199,7 @@ export default function PromotionsPage() {
             ) : null}
           </div>
           <form className="space-y-3" onSubmit={handleSubmit}>
-            <Field label="Name">
+            <Field label={t("supplier_portal.analytics.knowledge_graph.text.name")}>
               <input
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.name}
@@ -205,14 +207,14 @@ export default function PromotionsPage() {
                 required
               />
             </Field>
-            <Field label="Description">
+            <Field label={t("supplier_portal.analytics.demand.signals.text.description")}>
               <input
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.description ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
             </Field>
-            <Field label="Discount (bps, 500 = 5%)">
+            <Field label={t("supplier_portal.residual.text.discount_bps_500_5")}>
               <input
                 type="number"
                 min={1}
@@ -225,7 +227,7 @@ export default function PromotionsPage() {
                 required
               />
             </Field>
-            <Field label="Scope">
+            <Field label={t("supplier_portal.analytics.demand.signals.text.scope")}>
               <select
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.scope_type}
@@ -244,7 +246,7 @@ export default function PromotionsPage() {
               </select>
             </Field>
             {form.scope_type === "PRODUCT" ? (
-              <Field label="Product ID">
+              <Field label={t("supplier_portal.analytics.demand.signals.text.product_id")}>
                 <input
                   className="md-input-outlined w-full px-3 py-2"
                   value={form.scope_product_id ?? ""}
@@ -256,7 +258,7 @@ export default function PromotionsPage() {
               </Field>
             ) : null}
             {form.scope_type === "CATEGORY" ? (
-              <Field label="Category ID">
+              <Field label={t("supplier_portal.residual.text.category_id")}>
                 <input
                   className="md-input-outlined w-full px-3 py-2"
                   value={form.scope_category_id ?? ""}
@@ -267,7 +269,7 @@ export default function PromotionsPage() {
                 />
               </Field>
             ) : null}
-            <Field label="Retailer scope">
+            <Field label={t("supplier_portal.residual.text.retailer_scope")}>
               <select
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.retailer_scope ?? "ALL"}
@@ -278,12 +280,12 @@ export default function PromotionsPage() {
                   }))
                 }
               >
-                <option value="ALL">ALL retailers</option>
-                <option value="ALLOWLIST">Specific retailers</option>
+                <option value="ALL">{t("supplier_portal.promotions.text.all_retailers")}</option>
+                <option value="ALLOWLIST">{t("supplier_portal.promotions.text.specific_retailers")}</option>
               </select>
             </Field>
             {form.retailer_scope === "ALLOWLIST" ? (
-              <Field label="Retailer IDs (one per line)">
+              <Field label={t("supplier_portal.residual.text.retailer_ids_one_per_line")}>
                 <textarea
                   className="md-input-outlined w-full px-3 py-2 min-h-[88px]"
                   value={retailerIdsText}
@@ -292,7 +294,7 @@ export default function PromotionsPage() {
               </Field>
             ) : null}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Min line qty (packs)">
+              <Field label={t("supplier_portal.residual.text.min_line_qty_packs")}>
                 <input
                   type="number"
                   min={0}
@@ -303,7 +305,7 @@ export default function PromotionsPage() {
                   }
                 />
               </Field>
-              <Field label="Min order (minor units)">
+              <Field label={t("supplier_portal.residual.text.min_order_minor_units")}>
                 <input
                   type="number"
                   min={0}
@@ -319,7 +321,7 @@ export default function PromotionsPage() {
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Starts at (RFC3339)">
+              <Field label={t("supplier_portal.residual.text.starts_at_rfc3339")}>
                 <input
                   className="md-input-outlined w-full px-3 py-2"
                   placeholder="2026-06-11T00:00:00Z"
@@ -329,7 +331,7 @@ export default function PromotionsPage() {
                   }
                 />
               </Field>
-              <Field label="Ends at (RFC3339)">
+              <Field label={t("supplier_portal.residual.text.ends_at_rfc3339")}>
                 <input
                   className="md-input-outlined w-full px-3 py-2"
                   placeholder="2026-12-31T23:59:59Z"
@@ -340,7 +342,7 @@ export default function PromotionsPage() {
                 />
               </Field>
             </div>
-            <Field label="Priority (higher wins ties)">
+            <Field label={t("supplier_portal.residual.text.priority_higher_wins_ties")}>
               <input
                 type="number"
                 className="md-input-outlined w-full px-3 py-2"
@@ -362,7 +364,7 @@ export default function PromotionsPage() {
 
         <section className="md-card p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="md-typescale-title-medium font-semibold">Active rules</h2>
+            <h2 className="md-typescale-title-medium font-semibold">{t("supplier_portal.promotions.text.active_rules")}</h2>
             <span className="md-chip">{activeCount} active</span>
           </div>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto">
@@ -412,25 +414,25 @@ export default function PromotionsPage() {
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 md-typescale-label-small text-[var(--color-md-outline)]">
                   {promo.scope_product_id ? (
                     <>
-                      <dt>Product</dt>
+                      <dt>{t("supplier_portal.admin.empathy.hierarchy.product.level")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">{promo.scope_product_id}</dd>
                     </>
                   ) : null}
                   {promo.scope_category_id ? (
                     <>
-                      <dt>Category</dt>
+                      <dt>{t("supplier_portal.catalog.components.catalog_table.text.category")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">{promo.scope_category_id}</dd>
                     </>
                   ) : null}
                   {promo.min_line_quantity ? (
                     <>
-                      <dt>Min qty</dt>
+                      <dt>{t("supplier_portal.promotions.text.min_qty")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">{promo.min_line_quantity}</dd>
                     </>
                   ) : null}
                   {promo.min_order_amount_minor ? (
                     <>
-                      <dt>Min order</dt>
+                      <dt>{t("supplier_portal.promotions.text.min_order")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">
                         {promo.min_order_amount_minor}
                       </dd>
@@ -438,30 +440,30 @@ export default function PromotionsPage() {
                   ) : null}
                   {promo.starts_at ? (
                     <>
-                      <dt>Starts</dt>
+                      <dt>{t("supplier_portal.promotions.text.starts")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">{promo.starts_at}</dd>
                     </>
                   ) : null}
                   {promo.ends_at ? (
                     <>
-                      <dt>Ends</dt>
+                      <dt>{t("supplier_portal.promotions.text.ends")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">{promo.ends_at}</dd>
                     </>
                   ) : null}
                 </dl>
                 {simResults[promo.promotion_id] ? (
                   <div className="mt-3 rounded-lg border border-[var(--border)] p-3 md-typescale-body-small">
-                    <div className="font-semibold mb-1">Sandbox P&L projection</div>
+                    <div className="font-semibold mb-1">{t("supplier_portal.promotions.text.sandbox_p_and_l_projection")}</div>
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[var(--color-md-outline)]">
-                      <dt>Volume</dt>
+                      <dt>{t("supplier_portal.promotions.text.volume")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">
                         {simResults[promo.promotion_id].projected_volume}
                       </dd>
-                      <dt>Margin</dt>
+                      <dt>{t("supplier_portal.promotions.text.margin")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">
                         {simResults[promo.promotion_id].projected_margin_minor}
                       </dd>
-                      <dt>Margin Δ</dt>
+                      <dt>{t("supplier_portal.promotions.text.margin_2")}</dt>
                       <dd className="text-[var(--color-md-on-surface)]">
                         {simResults[promo.promotion_id].margin_delta_pct.toFixed(1)}%
                       </dd>

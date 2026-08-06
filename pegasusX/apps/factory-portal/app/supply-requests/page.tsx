@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-client';
 import type { SupplyFulfillOptions } from '@pegasusx/types';
@@ -39,6 +40,7 @@ function formatSyncTime(value: number | null) {
 }
 
 export default function SupplyRequestsPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,8 +319,8 @@ export default function SupplyRequestsPage() {
     <PageTransition>
       <PageChrome
         icon="supplyRequests"
-        title="Supply requests"
-        description="Factory operators review and advance warehouse demand from this queue."
+        title={t("factory_portal.supply_requests.text.supply_requests")}
+        description={t("factory_portal.residual.text.factory_operators_review_and_advance_warehouse_demand_from_this_")}
         loading={loading}
         skeletonVariant="table"
         error={fatalError}
@@ -337,7 +339,7 @@ export default function SupplyRequestsPage() {
 
         <SupplyRequestHeader requests={requests} />
 
-        <PageSection title="Queue filter" description={`${filtered.length} request${filtered.length !== 1 ? 's' : ''} in view`} className="mt-6">
+        <PageSection title={t("factory_portal.supply_requests.text.queue_filter")} description={`${filtered.length} request${filtered.length !== 1 ? 's' : ''} in view`} className="mt-6">
           <div className="flex gap-2 flex-wrap items-center justify-between">
           <div className="flex gap-2 flex-wrap">
             {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
@@ -357,8 +359,8 @@ export default function SupplyRequestsPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <button type="button" className={`portal-btn ${viewMode === 'table' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('table')}>Table</button>
-            <button type="button" className={`portal-btn ${viewMode === 'board' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('board')}>Board</button>
+            <button type="button" className={`portal-btn ${viewMode === 'table' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('table')}>{t("factory_portal.supply_requests.text.table")}</button>
+            <button type="button" className={`portal-btn ${viewMode === 'board' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('board')}>{t("factory_portal.supply_requests.text.board")}</button>
           </div>
           </div>
         </PageSection>
@@ -413,20 +415,20 @@ export default function SupplyRequestsPage() {
         {fulfillModal ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-lg rounded-2xl border bg-[var(--background)] p-6 space-y-4">
-              <h3 className="text-lg font-semibold">Confirm fulfill</h3>
+              <h3 className="text-lg font-semibold">{t("factory_portal.supply_requests.text.confirm_fulfill")}</h3>
               <p className="text-sm opacity-80">
                 Warehouse: {fulfillModal.options.warehouse_name} · Mode: {fulfillModal.options.transfer_mode}
                 {fulfillModal.options.co_located ? ' · Co-located site' : ''}
               </p>
               <div className="rounded-lg border p-3 text-sm space-y-2" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
-                <p><strong>INTERNAL:</strong> {fulfillModal.options.outcome_internal}</p>
-                <p><strong>TRUCK:</strong> {fulfillModal.options.outcome_truck}</p>
+                <p><strong>{t("factory_portal.supply_requests.text.internal")}</strong> {fulfillModal.options.outcome_internal}</p>
+                <p><strong>{t("factory_portal.supply_requests.text.truck")}</strong> {fulfillModal.options.outcome_truck}</p>
                 {fulfillModal.options.linked_driver_eta ? (
                   <p className="text-xs opacity-70">Linked transfer updated: {new Date(fulfillModal.options.linked_driver_eta).toLocaleString()}</p>
                 ) : null}
               </div>
               <div className="flex gap-2 justify-end">
-                <button type="button" className="portal-btn portal-btn--ghost" onClick={() => setFulfillModal(null)}>Cancel</button>
+                <button type="button" className="portal-btn portal-btn--ghost" onClick={() => setFulfillModal(null)}>{t("common.action.cancel")}</button>
                 <button
                   type="button"
                   className="portal-btn portal-btn--primary"
@@ -437,7 +439,7 @@ export default function SupplyRequestsPage() {
                     void runTransition(req, 'FULFILL');
                   }}
                 >
-                  Confirm fulfill
+                  {t("factory_portal.supply_requests.text.confirm_fulfill")}
                 </button>
               </div>
             </div>

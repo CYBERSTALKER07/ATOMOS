@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 type ToastType = 'info' | 'success' | 'error' | 'warning';
@@ -24,6 +25,7 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue>({ toast: () => {} });
 
 export function useToast() {
+  const t = usePortalT();
   return useContext(ToastContext);
 }
 
@@ -119,7 +121,7 @@ function ToastCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      title="Swipe left or right to dismiss"
+      title={t("warehouse_portal.toast.text.swipe_left_or_right_to_dismiss")}
     >
       <span className="flex-1" style={{ paddingRight: 8 }}>{toast.message}</span>
       {toast.action && (
@@ -144,7 +146,7 @@ function ToastCard({
         }}
         className="ml-1 opacity-70 hover:opacity-100"
         style={{ color: typeStyle.fg }}
-        aria-label="Dismiss"
+        aria-label={t("warehouse_portal.toast.text.dismiss")}
       >
         x
       </button>

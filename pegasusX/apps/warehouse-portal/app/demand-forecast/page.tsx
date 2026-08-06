@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import type { ForecastConfidence, WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
@@ -37,6 +38,7 @@ interface Forecast {
 }
 
 export default function DemandForecastPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,8 +122,8 @@ export default function DemandForecastPage() {
     <PageTransition>
       <PageChrome
         icon="forecast"
-        title="Demand Forecast"
-        description="AI-powered stock recommendations from 4 data sources."
+        title={t("portal.nav.demand_forecast")}
+        description={t("warehouse_portal.residual.text.ai_powered_stock_recommendations_from_4_data_sources")}
         loading={loading}
         actions={
           <div className="flex items-center gap-2">
@@ -156,7 +158,7 @@ export default function DemandForecastPage() {
       {!loading && products.length === 0 ? (
         <div className="text-center py-20 text-[var(--muted)]">
           <Icon name="forecast" size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No products tracked yet</p>
+          <p className="text-sm">{t("warehouse_portal.demand_forecast.text.no_products_tracked_yet")}</p>
         </div>
       ) : !loading ? (
         <ForecastSkuTable products={products} />

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -51,6 +52,7 @@ function BrandMark({ size = 96 }: { size?: number }) {
 }
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = usePortalT();
   const { resolved, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolved === 'dark';
@@ -81,23 +83,23 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      <aside className="auth-brand-panel px-auth-brand" aria-label="pegasusX Warehouse">
+      <aside className="auth-brand-panel px-auth-brand" aria-label={t("warehouse_portal.auth.text.pegasusx_warehouse")}>
         <div className={`auth-brand-content px-auth-brand-content ${mounted ? 'auth-brand-enter' : ''}`}>
           <BrandMark size={88} />
           <div className="px-auth-brand-copy">
-            <p className="px-auth-brand-eyebrow">pegasusX</p>
-            <h1 className="px-auth-brand-title">Warehouse node</h1>
+            <p className="px-auth-brand-eyebrow">{t("warehouse_portal.residual.text.pegasusx")}</p>
+            <h1 className="px-auth-brand-title">{t("warehouse_portal.auth.text.warehouse_node")}</h1>
             <p className="px-auth-brand-sub">
               Dispatch, inventory, and fleet control for your depot — one account, one node.
             </p>
           </div>
         </div>
-        <p className="auth-brand-footer px-auth-brand-footer">pegasusX &copy; 2026</p>
+        <p className="auth-brand-footer px-auth-brand-footer">{t("warehouse_portal.auth.text.pegasusx_and_copy_2026")}</p>
       </aside>
 
       <div className="auth-form-panel px-auth-form">
         <div className="px-auth-form-top">
-          <p className="px-auth-form-kicker lg:hidden">pegasusX Warehouse</p>
+          <p className="px-auth-form-kicker lg:hidden">{t("warehouse_portal.auth.text.pegasusx_warehouse")}</p>
           <ThemeToggle
             isDark={isDark}
             onToggle={toggleTheme}

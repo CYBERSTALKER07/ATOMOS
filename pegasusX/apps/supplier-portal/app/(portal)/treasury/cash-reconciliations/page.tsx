@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { CashReconciliationRow } from "@pegasusx/types";
@@ -13,6 +14,7 @@ function formatMinor(n: number): string {
 }
 
 export default function CashReconciliationsPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<CashReconciliationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function CashReconciliationsPage() {
       const resp = await api.listCashReconciliations({ status: "PENDING", limit: 100 });
       setRows(resp.reconciliations ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
       setRows([]);
     } finally {
       setLoading(false);
@@ -44,7 +46,7 @@ export default function CashReconciliationsPage() {
       setNote("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "accept_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.accept_failed"));
     } finally {
       setBusyId(null);
     }
@@ -57,7 +59,7 @@ export default function CashReconciliationsPage() {
       setNote("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "write_off_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.write_off_failed"));
     } finally {
       setBusyId(null);
     }
@@ -65,19 +67,19 @@ export default function CashReconciliationsPage() {
 
   return (
     <PageChrome
-      title="Cash reconciliations"
-      description="Driver-declared cash vs captured CASH payment legs — resolve open discrepancies."
+      title={t("portal.nav.cash_reconciliations")}
+      description={t("supplier_portal.residual.text.driver_declared_cash_vs_captured_cash_payment_legs_resolve_open_")}
       icon="treasury"
       loading={loading}
       error={error}
       empty={!loading && rows.length === 0}
-      emptyMessage="No open cash discrepancies. Drivers auto-accept when declared matches expected."
+      emptyMessage={t("supplier_portal.residual.text.no_open_cash_discrepancies_drivers_auto_accept_when_declared_mat")}
     >
       <div className="mb-4">
-        <label className="block text-sm text-[var(--color-md-outline)] mb-1">Finance note (optional)</label>
+        <label className="block text-sm text-[var(--color-md-outline)] mb-1">{t("supplier_portal.treasury.cash_reconciliations.text.finance_note_optional")}</label>
         <input
           className="md-input w-full max-w-md"
-          placeholder="Verification note for accept / write-off"
+          placeholder={t("supplier_portal.treasury.cash_reconciliations.text.verification_note_for_accept_write_off")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />

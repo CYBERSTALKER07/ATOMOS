@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +24,7 @@ import {
 } from "./wizard-state";
 
 export default function FactoryRegisterPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,7 +65,7 @@ export default function FactoryRegisterPage() {
           verification: { otpCode: "", idToken: "" },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+        setSubmitError(err instanceof Error ? err.message : t("factory_portal.residual.text.failed_to_send_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -81,7 +83,7 @@ export default function FactoryRegisterPage() {
           verification: { ...s.verification, idToken },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+        setSubmitError(err instanceof Error ? err.message : t("factory_portal.residual.text.invalid_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -142,7 +144,7 @@ export default function FactoryRegisterPage() {
 
   return (
     <AuthRegisterShell
-      title="Set up your factory account"
+      title={t("factory_portal.auth.register.text.set_up_your_factory_account")}
       subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
       stepOrder={STEP_ORDER}
       stepLabels={STEP_LABELS}

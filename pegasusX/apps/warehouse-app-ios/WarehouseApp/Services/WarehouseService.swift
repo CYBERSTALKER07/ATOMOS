@@ -121,6 +121,87 @@ enum WarehouseService {
         )
     }
 
+    static func createBin(locationId: String?, zone: String, locationType: String = "STAGE") async throws -> WarehouseBinLocation {
+        try await api.post(
+            "v1/warehouse/ops/bins",
+            body: WarehouseBinCreateRequest(
+                locationId: locationId,
+                zone: zone,
+                locationType: locationType,
+                pickSequence: 0
+            ),
+            idempotencyKey: "warehouse-bin-\(zone)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func putawayLot(
+        productId: String,
+        locationId: String,
+        quantity: Int,
+        expiryDate: String? = nil,
+        lotCode: String? = nil
+    ) async throws -> StockLotPutawayResponse {
+        try await api.post(
+            "v1/warehouse/ops/lots/putaway",
+            body: StockLotPutawayRequest(
+                productId: productId,
+                locationId: locationId,
+                quantity: quantity,
+                lotCode: lotCode,
+                expiryDate: expiryDate
+            ),
+            idempotencyKey: "warehouse-putaway-\(productId)-\(locationId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func listPickWaves(manifestId: String? = nil) async throws -> PickWaveListResponse {
+        var path = "v1/warehouse/ops/pick-waves"
+        if let manifestId, !manifestId.isEmpty {
+            path += "?manifest_id=\(manifestId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? manifestId)"
+        }
+        return try await api.get(path)
+    }
+
+    static func createPickWave(manifestId: String) async throws -> PickWave {
+        try await api.post(
+            "v1/warehouse/ops/pick-waves",
+            body: PickWaveCreateRequest(manifestId: manifestId),
+            idempotencyKey: "warehouse-pick-wave-\(manifestId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func getPickWave(waveId: String) async throws -> PickWave {
+        try await api.get("v1/warehouse/ops/pick-waves/\(waveId)")
+    }
+
+    static func confirmPickTask(waveId: String, taskId: String, quantityPicked: Int? = nil) async throws -> PickWave {
+        try await api.post(
+            "v1/warehouse/ops/pick-waves/\(waveId)/tasks/\(taskId)/confirm",
+            body: PickTaskConfirmRequest(quantityPicked: quantityPicked),
+            idempotencyKey: "warehouse-pick-confirm-\(waveId)-\(taskId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func listCycleCounts() async throws -> CycleCountListResponse {
+        try await api.get("v1/warehouse/ops/cycle-counts")
+    }
+
+    static func createCycleCount(locationId: String, productId: String, expectedQty: Int? = nil) async throws -> CycleCount {
+        try await api.post(
+            "v1/warehouse/ops/cycle-counts",
+            body: CycleCountCreateRequest(locationId: locationId, productId: productId, expectedQty: expectedQty),
+            idempotencyKey: "warehouse-cycle-\(locationId)-\(productId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func submitCycleCount(countId: String, countedQty: Int) async throws -> CycleCount {
+        try await api.post(
+            "v1/warehouse/ops/cycle-counts/\(countId)/submit",
+            body: CycleCountSubmitRequest(countedQty: countedQty),
+            idempotencyKey: "warehouse-cycle-submit-\(countId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
     static func patchInventoryPolicy(productId: String, policy: String) async throws {
         try await api.patchVoid(
             "v1/warehouse/ops/inventory/\(productId)/policy",

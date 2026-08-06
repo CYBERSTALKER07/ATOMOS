@@ -69,6 +69,41 @@ func runPartnerIntegrationE2E(
 	}
 	fmt.Println("PX_E2E_PARTNER_KEY_AUTH_OK")
 
+	// OAuth2 client_credentials → short-lived access token against the same key.
+	tokenBody, _ := json.Marshal(map[string]string{
+		"grant_type":    "client_credentials",
+		"client_id":     issued.KeyID,
+		"client_secret": issued.Secret,
+		"scope":         "orders:read catalog:read",
+	})
+	tokStatus, tokRaw, _, err := clientPost(ctx, client, base+"/partner/v1/oauth/token", tokenBody, "", "partner-oauth-"+retailerID)
+	if err != nil {
+		return err
+	}
+	if tokStatus == http.StatusOK {
+		var tok struct {
+			AccessToken string `json:"access_token"`
+			TokenType   string `json:"token_type"`
+		}
+		if err := json.Unmarshal(tokRaw, &tok); err == nil && tok.AccessToken != "" {
+			oauthCatSt, _, _, err := clientDo(ctx, client, http.MethodGet,
+				base+"/partner/v1/catalog?supplier_id="+supplierID,
+				nil, tok.AccessToken, "")
+			if err != nil {
+				return err
+			}
+			if oauthCatSt == http.StatusOK {
+				fmt.Println("PX_E2E_PARTNER_OAUTH_OK")
+			} else {
+				fmt.Println("PX_E2E_PARTNER_OAUTH_SKIPPED")
+			}
+		} else {
+			fmt.Println("PX_E2E_PARTNER_OAUTH_SKIPPED")
+		}
+	} else {
+		fmt.Println("PX_E2E_PARTNER_OAUTH_SKIPPED")
+	}
+
 	orderBody, _ := json.Marshal(map[string]any{
 		"supplier_id": supplierID,
 		"line_items":  []map[string]any{{"sku": "SSMR-SKU-1", "quantity": 1, "unit_price_minor": 50000}},

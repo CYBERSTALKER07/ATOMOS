@@ -262,6 +262,9 @@ class OfflineVerifierViewModel @Inject constructor(
                 clientTimestampIso = java.time.Instant.now().toString(),
                 orderId = orderId,
                 status = "PENDING",
+                capturedLat = null,
+                capturedLng = null,
+                capturedAtMs = null,
             ),
         )
         OfflineSyncScheduler.enqueue(appContext)

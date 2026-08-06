@@ -13,6 +13,7 @@ import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { usePortalT } from '@/lib/i18n';
 
 interface DashboardData {
   active_orders: number;
@@ -56,6 +57,7 @@ function normalizeFleetStatus(raw: unknown): FleetStatusRow[] {
 type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
 
 export default function WarehouseDashboard() {
+  const t = usePortalT();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
@@ -123,7 +125,7 @@ export default function WarehouseDashboard() {
 
     return (
       <PageTransition className="p-6 space-y-6">
-        <PageChrome icon="dashboard" title="Warehouse dashboard" description="Live node operations, fleet, and inventory at a glance.">
+        <PageChrome icon="dashboard" title={t('portal.page.dashboard.warehouse.title')} description={t('portal.page.dashboard.warehouse.description')}>
           <EmptyState
             variant={loadIssue}
             headline={content.headline}
@@ -143,11 +145,11 @@ export default function WarehouseDashboard() {
   if (!data) {
     return (
       <PageTransition className="p-6 space-y-6">
-        <PageChrome icon="dashboard" title="Warehouse dashboard" description="Live node operations, fleet, and inventory at a glance.">
+        <PageChrome icon="dashboard" title={t('portal.page.dashboard.warehouse.title')} description={t('portal.page.dashboard.warehouse.description')}>
           <EmptyState
             variant="no-data"
-            headline="No warehouse metrics yet"
-            body="As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically."
+            headline={t("warehouse_portal.residual.text.no_warehouse_metrics_yet")}
+            body={t("warehouse_portal.residual.text.as_dispatch_fleet_and_inventory_activity_starts_this_dashboard_w")}
             action="Refresh"
             onAction={() => {
               setLoading(true);
@@ -188,8 +190,8 @@ export default function WarehouseDashboard() {
     <PageTransition>
       <PageChrome
         icon="dashboard"
-        title="Warehouse dashboard"
-        description="Live node operations, fleet, and inventory at a glance."
+        title={t('portal.page.dashboard.warehouse.title')}
+        description={t('portal.page.dashboard.warehouse.description')}
         loading={loading}
         skeletonVariant="dashboard"
         actions={
@@ -199,16 +201,16 @@ export default function WarehouseDashboard() {
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as 'today' | '7d' | '30d')}
             >
-              <option value="today">Today</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
+              <option value="today">{t('portal.page.dashboard.range.today')}</option>
+              <option value="7d">{t('portal.page.dashboard.range.last_7d')}</option>
+              <option value="30d">{t('portal.page.dashboard.range.last_30d')}</option>
             </select>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setReloadToken((v) => v + 1)}
               className="desk-icon-btn"
-              aria-label="Refresh dashboard"
+              aria-label={t('portal.page.dashboard.action.refresh')}
             >
               <Icon name="refresh" size={18} />
             </motion.button>
@@ -231,16 +233,16 @@ export default function WarehouseDashboard() {
       </KpiStatGrid>
 
       <PageSection
-        title="Network pulse"
-        description="Cross-role timeline for this warehouse node."
+        title={t("warehouse_portal.app.text.network_pulse")}
+        description={t("warehouse_portal.residual.text.cross_role_timeline_for_this_warehouse_node")}
         bay="ops"
       >
         <NetworkPulsePanel />
       </PageSection>
 
       <PageSection
-        title="Live fleet map"
-        description="Active sealed routes and driver positions for this node."
+        title={t("warehouse_portal.dispatch.text.live_fleet_map")}
+        description={t("warehouse_portal.residual.text.active_sealed_routes_and_driver_positions_for_this_node")}
         bay="fleet"
         className="overflow-hidden"
       >
@@ -249,8 +251,8 @@ export default function WarehouseDashboard() {
 
       {d.fleet_status.length > 0 && (
         <PageSection
-          title="Fleet status"
-          description="Manifest and driver state breakdown for this node."
+          title={t("warehouse_portal.app.text.fleet_status")}
+          description={t("warehouse_portal.residual.text.manifest_and_driver_state_breakdown_for_this_node")}
           bay="fleet"
         >
           <div className="flex flex-wrap gap-3">

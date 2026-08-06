@@ -59,6 +59,13 @@ type SolveRequest struct {
 	// Vehicles is the available fleet. Empty fleet → ErrCodeEmptyFleet.
 	Vehicles []Vehicle `json:"vehicles"`
 
+	// DistanceMatrixM is an optional NxN road-distance matrix in meters.
+	// Node layout (shared multi-depot): one start node per vehicle (index i for
+	// Vehicles[i]), then one node per Stops[j] (index len(Vehicles)+j).
+	// When EndLat/EndLng equal start (or are zero), ends reuse start nodes.
+	// When omitted or wrong-sized, the solver falls back to haversine on coords.
+	DistanceMatrixM [][]int `json:"distance_matrix_m,omitempty"`
+
 	// Tunables override per-call solver parameters. Nil = use defaults.
 	Tunables *Tunables `json:"tunables,omitempty"`
 }
@@ -87,6 +94,17 @@ type Stop struct {
 	// Recovery orders (overflow-bounced back to pool) carry +10 000 so they
 	// get first dibs on vehicle volume in the next dispatch cycle.
 	Priority int `json:"priority,omitempty"`
+
+	// HandlingClass mirrors Products.HandlingClass (GENERAL/COLD_CHAIN/…).
+	HandlingClass string `json:"handling_class,omitempty"`
+
+	// RequiresColdChain / IsHazardous gate vehicle eligibility in OR-Tools
+	// (AddAllowedVehiclesForIndex). Aggregate OR across order line items.
+	RequiresColdChain bool `json:"requires_cold_chain,omitempty"`
+	IsHazardous       bool `json:"is_hazardous,omitempty"`
+
+	// AccessRestriction is an optional opaque tag (e.g. pedestrian-only).
+	AccessRestriction string `json:"access_restriction,omitempty"`
 }
 
 // Vehicle is one available truck. MaxVolumeVU is the raw spec; the optimiser
@@ -98,6 +116,21 @@ type Vehicle struct {
 	StartLat     float64 `json:"start_lat"`
 	StartLng     float64 `json:"start_lng"`
 	AvgSpeedKmph float64 `json:"avg_speed_kmph"`
+
+	// EndLat / EndLng optional route end; zero or equal to start → return to start.
+	EndLat float64 `json:"end_lat,omitempty"`
+	EndLng float64 `json:"end_lng,omitempty"`
+
+	// HasRefrigeration / HazmatCertified gate cold-chain and hazmat stops.
+	HasRefrigeration bool `json:"has_refrigeration,omitempty"`
+	HazmatCertified  bool `json:"hazmat_certified,omitempty"`
+
+	// ShiftStart / ShiftEnd are HH:MM wall-clock bounds (optional).
+	ShiftStart string `json:"shift_start,omitempty"`
+	ShiftEnd   string `json:"shift_end,omitempty"`
+
+	// MaxRouteMinutes caps RouteDuration when > 0; else derived from shift span.
+	MaxRouteMinutes int `json:"max_route_minutes,omitempty"`
 }
 
 // Tunables are per-call overrides for the Phase 2 solver. All fields are
@@ -110,8 +143,12 @@ type Tunables struct {
 	TwoOptIterations int `json:"two_opt_iterations,omitempty"`
 
 	// MaxStopsPerRoute caps stops per manifest (default 25, matches Google
-	// Maps waypoint ceiling).
+	// Maps waypoint ceiling). Enforced as an OR-Tools count dimension.
 	MaxStopsPerRoute int `json:"max_stops_per_route,omitempty"`
+
+	// TimeLimitMs caps OR-Tools search (default 5000; hard clamp 60000).
+	// Go HTTP client timeout must stay strictly greater than this.
+	TimeLimitMs int `json:"time_limit_ms,omitempty"`
 }
 
 // SolveResponse is the optimiser's reply on success (HTTP 200).

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Camera, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -75,6 +76,7 @@ function formatShopClosedError(raw: string): string {
 }
 
 export default function ShopClosedModal() {
+  const t = usePortalT();
   const { reconnectEpoch } = useWebSocket();
   const [alert, setAlert] = useState<ShopClosedAlert | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -87,7 +89,7 @@ export default function ShopClosedModal() {
   useEffect(() => {
     if (reconnectEpoch > 0 && submitting) {
       setSubmitting(false);
-      setError("Connection restored — verify response before retrying.");
+      setError(t("retailer_desktop.residual.text.connection_restored_verify_response_before_retrying"));
     }
   }, [reconnectEpoch, submitting]);
 
@@ -143,7 +145,7 @@ export default function ShopClosedModal() {
       if (!alert || submitting) return;
       if (option === "AUTHORIZE_BYPASS" && !photoUrl?.trim()) {
         setBypassPending(true);
-        setError("Doorway / drop-off photo is required to authorize bypass.");
+        setError(t("retailer_desktop.residual.text.doorway_drop_off_photo_is_required_to_authorize_bypass"));
         return;
       }
       setSubmitting(true);
@@ -196,7 +198,7 @@ export default function ShopClosedModal() {
       } catch (err) {
         setBypassPhotoUrl(null);
         setError(
-          err instanceof Error ? err.message : "Photo upload failed",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.photo_upload_failed"),
         );
       } finally {
         setUploading(false);

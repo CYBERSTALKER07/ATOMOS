@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   autocompleteAddress,
@@ -22,7 +23,9 @@ type LocationPickerProps = {
   label?: string;
 };
 
-export function LocationPicker({ value, onChange, label = "Address" }: LocationPickerProps) {
+export function LocationPicker({ value, onChange, label }: LocationPickerProps) {
+  const t = usePortalT();
+  const resolvedLabel = label ?? t("supplier_portal.residual.text.address");
   const [query, setQuery] = useState(value.address);
   const [suggestions, setSuggestions] = useState<{ place_id: string; description: string }[]>([]);
   const [open, setOpen] = useState(false);
@@ -74,7 +77,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported in this browser.");
+      setError(t("supplier_portal.residual.text.geolocation_is_not_supported_in_this_browser"));
       return;
     }
     setLocating(true);
@@ -84,11 +87,11 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
         const loc = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
         if (loc) applyResolved(loc);
-        else setError("Could not resolve your location to an address.");
+        else setError(t("supplier_portal.residual.text.could_not_resolve_your_location_to_an_address"));
       },
       () => {
         setLocating(false);
-        setError("Location permission denied.");
+        setError(t("supplier_portal.residual.text.location_permission_denied"));
       },
       { enableHighAccuracy: true, timeout: 12000 },
     );
@@ -96,11 +99,11 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-medium text-(--muted)">{label}</label>
+      <label className="text-xs font-medium text-(--muted)">{resolvedLabel}</label>
       <div className="relative">
         <input
           className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-sm"
-          placeholder="Start typing street address…"
+          placeholder={t("supplier_portal.location_picker.text.start_typing_street_address")}
           value={query}
           onChange={(e) => onInputChange(e.target.value)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -134,7 +137,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
           {locating ? "Locating…" : "Share my location"}
         </button>
         {value.address ? (
-          <span className="text-xs text-(--muted)">Pinned for dispatch routing</span>
+          <span className="text-xs text-(--muted)">{t("supplier_portal.location_picker.text.pinned_for_dispatch_routing")}</span>
         ) : null}
       </div>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}

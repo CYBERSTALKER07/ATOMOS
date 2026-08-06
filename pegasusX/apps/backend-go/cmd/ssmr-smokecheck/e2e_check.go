@@ -120,6 +120,18 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseStockPolicyE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse stock policy: %w", err)
 	}
+	if err := runWMSLotsE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms lots: %w", err)
+	}
+	if err := runWMSPickWavesE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms pick waves: %w", err)
+	}
+	if err := runWMSCycleCountsE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms cycle counts: %w", err)
+	}
+	if err := runWMSColdChainE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms cold chain: %w", err)
+	}
 	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken); err != nil {
 		return fmt.Errorf("warehouse ops policy: %w", err)
 	}
@@ -177,6 +189,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runWarehouseOptimizerSourceE2E(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse optimizer preview: %w", err)
+	}
+	if err := runOptimizerConstraintE2E(ctx, cfg); err != nil {
+		return fmt.Errorf("optimizer constraint: %w", err)
 	}
 	capacityOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {

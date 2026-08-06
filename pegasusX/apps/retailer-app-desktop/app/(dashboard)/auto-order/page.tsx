@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -37,6 +38,7 @@ type RetailerReorderSuggestion = {
 };
 
 export default function AutoOrderPage() {
+  const t = usePortalT();
   const {
     data: settings,
     loading: settingsLoading,
@@ -100,7 +102,7 @@ export default function AutoOrderPage() {
       const data = (await res.json()) as { items?: AutoOrderRun[] };
       setRuns(Array.isArray(data.items) ? data.items : []);
     } catch (err) {
-      setRunsError(err instanceof Error ? err.message : "Could not load runs");
+      setRunsError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_load_runs"));
       setRuns([]);
     } finally {
       setRunsLoading(false);
@@ -221,7 +223,7 @@ export default function AutoOrderPage() {
       await fetchReorderSuggestions();
       await fetchShadowProposals();
     } catch (err) {
-      setSyncMessage(err instanceof Error ? err.message : "Auto-order run failed");
+      setSyncMessage(err instanceof Error ? err.message : t("retailer_desktop.residual.text.auto_order_run_failed"));
     } finally {
       setRunning(false);
       setRunningMode(null);
@@ -254,7 +256,7 @@ export default function AutoOrderPage() {
       setSyncMessage(labels[mode]);
     } catch (err) {
       setSyncMessage(
-        err instanceof Error ? err.message : "Failed to update execution mode",
+        err instanceof Error ? err.message : t("retailer_desktop.residual.text.failed_to_update_execution_mode"),
       );
     }
   };
@@ -334,8 +336,8 @@ export default function AutoOrderPage() {
     >
       <PageChrome
         icon="wand.and.stars"
-        title="Auto-Order Engine"
-        description="Empathy Engine Intelligence with 5-level granular control."
+        title={t("retailer_desktop.auto_order.text.auto_order_engine")}
+        description={t("retailer_desktop.residual.text.empathy_engine_intelligence_with_5_level_granular_control")}
         loading={isLoading}
         skeletonVariant="form"
         actions={
@@ -655,8 +657,8 @@ export default function AutoOrderPage() {
           ) : runs.length === 0 ? (
             <p className="text-sm text-[var(--desk-text-secondary)]">
               No runs yet. Enable auto-order and use{" "}
-              <span className="font-medium">Draft now</span> or{" "}
-              <span className="font-medium">Place now</span>.
+              <span className="font-medium">{t("retailer_desktop.auto_order.text.draft_now")}</span> or{" "}
+              <span className="font-medium">{t("retailer_desktop.auto_order.text.place_now")}</span>.
             </p>
           ) : (
             <div className="space-y-2">
@@ -700,13 +702,13 @@ export default function AutoOrderPage() {
           <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] mt-6">
             <div className="flex items-center gap-2 mb-4">
               <Info size={16} className="text-[var(--desk-accent)]" />
-              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">How It Works</h3>
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.auto_order.text.how_it_works")}</h3>
             </div>
             <ol className="list-decimal list-inside space-y-2 text-[var(--desk-text-secondary)] md-typescale-body-small">
-              <li>The AI analyzes your purchase patterns even when auto-order is off.</li>
-              <li>When you enable, choose to use your history or start fresh.</li>
-              <li>Starting fresh requires at least 2 orders per product.</li>
-              <li>Overrides: Size/variant &gt; Product &gt; Category &gt; Supplier &gt; Global (Off blocks even when global on).</li>
+              <li>{t("retailer_desktop.auto_order.text.the_ai_analyzes_your_purchase_patterns_even_when_auto_order_is_o")}</li>
+              <li>{t("retailer_desktop.auto_order.text.when_you_enable_choose_to_use_your_history_or_start_fresh")}</li>
+              <li>{t("retailer_desktop.auto_order.text.starting_fresh_requires_at_least_2_orders_per_product")}</li>
+              <li>{t("retailer_desktop.auto_order.text.overrides_size_variant_and_gt_product_and_gt_category_and_gt_sup")}</li>
               <li>
                 Modes: Shadow records proposals only; Draft stages cart; Place creates
                 AUTO_ORDER when the server flag and manager permission allow.
@@ -718,7 +720,7 @@ export default function AutoOrderPage() {
         {pendingAction && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-[var(--desk-surface)] w-full max-w-sm rounded-2xl p-6 shadow-xl border border-[var(--desk-border)]">
-              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-2">Use Previous Analytics?</h3>
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-2">{t("retailer_desktop.auto_order.text.use_previous_analytics")}</h3>
               <p className="md-typescale-body-medium text-[var(--desk-text-secondary)] mb-6">
                 Enable this auto-order using your existing order history, or start fresh? Starting fresh requires at least 2 orders before predictions begin.
               </p>

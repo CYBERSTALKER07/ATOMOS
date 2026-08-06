@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
@@ -8,6 +9,7 @@ import { HubCard } from "@/components/portal";
 import { formatMinor, loadFinanceAuthoritySnapshot } from "@/app/payments/_shared/finance";
 
 export default function ReconciliationPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export default function ReconciliationPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "load_reconciliation_failed");
+          setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_reconciliation_failed"));
         }
       })
       .finally(() => {
@@ -45,15 +47,15 @@ export default function ReconciliationPage() {
   return (
     <PageChrome
       icon="reconcile"
-      title="Reconciliation"
-      description="Treasury splits, settlement authority, and payment mismatches."
+      title={t("portal.nav.reconciliation")}
+      description={t("supplier_portal.residual.text.treasury_splits_settlement_authority_and_payment_mismatches")}
       loading={loading}
       error={error}
     >
       <KpiStatGrid columns={2}>
-        <KpiStatCard label="Settlement net (authority)" value={formatMinor(netMinor, currency)} />
+        <KpiStatCard label={t("supplier_portal.residual.text.settlement_net_authority")} value={formatMinor(netMinor, currency)} />
         <KpiStatCard
-          label="Open mismatches"
+          label={t("supplier_portal.residual.text.open_mismatches")}
           value={mismatchCount}
           sub={mismatchCount > 0 ? "Review on payments" : "All clear"}
         />
@@ -62,8 +64,8 @@ export default function ReconciliationPage() {
         <HubCard
           href="/payments"
           icon="payment"
-          title="Payments & ledger"
-          description="Full ledger, chargebacks, and reconciliation tools."
+          title={t("supplier_portal.reconciliation.text.payments_and_ledger")}
+          description={t("supplier_portal.residual.text.full_ledger_chargebacks_and_reconciliation_tools")}
         />
       </div>
     </PageChrome>

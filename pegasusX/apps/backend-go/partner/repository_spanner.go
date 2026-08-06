@@ -65,6 +65,26 @@ FROM PartnerApiKeys WHERE KeyPrefix = @px LIMIT 1`,
 	return k, err == nil, err
 }
 
+func (r *SpannerKeyRepository) GetByID(ctx context.Context, keyID string) (ApiKey, bool, error) {
+	if r == nil || r.client == nil {
+		return ApiKey{}, false, fmt.Errorf("spanner_unavailable")
+	}
+	keyID = strings.TrimSpace(keyID)
+	if keyID == "" {
+		return ApiKey{}, false, nil
+	}
+	row, err := r.client.Single().ReadRow(ctx, "PartnerApiKeys", spanner.Key{keyID},
+		[]string{"KeyId", "TenantType", "TenantId", "KeyPrefix", "KeyHash", "Scopes", "RateLimitClass", "Status", "ExpiresAt", "CreatedBy", "CreatedAt", "LastUsedAt"})
+	if err != nil {
+		if isSpannerNotFound(err) {
+			return ApiKey{}, false, nil
+		}
+		return ApiKey{}, false, err
+	}
+	k, err := scanKey(row)
+	return k, err == nil, err
+}
+
 func (r *SpannerKeyRepository) ListByTenant(ctx context.Context, tenantType, tenantID string, limit int) ([]ApiKey, error) {
 	if r == nil || r.client == nil {
 		return nil, fmt.Errorf("spanner_unavailable")

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Clock, AlertTriangle } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
@@ -38,6 +39,7 @@ function formatMoney(minor: number, currency = "UZS") {
 }
 
 export default function ShiftsPage() {
+  const t = usePortalT();
   const [clockedIn, setClockedIn] = useState(false);
   const [openEntry, setOpenEntry] = useState<TimeEntry | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -103,7 +105,7 @@ export default function ShiftsPage() {
       setBanner("Clocked in (SHIFTS pack auto-enabled if needed)");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Clock-in failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.clock_in_failed"));
     } finally {
       setBusy(false);
     }
@@ -123,7 +125,7 @@ export default function ShiftsPage() {
       setBanner("Clocked out");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Clock-out failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.clock_out_failed"));
     } finally {
       setBusy(false);
     }
@@ -152,7 +154,7 @@ export default function ShiftsPage() {
       setBanner("Shift opened — open POS when ready");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Open shift failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.open_shift_failed"));
     } finally {
       setBusy(false);
     }
@@ -177,7 +179,7 @@ export default function ShiftsPage() {
       setBanner(`Shift closed. Variance: ${formatMoney(v)}`);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Close shift failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.close_shift_failed"));
     } finally {
       setBusy(false);
     }
@@ -187,8 +189,8 @@ export default function ShiftsPage() {
 
   return (
     <PageChrome
-      title="Shifts & time"
-      description="Clock in/out, open cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in."
+      title={t("retailer_desktop.shifts.text.shifts_and_time")}
+      description={t("retailer_desktop.residual.text.clock_in_out_open_cash_shifts_reconcile_float_when_shifts_is_on_")}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         {banner && (
@@ -206,7 +208,7 @@ export default function ShiftsPage() {
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <Clock className="h-5 w-5 text-muted-foreground" />
-            <h2 className="font-semibold">Time clock</h2>
+            <h2 className="font-semibold">{t("retailer_desktop.shifts.text.time_clock")}</h2>
           </div>
           <p className="mb-3 text-sm text-muted-foreground">
             {clockedIn && openEntry
@@ -239,7 +241,7 @@ export default function ShiftsPage() {
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Cash shift</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.shifts.text.cash_shift")}</h2>
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Opening float (minor)
@@ -299,9 +301,9 @@ export default function ShiftsPage() {
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Recent shifts</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.shifts.text.recent_shifts")}</h2>
           {shifts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No shifts yet.</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.shifts.text.no_shifts_yet")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {shifts.slice(0, 20).map((s) => (
@@ -324,9 +326,9 @@ export default function ShiftsPage() {
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Time entries</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.shifts.text.time_entries")}</h2>
           {entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No entries yet.</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.shifts.text.no_entries_yet")}</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {entries.slice(0, 20).map((e) => (

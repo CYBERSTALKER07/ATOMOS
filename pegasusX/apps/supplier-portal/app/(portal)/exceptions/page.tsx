@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { PlaybookRunsPanel } from "@/components/exceptions/PlaybookRunsPanel";
 const api = createSupplierApi();
 
 export default function ExceptionsPage() {
+  const t = usePortalT();
   const [exceptions, setExceptions] = useState<SupplierExceptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,22 +22,22 @@ export default function ExceptionsPage() {
     api
       .getSupplierExceptions()
       .then((resp) => setExceptions(resp.exceptions))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_exceptions_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_exceptions_failed")))
       .finally(() => setLoading(false));
   }, []);
 
   return (
     <PageChrome
-      title="Exceptions"
-      description="Shop-closed, payment, and delivery escalation queues."
+      title={t("portal.nav.exceptions")}
+      description={t("supplier_portal.residual.text.shop_closed_payment_and_delivery_escalation_queues")}
       icon="warning"
       loading={loading}
       error={error}
       empty={!loading && exceptions.length === 0}
-      emptyMessage="No open exceptions. Escalations appear here when operators raise them."
+      emptyMessage={t("supplier_portal.residual.text.no_open_exceptions_escalations_appear_here_when_operators_raise_")}
     >
       <section className="mb-6">
-        <h2 className="mb-2 md-typescale-title-medium">Recommended playbooks</h2>
+        <h2 className="mb-2 md-typescale-title-medium">{t("supplier_portal.exceptions.text.recommended_playbooks")}</h2>
         <PlaybookRunsPanel />
       </section>
       <ExceptionsList

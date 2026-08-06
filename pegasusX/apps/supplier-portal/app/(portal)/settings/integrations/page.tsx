@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
@@ -10,6 +11,7 @@ import type {
   PartnerEdiDocument,
   PartnerExportJob,
   PartnerSftpConfig,
+  PartnerCoaMap,
   PartnerWebhookSubscription,
 } from "@pegasusx/types";
 
@@ -18,6 +20,7 @@ const api = createSupplierApi();
 const EVENT_OPTIONS = ["ORDER_CREATED", "ORDER_STATUS_CHANGED", "CLAIM_FILED", "PAYMENT_CLEARED"];
 
 export default function IntegrationsSettingsPage() {
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -47,18 +50,30 @@ export default function IntegrationsSettingsPage() {
   const [archiveDir, setArchiveDir] = useState("archive");
   const [ediEnabled, setEdiEnabled] = useState(false);
   const [ediDocs, setEdiDocs] = useState<PartnerEdiDocument[]>([]);
+  const [coaAr, setCoaAr] = useState("62.01");
+  const [coaRevenue, setCoaRevenue] = useState("90.01");
+  const [coaBank, setCoaBank] = useState("51.01");
+  const [coaDefaults, setCoaDefaults] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [k, w, d, e, s, edi] = await Promise.all([
+      const [k, w, d, e, s, edi, coa] = await Promise.all([
         api.listSupplierPartnerKeys(),
         api.listSupplierPartnerWebhooks(),
         api.listSupplierPartnerDeadLetter(),
         api.listSupplierPartnerExports(),
         api.getSupplierPartnerSftp(),
         api.listSupplierPartnerEdiDocuments().catch(() => ({ documents: [] as PartnerEdiDocument[] })),
+        api.getSupplierPartnerCoa().catch(
+          (): PartnerCoaMap => ({
+            account_ar: "62.01",
+            account_revenue: "90.01",
+            account_bank_cash: "51.01",
+            using_defaults: true,
+          }),
+        ),
       ]);
       setKeys(k.keys ?? []);
       setHooks(w.subscriptions ?? []);
@@ -66,6 +81,10 @@ export default function IntegrationsSettingsPage() {
       setJobs(e.jobs ?? []);
       setEdiDocs(edi.documents ?? []);
       setSftp(s);
+      setCoaAr(coa.account_ar || "62.01");
+      setCoaRevenue(coa.account_revenue || "90.01");
+      setCoaBank(coa.account_bank_cash || "51.01");
+      setCoaDefaults(Boolean(coa.using_defaults));
       if (s.configured) {
         setSftpHost(s.host ?? "");
         setSftpPort(String(s.port ?? 22));
@@ -78,7 +97,7 @@ export default function IntegrationsSettingsPage() {
         setEdiEnabled(Boolean(s.edi_enabled));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load integrations");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_integrations"));
     } finally {
       setLoading(false);
     }
@@ -97,7 +116,7 @@ export default function IntegrationsSettingsPage() {
       setNotice("API key issued — copy the secret now; it is shown once.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Issue key failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.issue_key_failed"));
     }
   }
 
@@ -108,7 +127,7 @@ export default function IntegrationsSettingsPage() {
       setNotice("Key revoked.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Revoke failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.revoke_failed"));
     }
   }
 
@@ -123,7 +142,7 @@ export default function IntegrationsSettingsPage() {
       setHookUrl("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Create webhook failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.create_webhook_failed"));
     }
   }
 
@@ -132,7 +151,7 @@ export default function IntegrationsSettingsPage() {
       await api.pingSupplierPartnerWebhook(id);
       setNotice("Ping sent.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ping failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.ping_failed"));
     }
   }
 
@@ -142,7 +161,7 @@ export default function IntegrationsSettingsPage() {
       setNotice("Webhook deactivated.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Deactivate failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.deactivate_failed"));
     }
   }
 
@@ -152,7 +171,7 @@ export default function IntegrationsSettingsPage() {
       setNotice("Dead-letter requeued.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Replay failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.replay_failed"));
     }
   }
 
@@ -181,7 +200,7 @@ export default function IntegrationsSettingsPage() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Export failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.export_failed"));
     }
   }
 
@@ -202,7 +221,25 @@ export default function IntegrationsSettingsPage() {
       setNotice("SFTP / EDI config saved (password/key stays in GSM via secret_ref).");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "SFTP save failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.sftp_save_failed"));
+    }
+  }
+
+  async function saveCoa() {
+    setNotice(null);
+    try {
+      const m = await api.putSupplierPartnerCoa({
+        account_ar: coaAr.trim(),
+        account_revenue: coaRevenue.trim(),
+        account_bank_cash: coaBank.trim(),
+      });
+      setCoaAr(m.account_ar);
+      setCoaRevenue(m.account_revenue);
+      setCoaBank(m.account_bank_cash);
+      setCoaDefaults(Boolean(m.using_defaults));
+      setNotice("Chart of accounts saved for journals exports.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.coa_save_failed"));
     }
   }
 
@@ -212,24 +249,30 @@ export default function IntegrationsSettingsPage() {
       setNotice("EDI document requeued.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "EDI replay failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.edi_replay_failed"));
     }
   }
 
   return (
     <PageChrome
-      title="Integrations"
-      description="Partner API keys, outbound webhooks, bulk exports, and optional SFTP drop."
+      title={t("portal.nav.integrations")}
+      description={t("supplier_portal.residual.text.partner_api_keys_outbound_webhooks_bulk_exports_and_optional_sft")}
     >
       {loading ? (
-        <p className="text-sm text-[var(--desk-text-secondary)]">Loading…</p>
+        <p className="text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.loading")}</p>
       ) : (
         <div className="mx-auto max-w-3xl space-y-10">
           {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
           {notice && <p className="text-sm text-emerald-700">{notice}</p>}
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">API keys</h2>
+            <h2 className="text-lg font-semibold">{t("supplier_portal.settings.integrations.text.api_keys")}</h2>
+            <p className="text-sm text-[var(--desk-text-secondary)]">
+              Long-lived <code className="text-xs">{t("supplier_portal.settings.integrations.text.pxk")}</code> keys authenticate{" "}
+              <code className="text-xs">/partner/v1/*</code>. The same key is an OAuth2 client — exchange it
+              at <code className="text-xs">{t("supplier_portal.settings.integrations.text.post_partner_v1_oauth_token")}</code> (
+              <code className="text-xs">{t("supplier_portal.settings.integrations.text.grant_type_client_credentials")}</code>) for a short-lived Bearer JWT.
+            </p>
             <p className="text-sm text-[var(--desk-text-secondary)]">
               Machine keys for <code className="text-xs">/partner/v1</code>. Secret is shown once at
               issue.
@@ -264,13 +307,13 @@ export default function IntegrationsSettingsPage() {
                 </li>
               ))}
               {keys.length === 0 && (
-                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">No keys yet.</li>
+                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_keys_yet")}</li>
               )}
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Webhooks</h2>
+            <h2 className="text-lg font-semibold">{t("supplier_portal.settings.integrations.text.webhooks")}</h2>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 className="flex-1 rounded border px-3 py-2 text-sm"
@@ -334,10 +377,10 @@ export default function IntegrationsSettingsPage() {
                 </li>
               ))}
               {hooks.length === 0 && (
-                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">No webhooks.</li>
+                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_webhooks")}</li>
               )}
             </ul>
-            <h3 className="pt-2 text-sm font-semibold">Dead letter</h3>
+            <h3 className="pt-2 text-sm font-semibold">{t("supplier_portal.settings.integrations.text.dead_letter")}</h3>
             <ul className="divide-y border-t">
               {dead.map((a) => (
                 <li key={a.attempt_id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
@@ -355,13 +398,54 @@ export default function IntegrationsSettingsPage() {
                 </li>
               ))}
               {dead.length === 0 && (
-                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">No dead-letter rows.</li>
+                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_dead_letter_rows")}</li>
               )}
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Exports</h2>
+            <h2 className="text-lg font-semibold">1C chart of accounts</h2>
+            <p className="text-sm text-[var(--desk-text-secondary)]">
+              Debit/credit accounts used when exporting <code className="text-xs">{t("supplier_portal.settings.integrations.text.journals")}</code>.
+              {coaDefaults ? " Using platform defaults until you save." : " Custom map active."}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="text-xs">
+                AR (receivable)
+                <input
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
+                  value={coaAr}
+                  onChange={(e) => setCoaAr(e.target.value)}
+                />
+              </label>
+              <label className="text-xs">
+                Revenue
+                <input
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
+                  value={coaRevenue}
+                  onChange={(e) => setCoaRevenue(e.target.value)}
+                />
+              </label>
+              <label className="text-xs">
+                Bank / cash
+                <input
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
+                  value={coaBank}
+                  onChange={(e) => setCoaBank(e.target.value)}
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="rounded bg-[var(--color-md-primary)] px-3 py-2 text-sm text-white"
+              onClick={() => void saveCoa()}
+            >
+              Save CoA
+            </button>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">{t("supplier_portal.settings.integrations.text.exports")}</h2>
             <p className="text-sm text-[var(--desk-text-secondary)]">
               Async CSV/JSON/XML for orders, invoices, inventory, ledger, or 1C journals (90-day window
               max).
@@ -372,20 +456,20 @@ export default function IntegrationsSettingsPage() {
                 value={resource}
                 onChange={(e) => setResource(e.target.value)}
               >
-                <option value="orders">orders</option>
-                <option value="invoices">invoices</option>
-                <option value="inventory">inventory</option>
-                <option value="ledger">ledger</option>
-                <option value="journals">journals (1C)</option>
+                <option value="orders">{t("supplier_portal.settings.integrations.text.orders")}</option>
+                <option value="invoices">{t("supplier_portal.settings.integrations.text.invoices")}</option>
+                <option value="inventory">{t("supplier_portal.settings.integrations.text.inventory")}</option>
+                <option value="ledger">{t("supplier_portal.settings.integrations.text.ledger")}</option>
+                <option value="journals">{t("supplier_portal.settings.integrations.text.journals_1c")}</option>
               </select>
               <select
                 className="rounded border px-2 py-2 text-sm"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
               >
-                <option value="csv">csv</option>
-                <option value="json">json</option>
-                <option value="xml">xml</option>
+                <option value="csv">{t("supplier_portal.settings.integrations.text.csv")}</option>
+                <option value="json">{t("supplier_portal.settings.integrations.text.json")}</option>
+                <option value="xml">{t("supplier_portal.settings.integrations.text.xml")}</option>
               </select>
               <input
                 type="date"
@@ -435,16 +519,16 @@ export default function IntegrationsSettingsPage() {
                 </li>
               ))}
               {jobs.length === 0 && (
-                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">No export jobs.</li>
+                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_export_jobs")}</li>
               )}
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">SFTP + EDI</h2>
+            <h2 className="text-lg font-semibold">{t("supplier_portal.settings.integrations.text.sftp_edi")}</h2>
             <p className="text-sm text-[var(--desk-text-secondary)]">
               Optional SFTP for bulk export and EDI-lite (ORDERS in / ORDRSP·DESADV·INVOIC out). Secrets
-              stay in GSM via <code className="text-xs">secret_ref</code>.
+              stay in GSM via <code className="text-xs">{t("supplier_portal.residual.text.secret_ref")}</code>.
             </p>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -457,49 +541,49 @@ export default function IntegrationsSettingsPage() {
             <div className="grid gap-2 sm:grid-cols-2">
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="Host (or leave blank for local EDI root)"
+                placeholder={t("supplier_portal.settings.integrations.text.host_or_leave_blank_for_local_edi_root")}
                 value={sftpHost}
                 onChange={(e) => setSftpHost(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="Port"
+                placeholder={t("supplier_portal.settings.integrations.text.port")}
                 value={sftpPort}
                 onChange={(e) => setSftpPort(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="Username"
+                placeholder={t("supplier_portal.settings.integrations.text.username")}
                 value={sftpUser}
                 onChange={(e) => setSftpUser(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="GSM secret name (secret_ref)"
+                placeholder={t("supplier_portal.settings.integrations.text.gsm_secret_name_secret_ref")}
                 value={sftpSecretRef}
                 onChange={(e) => setSftpSecretRef(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
-                placeholder="Remote base directory"
+                placeholder={t("supplier_portal.settings.integrations.text.remote_base_directory")}
                 value={sftpDir}
                 onChange={(e) => setSftpDir(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="Inbound dir"
+                placeholder={t("supplier_portal.settings.integrations.text.inbound_dir")}
                 value={inboundDir}
                 onChange={(e) => setInboundDir(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm"
-                placeholder="Outbound dir"
+                placeholder={t("supplier_portal.settings.integrations.text.outbound_dir")}
                 value={outboundDir}
                 onChange={(e) => setOutboundDir(e.target.value)}
               />
               <input
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
-                placeholder="Archive dir"
+                placeholder={t("supplier_portal.settings.integrations.text.archive_dir")}
                 value={archiveDir}
                 onChange={(e) => setArchiveDir(e.target.value)}
               />
@@ -517,7 +601,7 @@ export default function IntegrationsSettingsPage() {
                 {sftp.inbound_dir}/{sftp.outbound_dir}/{sftp.archive_dir}
               </p>
             )}
-            <h3 className="pt-2 text-sm font-semibold">Recent EDI documents</h3>
+            <h3 className="pt-2 text-sm font-semibold">{t("supplier_portal.settings.integrations.text.recent_edi_documents")}</h3>
             <ul className="divide-y border-t">
               {ediDocs.map((doc) => (
                 <li key={doc.document_id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
@@ -541,7 +625,7 @@ export default function IntegrationsSettingsPage() {
                 </li>
               ))}
               {ediDocs.length === 0 && (
-                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">No EDI documents.</li>
+                <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_edi_documents")}</li>
               )}
             </ul>
           </section>

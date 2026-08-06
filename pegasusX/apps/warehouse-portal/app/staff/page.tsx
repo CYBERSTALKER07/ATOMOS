@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { warehouseCreateStaffKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
@@ -18,6 +19,7 @@ import type {
 } from '@pegasusx/types';
 
 export default function StaffPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [staff, setStaff] = useState<WarehouseStaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,8 +93,8 @@ export default function StaffPage() {
     <PageTransition>
       <PageChrome
         icon="staff"
-        title="Staff"
-        description="Warehouse staff and payloader accounts for terminal execution."
+        title={t("portal.nav.staff")}
+        description={t("warehouse_portal.residual.text.warehouse_staff_and_payloader_accounts_for_terminal_execution")}
         actions={
           <button
             type="button"
@@ -112,7 +114,7 @@ export default function StaffPage() {
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold">One-time PIN generated</p>
+              <p className="text-sm font-semibold">{t("warehouse_portal.staff.text.one_time_pin_generated")}</p>
               <p className="mt-1 text-sm text-(--muted)">
                 Save this now for {createdStaff.name || 'the new staff member'}.
               </p>
@@ -136,10 +138,10 @@ export default function StaffPage() {
           className="rounded-xl border border-(--border) p-6 space-y-4"
           style={{ background: 'var(--surface)' }}
         >
-          <h2 className="text-sm font-semibold">Create New Staff Member</h2>
+          <h2 className="text-sm font-semibold">{t("warehouse_portal.staff.text.create_new_staff_member")}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Name</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">{t("warehouse_portal.drivers.text.name")}</label>
               <input
                 type="text"
                 value={formName}
@@ -150,7 +152,7 @@ export default function StaffPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Phone</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">{t("common.field.phone")}</label>
               <input
                 type="tel"
                 value={formPhone}
@@ -170,15 +172,15 @@ export default function StaffPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Role</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">{t("warehouse_portal.staff.text.role")}</label>
               <select
                 value={formRole}
                 onChange={e => setFormRole(e.target.value as WarehouseStaffRole)}
                 className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
                 style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
               >
-                <option value="WAREHOUSE_STAFF">Warehouse Staff</option>
-                <option value="PAYLOADER">Payloader</option>
+                <option value="WAREHOUSE_STAFF">{t("warehouse_portal.staff.text.warehouse_staff")}</option>
+                <option value="PAYLOADER">{t("warehouse_portal.staff.text.payloader")}</option>
               </select>
             </div>
           </div>

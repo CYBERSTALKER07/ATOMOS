@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
@@ -97,6 +98,7 @@ function isoDeliveryDate(dateInput: string): string {
 }
 
 export default function DispatchPage() {
+  const t = usePortalT();
   const router = useRouter();
   const { toast } = useToast();
   const [orders, setOrders] = useState<WarehouseDispatchOrder[]>([]);
@@ -588,8 +590,8 @@ export default function DispatchPage() {
     <PageTransition>
       <PageChrome
         icon="dispatch"
-        title="Dispatch"
-        description="Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity."
+        title={t("portal.nav.dispatch")}
+        description={t("warehouse_portal.residual.text.manual_truck_assignment_or_smart_dispatch_across_the_fleet_capac")}
         loading={loading}
         skeletonVariant="table"
         error={restricted ? 'You do not have permission to view dispatch for this scope.' : loadError}
@@ -678,7 +680,7 @@ export default function DispatchPage() {
 
         {fleetEffectiveCapacityVU > 0 && (
           <div className="mb-4 rounded-xl border border-(--border) p-3 text-sm" style={{ background: 'var(--background)' }}>
-            <span className="text-(--muted)">Fleet effective capacity </span>
+            <span className="text-(--muted)">{t("warehouse_portal.dispatch.text.fleet_effective_capacity")} </span>
             <span className="font-mono">{formatVU(fleetEffectiveCapacityVU)}</span>
             <span className="text-(--muted)"> VU · smart target </span>
             <span className="font-mono">{formatVU(smartTargetVolumeVU)}</span>
@@ -701,11 +703,11 @@ export default function DispatchPage() {
 
         <PageSection
           title={`Fleet trucks (${vehicles.length})`}
-          description="Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately."
+          description={t("warehouse_portal.residual.text.mark_trucks_unavailable_in_real_time_dispatch_and_smart_suggest_")}
           className="mb-6"
         >
           {vehicles.length === 0 ? (
-            <p className="text-sm text-(--muted)">No vehicles registered for this warehouse.</p>
+            <p className="text-sm text-(--muted)">{t("warehouse_portal.dispatch.text.no_vehicles_registered_for_this_warehouse")}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {vehicles.map(vehicle => (
@@ -744,7 +746,7 @@ export default function DispatchPage() {
                         {(vehicleReasons[vehicle.vehicle_id] || 'MANUAL_HOLD') === 'OTHER' && (
                           <input
                             type="text"
-                            placeholder="Custom reason"
+                            placeholder={t("warehouse_portal.dispatch.text.custom_reason")}
                             value={vehicleNotes[vehicle.vehicle_id] || ''}
                             onChange={event => setVehicleNotes(current => ({
                               ...current,
@@ -777,27 +779,27 @@ export default function DispatchPage() {
         </PageSection>
 
         <KpiStatGrid columns={4}>
-          <KpiStatCard label="Undispatched orders" value={orders.length} sub="Awaiting assignment" />
-          <KpiStatCard label="Available drivers" value={drivers.length} sub="Ready for dispatch" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.undispatched_orders")} value={orders.length} sub="Awaiting assignment" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.available_drivers")} value={drivers.length} sub="Ready for dispatch" />
           <KpiStatCard
-            label="Unavailable"
+            label={t("warehouse_portal.residual.text.unavailable")}
             value={unavailableDrivers.length}
             sub={unavailableDrivers.length > 0 ? 'Vehicle or status blocked' : 'All assigned drivers clear'}
           />
           <KpiStatCard
-            label="Smart suggest routes"
+            label={t("warehouse_portal.residual.text.smart_suggest_routes")}
             value={proposedRoutes.length}
             sub={optimizerSource ? `Source: ${optimizerSource}` : 'Optimizer preview'}
           />
         </KpiStatGrid>
 
         <PageSection
-          title="Recent dispatch commits"
-          description="Replay the last committed smart-dispatch runs for this node."
+          title={t("warehouse_portal.dispatch.text.recent_dispatch_commits")}
+          description={t("warehouse_portal.residual.text.replay_the_last_committed_smart_dispatch_runs_for_this_node")}
           className="mt-6"
         >
           {dispatchRuns.length === 0 ? (
-            <p className="text-sm text-(--muted)">No dispatch runs recorded yet.</p>
+            <p className="text-sm text-(--muted)">{t("warehouse_portal.dispatch.text.no_dispatch_runs_recorded_yet")}</p>
           ) : (
             <div className="space-y-2">
               {dispatchRuns.slice(0, 8).map((run) => (
@@ -813,23 +815,23 @@ export default function DispatchPage() {
         </PageSection>
 
         <PageSection
-          title="Handoff timeline"
-          description="Preorder → accept → dispatch → seal events from the ops pulse feed."
+          title={t("warehouse_portal.dispatch.text.handoff_timeline")}
+          description={t("warehouse_portal.residual.text.preorder_accept_dispatch_seal_events_from_the_ops_pulse_feed")}
           className="mt-6"
         >
           <HandoffTimelinePanel />
         </PageSection>
 
         <PageSection
-          title="Live fleet map"
-          description="Sealed manifest polylines and driver GPS for this warehouse node."
+          title={t("warehouse_portal.dispatch.text.live_fleet_map")}
+          description={t("warehouse_portal.residual.text.sealed_manifest_polylines_and_driver_gps_for_this_warehouse_node")}
           className="mt-6 overflow-hidden"
         >
           <FleetLiveMapPanel className="h-80 w-full -mx-5 -mb-5" />
         </PageSection>
 
         {(optimizerWarnings.length > 0 || windowConstrainedCount > 0) && (
-          <PageSection title="Smart suggest preview" className="mt-6">
+          <PageSection title={t("warehouse_portal.dispatch.text.smart_suggest_preview")} className="mt-6">
             {windowConstrainedCount > 0 && (
               <p className="text-xs" style={{ color: 'var(--warning)' }}>
                 {windowConstrainedCount} order(s) constrained by receiving window
@@ -910,7 +912,7 @@ export default function DispatchPage() {
         {showSmartConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
-              <h3 className="text-base font-semibold mb-2">Run smart dispatch?</h3>
+              <h3 className="text-base font-semibold mb-2">{t("warehouse_portal.dispatch.text.run_smart_dispatch")}</h3>
               <p className="text-sm text-(--muted) mb-4">
                 {selectedOrderIds.size > 0
                   ? `Assign ${selectedOrderIds.size} selected order(s) using the optimizer.`
@@ -937,7 +939,7 @@ export default function DispatchPage() {
         {capacityPrompt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
-              <h3 className="text-base font-semibold mb-2">Capacity exceeded</h3>
+              <h3 className="text-base font-semibold mb-2">{t("warehouse_portal.dispatch.text.capacity_exceeded")}</h3>
               <p className="text-sm text-(--muted) mb-4">
                 {capacityPromptMode === 'auto'
                   ? 'Smart dispatch cannot fit all orders on available trucks. Accept to dispatch feasible routes and leave the rest undispatched, or force to override capacity.'
@@ -1015,8 +1017,8 @@ export default function DispatchPage() {
         <>
           <OrderActionDialog
             open={opsDialog.kind === 'reject'}
-            title="Cancel order"
-            description="Cancels the order and notifies the retailer immediately."
+            title={t("warehouse_portal.dispatch.text.cancel_order")}
+            description={t("warehouse_portal.residual.text.cancels_the_order_and_notifies_the_retailer_immediately")}
             confirmLabel="Cancel order"
             destructive
             reason={opsReason}

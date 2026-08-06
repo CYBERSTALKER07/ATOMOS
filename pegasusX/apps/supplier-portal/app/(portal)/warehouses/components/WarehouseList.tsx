@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { SupplierTopologyWarehouse } from "@pegasusx/types";
 
 interface WarehouseListProps {
@@ -6,10 +9,11 @@ interface WarehouseListProps {
 }
 
 export function WarehouseList({ warehouses, onAddFirst }: WarehouseListProps) {
+  const t = usePortalT();
   if (warehouses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <p className="md-typescale-body-medium text-[var(--color-md-outline)]">Add your first warehouse to start fulfilling orders.</p>
+        <p className="md-typescale-body-medium text-[var(--color-md-outline)]">{t("supplier_portal.warehouses.components.warehouse_list.text.add_your_first_warehouse_to_start_fulfilling_orders")}</p>
         <button type="button" className="md-btn md-btn-filled px-6 py-3" onClick={onAddFirst}>
           Add first warehouse
         </button>

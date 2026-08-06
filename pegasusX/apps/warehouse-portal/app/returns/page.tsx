@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { warehouseInboundConfirmKey, warehouseInboundScanKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
@@ -13,6 +14,7 @@ import { ReturnsList, type InboundRow, isClaimTicket } from '@/components/return
 import { ReverseLogisticsPanel } from '@/components/returns/ReverseLogisticsPanel';
 
 export default function ReturnsPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<InboundRow[]>([]);
   const [history, setHistory] = useState<InboundRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,8 +130,8 @@ export default function ReturnsPage() {
     <PageTransition>
       <PageChrome
         icon="returns"
-        title="Inbound Returns"
-        description="Dock queue for truck returns and claim reverse-logistics tickets — restock or write off."
+        title={t("warehouse_portal.returns.text.inbound_returns")}
+        description={t("warehouse_portal.residual.text.dock_queue_for_truck_returns_and_claim_reverse_logistics_tickets")}
         actions={
           <button type="button" onClick={() => void load()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -137,15 +139,15 @@ export default function ReturnsPage() {
         }
       >
         <div className="flex gap-2 mb-4">
-          <button type="button" className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'inbound' ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab('inbound')}>Gate queue</button>
-          <button type="button" className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'history' ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab('history')}>History</button>
+          <button type="button" className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'inbound' ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab('inbound')}>{t("warehouse_portal.returns.text.gate_queue")}</button>
+          <button type="button" className={`px-3 py-1.5 rounded-lg text-sm ${tab === 'history' ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab('history')}>{t("warehouse_portal.returns.text.history")}</button>
         </div>
 
         {tab === 'inbound' && (
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end">
             {/* USB/BT wedge scanners type into the field and send Enter — no camera lib needed. */}
             <label className="flex-1 text-sm">
-              <span className="text-[var(--muted)]">Barcode (EAN)</span>
+              <span className="text-[var(--muted)]">{t("warehouse_portal.returns.text.barcode_ean")}</span>
               <input
                 autoFocus
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
@@ -157,12 +159,12 @@ export default function ReturnsPage() {
                     void handleScan();
                   }
                 }}
-                placeholder="Scan or type (wedge scanner + Enter)"
+                placeholder={t("warehouse_portal.returns.text.scan_or_type_wedge_scanner_enter")}
               />
             </label>
-            <button type="button" className="button--primary px-4 py-2 rounded-lg text-sm" onClick={() => void handleScan()}>Scan</button>
-            <button type="button" className="button--primary px-4 py-2 rounded-lg text-sm bg-emerald-600" onClick={() => void handleConfirm('RESTOCK')}>Restock selected</button>
-            <button type="button" className="button--secondary px-4 py-2 rounded-lg text-sm" onClick={() => void handleConfirm('WRITE_OFF')}>Write off</button>
+            <button type="button" className="button--primary px-4 py-2 rounded-lg text-sm" onClick={() => void handleScan()}>{t("warehouse_portal.returns.text.scan")}</button>
+            <button type="button" className="button--primary px-4 py-2 rounded-lg text-sm bg-emerald-600" onClick={() => void handleConfirm('RESTOCK')}>{t("warehouse_portal.returns.text.restock_selected")}</button>
+            <button type="button" className="button--secondary px-4 py-2 rounded-lg text-sm" onClick={() => void handleConfirm('WRITE_OFF')}>{t("warehouse_portal.returns.text.write_off")}</button>
           </div>
         )}
 
@@ -181,7 +183,7 @@ export default function ReturnsPage() {
           })}
         />
         <section className="mt-8 p-4 border rounded-lg bg-white">
-          <h2 className="text-lg font-semibold mb-2">Credit note reverse logistics</h2>
+          <h2 className="text-lg font-semibold mb-2">{t("warehouse_portal.returns.text.credit_note_reverse_logistics")}</h2>
           <ReverseLogisticsPanel />
         </section>
       </PageChrome>

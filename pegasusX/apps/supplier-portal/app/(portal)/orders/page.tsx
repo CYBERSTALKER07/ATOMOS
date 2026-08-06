@@ -14,19 +14,21 @@ import { useSupplierWsRefresh } from '@/lib/use-supplier-ws-refresh';
 import { ListToolbar } from '@/components/ListToolbar';
 import { useToast } from '@/components/Toast';
 import { PageChrome } from '@/components/PageChrome';
+import { usePortalT } from '@/lib/i18n';
 import { OrdersList, type OrderFilter } from './components/OrdersList';
 
 const supplierApi = createSupplierApi();
 const WEB_PAGE_SIZE = 25;
 const DESKTOP_PAGE_SIZE = 200;
-const filterLabels: Record<OrderFilter, string> = {
-  ACTIVE: 'Active Orders',
-  SCHEDULED: 'Scheduled pre-orders',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-};
 
 export default function OrdersPage() {
+  const t = usePortalT();
+  const filterLabels: Record<OrderFilter, string> = {
+    ACTIVE: t('portal.page.orders.filter.active'),
+    SCHEDULED: t('portal.page.orders.filter.scheduled'),
+    COMPLETED: t('portal.page.orders.filter.completed'),
+    CANCELLED: t('portal.page.orders.filter.cancelled'),
+  };
   const { push: toast } = useToast();
   const pageSize = isTauri() ? DESKTOP_PAGE_SIZE : WEB_PAGE_SIZE;
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
@@ -134,8 +136,8 @@ export default function OrdersPage() {
   return (
     <PageChrome
       icon="orders"
-      title="Orders"
-      description="Durable supplier-scoped orders with assignment and live driver snapshots."
+      title={t('portal.page.orders.supplier.title')}
+      description={t('portal.page.orders.supplier.description')}
       actions={
         <div className="flex flex-wrap gap-2">
           {(['ACTIVE', 'SCHEDULED', 'COMPLETED', 'CANCELLED'] as OrderFilter[]).map((nextFilter) => (

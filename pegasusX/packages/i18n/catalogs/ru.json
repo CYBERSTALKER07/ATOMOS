@@ -129,7 +129,12 @@
         "no_account": "Нет аккаунта?",
         "create_account": "Создать аккаунт",
         "http_error": "HTTP {status}",
-        "network_error": "Сетевая ошибка - запущен ли backend?"
+        "network_error": "Сетевая ошибка - запущен ли backend?",
+        "text": {
+          "supplier_sign_in": "Поставщик sign in",
+          "enter_registered_phone": "Введите зарегистрированный номер телефона.",
+          "enter_otp_sent_to": "Введите 6-значный код, отправленный на {phone}"
+        }
       },
       "register": {
         "brand_title": "Pegasus Hub",
@@ -420,7 +425,15 @@
             "cat-lighters-matches": "Зажигалки и спички",
             "cat-other": "Другое"
           }
+        },
+        "text": {
+          "set_up_your_supplier_account": "Set up your Поставщик Аккаунт"
         }
+      },
+      "text": {
+        "supplier_node": "Поставщик node",
+        "pegasusx_and_copy_2026": "pegasusX © 2026",
+        "pegasusx_supplier": "pegasusX Поставщик"
       }
     },
     "admin": {
@@ -475,9 +488,9 @@
           "running": "Выполнение..."
         },
         "role": {
-          "all": "ALL",
-          "retailer": "RETAILER",
-          "driver": "DRIVER"
+          "all": "ВСЕ",
+          "retailer": "Ритейлер",
+          "driver": "Водитель"
         },
         "bypass": {
           "title": "Выдать bypass платежа",
@@ -581,6 +594,72 @@
         "error": {
           "fault": "Сбой аналитики: {detail}"
         }
+      },
+      "demand": {
+        "flywheel": {
+          "text": {
+            "last_1_day": "Последний 1 день",
+            "last_14_days": "Последние 14 дней",
+            "flywheel_vs_planning": "Флайвил vs планирование:",
+            "when": "Когда",
+            "day": "День",
+            "retailer": "Ритейлер",
+            "kind": "Тип",
+            "net_sold": "Продано нетто",
+            "source": "Источник",
+            "days_window": "Окно, дней",
+            "pos_flywheel_demand": "Спрос по данным POS"
+          }
+        },
+        "text": {
+          "baseline_vs_actual_14d": "База vs факт (14д)",
+          "upcoming_demand_rows": "Ближайшие строки спроса",
+          "qty": "Кол-во",
+          "demand_forecast": "Прогноз спроса"
+        },
+        "signals": {
+          "text": {
+            "new_demand_signal": "Новый Demand Signal",
+            "holiday": "Праздник",
+            "weather": "Погода",
+            "event": "Событие",
+            "promotion": "Акция",
+            "scope": "Область",
+            "region": "Регион",
+            "city": "Город",
+            "retailer_sku": "Ритейлер SKU",
+            "product_id": "Товар ID",
+            "start_date": "Start Дата",
+            "end_date": "End Дата",
+            "multiplier_e_g_1_2_for_20_increase": "Multiplier (e.g. 1.2 для 20% increase)",
+            "description": "Описание",
+            "date_range": "Дата Range",
+            "multiplier": "Множитель"
+          }
+        }
+      },
+      "knowledge_graph": {
+        "text": {
+          "name": "Название",
+          "from": "от",
+          "relation": "Связь",
+          "enterprise_knowledge_graph": "Корпоративный граф знаний"
+        }
+      },
+      "text": {
+        "order_velocity_7d": "Заказ velocity (7d)",
+        "revenue_trend_30d": "Выручка trend (30d)",
+        "top_demand_skus_today": "Top demand SKUs (Сегодня)"
+      },
+      "route_performance": {
+        "text": {
+          "route": "Маршрут",
+          "driver": "Водитель",
+          "planned_stops": "Плановые остановки",
+          "actual_stops": "Фактические остановки",
+          "replans": "Перепланирования",
+          "computed": "Рассчитано"
+        }
       }
     },
     "configuration": {
@@ -683,6 +762,1280 @@
           "label": "Банковский перевод",
           "description": "Корпоративный банковский перевод"
         }
+      }
+    },
+    "activity": {
+      "text": {
+        "no_recent_activity": "Нет recent activity.",
+        "operational_events_will_stream_here": "Здесь будут отображаться операционные события.",
+        "recent_activity": "Последняя активность"
+      }
+    },
+    "chargebacks": {
+      "text": {
+        "retailer_id": "Ритейлер ID",
+        "gateway": "Платёжный шлюз",
+        "amount_minor_units": "Сумма (minor units)",
+        "currency": "Валюта",
+        "enter_order_id": "Enter Заказ ID",
+        "enter_retailer_id": "Enter Ритейлер ID",
+        "e_g_1000": "напр. 1000",
+        "enter_chargeback_session_id": "Введите ID сессии чарджбэка",
+        "record_chargeback": "Зафиксировать чарджбэк",
+        "reverse_chargeback": "Отменить чарджбэк"
+      },
+      "claims": {
+        "text": {
+          "order": "Заказ",
+          "claim_ref": "Претензия / ref",
+          "filter_order_id": "Фильтр Заказ id"
+        }
+      }
+    },
+    "compliance": {
+      "text": {
+        "view_in_exception_centre": "Просмотр in Exception Centre",
+        "compliance_and_fiscal_audit": "Соответствие и фискальный аудит",
+        "loading_statistics": "Загрузка statistics...",
+        "no_compliance_stats_for_this_supplier_yet": "Нет compliance stats для this Поставщик yet.",
+        "problematic_orders": "Problematic Заказы",
+        "status": "Статус",
+        "fiscal_status": "Fiscal Статус",
+        "ehf_id": "EHF ID",
+        "ba_status": "BA Статус",
+        "created_at": "Дата создания",
+        "fiscalizing": "Фискализация",
+        "fiscal_failed": "Fiscal Ошибка",
+        "force_completed": "Force Завершено",
+        "ba_pending": "BA Ожидание",
+        "ba_rejected": "BA отклонено",
+        "claim_mismatches": "Претензия Mismatches",
+        "credit_frozen": "Кредит Frozen",
+        "open_credit_notes": "Открыть Кредит Заметки",
+        "open_reverse_logistics": "Открыть Reverse Logistics",
+        "open_cash_discrepancies": "Открыть Cash Discrepancies"
+      },
+      "metric_card": {
+        "text": {
+          "vs_last_week": "к прошлой неделе"
+        }
+      }
+    },
+    "ledger": {
+      "text": {
+        "no_ledger_entries": "Нет ledger entries.",
+        "payment_movements_will_appear_here": "Оплата movements will appear here.",
+        "date": "Дата",
+        "type": "Тип",
+        "amount": "Сумма",
+        "payment_ledger": "Оплата Ledger",
+        "ledger_entries": "Записи в реестре"
+      }
+    },
+    "settings": {
+      "tax_regimes": {
+        "text": {
+          "loading_regimes": "Загрузка regimes...",
+          "no_tax_regimes_found": "Нет tax regimes found.",
+          "create_new_tax_regime": "Создать Новый Tax Regime",
+          "tax_regime_history": "История налогового режима"
+        }
+      },
+      "integrations": {
+        "text": {
+          "loading": "Загрузка…",
+          "api_keys": "API-ключи",
+          "pxk": "pxk_…",
+          "post_partner_v1_oauth_token": "POST /partner/v1/oauth/токен",
+          "grant_type_client_credentials": "grant_type=client_credentials",
+          "no_keys_yet": "Нет keys yet.",
+          "webhooks": "Вебхуки",
+          "no_webhooks": "Нет webhooks.",
+          "dead_letter": "Неотправленные сообщения",
+          "no_dead_letter_rows": "Нет dead-letter rows.",
+          "journals": "журналы",
+          "exports": "Экспорт",
+          "orders": "Заказы",
+          "invoices": "счета-фактуры",
+          "inventory": "Инвентарь",
+          "ledger": "реестр",
+          "journals_1c": "журналы (1С)",
+          "csv": "csv",
+          "json": "json",
+          "xml": "xml",
+          "no_export_jobs": "Нет Экспорт jobs.",
+          "sftp_edi": "SFTP + EDI",
+          "recent_edi_documents": "Последние EDI-документы",
+          "no_edi_documents": "Нет EDI documents.",
+          "host_or_leave_blank_for_local_edi_root": "Host (или leave blank для local EDI root)",
+          "port": "Порт",
+          "username": "Имя пользователя",
+          "gsm_secret_name_secret_ref": "GSM secret Название (secret_ref)",
+          "remote_base_directory": "Удалённая базовая папка",
+          "inbound_dir": "Папка входящих",
+          "outbound_dir": "Папка исходящих",
+          "archive_dir": "Папка архива"
+        }
+      },
+      "notification_preferences": {
+        "text": {
+          "saved": "Сохранено.",
+          "quiet_from": "quiet от",
+          "quiet_to": "quiet до",
+          "notification_preferences": "Настройки уведомлений"
+        }
+      },
+      "planning": {
+        "text": {
+          "custom_seasons": "Пользовательские сезоны",
+          "active_overrides": "Активные overrides",
+          "planning_settings": "Planning Настройки"
+        },
+        "create_override_form": {
+          "text": {
+            "custom": "Свой вариант"
+          }
+        },
+        "seasonal_overrides_table": {
+          "text": {
+            "template": "Шаблон",
+            "window": "Окно"
+          }
+        }
+      },
+      "playbooks": {
+        "text": {
+          "loading_playbooks": "Загрузка playbooks…",
+          "no_active_playbooks": "Нет Активные playbooks.",
+          "auto": "авто",
+          "control_tower_playbooks": "Плейбуки центра управления"
+        }
+      },
+      "return_policy": {
+        "text": {
+          "return_policy_saved": "Политика возврата сохранена.",
+          "same_as_default": "Как по умолчанию"
+        }
+      },
+      "segmentation_panel": {
+        "text": {
+          "loading_segmentation": "Загрузка segmentation…",
+          "retailer_segments": "Ритейлер segments",
+          "no_retailer_segments_yet_run_bootstrap_after_orders_exist": "Нет Ритейлер segments yet. Run bootstrap after Заказы exist.",
+          "sku_velocity_classes": "Классы скорости SKU",
+          "no_sku_classes_yet": "Нет SKU classes yet.",
+          "strategic": "Стратегический"
+        }
+      }
+    },
+    "catalog": {
+      "_product_id_": {
+        "text": {
+          "ean_gtin": "EAN / GTIN",
+          "product_detail": "Товар detail"
+        }
+      },
+      "components": {
+        "catalog_table": {
+          "text": {
+            "image": "Изображение",
+            "category": "Категория",
+            "barcode": "Штрихкод",
+            "price_minor": "Цена (minor)",
+            "unit_vu": "VU за единицу",
+            "sale_unit": "Единица продажи",
+            "units_case": "Единиц/короб",
+            "actions": "Действия",
+            "no_image": "Нет image",
+            "unit": "Единица",
+            "case": "Короб"
+          }
+        },
+        "create_product_form": {
+          "text": {
+            "no_categories_complete_onboarding_first": "Нет categories — complete onboarding first",
+            "8_14_digit_retail_barcode": "8–14-значный розничный штрихкод"
+          }
+        }
+      }
+    },
+    "control_tower": {
+      "text": {
+        "actual_vs_plan": "Факт vs План",
+        "no_plan_actual_series_for_this_session_yet": "Нет plan/actual series для this session yet.",
+        "baseline_vs_upside_scenarios": "Базовый сценарий vs оптимистичный",
+        "no_scenario_series_for_this_session_yet": "Нет scenario series для this session yet.",
+        "top_scored_exceptions": "Топ исключений по оценке",
+        "playbook_suggestions": "Рекомендации плейбуков"
+      },
+      "scored_exceptions_panel": {
+        "text": {
+          "loading_scored_exceptions": "Загрузка scored exceptions…",
+          "no_open_scored_exceptions": "Нет Открыть scored exceptions."
+        }
+      }
+    },
+    "credit": {
+      "admin_disable": {
+        "text": {
+          "relationship": "Отношение",
+          "program": "Программа",
+          "admin_disable_credit": "Admin: disable Кредит"
+        }
+      },
+      "collections": {
+        "text": {
+          "limit": "Лимит",
+          "balance": "Баланс",
+          "available": "Доступно",
+          "util": "Исп., %",
+          "limit_minor": "лимит (мин. единицы)",
+          "reason": "причина"
+        }
+      },
+      "policy": {
+        "text": {
+          "retailer_relationships": "Ритейлер relationships",
+          "terms": "Условия",
+          "ret": "ret_…",
+          "self_serve_disable_blocked": "Самостоятельное отключение заблокировано"
+        }
+      }
+    },
+    "dashboard": {
+      "text": {
+        "live_fleet_map": "Live Автопарк Карта",
+        "dispatch_queue": "Очередь диспетчеризации",
+        "live_event_stream": "Живая лента событий"
+      }
+    },
+    "delivery_zones": {
+      "text": {
+        "delivery_zones": "Доставка zones"
+      }
+    },
+    "dispatch": {
+      "text": {
+        "warehouse_scope": "Склад scope",
+        "manual_truck_assignment": "Ручное назначение грузовика",
+        "driver_truck": "Водитель / truck",
+        "pending_orders": "Ожидание Заказы",
+        "smart_suggest_route_map": "Smart suggest Маршрут Карта",
+        "draft": "Черновик",
+        "loading": "Загрузка",
+        "dispatched": "Отправлено",
+        "vol_units": "Объёмные единицы",
+        "search_manifest": "Поиск manifest…",
+        "search_manifests": "Поиск manifests"
+      },
+      "cargo_photo_carousel": {
+        "text": {
+          "cargo_photo_reports": "Фотоотчёты по грузу",
+          "request_photo": "Запросить фото"
+        }
+      },
+      "dispatch_sidebar_nav": {
+        "text": {
+          "right_direction": "Правильное направление",
+          "since_2022": "С 2022 года",
+          "requests": "Заявки",
+          "cargos": "Грузы",
+          "repair": "Ремонт",
+          "reports": "Отчёты"
+        }
+      },
+      "partner_filter_bar": {
+        "text": {
+          "filter_by_partners": "Фильтр by Partners",
+          "show": "Показать",
+          "search_vehicle_or_route": "Поиск vehicle или Маршрут..."
+        }
+      },
+      "route_telemetry_map": {
+        "text": {
+          "no_live_eta": "Нет live ETA"
+        }
+      },
+      "shipment_card_grid": {
+        "text": {
+          "no_active_shipments_matching_criteria": "Нет Активные shipments matching criteria",
+          "adjust_filters_or_select_a_different_partner": "Adjust filters или Выбрать a different partner"
+        }
+      },
+      "vehicle_capacity_gauge": {
+        "text": {
+          "current_truck_capacity": "Текущая вместимость грузовика"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "portal_error": "Portal Ошибка",
+        "something_went_wrong": "Что-то пошло не так"
+      }
+    },
+    "exceptions": {
+      "claims": {
+        "text": {
+          "claims_queue": "Претензии queue"
+        }
+      },
+      "early_complete": {
+        "text": {
+          "driver_id": "Водитель ID",
+          "driver_uuid_from_escalation_or_telemetry": "Водитель UUID от escalation или telemetry",
+          "early_route_complete": "Early Маршрут complete"
+        }
+      },
+      "negotiations": {
+        "text": {
+          "quantity_negotiations": "Количество negotiations"
+        }
+      },
+      "text": {
+        "recommended_playbooks": "Рекомендованные плейбуки"
+      },
+      "shop_closed": {
+        "text": {
+          "shop_closed_escalations": "Эскалации из-за закрытия магазина"
+        }
+      },
+      "playbook_runs_panel": {
+        "text": {
+          "loading_playbook_suggestions": "Загрузка playbook suggestions…"
+        }
+      }
+    },
+    "factories": {
+      "components": {
+        "factory_form": {
+          "text": {
+            "add_factory": "Добавить Завод",
+            "main_factory": "Main Завод"
+          }
+        },
+        "factory_list": {
+          "text": {
+            "add_your_first_factory_to_link_production_to_warehouses": "Добавить your first Завод до link production до warehouses."
+          }
+        }
+      }
+    },
+    "finance": {
+      "credit_notes": {
+        "text": {
+          "create_manual_draft": "Создать manual draft",
+          "load_order_lines": "Load Заказ lines",
+          "create_draft": "Создать draft",
+          "reason_code": "Код причины",
+          "reason_text": "Текст причины"
+        }
+      }
+    },
+    "fleet": {
+      "orders": {
+        "text": {
+          "fleet_orders": "Автопарк Заказы"
+        }
+      },
+      "text": {
+        "fleet_and_org": "Автопарк & org"
+      }
+    },
+    "geo_report": {
+      "text": {
+        "geo_report": "Гео-отчёт"
+      }
+    },
+    "inventory": {
+      "import": {
+        "text": {
+          "no_mapping_suggestions_returned": "Нет mapping suggestions returned.",
+          "source_column": "Исходная колонка",
+          "target_field": "Целевое поле",
+          "confidence": "Достоверность",
+          "inventory_import_wizard": "Инвентарь Импорт wizard"
+        }
+      },
+      "inventory_table": {
+        "text": {
+          "stock_policy": "Политика запасов",
+          "adjust": "Скорректировать",
+          "inherit_warehouse": "Inherit Склад",
+          "reject_when_short": "Отклонять при недостаче",
+          "accept_backorder": "Принимать отложенный заказ",
+          "qty": "±кол-во"
+        }
+      }
+    },
+    "manifest_exceptions": {
+      "text": {
+        "manifest": "Манифест",
+        "attempts": "Попытки",
+        "manifest_gate_exceptions": "Исключения манифеста на воротах"
+      }
+    },
+    "manifests": {
+      "_id_": {
+        "text": {
+          "inject_order_id": "Inject Заказ ID",
+          "order_uuid": "Заказ uuid",
+          "manifest_detail": "Детали манифеста"
+        }
+      }
+    },
+    "operations": {
+      "replenishment_policies": {
+        "text": {
+          "safety_stock_8_2": "Страховой запас (§8.2)",
+          "target_service_level": "Целевой уровень сервиса (%)",
+          "lead_time_days": "Lead Время (days)",
+          "replenishment_policies": "Политики пополнения"
+        }
+      },
+      "operator_broadcast": {
+        "text": {
+          "message_body": "Текст сообщения",
+          "operator_broadcast": "Рассылка оператора"
+        }
+      },
+      "payment_bypass": {
+        "text": {
+          "order_id_awaiting_payment": "Заказ ID (AWAITING_PAYMENT)",
+          "payment_bypass": "Оплата bypass"
+        }
+      }
+    },
+    "ops": {
+      "map": {
+        "text": {
+          "zone_h3": "Зона H3"
+        }
+      }
+    },
+    "orders": {
+      "_id_": {
+        "text": {
+          "total": "Итого",
+          "status_history": "Статус history"
+        }
+      },
+      "components": {
+        "orders_list": {
+          "text": {
+            "cancel_order": "Отмена Заказ"
+          }
+        }
+      },
+      "order_kebab_menu": {
+        "text": {
+          "order_actions": "Заказ Действия"
+        }
+      },
+      "order_ops_actions": {
+        "text": {
+          "warehouse_admin_actions": "Склад admin Действия",
+          "new_delivery_date": "Новый Доставка Дата",
+          "reason_required": "Reason (Обязательно)"
+        }
+      },
+      "propose_delay_dialog": {
+        "text": {
+          "delay_delivery": "Delay Доставка"
+        }
+      },
+      "re_dispatch_dialog": {
+        "text": {
+          "reassign_order": "Reassign Заказ",
+          "reassignment_type": "Reassignment Тип"
+        }
+      }
+    },
+    "pricing": {
+      "_product_id_": {
+        "text": {
+          "on_sale": "В продаже",
+          "discount_bps": "Скидка (б.п.)",
+          "preview_pricing_impact": "Предпросмотр влияния на цену",
+          "old_list_price": "Old List Цена",
+          "new_list_price": "Новый List Цена",
+          "old_sale_price": "Old Sale Цена",
+          "new_sale_price": "Новый Sale Цена"
+        }
+      },
+      "retailer_overrides": {
+        "text": {
+          "all_products": "Все Товары",
+          "new_price_override": "Новый Цена override",
+          "select_a_product": "Выбрать a Товар",
+          "calculating_impact_preview": "Расчёт предварительного эффекта…",
+          "impact_preview": "Предпросмотр эффекта",
+          "price": "Цена",
+          "set_by": "Установил",
+          "notes": "Заметки",
+          "retailer_uuid": "Ритейлер UUID",
+          "product_uuid": "Товар UUID",
+          "reason_for_override": "Reason для override",
+          "retailer_overrides": "Ритейлер overrides"
+        }
+      }
+    },
+    "promotions": {
+      "text": {
+        "all_retailers": "Все retailers",
+        "specific_retailers": "Конкретные ритейлеры",
+        "active_rules": "Активные rules",
+        "min_qty": "Мин. кол-во",
+        "min_order": "Min Заказ",
+        "starts": "Начало",
+        "ends": "Окончание",
+        "sandbox_p_and_l_projection": "Прогноз P&L (тест. режим)",
+        "volume": "Объём",
+        "margin": "Маржа",
+        "margin_2": "Маржа Δ"
+      }
+    },
+    "reconciliation": {
+      "text": {
+        "payments_and_ledger": "Платежи & ledger"
+      }
+    },
+    "replenishment": {
+      "suggestions": {
+        "text": {
+          "all_sources": "Все sources",
+          "has_store_pos": "Есть касса (POS)",
+          "wholesale_only": "Только опт",
+          "sources": "Источники",
+          "pos_vel_day": "Скорость продаж POS / день",
+          "base_demand_day": "Базовый спрос / день",
+          "suggested_qty": "Рекомендуемое кол-во",
+          "adj_demand_day": "Скорр. спрос / день",
+          "in_flight": "В процессе",
+          "safety_stock": "Страховой запас",
+          "by_date": "By Дата",
+          "sku_search": "SKU Поиск",
+          "select_all": "Выбрать Все",
+          "reorder_suggestions": "Рекомендации по перезаказу"
+        }
+      }
+    },
+    "returns": {
+      "text": {
+        "open_returns": "Открыть returns",
+        "total_damage_value": "Итого damage value",
+        "return_to_stock": "Return до stock",
+        "write_off": "Списать",
+        "gate_resolved": "Решено на воротах",
+        "notes_optional": "Заметки (Необязательно)",
+        "dispute_and_returns": "Споры и возвраты"
+      }
+    },
+    "supply_lanes": {
+      "text": {
+        "supply_lanes": "Маршруты снабжения"
+      },
+      "supply_lanes_list": {
+        "text": {
+          "active_drivers": "Активные Drivers",
+          "orders_today": "Заказы Сегодня",
+          "capacity_limit": "Лимит вместимости",
+          "lane_utilization": "Загрузка маршрута"
+        }
+      }
+    },
+    "topology": {
+      "text": {
+        "factories_and_warehouses": "Заводы и склады"
+      }
+    },
+    "treasury": {
+      "cash_reconciliations": {
+        "text": {
+          "finance_note_optional": "Finance note (Необязательно)",
+          "verification_note_for_accept_write_off": "Verification note для accept / write-off"
+        }
+      },
+      "text": {
+        "earnings_and_disputes": "Доходы и споры"
+      }
+    },
+    "warehouses": {
+      "components": {
+        "warehouse_form": {
+          "text": {
+            "add_warehouse": "Добавить Склад",
+            "coverage_km": "Радиус покрытия, км",
+            "main_warehouse": "Main Склад"
+          }
+        },
+        "warehouse_list": {
+          "text": {
+            "add_your_first_warehouse_to_start_fulfilling_orders": "Добавить your first Склад до start fulfilling Заказы."
+          }
+        }
+      }
+    },
+    "ai": {
+      "recommendations": {
+        "text": {
+          "access_restricted_for_this_supplier_session": "Access restricted для this Поставщик session.",
+          "you_are_offline_showing_the_last_loaded_recommendations": "Вы офлайн. Показаны последние загруженные рекомендации.",
+          "no_recommendations": "Нет recommendations",
+          "score": "Оценка",
+          "reason_codes": "Коды причин",
+          "evidence": "Доказательства",
+          "add_operator_rationale": "Добавить operator rationale",
+          "ai_recommendation_review": "Проверка рекомендаций ИИ"
+        }
+      }
+    },
+    "demand": {
+      "payday_calendar": {
+        "text": {
+          "manage_predictable_demand_spikes_across_the_region": "Управление predictable demand spikes across the region.",
+          "dates": "Даты",
+          "loading_calendar": "Загрузка calendar...",
+          "no_paydays_scheduled": "Нет paydays scheduled.",
+          "remove": "Удалить",
+          "schedule_payday_spike": "Запланировать всплеск в день зарплаты",
+          "start_time": "Start Время",
+          "end_time": "End Время",
+          "demand_multiplier_expected_lift": "Множитель спроса (ожид. прирост)",
+          "e_g_august_state_pension_payout": "напр. Августовская гос. пенсия"
+        }
+      },
+      "signals": {
+        "text": {
+          "manage_promo_and_event_multipliers_for_causal_demand_sensing": "Управление promo и event multipliers для causal demand sensing.",
+          "all_types": "Все Types",
+          "promo": "Промо",
+          "payday": "Зарплатный день",
+          "event_density": "Плотность событий",
+          "competitor_pressure": "Давление конкурентов",
+          "title_type": "Title / Тип",
+          "validity": "Срок действия",
+          "loading_signals": "Загрузка signals...",
+          "no_signals_found": "Нет signals found.",
+          "all": "Все",
+          "expired": "Истекло",
+          "scheduled": "Запланировано",
+          "edit": "Изменить",
+          "deactivate": "Деактивировать",
+          "this_multiplies_expected_demand_by_your_chosen_factor_for_the_se": "This multiplies expected demand by your chosen factor для the Выбрано scope.",
+          "sku_optional": "SKU (Необязательно)",
+          "description_optional": "Описание (Необязательно)",
+          "e_g_retailer_123_or_city_tashkent": "e.g. Ритейлер:123 или city:Tashkent",
+          "leave_blank_for_all_skus": "Leave blank для Все SKUs",
+          "e_g_summer_soft_drinks_push": "напр. Летняя акция на напитки"
+        }
+      }
+    },
+    "earnings": {
+      "text": {
+        "totals_by_currency": "Итоги по валюте",
+        "finance_actions": "Finance Действия",
+        "record_chargeback": "Зафиксировать чарджбэк",
+        "record_reversal": "Зафиксировать возврат операции",
+        "recent_dispute_history": "История последних споров",
+        "recent_ledger_activity": "Последняя активность в реестре",
+        "reconciliation_mismatches": "Несоответствия при сверке",
+        "net": "Нетто",
+        "credit_total": "Кредит Итого",
+        "debit_total": "Debit Итого",
+        "entries": "Записи",
+        "occurred": "Произошло",
+        "entry_type": "Entry Тип",
+        "reference": "Референс",
+        "earnings_and_treasury": "Доходы и казначейство",
+        "live_treasury_stream": "Живая казначейская лента"
+      }
+    },
+    "org_fleet": {
+      "components": {
+        "driver_form": {
+          "text": {
+            "warehouse_based_driver": "Склад-based Водитель",
+            "factory_based_driver": "Завод-based Водитель",
+            "select_home_node": "Выбрать home node",
+            "assign_vehicle_later": "Назначить транспорт позже",
+            "driver_name": "Водитель Название"
+          }
+        },
+        "driver_table": {
+          "text": {
+            "driver_roster": "Водитель roster",
+            "home_node": "Базовый узел",
+            "vehicle": "Транспорт"
+          }
+        },
+        "org_member_form": {
+          "text": {
+            "org_members": "Участники организации",
+            "warehouse_payload_staff": "Склад payload staff",
+            "factory_payload_staff": "Завод payload staff",
+            "select_node": "Выбрать node",
+            "full_name": "Full Название",
+            "temporary_password": "Temporary Пароль"
+          }
+        },
+        "org_member_table": {
+          "text": {
+            "current_org_roster": "Текущий состав организации",
+            "role": "Роль",
+            "node": "Узел"
+          }
+        },
+        "vehicle_form": {
+          "text": {
+            "vehicles": "Транспортные средства",
+            "warehouse_based_vehicle": "Склад-based vehicle",
+            "factory_based_vehicle": "Завод-based vehicle",
+            "vehicle_label": "Название транспорта",
+            "license_plate": "Госномер"
+          }
+        },
+        "vehicle_table": {
+          "text": {
+            "vehicle_roster": "Реестр транспорта"
+          }
+        }
+      },
+      "text": {
+        "org_staff_and_fleet_onboarding": "Org, staff, и Автопарк onboarding"
+      }
+    },
+    "payments": {
+      "text": {
+        "settlement_summary_endpoint_unavailable_showing_derived_fallback": "Settlement summary endpoint unavailable. Showing derived fallback от Оплата ledger entries.",
+        "entry_count": "Кол-во записей",
+        "net_minor_units": "Нетто (мин. единицы)",
+        "last_occurred": "Последний раз произошло",
+        "settlement_groups": "Группы расчётов",
+        "first_occurred": "Впервые произошло",
+        "payment_settlement_authority": "Оплата settlement authority",
+        "live_finance_stream": "Живая финансовая лента"
+      }
+    },
+    "setup": {
+      "billing": {
+        "text": {
+          "e_g_hsbc_chase": "напр. HSBC, Chase",
+          "e_g_chasus33": "напр. CHASUS33",
+          "payment_acceptor": "Оплата acceptor",
+          "payment_gateways": "Оплата gateways",
+          "billing_and_payment_gateways": "Биллинг & Оплата gateways",
+          "payout_bank_account": "Payout bank Аккаунт"
+        }
+      },
+      "business": {
+        "text": {
+          "e_g_gb123456789": "напр. GB123456789",
+          "companies_house_or_local_registry_id": "Companies House или local registry ID",
+          "building_street_suite": "Здание, улица, офис",
+          "tax_and_registration": "Налоги и регистрация",
+          "headquarters_location": "Расположение головного офиса"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "supplier_setup": "Поставщик setup",
+          "onboarding_progress": "Прогресс адаптации",
+          "setup_progress": "Прогресс настройки"
+        }
+      }
+    },
+    "tracking": {
+      "text": {
+        "loading_live_fleet": "Загрузка live Автопарк…",
+        "live_fleet_from_dispatch_api": "Live Автопарк от dispatch API"
+      }
+    },
+    "admin_order_ops_panel": {
+      "text": {
+        "force_complete_fiscal_exception": "Принудительное завершение (фискальное исключение)",
+        "assign_driver": "Assign Водитель",
+        "patch_status": "Patch Статус",
+        "route_id": "Маршрут ID",
+        "vehicle_id_optional": "Vehicle ID (Необязательно)",
+        "reason_optional": "Reason (Необязательно)"
+      }
+    },
+    "bulk_import_wizard": {
+      "text": {
+        "bulk_import_wizard": "Bulk Импорт Wizard",
+        "upload_a_csv_file_to_import_products": "Загрузить a CSV file до Импорт Товары",
+        "map_your_csv_columns_to_product_fields": "Карта your CSV columns до Товар fields:",
+        "continue": "Продолжить"
+      }
+    },
+    "control_tower_command_panel": {
+      "text": {
+        "control_tower": "Центр управления",
+        "reroute": "Перенаправить маршрут",
+        "freeze_dispatch": "Заморозить диспетчеризацию",
+        "priority_boost": "Повышение приоритета"
+      }
+    },
+    "dispatch_preview_map": {
+      "text": {
+        "route_preview_unavailable_until_optimizer_proposes_stops_with_co": "Маршрут preview unavailable until optimizer proposes stops с coordinates."
+      }
+    },
+    "exception_weather_map_panel": {
+      "text": {
+        "exception_weather": "Погодные исключения",
+        "h3_clusters_for_shop_closed_delays_and_manifest_gate_issues_24h": "H3 clusters для shop-closed, delays, и manifest gate issues (24h)",
+        "loading_exception_map": "Загрузка exception Карта…",
+        "no_exception_hotspots_in_the_last_24_hours": "Нет exception hotspots in the last 24 hours."
+      }
+    },
+    "fleet_live_map": {
+      "text": {
+        "loading_live_fleet_map": "Загрузка live Автопарк Карта…"
+      }
+    },
+    "fleet_live_map_panel": {
+      "text": {
+        "preparing_map": "Preparing Карта…"
+      }
+    },
+    "forecast_confidence_card": {
+      "text": {
+        "forecast_confidence": "Достоверность прогноза"
+      }
+    },
+    "handoff_inbox_card": {
+      "text": {
+        "handoff": "Передача"
+      }
+    },
+    "live_ops_map": {
+      "text": {
+        "loading_live_routes": "Загрузка live Маршруты…",
+        "no_active_routes_from_the_digital_twin_right_now": "Нет Активные Маршруты от the digital twin right now.",
+        "remaining_stops": "Оставшиеся остановки",
+        "vehicle_inventory": "Vehicle Инвентарь",
+        "no_inventory_rows": "Нет Инвентарь rows.",
+        "open_exceptions": "Открыть exceptions",
+        "none_on_this_route": "Нет on this Маршрут."
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_dispatch_routing": "Pinned для dispatch routing",
+        "start_typing_street_address": "Start typing street Адрес…"
+      }
+    },
+    "network_pulse_panel": {
+      "text": {
+        "network_pulse": "Пульс сети"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_timeline": "Загрузка timeline…",
+        "no_status_history_yet": "Нет Статус history yet."
+      }
+    },
+    "planning_brain_panel": {
+      "text": {
+        "scenario_run": "Запуск сценария"
+      }
+    },
+    "replenishment_traceability_panel": {
+      "text": {
+        "replenishment_traceability": "Трассировка пополнения",
+        "insight": "Инсайт",
+        "warehouse": "Склад",
+        "transfer": "Трансфер"
+      }
+    },
+    "signal_ingest_ops_panel": {
+      "text": {
+        "signal_ingest_ops": "Операции приёма сигналов"
+      }
+    },
+    "supplier_shell": {
+      "text": {
+        "single_tenant_system_ready": "Однотенантный · Система готова",
+        "supplier_admin": "Поставщик Admin",
+        "single_tenant_control_plane": "Однотенантная плоскость управления",
+        "search_pages": "Поиск pages...",
+        "open_navigation": "Открыть navigation",
+        "breadcrumb": "Навигационная цепочка",
+        "search_ctrl_k": "Поиск (Ctrl+K)",
+        "search": "Поиск",
+        "profile_menu": "Меню профиля"
+      }
+    },
+    "profile": {
+      "contact_details_form": {
+        "text": {
+          "edit_contact_details": "Изменить contact Детали"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "28d_actual_units": "28d actual units",
+        "28d_forecast_units": "28d forecast units",
+        "30_day_revenue": "30-день выручка",
+        "accept_backorders_when_out_of_stock": "Accept backorders when out из остаток",
+        "account_holder_name": "Account holder название",
+        "account_number": "Account number",
+        "active_driver_reports_where_the_retailer_did_not_confirm_within_": "Активные водитель отчёты where the ритейлер did not подтвердить within the grace window.",
+        "active_routes_from_the_digital_twin_read_only_visibility_with_et": "Активные маршруты от the digital twin — read-only visibility с ETA confidence colouring.",
+        "address": "Адрес",
+        "adyen": "Adyen",
+        "airwallex": "Airwallex",
+        "amount_must_be_a_number": "Сумма must be a number.",
+        "approve_a_driver_request_to_finish_the_route_before_all_stops_ar": "Approve a водитель заявка до finish the маршрут before все stops are завершено.",
+        "arrived": "Arrived",
+        "auto_approval_thresholds_transfer_limits_and_service_level_safet": "Auto-approval thresholds, трансфер limits, и service-level safety остаток.",
+        "auto_approve_predictive_push": "Auto-approve predictive push",
+        "auto_approve_stable": "Auto-approve stable",
+        "available_drivers": "Доступно drivers",
+        "bank_name": "Bank название",
+        "baseline_sla": "Baseline SLA",
+        "baseline_rows": "Baseline rows",
+        "cancels_the_order_and_notifies_the_retailer_immediately_reason_i": "Cancels the заказ и notifies the ритейлер immediately. Reason is обязательно.",
+        "capacity_breach": "Вместимость breach",
+        "card_payments_via_the_pegasusx_global_rail": "Card платежи via the pegasusX global rail.",
+        "card_revenue_settles_to_your_supplier_treasury_account": "Card выручка settles до your поставщик treasury account.",
+        "cash_on_delivery": "Cash on доставка",
+        "catalog_skus": "Каталог SKUs",
+        "category_id": "Category ID",
+        "channel_and_quiet_hour_rules_per_event_type": "Channel и quiet-час rules per event тип.",
+        "chargeback_recorded_live_finance_refresh_queued": "Chargeback recorded. Онлайн finance обновить queued.",
+        "chargeback_reversal_recorded_live_finance_refresh_queued": "Chargeback reversal recorded. Онлайн finance обновить queued.",
+        "claim_filing_windows_applied_when_orders_complete_retailers_see_": "Претензия filing windows applied when заказы complete. Retailers see the countdown от this политика.",
+        "co_locate_with_factory": "Co-locate с завод",
+        "coa_save_failed": "CoA сохранить не удалось",
+        "company_registration_number": "Company registration number",
+        "complete_setup": "Complete setup",
+        "completed_route_efficiency_and_replan_metrics": "Завершено маршрут efficiency и replan metrics.",
+        "configure_where_payouts_land_and_which_checkout_rails_retailers_": "Настроить where payouts land и which checkout rails retailers can use.",
+        "configured": "Configured",
+        "connection_restored_escalation_queue_refreshed_from_server": "Connection restored — escalation queue refreshed от server.",
+        "connection_restored_verify_approval_status_before_retrying": "Connection restored — verify approval статус before retrying.",
+        "connection_restored_verify_chargeback_status_before_retrying": "Connection restored — verify chargeback статус before retrying.",
+        "connection_restored_verify_reversal_status_before_retrying": "Connection restored — verify reversal статус before retrying.",
+        "connection_restored_verify_status_before_retrying": "Connection restored — verify статус before retrying.",
+        "contact_name": "Contact название",
+        "could_not_load_orders": "Could not загрузить заказы",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location до an адрес.",
+        "country": "Country",
+        "coverage_radius_km": "Coverage radius (km)",
+        "create_and_edit_warehouse_and_factory_nodes_coverage_radius_and_": "Создать и изменить склад и завод узлы. Coverage radius и co-location drive доставка zones и supply lanes.",
+        "create_failed": "Создать не удалось",
+        "create_products_and_set_volumetric_units_vu_for_warehouse_dispat": "Создать товары и set volumetric units (VU) для склад диспетчеризация вместимость.",
+        "create_webhook_failed": "Создать webhook не удалось",
+        "cross_border_payouts_and_multi_currency_settlement": "Cross-border payouts и multi-currency settlement.",
+        "custom_seasonal_windows_override_global_forecast_baselines_for_d": "Custom seasonal windows переопределение global forecast baselines для дата ranges.",
+        "deactivate_failed": "Deactivate не удалось",
+        "default_out_of_stock_policy": "Default out-из-остаток политика",
+        "default_window_must_be_between_1_and_168_hours": "Default window must be between 1 и 168 часы",
+        "delivery_time_line_qty_propose_resolve_driver_supplier": "Доставка-время line кол-во propose/resolve (водитель → поставщик).",
+        "demand_baseline": "Demand baseline",
+        "demand_predictions": "Demand predictions",
+        "discount_bps_500_5": "Discount (bps, 500 = 5%)",
+        "dispute_rows": "Dispute rows",
+        "distribution_nodes_and_coverage_for_retailer_serviceability": "Distribution узлы и coverage для ритейлер serviceability.",
+        "draft_credit_notes_and_issue_reverse_logistics_tasks": "Draft кредит заметки и issue reverse-logistics tasks.",
+        "driver_id_is_required": "Водитель ID is обязательно.",
+        "driver_declared_cash_vs_captured_cash_payment_legs_resolve_open_": "Водитель-declared cash vs captured CASH оплата legs — resolve открыть discrepancies.",
+        "driver_rejected_quantities_awaiting_write_off_or_return_to_stock": "Водитель-rejected quantities awaiting write-off или return-до-остаток.",
+        "edi_replay_failed": "EDI replay не удалось",
+        "empathy_adoption_operator_broadcast_replenishment_trigger_and_pa": "Empathy adoption, operator broadcast, replenishment trigger, и оплата bypass.",
+        "enable_the_supplier_credit_program_and_per_retailer_net_terms_di": "Enable the поставщик кредит program и per-ритейлер Net terms. Disable requires Pegaus support.",
+        "enable_trade_credit_irreversible_in_app": "Enable trade кредит — irreversible in-app",
+        "ends_at_rfc3339": "Ends at (RFC3339)",
+        "enter_a_non_zero_quantity_delta": "Enter a non-zero количество delta",
+        "enter_a_valid_list_price": "Enter a valid list цена.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid телефон number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "enterprise_card_acquiring_with_local_payment_methods": "Enterprise card acquiring с local оплата methods.",
+        "export_failed": "Экспорт не удалось",
+        "external_events_and_promotions_that_adjust_base_ai_predictions": "External events и promotions that adjust base AI predictions.",
+        "factory_address": "Завод адрес",
+        "factory_admin": "Завод admin",
+        "factory_cap_7d": "Завод cap (7d)",
+        "failed_to_create_override": "Не удалось до создать переопределение",
+        "failed_to_create_product": "Не удалось до создать товар",
+        "failed_to_delete_override": "Не удалось до удалить переопределение",
+        "failed_to_load_catalog": "Не удалось до загрузить каталог",
+        "failed_to_load_compliance_stats": "Не удалось до загрузить compliance stats",
+        "failed_to_load_exception_map": "Не удалось до загрузить exception карта",
+        "failed_to_load_fleet_tracking": "Не удалось до загрузить автопарк отслеживание",
+        "failed_to_load_integrations": "Не удалось до загрузить интеграции",
+        "failed_to_load_inventory": "Не удалось до загрузить запасы",
+        "failed_to_load_overrides": "Не удалось до загрузить overrides",
+        "failed_to_load_product": "Не удалось до загрузить товар",
+        "failed_to_load_promotions": "Не удалось до загрузить promotions",
+        "failed_to_load_return_policy": "Не удалось до загрузить return политика",
+        "failed_to_load_seasonal_overrides": "Не удалось до загрузить seasonal overrides",
+        "failed_to_load_topology": "Не удалось до загрузить topology",
+        "failed_to_save_product": "Не удалось до сохранить товар",
+        "failed_to_send_verification_code": "Не удалось до send verification code",
+        "fan_out_a_message_to_supplier_ws_rooms_by_role": "Fan out a message до поставщик WS rooms by role.",
+        "filter_product_id": "Фильтр товар ID",
+        "filter_retailer_id": "Фильтр ритейлер ID",
+        "financial_overview_and_operational_intelligence": "Financial обзор и operational intelligence.",
+        "fleet_entities": "Автопарк entities",
+        "fleet_volume": "Автопарк объём",
+        "forecast_units": "Forecast units",
+        "forecast_units_24h": "Forecast units (24h)",
+        "forecast_value": "Forecast value",
+        "fulfilling_nodes_collect_payment_per_dispatch_lane": "Fulfilling узлы collect оплата per диспетчеризация lane.",
+        "full_ledger_chargebacks_and_reconciliation_tools": "Full ledger, chargebacks, и reconciliation tools.",
+        "gln_13_digits": "GLN (13 digits)",
+        "gs1_company_prefix_7_10_digits": "GS1 company prefix (7–10 digits)",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "h3_perimeter_and_warehouse_coverage_configured_via_topology": "H3 perimeter и склад coverage configured via topology.",
+        "h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or": "H3 perimeter coverage и lane utilization от онлайн поставщик заказы.",
+        "immutable_ledger_derived_settlement_and_reconciliation_view_for_": "Immutable ledger-derived settlement и reconciliation просмотр для поставщик finance и support.",
+        "in_transit": "In transit",
+        "ingest_lag": "Ingest lag",
+        "internal_co_located": "Internal / co-located",
+        "invalid_verification_code": "Invalid verification code",
+        "issue_a_one_time_driver_token_for_awaiting_payment_orders": "Issue a one-время водитель токен для AWAITING_PAYMENT заказы.",
+        "issue_key_failed": "Issue key не удалось",
+        "latest_events_across_your_network": "Latest events across your network.",
+        "ledger_rows": "Ledger rows",
+        "legal_and_location_information_used_for_invoicing_compliance_and": "Legal и location information used для invoicing, compliance, и доставка routing.",
+        "legal_name": "Legal название",
+        "list_price_and_optional_product_scoped_sale_discount": "List цена и необязательно товар-scoped sale discount.",
+        "live_finance_stream_chargebacks_and_reconciliation": "Онлайн finance stream, chargebacks, и reconciliation.",
+        "live_retailer_floor_sell_through_store_pos_kafka_demand_signal_f": "Онлайн ритейлер floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers.",
+        "live_sealed_route_execution_exception_weather_and_fleet_onboardi": "Онлайн sealed-маршрут execution, exception weather, и автопарк onboarding.",
+        "loaded": "Loaded",
+        "loading_manifests_seal_and_dispatch_lifecycle_use_dispatch_for_a": "Загрузка манифесты, seal, и диспетчеризация lifecycle. Use Диспетчеризация для активные queue операции.",
+        "loading_gate_overflows_damage_reports_and_manual_removals_raised": "Загрузка-ворота overflows, damage отчёты, и manual removals raised during манифест execution.",
+        "location_permission_denied": "Location permission denied.",
+        "meio_network": "MEIO network",
+        "meio_unavailable": "MEIO недоступно",
+        "manage_historical_and_future_tax_rates": "Управление historical и future tax rates",
+        "manage_manifests_and_dispatch_operations": "Управление манифесты и диспетчеризация операции.",
+        "manage_warehouse_coordinates_and_coverage_radius": "Управление склад coordinates и coverage radius.",
+        "max_vu": "Макс. VU",
+        "max_daily_transfer_units": "Макс. daily трансфер units",
+        "min_confidence_score": "Мин. confidence score",
+        "min_line_qty_packs": "Мин. line кол-во (packs)",
+        "min_order_minor_units": "Мин. заказ (minor units)",
+        "mismatch_groups": "Mismatch groups",
+        "month_earnings": "Месяц earnings",
+        "monthly_salary_payout": "Monthly salary payout",
+        "name_and_address_are_required": "Название и адрес are обязательно.",
+        "name_and_category_are_required": "Название и category are обязательно.",
+        "new_supplier": "Новый поставщик?",
+        "no_store_pos_flywheel_events_yet_when_retailers_complete_pos_sal": "Нет STORE_POS flywheel events ещё. When retailers complete POS sales для your SKUs, rows appear here.",
+        "no_active_fleet_orders": "Нет активные автопарк заказы.",
+        "no_active_warehouse_lanes_configure_nodes_on_topology": "Нет активные склад lanes. Настроить узлы on topology.",
+        "no_claim_chargebacks_yet_approve_a_claim_in_exceptions_claims_to": "Нет претензия chargebacks ещё. Approve a претензия in Исключения → Претензии до создать one.",
+        "no_claims_in_this_filter_retailer_post_delivery_claims_appear_he": "Нет претензии in this фильтр. Ритейлер post-доставка претензии appear here within the 48h window.",
+        "no_data_yet": "Нет данные ещё.",
+        "no_demand_signals_yet_add_events_or_promos_to_adjust_predictive_": "Нет demand signals ещё. Добавить events или promos до adjust predictive запасы.",
+        "no_escalations_in_queue": "Нет escalations in queue.",
+        "no_factories_yet_add_a_production_node_linked_to_your_warehouse_": "Нет factories ещё. Добавить a production узел linked до your склад network.",
+        "no_manifest_exceptions_in_the_current_window": "Нет манифест исключения in the current window.",
+        "no_manifests_in_the_current_window": "Нет манифесты in the current window.",
+        "no_nearby_drivers": "Нет nearby drivers",
+        "no_open_cash_discrepancies_drivers_auto_accept_when_declared_mat": "Нет открыть cash discrepancies. Drivers auto-accept when declared matches expected.",
+        "no_open_exceptions_escalations_appear_here_when_operators_raise_": "Нет открыть исключения. Escalations appear here when operators raise them.",
+        "no_open_returns_all_rejected_delivery_lines_are_resolved": "Нет открыть возвраты — все rejected доставка lines are resolved.",
+        "no_products_to_price_create_products_in_catalog_then_return_here": "Нет товары до цена. Создать товары in Каталог, then return here.",
+        "no_retailer_price_overrides_yet": "Нет ритейлер цена overrides ещё.",
+        "no_supplier_session_sign_in_again_to_load_compliance_for_your_te": "Нет поставщик session. Sign in again до загрузить compliance для your tenant.",
+        "no_warehouse_coverage_configured": "Нет склад coverage configured.",
+        "no_warehouses_yet_add_your_first_distribution_node": "Нет warehouses ещё. Добавить your first distribution узел.",
+        "none": "Нет",
+        "open_replenishment_suggestions_from_demand_signals_create_draft_": "Открыть replenishment suggestions от demand signals — создать draft заказы through normal заказ capture.",
+        "on_shift": "On смена",
+        "open_mismatches": "Открыть mismatches",
+        "opens_a_warehouse_supply_request_against_your_primary_active_war": "Opens a склад supply заявка against your primary активные склад.",
+        "orders_matching_this_filter_will_appear_here": "Заказы matching this фильтр will appear here.",
+        "override_failed": "Переопределение не удалось",
+        "override_price_minor_units": "Переопределение цена (minor units)",
+        "p_and_l_simulation_failed": "P&L simulation не удалось",
+        "partner_api_keys_outbound_webhooks_bulk_exports_and_optional_sft": "Partner API keys, outbound webhooks, bulk exports, и необязательно SFTP drop.",
+        "payload_staff": "Payload персонал",
+        "payments_settlement_authority_earnings_and_reconciliation_health": "Платежи, settlement authority, earnings, и reconciliation health.",
+        "pending": "Ожидание",
+        "pending_dispatch": "Ожидание диспетчеризация",
+        "ping_failed": "Ping не удалось",
+        "pipeline": "Pipeline",
+        "post_delivery_damage_missing_and_os_and_d_claims_choose_settleme": "Post-доставка damage, missing, и OS&D претензии. Choose settlement mode before approve.",
+        "postal_code": "Postal code",
+        "predicted_versus_actual_order_volume_from_supplier_analytics_aut": "Predicted versus actual заказ объём от поставщик аналитика authority.",
+        "predictions": "Predictions",
+        "preview": "Preview",
+        "price_must_be_a_non_negative_integer_minor_units": "Цена must be a non-negative integer (minor units).",
+        "priority_higher_wins_ties": "Priority (higher wins ties)",
+        "product_id_sku": "Товар ID (SKU)",
+        "product_not_found": "Товар not found.",
+        "product_sale_pricing": "Товар sale pricing",
+        "product_category_and_volume_based_sales_with_retailer_targeting_": "Товар, category, и объём-based sales с ритейлер targeting и время windows.",
+        "production_nodes_for_manifests_and_warehouse_replenishment": "Production узлы для манифесты и склад replenishment.",
+        "projections": "Projections",
+        "quantity_negotiation_is_disabled_use_shop_closed_claims_or_missi": "Количество negotiation is отключено. Use shop-closed, претензии, или missing-items для доставка исключения.",
+        "read_only_supplier_planning_graph_factories_warehouses_skus_and_": "Read-only поставщик planning graph — factories, warehouses, SKUs, и relationships.",
+        "recent_financial_transactions": "Recent financial transactions.",
+        "record_payment_disputes_and_reversals_against_the_durable_financ": "Record оплата disputes и reversals against the durable finance ledger. Logistics претензия chargebacks: Finance → Претензия chargebacks.",
+        "register": "Register",
+        "registered": "Registered",
+        "reject_orders_when_out_of_stock": "Reject заказы when out из остаток",
+        "replay_failed": "Replay не удалось",
+        "required_for_compliance_and_payout_verification": "Обязательно для compliance и payout verification.",
+        "resolution_queued_for_retry_when_back_online": "Resolution queued для повторить when назад online.",
+        "retailer_ids_one_per_line": "Ритейлер IDs (one per line)",
+        "retailer_scope": "Ритейлер scope",
+        "retailer_segments_and_sku_velocity_classes_for_constrained_alloc": "Ритейлер segments и SKU velocity classes для constrained allocation (O9-1).",
+        "retailers_collect_cash_reconcile_manually": "Retailers collect cash; reconcile manually.",
+        "retailers_see_these_options_at_checkout_select_all_that_apply": "Retailers see these options at checkout. Выбрать все that применить.",
+        "revenue_at_risk": "Выручка at risk",
+        "review_h3_perimeter_and_warehouse_coverage": "Review H3 perimeter и склад coverage.",
+        "review_automated_exception_playbooks_deactivate_rules_you_do_not": "Review automated exception playbooks. Deactivate rules you do not want suggested.",
+        "revoke_failed": "Revoke не удалось",
+        "sftp_save_failed": "SFTP сохранить не удалось",
+        "sku_availability_stock_policy_per_warehouse_and_quantity_adjustm": "SKU availability, остаток политика per склад, и количество adjustments.",
+        "skus": "SKUs",
+        "sla_risk": "SLA risk",
+        "swift_bic": "SWIFT / BIC",
+        "sale_discount_must_be_greater_than_zero": "Sale discount must be greater than zero.",
+        "savdo_kreditini_yoqish_ilovada_qaytarib_bo_lmaydi": "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi",
+        "save_and_continue": "Сохранить & продолжить",
+        "set_custom_prices_per_retailer_and_product_sku": "Set custom prices per ритейлер и товар SKU.",
+        "set_list_and_sale_pricing_per_catalog_product_add_products_in_ca": "Set list и sale pricing per каталог товар. Добавить товары in Каталог first.",
+        "settlement_net_authority": "Settlement net (authority)",
+        "shop_closed_payment_and_delivery_escalation_queues": "Shop-closed, оплата, и доставка escalation queues.",
+        "single_tenant_logistics_control_plane": "Single-tenant logistics control plane.",
+        "starts_at_rfc3339": "Starts at (RFC3339)",
+        "stockout_skus": "Stockout SKUs",
+        "stream_of_operational_events_and_recent_actions": "Stream из operational events и recent действия.",
+        "street_address": "Street адрес",
+        "supplier_id": "Поставщик ID",
+        "supplier_portal_pegasusx": "Поставщик Portal - pegasusX",
+        "supplier_treasury": "Поставщик Treasury",
+        "supplier_accepts_payments": "Поставщик accepts платежи",
+        "supplier_legal_identity_and_registration_state": "Поставщик legal identity и registration state.",
+        "supplier_operator": "Поставщик operator",
+        "supplier_scope": "Поставщик scope",
+        "supplier_treasury_authority_disputes_and_reconciliation_operatio": "Поставщик treasury authority, disputes, и reconciliation операции sourced directly от оплата ledger state.",
+        "supplier_scoped_active_orders_for_dispatch_oversight": "Поставщик-scoped активные заказы для диспетчеризация oversight.",
+        "supplier_scoped_credit_lines_limits_open_balances_freeze_unfreez": "Поставщик-scoped кредит lines: limits, открыть balances, freeze / unfreeze. Политика enablement lives under Кредит политика. Only your supplier_id profiles.",
+        "supplier_scoped_ledger_rows_from_logistics_claim_approve_chargeb": "Поставщик-scoped ledger rows от logistics претензия approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks.",
+        "supplier_scoped_order_detail_with_warehouse_admin_actions_when_a": "Поставщик-scoped заказ detail с склад admin действия when доступно.",
+        "support_only_permanent_disable_requires_ticket_id_reason_open_ar": "Support-only permanent disable. Requires ticket id + reason. Открыть AR remains collectible.",
+        "tax_id_vat_tin": "Tax ID (VAT / TIN)",
+        "there_are_no_eligible_drivers_nearby_to_take_this_order_right_no": "There are нет eligible drivers nearby до take this заказ right now.",
+        "this_order_is_not_visible_in_your_supplier_scope": "This заказ is not visible in your поставщик scope.",
+        "total_pallets": "Итого pallets",
+        "touchless_transfers": "Touchless трансферы",
+        "tracking_alerts": "Отслеживание оповещения",
+        "transfer_mode": "Трансфер mode",
+        "treasury_splits_and_dispute_operations": "Treasury splits и dispute операции.",
+        "treasury_splits_settlement_authority_and_payment_mismatches": "Treasury splits, settlement authority, и оплата mismatches.",
+        "truck_replenishment": "Truck replenishment",
+        "unable_to_load": "Не удалось до загрузить",
+        "unavailable_drivers": "Недоступно drivers",
+        "undo": "Undo",
+        "unit_vu_must_be_a_positive_number": "Unit VU must be a positive number.",
+        "unit_volume_vu": "Unit объём (VU)",
+        "units_per_case_must_be_a_positive_integer_when_selling_by_case": "Units per case must be a positive integer when selling by case.",
+        "upload_csv_review_column_mapping_approve_and_apply_to_warehouse_": "Загрузить CSV, review column mapping, approve, и применить до склад запасы.",
+        "utilization": "Utilization",
+        "version": "Version",
+        "view_your_durable_finance_ledger_and_payment_movements": "Просмотр your durable finance ledger и оплата movements.",
+        "volume_vu": "Объём VU",
+        "wape_28d": "WAPE (28d)",
+        "wh_inbound_cap": "WH inbound cap",
+        "warehouse_accepts_payments": "Склад accepts платежи",
+        "warehouse_address": "Склад адрес",
+        "warehouse_admin": "Склад admin",
+        "warehouse_lanes_derived_from_topology_and_live_order_volume_lane": "Склад lanes derived от topology и онлайн заказ объём. Lanes are read-only — изменить warehouses и coverage on Topology.",
+        "where_supplier_earnings_are_deposited_after_settlement": "Where поставщик earnings are deposited after settlement.",
+        "who_receives_card_revenue_when_an_order_is_fulfilled": "Who receives card выручка when an заказ is fulfilled.",
+        "your_registered_business_address_not_a_warehouse_dispatch_point": "Your registered business адрес — not a склад диспетчеризация point.",
+        "accept_failed": "accept_failed",
+        "adjust_failed": "adjust_failed",
+        "approve_failed": "approve_failed",
+        "bootstrap_failed": "bootstrap_failed",
+        "bulk_create_failed": "bulk_create_failed",
+        "create_draft_failed": "create_draft_failed",
+        "create_failed_2": "create_failed",
+        "deactivate_failed_2": "deactivate_failed",
+        "defaults_failed": "defaults_failed",
+        "dismiss_failed": "dismiss_failed",
+        "dispatch_execute_failed": "dispatch_execute_failed",
+        "enable_failed": "enable_failed",
+        "failed": "не удалось",
+        "feed_unavailable_apply_ddl_or_wait_for_pos": "feed_unavailable_apply_ddl_or_wait_for_pos",
+        "fleet_orders_failed": "fleet_orders_failed",
+        "hold_failed": "hold_failed",
+        "import_apply_failed": "import_apply_failed",
+        "import_approve_failed": "import_approve_failed",
+        "import_wizard_failed": "import_wizard_failed",
+        "invalid_limit": "invalid_limit",
+        "issue_failed": "issue_failed",
+        "lines_failed": "lines_failed",
+        "load_claims_failed": "load_claims_failed",
+        "load_demand_analytics_failed": "load_demand_analytics_failed",
+        "load_exceptions_failed": "load_exceptions_failed",
+        "load_factories_failed": "load_factories_failed",
+        "load_failed": "load_failed",
+        "load_flywheel_failed": "load_flywheel_failed",
+        "load_geo_report_failed": "load_geo_report_failed",
+        "load_knowledge_graph_failed": "load_knowledge_graph_failed",
+        "load_manifest_exceptions_failed": "load_manifest_exceptions_failed",
+        "load_manifest_failed": "load_manifest_failed",
+        "load_manifests_failed": "load_manifests_failed",
+        "load_playbook_runs_failed": "load_playbook_runs_failed",
+        "load_playbooks_failed": "load_playbooks_failed",
+        "load_pricing_failed": "load_pricing_failed",
+        "load_profile_failed": "load_profile_failed",
+        "load_reconciliation_failed": "load_reconciliation_failed",
+        "load_replenishment_policies_failed": "load_replenishment_policies_failed",
+        "load_returns_failed": "load_returns_failed",
+        "load_scored_exceptions_failed": "load_scored_exceptions_failed",
+        "load_segmentation_failed": "load_segmentation_failed",
+        "load_signals_failed": "load_signals_failed",
+        "load_suggestions_failed": "load_suggestions_failed",
+        "load_supplier_analytics_failed": "load_supplier_analytics_failed",
+        "load_supply_lanes_failed": "load_supply_lanes_failed",
+        "load_topology_failed": "load_topology_failed",
+        "load_warehouses_failed": "load_warehouses_failed",
+        "order_id_required": "order_id обязательно",
+        "patch_failed": "patch_failed",
+        "pegasusx": "pegasusX",
+        "planning_outcomes_unavailable": "planning_outcomes_unavailable",
+        "planning_unavailable": "planning_unavailable",
+        "policy_update_failed": "policy_update_failed",
+        "preview_failed": "preview_failed",
+        "product_id": "product_id",
+        "quantity_on_hand": "quantity_on_hand",
+        "reject_failed": "reject_failed",
+        "reorder_threshold": "reorder_threshold",
+        "resolve_failed": "resolve_failed",
+        "retailer_id_required": "retailer_id_required",
+        "save_factory_failed": "save_factory_failed",
+        "save_failed": "save_failed",
+        "save_profile_failed": "save_profile_failed",
+        "save_replenishment_policies_failed": "save_replenishment_policies_failed",
+        "save_topology_failed": "save_topology_failed",
+        "save_warehouse_failed": "save_warehouse_failed",
+        "scenario_failed": "scenario_failed",
+        "secret_ref": "secret_ref",
+        "signal_status_unavailable": "signal_status_unavailable",
+        "skip_failed": "skip_failed",
+        "title_and_body_required": "title_and_body_required",
+        "traceability_load_failed": "traceability_load_failed",
+        "twin_routes_failed": "twin_routes_failed",
+        "update_retailer_failed": "update_retailer_failed",
+        "update_sku_failed": "update_sku_failed",
+        "warehouse_id": "warehouse_id",
+        "write_off_failed": "write_off_failed",
+        "text": "Включить торговый кредит — необратимо в приложении"
       }
     }
   },
@@ -850,6 +2203,8 @@
       "body": "Водитель сообщил, что магазин закрыт по заказу {order_id}. Попытка {attempt_id} требует дальнейших действий."
     },
     "shop_closed_resolved": {
+      "title": "Случай с закрытым магазином решен",
+      "body": "Случай с закрытым магазином по заказу {order_id} был решен администратором: {action}.",
       "driver": {
         "title": "Случай с закрытым магазином решен",
         "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
@@ -1138,18 +2493,6 @@
       "title": "Эскалация закрытого магазина",
       "body": "Заказ {order_id} был эскалирован для немедленных действий поставщика."
     },
-    "shop_closed_resolved": {
-      "title": "Случай с закрытым магазином решен",
-      "body": "Случай с закрытым магазином по заказу {order_id} был решен администратором: {action}.",
-      "driver": {
-        "title": "Случай с закрытым магазином решен",
-        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
-      },
-      "retailer": {
-        "title": "Случай с закрытым магазином решен",
-        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
-      }
-    },
     "split_payment_created": {
       "retailer": {
         "title": "Создан разделенный платеж",
@@ -1175,6 +2518,1863 @@
     "unified_checkout_completed": {
       "title": "Оформление завершено",
       "body": "Оформление завершено: заказов {order_count}, общая сумма {total_minor} {currency}."
+    },
+    "preorder_date_proposed": {
+      "title": "Проверьте дату доставки",
+      "body": "Склад предложил новую дату доставки для заказа {order_id}. Проверьте."
+    },
+    "preorder_date_accepted": {
+      "title": "Дата доставки принята",
+      "body": "Ритейлер принял предложенную дату доставки для заказа {order_id}."
+    },
+    "preorder_date_rejected": {
+      "title": "Предложение по дате отклонено",
+      "body": "Ритейлер отклонил предложенную дату доставки. Заказ {order_id} отменён."
+    }
+  },
+  "portal": {
+    "chrome": {
+      "language": "Язык",
+      "search": "Поиск…",
+      "home": "Главная",
+      "supplier_hub": "Кабинет поставщика",
+      "warehouse_hub": "Кабинет склада",
+      "factory_hub": "Кабинет завода",
+      "retailer_hub": "Кабинет ритейлера",
+      "collapse_sidebar": "Свернуть боковую панель",
+      "open_sidebar": "Открыть боковую панель",
+      "theme_system": "Системная тема",
+      "theme_light": "Светлая тема",
+      "theme_dark": "Тёмная тема"
+    },
+    "nav": {
+      "section": {
+        "operations": "Операции",
+        "catalog": "Каталог",
+        "network": "Сеть",
+        "analytics": "Аналитика и интеллект",
+        "finance": "Финансы",
+        "settings": "Настройки",
+        "inventory": "Склад",
+        "fleet": "Автопарк",
+        "supply_chain": "Цепочка поставок",
+        "system": "Система"
+      },
+      "overview": "Обзор",
+      "dashboard": "Панель",
+      "orders": "Заказы",
+      "dispatch": "Диспетчеризация",
+      "live_ops_map": "Карта операций",
+      "manifests": "Манифесты",
+      "fleet": "Автопарк",
+      "fleet_orders": "Заказы автопарка",
+      "operations": "Операции",
+      "replenishment_policies": "Политики пополнения",
+      "reorder_suggestions": "Предложения на заказ",
+      "exceptions": "Исключения",
+      "activity": "Активность",
+      "inventory": "Склад",
+      "import_csv": "Импорт CSV",
+      "catalog": "Каталог",
+      "pricing": "Цены",
+      "retailer_overrides": "Переопределения ритейлера",
+      "promotions": "Акции",
+      "topology": "Топология",
+      "factories": "Заводы",
+      "warehouses": "Склады",
+      "delivery_zones": "Зоны доставки",
+      "supply_lanes": "Маршруты поставок",
+      "geo_report": "Геотчёт",
+      "analytics": "Аналитика",
+      "control_tower": "Control Tower",
+      "demand_forecast": "Прогноз спроса",
+      "pos_flywheel": "POS flywheel",
+      "route_performance": "Эффективность маршрутов",
+      "demand_signals": "Сигналы спроса",
+      "payday_calendar": "Календарь зарплат",
+      "knowledge_graph": "Граф знаний",
+      "ai_recommendations": "ИИ-рекомендации",
+      "treasury": "Казначейство",
+      "cash_reconciliations": "Сверки наличных",
+      "credit_notes": "Кредитные ноты",
+      "reconciliation": "Сверка",
+      "compliance_audit": "Аудит соответствия",
+      "payments": "Платежи",
+      "earnings": "Доходы",
+      "credit_policy": "Кредитная политика",
+      "credit_collections": "Взыскания",
+      "credit_admin_disable": "Отключение кредита",
+      "chargebacks": "Чарджбеки",
+      "claim_chargebacks": "Чарджбеки по претензиям",
+      "ledger": "Леджер",
+      "profile": "Профиль",
+      "tax_regimes": "Налоговые режимы",
+      "planning": "Планирование",
+      "return_policy": "Политика возвратов",
+      "notifications": "Уведомления",
+      "integrations": "Интеграции",
+      "segmentation": "Сегментация",
+      "playbooks": "Плейбуки",
+      "org_fleet": "Орг. и автопарк",
+      "returns": "Возвраты",
+      "preorders": "Предзаказы",
+      "tomorrow_board": "Доска на завтра",
+      "rescues": "Спасения",
+      "dispatch_settings": "Настройки диспетчеризации",
+      "stock": "Остатки",
+      "bins_lots": "Ячейки и лоты",
+      "pick_waves": "Волны сборки",
+      "cycle_counts": "Циклические пересчёты",
+      "stock_commitments": "Резервы",
+      "products": "Товары",
+      "supply_requests": "Заявки на поставку",
+      "settings": "Настройки",
+      "replenishment": "Пополнение",
+      "drivers": "Водители",
+      "trucks": "Грузовики",
+      "live_fleet": "Автопарк онлайн",
+      "dispatch_locks": "Блокировки диспетчеризации",
+      "staff": "Персонал",
+      "retailers": "Ритейлеры",
+      "claims": "Претензии",
+      "transfers": "Трансферы",
+      "payment_config": "Настройки оплаты",
+      "loading_bay": "Погрузочная",
+      "location": "Локация",
+      "insights": "Инсайты",
+      "payload_override": "Override payload",
+      "gate_exceptions": "Исключения на воротах",
+      "tracking": "Трекинг",
+      "dock": "Док",
+      "procurement": "Закупки",
+      "my_suppliers": "Мои поставщики",
+      "credit_partners": "Кредитные партнёры",
+      "auto_order": "Автозаказ",
+      "store_stock": "Сток магазина",
+      "local_skus": "Локальные SKU",
+      "pos": "POS",
+      "shifts": "Смены",
+      "sections": "Секции",
+      "assist": "Ассистент",
+      "reports_pro": "Отчёты Pro",
+      "franchise_hq": "Франшиза HQ"
+    },
+    "page": {
+      "dashboard": {
+        "supplier": {
+          "title": "Обзор",
+          "description": "Операционный командный центр в реальном времени."
+        },
+        "warehouse": {
+          "title": "Панель склада",
+          "description": "Операции узла, автопарк и складские остатки."
+        },
+        "factory": {
+          "title": "Панель завода",
+          "description": "Трансферы, погрузочная, автопарк и персонал этого узла."
+        },
+        "retailer": {
+          "title": "Операционный хаб",
+          "description": "Активные доставки, сигналы пополнения и телеметрия автопарка."
+        },
+        "action": {
+          "sync": "Синхронизация",
+          "syncing": "Синхронизация…",
+          "review_orders": "К заказам",
+          "open_catalog": "Открыть каталог",
+          "refresh": "Обновить"
+        },
+        "range": {
+          "today": "Сегодня",
+          "last_7d": "Последние 7 дней",
+          "last_30d": "Последние 30 дней"
+        }
+      },
+      "orders": {
+        "supplier": {
+          "title": "Заказы",
+          "description": "Заказы поставщика с назначением и снимками водителей."
+        },
+        "warehouse": {
+          "title": "Заказы",
+          "description": "Очередь исполнения и запланированные предзаказы. Откройте карточку для деталей."
+        },
+        "retailer": {
+          "title": "Логистика",
+          "description": "Мониторинг входящих узлов и проверка манифестов доставки."
+        },
+        "filter": {
+          "active": "Активные заказы",
+          "scheduled": "Запланированные предзаказы",
+          "completed": "Завершённые",
+          "cancelled": "Отменённые",
+          "active_tab": "Активные заказы",
+          "preorders_tab": "Предзаказы",
+          "all_states": "Все статусы",
+          "all": "ВСЕ",
+          "active_short": "АКТИВНЫЕ",
+          "completed_short": "ЗАВЕРШЁННЫЕ"
+        },
+        "action": {
+          "new_order": "Новый заказ",
+          "refresh": "Обновить"
+        },
+        "section": {
+          "order_queue": "Очередь заказов"
+        }
+      }
+    }
+  },
+  "factory_portal": {
+    "analytics": {
+      "text": {
+        "product_id": "Товар ID",
+        "requested_qty": "Запрошенное кол-во",
+        "shipped_qty": "Отправленное кол-во",
+        "fulfillment": "Выполнение, %",
+        "analytics_overview": "Аналитика Обзор",
+        "product_drill_down": "Товар drill-down"
+      }
+    },
+    "auth": {
+      "text": {
+        "factory_node": "Завод node",
+        "pegasusx_and_copy_2026": "pegasusX © 2026",
+        "pegasusx_factory": "pegasusX Завод"
+      },
+      "login": {
+        "text": {
+          "factory_sign_in": "Завод sign in",
+          "enter_registered_phone": "Введите зарегистрированный номер телефона.",
+          "enter_otp_sent_to": "Введите 6-значный код, отправленный на {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_factory_account": "Set up your Завод Аккаунт"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "factory_portal_error": "Завод portal Ошибка"
+      }
+    },
+    "fleet": {
+      "text": {
+        "plate": "Номер",
+        "driver": "Водитель",
+        "status": "Статус",
+        "capacity_m3": "Вместимость (м³)",
+        "current_route": "Current Маршрут",
+        "factory_fleet": "Завод Автопарк"
+      }
+    },
+    "insights": {
+      "text": {
+        "warehouse": "Склад",
+        "why": "Почему",
+        "urgency": "Срочность",
+        "velocity_day": "Скорость/день",
+        "days_left": "Осталось дней",
+        "reorder_qty": "Кол-во для перезаказа",
+        "actions": "Действия",
+        "replenishment_insights": "Инсайты пополнения"
+      }
+    },
+    "loading_bay": {
+      "text": {
+        "loading_bay": "Загрузка bay",
+        "handoff_timeline": "Хронология передачи"
+      },
+      "loading_bay_grid": {
+        "text": {
+          "items": "Позиции"
+        }
+      }
+    },
+    "manifest_exceptions": {
+      "text": {
+        "gate_exceptions": "Исключения на воротах"
+      },
+      "manifest_exceptions_list": {
+        "text": {
+          "exception_inbox": "Входящие исключения"
+        }
+      }
+    },
+    "manifests": {
+      "_id_": {
+        "text": {
+          "leo_lifecycle": "Жизненный цикл LEO",
+          "no_further_lifecycle_transitions_for_this_state": "Нет further lifecycle transitions для this state.",
+          "no_transfers_on_this_manifest": "Нет transfers on this manifest.",
+          "transitions": "Переходы",
+          "no_transitions_recorded_yet": "Нет transitions recorded yet.",
+          "manifest_detail": "Детали манифеста"
+        }
+      },
+      "text": {
+        "manifest_pipeline": "Конвейер манифестов"
+      }
+    },
+    "notifications": {
+      "text": {
+        "notifications_inbox": "Входящие уведомления"
+      }
+    },
+    "app": {
+      "text": {
+        "network_pulse": "Пульс сети",
+        "cross_role_timeline": "Межролевая хронология"
+      }
+    },
+    "payload_override": {
+      "text": {
+        "payload_override": "Переопределение груза"
+      },
+      "payload_list": {
+        "text": {
+          "capacity": "Вместимость:",
+          "transfer": "Трансфер",
+          "volume_vu": "Объём (VU)"
+        }
+      },
+      "payload_override_form": {
+        "text": {
+          "move_transfer": "Переместить трансфер",
+          "select_a_manifest": "Выбрать a manifest..."
+        }
+      }
+    },
+    "settings": {
+      "location": {
+        "text": {
+          "factory_location": "Завод location",
+          "depot_address": "Depot Адрес"
+        }
+      }
+    },
+    "setup": {
+      "factory": {
+        "text": {
+          "loading_factory_details": "Загрузка Завод Детали…",
+          "manufacturing": "Производство",
+          "assembly": "Сборка",
+          "packaging": "Упаковка",
+          "processing": "Обработка",
+          "factory": "Завод",
+          "general": "Общее"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "factory_setup": "Завод setup",
+          "onboarding_progress": "Прогресс адаптации",
+          "setup_progress": "Прогресс настройки"
+        }
+      }
+    },
+    "staff": {
+      "_id_": {
+        "text": {
+          "staff_id": "ID сотрудника",
+          "joined": "Дата приёма",
+          "staff_detail": "Детали сотрудника"
+        }
+      },
+      "text": {
+        "create_staff_member": "Создать staff member",
+        "operator_name": "Operator Название",
+        "factory_staff": "Завод staff"
+      },
+      "staff_list": {
+        "text": {
+          "name": "Название",
+          "role": "Роль"
+        }
+      }
+    },
+    "supply_requests": {
+      "text": {
+        "table": "Таблица",
+        "board": "Доска",
+        "confirm_fulfill": "Подтвердить fulfill",
+        "internal": "ВНУТРЕННЕЕ:",
+        "truck": "ГРУЗОВИК:",
+        "supply_requests": "Заявки на снабжение",
+        "queue_filter": "Queue Фильтр"
+      },
+      "supply_request_board": {
+        "text": {
+          "production_lane_board": "Доска производственных линий"
+        }
+      },
+      "supply_request_list": {
+        "text": {
+          "priority": "Приоритет",
+          "state": "Статус",
+          "delivery_date": "Доставка Дата",
+          "created": "Создано",
+          "demand_queue": "Очередь заявок"
+        }
+      }
+    },
+    "transfers": {
+      "_id_": {
+        "text": {
+          "manifest_contents": "Содержимое манифеста",
+          "items_in_this_transfer": "Позиции в этом трансфере",
+          "qty": "Кол-во",
+          "volume": "Объём",
+          "transfer_overview": "Transfer Обзор",
+          "driver_assignment": "Водитель Assignment",
+          "unassigned": "Не назначено",
+          "next_transition": "Далее transition",
+          "action_available": "Доступно действие",
+          "no_action": "Нет action",
+          "notes": "Заметки",
+          "transfer_detail": "Детали трансфера"
+        }
+      },
+      "create": {
+        "text": {
+          "ord": "ord_…",
+          "create_transfer": "Создать transfer"
+        }
+      },
+      "text": {
+        "pipeline_view": "Pipeline Просмотр"
+      }
+    },
+    "factory_shell": {
+      "text": {
+        "desktop_command_ready": "Настольная панель управления готова",
+        "breadcrumb": "Навигационная цепочка"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_supply_routing": "Pinned для supply routing",
+        "resolving_address": "Resolving Адрес…",
+        "start_typing_street_address": "Start typing street Адрес…"
+      }
+    },
+    "toast": {
+      "text": {
+        "dismiss": "Скрыть",
+        "swipe_left_or_right_to_dismiss": "Swipe left или right до dismiss"
+      }
+    },
+    "dashboard": {
+      "dashboard_alerts": {
+        "text": {
+          "operational_health": "Операционное состояние",
+          "shift_support_signals": "Сигналы поддержки смены",
+          "attention_needed": "Требует внимания",
+          "alert": "Оповещение",
+          "recommended_next_steps": "Recommended Далее steps",
+          "operator_actions_for_this_shift": "Operator Действия для this shift"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "active_users": "Активные Users",
+        "active_gate": "Активные ворота",
+        "active_manifests": "Активные манифесты",
+        "address": "Адрес",
+        "advance_requests_through_ack_production_ready_fulfill": "Advance заявки through ACK → production → ready → fulfill.",
+        "aggregate_product_demand_and_fulfillment_ratios_across_active_re": "Aggregate товар demand и fulfillment ratios across активные заявки.",
+        "approved": "Approved",
+        "approved_transfers_will_appear_here_as_soon_as_warehouse_demand_": "Approved трансферы will appear here as soon as склад demand is accepted.",
+        "avg_lead_time": "Avg lead время",
+        "could_not_resolve_that_address_try_another_suggestion": "Could not resolve that адрес. Try another suggestion.",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location до an адрес.",
+        "dlq_threshold": "DLQ threshold",
+        "dispatch_transfers_or_create_a_manifest_to_begin_the_loading_gat": "Диспетчеризация трансферы или создать a манифест до begin the загрузка ворота workflow.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid телефон number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "escalated": "Escalated",
+        "exception_queue": "Exception queue",
+        "facility_type": "Facility тип",
+        "factory_portal_pegasus": "Завод Portal — Pegasus",
+        "factory_address": "Завод адрес",
+        "factory_loading_bay_transfer_management_and_dispatch_operations": "Завод загрузка дока, трансфер management, и диспетчеризация операции.",
+        "factory_name": "Завод название",
+        "factory_operators_review_and_advance_warehouse_demand_from_this_": "Завод operators review и advance склад demand от this queue.",
+        "factory_throughput_manifest_pressure_and_exception_queue_from_th": "Завод throughput, манифест pressure, и exception queue от the аналитика endpoint.",
+        "failed_to_send_verification_code": "Не удалось до send verification code",
+        "filter_by_transfer_state_total_volume_reflects_the_current_view": "Фильтр by трансфер state. Итого объём reflects the current просмотр.",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "high_priority": "High priority",
+        "in_flight": "In flight",
+        "in_production": "In production",
+        "invalid_verification_code": "Invalid verification code",
+        "kanban_by_supply_request_lifecycle_state": "Kanban by supply-заявка lifecycle state.",
+        "leo_loading_gate_advance_manifests_through_draft_loading_sealed_": "LEO загрузка ворота — advance манифесты through draft, загрузка, sealed, dispatched, и завершено states.",
+        "last_sync": "Last синхронизировать",
+        "loading_fleet_assignment_options": "Загрузка автопарк assignment options.",
+        "loading_manifest_snapshot": "Загрузка манифест snapshot.",
+        "loading_operator_profile": "Загрузка operator профиль.",
+        "loading_the_current_manifest_and_item_breakdown_for_this_transfe": "Загрузка the current манифест и item breakdown для this трансфер.",
+        "location_permission_denied": "Location permission denied.",
+        "new_factory": "Новый завод?",
+        "no_active_transfers_in_the_loading_bay": "Нет активные трансферы in the загрузка дока",
+        "no_data_yet": "Нет данные ещё.",
+        "no_factory_metrics_yet": "Нет завод metrics ещё",
+        "no_manifests": "Нет манифесты",
+        "no_manifests_currently_in_loading_state": "Нет манифесты currently in Загрузка state",
+        "no_notifications_in_your_inbox_at_this_time": "Нет уведомления in your входящие at this время.",
+        "no_replenishment_insights_at_this_time_insights_are_generated_ba": "Нет replenishment инсайты at this время. Инсайты are generated based on остаток velocity.",
+        "now_loading": "Now загрузка",
+        "once_transfer_and_loading_activity_starts_operational_metrics_wi": "Once трансфер и загрузка activity starts, operational metrics will appear here.",
+        "open_a_row_to_advance_lifecycle_actions": "Открыть a row до advance lifecycle действия.",
+        "operators_and_shift_coverage_registered_for_this_factory_node": "Operators и смена coverage registered для this завод узел.",
+        "payload_override_is_only_available_during_the_loading_phase_all_": "Payload переопределение is only доступно during the загрузка phase. Все current манифесты are either dispatched или завершено.",
+        "pick_an_address_from_the_list_or_refine_your_search": "Pick an адрес от the list или refine your поиск.",
+        "preorder_accept_dispatch_seal_events_from_the_factory_pulse_feed": "Preorder → accept → диспетчеризация → seal events от the завод pulse feed.",
+        "ready_to_fulfill": "Ready до fulfill",
+        "ready_to_load": "Ready до загрузить",
+        "rebalance_or_cancel_transfers_on_manifests_currently_in_loading_": "Rebalance или отмена трансферы on манифесты currently in Загрузка state.",
+        "register": "Register",
+        "review_approved_factory_transfers_advance_active_loading_and_dis": "Review approved завод трансферы, advance активные загрузка, и диспетчеризация манифесты without losing склад context.",
+        "review_warehouse_destination_movements_filter_by_state_and_open_": "Review склад destination movements, фильтр by state, и открыть a трансфер when it needs action от the завод floor.",
+        "rows_highlighted_when_attempt_count_reaches_dlq_threshold": "Rows highlighted when attempt count reaches DLQ threshold.",
+        "stage_a_factory_to_warehouse_movement": "Stage a завод-до-склад movement.",
+        "stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu_o": "Stage a завод-до-склад movement. Объём is captured in VU; необязательно заказ и автопарк assignment can be set now или during загрузка.",
+        "stock_velocity_signals_and_reorder_recommendations_across_connec": "Остаток velocity signals и reorder рекомендации across connected warehouses.",
+        "street_address": "Street адрес",
+        "street_address_used_for_supply_routing_and_loading_bay_operation": "Street адрес used для supply routing и загрузка дока операции. Changes синхронизировать across the завод network.",
+        "submitted": "Submitted",
+        "target_manifest": "Target манифест",
+        "the_selected_transfer_is_no_longer_available_or_could_not_be_loc": "The выбрано трансфер is нет longer доступно или could not be located для this завод.",
+        "there_are_no_staff_members_registered_for_this_factory": "There are нет персонал members registered для this завод.",
+        "there_are_no_vehicles_registered_in_the_factory_fleet_yet": "There are нет транспорт registered in the завод автопарк ещё.",
+        "total_manifests": "Итого манифесты",
+        "total_volume": "Итого объём",
+        "total_volume_vu": "Итого объём (VU)",
+        "transfers_removed_from_manifests_during_loading_overflow_damage_": "Трансферы removed от манифесты during загрузка — overflow, damage, или manual pull.",
+        "transfers_total": "Трансферы итого",
+        "unable_to_load": "Не удалось до загрузить",
+        "vehicle_availability_and_route_assignments_for_this_factory_node": "Транспорт availability и маршрут assignments для this завод узел.",
+        "view_and_manage_all_your_factory_notifications_and_alerts": "Просмотр и управление все your завод уведомления и оповещения.",
+        "visible_transfers": "Visible трансферы",
+        "pegasusx": "pegasusX"
+      }
+    }
+  },
+  "retailer_desktop": {
+    "assist": {
+      "text": {
+        "new_ticket": "Новый ticket",
+        "create_a_section_first": "Создать a section first",
+        "queue": "Очередь",
+        "no_tickets": "Нет tickets.",
+        "what_help_is_needed": "Какая помощь нужна?",
+        "floor_assist": "Помощь в зале"
+      }
+    },
+    "auto_order": {
+      "text": {
+        "draft_now": "Сохранить как черновик",
+        "place_now": "Заказать сейчас",
+        "how_it_works": "Как это работает",
+        "the_ai_analyzes_your_purchase_patterns_even_when_auto_order_is_o": "The AI analyzes your purchase patterns even when auto-Заказ is off.",
+        "when_you_enable_choose_to_use_your_history_or_start_fresh": "When you enable, choose до use your history или start fresh.",
+        "starting_fresh_requires_at_least_2_orders_per_product": "Starting fresh requires at least 2 Заказы per Товар.",
+        "overrides_size_variant_and_gt_product_and_gt_category_and_gt_sup": "Overrides: Size/variant &gt; Товар &gt; Category &gt; Поставщик &gt; Global (Off blocks even when global on).",
+        "use_previous_analytics": "Use Назад Аналитика?",
+        "auto_order_engine": "Auto-Заказ Engine"
+      },
+      "auto_order_list": {
+        "text": {
+          "units": "единиц",
+          "active_predictions": "Активные Predictions"
+        }
+      },
+      "auto_order_rules": {
+        "text": {
+          "global_auto_order": "Global Auto-Заказ",
+          "auto_order_everything_from_all_suppliers": "Auto-Заказ everything от Все suppliers",
+          "global_on_scoped_off_still_blocks_matching_suppliers_categories_": "Global on. Scoped Off still blocks matching suppliers/categories/Товары/size-variants.",
+          "supplier_level_override": "Поставщик-level override",
+          "category_level_override": "Переопределение на уровне категории",
+          "product_level_override": "Товар-level override",
+          "size_variant_override": "Переопределение размера / варианта",
+          "size_variant_overrides": "Переопределения размера / варианта"
+        }
+      }
+    },
+    "catalog": {
+      "text": {
+        "global_network": "Глобальная сеть",
+        "product_catalog": "Товар Каталог",
+        "browse_products": "Browse Товары"
+      },
+      "catalog_filters": {
+        "text": {
+          "search_assets_and_suppliers": "Поиск assets и suppliers..."
+        }
+      }
+    },
+    "control_tower": {
+      "text": {
+        "retailer_ops_pulse": "Ритейлер ops pulse",
+        "no_live_ops_signals_yet": "Нет live ops signals yet"
+      }
+    },
+    "credit": {
+      "text": {
+        "loading": "Загрузка…",
+        "relationships": "Отношения",
+        "on_hold": "На удержании",
+        "no_credit_partners_yet": "Нет Кредит partners yet.",
+        "open_invoices": "Открыть invoices",
+        "no_open_invoices": "Нет Открыть invoices."
+      }
+    },
+    "dock": {
+      "text": {
+        "dock_control": "Управление доком"
+      }
+    },
+    "hq": {
+      "text": {
+        "hq_analytics_not_enabled_for_this_environment": "HQ Аналитика not Включено для this environment.",
+        "sales_by_location": "Продажи по локации",
+        "no_locations_with_sales": "Нет locations с sales.",
+        "sold": "Продано",
+        "voided": "Аннулировано",
+        "net": "Нетто",
+        "sales_by_sku": "Продажи по SKU",
+        "no_skus": "Нет SKUs."
+      }
+    },
+    "insights": {
+      "text": {
+        "intelligence_hub": "Аналитический центр"
+      },
+      "sell_through_panel": {
+        "text": {
+          "day": "День",
+          "net_sold": "Продано нетто",
+          "source": "Источник"
+        }
+      }
+    },
+    "my_suppliers": {
+      "text": {
+        "no_connected_suppliers": "Нет connected suppliers.",
+        "search_and_add_suppliers_to_see_their_catalogs_and_start_orderin": "Поиск и Добавить suppliers до see their catalogs и start ordering.",
+        "search_by_name_or_category": "Поиск by Название или category...",
+        "connected_suppliers": "Подключённые поставщики",
+        "remove_supplier": "Удалить Поставщик",
+        "supplier_directory": "Поставщик Directory"
+      }
+    },
+    "orders": {
+      "text": {
+        "review_delivery": "Review Доставка",
+        "loading_orders": "Загрузка Заказы...",
+        "more_options": "Ещё options",
+        "order_details": "Заказ Детали"
+      }
+    },
+    "pos": {
+      "text": {
+        "till_session": "Кассовая сессия",
+        "no_registers_yet": "Нет registers yet.",
+        "open_a_session_to_sell": "Открыть a session до sell.",
+        "total": "Итого",
+        "parked_carts_server": "Отложенные корзины (сервер)",
+        "sku_barcode": "SKU / штрихкод",
+        "name": "Название",
+        "qty": "Кол-во",
+        "price_major_e_g_150_00": "Цена (major e.g. 150.00)",
+        "customer_returns": "Возвраты клиента…",
+        "point_of_sale": "Point из sale"
+      }
+    },
+    "procurement": {
+      "text": {
+        "no_available_nodes_found": "Нет available nodes found",
+        "search_network_nodes": "Поиск network nodes...",
+        "vendor_operations": "Операции с поставщиками"
+      }
+    },
+    "reports": {
+      "text": {
+        "no_pos_sales_in_window_last_7_days": "Нет POS sales in window (last 7 days)."
+      }
+    },
+    "sections": {
+      "text": {
+        "new_section": "Новый section",
+        "no_sections_yet": "Нет sections yet.",
+        "map_skus_staff": "Карта SKUs / staff",
+        "unassigned_skus": "Неназначенные SKU",
+        "aisle_tag": "Метка ряда",
+        "sku_list_comma_separated_replaces_map": "SKU list (comma-separated) — replaces Карта",
+        "staff_user_ids_comma_separated": "ID сотрудников (через запятую)"
+      }
+    },
+    "settings": {
+      "capabilities": {
+        "text": {
+          "always_on": "Всегда включено",
+          "store_capabilities": "Возможности магазина"
+        }
+      },
+      "cards": {
+        "text": {
+          "otp_code": "Код OTP",
+          "saved_cards": "Сохранённые карты"
+        }
+      },
+      "family": {
+        "text": {
+          "migration_result": "Результат миграции",
+          "no_family_members_yet": "Нет family members yet",
+          "no_phone_skipped_on_migrate": "Нет Телефон — skipped on migrate",
+          "phone_required_for_team_migrate": "Телефон (Обязательно для Team migrate)",
+          "back_to_settings": "Назад до Настройки",
+          "family_members": "Члены семьи"
+        }
+      },
+      "locations": {
+        "text": {
+          "locations": "Локации"
+        }
+      },
+      "text": {
+        "node_overrides": "Переопределения узла",
+        "category_overrides": "Переопределения категорий"
+      },
+      "team": {
+        "text": {
+          "998": "+998…",
+          "inactive": "Неактивные",
+          "team": "Команда"
+        }
+      }
+    },
+    "shifts": {
+      "text": {
+        "time_clock": "Время clock",
+        "cash_shift": "Кассовая смена",
+        "recent_shifts": "Последние смены",
+        "no_shifts_yet": "Нет shifts yet.",
+        "time_entries": "Время entries",
+        "no_entries_yet": "Нет entries yet.",
+        "shifts_and_time": "Shifts & Время"
+      }
+    },
+    "stock": {
+      "local_skus": {
+        "text": {
+          "barcode": "Штрихкод",
+          "price": "Цена",
+          "active": "Активные",
+          "price_minor": "Цена minor"
+        }
+      },
+      "text": {
+        "adjust": "Скорректировать",
+        "bin": "Ячейка",
+        "on_hand": "В наличии",
+        "reserved": "Резерв",
+        "available": "Доступно",
+        "actions": "Действия",
+        "order_id_completed_arrived": "Заказ ID (Завершено / ARRIVED)",
+        "qty_delta": "Δ кол-во (+/-)",
+        "counted_qty": "Подсчитанное кол-во"
+      }
+    },
+    "tracking": {
+      "text": {
+        "telemetry_control": "Управление телеметрией",
+        "network_pulse": "Пульс сети"
+      },
+      "tracking_map": {
+        "text": {
+          "live_map": "Live Карта"
+        }
+      },
+      "tracking_status": {
+        "text": {
+          "recent_receipts": "Последние поступления"
+        }
+      }
+    },
+    "auth": {
+      "text": {
+        "retailer_node": "Ритейлер node",
+        "pegasusx_and_copy_2026": "pegasusX © 2026",
+        "pegasusx_retailer": "pegasusX Ритейлер"
+      },
+      "login": {
+        "text": {
+          "retailer_sign_in": "Ритейлер sign in",
+          "enter_registered_phone": "Введите зарегистрированный номер телефона.",
+          "enter_otp_sent_to": "Введите 6-значный код, отправленный на {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_retailer_account": "Set up your Ритейлер Аккаунт"
+        }
+      },
+      "select_org": {
+        "text": {
+          "choose_organization": "Выберите организацию"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "retailer_desktop_error": "Ритейлер desktop Ошибка"
+      }
+    },
+    "setup": {
+      "address": {
+        "text": {
+          "delivery_addresses": "Доставка addresses",
+          "where_should_we_bill_and_deliver_your_orders": "Where should we bill и deliver your Заказы?"
+        }
+      },
+      "tax": {
+        "text": {
+          "business_tax_id": "ИНН организации",
+          "provide_your_business_identity_for_invoicing_and_compliance": "Provide your business identity для invoicing и compliance.",
+          "e_g_123456789": "напр. 123456789"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "retailer_setup": "Ритейлер setup",
+          "onboarding_progress": "Прогресс адаптации",
+          "setup_progress": "Прогресс настройки"
+        }
+      }
+    },
+    "cart_drawer": {
+      "text": {
+        "cart_is_empty": "Cart is Пусто",
+        "operational_subtotal": "Операционный подытог"
+      }
+    },
+    "checkout_modal": {
+      "text": {
+        "card_payments_temporarily_unavailable": "Card Платежи Temporarily Unavailable",
+        "standard_asap": "Стандартная (как можно скорее)",
+        "earliest_t_1_business_day": "Не ранее T+1 рабочего дня",
+        "scheduled_pre_order": "Scheduled pre-Заказ",
+        "delivery_day_t_3_or_later": "Доставка day T+3 или later",
+        "setup_payment_card": "Setup Оплата Card",
+        "the_following_items_are_out_of_stock": "The following items are out из stock:"
+      }
+    },
+    "credit_profile_card": {
+      "text": {
+        "supplier_credit": "Поставщик Кредит"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "saved_for_delivery_routing": "Saved для Доставка routing",
+        "start_typing_street_address": "Start typing street Адрес…"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_status_history": "Загрузка Статус history…",
+        "no_status_history_yet": "Нет Статус history yet."
+      }
+    },
+    "retailer_shell": {
+      "text": {
+        "close_menu": "Закрыть menu",
+        "open_menu": "Открыть menu",
+        "breadcrumb": "Навигационная цепочка",
+        "open_catalog_search": "Открыть Каталог Поиск",
+        "search_catalog": "Поиск Каталог"
+      }
+    },
+    "stock_request_return_modal": {
+      "text": {
+        "search_by_order_id": "Поиск by Заказ id",
+        "request_return_or_chargeback": "Request return или chargeback"
+      }
+    },
+    "dashboard": {
+      "ai_prediction_section": {
+        "text": {
+          "ai_restock": "ИИ-пополнение"
+        }
+      },
+      "quick_reorder_section": {
+        "text": {
+          "quick_reorder": "Быстрый повторный заказ"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "ai_signals": "AI Signals",
+        "accept_delivery_proposal_failed": "Accept доставка proposal не удалось",
+        "account_identity_notification_parameters_and_ai_driven_logic_con": "Account identity, notification parameters, и AI-driven logic controls.",
+        "action_failed": "Action не удалось",
+        "active_nodes": "Активные Узлы",
+        "active_fulfillment": "Активные fulfillment",
+        "address": "Адрес",
+        "adjust_failed": "Adjust не удалось",
+        "approved": "Approved",
+        "arrived": "Arrived",
+        "arriving": "Arriving",
+        "assist_tickets": "Assist tickets",
+        "auto_accepted": "Auto-Accepted",
+        "auto_order_run_failed": "Auto-заказ run не удалось",
+        "awaiting_payment": "Awaiting Оплата",
+        "backroom_floor_inventory_separate_from_supplier_warehouse_atp_re": "Backroom / floor запасы separate от поставщик склад ATP. Receive Pegasus доставки, трансфер, adjust, count.",
+        "billing_address": "Биллинг адрес",
+        "branches_and_delivery_addresses_solo_shops_get_one_primary_autom": "Branches и доставка addresses. Solo shops get one primary automatically.",
+        "cancel_requested": "Отмена Requested",
+        "cancel_order_failed": "Отмена заказ не удалось",
+        "card_checkout_failed": "Card checkout не удалось",
+        "card_sales_require_network_use_cash_offline": "Card sales require network. Use cash offline.",
+        "cash_collection": "Cash Collection",
+        "cash_confirmation_failed": "Cash confirmation не удалось",
+        "cashier_mode_open_till_online_sell_cash_offline_when_needed_sync": "Cashier mode: открыть till online, sell cash offline when needed, синхронизировать on reconnect. Card requires network.",
+        "catalog_access_restricted": "Каталог access restricted",
+        "catalog_access_restricted_for_this_account": "Каталог access restricted для this account.",
+        "catalog_feeds_are_still_populating_reorder_candidates": "Каталог feeds are still populating reorder candidates.",
+        "catalog_is_offline": "Каталог is offline",
+        "catalog_sync_degraded_auto_retry_is_active": "Каталог синхронизировать degraded. Auto-повторить is активные.",
+        "catalog_unavailable": "Каталог недоступно",
+        "category_suppliers_unavailable": "Category suppliers недоступно",
+        "checkout_failed": "Checkout не удалось",
+        "choose_a_node_from_the_queue_to_inspect_manifest_lines_and_actio": "Choose a узел от the queue до inspect манифест lines и действия.",
+        "claim_failed": "Претензия не удалось",
+        "claim_proof": "Претензия proof",
+        "clear_or_park_current_cart_before_resuming_a_hold": "Очистить или park current cart before resuming a hold.",
+        "clock_in_out_open_cash_shifts_reconcile_float_when_shifts_is_on_": "Clock in/out, открыть cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in.",
+        "clock_in_failed": "Clock-in не удалось",
+        "clock_out_failed": "Clock-out не удалось",
+        "close_failed": "Закрыть не удалось",
+        "close_session_requires_network": "Закрыть session requires network.",
+        "close_shift_failed": "Закрыть смена не удалось",
+        "company": "Company",
+        "completed_deliveries_from_the_tracking_feed": "Завершено доставки от the отслеживание feed.",
+        "confirm_ai_order_failed": "Подтвердить AI заказ не удалось",
+        "confirm_preorder_failed": "Подтвердить preorder не удалось",
+        "connection_restored_verify_response_before_retrying": "Connection restored — verify response before retrying.",
+        "connection_restored_confirm_checkout_status_before_retrying": "Connection restored. Подтвердить checkout статус before retrying.",
+        "could_not_add_family_member": "Could not добавить family member",
+        "could_not_confirm_card": "Could not подтвердить card",
+        "could_not_copy_password_to_clipboard": "Could not copy password до clipboard",
+        "could_not_deactivate_card": "Could not deactivate card",
+        "could_not_load_family_members": "Could not загрузить family members",
+        "could_not_load_runs": "Could not загрузить runs",
+        "could_not_load_saved_cards": "Could not загрузить saved cards",
+        "could_not_remove_family_member": "Could not удалить family member",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location до an адрес.",
+        "could_not_select_organization": "Could not выбрать organization",
+        "could_not_set_default_card": "Could not set default card",
+        "could_not_start_card_tokenization": "Could not start card tokenization",
+        "count_failed": "Count не удалось",
+        "create_failed": "Создать не удалось",
+        "create_register_failed": "Создать register не удалось",
+        "customer_help_queue_by_section_claim_and_complete_as_section_lea": "Customer help queue by section. Претензия и complete as section lead.",
+        "dashboard_access_is_partially_restricted_for_this_account": "Панель access is partially restricted для this account.",
+        "deactivate_failed": "Deactivate не удалось",
+        "delivered_credit": "Delivered (кредит)",
+        "departments_and_shelves_map_skus_and_assign_staff_enables_sectio": "Departments и shelves — карта SKUs и assign персонал. Enables SECTIONS pack.",
+        "disable_failed": "Disable не удалось",
+        "dock_pending": "Dock ожидание",
+        "doorway_drop_off_photo_is_required_to_authorize_bypass": "Doorway / drop-off photo is обязательно до authorize bypass.",
+        "driver_arrived": "Водитель Arrived",
+        "driver_positions_for_active_inbound_deliveries": "Водитель positions для активные inbound доставки.",
+        "edit_preorder_failed": "Изменить preorder не удалось",
+        "empathy_engine_intelligence_with_5_level_granular_control": "Empathy Engine Intelligence с 5-level granular control.",
+        "enable_failed": "Enable не удалось",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid телефон number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "entity_name": "Entity Название",
+        "explore_approved_suppliers_and_stage_procurement_orders": "Explore approved suppliers и stage procurement заказы.",
+        "failed_to_load_capabilities": "Не удалось до загрузить capabilities",
+        "failed_to_load_locations": "Не удалось до загрузить locations",
+        "failed_to_load_order": "Не удалось до загрузить заказ",
+        "failed_to_load_orders": "Не удалось до загрузить заказы",
+        "failed_to_load_organizations": "Не удалось до загрузить organizations",
+        "failed_to_load_pulse": "Не удалось до загрузить pulse",
+        "failed_to_load_stock": "Не удалось до загрузить остаток",
+        "failed_to_load_team": "Не удалось до загрузить team",
+        "failed_to_send_verification_code": "Не удалось до send verification code",
+        "failed_to_update_execution_mode": "Не удалось до обновить execution mode",
+        "find_and_connect_with_new_suppliers": "Find и connect с новый suppliers.",
+        "fiscal_failed": "Fiscal не удалось",
+        "fix_validation_errors_before_saving_profile_changes": "Fix validation errors before saving профиль changes.",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "global_ai_settings_updated": "Global AI настройки updated.",
+        "high_confidence_replenishment_signals_for_this_cycle": "High-confidence replenishment signals для this cycle.",
+        "in_transit": "In Transit",
+        "inbox_sync_degraded_retry_is_available": "Входящие синхронизировать degraded. Повторить is доступно.",
+        "insights_access_is_partially_restricted_for_this_account": "Инсайты access is partially restricted для this account.",
+        "insights_access_restricted": "Инсайты access restricted",
+        "insights_are_offline": "Инсайты are offline",
+        "insights_sync_degraded_auto_retry_is_active": "Инсайты синхронизировать degraded. Auto-повторить is активные.",
+        "invalid_verification_code": "Invalid verification code",
+        "invite_failed": "Invite не удалось",
+        "invite_staff_with_roles_owner_cannot_be_demoted_or_deactivated": "Invite персонал с roles. Owner cannot be demoted или deactivated.",
+        "legacy_family_list_prefer_team_staff_migrate_when_ready": "Legacy family list. Prefer Team персонал — migrate when ready.",
+        "lifecycle_management_for_connected_supply_nodes_and_trade_settle": "Lifecycle management для connected supply узлы и trade settlements.",
+        "live_fleet_orchestration_and_inbound_logistics_monitoring": "Онлайн автопарк orchestration и inbound logistics monitoring.",
+        "live_socket_reconnecting_event_updates_may_be_delayed": "Онлайн socket reconnecting. Event updates may be delayed.",
+        "live_socket_reconnecting_new_alerts_may_be_delayed": "Онлайн socket reconnecting. Новый оповещения may be delayed.",
+        "live_socket_reconnecting_new_signals_may_be_delayed": "Онлайн socket reconnecting. Новый signals may be delayed.",
+        "live_socket_reconnecting_setting_events_may_be_delayed": "Онлайн socket reconnecting. Setting events may be delayed.",
+        "live_socket_reconnecting_updates_may_arrive_with_delay": "Онлайн socket reconnecting. Updates may arrive с delay.",
+        "loaded": "Loaded",
+        "location_permission_denied": "Location permission denied.",
+        "low_stock_bins": "Low остаток bins",
+        "manage_your_approved_wholesale_suppliers_and_discover_new_partne": "Управление your approved wholesale suppliers и discover новый partners.",
+        "mark_all_read_failed": "Mark все read не удалось",
+        "mark_read_failed": "Mark read не удалось",
+        "migration_failed": "Migration не удалось",
+        "multi_location_pos_sales_rollup_sum_of_locations_equals_org_net_": "Multi-location POS sales rollup. Sum из locations equals org net (C2.1 writers).",
+        "network_offline_showing_the_latest_cached_dock_queue": "Network offline. Showing the latest cached dock queue.",
+        "new_retailer": "Новый ритейлер?",
+        "no_ai_restock_signals": "Нет AI restock signals",
+        "no_capacity": "Нет Вместимость",
+        "no_actionable_signals_detected": "Нет actionable signals detected",
+        "no_approved_products_yet": "Нет approved товары ещё",
+        "no_assets_match_criteria": "Нет assets match criteria",
+        "no_data_yet": "Нет данные ещё.",
+        "no_notifications_yet": "Нет уведомления ещё",
+        "no_orders_yet": "Нет заказы ещё",
+        "no_products_ready_for_reorder": "Нет товары ready для reorder",
+        "no_vendors_connected": "Нет vendors connected",
+        "non_pegasus_goods_for_pos_prefixed_local_never_sent_to_supplier_": "Non-Pegasus goods для POS. Prefixed local: — never sent до поставщик reorder.",
+        "notifications_access_restricted": "Уведомления access restricted",
+        "notifications_access_restricted_for_this_account": "Уведомления access restricted для this account.",
+        "notifications_are_offline": "Уведомления are offline",
+        "notifications_unavailable": "Уведомления недоступно",
+        "offline_mode_active_showing_latest_cached_configuration": "Offline mode активные. Showing latest cached configuration.",
+        "offline_mode_active_showing_latest_cached_inbox_data": "Offline mode активные. Showing latest cached входящие данные.",
+        "offline_mode_active_showing_latest_cached_intelligence_signals": "Offline mode активные. Showing latest cached intelligence signals.",
+        "offline_mode_active_showing_latest_cached_order_data": "Offline mode активные. Showing latest cached заказ данные.",
+        "offline_mode_active_showing_latest_procurement_data": "Offline mode активные. Showing latest procurement данные.",
+        "offline_mode_active_showing_the_latest_cached_catalog": "Offline mode активные. Showing the latest cached каталог.",
+        "offline_mode_active_showing_the_latest_cached_operations_data": "Offline mode активные. Showing the latest cached операции данные.",
+        "offline_mode_active_showing_the_latest_known_telemetry": "Offline mode активные. Showing the latest known telemetry.",
+        "open_failed": "Открыть не удалось",
+        "open_orders": "Открыть заказы",
+        "open_session_requires_network_connect_then_open_till": "Открыть session requires network. Connect, then открыть till.",
+        "open_shift_failed": "Открыть смена не удалось",
+        "open_shifts": "Открыть shifts",
+        "operational_region": "Operational Region",
+        "operations_sync_degraded_auto_retry_is_active": "Операции синхронизировать degraded. Auto-повторить is активные.",
+        "order_sync_degraded_auto_retry_is_active": "Заказ синхронизировать degraded. Auto-повторить is активные.",
+        "orders_access_is_partially_restricted_for_this_account": "Заказы access is partially restricted для this account.",
+        "orders_access_restricted": "Заказы access restricted",
+        "orders_are_offline": "Заказы are offline",
+        "orders_unavailable": "Заказы недоступно",
+        "pos_open_sessions": "POS открыть sessions",
+        "park_failed": "Park не удалось",
+        "park_hold_requires_network_use_local_auto_park_offline": "Park hold requires network (use local auto-park offline).",
+        "pegasus_retailer": "Pegasus Ритейлер",
+        "pending": "Ожидание",
+        "pending_review": "Ожидание Review",
+        "pending_fiscal": "Ожидание fiscal",
+        "pending_payment_requires_completion": "Ожидание оплата requires completion.",
+        "photo_required_for_this_claim_type": "Photo обязательно для this претензия тип.",
+        "photo_upload_failed": "Photo загрузить не удалось",
+        "postal_code": "Postal code",
+        "prediction_feed_is_currently_empty_for_this_cycle": "Prediction feed is currently пусто для this cycle.",
+        "predictive_demand_signals_and_network_analytics": "Predictive demand signals и network аналитика.",
+        "pricing_rules_unavailable": "Pricing rules недоступно",
+        "primary_contact": "Primary Contact",
+        "procurement_access_is_partially_restricted_for_this_account": "Procurement access is partially restricted для this account.",
+        "procurement_access_restricted": "Procurement access restricted",
+        "procurement_is_offline": "Procurement is offline",
+        "procurement_sync_degraded_auto_retry_is_active": "Procurement синхронизировать degraded. Auto-повторить is активные.",
+        "profile_saved_successfully": "Профиль saved successfully.",
+        "quarantined": "Quarantined",
+        "queue_refresh_failed_retrying_in_the_background": "Queue обновить не удалось. Retrying in the background.",
+        "reorder_now": "REORDER NOW",
+        "real_time_arrival_queue_and_proximity_locked_secure_verification": "Real-время arrival queue и proximity-locked secure verification.",
+        "receive_failed": "Receive не удалось",
+        "receiving_window_closes": "Receiving window closes",
+        "receiving_window_opens": "Receiving window opens",
+        "recent_order_and_notification_activity_for_your_account": "Recent заказ и notification activity для your account.",
+        "refresh_failed": "Обновить не удалось",
+        "register": "Register",
+        "reject_ai_order_failed": "Reject AI заказ не удалось",
+        "reject_delivery_proposal_failed": "Reject доставка proposal не удалось",
+        "resume_failed": "Resume не удалось",
+        "resume_requires_open_session_and_network": "Resume requires открыть session и network.",
+        "retailer_desktop_app_for_pegasus": "Ритейлер Desktop App для Pegasus",
+        "sku_update_failed": "SKU обновить не удалось",
+        "sale_failed": "Sale не удалось",
+        "sales_7d": "Sales 7d",
+        "sales_inventory_and_shift_variance_digest_csv_export_for_desktop": "Sales, запасы, и смена variance digest. CSV экспорт для desktop операции.",
+        "select_an_order": "Выбрать an заказ",
+        "select_at_least_one_item_quantity": "Выбрать at least one item количество.",
+        "set_primary_failed": "Set primary не удалось",
+        "settings_access_is_partially_restricted_for_this_account": "Настройки access is partially restricted для this account.",
+        "settings_sync_degraded_auto_retry_is_active": "Настройки синхронизировать degraded. Auto-повторить is активные.",
+        "shift_variances_closed": "Смена variances (closed)",
+        "shipping_address_default": "Shipping адрес (default)",
+        "shop_closed": "Shop Closed",
+        "signals_unavailable": "Signals недоступно",
+        "staff_update_failed": "Персонал обновить не удалось",
+        "stage_repeat_purchases_from_your_approved_catalog": "Stage repeat purchases от your approved каталог.",
+        "staged_cart": "Staged Cart",
+        "suppliers": "Suppliers",
+        "switch_failed": "Switch не удалось",
+        "syncing_catalog_feeds": "Syncing каталог feeds...",
+        "syncing_dashboard_feeds": "Syncing панель feeds...",
+        "syncing_intelligence_feeds": "Syncing intelligence feeds...",
+        "syncing_live_dock_updates": "Syncing онлайн dock updates...",
+        "syncing_live_telemetry": "Syncing онлайн telemetry...",
+        "syncing_notifications": "Syncing уведомления...",
+        "syncing_order_feeds": "Syncing заказ feeds...",
+        "syncing_procurement_feeds": "Syncing procurement feeds...",
+        "syncing_settings_feeds": "Syncing настройки feeds...",
+        "tax_id_vat": "Tax ID / VAT",
+        "tax_id_is_required_minimum_5_characters": "Tax ID is обязательно (minimum 5 characters).",
+        "telemetry_sync_degraded_auto_retry_is_active": "Telemetry синхронизировать degraded. Auto-повторить is активные.",
+        "tracking_access_restricted_for_this_account": "Отслеживание access restricted для this account.",
+        "transfer_failed": "Трансфер не удалось",
+        "turn_on_only_what_your_shop_needs_solo_shops_run_on_core_alone": "Turn on only what your shop needs. Solo shops run on Core alone.",
+        "unable_to_load": "Не удалось до загрузить",
+        "vendor_feed_unavailable": "Vendor feed недоступно",
+        "void_failed_manager_role_may_be_required": "Void не удалось (manager role may be обязательно)",
+        "void_hold_failed": "Void hold не удалось",
+        "void_requires_a_synced_server_sale_sync_first_or_discard_from_pe": "Void requires a synced server sale. Синхронизировать first или discard от ожидание queue.",
+        "window_closed_claim_window_has_expired": "Window closed — претензия window has expired.",
+        "create_failed_2": "create_failed",
+        "load_failed": "load_failed",
+        "pegasusx": "pegasusX"
+      }
+    }
+  },
+  "warehouse_portal": {
+    "analytics": {
+      "velocity_gauge": {
+        "text": {
+          "no_dispatch_velocity_data": "Нет dispatch velocity data"
+        }
+      },
+      "text": {
+        "revenue": "Выручка",
+        "avg_order_value": "Avg Заказ Value",
+        "fleet_utilization": "Автопарк Utilization",
+        "import_freshness": "Импорт Freshness",
+        "rows_imported_30d": "Импортировано строк (30д)",
+        "skus_updated_30d": "Обновлено SKU (30д)",
+        "quantity_delta_30d": "Количество Delta (30d)",
+        "import_anomaly_queue": "Импорт Anomaly Queue",
+        "open_anomaly_rows_30d": "Открыть Anomaly Rows (30d)",
+        "affected_sessions_30d": "Затронутые сессии (30д)",
+        "top_products": "Top Товары",
+        "units_sold": "Продано единиц",
+        "revenue_uzs": "Выручка (UZS)"
+      },
+      "analytics_chart_grid": {
+        "text": {
+          "daily_revenue": "Daily Выручка"
+        }
+      }
+    },
+    "auth": {
+      "text": {
+        "warehouse_node": "Склад node",
+        "pegasusx_and_copy_2026": "pegasusX © 2026",
+        "pegasusx_warehouse": "pegasusX Склад"
+      },
+      "login": {
+        "text": {
+          "warehouse_sign_in": "Склад sign in",
+          "enter_registered_phone": "Введите зарегистрированный номер телефона.",
+          "enter_otp_sent_to": "Введите 6-значный код, отправленный на {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_warehouse_account": "Set up your Склад Аккаунт"
+        }
+      }
+    },
+    "bins": {
+      "text": {
+        "loading": "Загрузка…",
+        "zone": "Зона",
+        "type": "Тип",
+        "seq": "Позиция",
+        "active": "Активные",
+        "lots": "Партии",
+        "lot": "Партия",
+        "expiry": "Срок годности",
+        "on_hand": "В наличии",
+        "reserved": "Резерв",
+        "status": "Статус"
+      }
+    },
+    "claims": {
+      "text": {
+        "no_claims_in_this_filter": "Нет Претензии in this Фильтр.",
+        "claims_reverse_logistics": "Претензии (reverse logistics)"
+      }
+    },
+    "control_tower": {
+      "text": {
+        "global_control_tower": "Глобальный центр управления",
+        "real_time_network_telematics_and_predictive_intelligence": "Real-Время network telematics и predictive intelligence.",
+        "actual_vs_plan": "Факт vs План",
+        "baseline_vs_upside_scenarios": "Базовый сценарий vs оптимистичный"
+      }
+    },
+    "credit": {
+      "policy": {
+        "text": {
+          "credit_policy_supplier_scoped": "Кредит policy (Поставщик-scoped)",
+          "program": "Программа",
+          "relationships": "Отношения",
+          "open_ar_dock_ops": "Открыть AR (dock ops)"
+        }
+      }
+    },
+    "crm": {
+      "text": {
+        "business_name": "Business Название",
+        "total_orders": "Итого Заказы",
+        "last_order": "Last Заказ",
+        "retailer_crm": "Ритейлер CRM"
+      }
+    },
+    "cycle_counts": {
+      "text": {
+        "count": "Подсчёт",
+        "expected": "Ожидаемое",
+        "submit": "Отправить",
+        "inventory_adjustments": "Инвентарь adjustments",
+        "pending_rows_are_created_on_variance_approve_is_stub_only_no_lot": "Ожидание rows are created on variance; approve is stub-only (Нет lot mutation).",
+        "no_adjustments": "Нет adjustments",
+        "adjustment": "Корректировка",
+        "delta": "Разница",
+        "auto": "авто"
+      }
+    },
+    "demand_forecast": {
+      "text": {
+        "no_products_tracked_yet": "Нет Товары tracked yet"
+      }
+    },
+    "dispatch": {
+      "text": {
+        "fleet_effective_capacity": "Автопарк effective capacity",
+        "no_vehicles_registered_for_this_warehouse": "Нет vehicles registered для this Склад.",
+        "no_dispatch_runs_recorded_yet": "Нет dispatch runs recorded yet.",
+        "run_smart_dispatch": "Запустить умную диспетчеризацию?",
+        "capacity_exceeded": "Вместимость превышена",
+        "custom_reason": "Другая причина",
+        "recent_dispatch_commits": "Последние подтверждения диспетчеризации",
+        "handoff_timeline": "Хронология передачи",
+        "live_fleet_map": "Live Автопарк Карта",
+        "smart_suggest_preview": "Предпросмотр умных рекомендаций",
+        "cancel_order": "Отмена Заказ"
+      },
+      "rescues": {
+        "text": {
+          "finding_available_trucks": "Поиск доступных грузовиков...",
+          "insufficient_capacity": "Недостаточная вместимость",
+          "fleet_rescues": "Автопарк Rescues",
+          "needs_rescue": "Требуется спасение"
+        }
+      },
+      "dispatch_driver_list": {
+        "text": {
+          "no_drivers_blocked_all_assigned_trucks_eligible_or_off_shift_rea": "Нет drivers blocked — Все assigned trucks eligible или off-shift reasons shown here in real Время."
+        }
+      }
+    },
+    "dispatch_locks": {
+      "text": {
+        "lock_id": "ID блокировки",
+        "scope": "Область",
+        "locked_at": "Заблокировано в",
+        "locked_by": "Заблокировал",
+        "actions": "Действия"
+      }
+    },
+    "dispatch_settings": {
+      "text": {
+        "auto_dispatch": "Автодиспетчеризация",
+        "loading_impact_preview": "Загрузка impact preview...",
+        "enabling_auto_dispatch_will_immediately_schedule_available_drive": "Включение автодиспетчеризации сразу назначит доступных водителей. На основе текущей очереди:",
+        "are_you_sure_you_want_to_enable_auto_dispatch": "Are you sure you want до enable auto dispatch?",
+        "toggle_auto_dispatch": "Переключить автодиспетчеризацию",
+        "dispatch_settings": "Dispatch Настройки"
+      }
+    },
+    "drivers": {
+      "text": {
+        "new_driver": "Новый Водитель",
+        "driver_pin": "Водитель PIN",
+        "share_this_one_time_pin_with_the_driver": "Share this one-Время PIN с the Водитель:",
+        "name": "Название"
+      },
+      "drivers_list": {
+        "text": {
+          "no_drivers_registered": "Нет drivers registered",
+          "assigned_vehicle": "Назначенный транспорт",
+          "unassigned": "Не назначено"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "warehouse_portal_error": "Склад portal Ошибка"
+      }
+    },
+    "exceptions": {
+      "text": {
+        "no_open_exceptions": "Нет Открыть exceptions.",
+        "exception_triage": "Разбор исключений"
+      }
+    },
+    "fleet_live_map": {
+      "text": {
+        "fleet_live_map": "Автопарк Live Карта",
+        "loading_live_fleet_map": "Загрузка live Автопарк Карта…"
+      }
+    },
+    "inventory": {
+      "text": {
+        "confirm_inventory_change": "Подтвердить Инвентарь change",
+        "reason_optional": "Reason (Необязательно)",
+        "search_products": "Поиск Товары...",
+        "e_g_cycle_count_damaged_goods": "напр. циклический пересчёт, повреждённый товар"
+      },
+      "inventory_stock_list": {
+        "text": {
+          "quantity": "Количество",
+          "reorder_at": "Точка перезаказа",
+          "oos_policy": "Политика по дефициту (OOS)",
+          "inherit_warehouse": "Inherit Склад",
+          "reject_when_oos": "Отклонять при отсутствии на складе",
+          "accept_backorder": "Принимать отложенный заказ",
+          "new_qty": "Новый qty"
+        }
+      }
+    },
+    "manifests": {
+      "text": {
+        "manifest": "Манифест",
+        "driver": "Водитель",
+        "vehicle": "Транспорт",
+        "stops": "Остановки",
+        "created": "Создано",
+        "pick": "Отбор",
+        "labels": "Метки"
+      }
+    },
+    "operations": {
+      "text": {
+        "depot_operations": "Операции склада"
+      },
+      "operations_broadcast_form": {
+        "text": {
+          "loading_templates": "Загрузка templates…",
+          "bay_2_closed": "Ворота 2 закрыты",
+          "broadcast_templates": "Шаблоны рассылок",
+          "send_depot_broadcast": "Отправить рассылку по складу"
+        }
+      },
+      "operations_pricing_preview": {
+        "text": {
+          "loading_preview": "Загрузка preview…",
+          "read_only_contact_supplier_to_apply_overrides": "Read-only — contact Поставщик до Применить overrides.",
+          "pricing_impact_preview_read_only": "Предпросмотр влияния цены (только просмотр)"
+        }
+      }
+    },
+    "orders": {
+      "_id_": {
+        "text": {
+          "order_summary": "Заказ summary",
+          "retailer_state_and_total_for_this_fulfillment": "Ритейлер, state, и Итого для this fulfillment.",
+          "retailer": "Ритейлер",
+          "total_uzs": "Итого (UZS)",
+          "quick_actions": "Quick Действия",
+          "proposed_delivery_date": "Proposed Доставка Дата",
+          "status_history": "Статус history",
+          "delays_promotions_and_lifecycle_changes": "Delays, promotions, и lifecycle changes.",
+          "required_for_propose_date_and_cancel": "Обязательно для propose Дата и Отмена"
+        }
+      },
+      "text": {
+        "order_views": "Заказ views"
+      },
+      "order_kebab_menu": {
+        "text": {
+          "order_actions": "Заказ Действия"
+        }
+      },
+      "order_line_items": {
+        "text": {
+          "line_items": "Позиции документа",
+          "unit_uzs": "Ед. (UZS)"
+        }
+      },
+      "order_propose_date_dialog": {
+        "text": {
+          "required_explain_why_the_date_is_changing": "Обязательно — explain why the Дата is changing"
+        }
+      }
+    },
+    "app": {
+      "text": {
+        "network_pulse": "Пульс сети",
+        "fleet_status": "Автопарк Статус"
+      }
+    },
+    "payment_config": {
+      "text": {
+        "no_payment_gateways_configured": "Нет Оплата gateways configured",
+        "provider": "Провайдер",
+        "mode": "Режим",
+        "updated": "Обновлено"
+      }
+    },
+    "pick_waves": {
+      "text": {
+        "wave": "Волна",
+        "open": "Открыть",
+        "no_tasks": "Нет tasks",
+        "bin": "Ячейка",
+        "qty": "Кол-во",
+        "manifest_uuid": "UUID манифеста"
+      }
+    },
+    "products": {
+      "text": {
+        "category": "Категория",
+        "price_uzs": "Цена (UZS)",
+        "product_catalog": "Товар Каталог"
+      }
+    },
+    "profile": {
+      "text": {
+        "signed_in_as": "Вы вошли как"
+      }
+    },
+    "replenishment": {
+      "text": {
+        "replenishment_insights": "Инсайты пополнения",
+        "insight_queue": "Очередь инсайтов"
+      },
+      "replenishment_list": {
+        "text": {
+          "why": "Почему",
+          "urgency": "Срочность",
+          "days_left": "Осталось дней",
+          "reorder_qty": "Кол-во для перезаказа"
+        }
+      }
+    },
+    "returns": {
+      "text": {
+        "gate_queue": "Очередь на воротах",
+        "history": "История",
+        "barcode_ean": "Штрихкод (EAN)",
+        "scan": "Сканировать",
+        "restock_selected": "Restock Выбрано",
+        "write_off": "Списать",
+        "credit_note_reverse_logistics": "Кредит note reverse logistics",
+        "scan_or_type_wedge_scanner_enter": "Scan или Тип (wedge scanner + Enter)",
+        "inbound_returns": "Входящие возвраты"
+      },
+      "reverse_logistics_panel": {
+        "text": {
+          "loading_reverse_tasks": "Загрузка reverse tasks…",
+          "no_open_credit_note_reverse_tasks": "Нет Открыть Кредит-note reverse tasks."
+        }
+      }
+    },
+    "settings": {
+      "text": {
+        "optional_gs1_location_number": "Необязательно GS1 location number",
+        "warehouse_settings": "Склад Настройки",
+        "depot_location": "Расположение склада"
+      },
+      "ops_settings_form": {
+        "text": {
+          "advanced_json": "Расширенный JSON",
+          "pre_order_lead_window": "Pre-Заказ lead window",
+          "line_quantity_limits": "Line Количество limits",
+          "delivery_fee_tiers": "Доставка fee tiers",
+          "out_of_stock_orders": "Out-из-stock Заказы",
+          "order_acceptance_hours": "Заказ acceptance hours"
+        }
+      },
+      "return_policy_settings_section": {
+        "text": {
+          "returns_and_reverse_sla": "Возвраты и обратный SLA",
+          "return_policy_saved": "Политика возврата сохранена."
+        }
+      }
+    },
+    "setup": {
+      "location": {
+        "text": {
+          "warehouse_location": "Склад location",
+          "loading_warehouse_details": "Загрузка Склад Детали…",
+          "warehouse": "Склад",
+          "central_depot": "Центральный склад"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "warehouse_setup": "Склад setup",
+          "onboarding_progress": "Прогресс адаптации",
+          "setup_progress": "Прогресс настройки"
+        }
+      }
+    },
+    "staff": {
+      "text": {
+        "one_time_pin_generated": "One-Время PIN generated",
+        "create_new_staff_member": "Создать Новый Staff Member",
+        "role": "Роль",
+        "warehouse_staff": "Склад Staff",
+        "payloader": "Погрузчик"
+      },
+      "staff_list": {
+        "text": {
+          "no_staff_members_registered": "Нет staff members registered"
+        }
+      }
+    },
+    "supply_requests": {
+      "_id_": {
+        "text": {
+          "priority": "Приоритет",
+          "delivery_date": "Доставка Дата",
+          "total_volume": "Итого Volume",
+          "items": "Позиции",
+          "notes": "Заметки",
+          "requested": "Запрошено",
+          "shipped": "Отправлено",
+          "received": "Получено",
+          "recommended": "Рекомендовано",
+          "unit_volume": "Объём единицы",
+          "supply_request": "Заявка на снабжение"
+        }
+      },
+      "new": {
+        "text": {
+          "factory_id": "Завод ID",
+          "requested_delivery_date": "Requested Доставка Дата",
+          "use_ai_demand_forecast": "Использовать ИИ-прогноз спроса",
+          "auto_fill_items_from_demand_engine": "Auto-fill items от demand engine",
+          "demand_forecast_7_day": "Прогноз спроса (7 дней)",
+          "stockout_in": "Дефицит через",
+          "manual_items": "Ручные позиции",
+          "enter_factory_uuid": "Enter Завод UUID",
+          "product_id": "Товар ID",
+          "optional_notes_for_the_factory": "Необязательно Заметки для the Завод...",
+          "new_supply_request": "Новый Supply Request"
+        }
+      },
+      "text": {
+        "factory": "Завод",
+        "state": "Статус",
+        "volume": "Объём"
+      }
+    },
+    "tomorrow_board": {
+      "text": {
+        "no_orders_scheduled_for_this_date": "Нет Заказы scheduled для this Дата."
+      }
+    },
+    "tracking": {
+      "text": {
+        "loading_warehouse_fleet": "Загрузка Склад Автопарк…"
+      }
+    },
+    "transfers": {
+      "text": {
+        "volume_vu": "Объём (VU)",
+        "notes_optional": "Заметки (Необязательно)",
+        "transfer_id_to_receive": "Transfer ID до receive",
+        "transfer_actions": "Transfer Действия",
+        "transfer_controls": "Управление трансфером"
+      }
+    },
+    "treasury": {
+      "text": {
+        "invoices": "Счета-фактуры",
+        "retailer_billing_rows_for_this_warehouse_node": "Ритейлер Биллинг rows для this Склад node.",
+        "payment_config": "Оплата config"
+      },
+      "treasury_transaction_list": {
+        "text": {
+          "invoice": "Счёт-фактура",
+          "amount": "Сумма",
+          "due": "Срок оплаты"
+        }
+      }
+    },
+    "vehicles": {
+      "_vehicle_id_": {
+        "text": {
+          "capacity": "Вместимость",
+          "license_plate": "Госномер",
+          "class": "Класс",
+          "assigned_driver": "Assigned Водитель",
+          "hold_reason": "Причина удержания",
+          "dispatch_impact": "Влияние на диспетчеризацию"
+        }
+      },
+      "text": {
+        "new_truck": "Новый truck",
+        "class_a_50_vu": "Класс A (50 VU)",
+        "class_b_150_vu": "Класс B (150 VU)",
+        "class_c_400_vu": "Класс C (400 VU)",
+        "label_e_g_truck_01": "Метка (напр. Truck-01)"
+      },
+      "vehicles_list": {
+        "text": {
+          "no_trucks_registered": "Нет trucks registered"
+        }
+      }
+    },
+    "dispatch_preview_map": {
+      "text": {
+        "route_preview_unavailable_until_optimizer_proposes_stops_with_co": "Маршрут preview unavailable until optimizer proposes stops с coordinates."
+      }
+    },
+    "fleet_live_map_panel": {
+      "text": {
+        "preparing_map": "Preparing Карта…"
+      }
+    },
+    "forecast_confidence_view": {
+      "text": {
+        "seasonal_template_active": "Seasonal template Активные",
+        "forecast_confidence": "Достоверность прогноза",
+        "insufficient_history_predictive_forecast_blocked": "Недостаточно истории — прогноз недоступен",
+        "seasonal_template_active_ml_extrapolation_disabled": "Seasonal template Активные — ML extrapolation Отключено"
+      }
+    },
+    "kpi_stat_card": {
+      "text": {
+        "alert": "Оповещение",
+        "done": "Готово"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_dispatch_routing": "Pinned для dispatch routing",
+        "resolving_address": "Resolving Адрес…",
+        "start_typing_street_address": "Start typing street Адрес…"
+      }
+    },
+    "network_pulse_panel": {
+      "text": {
+        "ops_pulse": "Пульс операций"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_timeline": "Загрузка timeline…",
+        "no_status_history_yet": "Нет Статус history yet."
+      }
+    },
+    "toast": {
+      "text": {
+        "dismiss": "Скрыть",
+        "swipe_left_or_right_to_dismiss": "Swipe left или right до dismiss"
+      }
+    },
+    "vehicle_availability_panel": {
+      "text": {
+        "availability": "Доступность",
+        "dispatch_and_smart_suggest_exclude_unavailable_trucks_immediatel": "Dispatch и smart suggest exclude unavailable trucks immediately.",
+        "unavailable_reason": "Причина недоступности",
+        "custom_reason_required": "Custom reason (Обязательно)"
+      }
+    },
+    "warehouse_shell": {
+      "text": {
+        "node_ops": "Операции узла",
+        "single_tenant_live_sync": "Single-tenant · Live Синхронизировать",
+        "warehouse_admin": "Склад Admin",
+        "single_tenant_control_plane": "Однотенантная плоскость управления",
+        "search_pages": "Поиск pages...",
+        "open_navigation": "Открыть navigation",
+        "breadcrumb": "Навигационная цепочка",
+        "search_ctrl_k": "Поиск (Ctrl+K)",
+        "search": "Поиск",
+        "profile_menu": "Меню профиля"
+      }
+    },
+    "forecast": {
+      "forecast_chart_panel": {
+        "text": {
+          "critical_items": "Критичные позиции",
+          "urgent_items": "Срочные позиции",
+          "healthy_items": "Позиции в норме"
+        }
+      },
+      "forecast_sku_table": {
+        "text": {
+          "stockout": "Дефицит",
+          "confidence": "Достоверность",
+          "incoming": "Входящее",
+          "ai_pred": "ИИ-прогноз",
+          "pre_orders": "Pre-Заказы",
+          "burn_day": "Расход/день"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "ai_powered_stock_recommendations_from_4_data_sources": "AI-powered остаток рекомендации от 4 данные sources.",
+        "active_users": "Активные Users",
+        "active_orders_have_not_reserved_stock_yet": "Активные заказы have not reserved остаток ещё.",
+        "active_sealed_routes_and_driver_positions_for_this_node": "Активные sealed маршруты и водитель positions для this узел.",
+        "address": "Адрес",
+        "all_good": "Все Good",
+        "all_drivers_are_on_route_or_blocked": "Все drivers are on маршрут или blocked.",
+        "all_orders_dispatched": "Все заказы dispatched",
+        "approve_to_create_factory_transfer_rows_dismiss_to_clear": "Approve до создать завод трансфер rows; dismiss до очистить.",
+        "as_dispatch_fleet_and_inventory_activity_starts_this_dashboard_w": "As диспетчеризация, автопарк, и запасы activity starts, this панель will populate automatically.",
+        "available_drivers": "Доступно drivers",
+        "base_fee_minor": "Base fee (minor)",
+        "beyond_tier_fee_minor": "Beyond-tier fee (minor)",
+        "built_in_depot_starters_plus_your_saved_custom_messages": "Built-in depot starters plus your saved custom messages.",
+        "cancels_the_order_and_notifies_the_retailer_immediately": "Cancels the заказ и notifies the ритейлер immediately.",
+        "checkout_policy_pre_order_lead_window_per_line_quantity_limits_d": "Checkout политика, pre-заказ lead window, per-line количество limits, доставка surcharges, и depot location. Changes синхронизировать с диспетчеризация и доставка routing.",
+        "configure_warehouse_auto_dispatch_policy_for_this_node": "Настроить склад auto-диспетчеризация политика для this узел.",
+        "could_not_resolve_that_address_try_another_suggestion": "Could not resolve that адрес. Try another suggestion.",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location до an адрес.",
+        "create_a_factory_replenishment_request_from_forecast_or_manual_l": "Создать a завод replenishment заявка от forecast или manual line items.",
+        "create_a_pick_or_stage_location_to_putaway_lots": "Создать a pick или stage location до putaway lots.",
+        "create_a_wave_from_a_draft_or_loading_manifest": "Создать a wave от a draft или загрузка манифест.",
+        "create_an_open_count_for_a_bin_product": "Создать an Открыть count для a bin + товар.",
+        "critical_urgency": "Critical urgency",
+        "cross_role_timeline_for_this_warehouse_node": "Cross-role timeline для this склад узел.",
+        "custom_reason_optional": "Custom reason (необязательно)",
+        "daily_loading_manifests_for_drivers_and_vehicles_at_this_node": "Daily загрузка манифесты для drivers и транспорт at this узел.",
+        "days_between_order_placement_and_earliest_fulfillment": "Дни between заказ placement и earliest fulfillment.",
+        "delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del": "Доставка fee distance is measured склад lat/lng → ритейлер доставка pin at checkout.",
+        "depot_scoped_broadcasts_and_read_only_pricing_impact_preview": "Depot-scoped broadcasts и read-only pricing impact preview.",
+        "dock_queue_for_truck_returns_and_claim_reverse_logistics_tickets": "Dock queue для truck возвраты и претензия reverse-logistics tickets — restock или write off.",
+        "effective_date_optional": "Effective дата (необязательно)",
+        "emergency_inbound_force_receive_and_transfer_receipt_by_id": "Emergency inbound, force receive, и трансфер receipt by ID.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid телефон number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "factory_inbound_transfer_controls_for_warehouse_operators": "Завод inbound трансфер controls для склад operators.",
+        "factory_replenishment_requests_scoped_to_this_warehouse_node": "Завод replenishment заявки scoped до this склад узел.",
+        "failed_to_load_warehouse_tracking": "Не удалось до загрузить склад отслеживание",
+        "failed_to_send_verification_code": "Не удалось до send verification code",
+        "fleet_drivers_with_vehicle_assignment_and_live_truck_status": "Автопарк drivers с транспорт assignment и онлайн truck статус.",
+        "fleet_trucks_with_capacity_driver_assignment_and_live_availabili": "Автопарк trucks с вместимость, водитель assignment, и онлайн availability.",
+        "free_within_km": "Free within km",
+        "full_order_detail_and_warehouse_exception_actions": "Full заказ detail и склад exception действия.",
+        "gln_13_digits": "GLN (13 digits)",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "invalid_verification_code": "Invalid verification code",
+        "invoiced_revenue_payouts_and_outstanding_liabilities_for_this_wa": "Invoiced выручка, payouts, и outstanding liabilities для this склад.",
+        "invoices_appear_when_retailers_are_billed_for_fulfilled_orders": "Invoices appear when retailers are billed для fulfilled заказы.",
+        "leave_blank_to_clear_a_limit_applies_to_standard_and_scheduled_c": "Leave blank до очистить a limit. Applies до standard и scheduled checkout.",
+        "location_permission_denied": "Location permission denied.",
+        "manage_truck_breakdowns_and_propose_rescue_operations": "Управление truck breakdowns и propose rescue операции",
+        "manifest_and_driver_state_breakdown_for_this_node": "Манифест и водитель state breakdown для this узел.",
+        "manifest_order_and_lock_exceptions_in_one_queue": "Манифест, заказ, и lock исключения in one queue.",
+        "manual_truck_assignment_or_smart_dispatch_across_the_fleet_capac": "Manual truck assignment или smart диспетчеризация across the автопарк. Вместимость uses товар VU × количество.",
+        "mark_trucks_unavailable_in_real_time_dispatch_and_smart_suggest_": "Mark trucks недоступно in real время — диспетчеризация и smart suggest exclude them immediately.",
+        "max_lead_days": "Макс. lead (дни)",
+        "max_per_sku": "Макс. per SKU",
+        "message": "Message",
+        "min_lead_days": "Мин. lead (дни)",
+        "min_per_sku": "Мин. per SKU",
+        "new_warehouse": "Новый склад?",
+        "no_rescuers_available": "Нет Rescuers Доступно",
+        "no_active_dispatch_locks_dispatch_operations_are_running_freely": "Нет активные диспетчеризация locks. Диспетчеризация операции are running freely.",
+        "no_bins": "Нет bins",
+        "no_buyer_data_to_analyze_yet": "Нет buyer данные до analyze ещё",
+        "no_commitments": "Нет commitments",
+        "no_cycle_counts": "Нет cycle counts",
+        "no_data_yet": "Нет данные ещё.",
+        "no_drivers_available": "Нет drivers доступно",
+        "no_inventory_items_found": "Нет запасы items found",
+        "no_invoices_found": "Нет invoices found",
+        "no_lots": "Нет lots",
+        "no_pending_orders_need_assignment_right_now": "Нет ожидание заказы need assignment right now.",
+        "no_pick_waves": "Нет pick waves",
+        "no_pre_orders": "Нет pre-заказы",
+        "no_products_found": "Нет товары found",
+        "no_replenishment_insights": "Нет replenishment инсайты",
+        "no_supply_requests_found": "Нет supply заявки found",
+        "no_trucks_currently_require_a_rescue": "Нет trucks currently require a rescue.",
+        "no_warehouse_metrics_yet": "Нет склад metrics ещё",
+        "on_hand_stock_levels_with_live_sync_and_quantity_adjustments": "On-hand остаток levels с онлайн синхронизировать и количество adjustments.",
+        "open_insights": "Открыть инсайты",
+        "open_post_delivery_claims_damage_claims_auto_open_dock_tickets_o": "Открыть post-доставка претензии. Damage претензии auto-открыть dock tickets on Возвраты inbound; approve/reject is поставщик HQ.",
+        "orders_and_manifests_grouped_by_delivery_date": "Заказы и манифесты grouped by доставка дата.",
+        "outstanding": "Outstanding",
+        "paid": "Paid",
+        "pick_an_address_from_the_list_or_refine_your_search": "Pick an адрес от the list или refine your поиск.",
+        "preorder_accept_dispatch_seal_events_from_the_ops_pulse_feed": "Preorder → accept → диспетчеризация → seal events от the операции pulse feed.",
+        "prevent_concurrent_dispatch_operations_during_loading": "Prevent concurrent диспетчеризация операции during загрузка.",
+        "product_sku_id": "Товар / SKU ID",
+        "proposed_price_minor_units": "Proposed цена (minor units)",
+        "read_only_view_of_supplier_product_catalog": "Read-only просмотр из поставщик товар каталог.",
+        "read_only_view_payment_gateways_are_configured_by_the_supplier_a": "Read-only просмотр. Оплата gateways are configured by the поставщик admin.",
+        "real_time_map_tracking_for_sealed_manifests_in_transit": "Real-время карта отслеживание для sealed манифесты in transit.",
+        "receive_putaway_with_location_expiry_perishables_when_wms_lots_a": "Receive/putaway с location + expiry (perishables) when WMS lots are включено.",
+        "register": "Register",
+        "replay_the_last_committed_smart_dispatch_runs_for_this_node": "Replay the last committed smart-диспетчеризация runs для this узел.",
+        "retailer_id_optional": "Ритейлер ID (необязательно)",
+        "retailer_relationships_and_purchase_histories_will_appear_here_o": "Ритейлер relationships и purchase histories will appear here once заказы are fulfilled by this узел.",
+        "retailer_relationships_order_volume_and_revenue_for_this_warehou": "Ритейлер relationships, заказ объём, и выручка для this склад.",
+        "sku_level_asap_scheduled_demand_vs_on_hand": "SKU-level ASAP + scheduled demand vs on-hand",
+        "scheduled_manual_pre_orders_will_appear_here": "Scheduled manual pre-заказы will appear here.",
+        "sealed_manifest_polylines_and_driver_gps_for_this_warehouse_node": "Sealed манифест polylines и водитель GPS для this склад узел.",
+        "select_for_dispatch_double_click_a_card_for_order_detail": "Выбрать для диспетчеризация. Double-click a card для заказ detail.",
+        "single_tenant_logistics_control_plane": "Single-tenant logistics control plane.",
+        "smart_suggest_routes": "Smart suggest маршруты",
+        "stock_velocity_alerts_with_approve_dismiss_actions_for_this_ware": "Остаток velocity оповещения с approve/dismiss действия для this склад узел.",
+        "target_role": "Target role",
+        "the_replenishment_engine_will_surface_stock_velocity_alerts_when": "The replenishment engine will surface остаток velocity оповещения when burn thresholds are crossed.",
+        "there_are_no_active_drivers_with_enough_capacity": "There are нет активные drivers с enough вместимость.",
+        "total_invoiced": "Итого invoiced",
+        "unable_to_load": "Не удалось до загрузить",
+        "unavailable": "Недоступно",
+        "undispatched_orders": "Undispatched заказы",
+        "view_checkout_gateways_and_settlement_routing_for_this_node": "Просмотр checkout gateways и settlement routing для this узел.",
+        "warehouse_portal_pegasusx": "Склад Portal - pegasusX",
+        "warehouse_address": "Склад адрес",
+        "warehouse_name": "Склад название",
+        "warehouse_operator_session_and_scope": "Склад operator session и scope.",
+        "warehouse_revenue_order_health_fleet_utilization_and_import_tele": "Склад выручка, заказ health, автопарк utilization, и импорт telemetry.",
+        "warehouse_staff_and_payloader_accounts_for_terminal_execution": "Склад персонал и payloader accounts для terminal execution.",
+        "warning_high": "Предупреждение / high",
+        "weekday_close": "Weekday закрыть",
+        "weekday_open": "Weekday открыть",
+        "when_enforcement_is_on_retailers_cannot_preview_or_create_orders": "When enforcement is on, retailers cannot preview или создать заказы outside the window.",
+        "finance_permission_required": "finance_permission_required",
+        "load_failed": "load_failed",
+        "pegasusx": "pegasusX",
+        "8_7_wave_1a_warehouse_locations_and_stock_lots_fefo": "§8.7 Wave 1A склад locations и остаток lots (FEFO)",
+        "8_7_wave_1b_manifest_picks_ready_to_seal_before_payload_seal": "§8.7 Wave 1B манифест picks → ready-до-seal before payload seal",
+        "8_7_wave_1c_stub_counts_variance_adjustments_approve_does_not_ch": "§8.7 Wave 1C stub counts + variance adjustments (approve does not change lots ещё)"
+      }
     }
   }
 }

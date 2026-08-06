@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { ChangeEvent } from 'react';
 import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 
@@ -54,48 +57,49 @@ export function OpsSettingsForm({
   weekdayClose, setWeekdayClose,
   scheduleJSON, setScheduleJSON,
 }: OpsSettingsFormProps) {
+  const t = usePortalT();
   return (
     <>
-      <PortalSection icon="orders" title="Pre-order lead window" description="Days between order placement and earliest fulfillment.">
+      <PortalSection icon="orders" title={t("warehouse_portal.settings.ops_settings_form.text.pre_order_lead_window")} description={t("warehouse_portal.residual.text.days_between_order_placement_and_earliest_fulfillment")}>
         <div className="grid grid-cols-2 gap-3">
-          <PortalField id="preorderMinLeadDays" label="Min lead (days)">
+          <PortalField id="preorderMinLeadDays" label={t("warehouse_portal.residual.text.min_lead_days")}>
             <PortalInput id="preorderMinLeadDays" value={preorderMinLeadDays} onChange={(e: ChangeEvent<HTMLInputElement>) => setPreorderMinLeadDays(e.target.value)} />
           </PortalField>
-          <PortalField id="preorderMaxLeadDays" label="Max lead (days)">
+          <PortalField id="preorderMaxLeadDays" label={t("warehouse_portal.residual.text.max_lead_days")}>
             <PortalInput id="preorderMaxLeadDays" value={preorderMaxLeadDays} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setPreorderMaxLeadDays(e.target.value)} />
           </PortalField>
         </div>
       </PortalSection>
 
-      <PortalSection icon="inventory" title="Line quantity limits" description="Leave blank to clear a limit. Applies to standard and scheduled checkout.">
+      <PortalSection icon="inventory" title={t("warehouse_portal.settings.ops_settings_form.text.line_quantity_limits")} description={t("warehouse_portal.residual.text.leave_blank_to_clear_a_limit_applies_to_standard_and_scheduled_c")}>
         <div className="grid grid-cols-2 gap-3">
-          <PortalField id="orderLineMin" label="Min per SKU">
+          <PortalField id="orderLineMin" label={t("warehouse_portal.residual.text.min_per_sku")}>
             <PortalInput id="orderLineMin" value={orderLineMin} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setOrderLineMin(e.target.value)} />
           </PortalField>
-          <PortalField id="orderLineMax" label="Max per SKU">
+          <PortalField id="orderLineMax" label={t("warehouse_portal.residual.text.max_per_sku")}>
             <PortalInput id="orderLineMax" value={orderLineMax} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setOrderLineMax(e.target.value)} />
           </PortalField>
         </div>
       </PortalSection>
 
-      <PortalSection icon="payment" title="Delivery fee tiers">
+      <PortalSection icon="payment" title={t("warehouse_portal.settings.ops_settings_form.text.delivery_fee_tiers")}>
         <div className="grid grid-cols-2 gap-3">
-          <PortalField id="feeBaseMinor" label="Base fee (minor)">
+          <PortalField id="feeBaseMinor" label={t("warehouse_portal.residual.text.base_fee_minor")}>
             <PortalInput id="feeBaseMinor" value={feeBaseMinor} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeBaseMinor(e.target.value)} />
           </PortalField>
-          <PortalField id="feeCurrency" label="Currency">
+          <PortalField id="feeCurrency" label={t("supplier_portal.chargebacks.text.currency")}>
             <PortalInput id="feeCurrency" value={feeCurrency} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeCurrency(e.target.value)} />
           </PortalField>
-          <PortalField id="feeTierKm" label="Free within km">
+          <PortalField id="feeTierKm" label={t("warehouse_portal.residual.text.free_within_km")}>
             <PortalInput id="feeTierKm" value={feeTierKm} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeTierKm(e.target.value)} />
           </PortalField>
-          <PortalField id="feeTierMinor" label="Beyond-tier fee (minor)">
+          <PortalField id="feeTierMinor" label={t("warehouse_portal.residual.text.beyond_tier_fee_minor")}>
             <PortalInput id="feeTierMinor" value={feeTierMinor} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeTierMinor(e.target.value)} />
           </PortalField>
         </div>
       </PortalSection>
 
-      <PortalSection icon="settings" title="Out-of-stock orders">
+      <PortalSection icon="settings" title={t("warehouse_portal.settings.ops_settings_form.text.out_of_stock_orders")}>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showStockCounts} onChange={(e: ChangeEvent<HTMLInputElement>) => setShowStockCounts(e.target.checked)} />
           Show stock counts to retailers
@@ -110,7 +114,7 @@ export function OpsSettingsForm({
         </label>
       </PortalSection>
 
-      <PortalSection icon="settings" title="Order acceptance hours" description="When enforcement is on, retailers cannot preview or create orders outside the window.">
+      <PortalSection icon="settings" title={t("warehouse_portal.settings.ops_settings_form.text.order_acceptance_hours")} description={t("warehouse_portal.residual.text.when_enforcement_is_on_retailers_cannot_preview_or_create_orders")}>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={enforceOrderAcceptance} onChange={(e: ChangeEvent<HTMLInputElement>) => setEnforceOrderAcceptance(e.target.checked)} />
           Enforce order acceptance hours
@@ -119,18 +123,18 @@ export function OpsSettingsForm({
           <input type="checkbox" checked={scheduleIs24h} onChange={(e: ChangeEvent<HTMLInputElement>) => setScheduleIs24h(e.target.checked)} />
           Open 24 hours
         </label>
-        <PortalField id="scheduleTimezone" label="Timezone">
+        <PortalField id="scheduleTimezone" label={t("supplier_portal.configuration.countries.field.timezone")}>
           <PortalInput id="scheduleTimezone" value={scheduleTimezone} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setScheduleTimezone(e.target.value)} />
         </PortalField>
         <div className="grid grid-cols-2 gap-3">
-          <PortalField id="weekdayOpen" label="Weekday open">
+          <PortalField id="weekdayOpen" label={t("warehouse_portal.residual.text.weekday_open")}>
             <PortalInput id="weekdayOpen" value={weekdayOpen} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setWeekdayOpen(e.target.value)} />
           </PortalField>
-          <PortalField id="weekdayClose" label="Weekday close">
+          <PortalField id="weekdayClose" label={t("warehouse_portal.residual.text.weekday_close")}>
             <PortalInput id="weekdayClose" value={weekdayClose} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setWeekdayClose(e.target.value)} />
           </PortalField>
         </div>
-        <h3 className="text-xs font-semibold text-[var(--muted)]">Advanced JSON</h3>
+        <h3 className="text-xs font-semibold text-[var(--muted)]">{t("warehouse_portal.settings.ops_settings_form.text.advanced_json")}</h3>
         <textarea
           className="w-full min-h-[140px] font-mono text-xs rounded-lg border p-3"
           style={{ borderColor: 'var(--field-border)', background: 'var(--field-background)' }}

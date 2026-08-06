@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -12,6 +13,7 @@ import { WarehouseList } from "./components/WarehouseList";
 const api = createSupplierApi();
 
 export default function WarehousesPage() {
+  const t = usePortalT();
   const [topology, setTopology] = useState<{ warehouses: SupplierTopologyWarehouse[]; factories: SupplierTopologyUpdateRequest["factories"] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -25,7 +27,7 @@ export default function WarehousesPage() {
     api
       .getSupplierTopology()
       .then((t) => setTopology({ warehouses: t.warehouses, factories: t.factories }))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_warehouses_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_warehouses_failed")))
       .finally(() => setLoading(false));
   };
 
@@ -75,12 +77,12 @@ export default function WarehousesPage() {
   return (
     <PageChrome
       icon="warehouse"
-      title="Warehouses"
-      description="Distribution nodes and coverage for retailer serviceability."
+      title={t("portal.nav.warehouses")}
+      description={t("supplier_portal.residual.text.distribution_nodes_and_coverage_for_retailer_serviceability")}
       loading={loading}
       error={error}
       empty={warehouses.length === 0 && !showForm}
-      emptyMessage="No warehouses yet. Add your first distribution node."
+      emptyMessage={t("supplier_portal.residual.text.no_warehouses_yet_add_your_first_distribution_node")}
       actions={
         <button type="button" className="md-btn md-btn-filled md-typescale-label-large px-4 py-2" onClick={() => setShowForm(true)}>
           Add warehouse

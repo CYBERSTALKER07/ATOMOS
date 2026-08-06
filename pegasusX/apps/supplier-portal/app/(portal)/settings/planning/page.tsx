@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { Route } from "next";
@@ -23,6 +24,7 @@ const EMPTY_FORM: OverrideForm = {
 };
 
 export default function PlanningSettingsPage() {
+  const t = usePortalT();
   const [data, setData] = useState<SeasonalTemplatesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function PlanningSettingsPage() {
       const resp = await api.getSeasonalOverrides();
       setData(resp);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load seasonal overrides");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_seasonal_overrides"));
     } finally {
       setLoading(false);
     }
@@ -77,7 +79,7 @@ export default function PlanningSettingsPage() {
       setForm(EMPTY_FORM);
       setShowCreate(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Create failed");
+      setFormError(err instanceof Error ? err.message : t("supplier_portal.residual.text.create_failed"));
     } finally {
       setSaving(false);
     }
@@ -86,8 +88,8 @@ export default function PlanningSettingsPage() {
   return (
     <PageChrome
       icon="overview"
-      title="Planning settings"
-      description="Custom seasonal windows override global forecast baselines for date ranges."
+      title={t("supplier_portal.settings.planning.text.planning_settings")}
+      description={t("supplier_portal.residual.text.custom_seasonal_windows_override_global_forecast_baselines_for_d")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -101,7 +103,7 @@ export default function PlanningSettingsPage() {
 
       <section className="desk-card p-6 mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="bento-card-title">Custom seasons</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.settings.planning.text.custom_seasons")}</h2>
           <button
             type="button"
             className="portal-btn portal-btn--primary"
@@ -124,7 +126,7 @@ export default function PlanningSettingsPage() {
       </section>
 
       <section className="desk-card p-6 mt-6 overflow-x-auto">
-        <h2 className="bento-card-title">Active overrides</h2>
+        <h2 className="bento-card-title">{t("supplier_portal.settings.planning.text.active_overrides")}</h2>
         {data && <SeasonalOverridesTable overrides={data.overrides} />}
       </section>
     </PageChrome>

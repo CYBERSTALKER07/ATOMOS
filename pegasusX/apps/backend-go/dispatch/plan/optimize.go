@@ -35,7 +35,8 @@ const (
 	// fallbackTimeout bounds H3 cell resolution + binpack CPU during peak dispatch.
 	fallbackTimeout = 3 * time.Second
 
-	// solverBudget is aligned with optimizerclient.DefaultTimeout plus wire overhead.
+	// solverBudget is aligned with optimizerclient.DefaultTimeout (8s HTTP soft
+	// timeout) plus wire overhead — strictly greater than solver time_limit_ms (5s).
 	solverBudget = optimizerclient.DefaultTimeout + 250*time.Millisecond
 )
 

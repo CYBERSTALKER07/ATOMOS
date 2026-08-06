@@ -66,7 +66,13 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 
 		// Reserve on-hand stock for fulfillable quantities (all non-backorder orders, including scheduled pre-orders).
 		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
-			if err := ReserveLineItemsInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.LineItems); err != nil {
+			expected := time.Time{}
+			if o.RequestedDeliveryDate != nil {
+				expected = o.RequestedDeliveryDate.UTC()
+			} else if o.DeliverBefore != nil {
+				expected = o.DeliverBefore.UTC()
+			}
+			if err := ReserveLineItemsForOrderInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.OrderID, o.RetailerID, expected, o.LineItems); err != nil {
 				return err
 			}
 			if err := insertStockReservationMarkerInTxn(txn, o.OrderID); err != nil {
@@ -236,7 +242,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			if sid == "" {
 				sid = strings.TrimSpace(supplierID)
 			}
-			if err := ReleaseReservationsInTxn(ctx, txn, sid, wh, OrderSource(orderSource), prevLineItems); err != nil {
+			if err := ReleaseReservationsForOrderInTxn(ctx, txn, sid, wh, o.OrderID, OrderSource(orderSource), prevLineItems); err != nil {
 				return fmt.Errorf("release reservations in txn %s: %w", o.OrderID, err)
 			}
 		}
@@ -1227,7 +1233,13 @@ func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, 
 		}
 
 		if !stockOpts.Skip {
-			if err := ReserveLineItemsInTxn(ctx, txn, supplierID, warehouseID, orderRecord.LineItems); err != nil {
+			expected := time.Time{}
+			if orderRecord.RequestedDeliveryDate != nil {
+				expected = orderRecord.RequestedDeliveryDate.UTC()
+			} else if orderRecord.DeliverBefore != nil {
+				expected = orderRecord.DeliverBefore.UTC()
+			}
+			if err := ReserveLineItemsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, orderRecord.RetailerID, expected, orderRecord.LineItems); err != nil {
 				return err
 			}
 			if err := insertStockReservationMarkerInTxn(txn, orderID); err != nil {
@@ -1531,7 +1543,7 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 			if sid == "" {
 				sid = strings.TrimSpace(supplierID)
 			}
-			if err := ReleaseReservationsInTxn(ctx, txn, sid, wh, OrderSource(orderSource), prevLineItems); err != nil {
+			if err := ReleaseReservationsForOrderInTxn(ctx, txn, sid, wh, o.OrderID, OrderSource(orderSource), prevLineItems); err != nil {
 				return fmt.Errorf("release reservations in txn %s: %w", o.OrderID, err)
 			}
 		}

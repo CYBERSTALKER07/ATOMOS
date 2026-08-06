@@ -52,6 +52,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -107,9 +108,11 @@ func main() {
 	r.Use(telemetry.HTTPMetricsMiddleware)
 	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
-	// Partner API keys (pxk_*) — attach principal before rate limiting so KeyId is the actor.
+	// Partner API keys (pxk_*) and OAuth access tokens — attach principal before rate limiting.
 	if app.PartnerKeys != nil {
-		r.Use(partner.AuthMiddleware(app.PartnerKeys))
+		r.Use(partner.AuthMiddlewareOpts(partner.AuthOptions{
+			Keys: app.PartnerKeys, JWTSecret: app.PartnerJWTSecret,
+		}))
 	}
 
 	// Phase 1/2 Integration: Auth0 Identity Middleware
@@ -187,6 +190,9 @@ func main() {
 		Service:             app.WarehouseService,
 		OrderService:        app.OrderService,
 		PayloadService:      app.PayloadService,
+		WMSHandler: &stocklots.Handler{
+			Spanner: app.Spanner,
+		},
 		JWTSecret:           cfg.JWTSecret,
 		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -332,7 +338,9 @@ func main() {
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	if app.PartnerHandlers != nil && app.PartnerKeys != nil {
-		partner.RegisterPartnerRoutes(r, app.PartnerKeys, app.PartnerHandlers)
+		partner.RegisterPartnerRoutesOpts(r, partner.AuthOptions{
+			Keys: app.PartnerKeys, JWTSecret: app.PartnerJWTSecret,
+		}, app.PartnerHandlers)
 		partner.RegisterAdminKeyRoutes(r, app.PartnerHandlers)
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,

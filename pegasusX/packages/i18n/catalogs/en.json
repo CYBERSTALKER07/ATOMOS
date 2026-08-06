@@ -129,7 +129,12 @@
         "no_account": "Don't have an account?",
         "create_account": "Create account",
         "http_error": "HTTP {status}",
-        "network_error": "Network error - is the backend running?"
+        "network_error": "Network error - is the backend running?",
+        "text": {
+          "supplier_sign_in": "Supplier sign in",
+          "enter_registered_phone": "Enter your registered phone number.",
+          "enter_otp_sent_to": "Enter the 6-digit code sent to {phone}"
+        }
       },
       "register": {
         "brand_title": "Pegasus Hub",
@@ -420,7 +425,15 @@
             "cat-lighters-matches": "Lighters & Matches",
             "cat-other": "Other"
           }
+        },
+        "text": {
+          "set_up_your_supplier_account": "Set up your supplier account"
         }
+      },
+      "text": {
+        "supplier_node": "Supplier node",
+        "pegasusx_and_copy_2026": "pegasusX &copy; 2026",
+        "pegasusx_supplier": "pegasusX Supplier"
       }
     },
     "admin": {
@@ -581,6 +594,72 @@
         "error": {
           "fault": "Analytics fault: {detail}"
         }
+      },
+      "demand": {
+        "flywheel": {
+          "text": {
+            "last_1_day": "Last 1 day",
+            "last_14_days": "Last 14 days",
+            "flywheel_vs_planning": "Flywheel vs planning:",
+            "when": "When",
+            "day": "Day",
+            "retailer": "Retailer",
+            "kind": "Kind",
+            "net_sold": "Net sold",
+            "source": "Source",
+            "days_window": "Days window",
+            "pos_flywheel_demand": "POS flywheel demand"
+          }
+        },
+        "text": {
+          "baseline_vs_actual_14d": "Baseline vs actual (14d)",
+          "upcoming_demand_rows": "Upcoming demand rows",
+          "qty": "Qty",
+          "demand_forecast": "Demand forecast"
+        },
+        "signals": {
+          "text": {
+            "new_demand_signal": "New Demand Signal",
+            "holiday": "Holiday",
+            "weather": "Weather",
+            "event": "Event",
+            "promotion": "Promotion",
+            "scope": "Scope",
+            "region": "Region",
+            "city": "City",
+            "retailer_sku": "Retailer SKU",
+            "product_id": "Product ID",
+            "start_date": "Start Date",
+            "end_date": "End Date",
+            "multiplier_e_g_1_2_for_20_increase": "Multiplier (e.g. 1.2 for 20% increase)",
+            "description": "Description",
+            "date_range": "Date Range",
+            "multiplier": "Multiplier"
+          }
+        }
+      },
+      "knowledge_graph": {
+        "text": {
+          "name": "Name",
+          "from": "From",
+          "relation": "Relation",
+          "enterprise_knowledge_graph": "Enterprise knowledge graph"
+        }
+      },
+      "text": {
+        "order_velocity_7d": "Order velocity (7d)",
+        "revenue_trend_30d": "Revenue trend (30d)",
+        "top_demand_skus_today": "Top demand SKUs (today)"
+      },
+      "route_performance": {
+        "text": {
+          "route": "Route",
+          "driver": "Driver",
+          "planned_stops": "Planned stops",
+          "actual_stops": "Actual stops",
+          "replans": "Replans",
+          "computed": "Computed"
+        }
       }
     },
     "configuration": {
@@ -683,6 +762,1280 @@
           "label": "Bank Wire",
           "description": "Corporate bank wire transfer"
         }
+      }
+    },
+    "activity": {
+      "text": {
+        "no_recent_activity": "No recent activity.",
+        "operational_events_will_stream_here": "Operational events will stream here.",
+        "recent_activity": "Recent Activity"
+      }
+    },
+    "chargebacks": {
+      "text": {
+        "retailer_id": "Retailer ID",
+        "gateway": "Gateway",
+        "amount_minor_units": "Amount (minor units)",
+        "currency": "Currency",
+        "enter_order_id": "Enter Order ID",
+        "enter_retailer_id": "Enter Retailer ID",
+        "e_g_1000": "e.g. 1000",
+        "enter_chargeback_session_id": "Enter Chargeback Session ID",
+        "record_chargeback": "Record Chargeback",
+        "reverse_chargeback": "Reverse Chargeback"
+      },
+      "claims": {
+        "text": {
+          "order": "Order",
+          "claim_ref": "Claim / ref",
+          "filter_order_id": "Filter order id"
+        }
+      }
+    },
+    "compliance": {
+      "text": {
+        "view_in_exception_centre": "View in Exception Centre",
+        "compliance_and_fiscal_audit": "Compliance & Fiscal Audit",
+        "loading_statistics": "Loading statistics...",
+        "no_compliance_stats_for_this_supplier_yet": "No compliance stats for this supplier yet.",
+        "problematic_orders": "Problematic Orders",
+        "status": "Status",
+        "fiscal_status": "Fiscal Status",
+        "ehf_id": "EHF ID",
+        "ba_status": "BA Status",
+        "created_at": "Created At",
+        "fiscalizing": "Fiscalizing",
+        "fiscal_failed": "Fiscal Failed",
+        "force_completed": "Force Completed",
+        "ba_pending": "BA Pending",
+        "ba_rejected": "BA Rejected",
+        "claim_mismatches": "Claim Mismatches",
+        "credit_frozen": "Credit Frozen",
+        "open_credit_notes": "Open Credit Notes",
+        "open_reverse_logistics": "Open Reverse Logistics",
+        "open_cash_discrepancies": "Open Cash Discrepancies"
+      },
+      "metric_card": {
+        "text": {
+          "vs_last_week": "vs last week"
+        }
+      }
+    },
+    "ledger": {
+      "text": {
+        "no_ledger_entries": "No ledger entries.",
+        "payment_movements_will_appear_here": "Payment movements will appear here.",
+        "date": "Date",
+        "type": "Type",
+        "amount": "Amount",
+        "payment_ledger": "Payment Ledger",
+        "ledger_entries": "Ledger Entries"
+      }
+    },
+    "settings": {
+      "tax_regimes": {
+        "text": {
+          "loading_regimes": "Loading regimes...",
+          "no_tax_regimes_found": "No tax regimes found.",
+          "create_new_tax_regime": "Create New Tax Regime",
+          "tax_regime_history": "Tax Regime History"
+        }
+      },
+      "integrations": {
+        "text": {
+          "loading": "Loading…",
+          "api_keys": "API keys",
+          "pxk": "pxk_…",
+          "post_partner_v1_oauth_token": "POST /partner/v1/oauth/token",
+          "grant_type_client_credentials": "grant_type=client_credentials",
+          "no_keys_yet": "No keys yet.",
+          "webhooks": "Webhooks",
+          "no_webhooks": "No webhooks.",
+          "dead_letter": "Dead letter",
+          "no_dead_letter_rows": "No dead-letter rows.",
+          "journals": "journals",
+          "exports": "Exports",
+          "orders": "orders",
+          "invoices": "invoices",
+          "inventory": "inventory",
+          "ledger": "ledger",
+          "journals_1c": "journals (1C)",
+          "csv": "csv",
+          "json": "json",
+          "xml": "xml",
+          "no_export_jobs": "No export jobs.",
+          "sftp_edi": "SFTP + EDI",
+          "recent_edi_documents": "Recent EDI documents",
+          "no_edi_documents": "No EDI documents.",
+          "host_or_leave_blank_for_local_edi_root": "Host (or leave blank for local EDI root)",
+          "port": "Port",
+          "username": "Username",
+          "gsm_secret_name_secret_ref": "GSM secret name (secret_ref)",
+          "remote_base_directory": "Remote base directory",
+          "inbound_dir": "Inbound dir",
+          "outbound_dir": "Outbound dir",
+          "archive_dir": "Archive dir"
+        }
+      },
+      "notification_preferences": {
+        "text": {
+          "saved": "Saved.",
+          "quiet_from": "quiet from",
+          "quiet_to": "quiet to",
+          "notification_preferences": "Notification preferences"
+        }
+      },
+      "planning": {
+        "text": {
+          "custom_seasons": "Custom seasons",
+          "active_overrides": "Active overrides",
+          "planning_settings": "Planning settings"
+        },
+        "create_override_form": {
+          "text": {
+            "custom": "Custom"
+          }
+        },
+        "seasonal_overrides_table": {
+          "text": {
+            "template": "Template",
+            "window": "Window"
+          }
+        }
+      },
+      "playbooks": {
+        "text": {
+          "loading_playbooks": "Loading playbooks…",
+          "no_active_playbooks": "No active playbooks.",
+          "auto": "auto",
+          "control_tower_playbooks": "Control tower playbooks"
+        }
+      },
+      "return_policy": {
+        "text": {
+          "return_policy_saved": "Return policy saved.",
+          "same_as_default": "Same as default"
+        }
+      },
+      "segmentation_panel": {
+        "text": {
+          "loading_segmentation": "Loading segmentation…",
+          "retailer_segments": "Retailer segments",
+          "no_retailer_segments_yet_run_bootstrap_after_orders_exist": "No retailer segments yet. Run bootstrap after orders exist.",
+          "sku_velocity_classes": "SKU velocity classes",
+          "no_sku_classes_yet": "No SKU classes yet.",
+          "strategic": "Strategic"
+        }
+      }
+    },
+    "catalog": {
+      "_product_id_": {
+        "text": {
+          "ean_gtin": "EAN / GTIN",
+          "product_detail": "Product detail"
+        }
+      },
+      "components": {
+        "catalog_table": {
+          "text": {
+            "image": "Image",
+            "category": "Category",
+            "barcode": "Barcode",
+            "price_minor": "Price (minor)",
+            "unit_vu": "Unit VU",
+            "sale_unit": "Sale unit",
+            "units_case": "Units/case",
+            "actions": "Actions",
+            "no_image": "No image",
+            "unit": "Unit",
+            "case": "Case"
+          }
+        },
+        "create_product_form": {
+          "text": {
+            "no_categories_complete_onboarding_first": "No categories — complete onboarding first",
+            "8_14_digit_retail_barcode": "8–14 digit retail barcode"
+          }
+        }
+      }
+    },
+    "control_tower": {
+      "text": {
+        "actual_vs_plan": "Actual vs Plan",
+        "no_plan_actual_series_for_this_session_yet": "No plan/actual series for this session yet.",
+        "baseline_vs_upside_scenarios": "Baseline vs Upside Scenarios",
+        "no_scenario_series_for_this_session_yet": "No scenario series for this session yet.",
+        "top_scored_exceptions": "Top scored exceptions",
+        "playbook_suggestions": "Playbook suggestions"
+      },
+      "scored_exceptions_panel": {
+        "text": {
+          "loading_scored_exceptions": "Loading scored exceptions…",
+          "no_open_scored_exceptions": "No open scored exceptions."
+        }
+      }
+    },
+    "credit": {
+      "admin_disable": {
+        "text": {
+          "relationship": "Relationship",
+          "program": "Program",
+          "admin_disable_credit": "Admin: disable credit"
+        }
+      },
+      "collections": {
+        "text": {
+          "limit": "Limit",
+          "balance": "Balance",
+          "available": "Available",
+          "util": "Util %",
+          "limit_minor": "limit minor",
+          "reason": "reason"
+        }
+      },
+      "policy": {
+        "text": {
+          "retailer_relationships": "Retailer relationships",
+          "terms": "Terms",
+          "ret": "ret_…",
+          "self_serve_disable_blocked": "Self-serve disable blocked"
+        }
+      }
+    },
+    "dashboard": {
+      "text": {
+        "live_fleet_map": "Live fleet map",
+        "dispatch_queue": "Dispatch queue",
+        "live_event_stream": "Live event stream"
+      }
+    },
+    "delivery_zones": {
+      "text": {
+        "delivery_zones": "Delivery zones"
+      }
+    },
+    "dispatch": {
+      "text": {
+        "warehouse_scope": "Warehouse scope",
+        "manual_truck_assignment": "Manual truck assignment",
+        "driver_truck": "Driver / truck",
+        "pending_orders": "Pending orders",
+        "smart_suggest_route_map": "Smart suggest route map",
+        "draft": "Draft",
+        "loading": "Loading",
+        "dispatched": "Dispatched",
+        "vol_units": "Vol. Units",
+        "search_manifest": "Search manifest…",
+        "search_manifests": "Search manifests"
+      },
+      "cargo_photo_carousel": {
+        "text": {
+          "cargo_photo_reports": "Cargo Photo Reports",
+          "request_photo": "Request Photo"
+        }
+      },
+      "dispatch_sidebar_nav": {
+        "text": {
+          "right_direction": "Right Direction",
+          "since_2022": "Since 2022",
+          "requests": "Requests",
+          "cargos": "Cargos",
+          "repair": "Repair",
+          "reports": "Reports"
+        }
+      },
+      "partner_filter_bar": {
+        "text": {
+          "filter_by_partners": "Filter by Partners",
+          "show": "Show",
+          "search_vehicle_or_route": "Search vehicle or route..."
+        }
+      },
+      "route_telemetry_map": {
+        "text": {
+          "no_live_eta": "No live ETA"
+        }
+      },
+      "shipment_card_grid": {
+        "text": {
+          "no_active_shipments_matching_criteria": "No active shipments matching criteria",
+          "adjust_filters_or_select_a_different_partner": "Adjust filters or select a different partner"
+        }
+      },
+      "vehicle_capacity_gauge": {
+        "text": {
+          "current_truck_capacity": "Current Truck Capacity"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "portal_error": "Portal error",
+        "something_went_wrong": "Something went wrong"
+      }
+    },
+    "exceptions": {
+      "claims": {
+        "text": {
+          "claims_queue": "Claims queue"
+        }
+      },
+      "early_complete": {
+        "text": {
+          "driver_id": "Driver ID",
+          "driver_uuid_from_escalation_or_telemetry": "Driver UUID from escalation or telemetry",
+          "early_route_complete": "Early route complete"
+        }
+      },
+      "negotiations": {
+        "text": {
+          "quantity_negotiations": "Quantity negotiations"
+        }
+      },
+      "text": {
+        "recommended_playbooks": "Recommended playbooks"
+      },
+      "shop_closed": {
+        "text": {
+          "shop_closed_escalations": "Shop closed escalations"
+        }
+      },
+      "playbook_runs_panel": {
+        "text": {
+          "loading_playbook_suggestions": "Loading playbook suggestions…"
+        }
+      }
+    },
+    "factories": {
+      "components": {
+        "factory_form": {
+          "text": {
+            "add_factory": "Add factory",
+            "main_factory": "Main factory"
+          }
+        },
+        "factory_list": {
+          "text": {
+            "add_your_first_factory_to_link_production_to_warehouses": "Add your first factory to link production to warehouses."
+          }
+        }
+      }
+    },
+    "finance": {
+      "credit_notes": {
+        "text": {
+          "create_manual_draft": "Create manual draft",
+          "load_order_lines": "Load order lines",
+          "create_draft": "Create draft",
+          "reason_code": "Reason code",
+          "reason_text": "Reason text"
+        }
+      }
+    },
+    "fleet": {
+      "orders": {
+        "text": {
+          "fleet_orders": "Fleet orders"
+        }
+      },
+      "text": {
+        "fleet_and_org": "Fleet & org"
+      }
+    },
+    "geo_report": {
+      "text": {
+        "geo_report": "Geo report"
+      }
+    },
+    "inventory": {
+      "import": {
+        "text": {
+          "no_mapping_suggestions_returned": "No mapping suggestions returned.",
+          "source_column": "Source column",
+          "target_field": "Target field",
+          "confidence": "Confidence",
+          "inventory_import_wizard": "Inventory import wizard"
+        }
+      },
+      "inventory_table": {
+        "text": {
+          "stock_policy": "Stock policy",
+          "adjust": "Adjust",
+          "inherit_warehouse": "Inherit warehouse",
+          "reject_when_short": "Reject when short",
+          "accept_backorder": "Accept backorder",
+          "qty": "±qty"
+        }
+      }
+    },
+    "manifest_exceptions": {
+      "text": {
+        "manifest": "Manifest",
+        "attempts": "Attempts",
+        "manifest_gate_exceptions": "Manifest gate exceptions"
+      }
+    },
+    "manifests": {
+      "_id_": {
+        "text": {
+          "inject_order_id": "Inject order ID",
+          "order_uuid": "order uuid",
+          "manifest_detail": "Manifest detail"
+        }
+      }
+    },
+    "operations": {
+      "replenishment_policies": {
+        "text": {
+          "safety_stock_8_2": "Safety stock (§8.2)",
+          "target_service_level": "Target service level (%)",
+          "lead_time_days": "Lead time (days)",
+          "replenishment_policies": "Replenishment policies"
+        }
+      },
+      "operator_broadcast": {
+        "text": {
+          "message_body": "Message body",
+          "operator_broadcast": "Operator broadcast"
+        }
+      },
+      "payment_bypass": {
+        "text": {
+          "order_id_awaiting_payment": "Order ID (AWAITING_PAYMENT)",
+          "payment_bypass": "Payment bypass"
+        }
+      }
+    },
+    "ops": {
+      "map": {
+        "text": {
+          "zone_h3": "Zone H3"
+        }
+      }
+    },
+    "orders": {
+      "_id_": {
+        "text": {
+          "total": "Total",
+          "status_history": "Status history"
+        }
+      },
+      "components": {
+        "orders_list": {
+          "text": {
+            "cancel_order": "Cancel order"
+          }
+        }
+      },
+      "order_kebab_menu": {
+        "text": {
+          "order_actions": "Order actions"
+        }
+      },
+      "order_ops_actions": {
+        "text": {
+          "warehouse_admin_actions": "Warehouse admin actions",
+          "new_delivery_date": "New delivery date",
+          "reason_required": "Reason (required)"
+        }
+      },
+      "propose_delay_dialog": {
+        "text": {
+          "delay_delivery": "Delay delivery"
+        }
+      },
+      "re_dispatch_dialog": {
+        "text": {
+          "reassign_order": "Reassign Order",
+          "reassignment_type": "Reassignment Type"
+        }
+      }
+    },
+    "pricing": {
+      "_product_id_": {
+        "text": {
+          "on_sale": "On sale",
+          "discount_bps": "Discount (bps)",
+          "preview_pricing_impact": "Preview Pricing Impact",
+          "old_list_price": "Old List Price",
+          "new_list_price": "New List Price",
+          "old_sale_price": "Old Sale Price",
+          "new_sale_price": "New Sale Price"
+        }
+      },
+      "retailer_overrides": {
+        "text": {
+          "all_products": "All products",
+          "new_price_override": "New price override",
+          "select_a_product": "Select a product",
+          "calculating_impact_preview": "Calculating impact preview…",
+          "impact_preview": "Impact preview",
+          "price": "Price",
+          "set_by": "Set by",
+          "notes": "Notes",
+          "retailer_uuid": "Retailer UUID",
+          "product_uuid": "Product UUID",
+          "reason_for_override": "Reason for override",
+          "retailer_overrides": "Retailer overrides"
+        }
+      }
+    },
+    "promotions": {
+      "text": {
+        "all_retailers": "ALL retailers",
+        "specific_retailers": "Specific retailers",
+        "active_rules": "Active rules",
+        "min_qty": "Min qty",
+        "min_order": "Min order",
+        "starts": "Starts",
+        "ends": "Ends",
+        "sandbox_p_and_l_projection": "Sandbox P&L projection",
+        "volume": "Volume",
+        "margin": "Margin",
+        "margin_2": "Margin Δ"
+      }
+    },
+    "reconciliation": {
+      "text": {
+        "payments_and_ledger": "Payments & ledger"
+      }
+    },
+    "replenishment": {
+      "suggestions": {
+        "text": {
+          "all_sources": "All sources",
+          "has_store_pos": "Has Store POS",
+          "wholesale_only": "Wholesale only",
+          "sources": "Sources",
+          "pos_vel_day": "POS vel / day",
+          "base_demand_day": "Base demand / day",
+          "suggested_qty": "Suggested qty",
+          "adj_demand_day": "Adj. demand / day",
+          "in_flight": "In-flight",
+          "safety_stock": "Safety stock",
+          "by_date": "By date",
+          "sku_search": "SKU search",
+          "select_all": "Select all",
+          "reorder_suggestions": "Reorder suggestions"
+        }
+      }
+    },
+    "returns": {
+      "text": {
+        "open_returns": "Open returns",
+        "total_damage_value": "Total damage value",
+        "return_to_stock": "Return to stock",
+        "write_off": "Write off",
+        "gate_resolved": "Gate resolved",
+        "notes_optional": "Notes (optional)",
+        "dispute_and_returns": "Dispute & Returns"
+      }
+    },
+    "supply_lanes": {
+      "text": {
+        "supply_lanes": "Supply lanes"
+      },
+      "supply_lanes_list": {
+        "text": {
+          "active_drivers": "Active Drivers",
+          "orders_today": "Orders Today",
+          "capacity_limit": "Capacity limit",
+          "lane_utilization": "Lane Utilization"
+        }
+      }
+    },
+    "topology": {
+      "text": {
+        "factories_and_warehouses": "Factories & warehouses"
+      }
+    },
+    "treasury": {
+      "cash_reconciliations": {
+        "text": {
+          "finance_note_optional": "Finance note (optional)",
+          "verification_note_for_accept_write_off": "Verification note for accept / write-off"
+        }
+      },
+      "text": {
+        "earnings_and_disputes": "Earnings & disputes"
+      }
+    },
+    "warehouses": {
+      "components": {
+        "warehouse_form": {
+          "text": {
+            "add_warehouse": "Add warehouse",
+            "coverage_km": "Coverage km",
+            "main_warehouse": "Main warehouse"
+          }
+        },
+        "warehouse_list": {
+          "text": {
+            "add_your_first_warehouse_to_start_fulfilling_orders": "Add your first warehouse to start fulfilling orders."
+          }
+        }
+      }
+    },
+    "ai": {
+      "recommendations": {
+        "text": {
+          "access_restricted_for_this_supplier_session": "Access restricted for this supplier session.",
+          "you_are_offline_showing_the_last_loaded_recommendations": "You are offline. Showing the last loaded recommendations.",
+          "no_recommendations": "No recommendations",
+          "score": "Score",
+          "reason_codes": "Reason codes",
+          "evidence": "Evidence",
+          "add_operator_rationale": "Add operator rationale",
+          "ai_recommendation_review": "AI recommendation review"
+        }
+      }
+    },
+    "demand": {
+      "payday_calendar": {
+        "text": {
+          "manage_predictable_demand_spikes_across_the_region": "Manage predictable demand spikes across the region.",
+          "dates": "Dates",
+          "loading_calendar": "Loading calendar...",
+          "no_paydays_scheduled": "No paydays scheduled.",
+          "remove": "Remove",
+          "schedule_payday_spike": "Schedule Payday Spike",
+          "start_time": "Start Time",
+          "end_time": "End Time",
+          "demand_multiplier_expected_lift": "Demand Multiplier (Expected Lift)",
+          "e_g_august_state_pension_payout": "e.g. August State Pension Payout"
+        }
+      },
+      "signals": {
+        "text": {
+          "manage_promo_and_event_multipliers_for_causal_demand_sensing": "Manage promo and event multipliers for causal demand sensing.",
+          "all_types": "All Types",
+          "promo": "Promo",
+          "payday": "Payday",
+          "event_density": "Event Density",
+          "competitor_pressure": "Competitor Pressure",
+          "title_type": "Title / Type",
+          "validity": "Validity",
+          "loading_signals": "Loading signals...",
+          "no_signals_found": "No signals found.",
+          "all": "All",
+          "expired": "Expired",
+          "scheduled": "Scheduled",
+          "edit": "Edit",
+          "deactivate": "Deactivate",
+          "this_multiplies_expected_demand_by_your_chosen_factor_for_the_se": "This multiplies expected demand by your chosen factor for the selected scope.",
+          "sku_optional": "SKU (Optional)",
+          "description_optional": "Description (Optional)",
+          "e_g_retailer_123_or_city_tashkent": "e.g. retailer:123 or city:Tashkent",
+          "leave_blank_for_all_skus": "Leave blank for all SKUs",
+          "e_g_summer_soft_drinks_push": "e.g. Summer soft-drinks push"
+        }
+      }
+    },
+    "earnings": {
+      "text": {
+        "totals_by_currency": "Totals by currency",
+        "finance_actions": "Finance actions",
+        "record_chargeback": "Record chargeback",
+        "record_reversal": "Record reversal",
+        "recent_dispute_history": "Recent dispute history",
+        "recent_ledger_activity": "Recent ledger activity",
+        "reconciliation_mismatches": "Reconciliation mismatches",
+        "net": "Net",
+        "credit_total": "Credit total",
+        "debit_total": "Debit total",
+        "entries": "Entries",
+        "occurred": "Occurred",
+        "entry_type": "Entry type",
+        "reference": "Reference",
+        "earnings_and_treasury": "Earnings & Treasury",
+        "live_treasury_stream": "Live treasury stream"
+      }
+    },
+    "org_fleet": {
+      "components": {
+        "driver_form": {
+          "text": {
+            "warehouse_based_driver": "Warehouse-based driver",
+            "factory_based_driver": "Factory-based driver",
+            "select_home_node": "Select home node",
+            "assign_vehicle_later": "Assign vehicle later",
+            "driver_name": "Driver name"
+          }
+        },
+        "driver_table": {
+          "text": {
+            "driver_roster": "Driver roster",
+            "home_node": "Home node",
+            "vehicle": "Vehicle"
+          }
+        },
+        "org_member_form": {
+          "text": {
+            "org_members": "Org members",
+            "warehouse_payload_staff": "Warehouse payload staff",
+            "factory_payload_staff": "Factory payload staff",
+            "select_node": "Select node",
+            "full_name": "Full name",
+            "temporary_password": "Temporary password"
+          }
+        },
+        "org_member_table": {
+          "text": {
+            "current_org_roster": "Current org roster",
+            "role": "Role",
+            "node": "Node"
+          }
+        },
+        "vehicle_form": {
+          "text": {
+            "vehicles": "Vehicles",
+            "warehouse_based_vehicle": "Warehouse-based vehicle",
+            "factory_based_vehicle": "Factory-based vehicle",
+            "vehicle_label": "Vehicle label",
+            "license_plate": "License plate"
+          }
+        },
+        "vehicle_table": {
+          "text": {
+            "vehicle_roster": "Vehicle roster"
+          }
+        }
+      },
+      "text": {
+        "org_staff_and_fleet_onboarding": "Org, staff, and fleet onboarding"
+      }
+    },
+    "payments": {
+      "text": {
+        "settlement_summary_endpoint_unavailable_showing_derived_fallback": "Settlement summary endpoint unavailable. Showing derived fallback from payment ledger entries.",
+        "entry_count": "Entry count",
+        "net_minor_units": "Net (minor units)",
+        "last_occurred": "Last occurred",
+        "settlement_groups": "Settlement groups",
+        "first_occurred": "First occurred",
+        "payment_settlement_authority": "Payment settlement authority",
+        "live_finance_stream": "Live finance stream"
+      }
+    },
+    "setup": {
+      "billing": {
+        "text": {
+          "e_g_hsbc_chase": "e.g. HSBC, Chase",
+          "e_g_chasus33": "e.g. CHASUS33",
+          "payment_acceptor": "Payment acceptor",
+          "payment_gateways": "Payment gateways",
+          "billing_and_payment_gateways": "Billing & payment gateways",
+          "payout_bank_account": "Payout bank account"
+        }
+      },
+      "business": {
+        "text": {
+          "e_g_gb123456789": "e.g. GB123456789",
+          "companies_house_or_local_registry_id": "Companies House or local registry ID",
+          "building_street_suite": "Building, street, suite",
+          "tax_and_registration": "Tax & registration",
+          "headquarters_location": "Headquarters location"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "supplier_setup": "Supplier setup",
+          "onboarding_progress": "Onboarding progress",
+          "setup_progress": "Setup progress"
+        }
+      }
+    },
+    "tracking": {
+      "text": {
+        "loading_live_fleet": "Loading live fleet…",
+        "live_fleet_from_dispatch_api": "Live fleet from dispatch API"
+      }
+    },
+    "admin_order_ops_panel": {
+      "text": {
+        "force_complete_fiscal_exception": "Force-complete (fiscal exception)",
+        "assign_driver": "Assign driver",
+        "patch_status": "Patch status",
+        "route_id": "Route ID",
+        "vehicle_id_optional": "Vehicle ID (optional)",
+        "reason_optional": "Reason (optional)"
+      }
+    },
+    "bulk_import_wizard": {
+      "text": {
+        "bulk_import_wizard": "Bulk Import Wizard",
+        "upload_a_csv_file_to_import_products": "Upload a CSV file to import products",
+        "map_your_csv_columns_to_product_fields": "Map your CSV columns to product fields:",
+        "continue": "Continue"
+      }
+    },
+    "control_tower_command_panel": {
+      "text": {
+        "control_tower": "Control tower",
+        "reroute": "Reroute",
+        "freeze_dispatch": "Freeze dispatch",
+        "priority_boost": "Priority boost"
+      }
+    },
+    "dispatch_preview_map": {
+      "text": {
+        "route_preview_unavailable_until_optimizer_proposes_stops_with_co": "Route preview unavailable until optimizer proposes stops with coordinates."
+      }
+    },
+    "exception_weather_map_panel": {
+      "text": {
+        "exception_weather": "Exception weather",
+        "h3_clusters_for_shop_closed_delays_and_manifest_gate_issues_24h": "H3 clusters for shop-closed, delays, and manifest gate issues (24h)",
+        "loading_exception_map": "Loading exception map…",
+        "no_exception_hotspots_in_the_last_24_hours": "No exception hotspots in the last 24 hours."
+      }
+    },
+    "fleet_live_map": {
+      "text": {
+        "loading_live_fleet_map": "Loading live fleet map…"
+      }
+    },
+    "fleet_live_map_panel": {
+      "text": {
+        "preparing_map": "Preparing map…"
+      }
+    },
+    "forecast_confidence_card": {
+      "text": {
+        "forecast_confidence": "Forecast confidence"
+      }
+    },
+    "handoff_inbox_card": {
+      "text": {
+        "handoff": "Handoff"
+      }
+    },
+    "live_ops_map": {
+      "text": {
+        "loading_live_routes": "Loading live routes…",
+        "no_active_routes_from_the_digital_twin_right_now": "No active routes from the digital twin right now.",
+        "remaining_stops": "Remaining stops",
+        "vehicle_inventory": "Vehicle inventory",
+        "no_inventory_rows": "No inventory rows.",
+        "open_exceptions": "Open exceptions",
+        "none_on_this_route": "None on this route."
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_dispatch_routing": "Pinned for dispatch routing",
+        "start_typing_street_address": "Start typing street address…"
+      }
+    },
+    "network_pulse_panel": {
+      "text": {
+        "network_pulse": "Network pulse"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_timeline": "Loading timeline…",
+        "no_status_history_yet": "No status history yet."
+      }
+    },
+    "planning_brain_panel": {
+      "text": {
+        "scenario_run": "Scenario run"
+      }
+    },
+    "replenishment_traceability_panel": {
+      "text": {
+        "replenishment_traceability": "Replenishment traceability",
+        "insight": "Insight",
+        "warehouse": "Warehouse",
+        "transfer": "Transfer"
+      }
+    },
+    "signal_ingest_ops_panel": {
+      "text": {
+        "signal_ingest_ops": "Signal ingest ops"
+      }
+    },
+    "supplier_shell": {
+      "text": {
+        "single_tenant_system_ready": "Single-tenant · System ready",
+        "supplier_admin": "Supplier Admin",
+        "single_tenant_control_plane": "Single-tenant control plane",
+        "search_pages": "Search pages...",
+        "open_navigation": "Open navigation",
+        "breadcrumb": "Breadcrumb",
+        "search_ctrl_k": "Search (Ctrl+K)",
+        "search": "Search",
+        "profile_menu": "Profile menu"
+      }
+    },
+    "profile": {
+      "contact_details_form": {
+        "text": {
+          "edit_contact_details": "Edit contact details"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "28d_actual_units": "28d actual units",
+        "28d_forecast_units": "28d forecast units",
+        "30_day_revenue": "30-day revenue",
+        "accept_backorders_when_out_of_stock": "Accept backorders when out of stock",
+        "account_holder_name": "Account holder name",
+        "account_number": "Account number",
+        "active_driver_reports_where_the_retailer_did_not_confirm_within_": "Active driver reports where the retailer did not confirm within the grace window.",
+        "active_routes_from_the_digital_twin_read_only_visibility_with_et": "Active routes from the digital twin — read-only visibility with ETA confidence colouring.",
+        "address": "Address",
+        "adyen": "Adyen",
+        "airwallex": "Airwallex",
+        "amount_must_be_a_number": "Amount must be a number.",
+        "approve_a_driver_request_to_finish_the_route_before_all_stops_ar": "Approve a driver request to finish the route before all stops are completed.",
+        "arrived": "Arrived",
+        "auto_approval_thresholds_transfer_limits_and_service_level_safet": "Auto-approval thresholds, transfer limits, and service-level safety stock.",
+        "auto_approve_predictive_push": "Auto-approve predictive push",
+        "auto_approve_stable": "Auto-approve stable",
+        "available_drivers": "Available drivers",
+        "bank_name": "Bank name",
+        "baseline_sla": "Baseline SLA",
+        "baseline_rows": "Baseline rows",
+        "cancels_the_order_and_notifies_the_retailer_immediately_reason_i": "Cancels the order and notifies the retailer immediately. Reason is required.",
+        "capacity_breach": "Capacity breach",
+        "card_payments_via_the_pegasusx_global_rail": "Card payments via the pegasusX global rail.",
+        "card_revenue_settles_to_your_supplier_treasury_account": "Card revenue settles to your supplier treasury account.",
+        "cash_on_delivery": "Cash on delivery",
+        "catalog_skus": "Catalog SKUs",
+        "category_id": "Category ID",
+        "channel_and_quiet_hour_rules_per_event_type": "Channel and quiet-hour rules per event type.",
+        "chargeback_recorded_live_finance_refresh_queued": "Chargeback recorded. Live finance refresh queued.",
+        "chargeback_reversal_recorded_live_finance_refresh_queued": "Chargeback reversal recorded. Live finance refresh queued.",
+        "claim_filing_windows_applied_when_orders_complete_retailers_see_": "Claim filing windows applied when orders complete. Retailers see the countdown from this policy.",
+        "co_locate_with_factory": "Co-locate with factory",
+        "coa_save_failed": "CoA save failed",
+        "company_registration_number": "Company registration number",
+        "complete_setup": "Complete setup",
+        "completed_route_efficiency_and_replan_metrics": "Completed route efficiency and replan metrics.",
+        "configure_where_payouts_land_and_which_checkout_rails_retailers_": "Configure where payouts land and which checkout rails retailers can use.",
+        "configured": "Configured",
+        "connection_restored_escalation_queue_refreshed_from_server": "Connection restored — escalation queue refreshed from server.",
+        "connection_restored_verify_approval_status_before_retrying": "Connection restored — verify approval status before retrying.",
+        "connection_restored_verify_chargeback_status_before_retrying": "Connection restored — verify chargeback status before retrying.",
+        "connection_restored_verify_reversal_status_before_retrying": "Connection restored — verify reversal status before retrying.",
+        "connection_restored_verify_status_before_retrying": "Connection restored — verify status before retrying.",
+        "contact_name": "Contact name",
+        "could_not_load_orders": "Could not load orders",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location to an address.",
+        "country": "Country",
+        "coverage_radius_km": "Coverage radius (km)",
+        "create_and_edit_warehouse_and_factory_nodes_coverage_radius_and_": "Create and edit warehouse and factory nodes. Coverage radius and co-location drive delivery zones and supply lanes.",
+        "create_failed": "Create failed",
+        "create_products_and_set_volumetric_units_vu_for_warehouse_dispat": "Create products and set volumetric units (VU) for warehouse dispatch capacity.",
+        "create_webhook_failed": "Create webhook failed",
+        "cross_border_payouts_and_multi_currency_settlement": "Cross-border payouts and multi-currency settlement.",
+        "custom_seasonal_windows_override_global_forecast_baselines_for_d": "Custom seasonal windows override global forecast baselines for date ranges.",
+        "deactivate_failed": "Deactivate failed",
+        "default_out_of_stock_policy": "Default out-of-stock policy",
+        "default_window_must_be_between_1_and_168_hours": "Default window must be between 1 and 168 hours",
+        "delivery_time_line_qty_propose_resolve_driver_supplier": "Delivery-time line qty propose/resolve (driver → supplier).",
+        "demand_baseline": "Demand baseline",
+        "demand_predictions": "Demand predictions",
+        "discount_bps_500_5": "Discount (bps, 500 = 5%)",
+        "dispute_rows": "Dispute rows",
+        "distribution_nodes_and_coverage_for_retailer_serviceability": "Distribution nodes and coverage for retailer serviceability.",
+        "draft_credit_notes_and_issue_reverse_logistics_tasks": "Draft credit notes and issue reverse-logistics tasks.",
+        "driver_id_is_required": "Driver ID is required.",
+        "driver_declared_cash_vs_captured_cash_payment_legs_resolve_open_": "Driver-declared cash vs captured CASH payment legs — resolve open discrepancies.",
+        "driver_rejected_quantities_awaiting_write_off_or_return_to_stock": "Driver-rejected quantities awaiting write-off or return-to-stock.",
+        "edi_replay_failed": "EDI replay failed",
+        "empathy_adoption_operator_broadcast_replenishment_trigger_and_pa": "Empathy adoption, operator broadcast, replenishment trigger, and payment bypass.",
+        "enable_the_supplier_credit_program_and_per_retailer_net_terms_di": "Enable the supplier credit program and per-retailer Net terms. Disable requires Pegaus support.",
+        "enable_trade_credit_irreversible_in_app": "Enable trade credit — irreversible in-app",
+        "ends_at_rfc3339": "Ends at (RFC3339)",
+        "enter_a_non_zero_quantity_delta": "Enter a non-zero quantity delta",
+        "enter_a_valid_list_price": "Enter a valid list price.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid phone number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "enterprise_card_acquiring_with_local_payment_methods": "Enterprise card acquiring with local payment methods.",
+        "export_failed": "Export failed",
+        "external_events_and_promotions_that_adjust_base_ai_predictions": "External events and promotions that adjust base AI predictions.",
+        "factory_address": "Factory address",
+        "factory_admin": "Factory admin",
+        "factory_cap_7d": "Factory cap (7d)",
+        "failed_to_create_override": "Failed to create override",
+        "failed_to_create_product": "Failed to create product",
+        "failed_to_delete_override": "Failed to delete override",
+        "failed_to_load_catalog": "Failed to load catalog",
+        "failed_to_load_compliance_stats": "Failed to load compliance stats",
+        "failed_to_load_exception_map": "Failed to load exception map",
+        "failed_to_load_fleet_tracking": "Failed to load fleet tracking",
+        "failed_to_load_integrations": "Failed to load integrations",
+        "failed_to_load_inventory": "Failed to load inventory",
+        "failed_to_load_overrides": "Failed to load overrides",
+        "failed_to_load_product": "Failed to load product",
+        "failed_to_load_promotions": "Failed to load promotions",
+        "failed_to_load_return_policy": "Failed to load return policy",
+        "failed_to_load_seasonal_overrides": "Failed to load seasonal overrides",
+        "failed_to_load_topology": "Failed to load topology",
+        "failed_to_save_product": "Failed to save product",
+        "failed_to_send_verification_code": "Failed to send verification code",
+        "fan_out_a_message_to_supplier_ws_rooms_by_role": "Fan out a message to supplier WS rooms by role.",
+        "filter_product_id": "Filter product ID",
+        "filter_retailer_id": "Filter retailer ID",
+        "financial_overview_and_operational_intelligence": "Financial overview and operational intelligence.",
+        "fleet_entities": "Fleet entities",
+        "fleet_volume": "Fleet volume",
+        "forecast_units": "Forecast units",
+        "forecast_units_24h": "Forecast units (24h)",
+        "forecast_value": "Forecast value",
+        "fulfilling_nodes_collect_payment_per_dispatch_lane": "Fulfilling nodes collect payment per dispatch lane.",
+        "full_ledger_chargebacks_and_reconciliation_tools": "Full ledger, chargebacks, and reconciliation tools.",
+        "gln_13_digits": "GLN (13 digits)",
+        "gs1_company_prefix_7_10_digits": "GS1 company prefix (7–10 digits)",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "h3_perimeter_and_warehouse_coverage_configured_via_topology": "H3 perimeter and warehouse coverage configured via topology.",
+        "h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or": "H3 perimeter coverage and lane utilization from live supplier orders.",
+        "immutable_ledger_derived_settlement_and_reconciliation_view_for_": "Immutable ledger-derived settlement and reconciliation view for supplier finance and support.",
+        "in_transit": "In transit",
+        "ingest_lag": "Ingest lag",
+        "internal_co_located": "Internal / co-located",
+        "invalid_verification_code": "Invalid verification code",
+        "issue_a_one_time_driver_token_for_awaiting_payment_orders": "Issue a one-time driver token for AWAITING_PAYMENT orders.",
+        "issue_key_failed": "Issue key failed",
+        "latest_events_across_your_network": "Latest events across your network.",
+        "ledger_rows": "Ledger rows",
+        "legal_and_location_information_used_for_invoicing_compliance_and": "Legal and location information used for invoicing, compliance, and delivery routing.",
+        "legal_name": "Legal name",
+        "list_price_and_optional_product_scoped_sale_discount": "List price and optional product-scoped sale discount.",
+        "live_finance_stream_chargebacks_and_reconciliation": "Live finance stream, chargebacks, and reconciliation.",
+        "live_retailer_floor_sell_through_store_pos_kafka_demand_signal_f": "Live retailer floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers.",
+        "live_sealed_route_execution_exception_weather_and_fleet_onboardi": "Live sealed-route execution, exception weather, and fleet onboarding.",
+        "loaded": "Loaded",
+        "loading_manifests_seal_and_dispatch_lifecycle_use_dispatch_for_a": "Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations.",
+        "loading_gate_overflows_damage_reports_and_manual_removals_raised": "Loading-gate overflows, damage reports, and manual removals raised during manifest execution.",
+        "location_permission_denied": "Location permission denied.",
+        "meio_network": "MEIO network",
+        "meio_unavailable": "MEIO unavailable",
+        "manage_historical_and_future_tax_rates": "Manage historical and future tax rates",
+        "manage_manifests_and_dispatch_operations": "Manage manifests and dispatch operations.",
+        "manage_warehouse_coordinates_and_coverage_radius": "Manage warehouse coordinates and coverage radius.",
+        "max_vu": "Max VU",
+        "max_daily_transfer_units": "Max daily transfer units",
+        "min_confidence_score": "Min confidence score",
+        "min_line_qty_packs": "Min line qty (packs)",
+        "min_order_minor_units": "Min order (minor units)",
+        "mismatch_groups": "Mismatch groups",
+        "month_earnings": "Month earnings",
+        "monthly_salary_payout": "Monthly salary payout",
+        "name_and_address_are_required": "Name and address are required.",
+        "name_and_category_are_required": "Name and category are required.",
+        "new_supplier": "New supplier?",
+        "no_store_pos_flywheel_events_yet_when_retailers_complete_pos_sal": "No STORE_POS flywheel events yet. When retailers complete POS sales for your SKUs, rows appear here.",
+        "no_active_fleet_orders": "No active fleet orders.",
+        "no_active_warehouse_lanes_configure_nodes_on_topology": "No active warehouse lanes. Configure nodes on topology.",
+        "no_claim_chargebacks_yet_approve_a_claim_in_exceptions_claims_to": "No claim chargebacks yet. Approve a claim in Exceptions → Claims to create one.",
+        "no_claims_in_this_filter_retailer_post_delivery_claims_appear_he": "No claims in this filter. Retailer post-delivery claims appear here within the 48h window.",
+        "no_data_yet": "No data yet.",
+        "no_demand_signals_yet_add_events_or_promos_to_adjust_predictive_": "No demand signals yet. Add events or promos to adjust predictive inventory.",
+        "no_escalations_in_queue": "No escalations in queue.",
+        "no_factories_yet_add_a_production_node_linked_to_your_warehouse_": "No factories yet. Add a production node linked to your warehouse network.",
+        "no_manifest_exceptions_in_the_current_window": "No manifest exceptions in the current window.",
+        "no_manifests_in_the_current_window": "No manifests in the current window.",
+        "no_nearby_drivers": "No nearby drivers",
+        "no_open_cash_discrepancies_drivers_auto_accept_when_declared_mat": "No open cash discrepancies. Drivers auto-accept when declared matches expected.",
+        "no_open_exceptions_escalations_appear_here_when_operators_raise_": "No open exceptions. Escalations appear here when operators raise them.",
+        "no_open_returns_all_rejected_delivery_lines_are_resolved": "No open returns — all rejected delivery lines are resolved.",
+        "no_products_to_price_create_products_in_catalog_then_return_here": "No products to price. Create products in Catalog, then return here.",
+        "no_retailer_price_overrides_yet": "No retailer price overrides yet.",
+        "no_supplier_session_sign_in_again_to_load_compliance_for_your_te": "No supplier session. Sign in again to load compliance for your tenant.",
+        "no_warehouse_coverage_configured": "No warehouse coverage configured.",
+        "no_warehouses_yet_add_your_first_distribution_node": "No warehouses yet. Add your first distribution node.",
+        "none": "None",
+        "open_replenishment_suggestions_from_demand_signals_create_draft_": "OPEN replenishment suggestions from demand signals — create draft orders through normal order capture.",
+        "on_shift": "On shift",
+        "open_mismatches": "Open mismatches",
+        "opens_a_warehouse_supply_request_against_your_primary_active_war": "Opens a warehouse supply request against your primary active warehouse.",
+        "orders_matching_this_filter_will_appear_here": "Orders matching this filter will appear here.",
+        "override_failed": "Override failed",
+        "override_price_minor_units": "Override price (minor units)",
+        "p_and_l_simulation_failed": "P&L simulation failed",
+        "partner_api_keys_outbound_webhooks_bulk_exports_and_optional_sft": "Partner API keys, outbound webhooks, bulk exports, and optional SFTP drop.",
+        "payload_staff": "Payload staff",
+        "payments_settlement_authority_earnings_and_reconciliation_health": "Payments, settlement authority, earnings, and reconciliation health.",
+        "pending": "Pending",
+        "pending_dispatch": "Pending dispatch",
+        "ping_failed": "Ping failed",
+        "pipeline": "Pipeline",
+        "post_delivery_damage_missing_and_os_and_d_claims_choose_settleme": "Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve.",
+        "postal_code": "Postal code",
+        "predicted_versus_actual_order_volume_from_supplier_analytics_aut": "Predicted versus actual order volume from supplier analytics authority.",
+        "predictions": "Predictions",
+        "preview": "Preview",
+        "price_must_be_a_non_negative_integer_minor_units": "Price must be a non-negative integer (minor units).",
+        "priority_higher_wins_ties": "Priority (higher wins ties)",
+        "product_id_sku": "Product ID (SKU)",
+        "product_not_found": "Product not found.",
+        "product_sale_pricing": "Product sale pricing",
+        "product_category_and_volume_based_sales_with_retailer_targeting_": "Product, category, and volume-based sales with retailer targeting and time windows.",
+        "production_nodes_for_manifests_and_warehouse_replenishment": "Production nodes for manifests and warehouse replenishment.",
+        "projections": "Projections",
+        "quantity_negotiation_is_disabled_use_shop_closed_claims_or_missi": "Quantity negotiation is disabled. Use shop-closed, claims, or missing-items for delivery exceptions.",
+        "read_only_supplier_planning_graph_factories_warehouses_skus_and_": "Read-only supplier planning graph — factories, warehouses, SKUs, and relationships.",
+        "recent_financial_transactions": "Recent financial transactions.",
+        "record_payment_disputes_and_reversals_against_the_durable_financ": "Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks.",
+        "register": "Register",
+        "registered": "Registered",
+        "reject_orders_when_out_of_stock": "Reject orders when out of stock",
+        "replay_failed": "Replay failed",
+        "required_for_compliance_and_payout_verification": "Required for compliance and payout verification.",
+        "resolution_queued_for_retry_when_back_online": "Resolution queued for retry when back online.",
+        "retailer_ids_one_per_line": "Retailer IDs (one per line)",
+        "retailer_scope": "Retailer scope",
+        "retailer_segments_and_sku_velocity_classes_for_constrained_alloc": "Retailer segments and SKU velocity classes for constrained allocation (O9-1).",
+        "retailers_collect_cash_reconcile_manually": "Retailers collect cash; reconcile manually.",
+        "retailers_see_these_options_at_checkout_select_all_that_apply": "Retailers see these options at checkout. Select all that apply.",
+        "revenue_at_risk": "Revenue at risk",
+        "review_h3_perimeter_and_warehouse_coverage": "Review H3 perimeter and warehouse coverage.",
+        "review_automated_exception_playbooks_deactivate_rules_you_do_not": "Review automated exception playbooks. Deactivate rules you do not want suggested.",
+        "revoke_failed": "Revoke failed",
+        "sftp_save_failed": "SFTP save failed",
+        "sku_availability_stock_policy_per_warehouse_and_quantity_adjustm": "SKU availability, stock policy per warehouse, and quantity adjustments.",
+        "skus": "SKUs",
+        "sla_risk": "SLA risk",
+        "swift_bic": "SWIFT / BIC",
+        "sale_discount_must_be_greater_than_zero": "Sale discount must be greater than zero.",
+        "savdo_kreditini_yoqish_ilovada_qaytarib_bo_lmaydi": "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi",
+        "save_and_continue": "Save & continue",
+        "set_custom_prices_per_retailer_and_product_sku": "Set custom prices per retailer and product SKU.",
+        "set_list_and_sale_pricing_per_catalog_product_add_products_in_ca": "Set list and sale pricing per catalog product. Add products in Catalog first.",
+        "settlement_net_authority": "Settlement net (authority)",
+        "shop_closed_payment_and_delivery_escalation_queues": "Shop-closed, payment, and delivery escalation queues.",
+        "single_tenant_logistics_control_plane": "Single-tenant logistics control plane.",
+        "starts_at_rfc3339": "Starts at (RFC3339)",
+        "stockout_skus": "Stockout SKUs",
+        "stream_of_operational_events_and_recent_actions": "Stream of operational events and recent actions.",
+        "street_address": "Street address",
+        "supplier_id": "Supplier ID",
+        "supplier_portal_pegasusx": "Supplier Portal - pegasusX",
+        "supplier_treasury": "Supplier Treasury",
+        "supplier_accepts_payments": "Supplier accepts payments",
+        "supplier_legal_identity_and_registration_state": "Supplier legal identity and registration state.",
+        "supplier_operator": "Supplier operator",
+        "supplier_scope": "Supplier scope",
+        "supplier_treasury_authority_disputes_and_reconciliation_operatio": "Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state.",
+        "supplier_scoped_active_orders_for_dispatch_oversight": "Supplier-scoped active orders for dispatch oversight.",
+        "supplier_scoped_credit_lines_limits_open_balances_freeze_unfreez": "Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles.",
+        "supplier_scoped_ledger_rows_from_logistics_claim_approve_chargeb": "Supplier-scoped ledger rows from logistics claim approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks.",
+        "supplier_scoped_order_detail_with_warehouse_admin_actions_when_a": "Supplier-scoped order detail with warehouse admin actions when available.",
+        "support_only_permanent_disable_requires_ticket_id_reason_open_ar": "Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible.",
+        "tax_id_vat_tin": "Tax ID (VAT / TIN)",
+        "there_are_no_eligible_drivers_nearby_to_take_this_order_right_no": "There are no eligible drivers nearby to take this order right now.",
+        "this_order_is_not_visible_in_your_supplier_scope": "This order is not visible in your supplier scope.",
+        "total_pallets": "Total pallets",
+        "touchless_transfers": "Touchless transfers",
+        "tracking_alerts": "Tracking alerts",
+        "transfer_mode": "Transfer mode",
+        "treasury_splits_and_dispute_operations": "Treasury splits and dispute operations.",
+        "treasury_splits_settlement_authority_and_payment_mismatches": "Treasury splits, settlement authority, and payment mismatches.",
+        "truck_replenishment": "Truck replenishment",
+        "unable_to_load": "Unable to load",
+        "unavailable_drivers": "Unavailable drivers",
+        "undo": "Undo",
+        "unit_vu_must_be_a_positive_number": "Unit VU must be a positive number.",
+        "unit_volume_vu": "Unit volume (VU)",
+        "units_per_case_must_be_a_positive_integer_when_selling_by_case": "Units per case must be a positive integer when selling by case.",
+        "upload_csv_review_column_mapping_approve_and_apply_to_warehouse_": "Upload CSV, review column mapping, approve, and apply to warehouse inventory.",
+        "utilization": "Utilization",
+        "version": "Version",
+        "view_your_durable_finance_ledger_and_payment_movements": "View your durable finance ledger and payment movements.",
+        "volume_vu": "Volume VU",
+        "wape_28d": "WAPE (28d)",
+        "wh_inbound_cap": "WH inbound cap",
+        "warehouse_accepts_payments": "Warehouse accepts payments",
+        "warehouse_address": "Warehouse address",
+        "warehouse_admin": "Warehouse admin",
+        "warehouse_lanes_derived_from_topology_and_live_order_volume_lane": "Warehouse lanes derived from topology and live order volume. Lanes are read-only — edit warehouses and coverage on Topology.",
+        "where_supplier_earnings_are_deposited_after_settlement": "Where supplier earnings are deposited after settlement.",
+        "who_receives_card_revenue_when_an_order_is_fulfilled": "Who receives card revenue when an order is fulfilled.",
+        "your_registered_business_address_not_a_warehouse_dispatch_point": "Your registered business address — not a warehouse dispatch point.",
+        "accept_failed": "accept_failed",
+        "adjust_failed": "adjust_failed",
+        "approve_failed": "approve_failed",
+        "bootstrap_failed": "bootstrap_failed",
+        "bulk_create_failed": "bulk_create_failed",
+        "create_draft_failed": "create_draft_failed",
+        "create_failed_2": "create_failed",
+        "deactivate_failed_2": "deactivate_failed",
+        "defaults_failed": "defaults_failed",
+        "dismiss_failed": "dismiss_failed",
+        "dispatch_execute_failed": "dispatch_execute_failed",
+        "enable_failed": "enable_failed",
+        "failed": "failed",
+        "feed_unavailable_apply_ddl_or_wait_for_pos": "feed_unavailable_apply_ddl_or_wait_for_pos",
+        "fleet_orders_failed": "fleet_orders_failed",
+        "hold_failed": "hold_failed",
+        "import_apply_failed": "import_apply_failed",
+        "import_approve_failed": "import_approve_failed",
+        "import_wizard_failed": "import_wizard_failed",
+        "invalid_limit": "invalid_limit",
+        "issue_failed": "issue_failed",
+        "lines_failed": "lines_failed",
+        "load_claims_failed": "load_claims_failed",
+        "load_demand_analytics_failed": "load_demand_analytics_failed",
+        "load_exceptions_failed": "load_exceptions_failed",
+        "load_factories_failed": "load_factories_failed",
+        "load_failed": "load_failed",
+        "load_flywheel_failed": "load_flywheel_failed",
+        "load_geo_report_failed": "load_geo_report_failed",
+        "load_knowledge_graph_failed": "load_knowledge_graph_failed",
+        "load_manifest_exceptions_failed": "load_manifest_exceptions_failed",
+        "load_manifest_failed": "load_manifest_failed",
+        "load_manifests_failed": "load_manifests_failed",
+        "load_playbook_runs_failed": "load_playbook_runs_failed",
+        "load_playbooks_failed": "load_playbooks_failed",
+        "load_pricing_failed": "load_pricing_failed",
+        "load_profile_failed": "load_profile_failed",
+        "load_reconciliation_failed": "load_reconciliation_failed",
+        "load_replenishment_policies_failed": "load_replenishment_policies_failed",
+        "load_returns_failed": "load_returns_failed",
+        "load_scored_exceptions_failed": "load_scored_exceptions_failed",
+        "load_segmentation_failed": "load_segmentation_failed",
+        "load_signals_failed": "load_signals_failed",
+        "load_suggestions_failed": "load_suggestions_failed",
+        "load_supplier_analytics_failed": "load_supplier_analytics_failed",
+        "load_supply_lanes_failed": "load_supply_lanes_failed",
+        "load_topology_failed": "load_topology_failed",
+        "load_warehouses_failed": "load_warehouses_failed",
+        "order_id_required": "order_id required",
+        "patch_failed": "patch_failed",
+        "pegasusx": "pegasusX",
+        "planning_outcomes_unavailable": "planning_outcomes_unavailable",
+        "planning_unavailable": "planning_unavailable",
+        "policy_update_failed": "policy_update_failed",
+        "preview_failed": "preview_failed",
+        "product_id": "product_id",
+        "quantity_on_hand": "quantity_on_hand",
+        "reject_failed": "reject_failed",
+        "reorder_threshold": "reorder_threshold",
+        "resolve_failed": "resolve_failed",
+        "retailer_id_required": "retailer_id_required",
+        "save_factory_failed": "save_factory_failed",
+        "save_failed": "save_failed",
+        "save_profile_failed": "save_profile_failed",
+        "save_replenishment_policies_failed": "save_replenishment_policies_failed",
+        "save_topology_failed": "save_topology_failed",
+        "save_warehouse_failed": "save_warehouse_failed",
+        "scenario_failed": "scenario_failed",
+        "secret_ref": "secret_ref",
+        "signal_status_unavailable": "signal_status_unavailable",
+        "skip_failed": "skip_failed",
+        "title_and_body_required": "title_and_body_required",
+        "traceability_load_failed": "traceability_load_failed",
+        "twin_routes_failed": "twin_routes_failed",
+        "update_retailer_failed": "update_retailer_failed",
+        "update_sku_failed": "update_sku_failed",
+        "warehouse_id": "warehouse_id",
+        "write_off_failed": "write_off_failed",
+        "text": "Включить торговый кредит — необратимо в приложении"
       }
     }
   },
@@ -862,6 +2215,8 @@
       "body": "Driver reported shop closed for order {order_id}. Attempt {attempt_id} requires follow-up."
     },
     "shop_closed_resolved": {
+      "title": "Shop-Closed Resolved",
+      "body": "Order {order_id} shop-closed case was resolved by Admin: {action}.",
       "driver": {
         "title": "Shop-Closed Resolved",
         "body": "Shop-closed case for order {order_id} was resolved as {resolution}."
@@ -1150,18 +2505,6 @@
       "title": "Shop Closed Escalation",
       "body": "Order {order_id} was escalated for immediate supplier action."
     },
-    "shop_closed_resolved": {
-      "title": "Shop-Closed Resolved",
-      "body": "Order {order_id} shop-closed case was resolved by Admin: {action}.",
-      "driver": {
-        "title": "Shop-Closed Resolved",
-        "body": "Shop-closed case for order {order_id} was resolved as {resolution}."
-      },
-      "retailer": {
-        "title": "Shop-Closed Resolved",
-        "body": "Shop-closed case for order {order_id} was resolved as {resolution}."
-      }
-    },
     "split_payment_created": {
       "retailer": {
         "title": "Split Payment Created",
@@ -1187,6 +2530,1851 @@
     "unified_checkout_completed": {
       "title": "Checkout Completed",
       "body": "Checkout completed: {order_count} orders, total {total_minor} {currency}."
+    }
+  },
+  "portal": {
+    "chrome": {
+      "language": "Language",
+      "search": "Search…",
+      "home": "Home",
+      "supplier_hub": "Supplier Hub",
+      "warehouse_hub": "Warehouse Hub",
+      "factory_hub": "Factory Hub",
+      "retailer_hub": "Retailer Hub",
+      "collapse_sidebar": "Collapse sidebar",
+      "open_sidebar": "Open sidebar",
+      "theme_system": "System theme",
+      "theme_light": "Light theme",
+      "theme_dark": "Dark theme"
+    },
+    "nav": {
+      "section": {
+        "operations": "Operations",
+        "catalog": "Catalog",
+        "network": "Network",
+        "analytics": "Analytics & Intelligence",
+        "finance": "Finance",
+        "settings": "Settings",
+        "inventory": "Inventory",
+        "fleet": "Fleet",
+        "supply_chain": "Supply Chain",
+        "system": "System"
+      },
+      "overview": "Overview",
+      "dashboard": "Dashboard",
+      "orders": "Orders",
+      "dispatch": "Dispatch",
+      "live_ops_map": "Live ops map",
+      "manifests": "Manifests",
+      "fleet": "Fleet",
+      "fleet_orders": "Fleet Orders",
+      "operations": "Operations",
+      "replenishment_policies": "Replenishment Policies",
+      "reorder_suggestions": "Reorder Suggestions",
+      "exceptions": "Exceptions",
+      "activity": "Activity",
+      "inventory": "Inventory",
+      "import_csv": "Import CSV",
+      "catalog": "Catalog",
+      "pricing": "Pricing",
+      "retailer_overrides": "Retailer Overrides",
+      "promotions": "Promotions",
+      "topology": "Topology",
+      "factories": "Factories",
+      "warehouses": "Warehouses",
+      "delivery_zones": "Delivery Zones",
+      "supply_lanes": "Supply Lanes",
+      "geo_report": "Geo Report",
+      "analytics": "Analytics",
+      "control_tower": "Control Tower",
+      "demand_forecast": "Demand Forecast",
+      "pos_flywheel": "POS flywheel",
+      "route_performance": "Route performance",
+      "demand_signals": "Demand Signals",
+      "payday_calendar": "Payday Calendar",
+      "knowledge_graph": "Knowledge Graph",
+      "ai_recommendations": "AI Recommendations",
+      "treasury": "Treasury",
+      "cash_reconciliations": "Cash reconciliations",
+      "credit_notes": "Credit notes",
+      "reconciliation": "Reconciliation",
+      "compliance_audit": "Compliance audit",
+      "payments": "Payments",
+      "earnings": "Earnings",
+      "credit_policy": "Credit policy",
+      "credit_collections": "Credit collections",
+      "credit_admin_disable": "Credit admin disable",
+      "chargebacks": "Chargebacks",
+      "claim_chargebacks": "Claim chargebacks",
+      "ledger": "Ledger",
+      "profile": "Profile",
+      "tax_regimes": "Tax Regimes",
+      "planning": "Planning",
+      "return_policy": "Return policy",
+      "notifications": "Notifications",
+      "integrations": "Integrations",
+      "segmentation": "Segmentation",
+      "playbooks": "Playbooks",
+      "org_fleet": "Org & Fleet",
+      "returns": "Returns",
+      "preorders": "Pre-orders",
+      "tomorrow_board": "Tomorrow board",
+      "rescues": "Rescues",
+      "dispatch_settings": "Dispatch Settings",
+      "stock": "Stock",
+      "bins_lots": "Bins & lots",
+      "pick_waves": "Pick waves",
+      "cycle_counts": "Cycle counts",
+      "stock_commitments": "Stock commitments",
+      "products": "Products",
+      "supply_requests": "Supply Requests",
+      "settings": "Settings",
+      "replenishment": "Replenishment",
+      "drivers": "Drivers",
+      "trucks": "Trucks",
+      "live_fleet": "Live fleet",
+      "dispatch_locks": "Dispatch Locks",
+      "staff": "Staff",
+      "retailers": "Retailers",
+      "claims": "Claims",
+      "transfers": "Transfers",
+      "payment_config": "Payment Config",
+      "loading_bay": "Loading Bay",
+      "location": "Location",
+      "insights": "Insights",
+      "payload_override": "Payload Override",
+      "gate_exceptions": "Gate Exceptions",
+      "tracking": "Tracking",
+      "dock": "Dock",
+      "procurement": "Procurement",
+      "my_suppliers": "My Suppliers",
+      "credit_partners": "Credit partners",
+      "auto_order": "Auto-Order",
+      "store_stock": "Store stock",
+      "local_skus": "Local SKUs",
+      "pos": "POS",
+      "shifts": "Shifts",
+      "sections": "Sections",
+      "assist": "Assist",
+      "reports_pro": "Reports Pro",
+      "franchise_hq": "Franchise HQ"
+    },
+    "page": {
+      "dashboard": {
+        "supplier": {
+          "title": "Overview",
+          "description": "Live operational command center."
+        },
+        "warehouse": {
+          "title": "Warehouse dashboard",
+          "description": "Live node operations, fleet, and inventory at a glance."
+        },
+        "factory": {
+          "title": "Factory dashboard",
+          "description": "Transfer, bay, fleet, and staffing metrics for this node."
+        },
+        "retailer": {
+          "title": "Operations Hub",
+          "description": "Active deliveries, restock signals, and fleet telemetry."
+        },
+        "action": {
+          "sync": "Sync",
+          "syncing": "Syncing",
+          "review_orders": "Review Orders",
+          "open_catalog": "Open Catalog",
+          "refresh": "Refresh"
+        },
+        "range": {
+          "today": "Today",
+          "last_7d": "Last 7 days",
+          "last_30d": "Last 30 days"
+        }
+      },
+      "orders": {
+        "supplier": {
+          "title": "Orders",
+          "description": "Durable supplier-scoped orders with assignment and live driver snapshots."
+        },
+        "warehouse": {
+          "title": "Orders",
+          "description": "Active fulfillment queue and scheduled pre-orders. Click a card to open detail."
+        },
+        "retailer": {
+          "title": "Logistics Tracking",
+          "description": "Monitor inbound nodes and verify delivery manifests."
+        },
+        "filter": {
+          "active": "Active Orders",
+          "scheduled": "Scheduled pre-orders",
+          "completed": "Completed",
+          "cancelled": "Cancelled",
+          "active_tab": "Active orders",
+          "preorders_tab": "Pre-orders",
+          "all_states": "All States",
+          "all": "ALL",
+          "active_short": "ACTIVE",
+          "completed_short": "COMPLETED"
+        },
+        "action": {
+          "new_order": "New Order",
+          "refresh": "Refresh"
+        },
+        "section": {
+          "order_queue": "Order queue"
+        }
+      }
+    }
+  },
+  "factory_portal": {
+    "analytics": {
+      "text": {
+        "product_id": "Product ID",
+        "requested_qty": "Requested Qty",
+        "shipped_qty": "Shipped Qty",
+        "fulfillment": "Fulfillment %",
+        "analytics_overview": "Analytics overview",
+        "product_drill_down": "Product drill-down"
+      }
+    },
+    "auth": {
+      "text": {
+        "factory_node": "Factory node",
+        "pegasusx_and_copy_2026": "pegasusX &copy; 2026",
+        "pegasusx_factory": "pegasusX Factory"
+      },
+      "login": {
+        "text": {
+          "factory_sign_in": "Factory sign in",
+          "enter_registered_phone": "Enter your registered phone number.",
+          "enter_otp_sent_to": "Enter the 6-digit code sent to {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_factory_account": "Set up your factory account"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "factory_portal_error": "Factory portal error"
+      }
+    },
+    "fleet": {
+      "text": {
+        "plate": "Plate",
+        "driver": "Driver",
+        "status": "Status",
+        "capacity_m3": "Capacity (m³)",
+        "current_route": "Current Route",
+        "factory_fleet": "Factory fleet"
+      }
+    },
+    "insights": {
+      "text": {
+        "warehouse": "Warehouse",
+        "why": "Why",
+        "urgency": "Urgency",
+        "velocity_day": "Velocity/day",
+        "days_left": "Days Left",
+        "reorder_qty": "Reorder Qty",
+        "actions": "Actions",
+        "replenishment_insights": "Replenishment insights"
+      }
+    },
+    "loading_bay": {
+      "text": {
+        "loading_bay": "Loading bay",
+        "handoff_timeline": "Handoff timeline"
+      },
+      "loading_bay_grid": {
+        "text": {
+          "items": "Items"
+        }
+      }
+    },
+    "manifest_exceptions": {
+      "text": {
+        "gate_exceptions": "Gate exceptions"
+      },
+      "manifest_exceptions_list": {
+        "text": {
+          "exception_inbox": "Exception inbox"
+        }
+      }
+    },
+    "manifests": {
+      "_id_": {
+        "text": {
+          "leo_lifecycle": "LEO lifecycle",
+          "no_further_lifecycle_transitions_for_this_state": "No further lifecycle transitions for this state.",
+          "no_transfers_on_this_manifest": "No transfers on this manifest.",
+          "transitions": "Transitions",
+          "no_transitions_recorded_yet": "No transitions recorded yet.",
+          "manifest_detail": "Manifest detail"
+        }
+      },
+      "text": {
+        "manifest_pipeline": "Manifest pipeline"
+      }
+    },
+    "notifications": {
+      "text": {
+        "notifications_inbox": "Notifications Inbox"
+      }
+    },
+    "app": {
+      "text": {
+        "network_pulse": "Network pulse",
+        "cross_role_timeline": "Cross-role timeline"
+      }
+    },
+    "payload_override": {
+      "text": {
+        "payload_override": "Payload override"
+      },
+      "payload_list": {
+        "text": {
+          "capacity": "Capacity:",
+          "transfer": "Transfer",
+          "volume_vu": "Volume (VU)"
+        }
+      },
+      "payload_override_form": {
+        "text": {
+          "move_transfer": "Move transfer",
+          "select_a_manifest": "Select a manifest..."
+        }
+      }
+    },
+    "settings": {
+      "location": {
+        "text": {
+          "factory_location": "Factory location",
+          "depot_address": "Depot address"
+        }
+      }
+    },
+    "setup": {
+      "factory": {
+        "text": {
+          "loading_factory_details": "Loading factory details…",
+          "manufacturing": "Manufacturing",
+          "assembly": "Assembly",
+          "packaging": "Packaging",
+          "processing": "Processing",
+          "factory": "Factory",
+          "general": "General"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "factory_setup": "Factory setup",
+          "onboarding_progress": "Onboarding progress",
+          "setup_progress": "Setup progress"
+        }
+      }
+    },
+    "staff": {
+      "_id_": {
+        "text": {
+          "staff_id": "Staff ID",
+          "joined": "Joined",
+          "staff_detail": "Staff detail"
+        }
+      },
+      "text": {
+        "create_staff_member": "Create staff member",
+        "operator_name": "Operator name",
+        "factory_staff": "Factory staff"
+      },
+      "staff_list": {
+        "text": {
+          "name": "Name",
+          "role": "Role"
+        }
+      }
+    },
+    "supply_requests": {
+      "text": {
+        "table": "Table",
+        "board": "Board",
+        "confirm_fulfill": "Confirm fulfill",
+        "internal": "INTERNAL:",
+        "truck": "TRUCK:",
+        "supply_requests": "Supply requests",
+        "queue_filter": "Queue filter"
+      },
+      "supply_request_board": {
+        "text": {
+          "production_lane_board": "Production lane board"
+        }
+      },
+      "supply_request_list": {
+        "text": {
+          "priority": "Priority",
+          "state": "State",
+          "delivery_date": "Delivery Date",
+          "created": "Created",
+          "demand_queue": "Demand queue"
+        }
+      }
+    },
+    "transfers": {
+      "_id_": {
+        "text": {
+          "manifest_contents": "Manifest contents",
+          "items_in_this_transfer": "Items in this transfer",
+          "qty": "Qty",
+          "volume": "Volume",
+          "transfer_overview": "Transfer overview",
+          "driver_assignment": "Driver Assignment",
+          "unassigned": "Unassigned",
+          "next_transition": "Next transition",
+          "action_available": "Action available",
+          "no_action": "No action",
+          "notes": "Notes",
+          "transfer_detail": "Transfer detail"
+        }
+      },
+      "create": {
+        "text": {
+          "ord": "ord_…",
+          "create_transfer": "Create transfer"
+        }
+      },
+      "text": {
+        "pipeline_view": "Pipeline view"
+      }
+    },
+    "factory_shell": {
+      "text": {
+        "desktop_command_ready": "Desktop command ready",
+        "breadcrumb": "Breadcrumb"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_supply_routing": "Pinned for supply routing",
+        "resolving_address": "Resolving address…",
+        "start_typing_street_address": "Start typing street address…"
+      }
+    },
+    "toast": {
+      "text": {
+        "dismiss": "Dismiss",
+        "swipe_left_or_right_to_dismiss": "Swipe left or right to dismiss"
+      }
+    },
+    "dashboard": {
+      "dashboard_alerts": {
+        "text": {
+          "operational_health": "Operational health",
+          "shift_support_signals": "Shift support signals",
+          "attention_needed": "Attention needed",
+          "alert": "Alert",
+          "recommended_next_steps": "Recommended next steps",
+          "operator_actions_for_this_shift": "Operator actions for this shift"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "active_users": "Active Users",
+        "active_gate": "Active gate",
+        "active_manifests": "Active manifests",
+        "address": "Address",
+        "advance_requests_through_ack_production_ready_fulfill": "Advance requests through ACK → production → ready → fulfill.",
+        "aggregate_product_demand_and_fulfillment_ratios_across_active_re": "Aggregate product demand and fulfillment ratios across active requests.",
+        "approved": "Approved",
+        "approved_transfers_will_appear_here_as_soon_as_warehouse_demand_": "Approved transfers will appear here as soon as warehouse demand is accepted.",
+        "avg_lead_time": "Avg lead time",
+        "could_not_resolve_that_address_try_another_suggestion": "Could not resolve that address. Try another suggestion.",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location to an address.",
+        "dlq_threshold": "DLQ threshold",
+        "dispatch_transfers_or_create_a_manifest_to_begin_the_loading_gat": "Dispatch transfers or create a manifest to begin the loading gate workflow.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid phone number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "escalated": "Escalated",
+        "exception_queue": "Exception queue",
+        "facility_type": "Facility type",
+        "factory_portal_pegasus": "Factory Portal — Pegasus",
+        "factory_address": "Factory address",
+        "factory_loading_bay_transfer_management_and_dispatch_operations": "Factory loading bay, transfer management, and dispatch operations.",
+        "factory_name": "Factory name",
+        "factory_operators_review_and_advance_warehouse_demand_from_this_": "Factory operators review and advance warehouse demand from this queue.",
+        "factory_throughput_manifest_pressure_and_exception_queue_from_th": "Factory throughput, manifest pressure, and exception queue from the analytics endpoint.",
+        "failed_to_send_verification_code": "Failed to send verification code",
+        "filter_by_transfer_state_total_volume_reflects_the_current_view": "Filter by transfer state. Total volume reflects the current view.",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "high_priority": "High priority",
+        "in_flight": "In flight",
+        "in_production": "In production",
+        "invalid_verification_code": "Invalid verification code",
+        "kanban_by_supply_request_lifecycle_state": "Kanban by supply-request lifecycle state.",
+        "leo_loading_gate_advance_manifests_through_draft_loading_sealed_": "LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states.",
+        "last_sync": "Last sync",
+        "loading_fleet_assignment_options": "Loading fleet assignment options.",
+        "loading_manifest_snapshot": "Loading manifest snapshot.",
+        "loading_operator_profile": "Loading operator profile.",
+        "loading_the_current_manifest_and_item_breakdown_for_this_transfe": "Loading the current manifest and item breakdown for this transfer.",
+        "location_permission_denied": "Location permission denied.",
+        "new_factory": "New factory?",
+        "no_active_transfers_in_the_loading_bay": "No active transfers in the loading bay",
+        "no_data_yet": "No data yet.",
+        "no_factory_metrics_yet": "No factory metrics yet",
+        "no_manifests": "No manifests",
+        "no_manifests_currently_in_loading_state": "No manifests currently in LOADING state",
+        "no_notifications_in_your_inbox_at_this_time": "No notifications in your inbox at this time.",
+        "no_replenishment_insights_at_this_time_insights_are_generated_ba": "No replenishment insights at this time. Insights are generated based on stock velocity.",
+        "now_loading": "Now loading",
+        "once_transfer_and_loading_activity_starts_operational_metrics_wi": "Once transfer and loading activity starts, operational metrics will appear here.",
+        "open_a_row_to_advance_lifecycle_actions": "Open a row to advance lifecycle actions.",
+        "operators_and_shift_coverage_registered_for_this_factory_node": "Operators and shift coverage registered for this factory node.",
+        "payload_override_is_only_available_during_the_loading_phase_all_": "Payload override is only available during the loading phase. All current manifests are either dispatched or completed.",
+        "pick_an_address_from_the_list_or_refine_your_search": "Pick an address from the list or refine your search.",
+        "preorder_accept_dispatch_seal_events_from_the_factory_pulse_feed": "Preorder → accept → dispatch → seal events from the factory pulse feed.",
+        "ready_to_fulfill": "Ready to fulfill",
+        "ready_to_load": "Ready to load",
+        "rebalance_or_cancel_transfers_on_manifests_currently_in_loading_": "Rebalance or cancel transfers on manifests currently in LOADING state.",
+        "register": "Register",
+        "review_approved_factory_transfers_advance_active_loading_and_dis": "Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context.",
+        "review_warehouse_destination_movements_filter_by_state_and_open_": "Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor.",
+        "rows_highlighted_when_attempt_count_reaches_dlq_threshold": "Rows highlighted when attempt count reaches DLQ threshold.",
+        "stage_a_factory_to_warehouse_movement": "Stage a factory-to-warehouse movement.",
+        "stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu_o": "Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading.",
+        "stock_velocity_signals_and_reorder_recommendations_across_connec": "Stock velocity signals and reorder recommendations across connected warehouses.",
+        "street_address": "Street address",
+        "street_address_used_for_supply_routing_and_loading_bay_operation": "Street address used for supply routing and loading bay operations. Changes sync across the factory network.",
+        "submitted": "Submitted",
+        "target_manifest": "Target manifest",
+        "the_selected_transfer_is_no_longer_available_or_could_not_be_loc": "The selected transfer is no longer available or could not be located for this factory.",
+        "there_are_no_staff_members_registered_for_this_factory": "There are no staff members registered for this factory.",
+        "there_are_no_vehicles_registered_in_the_factory_fleet_yet": "There are no vehicles registered in the factory fleet yet.",
+        "total_manifests": "Total manifests",
+        "total_volume": "Total volume",
+        "total_volume_vu": "Total volume (VU)",
+        "transfers_removed_from_manifests_during_loading_overflow_damage_": "Transfers removed from manifests during loading — overflow, damage, or manual pull.",
+        "transfers_total": "Transfers total",
+        "unable_to_load": "Unable to load",
+        "vehicle_availability_and_route_assignments_for_this_factory_node": "Vehicle availability and route assignments for this factory node.",
+        "view_and_manage_all_your_factory_notifications_and_alerts": "View and manage all your factory notifications and alerts.",
+        "visible_transfers": "Visible transfers",
+        "pegasusx": "pegasusX"
+      }
+    }
+  },
+  "retailer_desktop": {
+    "assist": {
+      "text": {
+        "new_ticket": "New ticket",
+        "create_a_section_first": "Create a section first",
+        "queue": "Queue",
+        "no_tickets": "No tickets.",
+        "what_help_is_needed": "What help is needed?",
+        "floor_assist": "Floor assist"
+      }
+    },
+    "auto_order": {
+      "text": {
+        "draft_now": "Draft now",
+        "place_now": "Place now",
+        "how_it_works": "How It Works",
+        "the_ai_analyzes_your_purchase_patterns_even_when_auto_order_is_o": "The AI analyzes your purchase patterns even when auto-order is off.",
+        "when_you_enable_choose_to_use_your_history_or_start_fresh": "When you enable, choose to use your history or start fresh.",
+        "starting_fresh_requires_at_least_2_orders_per_product": "Starting fresh requires at least 2 orders per product.",
+        "overrides_size_variant_and_gt_product_and_gt_category_and_gt_sup": "Overrides: Size/variant &gt; Product &gt; Category &gt; Supplier &gt; Global (Off blocks even when global on).",
+        "use_previous_analytics": "Use Previous Analytics?",
+        "auto_order_engine": "Auto-Order Engine"
+      },
+      "auto_order_list": {
+        "text": {
+          "units": "units",
+          "active_predictions": "Active Predictions"
+        }
+      },
+      "auto_order_rules": {
+        "text": {
+          "global_auto_order": "Global Auto-Order",
+          "auto_order_everything_from_all_suppliers": "Auto-order everything from all suppliers",
+          "global_on_scoped_off_still_blocks_matching_suppliers_categories_": "Global on. Scoped Off still blocks matching suppliers/categories/products/size-variants.",
+          "supplier_level_override": "Supplier-level override",
+          "category_level_override": "Category-level override",
+          "product_level_override": "Product-level override",
+          "size_variant_override": "Size / variant override",
+          "size_variant_overrides": "Size / variant Overrides"
+        }
+      }
+    },
+    "catalog": {
+      "text": {
+        "global_network": "Global Network",
+        "product_catalog": "Product Catalog",
+        "browse_products": "Browse products"
+      },
+      "catalog_filters": {
+        "text": {
+          "search_assets_and_suppliers": "Search assets and suppliers..."
+        }
+      }
+    },
+    "control_tower": {
+      "text": {
+        "retailer_ops_pulse": "Retailer ops pulse",
+        "no_live_ops_signals_yet": "No live ops signals yet"
+      }
+    },
+    "credit": {
+      "text": {
+        "loading": "Loading…",
+        "relationships": "Relationships",
+        "on_hold": "On hold",
+        "no_credit_partners_yet": "No credit partners yet.",
+        "open_invoices": "Open invoices",
+        "no_open_invoices": "No open invoices."
+      }
+    },
+    "dock": {
+      "text": {
+        "dock_control": "Dock Control"
+      }
+    },
+    "hq": {
+      "text": {
+        "hq_analytics_not_enabled_for_this_environment": "HQ analytics not enabled for this environment.",
+        "sales_by_location": "Sales by location",
+        "no_locations_with_sales": "No locations with sales.",
+        "sold": "Sold",
+        "voided": "Voided",
+        "net": "Net",
+        "sales_by_sku": "Sales by SKU",
+        "no_skus": "No SKUs."
+      }
+    },
+    "insights": {
+      "text": {
+        "intelligence_hub": "Intelligence Hub"
+      },
+      "sell_through_panel": {
+        "text": {
+          "day": "Day",
+          "net_sold": "Net sold",
+          "source": "Source"
+        }
+      }
+    },
+    "my_suppliers": {
+      "text": {
+        "no_connected_suppliers": "No connected suppliers.",
+        "search_and_add_suppliers_to_see_their_catalogs_and_start_orderin": "Search and add suppliers to see their catalogs and start ordering.",
+        "search_by_name_or_category": "Search by name or category...",
+        "connected_suppliers": "Connected Suppliers",
+        "remove_supplier": "Remove Supplier",
+        "supplier_directory": "Supplier Directory"
+      }
+    },
+    "orders": {
+      "text": {
+        "review_delivery": "Review Delivery",
+        "loading_orders": "Loading orders...",
+        "more_options": "More options",
+        "order_details": "Order details"
+      }
+    },
+    "pos": {
+      "text": {
+        "till_session": "Till session",
+        "no_registers_yet": "No registers yet.",
+        "open_a_session_to_sell": "Open a session to sell.",
+        "total": "Total",
+        "parked_carts_server": "Parked carts (server)",
+        "sku_barcode": "SKU / barcode",
+        "name": "Name",
+        "qty": "Qty",
+        "price_major_e_g_150_00": "Price (major e.g. 150.00)",
+        "customer_returns": "Customer returns…",
+        "point_of_sale": "Point of sale"
+      }
+    },
+    "procurement": {
+      "text": {
+        "no_available_nodes_found": "No available nodes found",
+        "search_network_nodes": "Search network nodes...",
+        "vendor_operations": "Vendor Operations"
+      }
+    },
+    "reports": {
+      "text": {
+        "no_pos_sales_in_window_last_7_days": "No POS sales in window (last 7 days)."
+      }
+    },
+    "sections": {
+      "text": {
+        "new_section": "New section",
+        "no_sections_yet": "No sections yet.",
+        "map_skus_staff": "Map SKUs / staff",
+        "unassigned_skus": "Unassigned SKUs",
+        "aisle_tag": "Aisle tag",
+        "sku_list_comma_separated_replaces_map": "SKU list (comma-separated) — replaces map",
+        "staff_user_ids_comma_separated": "Staff user IDs (comma-separated)"
+      }
+    },
+    "settings": {
+      "capabilities": {
+        "text": {
+          "always_on": "Always on",
+          "store_capabilities": "Store capabilities"
+        }
+      },
+      "cards": {
+        "text": {
+          "otp_code": "OTP code",
+          "saved_cards": "Saved Cards"
+        }
+      },
+      "family": {
+        "text": {
+          "migration_result": "Migration result",
+          "no_family_members_yet": "No family members yet",
+          "no_phone_skipped_on_migrate": "No phone — skipped on migrate",
+          "phone_required_for_team_migrate": "Phone (required for Team migrate)",
+          "back_to_settings": "Back to settings",
+          "family_members": "Family Members"
+        }
+      },
+      "locations": {
+        "text": {
+          "locations": "Locations"
+        }
+      },
+      "text": {
+        "node_overrides": "Node Overrides",
+        "category_overrides": "Category Overrides"
+      },
+      "team": {
+        "text": {
+          "998": "+998…",
+          "inactive": "Inactive",
+          "team": "Team"
+        }
+      }
+    },
+    "shifts": {
+      "text": {
+        "time_clock": "Time clock",
+        "cash_shift": "Cash shift",
+        "recent_shifts": "Recent shifts",
+        "no_shifts_yet": "No shifts yet.",
+        "time_entries": "Time entries",
+        "no_entries_yet": "No entries yet.",
+        "shifts_and_time": "Shifts & time"
+      }
+    },
+    "stock": {
+      "local_skus": {
+        "text": {
+          "barcode": "Barcode",
+          "price": "Price",
+          "active": "Active",
+          "price_minor": "Price minor"
+        }
+      },
+      "text": {
+        "adjust": "Adjust",
+        "bin": "Bin",
+        "on_hand": "On hand",
+        "reserved": "Reserved",
+        "available": "Available",
+        "actions": "Actions",
+        "order_id_completed_arrived": "Order ID (COMPLETED / ARRIVED)",
+        "qty_delta": "Qty delta (+/-)",
+        "counted_qty": "Counted qty"
+      }
+    },
+    "tracking": {
+      "text": {
+        "telemetry_control": "Telemetry Control",
+        "network_pulse": "Network pulse"
+      },
+      "tracking_map": {
+        "text": {
+          "live_map": "Live map"
+        }
+      },
+      "tracking_status": {
+        "text": {
+          "recent_receipts": "Recent receipts"
+        }
+      }
+    },
+    "auth": {
+      "text": {
+        "retailer_node": "Retailer node",
+        "pegasusx_and_copy_2026": "pegasusX &copy; 2026",
+        "pegasusx_retailer": "pegasusX Retailer"
+      },
+      "login": {
+        "text": {
+          "retailer_sign_in": "Retailer sign in",
+          "enter_registered_phone": "Enter your registered phone number.",
+          "enter_otp_sent_to": "Enter the 6-digit code sent to {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_retailer_account": "Set up your retailer account"
+        }
+      },
+      "select_org": {
+        "text": {
+          "choose_organization": "Choose organization"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "retailer_desktop_error": "Retailer desktop error"
+      }
+    },
+    "setup": {
+      "address": {
+        "text": {
+          "delivery_addresses": "Delivery addresses",
+          "where_should_we_bill_and_deliver_your_orders": "Where should we bill and deliver your orders?"
+        }
+      },
+      "tax": {
+        "text": {
+          "business_tax_id": "Business tax ID",
+          "provide_your_business_identity_for_invoicing_and_compliance": "Provide your business identity for invoicing and compliance.",
+          "e_g_123456789": "e.g. 123456789"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "retailer_setup": "Retailer setup",
+          "onboarding_progress": "Onboarding progress",
+          "setup_progress": "Setup progress"
+        }
+      }
+    },
+    "cart_drawer": {
+      "text": {
+        "cart_is_empty": "Cart is empty",
+        "operational_subtotal": "Operational Subtotal"
+      }
+    },
+    "checkout_modal": {
+      "text": {
+        "card_payments_temporarily_unavailable": "Card Payments Temporarily Unavailable",
+        "standard_asap": "Standard (ASAP)",
+        "earliest_t_1_business_day": "Earliest T+1 business day",
+        "scheduled_pre_order": "Scheduled pre-order",
+        "delivery_day_t_3_or_later": "Delivery day T+3 or later",
+        "setup_payment_card": "Setup Payment Card",
+        "the_following_items_are_out_of_stock": "The following items are out of stock:"
+      }
+    },
+    "credit_profile_card": {
+      "text": {
+        "supplier_credit": "Supplier credit"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "saved_for_delivery_routing": "Saved for delivery routing",
+        "start_typing_street_address": "Start typing street address…"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_status_history": "Loading status history…",
+        "no_status_history_yet": "No status history yet."
+      }
+    },
+    "retailer_shell": {
+      "text": {
+        "close_menu": "Close menu",
+        "open_menu": "Open menu",
+        "breadcrumb": "Breadcrumb",
+        "open_catalog_search": "Open catalog search",
+        "search_catalog": "Search catalog"
+      }
+    },
+    "stock_request_return_modal": {
+      "text": {
+        "search_by_order_id": "Search by order id",
+        "request_return_or_chargeback": "Request return or chargeback"
+      }
+    },
+    "dashboard": {
+      "ai_prediction_section": {
+        "text": {
+          "ai_restock": "AI Restock"
+        }
+      },
+      "quick_reorder_section": {
+        "text": {
+          "quick_reorder": "Quick Reorder"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "ai_signals": "AI Signals",
+        "accept_delivery_proposal_failed": "Accept delivery proposal failed",
+        "account_identity_notification_parameters_and_ai_driven_logic_con": "Account identity, notification parameters, and AI-driven logic controls.",
+        "action_failed": "Action failed",
+        "active_nodes": "Active Nodes",
+        "active_fulfillment": "Active fulfillment",
+        "address": "Address",
+        "adjust_failed": "Adjust failed",
+        "approved": "Approved",
+        "arrived": "Arrived",
+        "arriving": "Arriving",
+        "assist_tickets": "Assist tickets",
+        "auto_accepted": "Auto-Accepted",
+        "auto_order_run_failed": "Auto-order run failed",
+        "awaiting_payment": "Awaiting Payment",
+        "backroom_floor_inventory_separate_from_supplier_warehouse_atp_re": "Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count.",
+        "billing_address": "Billing address",
+        "branches_and_delivery_addresses_solo_shops_get_one_primary_autom": "Branches and delivery addresses. Solo shops get one primary automatically.",
+        "cancel_requested": "Cancel Requested",
+        "cancel_order_failed": "Cancel order failed",
+        "card_checkout_failed": "Card checkout failed",
+        "card_sales_require_network_use_cash_offline": "Card sales require network. Use cash offline.",
+        "cash_collection": "Cash Collection",
+        "cash_confirmation_failed": "Cash confirmation failed",
+        "cashier_mode_open_till_online_sell_cash_offline_when_needed_sync": "Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network.",
+        "catalog_access_restricted": "Catalog access restricted",
+        "catalog_access_restricted_for_this_account": "Catalog access restricted for this account.",
+        "catalog_feeds_are_still_populating_reorder_candidates": "Catalog feeds are still populating reorder candidates.",
+        "catalog_is_offline": "Catalog is offline",
+        "catalog_sync_degraded_auto_retry_is_active": "Catalog sync degraded. Auto-retry is active.",
+        "catalog_unavailable": "Catalog unavailable",
+        "category_suppliers_unavailable": "Category suppliers unavailable",
+        "checkout_failed": "Checkout failed",
+        "choose_a_node_from_the_queue_to_inspect_manifest_lines_and_actio": "Choose a node from the queue to inspect manifest lines and actions.",
+        "claim_failed": "Claim failed",
+        "claim_proof": "Claim proof",
+        "clear_or_park_current_cart_before_resuming_a_hold": "Clear or park current cart before resuming a hold.",
+        "clock_in_out_open_cash_shifts_reconcile_float_when_shifts_is_on_": "Clock in/out, open cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in.",
+        "clock_in_failed": "Clock-in failed",
+        "clock_out_failed": "Clock-out failed",
+        "close_failed": "Close failed",
+        "close_session_requires_network": "Close session requires network.",
+        "close_shift_failed": "Close shift failed",
+        "company": "Company",
+        "completed_deliveries_from_the_tracking_feed": "Completed deliveries from the tracking feed.",
+        "confirm_ai_order_failed": "Confirm AI order failed",
+        "confirm_preorder_failed": "Confirm preorder failed",
+        "connection_restored_verify_response_before_retrying": "Connection restored — verify response before retrying.",
+        "connection_restored_confirm_checkout_status_before_retrying": "Connection restored. Confirm checkout status before retrying.",
+        "could_not_add_family_member": "Could not add family member",
+        "could_not_confirm_card": "Could not confirm card",
+        "could_not_copy_password_to_clipboard": "Could not copy password to clipboard",
+        "could_not_deactivate_card": "Could not deactivate card",
+        "could_not_load_family_members": "Could not load family members",
+        "could_not_load_runs": "Could not load runs",
+        "could_not_load_saved_cards": "Could not load saved cards",
+        "could_not_remove_family_member": "Could not remove family member",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location to an address.",
+        "could_not_select_organization": "Could not select organization",
+        "could_not_set_default_card": "Could not set default card",
+        "could_not_start_card_tokenization": "Could not start card tokenization",
+        "count_failed": "Count failed",
+        "create_failed": "Create failed",
+        "create_register_failed": "Create register failed",
+        "customer_help_queue_by_section_claim_and_complete_as_section_lea": "Customer help queue by section. Claim and complete as section lead.",
+        "dashboard_access_is_partially_restricted_for_this_account": "Dashboard access is partially restricted for this account.",
+        "deactivate_failed": "Deactivate failed",
+        "delivered_credit": "Delivered (Credit)",
+        "departments_and_shelves_map_skus_and_assign_staff_enables_sectio": "Departments and shelves — map SKUs and assign staff. Enables SECTIONS pack.",
+        "disable_failed": "Disable failed",
+        "dock_pending": "Dock pending",
+        "doorway_drop_off_photo_is_required_to_authorize_bypass": "Doorway / drop-off photo is required to authorize bypass.",
+        "driver_arrived": "Driver Arrived",
+        "driver_positions_for_active_inbound_deliveries": "Driver positions for active inbound deliveries.",
+        "edit_preorder_failed": "Edit preorder failed",
+        "empathy_engine_intelligence_with_5_level_granular_control": "Empathy Engine Intelligence with 5-level granular control.",
+        "enable_failed": "Enable failed",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid phone number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "entity_name": "Entity Name",
+        "explore_approved_suppliers_and_stage_procurement_orders": "Explore approved suppliers and stage procurement orders.",
+        "failed_to_load_capabilities": "Failed to load capabilities",
+        "failed_to_load_locations": "Failed to load locations",
+        "failed_to_load_order": "Failed to load order",
+        "failed_to_load_orders": "Failed to load orders",
+        "failed_to_load_organizations": "Failed to load organizations",
+        "failed_to_load_pulse": "Failed to load pulse",
+        "failed_to_load_stock": "Failed to load stock",
+        "failed_to_load_team": "Failed to load team",
+        "failed_to_send_verification_code": "Failed to send verification code",
+        "failed_to_update_execution_mode": "Failed to update execution mode",
+        "find_and_connect_with_new_suppliers": "Find and connect with new suppliers.",
+        "fiscal_failed": "Fiscal failed",
+        "fix_validation_errors_before_saving_profile_changes": "Fix validation errors before saving profile changes.",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "global_ai_settings_updated": "Global AI settings updated.",
+        "high_confidence_replenishment_signals_for_this_cycle": "High-confidence replenishment signals for this cycle.",
+        "in_transit": "In Transit",
+        "inbox_sync_degraded_retry_is_available": "Inbox sync degraded. Retry is available.",
+        "insights_access_is_partially_restricted_for_this_account": "Insights access is partially restricted for this account.",
+        "insights_access_restricted": "Insights access restricted",
+        "insights_are_offline": "Insights are offline",
+        "insights_sync_degraded_auto_retry_is_active": "Insights sync degraded. Auto-retry is active.",
+        "invalid_verification_code": "Invalid verification code",
+        "invite_failed": "Invite failed",
+        "invite_staff_with_roles_owner_cannot_be_demoted_or_deactivated": "Invite staff with roles. Owner cannot be demoted or deactivated.",
+        "legacy_family_list_prefer_team_staff_migrate_when_ready": "Legacy family list. Prefer Team staff — migrate when ready.",
+        "lifecycle_management_for_connected_supply_nodes_and_trade_settle": "Lifecycle management for connected supply nodes and trade settlements.",
+        "live_fleet_orchestration_and_inbound_logistics_monitoring": "Live fleet orchestration and inbound logistics monitoring.",
+        "live_socket_reconnecting_event_updates_may_be_delayed": "Live socket reconnecting. Event updates may be delayed.",
+        "live_socket_reconnecting_new_alerts_may_be_delayed": "Live socket reconnecting. New alerts may be delayed.",
+        "live_socket_reconnecting_new_signals_may_be_delayed": "Live socket reconnecting. New signals may be delayed.",
+        "live_socket_reconnecting_setting_events_may_be_delayed": "Live socket reconnecting. Setting events may be delayed.",
+        "live_socket_reconnecting_updates_may_arrive_with_delay": "Live socket reconnecting. Updates may arrive with delay.",
+        "loaded": "Loaded",
+        "location_permission_denied": "Location permission denied.",
+        "low_stock_bins": "Low stock bins",
+        "manage_your_approved_wholesale_suppliers_and_discover_new_partne": "Manage your approved wholesale suppliers and discover new partners.",
+        "mark_all_read_failed": "Mark all read failed",
+        "mark_read_failed": "Mark read failed",
+        "migration_failed": "Migration failed",
+        "multi_location_pos_sales_rollup_sum_of_locations_equals_org_net_": "Multi-location POS sales rollup. Sum of locations equals org net (C2.1 writers).",
+        "network_offline_showing_the_latest_cached_dock_queue": "Network offline. Showing the latest cached dock queue.",
+        "new_retailer": "New retailer?",
+        "no_ai_restock_signals": "No AI restock signals",
+        "no_capacity": "No Capacity",
+        "no_actionable_signals_detected": "No actionable signals detected",
+        "no_approved_products_yet": "No approved products yet",
+        "no_assets_match_criteria": "No assets match criteria",
+        "no_data_yet": "No data yet.",
+        "no_notifications_yet": "No notifications yet",
+        "no_orders_yet": "No orders yet",
+        "no_products_ready_for_reorder": "No products ready for reorder",
+        "no_vendors_connected": "No vendors connected",
+        "non_pegasus_goods_for_pos_prefixed_local_never_sent_to_supplier_": "Non-Pegasus goods for POS. Prefixed local: — never sent to supplier reorder.",
+        "notifications_access_restricted": "Notifications access restricted",
+        "notifications_access_restricted_for_this_account": "Notifications access restricted for this account.",
+        "notifications_are_offline": "Notifications are offline",
+        "notifications_unavailable": "Notifications unavailable",
+        "offline_mode_active_showing_latest_cached_configuration": "Offline mode active. Showing latest cached configuration.",
+        "offline_mode_active_showing_latest_cached_inbox_data": "Offline mode active. Showing latest cached inbox data.",
+        "offline_mode_active_showing_latest_cached_intelligence_signals": "Offline mode active. Showing latest cached intelligence signals.",
+        "offline_mode_active_showing_latest_cached_order_data": "Offline mode active. Showing latest cached order data.",
+        "offline_mode_active_showing_latest_procurement_data": "Offline mode active. Showing latest procurement data.",
+        "offline_mode_active_showing_the_latest_cached_catalog": "Offline mode active. Showing the latest cached catalog.",
+        "offline_mode_active_showing_the_latest_cached_operations_data": "Offline mode active. Showing the latest cached operations data.",
+        "offline_mode_active_showing_the_latest_known_telemetry": "Offline mode active. Showing the latest known telemetry.",
+        "open_failed": "Open failed",
+        "open_orders": "Open orders",
+        "open_session_requires_network_connect_then_open_till": "Open session requires network. Connect, then open till.",
+        "open_shift_failed": "Open shift failed",
+        "open_shifts": "Open shifts",
+        "operational_region": "Operational Region",
+        "operations_sync_degraded_auto_retry_is_active": "Operations sync degraded. Auto-retry is active.",
+        "order_sync_degraded_auto_retry_is_active": "Order sync degraded. Auto-retry is active.",
+        "orders_access_is_partially_restricted_for_this_account": "Orders access is partially restricted for this account.",
+        "orders_access_restricted": "Orders access restricted",
+        "orders_are_offline": "Orders are offline",
+        "orders_unavailable": "Orders unavailable",
+        "pos_open_sessions": "POS open sessions",
+        "park_failed": "Park failed",
+        "park_hold_requires_network_use_local_auto_park_offline": "Park hold requires network (use local auto-park offline).",
+        "pegasus_retailer": "Pegasus Retailer",
+        "pending": "Pending",
+        "pending_review": "Pending Review",
+        "pending_fiscal": "Pending fiscal",
+        "pending_payment_requires_completion": "Pending payment requires completion.",
+        "photo_required_for_this_claim_type": "Photo required for this claim type.",
+        "photo_upload_failed": "Photo upload failed",
+        "postal_code": "Postal code",
+        "prediction_feed_is_currently_empty_for_this_cycle": "Prediction feed is currently empty for this cycle.",
+        "predictive_demand_signals_and_network_analytics": "Predictive demand signals and network analytics.",
+        "pricing_rules_unavailable": "Pricing rules unavailable",
+        "primary_contact": "Primary Contact",
+        "procurement_access_is_partially_restricted_for_this_account": "Procurement access is partially restricted for this account.",
+        "procurement_access_restricted": "Procurement access restricted",
+        "procurement_is_offline": "Procurement is offline",
+        "procurement_sync_degraded_auto_retry_is_active": "Procurement sync degraded. Auto-retry is active.",
+        "profile_saved_successfully": "Profile saved successfully.",
+        "quarantined": "Quarantined",
+        "queue_refresh_failed_retrying_in_the_background": "Queue refresh failed. Retrying in the background.",
+        "reorder_now": "REORDER NOW",
+        "real_time_arrival_queue_and_proximity_locked_secure_verification": "Real-time arrival queue and proximity-locked secure verification.",
+        "receive_failed": "Receive failed",
+        "receiving_window_closes": "Receiving window closes",
+        "receiving_window_opens": "Receiving window opens",
+        "recent_order_and_notification_activity_for_your_account": "Recent order and notification activity for your account.",
+        "refresh_failed": "Refresh failed",
+        "register": "Register",
+        "reject_ai_order_failed": "Reject AI order failed",
+        "reject_delivery_proposal_failed": "Reject delivery proposal failed",
+        "resume_failed": "Resume failed",
+        "resume_requires_open_session_and_network": "Resume requires open session and network.",
+        "retailer_desktop_app_for_pegasus": "Retailer Desktop App for Pegasus",
+        "sku_update_failed": "SKU update failed",
+        "sale_failed": "Sale failed",
+        "sales_7d": "Sales 7d",
+        "sales_inventory_and_shift_variance_digest_csv_export_for_desktop": "Sales, inventory, and shift variance digest. CSV export for desktop ops.",
+        "select_an_order": "Select an order",
+        "select_at_least_one_item_quantity": "Select at least one item quantity.",
+        "set_primary_failed": "Set primary failed",
+        "settings_access_is_partially_restricted_for_this_account": "Settings access is partially restricted for this account.",
+        "settings_sync_degraded_auto_retry_is_active": "Settings sync degraded. Auto-retry is active.",
+        "shift_variances_closed": "Shift variances (closed)",
+        "shipping_address_default": "Shipping address (default)",
+        "shop_closed": "Shop Closed",
+        "signals_unavailable": "Signals unavailable",
+        "staff_update_failed": "Staff update failed",
+        "stage_repeat_purchases_from_your_approved_catalog": "Stage repeat purchases from your approved catalog.",
+        "staged_cart": "Staged Cart",
+        "suppliers": "Suppliers",
+        "switch_failed": "Switch failed",
+        "syncing_catalog_feeds": "Syncing catalog feeds...",
+        "syncing_dashboard_feeds": "Syncing dashboard feeds...",
+        "syncing_intelligence_feeds": "Syncing intelligence feeds...",
+        "syncing_live_dock_updates": "Syncing live dock updates...",
+        "syncing_live_telemetry": "Syncing live telemetry...",
+        "syncing_notifications": "Syncing notifications...",
+        "syncing_order_feeds": "Syncing order feeds...",
+        "syncing_procurement_feeds": "Syncing procurement feeds...",
+        "syncing_settings_feeds": "Syncing settings feeds...",
+        "tax_id_vat": "Tax ID / VAT",
+        "tax_id_is_required_minimum_5_characters": "Tax ID is required (minimum 5 characters).",
+        "telemetry_sync_degraded_auto_retry_is_active": "Telemetry sync degraded. Auto-retry is active.",
+        "tracking_access_restricted_for_this_account": "Tracking access restricted for this account.",
+        "transfer_failed": "Transfer failed",
+        "turn_on_only_what_your_shop_needs_solo_shops_run_on_core_alone": "Turn on only what your shop needs. Solo shops run on Core alone.",
+        "unable_to_load": "Unable to load",
+        "vendor_feed_unavailable": "Vendor feed unavailable",
+        "void_failed_manager_role_may_be_required": "Void failed (manager role may be required)",
+        "void_hold_failed": "Void hold failed",
+        "void_requires_a_synced_server_sale_sync_first_or_discard_from_pe": "Void requires a synced server sale. Sync first or discard from pending queue.",
+        "window_closed_claim_window_has_expired": "Window closed — claim window has expired.",
+        "create_failed_2": "create_failed",
+        "load_failed": "load_failed",
+        "pegasusx": "pegasusX"
+      }
+    }
+  },
+  "warehouse_portal": {
+    "analytics": {
+      "velocity_gauge": {
+        "text": {
+          "no_dispatch_velocity_data": "No dispatch velocity data"
+        }
+      },
+      "text": {
+        "revenue": "Revenue",
+        "avg_order_value": "Avg Order Value",
+        "fleet_utilization": "Fleet Utilization",
+        "import_freshness": "Import Freshness",
+        "rows_imported_30d": "Rows Imported (30d)",
+        "skus_updated_30d": "SKUs Updated (30d)",
+        "quantity_delta_30d": "Quantity Delta (30d)",
+        "import_anomaly_queue": "Import Anomaly Queue",
+        "open_anomaly_rows_30d": "Open Anomaly Rows (30d)",
+        "affected_sessions_30d": "Affected Sessions (30d)",
+        "top_products": "Top Products",
+        "units_sold": "Units Sold",
+        "revenue_uzs": "Revenue (UZS)"
+      },
+      "analytics_chart_grid": {
+        "text": {
+          "daily_revenue": "Daily Revenue"
+        }
+      }
+    },
+    "auth": {
+      "text": {
+        "warehouse_node": "Warehouse node",
+        "pegasusx_and_copy_2026": "pegasusX &copy; 2026",
+        "pegasusx_warehouse": "pegasusX Warehouse"
+      },
+      "login": {
+        "text": {
+          "warehouse_sign_in": "Warehouse sign in",
+          "enter_registered_phone": "Enter your registered phone number.",
+          "enter_otp_sent_to": "Enter the 6-digit code sent to {phone}"
+        }
+      },
+      "register": {
+        "text": {
+          "set_up_your_warehouse_account": "Set up your warehouse account"
+        }
+      }
+    },
+    "bins": {
+      "text": {
+        "loading": "Loading…",
+        "zone": "Zone",
+        "type": "Type",
+        "seq": "Seq",
+        "active": "Active",
+        "lots": "Lots",
+        "lot": "Lot",
+        "expiry": "Expiry",
+        "on_hand": "On hand",
+        "reserved": "Reserved",
+        "status": "Status"
+      }
+    },
+    "claims": {
+      "text": {
+        "no_claims_in_this_filter": "No claims in this filter.",
+        "claims_reverse_logistics": "Claims (reverse logistics)"
+      }
+    },
+    "control_tower": {
+      "text": {
+        "global_control_tower": "Global Control Tower",
+        "real_time_network_telematics_and_predictive_intelligence": "Real-time network telematics and predictive intelligence.",
+        "actual_vs_plan": "Actual vs Plan",
+        "baseline_vs_upside_scenarios": "Baseline vs Upside Scenarios"
+      }
+    },
+    "credit": {
+      "policy": {
+        "text": {
+          "credit_policy_supplier_scoped": "Credit policy (supplier-scoped)",
+          "program": "Program",
+          "relationships": "Relationships",
+          "open_ar_dock_ops": "Open AR (dock ops)"
+        }
+      }
+    },
+    "crm": {
+      "text": {
+        "business_name": "Business Name",
+        "total_orders": "Total Orders",
+        "last_order": "Last Order",
+        "retailer_crm": "Retailer CRM"
+      }
+    },
+    "cycle_counts": {
+      "text": {
+        "count": "Count",
+        "expected": "Expected",
+        "submit": "Submit",
+        "inventory_adjustments": "Inventory adjustments",
+        "pending_rows_are_created_on_variance_approve_is_stub_only_no_lot": "PENDING rows are created on variance; approve is stub-only (no lot mutation).",
+        "no_adjustments": "No adjustments",
+        "adjustment": "Adjustment",
+        "delta": "Delta",
+        "auto": "auto"
+      }
+    },
+    "demand_forecast": {
+      "text": {
+        "no_products_tracked_yet": "No products tracked yet"
+      }
+    },
+    "dispatch": {
+      "text": {
+        "fleet_effective_capacity": "Fleet effective capacity",
+        "no_vehicles_registered_for_this_warehouse": "No vehicles registered for this warehouse.",
+        "no_dispatch_runs_recorded_yet": "No dispatch runs recorded yet.",
+        "run_smart_dispatch": "Run smart dispatch?",
+        "capacity_exceeded": "Capacity exceeded",
+        "custom_reason": "Custom reason",
+        "recent_dispatch_commits": "Recent dispatch commits",
+        "handoff_timeline": "Handoff timeline",
+        "live_fleet_map": "Live fleet map",
+        "smart_suggest_preview": "Smart suggest preview",
+        "cancel_order": "Cancel order"
+      },
+      "rescues": {
+        "text": {
+          "finding_available_trucks": "Finding available trucks...",
+          "insufficient_capacity": "Insufficient Capacity",
+          "fleet_rescues": "Fleet Rescues",
+          "needs_rescue": "Needs Rescue"
+        }
+      },
+      "dispatch_driver_list": {
+        "text": {
+          "no_drivers_blocked_all_assigned_trucks_eligible_or_off_shift_rea": "No drivers blocked — all assigned trucks eligible or off-shift reasons shown here in real time."
+        }
+      }
+    },
+    "dispatch_locks": {
+      "text": {
+        "lock_id": "Lock ID",
+        "scope": "Scope",
+        "locked_at": "Locked At",
+        "locked_by": "Locked By",
+        "actions": "Actions"
+      }
+    },
+    "dispatch_settings": {
+      "text": {
+        "auto_dispatch": "Auto dispatch",
+        "loading_impact_preview": "Loading impact preview...",
+        "enabling_auto_dispatch_will_immediately_schedule_available_drive": "Enabling auto dispatch will immediately schedule available drivers. Based on the current queue:",
+        "are_you_sure_you_want_to_enable_auto_dispatch": "Are you sure you want to enable auto dispatch?",
+        "toggle_auto_dispatch": "Toggle auto dispatch",
+        "dispatch_settings": "Dispatch settings"
+      }
+    },
+    "drivers": {
+      "text": {
+        "new_driver": "New driver",
+        "driver_pin": "Driver PIN",
+        "share_this_one_time_pin_with_the_driver": "Share this one-time PIN with the driver:",
+        "name": "Name"
+      },
+      "drivers_list": {
+        "text": {
+          "no_drivers_registered": "No drivers registered",
+          "assigned_vehicle": "Assigned Vehicle",
+          "unassigned": "Unassigned"
+        }
+      }
+    },
+    "error": {
+      "text": {
+        "warehouse_portal_error": "Warehouse portal error"
+      }
+    },
+    "exceptions": {
+      "text": {
+        "no_open_exceptions": "No open exceptions.",
+        "exception_triage": "Exception triage"
+      }
+    },
+    "fleet_live_map": {
+      "text": {
+        "fleet_live_map": "Fleet Live Map",
+        "loading_live_fleet_map": "Loading live fleet map…"
+      }
+    },
+    "inventory": {
+      "text": {
+        "confirm_inventory_change": "Confirm inventory change",
+        "reason_optional": "Reason (optional)",
+        "search_products": "Search products...",
+        "e_g_cycle_count_damaged_goods": "e.g. cycle count, damaged goods"
+      },
+      "inventory_stock_list": {
+        "text": {
+          "quantity": "Quantity",
+          "reorder_at": "Reorder At",
+          "oos_policy": "OOS Policy",
+          "inherit_warehouse": "Inherit warehouse",
+          "reject_when_oos": "Reject when OOS",
+          "accept_backorder": "Accept backorder",
+          "new_qty": "New qty"
+        }
+      }
+    },
+    "manifests": {
+      "text": {
+        "manifest": "Manifest",
+        "driver": "Driver",
+        "vehicle": "Vehicle",
+        "stops": "Stops",
+        "created": "Created",
+        "pick": "Pick",
+        "labels": "Labels"
+      }
+    },
+    "operations": {
+      "text": {
+        "depot_operations": "Depot operations"
+      },
+      "operations_broadcast_form": {
+        "text": {
+          "loading_templates": "Loading templates…",
+          "bay_2_closed": "Bay 2 closed",
+          "broadcast_templates": "Broadcast templates",
+          "send_depot_broadcast": "Send depot broadcast"
+        }
+      },
+      "operations_pricing_preview": {
+        "text": {
+          "loading_preview": "Loading preview…",
+          "read_only_contact_supplier_to_apply_overrides": "Read-only — contact supplier to apply overrides.",
+          "pricing_impact_preview_read_only": "Pricing impact preview (read-only)"
+        }
+      }
+    },
+    "orders": {
+      "_id_": {
+        "text": {
+          "order_summary": "Order summary",
+          "retailer_state_and_total_for_this_fulfillment": "Retailer, state, and total for this fulfillment.",
+          "retailer": "Retailer",
+          "total_uzs": "Total (UZS)",
+          "quick_actions": "Quick actions",
+          "proposed_delivery_date": "Proposed delivery date",
+          "status_history": "Status history",
+          "delays_promotions_and_lifecycle_changes": "Delays, promotions, and lifecycle changes.",
+          "required_for_propose_date_and_cancel": "Required for propose date and cancel"
+        }
+      },
+      "text": {
+        "order_views": "Order views"
+      },
+      "order_kebab_menu": {
+        "text": {
+          "order_actions": "Order actions"
+        }
+      },
+      "order_line_items": {
+        "text": {
+          "line_items": "Line items",
+          "unit_uzs": "Unit (UZS)"
+        }
+      },
+      "order_propose_date_dialog": {
+        "text": {
+          "required_explain_why_the_date_is_changing": "Required — explain why the date is changing"
+        }
+      }
+    },
+    "app": {
+      "text": {
+        "network_pulse": "Network pulse",
+        "fleet_status": "Fleet status"
+      }
+    },
+    "payment_config": {
+      "text": {
+        "no_payment_gateways_configured": "No payment gateways configured",
+        "provider": "Provider",
+        "mode": "Mode",
+        "updated": "Updated"
+      }
+    },
+    "pick_waves": {
+      "text": {
+        "wave": "Wave",
+        "open": "Open",
+        "no_tasks": "No tasks",
+        "bin": "Bin",
+        "qty": "Qty",
+        "manifest_uuid": "manifest uuid"
+      }
+    },
+    "products": {
+      "text": {
+        "category": "Category",
+        "price_uzs": "Price (UZS)",
+        "product_catalog": "Product Catalog"
+      }
+    },
+    "profile": {
+      "text": {
+        "signed_in_as": "Signed in as"
+      }
+    },
+    "replenishment": {
+      "text": {
+        "replenishment_insights": "Replenishment insights",
+        "insight_queue": "Insight queue"
+      },
+      "replenishment_list": {
+        "text": {
+          "why": "Why",
+          "urgency": "Urgency",
+          "days_left": "Days Left",
+          "reorder_qty": "Reorder Qty"
+        }
+      }
+    },
+    "returns": {
+      "text": {
+        "gate_queue": "Gate queue",
+        "history": "History",
+        "barcode_ean": "Barcode (EAN)",
+        "scan": "Scan",
+        "restock_selected": "Restock selected",
+        "write_off": "Write off",
+        "credit_note_reverse_logistics": "Credit note reverse logistics",
+        "scan_or_type_wedge_scanner_enter": "Scan or type (wedge scanner + Enter)",
+        "inbound_returns": "Inbound Returns"
+      },
+      "reverse_logistics_panel": {
+        "text": {
+          "loading_reverse_tasks": "Loading reverse tasks…",
+          "no_open_credit_note_reverse_tasks": "No open credit-note reverse tasks."
+        }
+      }
+    },
+    "settings": {
+      "text": {
+        "optional_gs1_location_number": "Optional GS1 location number",
+        "warehouse_settings": "Warehouse settings",
+        "depot_location": "Depot location"
+      },
+      "ops_settings_form": {
+        "text": {
+          "advanced_json": "Advanced JSON",
+          "pre_order_lead_window": "Pre-order lead window",
+          "line_quantity_limits": "Line quantity limits",
+          "delivery_fee_tiers": "Delivery fee tiers",
+          "out_of_stock_orders": "Out-of-stock orders",
+          "order_acceptance_hours": "Order acceptance hours"
+        }
+      },
+      "return_policy_settings_section": {
+        "text": {
+          "returns_and_reverse_sla": "Returns & reverse SLA",
+          "return_policy_saved": "Return policy saved."
+        }
+      }
+    },
+    "setup": {
+      "location": {
+        "text": {
+          "warehouse_location": "Warehouse location",
+          "loading_warehouse_details": "Loading warehouse details…",
+          "warehouse": "Warehouse",
+          "central_depot": "Central depot"
+        }
+      },
+      "setup_wizard_shell": {
+        "text": {
+          "warehouse_setup": "Warehouse setup",
+          "onboarding_progress": "Onboarding progress",
+          "setup_progress": "Setup progress"
+        }
+      }
+    },
+    "staff": {
+      "text": {
+        "one_time_pin_generated": "One-time PIN generated",
+        "create_new_staff_member": "Create New Staff Member",
+        "role": "Role",
+        "warehouse_staff": "Warehouse Staff",
+        "payloader": "Payloader"
+      },
+      "staff_list": {
+        "text": {
+          "no_staff_members_registered": "No staff members registered"
+        }
+      }
+    },
+    "supply_requests": {
+      "_id_": {
+        "text": {
+          "priority": "Priority",
+          "delivery_date": "Delivery Date",
+          "total_volume": "Total Volume",
+          "items": "Items",
+          "notes": "Notes",
+          "requested": "Requested",
+          "shipped": "Shipped",
+          "received": "Received",
+          "recommended": "Recommended",
+          "unit_volume": "Unit Volume",
+          "supply_request": "Supply Request"
+        }
+      },
+      "new": {
+        "text": {
+          "factory_id": "Factory ID",
+          "requested_delivery_date": "Requested Delivery Date",
+          "use_ai_demand_forecast": "Use AI demand forecast",
+          "auto_fill_items_from_demand_engine": "Auto-fill items from demand engine",
+          "demand_forecast_7_day": "Demand Forecast (7-day)",
+          "stockout_in": "Stockout In",
+          "manual_items": "Manual Items",
+          "enter_factory_uuid": "Enter factory UUID",
+          "product_id": "Product ID",
+          "optional_notes_for_the_factory": "Optional notes for the factory...",
+          "new_supply_request": "New Supply Request"
+        }
+      },
+      "text": {
+        "factory": "Factory",
+        "state": "State",
+        "volume": "Volume"
+      }
+    },
+    "tomorrow_board": {
+      "text": {
+        "no_orders_scheduled_for_this_date": "No orders scheduled for this date."
+      }
+    },
+    "tracking": {
+      "text": {
+        "loading_warehouse_fleet": "Loading warehouse fleet…"
+      }
+    },
+    "transfers": {
+      "text": {
+        "volume_vu": "Volume (VU)",
+        "notes_optional": "Notes (optional)",
+        "transfer_id_to_receive": "Transfer ID to receive",
+        "transfer_actions": "Transfer actions",
+        "transfer_controls": "Transfer controls"
+      }
+    },
+    "treasury": {
+      "text": {
+        "invoices": "Invoices",
+        "retailer_billing_rows_for_this_warehouse_node": "Retailer billing rows for this warehouse node.",
+        "payment_config": "Payment config"
+      },
+      "treasury_transaction_list": {
+        "text": {
+          "invoice": "Invoice",
+          "amount": "Amount",
+          "due": "Due"
+        }
+      }
+    },
+    "vehicles": {
+      "_vehicle_id_": {
+        "text": {
+          "capacity": "Capacity",
+          "license_plate": "License plate",
+          "class": "Class",
+          "assigned_driver": "Assigned driver",
+          "hold_reason": "Hold reason",
+          "dispatch_impact": "Dispatch impact"
+        }
+      },
+      "text": {
+        "new_truck": "New truck",
+        "class_a_50_vu": "Class A (50 VU)",
+        "class_b_150_vu": "Class B (150 VU)",
+        "class_c_400_vu": "Class C (400 VU)",
+        "label_e_g_truck_01": "Label (e.g. Truck-01)"
+      },
+      "vehicles_list": {
+        "text": {
+          "no_trucks_registered": "No trucks registered"
+        }
+      }
+    },
+    "dispatch_preview_map": {
+      "text": {
+        "route_preview_unavailable_until_optimizer_proposes_stops_with_co": "Route preview unavailable until optimizer proposes stops with coordinates."
+      }
+    },
+    "fleet_live_map_panel": {
+      "text": {
+        "preparing_map": "Preparing map…"
+      }
+    },
+    "forecast_confidence_view": {
+      "text": {
+        "seasonal_template_active": "Seasonal template active",
+        "forecast_confidence": "Forecast confidence",
+        "insufficient_history_predictive_forecast_blocked": "Insufficient history — predictive forecast blocked",
+        "seasonal_template_active_ml_extrapolation_disabled": "Seasonal template active — ML extrapolation disabled"
+      }
+    },
+    "kpi_stat_card": {
+      "text": {
+        "alert": "Alert",
+        "done": "Done"
+      }
+    },
+    "location_picker": {
+      "text": {
+        "pinned_for_dispatch_routing": "Pinned for dispatch routing",
+        "resolving_address": "Resolving address…",
+        "start_typing_street_address": "Start typing street address…"
+      }
+    },
+    "network_pulse_panel": {
+      "text": {
+        "ops_pulse": "Ops pulse"
+      }
+    },
+    "order_timeline_panel": {
+      "text": {
+        "loading_timeline": "Loading timeline…",
+        "no_status_history_yet": "No status history yet."
+      }
+    },
+    "toast": {
+      "text": {
+        "dismiss": "Dismiss",
+        "swipe_left_or_right_to_dismiss": "Swipe left or right to dismiss"
+      }
+    },
+    "vehicle_availability_panel": {
+      "text": {
+        "availability": "Availability",
+        "dispatch_and_smart_suggest_exclude_unavailable_trucks_immediatel": "Dispatch and smart suggest exclude unavailable trucks immediately.",
+        "unavailable_reason": "Unavailable reason",
+        "custom_reason_required": "Custom reason (required)"
+      }
+    },
+    "warehouse_shell": {
+      "text": {
+        "node_ops": "Node ops",
+        "single_tenant_live_sync": "Single-tenant · Live sync",
+        "warehouse_admin": "Warehouse Admin",
+        "single_tenant_control_plane": "Single-tenant control plane",
+        "search_pages": "Search pages...",
+        "open_navigation": "Open navigation",
+        "breadcrumb": "Breadcrumb",
+        "search_ctrl_k": "Search (Ctrl+K)",
+        "search": "Search",
+        "profile_menu": "Profile menu"
+      }
+    },
+    "forecast": {
+      "forecast_chart_panel": {
+        "text": {
+          "critical_items": "Critical Items",
+          "urgent_items": "Urgent Items",
+          "healthy_items": "Healthy Items"
+        }
+      },
+      "forecast_sku_table": {
+        "text": {
+          "stockout": "Stockout",
+          "confidence": "Confidence",
+          "incoming": "Incoming",
+          "ai_pred": "AI Pred",
+          "pre_orders": "Pre-Orders",
+          "burn_day": "Burn/Day"
+        }
+      }
+    },
+    "residual": {
+      "text": {
+        "ai_powered_stock_recommendations_from_4_data_sources": "AI-powered stock recommendations from 4 data sources.",
+        "active_users": "Active Users",
+        "active_orders_have_not_reserved_stock_yet": "Active orders have not reserved stock yet.",
+        "active_sealed_routes_and_driver_positions_for_this_node": "Active sealed routes and driver positions for this node.",
+        "address": "Address",
+        "all_good": "All Good",
+        "all_drivers_are_on_route_or_blocked": "All drivers are on route or blocked.",
+        "all_orders_dispatched": "All orders dispatched",
+        "approve_to_create_factory_transfer_rows_dismiss_to_clear": "Approve to create factory transfer rows; dismiss to clear.",
+        "as_dispatch_fleet_and_inventory_activity_starts_this_dashboard_w": "As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically.",
+        "available_drivers": "Available drivers",
+        "base_fee_minor": "Base fee (minor)",
+        "beyond_tier_fee_minor": "Beyond-tier fee (minor)",
+        "built_in_depot_starters_plus_your_saved_custom_messages": "Built-in depot starters plus your saved custom messages.",
+        "cancels_the_order_and_notifies_the_retailer_immediately": "Cancels the order and notifies the retailer immediately.",
+        "checkout_policy_pre_order_lead_window_per_line_quantity_limits_d": "Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing.",
+        "configure_warehouse_auto_dispatch_policy_for_this_node": "Configure warehouse auto-dispatch policy for this node.",
+        "could_not_resolve_that_address_try_another_suggestion": "Could not resolve that address. Try another suggestion.",
+        "could_not_resolve_your_location_to_an_address": "Could not resolve your location to an address.",
+        "create_a_factory_replenishment_request_from_forecast_or_manual_l": "Create a factory replenishment request from forecast or manual line items.",
+        "create_a_pick_or_stage_location_to_putaway_lots": "Create a pick or stage location to putaway lots.",
+        "create_a_wave_from_a_draft_or_loading_manifest": "Create a wave from a draft or loading manifest.",
+        "create_an_open_count_for_a_bin_product": "Create an OPEN count for a bin + product.",
+        "critical_urgency": "Critical urgency",
+        "cross_role_timeline_for_this_warehouse_node": "Cross-role timeline for this warehouse node.",
+        "custom_reason_optional": "Custom reason (optional)",
+        "daily_loading_manifests_for_drivers_and_vehicles_at_this_node": "Daily loading manifests for drivers and vehicles at this node.",
+        "days_between_order_placement_and_earliest_fulfillment": "Days between order placement and earliest fulfillment.",
+        "delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del": "Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.",
+        "depot_scoped_broadcasts_and_read_only_pricing_impact_preview": "Depot-scoped broadcasts and read-only pricing impact preview.",
+        "dock_queue_for_truck_returns_and_claim_reverse_logistics_tickets": "Dock queue for truck returns and claim reverse-logistics tickets — restock or write off.",
+        "effective_date_optional": "Effective date (optional)",
+        "emergency_inbound_force_receive_and_transfer_receipt_by_id": "Emergency inbound, force receive, and transfer receipt by ID.",
+        "enter_a_valid_phone_number_6_14_digits": "Enter a valid phone number (6-14 digits)",
+        "enter_the_6_digit_code": "Enter the 6-digit code",
+        "factory_inbound_transfer_controls_for_warehouse_operators": "Factory inbound transfer controls for warehouse operators.",
+        "factory_replenishment_requests_scoped_to_this_warehouse_node": "Factory replenishment requests scoped to this warehouse node.",
+        "failed_to_load_warehouse_tracking": "Failed to load warehouse tracking",
+        "failed_to_send_verification_code": "Failed to send verification code",
+        "fleet_drivers_with_vehicle_assignment_and_live_truck_status": "Fleet drivers with vehicle assignment and live truck status.",
+        "fleet_trucks_with_capacity_driver_assignment_and_live_availabili": "Fleet trucks with capacity, driver assignment, and live availability.",
+        "free_within_km": "Free within km",
+        "full_order_detail_and_warehouse_exception_actions": "Full order detail and warehouse exception actions.",
+        "gln_13_digits": "GLN (13 digits)",
+        "geolocation_is_not_supported_in_this_browser": "Geolocation is not supported in this browser.",
+        "invalid_verification_code": "Invalid verification code",
+        "invoiced_revenue_payouts_and_outstanding_liabilities_for_this_wa": "Invoiced revenue, payouts, and outstanding liabilities for this warehouse.",
+        "invoices_appear_when_retailers_are_billed_for_fulfilled_orders": "Invoices appear when retailers are billed for fulfilled orders.",
+        "leave_blank_to_clear_a_limit_applies_to_standard_and_scheduled_c": "Leave blank to clear a limit. Applies to standard and scheduled checkout.",
+        "location_permission_denied": "Location permission denied.",
+        "manage_truck_breakdowns_and_propose_rescue_operations": "Manage truck breakdowns and propose rescue operations",
+        "manifest_and_driver_state_breakdown_for_this_node": "Manifest and driver state breakdown for this node.",
+        "manifest_order_and_lock_exceptions_in_one_queue": "Manifest, order, and lock exceptions in one queue.",
+        "manual_truck_assignment_or_smart_dispatch_across_the_fleet_capac": "Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity.",
+        "mark_trucks_unavailable_in_real_time_dispatch_and_smart_suggest_": "Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately.",
+        "max_lead_days": "Max lead (days)",
+        "max_per_sku": "Max per SKU",
+        "message": "Message",
+        "min_lead_days": "Min lead (days)",
+        "min_per_sku": "Min per SKU",
+        "new_warehouse": "New warehouse?",
+        "no_rescuers_available": "No Rescuers Available",
+        "no_active_dispatch_locks_dispatch_operations_are_running_freely": "No active dispatch locks. Dispatch operations are running freely.",
+        "no_bins": "No bins",
+        "no_buyer_data_to_analyze_yet": "No buyer data to analyze yet",
+        "no_commitments": "No commitments",
+        "no_cycle_counts": "No cycle counts",
+        "no_data_yet": "No data yet.",
+        "no_drivers_available": "No drivers available",
+        "no_inventory_items_found": "No inventory items found",
+        "no_invoices_found": "No invoices found",
+        "no_lots": "No lots",
+        "no_pending_orders_need_assignment_right_now": "No pending orders need assignment right now.",
+        "no_pick_waves": "No pick waves",
+        "no_pre_orders": "No pre-orders",
+        "no_products_found": "No products found",
+        "no_replenishment_insights": "No replenishment insights",
+        "no_supply_requests_found": "No supply requests found",
+        "no_trucks_currently_require_a_rescue": "No trucks currently require a rescue.",
+        "no_warehouse_metrics_yet": "No warehouse metrics yet",
+        "on_hand_stock_levels_with_live_sync_and_quantity_adjustments": "On-hand stock levels with live sync and quantity adjustments.",
+        "open_insights": "Open insights",
+        "open_post_delivery_claims_damage_claims_auto_open_dock_tickets_o": "Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ.",
+        "orders_and_manifests_grouped_by_delivery_date": "Orders and manifests grouped by delivery date.",
+        "outstanding": "Outstanding",
+        "paid": "Paid",
+        "pick_an_address_from_the_list_or_refine_your_search": "Pick an address from the list or refine your search.",
+        "preorder_accept_dispatch_seal_events_from_the_ops_pulse_feed": "Preorder → accept → dispatch → seal events from the ops pulse feed.",
+        "prevent_concurrent_dispatch_operations_during_loading": "Prevent concurrent dispatch operations during loading.",
+        "product_sku_id": "Product / SKU ID",
+        "proposed_price_minor_units": "Proposed price (minor units)",
+        "read_only_view_of_supplier_product_catalog": "Read-only view of supplier product catalog.",
+        "read_only_view_payment_gateways_are_configured_by_the_supplier_a": "Read-only view. Payment gateways are configured by the supplier admin.",
+        "real_time_map_tracking_for_sealed_manifests_in_transit": "Real-time map tracking for sealed manifests in transit.",
+        "receive_putaway_with_location_expiry_perishables_when_wms_lots_a": "Receive/putaway with location + expiry (perishables) when WMS lots are enabled.",
+        "register": "Register",
+        "replay_the_last_committed_smart_dispatch_runs_for_this_node": "Replay the last committed smart-dispatch runs for this node.",
+        "retailer_id_optional": "Retailer ID (optional)",
+        "retailer_relationships_and_purchase_histories_will_appear_here_o": "Retailer relationships and purchase histories will appear here once orders are fulfilled by this node.",
+        "retailer_relationships_order_volume_and_revenue_for_this_warehou": "Retailer relationships, order volume, and revenue for this warehouse.",
+        "sku_level_asap_scheduled_demand_vs_on_hand": "SKU-level ASAP + scheduled demand vs on-hand",
+        "scheduled_manual_pre_orders_will_appear_here": "Scheduled manual pre-orders will appear here.",
+        "sealed_manifest_polylines_and_driver_gps_for_this_warehouse_node": "Sealed manifest polylines and driver GPS for this warehouse node.",
+        "select_for_dispatch_double_click_a_card_for_order_detail": "Select for dispatch. Double-click a card for order detail.",
+        "single_tenant_logistics_control_plane": "Single-tenant logistics control plane.",
+        "smart_suggest_routes": "Smart suggest routes",
+        "stock_velocity_alerts_with_approve_dismiss_actions_for_this_ware": "Stock velocity alerts with approve/dismiss actions for this warehouse node.",
+        "target_role": "Target role",
+        "the_replenishment_engine_will_surface_stock_velocity_alerts_when": "The replenishment engine will surface stock velocity alerts when burn thresholds are crossed.",
+        "there_are_no_active_drivers_with_enough_capacity": "There are no active drivers with enough capacity.",
+        "total_invoiced": "Total invoiced",
+        "unable_to_load": "Unable to load",
+        "unavailable": "Unavailable",
+        "undispatched_orders": "Undispatched orders",
+        "view_checkout_gateways_and_settlement_routing_for_this_node": "View checkout gateways and settlement routing for this node.",
+        "warehouse_portal_pegasusx": "Warehouse Portal - pegasusX",
+        "warehouse_address": "Warehouse address",
+        "warehouse_name": "Warehouse name",
+        "warehouse_operator_session_and_scope": "Warehouse operator session and scope.",
+        "warehouse_revenue_order_health_fleet_utilization_and_import_tele": "Warehouse revenue, order health, fleet utilization, and import telemetry.",
+        "warehouse_staff_and_payloader_accounts_for_terminal_execution": "Warehouse staff and payloader accounts for terminal execution.",
+        "warning_high": "Warning / high",
+        "weekday_close": "Weekday close",
+        "weekday_open": "Weekday open",
+        "when_enforcement_is_on_retailers_cannot_preview_or_create_orders": "When enforcement is on, retailers cannot preview or create orders outside the window.",
+        "finance_permission_required": "finance_permission_required",
+        "load_failed": "load_failed",
+        "pegasusx": "pegasusX",
+        "8_7_wave_1a_warehouse_locations_and_stock_lots_fefo": "§8.7 Wave 1A warehouse locations and stock lots (FEFO)",
+        "8_7_wave_1b_manifest_picks_ready_to_seal_before_payload_seal": "§8.7 Wave 1B manifest picks → ready-to-seal before payload seal",
+        "8_7_wave_1c_stub_counts_variance_adjustments_approve_does_not_ch": "§8.7 Wave 1C stub counts + variance adjustments (approve does not change lots yet)"
+      }
     }
   }
 }

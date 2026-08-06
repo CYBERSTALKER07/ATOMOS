@@ -41,6 +41,7 @@ func partnerExportLocalRoot() string {
 type ExportWorker struct {
 	exports ExportRepository
 	sftp    SftpConfigRepository
+	coa     CoaRepository
 	spanner *spanner.Client
 	log     *slog.Logger
 	now     func() time.Time
@@ -63,6 +64,14 @@ func NewExportWorker(exports ExportRepository, sftp SftpConfigRepository, client
 		SecretLoader: LoadSecretRef,
 		Uploader:     UploadSFTP,
 	}
+}
+
+// SetCoaRepository wires optional PartnerCoaMaps lookup for journals exports.
+func (w *ExportWorker) SetCoaRepository(coa CoaRepository) {
+	if w == nil {
+		return
+	}
+	w.coa = coa
 }
 
 // Start loops until cancel.

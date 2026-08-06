@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import StatusBadge from "@/components/StatusBadge";
@@ -23,6 +24,7 @@ function formatMinor(n: number): string {
 }
 
 export default function CreditCollectionsPage() {
+  const t = usePortalT();
   const [profiles, setProfiles] = useState<CreditProfile[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function CreditCollectionsPage() {
       const body = (await res.json()) as { profiles?: CreditProfile[] };
       setProfiles(body.profiles ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
       setProfiles([]);
     } finally {
       setLoading(false);
@@ -77,7 +79,7 @@ export default function CreditCollectionsPage() {
       setReason("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "patch_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.patch_failed"));
     } finally {
       setBusyId(null);
     }
@@ -85,8 +87,8 @@ export default function CreditCollectionsPage() {
 
   return (
     <PageChrome
-      title="Credit collections"
-      description="Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles."
+      title={t("portal.nav.credit_collections")}
+      description={t("supplier_portal.residual.text.supplier_scoped_credit_lines_limits_open_balances_freeze_unfreez")}
       loading={loading}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -113,13 +115,13 @@ export default function CreditCollectionsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
-              <th className="py-2 pr-3">Retailer</th>
-              <th className="py-2 pr-3">Status</th>
-              <th className="py-2 pr-3 text-right">Limit</th>
-              <th className="py-2 pr-3 text-right">Balance</th>
-              <th className="py-2 pr-3 text-right">Available</th>
-              <th className="py-2 pr-3 text-right">Util %</th>
-              <th className="py-2 pr-3">Actions</th>
+              <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.compliance.text.status")}</th>
+              <th className="py-2 pr-3 text-right">{t("supplier_portal.credit.collections.text.limit")}</th>
+              <th className="py-2 pr-3 text-right">{t("supplier_portal.credit.collections.text.balance")}</th>
+              <th className="py-2 pr-3 text-right">{t("supplier_portal.credit.collections.text.available")}</th>
+              <th className="py-2 pr-3 text-right">{t("supplier_portal.credit.collections.text.util")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -207,13 +209,13 @@ export default function CreditCollectionsPage() {
                             className="border border-[var(--border)] rounded px-2 py-1 text-xs w-28 font-mono"
                             value={limitInput}
                             onChange={(e) => setLimitInput(e.target.value)}
-                            placeholder="limit minor"
+                            placeholder={t("supplier_portal.credit.collections.text.limit_minor")}
                           />
                           <input
                             className="border border-[var(--border)] rounded px-2 py-1 text-xs w-36"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            placeholder="reason"
+                            placeholder={t("supplier_portal.credit.collections.text.reason")}
                           />
                           <button
                             type="button"
@@ -222,7 +224,7 @@ export default function CreditCollectionsPage() {
                             onClick={() => {
                               const n = Number(limitInput);
                               if (!Number.isFinite(n) || n < 0) {
-                                setError("invalid_limit");
+                                setError(t("supplier_portal.residual.text.invalid_limit"));
                                 return;
                               }
                               void patchProfile(p.retailer_id, {

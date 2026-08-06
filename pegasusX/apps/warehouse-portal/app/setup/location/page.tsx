@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { FormAlert, PortalField, PortalInput } from "@/components/portal";
@@ -25,6 +26,7 @@ type WarehouseLocation = {
 const EMPTY_LOCATION: LocationValue = { address: "", lat: "0", lng: "0" };
 
 export default function WarehouseLocationSetupPage() {
+  const t = usePortalT();
   const [warehouseName, setWarehouseName] = useState("");
   const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ export default function WarehouseLocationSetupPage() {
           <Icon name="warehouse" size={22} />
         </div>
         <div>
-          <h1>Warehouse location</h1>
+          <h1>{t("warehouse_portal.setup.location.text.warehouse_location")}</h1>
           <p className="setup-header-sub">
             {hasAssignedWarehouse
               ? "Confirm or update your depot address. Changes stay in sync with dispatch, delivery fees, and fleet routing."
@@ -165,26 +167,26 @@ export default function WarehouseLocationSetupPage() {
 
       <section className="setup-card space-y-4">
         {loading ? (
-          <p className="text-sm text-(--muted)">Loading warehouse details…</p>
+          <p className="text-sm text-(--muted)">{t("warehouse_portal.setup.location.text.loading_warehouse_details")}</p>
         ) : (
           <>
             {!hasAssignedWarehouse ? (
-              <PortalField id="warehouseName" label="Warehouse name">
+              <PortalField id="warehouseName" label={t("warehouse_portal.residual.text.warehouse_name")}>
                 <PortalInput
                   id="warehouseName"
                   value={warehouseName}
                   onChange={(e) => setWarehouseName(e.target.value)}
-                  placeholder="Central depot"
+                  placeholder={t("warehouse_portal.setup.location.text.central_depot")}
                 />
               </PortalField>
             ) : warehouseName ? (
               <div>
-                <p className="text-xs font-medium text-(--muted)">Warehouse</p>
+                <p className="text-xs font-medium text-(--muted)">{t("warehouse_portal.setup.location.text.warehouse")}</p>
                 <p className="text-sm font-semibold">{warehouseName}</p>
               </div>
             ) : null}
 
-            <LocationPicker value={location} onChange={setLocation} label="Depot address" />
+            <LocationPicker value={location} onChange={setLocation} label={t("factory_portal.settings.location.text.depot_address")} />
 
             <p className="text-xs text-(--muted)">
               Search for your street address or use share location. You can edit this anytime under Settings.

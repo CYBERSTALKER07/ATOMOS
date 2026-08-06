@@ -1,16 +1,50 @@
 openapi: 3.0.3
 info:
   title: PegasusX Partner API
-  version: "1.2.0"
+  version: "1.3.0"
   description: |
-    Gate-3 machine integration surface (§8.9 Wave 1 + 2A + 2B EDI-lite). Authenticate with a partner API key
-    (`Authorization: Bearer pxk_…`). Keys are tenant-scoped (RETAILER or SUPPLIER).
+    Gate-3 machine integration surface (§8.9). Authenticate with a partner API key
+    (`Authorization: Bearer pxk_…`) **or** a short-lived OAuth2 access token from
+    `POST /partner/v1/oauth/token` (`grant_type=client_credentials`; `PartnerApiKeys` are the clients).
     Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under `/v1/supplier/…`).
-    Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite ORDERS/ORDRSP/DESADV/INVOIC over SFTP.
+    Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite. Wave 2C: GS1. Journals + configurable CoA.
 servers:
   - url: https://api-ssmr.pegasusx.app
     description: SSMR
 paths:
+  /partner/v1/oauth/token:
+    post:
+      summary: OAuth2 client_credentials token
+      operationId: partnerOAuthToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerOAuthTokenRequest"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/PartnerOAuthTokenRequest"
+      responses:
+        "200":
+          description: Access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthTokenResponse"
+        "400":
+          description: OAuth error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthError"
+        "401":
+          description: Invalid client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthError"
   /partner/v1/orders:
     post:
       summary: Create order
@@ -258,6 +292,39 @@ paths:
                 $ref: "#/components/schemas/PartnerExportJob"
         "404":
           $ref: "#/components/responses/Problem"
+  /partner/v1/coa:
+    get:
+      summary: Get tenant chart of accounts for journals exports
+      operationId: partnerGetCoa
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: Resolved CoA (defaults when unset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
+    put:
+      summary: Upsert tenant chart of accounts for journals exports
+      operationId: partnerPutCoa
+      security:
+        - PartnerApiKey: [exports:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerCoaMapUpdate"
+      responses:
+        "200":
+          description: Saved CoA
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
+        "422":
+          $ref: "#/components/responses/Problem"
   /partner/v1/edi/documents:
     get:
       summary: List recent EDI-lite documents for the key tenant
@@ -354,7 +421,24 @@ components:
       type: http
       scheme: bearer
       bearerFormat: pxk
-      description: Partner API key `pxk_<prefix>_<secret>`
+      description: Partner API key `pxk_<prefix>_<secret>` (still supported)
+    PartnerAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived token from POST /partner/v1/oauth/token (token_use=partner_access)
+    PartnerOAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /partner/v1/oauth/token
+          scopes:
+            orders:read: Read orders
+            orders:write: Create orders
+            catalog:read: Read catalog
+            inventory:read: Read availability
+            webhooks:manage: Manage webhooks
+            exports:read: Exports, EDI, CoA
     BearerJWT:
       type: http
       scheme: bearer
@@ -450,6 +534,70 @@ components:
         to:
           type: string
           description: RFC3339 or YYYY-MM-DD
+    PartnerCoaMap:
+      type: object
+      properties:
+        account_ar:
+          type: string
+          example: "62.01"
+        account_revenue:
+          type: string
+          example: "90.01"
+        account_bank_cash:
+          type: string
+          example: "51.01"
+        using_defaults:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+    PartnerCoaMapUpdate:
+      type: object
+      properties:
+        account_ar:
+          type: string
+        account_revenue:
+          type: string
+        account_bank_cash:
+          type: string
+    PartnerOAuthTokenRequest:
+      type: object
+      required: [grant_type, client_secret]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+        client_id:
+          type: string
+          description: PartnerApiKeys.KeyId or KeyPrefix
+        client_secret:
+          type: string
+          description: Full pxk_… plaintext
+        scope:
+          type: string
+          description: Space-separated subset of key scopes
+    PartnerOAuthTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        scope:
+          type: string
+    PartnerOAuthError:
+      type: object
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string
     PartnerExportJob:
       type: object
       properties:

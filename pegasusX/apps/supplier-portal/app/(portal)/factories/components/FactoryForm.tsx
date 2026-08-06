@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
@@ -13,6 +16,7 @@ const DEFAULT_LOCATION: LocationValue = {
 };
 
 export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
+  const t = usePortalT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -24,7 +28,7 @@ export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
     const lngValue = Number.parseFloat(location.lng);
     
     if (!trimmed || !location.address.trim() || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
-      setError("Name and address are required.");
+      setError(t("supplier_portal.residual.text.name_and_address_are_required"));
       return;
     }
     
@@ -33,7 +37,7 @@ export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
     try {
       await onSave(trimmed, location);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_factory_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_factory_failed"));
     } finally {
       setSaving(false);
     }
@@ -41,13 +45,13 @@ export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
 
   return (
     <div className="md-card p-6 space-y-4 mb-6">
-      <h2 className="md-typescale-title-medium">Add factory</h2>
+      <h2 className="md-typescale-title-medium">{t("supplier_portal.factories.components.factory_form.text.add_factory")}</h2>
       {error && <div className="text-red-600 md-typescale-body-medium">{error}</div>}
       <label className="block space-y-1">
-        <span className="md-typescale-label-medium">Name</span>
-        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Main factory" />
+        <span className="md-typescale-label-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</span>
+        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.factories.components.factory_form.text.main_factory")} />
       </label>
-      <LocationPicker value={location} onChange={setLocation} label="Factory address" />
+      <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.factory_address")} />
       <div className="flex gap-2">
         <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void handleSave()}>
           {saving ? "Saving…" : "Save factory"}

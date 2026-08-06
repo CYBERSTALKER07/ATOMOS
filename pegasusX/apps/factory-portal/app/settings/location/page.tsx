@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { factoryOpsLocationKey } from "@pegasusx/api-client";
 import { apiFetch } from "@/lib/auth";
@@ -22,6 +23,7 @@ type FactoryLocation = {
 };
 
 export default function FactoryLocationSettingsPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [factoryName, setFactoryName] = useState("");
   const [location, setLocation] = useState<LocationValue>({ address: "", lat: "0", lng: "0" });
@@ -105,18 +107,18 @@ export default function FactoryLocationSettingsPage() {
     <PageTransition>
       <PageChrome
         icon="loadingBay"
-        title="Factory location"
-        description="Street address used for supply routing and loading bay operations. Changes sync across the factory network."
+        title={t("factory_portal.settings.location.text.factory_location")}
+        description={t("factory_portal.residual.text.street_address_used_for_supply_routing_and_loading_bay_operation")}
         loading={loading}
         skeletonVariant="form"
       >
-        <PortalSection icon="factory" title="Depot address" className="max-w-xl">
+        <PortalSection icon="factory" title={t("factory_portal.settings.location.text.depot_address")} className="max-w-xl">
           {factoryName ? (
             <p className="text-sm" style={{ color: "var(--desk-text-secondary)" }}>
               <strong>{factoryName}</strong>
             </p>
           ) : null}
-          <LocationPicker value={location} onChange={setLocation} label="Factory address" />
+          <LocationPicker value={location} onChange={setLocation} label={t("factory_portal.residual.text.factory_address")} />
           <button
             type="button"
             className="portal-btn portal-btn--primary"

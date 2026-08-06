@@ -1,25 +1,32 @@
 locals {
-  tenant_slug                    = trimspace(var.tenant_slug) != "" ? lower(trimspace(var.tenant_slug)) : "ssmr"
-  resource_prefix                = trimspace(var.resource_prefix) != "" ? trimspace(var.resource_prefix) : "pegasusx-${local.tenant_slug}"
-  vpc_name                       = trimspace(var.vpc_name) != "" ? trimspace(var.vpc_name) : "${local.resource_prefix}-vpc"
-  spanner_instance_name          = trimspace(var.spanner_instance_name) != "" ? trimspace(var.spanner_instance_name) : "${local.resource_prefix}-spanner"
-  spanner_database_name          = trimspace(var.spanner_database_name) != "" ? trimspace(var.spanner_database_name) : "${local.resource_prefix}-db"
-  spanner_display_name           = trimspace(var.spanner_display_name) != "" ? trimspace(var.spanner_display_name) : "${local.resource_prefix} ledger"
-  redis_instance_name            = trimspace(var.redis_instance_name) != "" ? trimspace(var.redis_instance_name) : "${local.resource_prefix}-redis"
-  secret_kafka_bootstrap_servers = "${local.resource_prefix}-kafka-bootstrap-servers"
-  secret_kafka_topic_main        = "${local.resource_prefix}-kafka-topic-orders"
-  secret_kafka_topic_spatial     = "${local.resource_prefix}-kafka-topic-spatial"
-  secret_kafka_topic_realtime    = "${local.resource_prefix}-kafka-topic-realtime"
-  secret_kafka_topic_webhooks    = "${local.resource_prefix}-kafka-topic-webhooks"
-  secret_firebase_project_id     = "${local.resource_prefix}-firebase-project-id"
-  secret_firebase_auth_enabled   = "${local.resource_prefix}-firebase-auth-enabled"
-  secret_jwt                     = "${local.resource_prefix}-jwt-secret"
-  secret_global_pay_webhook      = "${local.resource_prefix}-global-pay-webhook-secret"
-  secret_adyen_webhook           = "${local.resource_prefix}-adyen-webhook-secret"
-  secret_stripe_webhook          = "${local.resource_prefix}-stripe-webhook-secret"
-  secret_google_maps_api_key     = "${local.resource_prefix}-google-maps-api-key"
-  secret_tauri_signing_private_key = "${local.resource_prefix}-tauri-signing-private-key"
-  secret_tauri_updater_pubkey      = "${local.resource_prefix}-tauri-updater-pubkey"
+  tenant_slug                        = trimspace(var.tenant_slug) != "" ? lower(trimspace(var.tenant_slug)) : "ssmr"
+  resource_prefix                    = trimspace(var.resource_prefix) != "" ? trimspace(var.resource_prefix) : "pegasusx-${local.tenant_slug}"
+  vpc_name                           = trimspace(var.vpc_name) != "" ? trimspace(var.vpc_name) : "${local.resource_prefix}-vpc"
+  spanner_instance_name              = trimspace(var.spanner_instance_name) != "" ? trimspace(var.spanner_instance_name) : "${local.resource_prefix}-spanner"
+  spanner_database_name              = trimspace(var.spanner_database_name) != "" ? trimspace(var.spanner_database_name) : "${local.resource_prefix}-db"
+  spanner_display_name               = trimspace(var.spanner_display_name) != "" ? trimspace(var.spanner_display_name) : "${local.resource_prefix} ledger"
+  redis_instance_name                = trimspace(var.redis_instance_name) != "" ? trimspace(var.redis_instance_name) : "${local.resource_prefix}-redis"
+  secret_kafka_bootstrap_servers     = "${local.resource_prefix}-kafka-bootstrap-servers"
+  secret_kafka_topic_main            = "${local.resource_prefix}-kafka-topic-orders"
+  secret_kafka_topic_spatial         = "${local.resource_prefix}-kafka-topic-spatial"
+  secret_kafka_topic_realtime        = "${local.resource_prefix}-kafka-topic-realtime"
+  secret_kafka_topic_webhooks        = "${local.resource_prefix}-kafka-topic-webhooks"
+  secret_firebase_project_id         = "${local.resource_prefix}-firebase-project-id"
+  secret_firebase_auth_enabled       = "${local.resource_prefix}-firebase-auth-enabled"
+  secret_jwt                         = "${local.resource_prefix}-jwt-secret"
+  secret_global_pay_webhook          = "${local.resource_prefix}-global-pay-webhook-secret"
+  secret_adyen_webhook               = "${local.resource_prefix}-adyen-webhook-secret"
+  secret_stripe_webhook              = "${local.resource_prefix}-stripe-webhook-secret"
+  secret_google_maps_api_key         = "${local.resource_prefix}-google-maps-api-key"
+  secret_internal_api_key            = "${local.resource_prefix}-internal-api-key"
+  secret_payme_webhook               = "${local.resource_prefix}-payme-webhook-secret"
+  secret_click_webhook               = "${local.resource_prefix}-click-webhook-secret"
+  secret_global_pay_service_id       = "${local.resource_prefix}-global-pay-service-id"
+  secret_global_pay_username         = "${local.resource_prefix}-global-pay-username"
+  secret_global_pay_password         = "${local.resource_prefix}-global-pay-password"
+  secret_redis_auth                  = "${local.resource_prefix}-redis-auth"
+  secret_tauri_signing_private_key   = "${local.resource_prefix}-tauri-signing-private-key"
+  secret_tauri_updater_pubkey        = "${local.resource_prefix}-tauri-updater-pubkey"
   secret_windows_codesign_pfx        = "${local.resource_prefix}-windows-codesign-pfx"
   secret_windows_codesign_password   = "${local.resource_prefix}-windows-codesign-password"
   secret_apple_notarize_apple_id     = "${local.resource_prefix}-apple-notarize-apple-id"
@@ -64,16 +71,16 @@ resource "google_redis_instance" "cache" {
     maxmemory-policy       = "allkeys-lru"
     notify-keyspace-events = ""
   }
-  labels                  = local.labels
+  labels = local.labels
 }
 
 resource "google_spanner_instance" "ledger" {
-  name         = local.spanner_instance_name
-  config       = "regional-${var.region}"
-  display_name = local.spanner_display_name
+  name             = local.spanner_instance_name
+  config           = "regional-${var.region}"
+  display_name     = local.spanner_display_name
   processing_units = 100
-  labels       = local.labels
-  depends_on   = [google_project_service.required_apis]
+  labels           = local.labels
+  depends_on       = [google_project_service.required_apis]
 }
 
 resource "google_spanner_database" "main" {
@@ -248,6 +255,107 @@ resource "google_secret_manager_secret_version" "google_maps_api_key" {
   secret_data = var.google_maps_api_key
 }
 
+# P0-8: shells for the remaining ExternalSecret remoteRefs (backend-go-secrets).
+# Versions are conditional — phase0_sync / ops create stubs for unused PSP rails.
+
+resource "google_secret_manager_secret" "internal_api_key" {
+  secret_id = local.secret_internal_api_key
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "internal_api_key" {
+  count       = trimspace(var.internal_api_key) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.internal_api_key.id
+  secret_data = var.internal_api_key
+}
+
+resource "google_secret_manager_secret" "payme_webhook_secret" {
+  secret_id = local.secret_payme_webhook
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "payme_webhook_secret" {
+  count       = trimspace(var.payme_webhook_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.payme_webhook_secret.id
+  secret_data = var.payme_webhook_secret
+}
+
+resource "google_secret_manager_secret" "click_webhook_secret" {
+  secret_id = local.secret_click_webhook
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "click_webhook_secret" {
+  count       = trimspace(var.click_webhook_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.click_webhook_secret.id
+  secret_data = var.click_webhook_secret
+}
+
+resource "google_secret_manager_secret" "global_pay_service_id" {
+  secret_id = local.secret_global_pay_service_id
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "global_pay_service_id" {
+  count       = trimspace(var.global_pay_service_id) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.global_pay_service_id.id
+  secret_data = var.global_pay_service_id
+}
+
+resource "google_secret_manager_secret" "global_pay_username" {
+  secret_id = local.secret_global_pay_username
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "global_pay_username" {
+  count       = trimspace(var.global_pay_username) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.global_pay_username.id
+  secret_data = var.global_pay_username
+}
+
+resource "google_secret_manager_secret" "global_pay_password" {
+  secret_id = local.secret_global_pay_password
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "global_pay_password" {
+  count       = trimspace(var.global_pay_password) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.global_pay_password.id
+  secret_data = var.global_pay_password
+}
+
+resource "google_secret_manager_secret" "redis_auth" {
+  secret_id = local.secret_redis_auth
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "redis_auth" {
+  count       = trimspace(var.redis_auth) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.redis_auth.id
+  secret_data = var.redis_auth
+}
+
 resource "google_secret_manager_secret" "tauri_signing_private_key" {
   secret_id = local.secret_tauri_signing_private_key
   replication {
@@ -355,7 +463,7 @@ resource "google_storage_bucket" "app_updates" {
   name          = "${var.project_id}-${local.resource_prefix}-app-updates"
   location      = var.region
   force_destroy = false
-  
+
   uniform_bucket_level_access = true
   public_access_prevention    = "inherited"
 

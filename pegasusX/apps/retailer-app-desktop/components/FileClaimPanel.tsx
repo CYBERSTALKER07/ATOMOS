@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { claimFileKey } from "@pegasusx/api-client";
@@ -38,6 +39,7 @@ type Props = {
 };
 
 export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
+  const t = usePortalT();
   const [claimType, setClaimType] = useState<string>("CONCEALED_DAMAGE");
   const [description, setDescription] = useState("");
   const [qtyBySku, setQtyBySku] = useState<Record<string, number>>({});
@@ -130,7 +132,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
       setPhotoUrl(url);
     } catch (e) {
       setPhotoUrl("");
-      setError(e instanceof Error ? e.message : "Photo upload failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.photo_upload_failed"));
     } finally {
       setUploading(false);
     }
@@ -140,15 +142,15 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
     setError(null);
     setSuccessId(null);
     if (eligibility && !eligibility.eligible) {
-      setError("Window closed — claim window has expired.");
+      setError(t("retailer_desktop.residual.text.window_closed_claim_window_has_expired"));
       return;
     }
     if (selectedTotal <= 0) {
-      setError("Select at least one item quantity.");
+      setError(t("retailer_desktop.residual.text.select_at_least_one_item_quantity"));
       return;
     }
     if (needsPhoto && !photoUrl.trim()) {
-      setError("Photo required for this claim type.");
+      setError(t("retailer_desktop.residual.text.photo_required_for_this_claim_type"));
       return;
     }
     setSubmitting(true);
@@ -191,7 +193,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
       onFiled?.(claim);
       await refreshExisting();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Claim failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.claim_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -343,7 +345,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview}
-            alt="Claim proof"
+            alt={t("retailer_desktop.residual.text.claim_proof")}
             className="max-h-40 w-full rounded-xl object-cover"
           />
         )}

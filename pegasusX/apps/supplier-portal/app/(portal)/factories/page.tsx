@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -12,6 +13,7 @@ import { FactoryList } from "./components/FactoryList";
 const api = createSupplierApi();
 
 export default function FactoriesPage() {
+  const t = usePortalT();
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
   const [factories, setFactories] = useState<SupplierTopologyFactory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ export default function FactoriesPage() {
         setWarehouses(t.warehouses);
         setFactories(t.factories);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_factories_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_factories_failed")))
       .finally(() => setLoading(false));
   };
 
@@ -84,12 +86,12 @@ export default function FactoriesPage() {
   return (
     <PageChrome
       icon="factory"
-      title="Factories"
-      description="Production nodes for manifests and warehouse replenishment."
+      title={t("portal.nav.factories")}
+      description={t("supplier_portal.residual.text.production_nodes_for_manifests_and_warehouse_replenishment")}
       loading={loading}
       error={error}
       empty={factories.length === 0 && !showForm}
-      emptyMessage="No factories yet. Add a production node linked to your warehouse network."
+      emptyMessage={t("supplier_portal.residual.text.no_factories_yet_add_a_production_node_linked_to_your_warehouse_")}
       actions={
         <button type="button" className="md-btn md-btn-filled md-typescale-label-large px-4 py-2" onClick={() => setShowForm(true)}>
           Add factory

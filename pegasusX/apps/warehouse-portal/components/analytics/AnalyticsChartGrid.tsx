@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface AnalyticsChartGridProps {
@@ -6,11 +9,12 @@ interface AnalyticsChartGridProps {
 }
 
 export default function AnalyticsChartGrid({ dailySeries, fmtCurrency }: AnalyticsChartGridProps) {
+  const t = usePortalT();
   return (
     <div className="grid grid-cols-1 gap-6">
       {/* Daily Revenue Chart — VelocityGauge unmounted (no avg-dispatch SoT) */}
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-        <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
+        <h2 className="text-sm font-semibold mb-4">{t("warehouse_portal.analytics.analytics_chart_grid.text.daily_revenue")}</h2>
         {dailySeries.length > 0 ? (
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={dailySeries}>

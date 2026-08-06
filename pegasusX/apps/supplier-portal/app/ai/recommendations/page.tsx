@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { ApiClient, ApiError } from "@pegasusx/api-client";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -46,6 +47,7 @@ function isRestricted(error: unknown) {
 }
 
 export default function SupplierAIRecommendationsPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [items, setItems] = useState<SupplierAIRecommendation[]>([]);
   const [filter, setFilter] = useState<StatusFilter>("PENDING");
@@ -145,7 +147,7 @@ export default function SupplierAIRecommendationsPage() {
   return (
     <PageChrome
       icon="ai"
-      title="AI recommendation review"
+      title={t("supplier_portal.ai.recommendations.text.ai_recommendation_review")}
       description={`Supplier-scoped advisory outputs with explanation evidence and human decision authority.${lastLoadedAt ? ` Last refreshed ${formatDateTime(lastLoadedAt)}.` : ""}`}
       loading={loading && items.length === 0}
       skeletonVariant="table"
@@ -171,14 +173,14 @@ export default function SupplierAIRecommendationsPage() {
         </div>
       </section>
 
-      {restricted ? <FormAlert variant="error">Access restricted for this supplier session.</FormAlert> : null}
-      {offline ? <FormAlert>You are offline. Showing the last loaded recommendations.</FormAlert> : null}
+      {restricted ? <FormAlert variant="error">{t("supplier_portal.ai.recommendations.text.access_restricted_for_this_supplier_session")}</FormAlert> : null}
+      {offline ? <FormAlert>{t("supplier_portal.ai.recommendations.text.you_are_offline_showing_the_last_loaded_recommendations")}</FormAlert> : null}
       {staleMessage ? <FormAlert>{staleMessage}</FormAlert> : null}
       {feedback ? <FormAlert>{feedback}</FormAlert> : null}
 
       {!restricted && !error && items.length === 0 && !loading ? (
         <section className="desk-card p-6">
-          <h2 className="md-typescale-title-large">No recommendations</h2>
+          <h2 className="md-typescale-title-large">{t("supplier_portal.ai.recommendations.text.no_recommendations")}</h2>
           <p className="md-typescale-body-medium mt-2" style={{ color: "var(--desk-text-secondary)" }}>
             No {filter.toLowerCase()} advisory rows are available for this supplier.
           </p>
@@ -202,14 +204,14 @@ export default function SupplierAIRecommendationsPage() {
                   </p>
                 </div>
                 <div className="text-left lg:text-right">
-                  <p className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>Score</p>
+                  <p className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>{t("supplier_portal.ai.recommendations.text.score")}</p>
                   <p className="md-typescale-title-large">{recommendation.score.toFixed(2)}</p>
                 </div>
               </div>
 
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <div>
-                  <p className="md-typescale-label-medium mb-2" style={{ color: "var(--color-md-outline)" }}>Reason codes</p>
+                  <p className="md-typescale-label-medium mb-2" style={{ color: "var(--color-md-outline)" }}>{t("supplier_portal.ai.recommendations.text.reason_codes")}</p>
                   <div className="flex flex-wrap gap-2">
                     {recommendation.reason_codes.map((code) => (
                       <span className="md-chip" key={code}>{code}</span>
@@ -217,7 +219,7 @@ export default function SupplierAIRecommendationsPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="md-typescale-label-medium mb-2" style={{ color: "var(--color-md-outline)" }}>Evidence</p>
+                  <p className="md-typescale-label-medium mb-2" style={{ color: "var(--color-md-outline)" }}>{t("supplier_portal.ai.recommendations.text.evidence")}</p>
                   <div className="grid gap-2">
                     {recommendation.evidence.map((evidence) => (
                       <div className="flex flex-wrap gap-2 md-typescale-body-small" key={`${evidence.label}:${evidence.value}`}>
@@ -247,7 +249,7 @@ export default function SupplierAIRecommendationsPage() {
                     className="md-input-outlined min-h-24 p-3 md-typescale-body-medium"
                     value={notes[recommendation.recommendation_id] ?? ""}
                     onChange={(event) => setNotes((current) => ({ ...current, [recommendation.recommendation_id]: event.target.value }))}
-                    placeholder="Add operator rationale"
+                    placeholder={t("supplier_portal.ai.recommendations.text.add_operator_rationale")}
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">

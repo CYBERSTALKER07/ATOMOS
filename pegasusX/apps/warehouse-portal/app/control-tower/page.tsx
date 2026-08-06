@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   LiveEKGNetworkGraph,
@@ -35,6 +36,7 @@ const performanceData: Record<string, unknown>[] = [];
 const scenariosData: Record<string, unknown>[] = [];
 
 export default function ControlTowerPage() {
+  const t = usePortalT();
   const [view, setView] = useState<"network" | "map">("network");
   const token = useToken();
   const supplierId = useMemo(() => {
@@ -66,8 +68,8 @@ export default function ControlTowerPage() {
       {/* Header / Tabs */}
       <div className="flex items-center justify-between z-10">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Global Control Tower</h1>
-          <p className="text-sm text-gray-400">Real-time network telematics and predictive intelligence.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">{t("warehouse_portal.control_tower.text.global_control_tower")}</h1>
+          <p className="text-sm text-gray-400">{t("warehouse_portal.control_tower.text.real_time_network_telematics_and_predictive_intelligence")}</p>
         </div>
         <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
           <button
@@ -100,7 +102,7 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Actual vs Plan</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">{t("warehouse_portal.control_tower.text.actual_vs_plan")}</h3>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={performanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
@@ -125,7 +127,7 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Baseline vs Upside Scenarios</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">{t("warehouse_portal.control_tower.text.baseline_vs_upside_scenarios")}</h3>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={scenariosData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>

@@ -33,9 +33,9 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 | Web frontend | **6/10** | Excellent type hygiene and idempotency; no server-state library across 60k lines, 0% localized, accessibility unusable. |
 | iOS | **5/10** | Modern SwiftUI/`@Observable`; Gate-0 removed convertFromSnakeCase decoder bug. Background location still misconfigured; P0-4 offline enqueue remains. |
 | Android | **6/10** | Best offline queue in the repo; supplier Android compiles again (Gate-0 OrgFleet). |
-| Infra / DevOps | **3/10** | Well-authored manifests, zero operationalization: no Spanner backup, local Terraform state, prod overlay renders placeholder images, no CD. |
-| AI / optimization | **2.5/10** *(code quality higher post minutes-fix; cloud still undeployed)* | OR-Tools sidecar + Clarke-Wright exist; cloud dispatch is heuristic until AR image/replicas; forecasting remains a 7-day mean. |
-| Integration surface | **8/10** *(GS1/ZPL + 1C journals CSV/XML + EDI-lite; AS2/configurable CoA still open)* | Partner keys + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + GLN/SSCC/ZPL + journals + OpenAPI. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). |
+| Infra / DevOps | **5/10** | Digest-pinned prod overlay + ManagedCertificate + ExternalSecret path WIRED; live apply / real GSM / CD still ops. |
+| AI / optimization | **4/10** *(§8.5 constraints/multi-depot/OSRM matrix wired; cloud still undeployed)* | OR-Tools sidecar + Clarke-Wright exist; cloud dispatch heuristic until AR image/replicas; forecasting remains a 7-day mean. |
+| Integration surface | **9/10** *(OAuth client_credentials + GS1/ZPL + DESADV SSCC + configurable CoA journals + EDI-lite; AS2/certified 1C still open)* | Partner keys + OAuth + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + GLN/SSCC/ZPL + DESADV GIN + journals CoA + OpenAPI. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). |
 | Multi-tenancy (runtime) | **1/10** | One supplier, bound at startup. |
 
 ---
@@ -64,28 +64,28 @@ Worth stating precisely, because the rest of this report is critical and the goo
 
 ## 2. The theatre list
 
-The single most important pattern in this codebase: **features ship the *interface* of a capability with none of the substance, and the deferral was never tracked.** This is more dangerous than missing features, because dashboards, policy toggles, and state machines all imply the thing works. (Count refreshed 2026-08-04 — claims removed from theatre; fiscal/billing downgraded to partial.)
+The single most important pattern in this codebase: **features ship the *interface* of a capability with none of the substance, and the deferral was never tracked.** This is more dangerous than missing features, because dashboards, policy toggles, and state machines all imply the thing works. (Count refreshed 2026-08-06 — AI confidence / touchless MinConfidence / promo attribution honesty; fiscal/billing/cold-chain remain partial; desktop portal i18n Wired as draft, mobile i18n still open.)
 
 | # | Feature | What exists | What's actually there | Evidence |
 |---|---|---|---|---|
 | 1 | **Fiscalization (legal OFD)** | Full FISCALIZING → FISCAL_FAILED retry state machine, `OrderFiscalReceipts`, env-selected providers (`PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`) | **Not unconditional Fake anymore** — `defaultFiscalProvider()` → `ProviderFromEnv()`; SSMR/staging use `FISCAL_PROVIDER=PEGASUS` (platform commercial receipts). **Legal Soliq OFD still not production-ready** — `MY_SOLIQ` needs sandbox creds; misconfig returns hard-fail rather than silent Fake. | `order/fiscal.go` (`defaultFiscalProvider`); `order/fiscal_provider.go` (`ProviderFromEnv`) |
-| 2 | **Marketplace commission** | 3 billing tables, meter + tier workers, consumer started in `runtime_workers.go` | Workers **are constructed** (`bootstrap` + `BillingTierConsumer.Start`). Writes still **don't match schema** (`AmountDelta` vs `CurrentValue`; insert omits `EventId`/`MeterType` NOT NULL columns) — first live meter event fails. **Nothing is successfully metered.** | `internal/services/billing/meter_worker.go:47-60`; `schema/spanner.ddl` `BillingMeterEvents` / `BillingSupplierMeters` |
+| 2 | **Marketplace commission** | 3 billing tables, meter + tier workers, consumer started | **Schema WIRED** (`EventId`/`MeterType`/`Amount`/`CurrentValue`). **Event amount decode FIXED** (`amount_minor` / nested `total.amount`). Residual: fee schedule + invoices. | `kafka/billing_tier_worker.go`; `internal/services/billing/meter_worker.go` |
 | ~~3~~ | ~~**Claims / disputes**~~ | — | **Retired (2026-08-04).** Live service + routes + e2e. `Claims`/`ClaimEvidences` mirrored into `schema/spanner.ddl` (Gate-0). Portal claim-window settings UX still open. | `schema/spanner.ddl`; `claims/*` |
 | ~~4~~ | ~~**Double-entry ledger**~~ | — | **Deleted (Gate-0).** Orphan `ledger/` package removed; live money path remains `PaymentLedgerEntries` / `ArLedgerEntries`. | — |
-| 5 | **AI confidence gate** | `MinConfidence` knob, debug log for rejections | Minimum possible score is `0.4 + 0.15 + 0 + 0 = 0.55`; the gate is `score < 0.55`. **`0.55 < 0.55` is false — every event passes.** | `synthesis/engine.go:181` vs `:99, 451-455` |
-| 6 | **Touchless replenishment policy** | `MinConfidenceScore FLOAT64 DEFAULT 0.85` | Loaded, written, and **never used in any decision**. A supplier setting "only auto-approve above 95%" is silently ignored. | `replenishment/policies.go:52,83` vs `touchless.go:41-52,242-253` |
+| ~~5~~ | ~~**AI confidence gate**~~ | `MinConfidence` knob + reject path | **WIRED (Gate-0).** Base score `0.15`; low-signal orders score &lt; default `0.55` and are dropped; `MinConfidence &gt;= 1.0` is reject-all. | `apps/ai-worker/synthesis/engine.go`; `engine_test.go` |
+| ~~6~~ | ~~**Touchless replenishment policy**~~ | `MinConfidenceScore FLOAT64 DEFAULT 0.85` | **WIRED (Gate-0).** `TouchlessEligible` rejects when `confidence &lt; MinConfidenceScore` (default 0.85). | `replenishment/touchless.go`; `mei_engine_test.go` |
 | 7 | **Auto-confirm of AI preorders** | `AutoConfirmAt` set to +24h; `AutoConfirmDueOrders` + worker ticker | **Wired behind `AUTO_CONFIRM_PREORDERS_ENABLED=1`** (Gate-0; default off). Without the flag, preorders stay PENDING until human confirm. | `runtime_workers.go`; `order/preorder_service.go` |
 | 8 | **Seasonality** | Two templates with `Multiplier` ×1.35 / ×1.15 | **Partial:** applied on §8.1 baseline writes + replenishment suggested qty; HW-estimated template library still open. | `planning/forecast_runner.go`; `replenishment/seasonal.go` |
 | 9 | **Weather & POS demand signals** | A `CompositeSignalProvider` "demand sensing stack" | Fake qty stubs **removed** (§8.1); providers return empty until real weather/POS APIs. | `predictivepush/signals.go` |
-| 10 | **Price elasticity / promo simulation** | Promo simulator with projected volume, margin, and a "closed-loop score" | Fixed 0.5 elasticity for every product and season. The actual-vs-projected scorer does `_ = promotionID` — it **counts all completed orders in 30 days** and calls that the promotion's result, comparing an order *count* against a projected unit *volume*. | `planning/promo_eval.go:59`, `:156-163` |
+| 10 | **Price elasticity / promo simulation** | Promo simulator with projected volume, margin, and a "closed-loop score" | **Partial (2026-08-06):** caller-supplied `elasticity` (default 0.5) persisted as `elasticity_used`; closed-loop actuals attributed via `LineItemsJson.promotion_id` (units + line totals), empty promo → zeros, `attribution=line_promotion_id`. Still a **sandbox heuristic**, not demand-model elasticity curves. | `planning/promo_eval.go`; `promo_eval_test.go` |
 | 11 | **Forecast accuracy** | A MAPE figure shown to suppliers | **Wired (§8.4):** `ForecastAccuracyDaily` + nightly job; portal reads server WAPE/bias/TS. Residual: enable `FORECAST_ACCURACY_ENABLED` + apply migration in each env. | `planning/accuracy.go`; `GET .../demand/accuracy` |
-| 12 | **Cold chain** | `RequiresColdChain`, `StorageTempMinC/MaxC`, a `TEMPERATURE_BREACH` condition type | **No temperature ingestion, no sensor integration, no reading table, no excursion detection.** A human reports a breach after the fact. The flags never reach the route solver. | ddl:625-633; `order/condition.go:25` |
+| 12 | **Cold chain** | `RequiresColdChain`, `StorageTempMinC/MaxC`, `TEMPERATURE_BREACH`, WMS readings | **Partial:** product/order cold+hazmat flags reach OR-Tools (§8.5); WMS temperature ingest exists (`WMS_COLD_CHAIN_ENABLED`). Residual: always-on prod sensor fleet / full excursion automation. | optimizer contract; `docs/WMS_COLD_CHAIN.md`; `dispatch/volume.go` |
 | 13 | **Multi-currency** | 17 `Currency STRING(3)` columns threaded through orders and payments | No FX rate table, no conversion, no multi-currency arithmetic. | `schema/spanner.ddl` |
-| 14 | **i18n** | 738 keys × en/ru/uz, generated to web JSON + iOS `.strings` + Android `strings.xml` | **~1,582 hardcoded English strings and 0 translation calls in the portals**; 0 `NSLocalizedString` in 453 Swift files; 1,125 hardcoded `Text("...")` in Kotlin. The generated catalogs are referenced by nothing. | `packages/i18n/generated/*`; portal `.tsx` scan |
+| 14 | **i18n** | ~2750 keys × en/ru/uz (`portal.*` + `supplier_portal.*` / `warehouse_portal.*` / `factory_portal.*` / `retailer_desktop.*`), generated to web JSON + iOS `.strings` + Android `strings.xml` | **Desktop portals UI: Wired (draft translations, 2026-08-06)** — four desktop portals (`supplier-portal`, `warehouse-portal`, `factory-portal`, `retailer-app-desktop`) use `usePortalT` across app/components user-visible UI; catalogs regenerated. **Mobile still Partial / unwired.** Draft ru/uz — not certified linguistic Done. Do not claim full-platform i18n Done. | `packages/i18n/*`; desktop portal `app/` + `components/` |
 
-Two more that are naming rather than function: `RunMEIONetwork` ("Multi-Echelon Inventory Optimization") is a two-node greedy donor/receiver swap per SKU (`replenishment/mei_engine.go:168`); `SourceFallback = "KMEANS_BINPACK"` labels an algorithm that contains **no k-means anywhere in the repository**.
+Two more that are naming rather than function: `RunMEIONetwork` ("Multi-Echelon Inventory Optimization") is a two-node greedy donor/receiver swap per SKU (`replenishment/mei_engine.go:168`); `SourceFallback` was renamed off fake `KMEANS_BINPACK` (Gate-0).
 
-**Recommendation:** every item above is either wired, deleted, or explicitly renamed to what it is. Shipping `MinConfidenceScore` to a customer-facing settings screen when the field is ignored is a trust liability, not a feature. **Operating instruction:** [`docs/SUBSTANCE_GATE.md`](docs/SUBSTANCE_GATE.md) — SG algorithm + per-role / per-platform E2E verification against `PX_E2E_*` markers.
+**Recommendation:** every item above is either wired, deleted, partial with an honest residual, or explicitly renamed. **Operating instruction:** [`docs/SUBSTANCE_GATE.md`](docs/SUBSTANCE_GATE.md) — SG algorithm + per-role / per-platform E2E verification against `PX_E2E_*` markers.
 
 ---
 
@@ -110,7 +110,14 @@ Removed `.convertFromSnakeCase` from driver + payload `APIClient.swift` so expli
 
 **P0-7 — ~~Failed migrations report success / no version table.~~ Closed (Gate-0 Track A).** `SchemaMigrations` + narrowed benign DDL set in `cmd/apply-migration`.
 
-**P0-8 — The prod overlay is undeployable.** `kustomize build infra/k8s/overlays/prod` emits literal `PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER` for 3 workloads, `pegasusx-optimizer-core:local`, and two `:latest` images from a **different GCP project**. The `backend-go-secrets` ExternalSecret requires 12 keys; Terraform provisions 5 of those names and only 5 of all 19 secrets have any version — none of them JWT, GlobalPay, Adyen, Stripe, or Maps. ESO sync is atomic, so no pod starts. The Ingress references TLS secret `pegasusx-api-tls` that nothing creates.
+**P0-8 — ~~The prod overlay is undeployable.~~ Partially closed (Gate-0 images/TLS + P0-8 secrets path).**
+
+| Slice | Status |
+|-------|--------|
+| Placeholder / `:latest` / `:local` images | **Closed (Gate-0)** — digest pins in `overlays/prod`; `scripts/ci_fail_placeholder_images.sh` green |
+| TLS `pegasusx-api-tls` | **Closed for prod render** — ManagedCertificate + ingress patch (no `secretName` after kustomize) |
+| ExternalSecret / GSM | **Repo-WIRED** — TF shells for all 12 ES GSM names; `phase0_sync_gsm_secrets.sh` can stub unused PSP rails (`unused-rail-placeholder`); prod overlay includes SecretStore+ExternalSecret; SSMR maps `redis-password` |
+| Residual (ops) | Real GSM versions (JWT, internal-api-key, Maps, GP merchant password, redis AUTH); `kubectl apply` prod overlay; DNS → LB for ManagedCert Active; real optimizer-core AR image + replicas ≥ 1 |
 
 **P1 — Others worth naming:**
 - **`Claims` / `ClaimEvidences` missing from `schema/spanner.ddl`.** Tables exist in `schema/migrations/20260728_logistics_claims.ddl` (and are used by the live claims package). Greenfield `spanner.ddl` applies and schema-drift CI that only diffs the monolith file will miss them — mirror the CREATE TABLEs into `spanner.ddl`.
@@ -214,18 +221,18 @@ What the code offers them today:
 
 | They need | PegasusX has |
 |---|---|
-| An API their ERP can call | **Partner API keys + `/partner/v1` + OpenAPI** (Wave 1). OAuth client_credentials still absent; human JWT remains for portal. |
+| An API their ERP can call | **Partner API keys + OAuth2 client_credentials + `/partner/v1` + OpenAPI** (Wave 1). Human JWT remains for portal. |
 | Events pushed to their system | **Outbound HMAC webhooks** (Wave 1) + list/deactivate/replay (Wave 2A). Inbound payment gateway webhooks unchanged. |
 | A file drop | **Bulk export API + optional SFTP** (Wave 2A). EDI/AS2 still open. |
 | EDI (ORDERS/ORDRSP/DESADV/INVOIC) | **EDI-lite over SFTP** (Wave 2B) — UNA segment dialect; no AS2 / certified EDIFACT. See [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). |
 | Bulk load | **The one real primitive:** a 9-state import wizard (`supplier/import_sessions.go:177`) with signed-URL upload, column auto-discovery, mapping, staging with raw+cleaned JSON, and error summaries. Production-grade — but **inventory/product only, one-way, human-driven**. |
-| GS1 identifiers | **GTIN + GLN + SSCC + ZPL (Wave 2C).** Shared `gs1/` package; GLN on org profiles; SSCC-18 on `ManifestShipUnits` at seal; ZPL label API. See [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md). No ASN/EDI SSCC segments. |
+| GS1 identifiers | **GTIN + GLN + SSCC + ZPL (Wave 2C) + DESADV GIN+BJ.** Shared `gs1/` package; GLN on org profiles; SSCC-18 on `ManifestShipUnits` at seal; ZPL label API; DESADV emits CPS/PAC/GIN from ship units. See [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md) / [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). |
 | Label printing | **No ZPL.** Scanning in, nothing out. |
 | Accounting export | `PaymentLedgerEntries` and `MasterInvoices` internally; **no journal export, no chart-of-accounts mapping**. |
 | Legal receipt | `FISCAL_PROVIDER=PEGASUS` issues platform commercial receipts; **`MY_SOLIQ` OFD adapter exists but needs sandbox/prod creds.** You cannot legally close a Soliq-mandated sale until L5 lands. |
 | Data warehouse | **Zero BigQuery references.** |
 
-**Superseded (Wave 1+2A+2B+2C + journals):** partner keys, `/partner/v1`, webhooks, bulk export/SFTP, EDI-lite, GLN/SSCC/ZPL, and **1C journals CSV/JSON/XML** — see [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). Residual: AS2, configurable CoA / certified 1C exchange, OAuth client_credentials, EDI SSCC segments.
+**Superseded (Wave 1+2A+2B+2C + journals + DESADV SSCC + CoA + OAuth):** partner keys, `/partner/v1`, **OAuth2 client_credentials**, webhooks, bulk export/SFTP, EDI-lite (incl. DESADV CPS/PAC/GIN+BJ), GLN/SSCC/ZPL, **1C journals CSV/JSON/XML**, and **configurable CoA** — see [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). Residual: AS2, certified 1C exchange package.
 
 The fix is small relative to its impact, because the hard part is already built: `OutboxEvents` + Kafka + a typed event registry (`registry.json`, 107KB of event shapes) is exactly the substrate an outbound webhook system needs. Items 1–4 in §8.9 are perhaps **5% of the engineering already invested** and are the difference between selling to one distributor's field team and selling to a retail chain.
 
@@ -304,21 +311,23 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 ### 8.5 Routing and dispatch
 
-**Why.** Beyond the P0 unit bug, the solver is blind to the constraints that make a delivery legal and physically possible. `Products.HandlingClass`, `RequiresColdChain`, and `IsHazardous` are loaded into line items (`order/volume.go:80`) and carried on events (`events/types.go:493-495`) — then **dropped at the contract boundary**, because `contract.Stop` (`packages/optimizer-contract/types.go:68-90`) has no such field. A frozen order and a hazmat order are indistinguishable to the router.
+**Why.** Beyond the P0 unit bug, the solver historically dropped handling constraints at the contract boundary and forced a single depot. §8.5 wires those paths in code; cloud live OR-Tools remains ops-gated on AR image + replicas.
 
-**Constraint fidelity.** Add to `contract.Stop`: `handling_class`, `requires_cold_chain`, `is_hazardous`, `service_minutes`, `access_restriction`. Add per vehicle: `has_refrigeration`, `hazmat_certified`, `shift_start`/`shift_end`, `max_route_minutes`, `start_lat`/`start_lng`. In OR-Tools these become `AddAllowedVehiclesForIndex` (incompatibility) and a `RouteDuration` dimension (shift/HOS). Validate: assert no cold-chain stop is ever assigned to a non-refrigerated vehicle.
+**Constraint fidelity — WIRED (2026-08-06).** Contract `Stop` carries `handling_class`, `requires_cold_chain`, `is_hazardous`, `service_minutes`, `access_restriction`. Vehicles carry `has_refrigeration`, `hazmat_certified`, `shift_start`/`shift_end`, `max_route_minutes`, `start_lat`/`start_lng` (+ optional end). OR-Tools uses allowed-vehicle filters + Time span / StopCount dimensions (`contract_solver.py`). Dispatch hydrate ORs line-item / product handling into `GeoOrder`. Unit tests: cold stop never on non-reefer; max_stops orphans without truncating metrics.
 
-**Multi-depot.** `contract_solver.py:98-99` forces all vehicles to `vehicles_in[0]`'s origin, and the Go client makes it structural by passing one `depotLat/depotLng` to every vehicle (`optimizerclient/client.go:172-184`). Pass per-vehicle start/end nodes and use OR-Tools' native multi-depot form.
+**Multi-depot — WIRED.** Per-vehicle start/end nodes via `RoutingIndexManager(starts, ends)`; Go client no longer forces one depot coordinate onto every vehicle (driver lat/lng when present, else warehouse depot).
 
-**Real road distances.** Call OSRM `/table/v1/driving/` for the matrix instead of haversine. The OSRM deployment exists (needs the P0 volume fix) and the HTTP client with circuit breaker exists (`routing/osrm.go`) — it is only ever used for polyline geometry, never for `/table/`. Cache matrices in Redis keyed by the sorted stop-ID set; retailer locations are static, so hit rates will be high. Validate against GPS-actual leg durations from driver telemetry — expect to find today's haversine estimates 20–40% short.
+**Real road distances — WIRED (matrix path).** Go calls OSRM `/table/v1/driving/?annotations=distance` (`routing/osrm.go` `DistanceMatrix`), embeds `distance_matrix_m` on `SolveRequest`, falls back to haversine. Solver stays pure (no OSRM from Python). Residual: GPS-telemetry calibration of matrix vs actual legs; Redis matrix cache optional/not required for correctness.
 
-**Fix `max_stops_per_route`.** Currently post-hoc truncation (`:228-234`): the solver builds a full route, the tail is chopped to orphans, and **`distance_km`/`duration_min` are not recalculated** — so persisted route metrics are wrong. The tail is where guided local search puts the geographically awkward stops, so you systematically orphan the hardest deliveries. Model it as a real count dimension.
+**`max_stops_per_route` — WIRED.** Modeled as a StopCount capacity dimension (no post-hoc tail chop that left stale `distance_km`/`duration_min`).
 
-**Fix the time budget.** `OPTIMIZER_SOFT_TIMEOUT_SEC: "2"` equals the solver's internal `DEFAULT_TIME_LIMIT_MS = 2000`, so any solve that uses its full budget returns HTTP 504. Make the HTTP timeout strictly greater (internal 5s, HTTP 8s), honor `tunables.time_limit_ms` (ignored at `:195`, making `MAX_TIME_LIMIT_MS` unreachable), and vectorize the O(n²) pure-Python haversine matrix with numpy — 500 stops is 250k `atan2` calls *inside* the HTTP budget, which is the real ceiling (~100–150 stops today).
+**Time budget — WIRED.** Solver default `time_limit_ms=5000` (honors tunables; clamp 60s); Go HTTP soft timeout 8s; sidecar `OPTIMIZER_SOFT_TIMEOUT_SEC=8`. Numpy vectorization of haversine remains a residual scale optimization when OSRM matrix is absent.
 
-**Stop reporting OPTIMAL from a heuristic.** `vrp.rs:183-187` and `cpsat.rs:133-137` return `SolverStatus::Optimal` whenever nothing is unassigned. Also fix the Rust index bug — indices are computed from the *shrinking* `unassigned` vector (`vrp.rs:51-62`), so after the first `remove()` every matrix lookup reads the wrong cell, while the 2-opt block a few lines down indexes correctly. Since the Rust service is deployed nowhere, the honest options are: delete it, or deploy the **Go Clarke-Wright** (`ai-worker/optimizer/clarke_wright.go`) as a genuine A/B arm — it is correct, deterministic, has proper window feasibility with wait-at-open semantics, and deserves better than being orphaned on port 8081.
+**Cloud OR-Tools deploy path — WIRED (replicas ops-gated).** SSMR overlay includes optimizer-core Deployment+Service with AR image remap (`replicas: 0` until image exists). Prod keeps pin + `replicas: 0` — raise ≥ 1 after publish. Build recipe in [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Exit criterion: `"optimizer_source":"optimizer"` + `PX_E2E_OPTIMIZER_CONSTRAINT_OK` when sidecar up.
 
-**Dispatch.** The bin-packer is good (balanced first-fit over H3 groups, smallest-fit vehicle with tetris buffer, Kahan summation) — just rename `KMEANS_BINPACK`, which contains no k-means. Then add **automated exception remediation**: `ManifestExceptions` is currently read-and-display with manual reassignment. On exception, re-run the solver for the affected subset with the failed stop penalized, and escalate only if no feasible reassignment exists. And wire `PriorityBoostPenalty` (`dispatch/zone_override.go:81-92`, never called) so `PRIORITY_BOOST` and `REROUTE` zones stop being advisory metadata that changes nothing.
+**Stop reporting OPTIMAL from a heuristic.** `vrp.rs` / `cpsat.rs` still mis-report Optimal; Rust sidecar remains undeployed. Options: delete it, or deploy Go Clarke-Wright as a real A/B arm. **Deferred (explicit residual).**
+
+**Dispatch.** Bin-packer remains solid. Automated exception remediation + `PriorityBoostPenalty` wiring remain **deferred (explicit residual).**
 
 ---
 
@@ -340,13 +349,25 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 **Refunds and settlement.** The only occurrence of "Refund" in non-test Go is reading `charge.AmountRefunded` off a Stripe webhook. Add a refund initiation path (full/partial, per gateway, with ledger entries and fiscal reversal). Add real supplier payout execution — `GET /v1/payment/settlement/authority` is a reporting view, and `warehouse/ops_portal.go:772` returns a hardcoded fake invoice (`"invoice_id": "inv-1"`) in the treasury endpoint.
 
-**Then fix the billing meter** (§2.2) so the platform can actually charge: workers are already constructed and the consumer starts — **fix the column mismatch** (`EventId`/`MeterType`/`CurrentValue` vs `AmountDelta`), define a fee schedule (per-order, per-GMV-bps, or subscription), and emit invoices. Today nothing is *successfully* metered.
+**Then the billing meter** (§2.2) — **schema + event decode WIRED (2026-08-06):** Spanner columns match; `BillingTierWorker` reads `amount_minor` / nested `total.amount` from live `ORDER_FINALIZED`. Residual: define a fee schedule (per-order, per-GMV-bps, or subscription) and emit invoices / payouts.
 
 ---
 
 ### 8.7 Warehouse execution — the capability that caps the addressable market
 
-**Why.** Warehouse bins, lots, expiry, serials, pick lists, cycle counts, and stocktake are **absent** — not unimplemented, absent. (Retailer on-hand **is** modeled: `RetailerStockBalances`, `RetailerReceiveSessions`, movements, counts — Phase B.) `Products` has `IsPerishable` and `StorageTempMinC/MaxC` but nothing tracks an actual expiry date on **warehouse** stock. The current model is "a warehouse is a bag of SKUs; a human finds the goods from memory." That works for a small distributor and is **disqualifying for food or pharma**, and it is why step 10 in §5 is a hard blocker.
+**Wave 1A — WIRED (flag `WMS_LOTS_ENABLED`).** `WarehouseLocations` + `StockLots` + `OrderLotReservations`, putaway APIs, FEFO/FIFO allocate with shelf-life gating, `SupplierInventoryV2` roll-up — [`docs/WMS_LOTS_FEFO.md`](./docs/WMS_LOTS_FEFO.md). Portal `/bins` + warehouse Android/iOS putaway.
+
+**Wave 1B — WIRED (flag `WMS_PICK_WAVES_ENABLED`).** `PickWaves` + `PickTasks` + `Manifest.PickWaveId`, create/confirm/waive, hard seal gate (`pick_wave_required` / `pick_wave_incomplete`) — [`docs/WMS_PICK_WAVES.md`](./docs/WMS_PICK_WAVES.md). Portal `/pick-waves` + warehouse Android/iOS confirm.
+
+**Wave 1C / PR-4 — WIRED (flag `WMS_CYCLE_COUNTS_ENABLED`).** `CycleCounts` + `InventoryAdjustments`; create/submit; **approve applies lot QoH + V2 roll-up**; reject; ABC enqueue; inventory-accuracy KPI; portal + Android/iOS cycle UI — [`docs/WMS_CYCLE_COUNTS.md`](./docs/WMS_CYCLE_COUNTS.md).
+
+**PR-5 — WIRED (flags `WMS_PICK_SSHAPE_ENABLED`, `WMS_SEAL_SOFT_WARN`).** Zone serpentine + LIFO stop-rank pick ordering; soft-warn seal attaches `pick_wave_warning` instead of hard 409.
+
+**PR-6 — WIRED (flag `WMS_COLD_CHAIN_ENABLED`).** `TemperatureReadings` ingest + excursion quarantine — [`docs/WMS_COLD_CHAIN.md`](./docs/WMS_COLD_CHAIN.md).
+
+**PR-7 — WIRED (partial).** Inventory reconcile endpoint; ops checklist [`docs/WMS_GATE4_OPS.md`](./docs/WMS_GATE4_OPS.md); scan throughput deferred to native follow-up [`docs/WMS_GATE4_HARDENING.md`](./docs/WMS_GATE4_HARDENING.md). **Still open:** forbid all non-rollup V2 writers; serial tracking; full scanner UX.
+
+**Why (original gap).** Without lots/expiry, warehouse stock is a bag of SKUs — disqualifying for food/pharma. Retailer on-hand **is** modeled (`RetailerStockBalances`, receive sessions, counts). Wave 1A addresses warehouse expiry + location; Wave 1B adds manifest pick waves + seal gate; Wave 1C stubs cycle counts; ABC apply-on-approve / S-shape / cold-chain remain residual.
 
 **Schema.**
 ```
@@ -378,9 +399,9 @@ InventoryAdjustments(AdjustmentId, WarehouseId, ProductId, LotId,
 
 ### 8.8 Mobile — make the field layer trustworthy
 
-**Shared module per platform, first.** iOS shares 0.8% and Android 1.0% of their code; ~12,000 lines are byte-identical copy-paste concentrated in the enterprise updater, HTTP plumbing, WS envelope, and theme. Create a real Swift Package (`PegasusKit`) and an Android library module, move those four categories in, and add `gradle/libs.versions.toml`. Nothing else on this list is affordable to maintain 6× per platform.
+**Shared module per platform, first.** **Partial→Wired (2026-08-06):** [`packages/mobile-android-kit`](./packages/mobile-android-kit) + [`packages/mobile-ios-kit`](./packages/mobile-ios-kit) (`PegasusKit`) hold offline queue contract, HTTP flush semantics (409 ACK / 5xx retry / 4xx DEAD), reconnect backoff, client-policy snapshot. Design/barcode packages remain separate. Root [`gradle/libs.versions.toml`](./gradle/libs.versions.toml) added. Residual: fold AutoUpdater/WS clients into kit across all 6 role apps; payload iOS still lacks `.xcodeproj` for SPM. See [`docs/MOBILE_SHARED_KIT.md`](./docs/MOBILE_SHARED_KIT.md).
 
-**Generic offline queue.** Today Android supports **one endpoint** and silently deletes everything else (`OfflineSyncWorker.kt:45-50`), while iOS's SwiftData store holds 4 fields with no endpoint, no payload, no retry count, and no coordinates (`OfflineDeliveryStore.swift:21-30`). Persist `(endpoint, method, payloadJson, idempotencyKey, capturedLat, capturedLng, capturedAt, attemptCount)` and replay by endpoint. **Send the coordinates captured at the time of the action, not the current ones** — the server's 500m geofence check currently has nothing to validate against on replay. Remove `.fallbackToDestructiveMigration()` and write real Room migrations, or an app update will keep destroying offline deliveries.
+**Generic offline queue.** **Wired (driver + kit promotion 2026-08-06):** multi-endpoint flush was already live; now rows carry **capture-time** `capturedLat`/`capturedLng`/`capturedAtMs`, Room migrations replace `.fallbackToDestructiveMigration()` on driver, flush replays stored coords (not live GPS). Warehouse/factory Android use kit `PrefsOfflineQueueStore`; payload Android Room v2. **Still open:** warehouse scan throughput ([`docs/WMS_GATE4_HARDENING.md`](./docs/WMS_GATE4_HARDENING.md) / PR-7).
 
 **Proof of delivery.** There is **no photo and no signature capture in either driver app** — a repo-wide grep for every capture API returns only supplier product images. `photoProofUrl` is threaded through four layers and called with `nil` at both sites (`FleetMapView.swift:93`, `OffloadReviewScreen.kt:328`). For a **credit delivery** — goods handed over with no payment — there is no evidence artifact at all. Add `PhotosPicker`/`ImageCapture` plus a signature pad, store the image as a file reference in the offline queue, and make it mandatory for `markCreditDelivery` and `reportShopClosed`.
 
@@ -400,7 +421,7 @@ InventoryAdjustments(AdjustmentId, WarehouseId, ProductId, LotId,
 
 Per §7 this is the highest-leverage work in the report relative to its cost, because the hard substrate already exists.
 
-**1. Machine identity — WIRED (Wave 1).** `PartnerApiKeys` + bcrypt `pxk_` keys + scopes + rate limit by KeyId; `LOAD_BOOTSTRAP_SECRET` does not exempt `/partner/*`. Issue via `POST /v1/admin/partner-keys`. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md).
+**1. Machine identity — WIRED (Wave 1 + OAuth).** `PartnerApiKeys` + bcrypt `pxk_` keys + scopes + rate limit by KeyId; `LOAD_BOOTSTRAP_SECRET` does not exempt `/partner/*`. **OAuth2 `client_credentials`** at `POST /partner/v1/oauth/token` issues short-lived `partner_access` JWTs (dual-accept with `pxk_` on `/partner/v1/*`). Issue keys via `POST /v1/admin/partner-keys`. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md).
 
 **2. OpenAPI 3 — WIRED (partner + JWT core).** Partner: [`contracts/partner.openapi.yaml`](./contracts/partner.openapi.yaml). Human JWT core (~45 high-traffic ops): [`contracts/jwt-core.openapi.yaml`](./contracts/jwt-core.openapi.yaml) — [`docs/JWT_CORE_OPENAPI.md`](./docs/JWT_CORE_OPENAPI.md); `make jwt-openapi-gate`. Residual: expand coverage to full ~411-path catalog + replace hand-written `@pegasusx/api-client` with generated SDK.
 
@@ -410,7 +431,7 @@ Per §7 this is the highest-leverage work in the report relative to its cost, be
 
 **5. Bidirectional bulk data — WIRED (Wave 2A, export side).** `PartnerExportJobs` + `POST/GET /partner/v1/exports` (`exports:read`); CSV/JSON for orders/invoices/inventory/ledger; GCS or `PARTNER_EXPORT_LOCAL_ROOT`; optional SFTP via `PartnerSftpConfigs` + `PARTNER_SFTP_ENABLED` (GSM `SecretRef`). Import/spreadsheet wizard already existed.
 
-**6. Enterprise EDI + GS1 + 1C journals — partial WIRED.** ORDERS inbound + ORDRSP/DESADV/INVOIC outbound — [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). **GLN / SSCC / ZPL WIRED** — [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md). **1C journals CSV/JSON/XML WIRED** (`resource=journals`) — [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). **Still open:** AS2, certified EDIFACT/X12, EDI SSCC segments, configurable CoA / certified 1C exchange package.
+**6. Enterprise EDI + GS1 + 1C journals — partial WIRED.** ORDERS inbound + ORDRSP/DESADV/INVOIC outbound — [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). **GLN / SSCC / ZPL WIRED** — [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md). **DESADV SSCC segments WIRED** (CPS/PAC/GIN+BJ from `ManifestShipUnits`). **1C journals CSV/JSON/XML WIRED** (`resource=journals`) — [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md). **Configurable CoA WIRED** (`PartnerCoaMaps` + GET/PUT `/partner/v1/coa`). **Still open:** AS2, certified EDIFACT/X12, certified 1C exchange package.
 
 ---
 
@@ -426,7 +447,7 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 
 **Phase 3 — global product master.** `GlobalProducts` keyed by GTIN with brand/manufacturer/pack-size; `SupplierProductOffers` mapping `(SupplierId, ProductId) → GlobalProductId` with price, MOQ, lead time; `ProductMatchQueue` for human review; `UnitsOfMeasure` with a real pack hierarchy (each/inner/case/pallet — currently a single nullable `UnitsPerPack`). Matching pipeline: exact GTIN, then fuzzy on brand + normalized pack size + unit measure, with conflicts queued. 4 new tables, 20–30 files, plus a worker. This is the prerequisite for cross-supplier comparison, and it reuses the GTIN checksum validation that already exists in `returns/barcode.go`.
 
-**Phase 4 — marketplace commerce.** Fix the billing meter schema (§2.2 — workers already wired); supplier ratings and scorecards; RFQ / competing quotes (note `NegotiationProposals` is delivery-date negotiation, not price bidding); split payments and escrow — which likely **forces a second gateway integration**, since Global Pay probably lacks sub-merchant support; supplier payout execution.
+**Phase 4 — marketplace commerce.** Billing meter schema + amount decode wired (§2.2); still need fee schedule/invoices. Then: supplier ratings and scorecards; RFQ / competing quotes (note `NegotiationProposals` is delivery-date negotiation, not price bidding); split payments and escrow — which likely **forces a second gateway integration**, since Global Pay probably lacks sub-merchant support; supplier payout execution.
 
 **Phase 5 — tenant operations.** There is currently **no platform admin console at all** — no supplier management, no approval queue, no suspension, no offboarding. A supplier can self-register and nobody can approve or remove them. Add the console, an approval workflow with document collection and KYB, tenant-scoped audit, and per-tenant observability.
 
@@ -440,9 +461,9 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 |---|---|---|
 | **Retailer** | iOS 75% / Android 80% / desktop good | Receive+stock+FileClaim/eligibility countdown shipped (G1/G2); still weak on inferred shelf for auto-order (§8.3), KYC, i18n, cross-supplier cart (§8.10 P2), tenant-scoped desktop cache |
 | **Supplier** | Portal strong / iOS 60% / Android compiles (Gate-0 OrgFleet) | Payout execution, refunds, real pricing engine, billing/commission, forecast accuracy view |
-| **Warehouse** | Portal good / iOS 60% (0 ViewModels, 0 tests) / Android 55% (146 `!!`, 1 ViewModel for 35 screens) | **Bins, lots, expiry, pick waves, cycle counts (§8.7)** — the largest single capability gap in the product; ViewModels; scanning throughput |
+| **Warehouse** | Portal good / iOS 60% / Android 55% | **§8.7 Gate 4 Waves 1A–1C + PR-4–7 coded**; residual forbid non-rollup V2 + scan UX; ViewModels |
 | **Factory** | Portal 9k lines / iOS 55% / Android 55% (0 ViewModels) | Production scheduling, capacity/MRP (`GetSAndOP` is `factories × 700 × 7`), real transfer lead-time capture |
-| **Driver** | iOS decoder Gate-0 fixed / Android 70% (best offline story) | P0-4 offline enqueue, background location, photo/signature POD, generic offline queue, boot receiver |
+| **Driver** | iOS decoder Gate-0 fixed / Android 70% (best offline story) | background location, photo/signature POD, boot receiver; generic offline queue + capture-time coords **wired** (§8.8); scan UX residual is warehouse |
 | **Payload terminal** | iOS 45% (no `.xcodeproj`) / Android 50% | Generate the Xcode project, hardware scanner, per-line quantities, split the 1,700-line god view |
 | **Platform admin** | **Effectively absent** — 3 endpoints and a redirect stub | The entire console: tenant management, approval, suspension, fee schedule, global observability, support tooling |
 

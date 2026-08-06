@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useState } from "react";
 import ControlTowerCommandPanel from "@/components/ControlTowerCommandPanel";
@@ -8,13 +9,14 @@ import Icon from "@/components/Icon";
 import { PageChrome } from "@/components/PageChrome";
 
 export default function FleetPage() {
+  const t = usePortalT();
   const [tab, setTab] = useState<"fleet" | "exceptions">("fleet");
 
   return (
     <PageChrome
       icon="fleet"
-      title="Fleet & org"
-      description="Live sealed-route execution, exception weather, and fleet onboarding."
+      title={t("supplier_portal.fleet.text.fleet_and_org")}
+      description={t("supplier_portal.residual.text.live_sealed_route_execution_exception_weather_and_fleet_onboardi")}
     >
       <div className="flex gap-2 mb-4">
         <button

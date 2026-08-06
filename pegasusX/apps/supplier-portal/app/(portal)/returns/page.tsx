@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
 import { supplierResolveReturnKey } from "@pegasusx/api-client";
@@ -36,6 +37,7 @@ function formatAmount(amountMinor: number): string {
 }
 
 export default function ReturnsPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<SupplierReturnRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function ReturnsPage() {
       const json = (await res.json()) as { data?: SupplierReturnRow[] };
       setItems(json.data ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_returns_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_returns_failed"));
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ export default function ReturnsPage() {
       setNotes("");
       await fetchReturns();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "resolve_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.resolve_failed"));
     } finally {
       setActionLoading(null);
     }
@@ -99,12 +101,12 @@ export default function ReturnsPage() {
   return (
     <PageChrome
       icon="returns"
-      title="Dispute & Returns"
-      description="Driver-rejected quantities awaiting write-off or return-to-stock."
+      title={t("supplier_portal.returns.text.dispute_and_returns")}
+      description={t("supplier_portal.residual.text.driver_rejected_quantities_awaiting_write_off_or_return_to_stock")}
       loading={loading}
       error={error}
       empty={!loading && items.length === 0}
-      emptyMessage="No open returns — all rejected delivery lines are resolved."
+      emptyMessage={t("supplier_portal.residual.text.no_open_returns_all_rejected_delivery_lines_are_resolved")}
       actions={
         <Button size="sm" variant="ghost" onPress={() => void fetchReturns()}>
           Refresh
@@ -113,11 +115,11 @@ export default function ReturnsPage() {
     >
       <div className="grid gap-4 md:grid-cols-2 mb-6">
         <div className="md-card p-4">
-          <p className="md-typescale-label-small text-[var(--color-md-outline)]">Open returns</p>
+          <p className="md-typescale-label-small text-[var(--color-md-outline)]">{t("supplier_portal.returns.text.open_returns")}</p>
           <p className="md-typescale-headline-small font-mono text-[var(--color-md-error)]">{items.length}</p>
         </div>
         <div className="md-card p-4">
-          <p className="md-typescale-label-small text-[var(--color-md-outline)]">Total damage value</p>
+          <p className="md-typescale-label-small text-[var(--color-md-outline)]">{t("supplier_portal.returns.text.total_damage_value")}</p>
           <p className="md-typescale-headline-small font-mono text-[var(--color-md-error)]">
             {formatAmount(totalDamageValue)}
           </p>
@@ -158,12 +160,12 @@ export default function ReturnsPage() {
                     value={resolution}
                     onChange={(e) => setResolution(e.target.value as Resolution)}
                   >
-                    <option value="RETURN_TO_STOCK">Return to stock</option>
-                    <option value="WRITE_OFF">Write off</option>
+                    <option value="RETURN_TO_STOCK">{t("supplier_portal.returns.text.return_to_stock")}</option>
+                    <option value="WRITE_OFF">{t("supplier_portal.returns.text.write_off")}</option>
                   </select>
                   <input
                     className="rounded-lg border border-[var(--color-md-outline-variant)] bg-transparent px-3 py-2 text-sm"
-                    placeholder="Notes (optional)"
+                    placeholder={t("supplier_portal.returns.text.notes_optional")}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
@@ -182,7 +184,7 @@ export default function ReturnsPage() {
                   </div>
                 </div>
               ) : item.physical_status === "RESTOCKED" || item.physical_status === "WRITTEN_OFF" ? (
-                <span className="text-xs text-[var(--color-md-outline)]">Gate resolved</span>
+                <span className="text-xs text-[var(--color-md-outline)]">{t("supplier_portal.returns.text.gate_resolved")}</span>
               ) : (
                 <Button size="sm" variant="ghost" onPress={() => setResolvingId(item.return_id)}>
                   Dispute / override
