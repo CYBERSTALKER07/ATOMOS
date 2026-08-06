@@ -1,14 +1,18 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-06 (partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
+*Last Updated: 2026-08-06 (FX Wave 1 + partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
 
 ## 1. Code completeness (this closure)
 
+**Theatre #13 Multi-currency FX (Wave 1):** `FxRates` + `fxrates.ConvertMinor` (fail closed); payment `currency_mismatch` on checkout/chargeback/webhook; bootstrap UZS identity (+ optional `FX_SEED_USD_UZS_SCALED`); admin `GET/PUT /v1/admin/fx-rates`. Apply `20260806_fx_rates.ddl`. Docs: [`docs/FX_RATES.md`](../docs/FX_RATES.md). Markers: `PX_E2E_FX_RATE_SEEDED_OK` / `_SKIPPED`, `PX_E2E_CURRENCY_MISMATCH_DENIED` / `_SKIPPED`. Residual: multi-currency ledger, Airwallex FX, client pickers. Audit count corrected **19** Currency columns.
+
 **§8.9 OAuth2 client_credentials:** `POST /partner/v1/oauth/token` reuses `PartnerApiKeys` as clients; short-lived HS256 JWT (`token_use=partner_access`); dual-accept with `pxk_` on `/partner/v1/*`; live revoke via key status. Env: `PARTNER_JWT_SECRET` (or derived from `JWT_SECRET`). Marker: `PX_E2E_PARTNER_OAUTH_OK` / `_SKIPPED`.
 
-**§8.9 configurable CoA:** `PartnerCoaMaps` + GET/PUT `/partner/v1/coa` (+ supplier/admin JWT); journals export uses tenant AR/revenue/bank accounts (defaults `62.01`/`90.01`/`51.01`). Portal Integrations CoA fields. Apply `20260806_partner_coa.ddl`. Residual: AS2, certified 1C exchange package.
+**§8.9 configurable CoA:** `PartnerCoaMaps` + GET/PUT `/partner/v1/coa` (+ supplier/admin JWT); journals export uses tenant AR/revenue/bank accounts (defaults `62.01`/`90.01`/`51.01`). Portal Integrations CoA fields. Apply `20260806_partner_coa.ddl`. Residual: certified 1C exchange package.
 
-**§8.9 EDI DESADV SSCC:** Outbound DESADV emits CPS/PAC/GIN+BJ (optional GIN+BN GTIN) from `ManifestShipUnits` when present; hydrated in `EdiOutboundWorker.loadSnapshot`. Still open: AS2, certified EDIFACT.
+**§8.9 EDI DESADV SSCC:** Outbound DESADV emits CPS/PAC/GIN+BJ (optional GIN+BN GTIN) from `ManifestShipUnits` when present; hydrated in `EdiOutboundWorker.loadSnapshot`. Still open: certified EDIFACT.
+
+**§8.9 AS2 transport:** `POST /partner/v1/as2` + outbound push over EDI-lite bytes; sync MDN; `PartnerAs2Configs`. Apply `20260806_partner_as2.ddl`. Flags: `PARTNER_AS2_ENABLED`, `PARTNER_AS2_INSECURE_PLAIN` (SSMR only). **Not Drummond-certified.** Docs: [`docs/PARTNER_AS2.md`](../docs/PARTNER_AS2.md). Markers: `PX_E2E_PARTNER_AS2_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_AS2_ORDRSP_OK` / `_SKIPPED`.
 
 **Theatre leftovers (honesty + promo):** AI confidence gate + touchless `MinConfidenceScore` already Gate-0 **WIRED** (audit/SUBSTANCE_GATE refreshed). Promo sandbox: caller `elasticity` (default 0.5) + `elasticity_used`; closed-loop actuals from `LineItemsJson.promotion_id` (units + line totals), empty promo → zeros. Cold chain / i18n / marketplace fee+invoice remain **partial residuals**.
 
@@ -20,7 +24,7 @@
 
 **WMS Gate 4 (§8.7):** Waves **1A–1C + PR-4–7** coded — lots/FEFO, pick+seal, cycle apply-on-approve + ABC + accuracy, S-shape/LIFO + soft-warn, cold-chain quarantine, inventory reconcile. Ops apply: [`docs/WMS_GATE4_OPS.md`](../docs/WMS_GATE4_OPS.md). Docs: [`WMS_LOTS_FEFO.md`](../docs/WMS_LOTS_FEFO.md), [`WMS_PICK_WAVES.md`](../docs/WMS_PICK_WAVES.md), [`WMS_CYCLE_COUNTS.md`](../docs/WMS_CYCLE_COUNTS.md), [`WMS_COLD_CHAIN.md`](../docs/WMS_COLD_CHAIN.md), [`WMS_GATE4_HARDENING.md`](../docs/WMS_GATE4_HARDENING.md). Residual: native scan UX, forbid all non-rollup V2 writes, serials.
 
-**Partner Integration (§8.9 Wave 1 + 2A + 2B + 2C + journals + DESADV SSCC + CoA + OAuth):** Machine API keys, **OAuth2 client_credentials**, `/partner/v1`, HMAC webhooks, bulk export/SFTP, **EDI-lite** (DESADV CPS/PAC/GIN+BJ from ship units), **GS1 GLN/SSCC/ZPL**, **1C journals** + **configurable CoA** (`PartnerCoaMaps` — [`docs/PARTNER_JOURNALS_1C.md`](../docs/PARTNER_JOURNALS_1C.md)), portal knobs, OpenAPI. Apply partner DDLs + `20260806_gs1_labels.ddl` + `20260806_partner_coa.ddl`. Flags: `PARTNER_*`, `GS1_*`. **JWT core OpenAPI WIRED** — [`contracts/jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml), `make jwt-openapi-gate` ([`docs/JWT_CORE_OPENAPI.md`](../docs/JWT_CORE_OPENAPI.md)). Residual: AS2, certified 1C exchange package, expand JWT OpenAPI coverage + SDK replace of ApiClient.
+**Partner Integration (§8.9 Wave 1 + 2A + 2B + 2C + journals + DESADV SSCC + CoA + OAuth + AS2):** Machine API keys, **OAuth2 client_credentials**, `/partner/v1`, HMAC webhooks, bulk export/SFTP, **EDI-lite** (DESADV CPS/PAC/GIN+BJ from ship units), **AS2 transport** (not Drummond — [`docs/PARTNER_AS2.md`](../docs/PARTNER_AS2.md)), **GS1 GLN/SSCC/ZPL**, **1C journals** + **configurable CoA** (`PartnerCoaMaps` — [`docs/PARTNER_JOURNALS_1C.md`](../docs/PARTNER_JOURNALS_1C.md)), portal knobs, OpenAPI. Apply partner DDLs + `20260806_gs1_labels.ddl` + `20260806_partner_coa.ddl` + `20260806_partner_as2.ddl`. Flags: `PARTNER_*`, `GS1_*`. **JWT core OpenAPI WIRED** — [`contracts/jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml), `make jwt-openapi-gate` ([`docs/JWT_CORE_OPENAPI.md`](../docs/JWT_CORE_OPENAPI.md)). Residual: certified 1C exchange package, certified EDIFACT, expand JWT OpenAPI coverage + SDK replace of ApiClient.
 
 **Collections substance (Gate-1 residual):** AR dunning step machine + `DelinquencyCount` bump + CREDIT_HOLD auto-freeze + inbox/FCM; flags `AR_INVOICES_ENABLED` + `AR_DUNNING_ENABLED`; marker `PX_E2E_COLLECTIONS_DUNNING_OK` / `_SKIPPED`. SMS/email still deferred.
 

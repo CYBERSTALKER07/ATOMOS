@@ -318,6 +318,8 @@ func runPartnerIntegrationE2E(
 
 	// Wave 2B: EDI-lite ORDERS drop + ORDRSP emit (local root)
 	runPartnerEDIE2E(ctx, client, base, supplierCookie, supplierID, retailerID, h3Cell, cfg)
+	// §8.9 AS2 transport over EDI-lite (insecure-plain SSMR)
+	runPartnerAS2E2E(ctx, client, base, supplierCookie, supplierID, retailerID, h3Cell, cfg)
 	return nil
 }
 
@@ -508,5 +510,170 @@ func runPartnerEDIE2E(
 		fmt.Println("PX_E2E_PARTNER_EDI_ORDRSP_OK")
 	} else {
 		fmt.Println("PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED")
+	}
+}
+
+func runPartnerAS2E2E(
+	ctx context.Context,
+	client *http.Client,
+	base, supplierCookie, supplierID, retailerID, h3Cell string,
+	cfg *bootstrap.Config,
+) {
+	if !partner.PartnerAS2Enabled() || !partner.PartnerAS2InsecurePlain() {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		return
+	}
+
+	received := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case received <- struct{}{}:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("mdn-ok"))
+	}))
+	defer srv.Close()
+
+	as2Body, _ := json.Marshal(map[string]any{
+		"as2_enabled":      true,
+		"our_as2_id":       "PEGASUSX-E2E",
+		"partner_as2_id":   "PARTNER-E2E",
+		"partner_url":      srv.URL,
+		"sign_required":    false,
+		"encrypt_required": false,
+	})
+	st, body, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/partner-as2", as2Body, supplierCookie, "")
+	if err != nil || st >= 400 {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		_ = body
+		return
+	}
+
+	extID := fmt.Sprintf("AS2-PO-%d", time.Now().UnixNano())
+	raw := edi.BuildORDERS(edi.OrdersMessage{
+		ExternalDocID: extID,
+		BuyerRef:      retailerID,
+		SellerRef:     supplierID,
+		Lat:           cfg.DeliveryZoneCenterLat,
+		Lng:           cfg.DeliveryZoneCenterLng,
+		H3Cell:        h3Cell,
+		Lines:         []edi.Line{{SKU: "SSMR-SKU-1", Qty: 1}},
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/partner/v1/as2", strings.NewReader(raw))
+	if err != nil {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		return
+	}
+	req.Header.Set("Content-Type", "application/edifact")
+	req.Header.Set("Content-Disposition", `attachment; filename="ORDERS_`+extID+`.edi"`)
+	req.Header.Set("AS2-From", "PARTNER-E2E")
+	req.Header.Set("AS2-To", "PEGASUSX-E2E")
+	req.Header.Set("AS2-Version", "1.2")
+	req.Header.Set("Message-ID", fmt.Sprintf("<%s@e2e>", extID))
+	req.Header.Set("Disposition-Notification-To", "e2e@localhost")
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		return
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(respBody), "disposition-notification") {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		return
+	}
+
+	var processed bool
+	var orderID string
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		lst, lbody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/partner-edi/documents", nil, supplierCookie, "")
+		if err != nil || lst != http.StatusOK {
+			if strings.Contains(string(lbody), "Table not found") || strings.Contains(string(lbody), "PartnerAs2Configs") {
+				fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+				fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+				return
+			}
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		var wrap struct {
+			Documents []struct {
+				ExternalDocID string `json:"external_doc_id"`
+				Status        string `json:"status"`
+				OrderID       string `json:"order_id"`
+				DocType       string `json:"doc_type"`
+				Direction     string `json:"direction"`
+				RemoteName    string `json:"remote_name"`
+			} `json:"documents"`
+		}
+		_ = json.Unmarshal(lbody, &wrap)
+		for _, d := range wrap.Documents {
+			if d.ExternalDocID == extID && d.DocType == "ORDERS" && d.Status == "PROCESSED" {
+				processed = true
+				orderID = d.OrderID
+				break
+			}
+		}
+		if processed {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !processed {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_SKIPPED")
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
+		return
+	}
+	fmt.Println("PX_E2E_PARTNER_AS2_ORDERS_OK")
+
+	ordrspOK := false
+	deadline = time.Now().Add(45 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case <-received:
+			ordrspOK = true
+		default:
+		}
+		if ordrspOK {
+			break
+		}
+		if orderID != "" {
+			lst, lbody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/partner-edi/documents", nil, supplierCookie, "")
+			if err == nil && lst == http.StatusOK {
+				var wrap struct {
+					Documents []struct {
+						Direction  string `json:"direction"`
+						DocType    string `json:"doc_type"`
+						OrderID    string `json:"order_id"`
+						Status     string `json:"status"`
+						RemoteName string `json:"remote_name"`
+					} `json:"documents"`
+				}
+				_ = json.Unmarshal(lbody, &wrap)
+				for _, d := range wrap.Documents {
+					if d.Direction == "OUT" && d.DocType == "ORDRSP" && d.OrderID == orderID &&
+						(d.Status == "EMITTED" || strings.HasPrefix(d.RemoteName, "as2:")) {
+						ordrspOK = true
+						break
+					}
+				}
+			}
+		}
+		if ordrspOK {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if ordrspOK {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_OK")
+	} else {
+		fmt.Println("PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED")
 	}
 }

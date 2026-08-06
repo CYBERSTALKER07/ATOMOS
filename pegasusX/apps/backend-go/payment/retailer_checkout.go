@@ -18,6 +18,9 @@ import (
 // ErrGatewayMismatch is returned when a session exists but the requested gateway differs.
 var ErrGatewayMismatch = errors.New("gateway mismatch")
 
+// ErrCurrencyMismatch is returned when request currency differs from the order currency.
+var ErrCurrencyMismatch = errors.New("currency_mismatch")
+
 // OrderCheckoutReader loads persisted order totals for retailer payment flows.
 type OrderCheckoutReader interface {
 	CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error)
@@ -34,6 +37,7 @@ type retailerCardCheckoutRequest struct {
 	Gateway     string `json:"gateway"`
 	Amount      int64  `json:"amount"`
 	AmountMinor int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
 	ReturnURL   string `json:"return_url"`
 	InvoiceID   string `json:"invoice_id"`
 }
@@ -110,7 +114,7 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 	if amountMinor <= 0 {
 		amountMinor = req.Amount
 	}
-	currency := s.currency
+	currency := strings.TrimSpace(req.Currency)
 	if amountMinor <= 0 && s.orderReader != nil {
 		total, orderCurrency, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
 		if snapErr != nil {
@@ -118,9 +122,12 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 			return
 		}
 		amountMinor = total
-		if strings.TrimSpace(orderCurrency) != "" {
+		if currency == "" && strings.TrimSpace(orderCurrency) != "" {
 			currency = orderCurrency
 		}
+	}
+	if currency == "" {
+		currency = s.currency
 	}
 	if amountMinor <= 0 {
 		writeJSONError(w, http.StatusBadRequest, "invalid_request", "amount is required", "/v1/order/card-checkout", false, "")
@@ -138,6 +145,10 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		if errors.Is(err, ErrGatewayMismatch) {
 			writeJSONError(w, http.StatusConflict, "gateway_mismatch", "cannot change gateway for an active session", "/v1/order/card-checkout", false, "")
+			return
+		}
+		if errors.Is(err, ErrCurrencyMismatch) {
+			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "request currency must match order currency", "/v1/order/card-checkout", false, "")
 			return
 		}
 		s.writeExecutionError(w, "/v1/order/card-checkout", err)
@@ -257,17 +268,25 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 
 func (s *Service) initCheckoutSession(ctx context.Context, mode string, req CheckoutRequest) (SessionRecord, PaymentAttemptRecord, ExecutionResult, error) {
 	resolvedCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
+	requestHadCurrency := resolvedCurrency != ""
 	if resolvedCurrency == "" {
 		resolvedCurrency = s.currency
 	}
 
 	warehouseID := ""
+	orderCurrency := ""
 	if s.orderReader != nil {
 		if orderCtx, err := s.orderReader.CheckoutOrderContext(ctx, req.OrderID, req.RetailerID); err == nil {
-			if orderCtx.Currency != "" && resolvedCurrency == s.currency {
-				resolvedCurrency = strings.ToUpper(strings.TrimSpace(orderCtx.Currency))
-			}
+			orderCurrency = strings.ToUpper(strings.TrimSpace(orderCtx.Currency))
 			warehouseID = orderCtx.WarehouseID
+		}
+	}
+	if orderCurrency != "" {
+		if requestHadCurrency && resolvedCurrency != orderCurrency {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrCurrencyMismatch
+		}
+		if !requestHadCurrency {
+			resolvedCurrency = orderCurrency
 		}
 	}
 

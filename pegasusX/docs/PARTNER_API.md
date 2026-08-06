@@ -127,6 +127,18 @@ ORDERS inbound + ORDRSP/DESADV/INVOIC outbound over SFTP/local root. See [`PARTN
 
 Markers: `PX_E2E_PARTNER_EDI_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_EDI_ORDRSP_OK` / `_SKIPPED`.
 
+## AS2 transport
+
+RFC 4130 HTTP receive/send over the same EDI-lite payloads. See [`PARTNER_AS2.md`](./PARTNER_AS2.md).
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/partner/v1/as2` | Unauthenticated receive + sync MDN |
+| GET/PUT | `/partner/v1/as2/config` | `exports:read` |
+| GET/PUT | `/v1/supplier/partner-as2` | Supplier JWT |
+
+Markers: `PX_E2E_PARTNER_AS2_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_AS2_ORDRSP_OK` / `_SKIPPED`.
+
 ## Still open
 
-AS2, certified EDIFACT, certified 1C exchange package. OAuth2 `client_credentials` is WIRED. Configurable CoA for journals is WIRED ([`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)). DESADV SSCC (CPS/PAC/GIN+BJ) is WIRED. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.
+Certified EDIFACT, certified 1C exchange package. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). OAuth2 `client_credentials` is WIRED. Configurable CoA for journals is WIRED ([`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)). DESADV SSCC (CPS/PAC/GIN+BJ) is WIRED. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.

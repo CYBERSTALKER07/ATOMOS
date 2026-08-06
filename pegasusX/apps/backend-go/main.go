@@ -31,6 +31,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
@@ -342,6 +343,9 @@ func main() {
 			Keys: app.PartnerKeys, JWTSecret: app.PartnerJWTSecret,
 		}, app.PartnerHandlers)
 		partner.RegisterAdminKeyRoutes(r, app.PartnerHandlers)
+	}
+	if app.FxRatesHandlers != nil {
+		fxrates.RegisterAdminRoutes(r, app.FxRatesHandlers)
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,

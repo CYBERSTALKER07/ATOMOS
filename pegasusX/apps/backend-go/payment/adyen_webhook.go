@@ -120,6 +120,10 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 				sessionID = strings.TrimSpace(val)
 			}
 		}
+		if err := s.assertSessionCurrency(r.Context(), sessionID, strings.TrimSpace(item.MerchantReference), currency); err != nil {
+			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "webhook currency must match payment session currency", endpoint, false, "")
+			return
+		}
 
 		// Map specific Adyen events to PaymentAttempt metadata transitions
 		var executionAction string

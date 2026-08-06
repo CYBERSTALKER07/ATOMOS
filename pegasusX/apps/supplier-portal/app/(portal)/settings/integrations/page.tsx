@@ -11,6 +11,7 @@ import type {
   PartnerEdiDocument,
   PartnerExportJob,
   PartnerSftpConfig,
+  PartnerAs2Config,
   PartnerCoaMap,
   PartnerWebhookSubscription,
 } from "@pegasusx/types";
@@ -50,6 +51,14 @@ export default function IntegrationsSettingsPage() {
   const [archiveDir, setArchiveDir] = useState("archive");
   const [ediEnabled, setEdiEnabled] = useState(false);
   const [ediDocs, setEdiDocs] = useState<PartnerEdiDocument[]>([]);
+  const [as2, setAs2] = useState<PartnerAs2Config>({ configured: false });
+  const [as2Enabled, setAs2Enabled] = useState(false);
+  const [ourAs2Id, setOurAs2Id] = useState("");
+  const [partnerAs2Id, setPartnerAs2Id] = useState("");
+  const [partnerAs2Url, setPartnerAs2Url] = useState("");
+  const [ourCertRef, setOurCertRef] = useState("");
+  const [ourKeyRef, setOurKeyRef] = useState("");
+  const [partnerCertRef, setPartnerCertRef] = useState("");
   const [coaAr, setCoaAr] = useState("62.01");
   const [coaRevenue, setCoaRevenue] = useState("90.01");
   const [coaBank, setCoaBank] = useState("51.01");
@@ -59,7 +68,7 @@ export default function IntegrationsSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [k, w, d, e, s, edi, coa] = await Promise.all([
+      const [k, w, d, e, s, edi, coa, a2] = await Promise.all([
         api.listSupplierPartnerKeys(),
         api.listSupplierPartnerWebhooks(),
         api.listSupplierPartnerDeadLetter(),
@@ -74,6 +83,7 @@ export default function IntegrationsSettingsPage() {
             using_defaults: true,
           }),
         ),
+        api.getSupplierPartnerAs2().catch((): PartnerAs2Config => ({ configured: false })),
       ]);
       setKeys(k.keys ?? []);
       setHooks(w.subscriptions ?? []);
@@ -81,6 +91,7 @@ export default function IntegrationsSettingsPage() {
       setJobs(e.jobs ?? []);
       setEdiDocs(edi.documents ?? []);
       setSftp(s);
+      setAs2(a2);
       setCoaAr(coa.account_ar || "62.01");
       setCoaRevenue(coa.account_revenue || "90.01");
       setCoaBank(coa.account_bank_cash || "51.01");
@@ -95,6 +106,15 @@ export default function IntegrationsSettingsPage() {
         setOutboundDir(s.outbound_dir ?? "outbound");
         setArchiveDir(s.archive_dir ?? "archive");
         setEdiEnabled(Boolean(s.edi_enabled));
+      }
+      if (a2.configured) {
+        setAs2Enabled(Boolean(a2.as2_enabled));
+        setOurAs2Id(a2.our_as2_id ?? "");
+        setPartnerAs2Id(a2.partner_as2_id ?? "");
+        setPartnerAs2Url(a2.partner_url ?? "");
+        setOurCertRef(a2.our_cert_secret_ref ?? "");
+        setOurKeyRef(a2.our_key_secret_ref ?? "");
+        setPartnerCertRef(a2.partner_cert_secret_ref ?? "");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_integrations"));
@@ -222,6 +242,26 @@ export default function IntegrationsSettingsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.sftp_save_failed"));
+    }
+  }
+
+  async function saveAs2() {
+    setNotice(null);
+    try {
+      const saved = await api.putSupplierPartnerAs2({
+        as2_enabled: as2Enabled,
+        our_as2_id: ourAs2Id.trim(),
+        partner_as2_id: partnerAs2Id.trim(),
+        partner_url: partnerAs2Url.trim(),
+        our_cert_secret_ref: ourCertRef.trim(),
+        our_key_secret_ref: ourKeyRef.trim(),
+        partner_cert_secret_ref: partnerCertRef.trim(),
+      });
+      setAs2(saved);
+      setNotice("AS2 config saved (PEM material stays in GSM via secret refs). Not Drummond-certified.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AS2 save failed");
     }
   }
 
@@ -628,6 +668,68 @@ export default function IntegrationsSettingsPage() {
                 <li className="py-3 text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.no_edi_documents")}</li>
               )}
             </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">AS2 transport</h2>
+            <p className="text-sm text-[var(--desk-text-secondary)]">
+              Optional RFC 4130 AS2 pipe for the same EDI-lite ORDERS/ORDRSP/DESADV/INVOIC bytes.
+              Receive at <code className="text-xs">POST /partner/v1/as2</code>. Not Drummond-certified.
+            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={as2Enabled}
+                onChange={(e) => setAs2Enabled(e.target.checked)}
+              />
+              Enable AS2 for this supplier
+            </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="rounded border px-3 py-2 text-sm"
+                placeholder="Our AS2-ID"
+                value={ourAs2Id}
+                onChange={(e) => setOurAs2Id(e.target.value)}
+              />
+              <input
+                className="rounded border px-3 py-2 text-sm"
+                placeholder="Partner AS2-ID"
+                value={partnerAs2Id}
+                onChange={(e) => setPartnerAs2Id(e.target.value)}
+              />
+              <input
+                className="rounded border px-3 py-2 text-sm sm:col-span-2"
+                placeholder="Partner AS2 URL (HTTPS)"
+                value={partnerAs2Url}
+                onChange={(e) => setPartnerAs2Url(e.target.value)}
+              />
+              <input
+                className="rounded border px-3 py-2 text-sm"
+                placeholder="Our cert secret ref"
+                value={ourCertRef}
+                onChange={(e) => setOurCertRef(e.target.value)}
+              />
+              <input
+                className="rounded border px-3 py-2 text-sm"
+                placeholder="Our key secret ref"
+                value={ourKeyRef}
+                onChange={(e) => setOurKeyRef(e.target.value)}
+              />
+              <input
+                className="rounded border px-3 py-2 text-sm sm:col-span-2"
+                placeholder="Partner cert secret ref"
+                value={partnerCertRef}
+                onChange={(e) => setPartnerCertRef(e.target.value)}
+              />
+            </div>
+            <button type="button" className="rounded border px-3 py-2 text-sm" onClick={() => void saveAs2()}>
+              Save AS2 config
+            </button>
+            {as2.configured && (
+              <p className="text-xs text-[var(--desk-text-secondary)]">
+                Configured: {as2.our_as2_id} ↔ {as2.partner_as2_id} · AS2 {as2.as2_enabled ? "on" : "off"}
+              </p>
+            )}
           </section>
         </div>
       )}

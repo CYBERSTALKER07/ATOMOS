@@ -302,6 +302,7 @@ Until SG passes, these stay **Theatre / Partial** (see `PLATFORM_AUDIT.md` §2):
 | Billing meter | WIRED (schema + amount_minor decode) | Residual: fee schedule / invoices; e2e meter event |
 | Soliq legal OFD | PROOF skipped | `PX_E2E_SOLIQ_SANDBOX_OK` required |
 | Cold chain | **Partial** — solver flags + WMS ingest | Always-on prod sensor fleet / full excursion automation |
+| Multi-currency FX | **Partial→Wired (Wave 1)** — `FxRates` + `ConvertMinor` + mismatch gate | Residual: multi-currency ledger / Airwallex FX / client pickers — [`FX_RATES.md`](./FX_RATES.md) |
 | i18n catalogs | **Desktop portals UI: Wired (draft translations)**; mobile still Partial / unwired | Do not claim full-platform or certified-linguistic Done |
 | Mobile shared kit / offline (§8.8) | **Partial→Wired** — kit packages + capture-time coords + Room migrations; scan UX residual | See [`MOBILE_SHARED_KIT.md`](./MOBILE_SHARED_KIT.md); PR-7 scan still open |
 | Supplier/WH claim-window **portal UX** | UI missing (API Done) | Portal/settings screens |

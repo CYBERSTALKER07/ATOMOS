@@ -98,6 +98,11 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 	if currency == "" {
 		currency = s.currency
 	}
+	// Theatre #13: reject webhook currency ≠ session currency when known.
+	if err := s.assertSessionCurrency(r.Context(), req.SessionID, req.OrderID, currency); err != nil {
+		writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "webhook currency must match payment session currency", endpoint, false, "")
+		return
+	}
 	now := s.now()
 	row := WebhookRecord{
 		WebhookID:      s.newID("webhook"),

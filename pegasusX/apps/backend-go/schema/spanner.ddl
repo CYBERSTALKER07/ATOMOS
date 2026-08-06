@@ -2574,6 +2574,25 @@ CREATE INDEX Idx_PartnerEdiDocuments_ByTenantCreated
 CREATE INDEX Idx_PartnerEdiDocuments_ByStatusDir
   ON PartnerEdiDocuments (Status, Direction, CreatedAt);
 
+-- Gate-3 §8.9: AS2 transport (EDI-lite bytes; not Drummond-certified)
+CREATE TABLE PartnerAs2Configs (
+  TenantType            STRING(16)   NOT NULL,
+  TenantId              STRING(36)   NOT NULL,
+  As2Enabled            BOOL         NOT NULL DEFAULT (FALSE),
+  OurAs2Id              STRING(128)  NOT NULL,
+  PartnerAs2Id          STRING(128)  NOT NULL,
+  PartnerUrl            STRING(1024),
+  OurCertSecretRef      STRING(256),
+  OurKeySecretRef       STRING(256),
+  PartnerCertSecretRef  STRING(256),
+  SignRequired          BOOL         NOT NULL DEFAULT (TRUE),
+  EncryptRequired       BOOL         NOT NULL DEFAULT (TRUE),
+  UpdatedAt             TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (TenantType, TenantId);
+
+CREATE UNIQUE INDEX Idx_PartnerAs2Configs_OurAs2Id
+  ON PartnerAs2Configs (OurAs2Id);
+
 -- Gate-3: configurable 1C chart of accounts for partner journals exports
 CREATE TABLE PartnerCoaMaps (
   TenantType      STRING(16)  NOT NULL,
@@ -2584,3 +2603,21 @@ CREATE TABLE PartnerCoaMaps (
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedBy       STRING(128),
 ) PRIMARY KEY (TenantType, TenantId);
+
+-- Theatre #13 Wave 1: FX rates (scaled integers; ConvertMinor never silent 1:1)
+CREATE TABLE FxRates (
+  RateId         STRING(36)  NOT NULL,
+  BaseCurrency   STRING(3)   NOT NULL,
+  QuoteCurrency  STRING(3)   NOT NULL,
+  RateScaled     INT64       NOT NULL,
+  Scale          INT64       NOT NULL DEFAULT (100000000),
+  EffectiveAt    TIMESTAMP   NOT NULL,
+  Source         STRING(32)  NOT NULL,
+  CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RateId);
+
+CREATE UNIQUE INDEX Idx_FxRates_PairEffective
+  ON FxRates (BaseCurrency, QuoteCurrency, EffectiveAt);
+
+CREATE INDEX Idx_FxRates_PairEffectiveDesc
+  ON FxRates (BaseCurrency, QuoteCurrency, EffectiveAt DESC);

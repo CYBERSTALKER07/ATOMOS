@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-08-05T23:57:45.149Z",
-  "total_files_scanned": 32732,
-  "total_matches": 4196,
+  "generated_at": "2026-08-06T04:33:18.851Z",
+  "total_files_scanned": 32763,
+  "total_matches": 4204,
   "summary": {
     "backend-inline-problem-text": 57,
     "compose-inline-text": 665,
     "xml-inline-text": 202,
     "swiftui-inline-text": 1923,
-    "web-jsx-text": 1349
+    "web-jsx-text": 1357
   },
   "entries": [
     {
@@ -17041,8 +17041,56 @@
     {
       "kind": "web-jsx-text",
       "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
-      "line": 320,
+      "line": 674,
+      "text": "AS2 transport"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 677,
+      "text": "POST /partner/v1/as2"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 360,
       "text": "https://example.com/hooks/pegasus"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 690,
+      "text": "Our AS2-ID"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 696,
+      "text": "Partner AS2-ID"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 702,
+      "text": "Partner AS2 URL (HTTPS)"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 708,
+      "text": "Our cert secret ref"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 714,
+      "text": "Our key secret ref"
+    },
+    {
+      "kind": "web-jsx-text",
+      "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+      "line": 720,
+      "text": "Partner cert secret ref"
     },
     {
       "kind": "web-jsx-text",

@@ -132,7 +132,20 @@
         "PX_E2E_PARTNER_EDI_ORDERS_SKIPPED",
         "PX_E2E_PARTNER_EDI_ORDRSP_OK",
         "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
+        "PX_E2E_PARTNER_AS2_ORDERS_OK",
+        "PX_E2E_PARTNER_AS2_ORDERS_SKIPPED",
+        "PX_E2E_PARTNER_AS2_ORDRSP_OK",
+        "PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED",
         "PX_E2E_PARTNER_SKIPPED"
+      ]
+    },
+    "fx_rates": {
+      "description": "Theatre #13 Wave 1: seeded FxRates identity + payment currency mismatch fail-closed (SKIPPED until FxRates migration)",
+      "markers": [
+        "PX_E2E_FX_RATE_SEEDED_OK",
+        "PX_E2E_FX_RATE_SEEDED_SKIPPED",
+        "PX_E2E_CURRENCY_MISMATCH_DENIED",
+        "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
       ]
     },
     "gs1_labels": {
@@ -398,6 +411,24 @@
       "PX_E2E_PARTNER_EDI_ORDRSP_OK",
       "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
       "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_as2_orders": [
+      "PX_E2E_PARTNER_AS2_ORDERS_OK",
+      "PX_E2E_PARTNER_AS2_ORDERS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_as2_ordrsp": [
+      "PX_E2E_PARTNER_AS2_ORDRSP_OK",
+      "PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "fx_rate_seeded": [
+      "PX_E2E_FX_RATE_SEEDED_OK",
+      "PX_E2E_FX_RATE_SEEDED_SKIPPED"
+    ],
+    "currency_mismatch_denied": [
+      "PX_E2E_CURRENCY_MISMATCH_DENIED",
+      "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
     ],
     "gs1_sscc": [
       "PX_E2E_GS1_SSCC_OK",

@@ -221,6 +221,29 @@ type SftpConfigRepository interface {
 	ListEdiEnabled(ctx context.Context, limit int) ([]SftpConfig, error)
 }
 
+// As2Config is per-tenant AS2 station metadata (cert PEMs via SecretRef only).
+type As2Config struct {
+	TenantType           string
+	TenantID             string
+	As2Enabled           bool
+	OurAs2Id             string
+	PartnerAs2Id         string
+	PartnerURL           string
+	OurCertSecretRef     string
+	OurKeySecretRef      string
+	PartnerCertSecretRef string
+	SignRequired         bool
+	EncryptRequired      bool
+	UpdatedAt            time.Time
+}
+
+// As2ConfigRepository persists AS2 station configs.
+type As2ConfigRepository interface {
+	Upsert(ctx context.Context, c As2Config) error
+	Get(ctx context.Context, tenantType, tenantID string) (As2Config, bool, error)
+	GetByOurAs2Id(ctx context.Context, ourAs2Id string) (As2Config, bool, error)
+}
+
 // EdiDocumentRepository persists EDI-lite document ledger rows.
 type EdiDocumentRepository interface {
 	Insert(ctx context.Context, d EdiDocument) error

@@ -5018,6 +5018,20 @@ export interface PartnerSftpConfig {
   edi_enabled?: boolean;
 }
 
+/** Per-tenant AS2 station (§8.9) — cert PEMs via secret refs only. */
+export interface PartnerAs2Config {
+  configured: boolean;
+  as2_enabled?: boolean;
+  our_as2_id?: string;
+  partner_as2_id?: string;
+  partner_url?: string;
+  our_cert_secret_ref?: string;
+  our_key_secret_ref?: string;
+  partner_cert_secret_ref?: string;
+  sign_required?: boolean;
+  encrypt_required?: boolean;
+}
+
 /** Per-tenant 1C chart of accounts for journals exports. */
 export interface PartnerCoaMap {
   account_ar: string;

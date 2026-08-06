@@ -201,6 +201,19 @@ func isOrdersFilename(name string) bool {
 		(strings.Contains(n, "ORDERS") && (strings.HasSuffix(n, ".EDI") || strings.HasSuffix(n, ".TXT")))
 }
 
+// IngestORDERSBytes is the AS2/SFTP transport boundary into ORDERS ingest (codecs unchanged).
+func (w *EdiInboundWorker) IngestORDERSBytes(ctx context.Context, tenantType, tenantID, remoteName string, body []byte) error {
+	if w == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	cfg := SftpConfig{TenantType: tenantType, TenantID: tenantID, EdiEnabled: true, IsActive: true}
+	normalizeSftpDirs(&cfg)
+	if remoteName == "" {
+		remoteName = "as2:ORDERS.edi"
+	}
+	return w.ingestORDERS(ctx, cfg, remoteName, body)
+}
+
 func (w *EdiInboundWorker) ingestORDERS(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
 	if w.svc == nil || w.ediDocs == nil {
 		return fmt.Errorf("edi_unavailable")

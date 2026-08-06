@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner/as2"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner/edi"
 	"google.golang.org/api/iterator"
 )
@@ -20,23 +21,34 @@ import (
 type EdiOutboundWorker struct {
 	ediDocs      EdiDocumentRepository
 	sftp         SftpConfigRepository
+	as2          As2ConfigRepository
 	orders       *order.Service
 	spanner      *spanner.Client
 	log          *slog.Logger
 	now          func() time.Time
 	SecretLoader func(secretRef string) (string, error)
 	Uploader     func(ctx context.Context, cfg SftpConfig, secret, remoteDir, localPath, remoteName string) error
+	AS2Sender    func(ctx context.Context, req as2.SendRequest) (as2.SendResult, error)
 }
 
 func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, orders *order.Service, client *spanner.Client, log *slog.Logger) *EdiOutboundWorker {
 	if log == nil {
 		log = slog.Default()
 	}
+	cli := as2.NewClient()
 	return &EdiOutboundWorker{
 		ediDocs: docs, sftp: sftp, orders: orders, spanner: client, log: log,
 		now:          func() time.Time { return time.Now().UTC() },
 		SecretLoader: LoadSecretRef,
 		Uploader:     UploadSFTPToDir,
+		AS2Sender:    cli.Send,
+	}
+}
+
+// SetAs2Repository wires optional AS2 outbound push.
+func (w *EdiOutboundWorker) SetAs2Repository(repo As2ConfigRepository) {
+	if w != nil {
+		w.as2 = repo
 	}
 }
 
@@ -170,13 +182,71 @@ func (w *EdiOutboundWorker) emit(ctx context.Context, d EdiDocument) error {
 		_ = os.WriteFile(filepath.Join(destDir, remoteName), []byte(body), 0o644)
 	}
 
+	as2Note := ""
+	if PartnerAS2Enabled() && w.as2 != nil {
+		if note, err := w.pushAS2(ctx, d, []byte(body), remoteName); err != nil {
+			as2Note = "as2_push_failed:" + err.Error()
+			w.log.Warn("as2 outbound push failed", "doc", d.DocumentID, "err", err)
+		} else if note != "" {
+			as2Note = note
+			remoteName = note
+		}
+	}
+
 	now := w.now()
 	d.Status = EdiStatusEmitted
 	d.ObjectPath = objectPath
 	d.RemoteName = remoteName
 	d.FinishedAt = &now
-	d.Error = ""
+	d.Error = as2Note
 	return w.ediDocs.Update(ctx, d)
+}
+
+func (w *EdiOutboundWorker) pushAS2(ctx context.Context, d EdiDocument, body []byte, filename string) (string, error) {
+	cfg, ok, err := w.as2.Get(ctx, d.TenantType, d.TenantID)
+	if err != nil {
+		return "", err
+	}
+	if !ok || !cfg.As2Enabled || strings.TrimSpace(cfg.PartnerURL) == "" {
+		return "", nil
+	}
+	loader := w.SecretLoader
+	if loader == nil {
+		loader = LoadSecretRef
+	}
+	plain := PartnerAS2InsecurePlain()
+	req := as2.SendRequest{
+		URL:        cfg.PartnerURL,
+		From:       cfg.OurAs2Id,
+		To:         cfg.PartnerAs2Id,
+		EDI:        body,
+		Filename:   filename,
+		Plain:      plain,
+		RequestMDN: true,
+	}
+	if !plain {
+		certPEM, err1 := loader(cfg.OurCertSecretRef)
+		keyPEM, err2 := loader(cfg.OurKeySecretRef)
+		partnerPEM, err3 := loader(cfg.PartnerCertSecretRef)
+		if err1 != nil || err2 != nil || err3 != nil {
+			return "", fmt.Errorf("as2_secret_unavailable")
+		}
+		mat, err := as2.LoadMaterial([]byte(certPEM), []byte(keyPEM))
+		if err != nil {
+			return "", err
+		}
+		req.Signer = mat
+		req.RecipientCert = []byte(partnerPEM)
+	}
+	sender := w.AS2Sender
+	if sender == nil {
+		sender = as2.NewClient().Send
+	}
+	res, err := sender(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return "as2:" + res.MessageID, nil
 }
 
 func (w *EdiOutboundWorker) fail(ctx context.Context, d EdiDocument, msg string) error {

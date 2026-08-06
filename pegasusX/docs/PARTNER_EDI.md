@@ -1,6 +1,6 @@
 # Partner EDI-lite (Gate 3 / §8.9 Wave 2B)
 
-**Status:** Wired over SFTP / local root (2026-08-06). Not a certified EDIFACT or AS2 implementation.
+**Status:** Wired over SFTP / local root / **AS2** (2026-08-06). Not a certified EDIFACT implementation. AS2 is transport-only and **not Drummond-certified**.
 
 **Dialect:** UNA-style segment files (`UNA:+.? '`) with `UNB` / `UNH` / `BGM` / `NAD` / `LIN` / `QTY` / `UNT` / `UNZ`. UTF-8, one message per file.
 
@@ -28,7 +28,7 @@ When `ManifestShipUnits` exist for the order (minted at payload seal):
 | `CPS+{i}+1` / `PAC+1++CT` / `GIN+BJ:{sscc}` | Child logistics unit (BJ = SSCC-18) |
 | `GIN+BN:{gtin}` | Optional GTIN when present on the ship unit |
 
-Still not certified EDIFACT / AS2.
+Still not certified EDIFACT. **AS2 transport is Wired** — see [`PARTNER_AS2.md`](./PARTNER_AS2.md) (not Drummond-certified).
 
 ## File naming
 
@@ -67,4 +67,4 @@ Portal: Settings → Integrations (EDI toggle + recent documents).
 
 ## Still open
 
-AS2, full EDIFACT certification. GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md).
+Full EDIFACT certification. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md). Certified 1C exchange package still open.

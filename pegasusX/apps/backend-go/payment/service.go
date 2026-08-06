@@ -2,9 +2,9 @@
 package payment
 
 import (
-		"context"
+	"context"
 	"crypto/sha256"
-			"encoding/hex"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,10 +19,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-
-	)
+)
 
 // Repository is the storage seam. Production binds this to Spanner-backed
 // implementations with real RW transactions and OutboxEvents writes.
@@ -469,6 +469,16 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(req.Currency) == "" {
 		req.Currency = s.currency
+	}
+	// Theatre #13: reject chargeback currency ≠ existing session currency when known.
+	if session, ok, err := s.repo.GetSessionByOrderID(r.Context(), req.OrderID); err == nil && ok {
+		sessCur := strings.TrimSpace(session.Currency)
+		if sessCur != "" {
+			if err := fxrates.AssertSameCurrency(sessCur, req.Currency); err != nil {
+				writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "chargeback currency must match payment session currency", "/v1/payment/chargeback", false, "")
+				return
+			}
+		}
 	}
 	executionResult, err := s.execution.Execute(r.Context(), ExecutionRequest{
 		Gateway:     req.Gateway,
@@ -1480,4 +1490,27 @@ func paymentSessionKey(sessionID string) string {
 
 func paymentRetailerKey(retailerID string) string {
 	return "payment:retailer:" + retailerID
+}
+
+// assertSessionCurrency rejects requestCurrency when a known session currency differs (theatre #13).
+func (s *Service) assertSessionCurrency(ctx context.Context, sessionID, orderID, requestCurrency string) error {
+	if s == nil || s.repo == nil {
+		return nil
+	}
+	requestCurrency = strings.TrimSpace(requestCurrency)
+	if requestCurrency == "" {
+		return nil
+	}
+	var session SessionRecord
+	var ok bool
+	var err error
+	if sid := strings.TrimSpace(sessionID); sid != "" {
+		session, ok, err = s.repo.GetSession(ctx, sid)
+	} else if oid := strings.TrimSpace(orderID); oid != "" {
+		session, ok, err = s.repo.GetSessionByOrderID(ctx, oid)
+	}
+	if err != nil || !ok {
+		return nil
+	}
+	return fxrates.AssertSameCurrency(session.Currency, requestCurrency)
 }

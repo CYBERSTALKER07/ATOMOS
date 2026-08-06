@@ -44,7 +44,8 @@
 | Outbound webhooks (HMAC) | **Wired** (Kafka enqueue + delivery worker + list/deactivate/replay) |
 | Partner bulk export + optional SFTP | **Wired** (`exports:read`, `20260806_partner_exports.ddl`, flags) |
 | Partner 1C journals export | **Wired** (`resource=journals`, CSV/JSON/XML + configurable CoA — [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)) |
-| Partner EDI-lite (ORDERS/ORDRSP/DESADV/INVOIC) | **Wired** (`20260806_partner_edi.ddl`, SFTP/local root; DESADV SSCC CPS/PAC/GIN; no AS2) |
+| Partner EDI-lite (ORDERS/ORDRSP/DESADV/INVOIC) | **Wired** (`20260806_partner_edi.ddl`, SFTP/local root; DESADV SSCC CPS/PAC/GIN; AS2 transport Wired — not Drummond) |
+| Partner AS2 transport | **Wired** (`20260806_partner_as2.ddl`, sync MDN; not Drummond-certified — [`PARTNER_AS2.md`](./PARTNER_AS2.md)) |
 | GS1 GLN + SSCC + ZPL labels | **Wired** (`20260806_gs1_labels.ddl`, `docs/GS1_LABELS.md`; DESADV GIN+BJ from ship units) |
 | Supplier portal Integrations | **Wired** (`/settings/integrations` — keys/webhooks/exports/SFTP/EDI) |
 | OpenAPI partner contract | [`partner.openapi.yaml`](../contracts/partner.openapi.yaml) |

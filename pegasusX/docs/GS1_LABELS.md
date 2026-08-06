@@ -11,7 +11,7 @@ Logistics identifiers and Zebra ZPL without EDI/AS2.
 | SSCC-18 on `ManifestShipUnits` at payload seal | Wired (one SSCC per manifest order) |
 | ZPL `text/plain` GS1-128 `(00)` SSCC | Wired |
 | EDI DESADV SSCC segments (CPS/PAC/GIN+BJ) | **Wired** (from `ManifestShipUnits` at emit) |
-| AS2 / certified EDIFACT / 1C / registry sync | **Out of scope** |
+| AS2 / certified EDIFACT / 1C / registry sync | AS2 transport Wired (not Drummond); certified EDIFACT / 1C package still open |
 
 Migration: `apps/backend-go/schema/migrations/20260806_gs1_labels.ddl`.
 

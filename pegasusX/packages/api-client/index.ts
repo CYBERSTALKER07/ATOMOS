@@ -73,6 +73,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   PartnerIssuedKey,
   PartnerCoaMap,
   PartnerSftpConfig,
+  PartnerAs2Config,
   PartnerWebhookSubscription,
   PartnerApiKeyMeta,
   PartnerWebhookCreated,
@@ -2744,6 +2745,24 @@ export class ApiClient {
     edi_enabled?: boolean;
   }): Promise<{ ok: boolean }> {
     return this.request("/v1/supplier/partner-sftp", "PUT", { body });
+  }
+
+  async getSupplierPartnerAs2(): Promise<PartnerAs2Config> {
+    return this.request("/v1/supplier/partner-as2", "GET");
+  }
+
+  async putSupplierPartnerAs2(body: {
+    as2_enabled?: boolean;
+    our_as2_id?: string;
+    partner_as2_id?: string;
+    partner_url?: string;
+    our_cert_secret_ref?: string;
+    our_key_secret_ref?: string;
+    partner_cert_secret_ref?: string;
+    sign_required?: boolean;
+    encrypt_required?: boolean;
+  }): Promise<PartnerAs2Config> {
+    return this.request("/v1/supplier/partner-as2", "PUT", { body });
   }
 
   async getSupplierPartnerCoa(): Promise<PartnerCoaMap> {

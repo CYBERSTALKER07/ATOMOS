@@ -379,6 +379,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runPartnerIntegrationE2E(ctx, client, base, cookie, supplierID, retailerToken, retailerID, h3Cell, cfg); err != nil {
 		return fmt.Errorf("partner integration: %w", err)
 	}
+	if err := runFxRatesE2E(ctx, client, base, cookie, supplierID, retailerToken, h3Cell, cfg); err != nil {
+		return fmt.Errorf("fx rates: %w", err)
+	}
 	if err := runCollectionsDunningE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
 		return fmt.Errorf("collections dunning: %w", err)
 	}

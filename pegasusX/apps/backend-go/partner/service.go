@@ -19,6 +19,7 @@ type Service struct {
 	webhooks       WebhookRepository
 	exports        ExportRepository
 	sftp           SftpConfigRepository
+	as2            As2ConfigRepository
 	coa            CoaRepository
 	ediDocs        EdiDocumentRepository
 	ediOut         *EdiOutboundWorker
@@ -49,6 +50,14 @@ func (s *Service) SetExportRepos(exports ExportRepository, sftp SftpConfigReposi
 	}
 	s.exports = exports
 	s.sftp = sftp
+}
+
+// SetAs2Repository wires AS2 station config.
+func (s *Service) SetAs2Repository(as2 As2ConfigRepository) {
+	if s == nil {
+		return
+	}
+	s.as2 = as2
 }
 
 // SetCoaRepository wires configurable journals chart-of-accounts.
@@ -471,6 +480,41 @@ func (s *Service) GetSftpConfig(ctx context.Context, tenantType, tenantID string
 		return SftpConfig{}, false, nil
 	}
 	return s.sftp.Get(ctx, tenantType, tenantID)
+}
+
+// UpsertAs2Config stores AS2 station metadata (PEM material via SecretRef only).
+func (s *Service) UpsertAs2Config(ctx context.Context, tenantType, tenantID string, cfg As2Config) error {
+	if s.as2 == nil {
+		return fmt.Errorf("as2_unavailable")
+	}
+	cfg.TenantType = tenantType
+	cfg.TenantID = tenantID
+	cfg.OurAs2Id = strings.TrimSpace(cfg.OurAs2Id)
+	cfg.PartnerAs2Id = strings.TrimSpace(cfg.PartnerAs2Id)
+	cfg.PartnerURL = strings.TrimSpace(cfg.PartnerURL)
+	if cfg.OurAs2Id == "" || cfg.PartnerAs2Id == "" {
+		return fmt.Errorf("invalid_as2_config")
+	}
+	if cfg.As2Enabled && cfg.PartnerURL == "" && !PartnerAS2InsecurePlain() {
+		return fmt.Errorf("partner_url_required")
+	}
+	return s.as2.Upsert(ctx, cfg)
+}
+
+// GetAs2Config returns AS2 config without PEM material.
+func (s *Service) GetAs2Config(ctx context.Context, tenantType, tenantID string) (As2Config, bool, error) {
+	if s.as2 == nil {
+		return As2Config{}, false, nil
+	}
+	return s.as2.Get(ctx, tenantType, tenantID)
+}
+
+// LookupAs2ByOurID resolves tenant by AS2-To station id.
+func (s *Service) LookupAs2ByOurID(ctx context.Context, ourAs2Id string) (As2Config, bool, error) {
+	if s.as2 == nil {
+		return As2Config{}, false, nil
+	}
+	return s.as2.GetByOurAs2Id(ctx, ourAs2Id)
 }
 
 // GetCoa returns the resolved chart of accounts for the tenant (defaults if unset).

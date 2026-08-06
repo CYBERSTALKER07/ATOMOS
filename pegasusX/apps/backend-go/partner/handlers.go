@@ -17,8 +17,9 @@ const maxBody = 64 * 1024
 
 // Handlers expose partner + admin key management HTTP.
 type Handlers struct {
-	Svc      *Service
-	Delivery *DeliveryWorker
+	Svc        *Service
+	Delivery   *DeliveryWorker
+	EdiInbound *EdiInboundWorker
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -403,6 +404,92 @@ func (h *Handlers) HandlePutSftp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// HandleGetAs2 GET /v1/supplier/partner-as2 or /partner/v1/as2/config
+func (h *Handlers) HandleGetAs2(w http.ResponseWriter, r *http.Request) {
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	cfg, found, err := h.Svc.GetAs2Config(r.Context(), tt, tid)
+	if err != nil {
+		writePartnerError(w, http.StatusInternalServerError, "get_failed")
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusOK, map[string]any{"configured": false})
+		return
+	}
+	writeJSON(w, http.StatusOK, as2ConfigDTO(cfg))
+}
+
+// HandlePutAs2 PUT /v1/supplier/partner-as2 or /partner/v1/as2/config
+func (h *Handlers) HandlePutAs2(w http.ResponseWriter, r *http.Request) {
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	body, err := readBody(r)
+	if err != nil {
+		writePartnerError(w, http.StatusBadRequest, "read_body_error")
+		return
+	}
+	var req struct {
+		As2Enabled           *bool  `json:"as2_enabled"`
+		OurAs2Id             string `json:"our_as2_id"`
+		PartnerAs2Id         string `json:"partner_as2_id"`
+		PartnerURL           string `json:"partner_url"`
+		OurCertSecretRef     string `json:"our_cert_secret_ref"`
+		OurKeySecretRef      string `json:"our_key_secret_ref"`
+		PartnerCertSecretRef string `json:"partner_cert_secret_ref"`
+		SignRequired         *bool  `json:"sign_required"`
+		EncryptRequired      *bool  `json:"encrypt_required"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writePartnerError(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	cfg := As2Config{
+		OurAs2Id:             req.OurAs2Id,
+		PartnerAs2Id:         req.PartnerAs2Id,
+		PartnerURL:           req.PartnerURL,
+		OurCertSecretRef:     req.OurCertSecretRef,
+		OurKeySecretRef:      req.OurKeySecretRef,
+		PartnerCertSecretRef: req.PartnerCertSecretRef,
+		SignRequired:         true,
+		EncryptRequired:      true,
+	}
+	if req.As2Enabled != nil {
+		cfg.As2Enabled = *req.As2Enabled
+	}
+	if req.SignRequired != nil {
+		cfg.SignRequired = *req.SignRequired
+	}
+	if req.EncryptRequired != nil {
+		cfg.EncryptRequired = *req.EncryptRequired
+	}
+	if err := h.Svc.UpsertAs2Config(r.Context(), tt, tid, cfg); err != nil {
+		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	saved, _, _ := h.Svc.GetAs2Config(r.Context(), tt, tid)
+	writeJSON(w, http.StatusOK, as2ConfigDTO(saved))
+}
+
+func as2ConfigDTO(cfg As2Config) map[string]any {
+	return map[string]any{
+		"configured":              true,
+		"as2_enabled":             cfg.As2Enabled,
+		"our_as2_id":              cfg.OurAs2Id,
+		"partner_as2_id":          cfg.PartnerAs2Id,
+		"partner_url":             cfg.PartnerURL,
+		"our_cert_secret_ref":     cfg.OurCertSecretRef,
+		"our_key_secret_ref":      cfg.OurKeySecretRef,
+		"partner_cert_secret_ref": cfg.PartnerCertSecretRef,
+		"sign_required":           cfg.SignRequired,
+		"encrypt_required":        cfg.EncryptRequired,
+	}
 }
 
 // HandleGetCoa GET /partner/v1/coa or /v1/supplier/partner-coa

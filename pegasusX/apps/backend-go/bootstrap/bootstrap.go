@@ -38,6 +38,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
@@ -125,6 +126,7 @@ type Config struct {
 	SeedSupplierName       string
 	SeedSupplierCountry    string
 	SeedSupplierCurrency   string
+	FxSeedUSDToUZSScaled   int64 // 0 = skip USD/UZS seed; set FX_SEED_USD_UZS_SCALED for tests
 	DeliveryZoneCenterLat  float64
 	DeliveryZoneCenterLng  float64
 	DeliveryZoneRadiusKm   float64
@@ -237,6 +239,9 @@ type App struct {
 	PartnerJWTSecret        string
 	PartnerWebhookDelivery  *partner.DeliveryWorker
 	PartnerExportWorker     *partner.ExportWorker
+	FxRatesService          *fxrates.Service
+	FxRatesHandlers         *fxrates.Handlers
+	FxRatesRepo             fxrates.Repository
 	PartnerEdiInbound       *partner.EdiInboundWorker
 	PartnerEdiOutbound      *partner.EdiOutboundWorker
 	PartnerEventConsumer    *kafka.Consumer
@@ -295,6 +300,7 @@ func LoadConfig() (*Config, error) {
 		SeedSupplierName:                envOr("SEED_SUPPLIER_NAME", "pegasusX Supplier"),
 		SeedSupplierCountry:             envOr("SEED_SUPPLIER_COUNTRY", "UZ"),
 		SeedSupplierCurrency:            envOr("SEED_SUPPLIER_CURRENCY", "UZS"),
+		FxSeedUSDToUZSScaled:            envInt64("FX_SEED_USD_UZS_SCALED", 0),
 		DeliveryZoneCenterLat:           envFloat("DELIVERY_ZONE_CENTER_LAT", defaultDeliveryZoneCenterLat),
 		DeliveryZoneCenterLng:           envFloat("DELIVERY_ZONE_CENTER_LNG", defaultDeliveryZoneCenterLng),
 		DeliveryZoneRadiusKm:            envFloat("DELIVERY_ZONE_RADIUS_KM", defaultDeliveryZoneRadiusKm),
@@ -1091,6 +1097,25 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
+
+	// Theatre #13: FX rates (ConvertMinor + admin GET/PUT). Operating currency stays UZS.
+	var fxRepo fxrates.Repository = fxrates.NewMemoryRepository()
+	if spannerClient != nil {
+		fxRepo = fxrates.NewSpannerRepository(spannerClient)
+	} else if err := cfg.ensureMemoryFallbackAllowed("fx rates repository"); err != nil {
+		return nil, err
+	}
+	fxSvc := fxrates.NewService(fxRepo)
+	fxHandlers := fxrates.NewHandlers(fxRepo)
+	if err := fxrates.SeedBootstrapRates(ctx, fxRepo, fxrates.SeedOptions{
+		OperatingCurrency: cfg.SeedSupplierCurrency,
+		USDToUZSScaled:    cfg.FxSeedUSDToUZSScaled,
+		Log:               log,
+	}); err != nil {
+		// Table may be absent until migration; warn and continue (SSMR prints SKIPPED).
+		log.Warn("fx rates seed skipped or failed", "err", err)
+	}
+
 	orderSvc.SetARService(arSvc)
 	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
 	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
@@ -1266,6 +1291,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
 	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
+	var partnerAs2 partner.As2ConfigRepository = partner.NewMemoryAs2ConfigRepository()
+	if spannerClient != nil {
+		partnerAs2 = partner.NewSpannerAs2ConfigRepository(spannerClient)
+	}
+	partnerSvc.SetAs2Repository(partnerAs2)
 	var partnerCoa partner.CoaRepository = partner.NewMemoryCoaRepository()
 	if spannerClient != nil {
 		partnerCoa = partner.NewSpannerCoaRepository(spannerClient)
@@ -1275,6 +1305,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	partnerExportWorker := partner.NewExportWorker(partnerExports, partnerSftp, spannerClient, log)
 	partnerExportWorker.SetCoaRepository(partnerCoa)
 	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, spannerClient, log)
+	partnerEdiOut.SetAs2Repository(partnerAs2)
 	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
 	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
 	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
@@ -1284,7 +1315,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 		return partner.RetailerGeo{Lat: loc.Lat, Lng: loc.Lng, H3Cell: loc.H3Cell}, nil
 	}
-	partnerHandlers := &partner.Handlers{Svc: partnerSvc, Delivery: partnerDelivery}
+	partnerHandlers := &partner.Handlers{Svc: partnerSvc, Delivery: partnerDelivery, EdiInbound: partnerEdiIn}
 	partnerJWTSecret := partner.ResolvePartnerJWTSecret(cfg.JWTSecret)
 	partnerSvc.SetOAuthJWT(partnerJWTSecret, partner.PartnerOAuthIssuer(), partner.PartnerOAuthTTL())
 
@@ -1577,6 +1608,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PartnerJWTSecret:        partnerJWTSecret,
 		PartnerWebhookDelivery:  partnerDelivery,
 		PartnerExportWorker:     partnerExportWorker,
+		FxRatesService:          fxSvc,
+		FxRatesHandlers:         fxHandlers,
+		FxRatesRepo:             fxRepo,
 		PartnerEdiInbound:       partnerEdiIn,
 		PartnerEdiOutbound:      partnerEdiOut,
 		PartnerEventConsumer:    partnerEventConsumer,
@@ -2347,6 +2381,18 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	i, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil {
+		return fallback
+	}
+	return i
+}
+
+func envInt64(key string, fallback int64) int64 {
+	v, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(v) == "" {
+		return fallback
+	}
+	i, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
 	if err != nil {
 		return fallback
 	}

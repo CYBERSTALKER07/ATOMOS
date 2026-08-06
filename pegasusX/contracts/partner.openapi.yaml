@@ -1,13 +1,14 @@
 openapi: 3.0.3
 info:
   title: PegasusX Partner API
-  version: "1.3.0"
+  version: "1.4.0"
   description: |
     Gate-3 machine integration surface (§8.9). Authenticate with a partner API key
     (`Authorization: Bearer pxk_…`) **or** a short-lived OAuth2 access token from
     `POST /partner/v1/oauth/token` (`grant_type=client_credentials`; `PartnerApiKeys` are the clients).
     Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under `/v1/supplier/…`).
     Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite. Wave 2C: GS1. Journals + configurable CoA.
+    AS2 transport over EDI-lite (not Drummond-certified).
 servers:
   - url: https://api-ssmr.pegasusx.app
     description: SSMR
@@ -325,6 +326,52 @@ paths:
                 $ref: "#/components/schemas/PartnerCoaMap"
         "422":
           $ref: "#/components/responses/Problem"
+  /partner/v1/as2:
+    post:
+      summary: AS2 receive (EDI-lite ORDERS)
+      description: Unauthenticated RFC 4130 receive; identity via AS2-From/AS2-To + PKCS7. Sync MDN response.
+      operationId: partnerAs2Receive
+      security: []
+      responses:
+        "200":
+          description: Sync MDN (multipart/report)
+        "400":
+          description: Missing AS2 headers
+        "503":
+          description: AS2 disabled
+  /partner/v1/as2/config:
+    get:
+      summary: Get tenant AS2 station config
+      operationId: partnerGetAs2Config
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: AS2 config (no PEM material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
+    put:
+      summary: Upsert tenant AS2 station config
+      operationId: partnerPutAs2Config
+      security:
+        - PartnerApiKey: [exports:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerAs2ConfigUpdate"
+      responses:
+        "200":
+          description: Saved AS2 config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
+        "422":
+          $ref: "#/components/responses/Problem"
   /partner/v1/edi/documents:
     get:
       summary: List recent EDI-lite documents for the key tenant
@@ -562,6 +609,50 @@ components:
           type: string
         account_bank_cash:
           type: string
+    PartnerAs2Config:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        as2_enabled:
+          type: boolean
+        our_as2_id:
+          type: string
+        partner_as2_id:
+          type: string
+        partner_url:
+          type: string
+        our_cert_secret_ref:
+          type: string
+        our_key_secret_ref:
+          type: string
+        partner_cert_secret_ref:
+          type: string
+        sign_required:
+          type: boolean
+        encrypt_required:
+          type: boolean
+    PartnerAs2ConfigUpdate:
+      type: object
+      properties:
+        as2_enabled:
+          type: boolean
+        our_as2_id:
+          type: string
+        partner_as2_id:
+          type: string
+        partner_url:
+          type: string
+        our_cert_secret_ref:
+          type: string
+        our_key_secret_ref:
+          type: string
+        partner_cert_secret_ref:
+          type: string
+        sign_required:
+          type: boolean
+        encrypt_required:
+          type: boolean
     PartnerOAuthTokenRequest:
       type: object
       required: [grant_type, client_secret]

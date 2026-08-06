@@ -31,6 +31,13 @@ func LoadSecretRef(secretRef string) (string, error) {
 	if v := strings.TrimSpace(os.Getenv("PARTNER_SFTP_SECRET_" + secretRef)); v != "" {
 		return v, nil
 	}
+	as2Key := "PARTNER_AS2_SECRET_" + strings.ToUpper(strings.ReplaceAll(secretRef, "-", "_"))
+	if v := strings.TrimSpace(os.Getenv(as2Key)); v != "" {
+		return v, nil
+	}
+	if v := strings.TrimSpace(os.Getenv("PARTNER_AS2_SECRET_" + secretRef)); v != "" {
+		return v, nil
+	}
 	if strings.HasPrefix(secretRef, "/") || strings.HasPrefix(secretRef, "./") {
 		b, err := os.ReadFile(secretRef)
 		if err != nil {

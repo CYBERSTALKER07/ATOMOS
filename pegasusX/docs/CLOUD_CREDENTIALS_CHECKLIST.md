@@ -53,7 +53,8 @@ Terraform: [`infra/terraform/maps_platform.tf`](../infra/terraform/maps_platform
 
 - No new GSM secrets for Wave 1 — keys and webhook signing secrets live in Spanner (`PartnerApiKeys`, `WebhookSubscriptions.SigningSecret`)
 - Optional `PARTNER_JWT_SECRET` for OAuth2 access tokens (else derived from `JWT_SECRET` so tokens never verify as human sessions)
+- AS2 PEM material via SecretRef → GSM / `PARTNER_AS2_SECRET_<REF>` (never store PEMs in Spanner)
 - Issue keys via authenticated `POST /v1/admin/partner-keys`; never commit plaintext `pxk_` / `whsec_` secrets
 - OAuth: `POST /partner/v1/oauth/token` (`client_credentials`) — clients are existing partner keys
-- Apply DDL migration `apps/backend-go/schema/migrations/20260805_partner_integration_layer.ddl`
-- Contract: [`PARTNER_API.md`](./PARTNER_API.md), [`contracts/partner.openapi.yaml`](../contracts/partner.openapi.yaml)
+- Apply DDL migration `apps/backend-go/schema/migrations/20260805_partner_integration_layer.ddl` (+ partner AS2 `20260806_partner_as2.ddl`)
+- Contract: [`PARTNER_API.md`](./PARTNER_API.md), [`PARTNER_AS2.md`](./PARTNER_AS2.md), [`contracts/partner.openapi.yaml`](../contracts/partner.openapi.yaml)
