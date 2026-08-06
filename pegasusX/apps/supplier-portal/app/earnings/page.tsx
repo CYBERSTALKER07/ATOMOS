@@ -364,6 +364,7 @@ function ActionMessage({ state }: { state: ActionState }) {
 }
 
 function FinanceEntryTable({ entries, emptyLabel }: { entries: PaymentLedgerEntry[]; emptyLabel: string }) {
+  const t = usePortalT();
   if (entries.length === 0) {
     return (
       <p className="md-typescale-body-medium mt-3" style={{ color: "var(--color-md-outline)" }}>

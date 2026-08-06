@@ -34,9 +34,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function ToastCard({
-  const t = usePortalT();
-  toast,
+function ToastCard({ toast,
   dismiss,
   typeStyle,
 }: {
@@ -44,6 +42,7 @@ function ToastCard({
   dismiss: (id: number) => void;
   typeStyle: { bg: string; fg: string; track: string };
 }) {
+  const t = usePortalT();
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [progressActive, setProgressActive] = useState(false);

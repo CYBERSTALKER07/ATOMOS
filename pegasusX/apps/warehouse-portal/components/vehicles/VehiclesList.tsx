@@ -32,6 +32,7 @@ export function VehiclesList({ vehicles, loading }: VehiclesListProps) {
 }
 
 function TruckCard({ vehicle }: { vehicle: WarehouseFleetVehicle }) {
+  const t = usePortalT();
   const capacity = vehicle.capacity_vu ?? vehicle.max_volume_vu ?? 0;
   return (
     <Link

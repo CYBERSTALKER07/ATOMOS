@@ -27,8 +27,8 @@ function SetupThemeToggle() {
   );
 }
 
-function SetupStepList({
-  const t = usePortalT(); currentIndex }: { currentIndex: number }) {
+function SetupStepList({ currentIndex }: { currentIndex: number }) {
+  const t = usePortalT();
   return (
     <ol className="setup-step-list" aria-label={t("warehouse_portal.setup.setup_wizard_shell.text.onboarding_progress")}>
       {SETUP_STEPS.map((step, index) => {

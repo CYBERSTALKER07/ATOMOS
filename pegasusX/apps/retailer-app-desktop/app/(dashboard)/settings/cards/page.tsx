@@ -32,6 +32,7 @@ export default function SavedCardsPage() {
 }
 
 function SavedCardsPageContent() {
+  const t = usePortalT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("return_to");
@@ -71,7 +72,7 @@ function SavedCardsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadCards();

@@ -557,6 +557,7 @@ function filterManifests(items: ManifestData[], query: string) {
 }
 
 function ManifestCard({ data }: { data: ManifestData }) {
+  const t = usePortalT();
   return (
     <div className="md-card p-4 hover:shadow-md transition-shadow cursor-pointer bg-[var(--color-md-surface)]">
       <div className="flex justify-between items-start mb-3">
