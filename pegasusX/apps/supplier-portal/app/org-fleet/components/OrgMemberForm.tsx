@@ -28,6 +28,7 @@ export function OrgMemberForm({
   api: ApiClient;
   onCreated: () => void;
 }) {
+  const t = usePortalT();
   const [orgForm, setOrgForm] = useState<OrgFormState>(defaultOrgForm);
   const [orgSubmitting, setOrgSubmitting] = useState(false);
   const [orgMessage, setOrgMessage] = useState<string | null>(null);

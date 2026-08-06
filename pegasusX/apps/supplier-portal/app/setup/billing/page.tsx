@@ -21,25 +21,25 @@ import {
 const GATEWAYS = [
   {
     id: "GLOBAL_PAY",
-    label: t("supplier_portal.billing_setup.gateway.global_pay.label"),
+    label: "Global Pay",
     description: "Card payments via the pegasusX global rail.",
     icon: "global",
   },
   {
     id: "ADYEN",
-    label: t("supplier_portal.residual.text.adyen"),
+    label: "Adyen",
     description: "Enterprise card acquiring with local payment methods.",
     icon: "payment",
   },
   {
     id: "AIRWALLEX",
-    label: t("supplier_portal.residual.text.airwallex"),
+    label: "Airwallex",
     description: "Cross-border payouts and multi-currency settlement.",
     icon: "treasury",
   },
   {
     id: "CASH",
-    label: t("supplier_portal.residual.text.cash_on_delivery"),
+    label: "Cash on delivery",
     description: "Retailers collect cash; reconcile manually.",
     icon: "pricing",
   },
@@ -70,13 +70,13 @@ const INITIAL: BillingState = {
 const ACCEPTOR_OPTIONS = [
   {
     id: "SUPPLIER" as const,
-    label: t("supplier_portal.residual.text.supplier_accepts_payments"),
+    label: "Supplier accepts payments",
     description: "Card revenue settles to your supplier treasury account.",
     icon: "supplier",
   },
   {
     id: "WAREHOUSE" as const,
-    label: t("supplier_portal.residual.text.warehouse_accepts_payments"),
+    label: "Warehouse accepts payments",
     description: "Fulfilling nodes collect payment per dispatch lane.",
     icon: "warehouse",
   },

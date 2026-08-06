@@ -17,6 +17,7 @@ export function OrgMemberTable({
   api: ApiClient; 
   onUpdated: (orgMembers: ReadyState["orgMembers"]) => void;
 }) {
+  const t = usePortalT();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
   const [orgMessage, setOrgMessage] = useState<string | null>(null);

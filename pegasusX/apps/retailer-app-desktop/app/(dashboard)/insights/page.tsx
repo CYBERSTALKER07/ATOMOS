@@ -58,7 +58,7 @@ const urgencyCfg: Record<
   string,
   { color: "danger" | "warning" | "default"; label: string }
 > = {
-  WAITING: { color: "danger", label: t("retailer_desktop.residual.text.reorder_now") },
+  WAITING: { color: "danger", label: "REORDER NOW" },
   DORMANT: { color: "warning", label: "MONITOR" },
   EXECUTED: { color: "default", label: "ORDERED" },
 };

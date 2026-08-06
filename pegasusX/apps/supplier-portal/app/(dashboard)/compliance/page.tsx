@@ -50,7 +50,7 @@ function MetricCard({
       <h3 className={`text-sm font-medium ${alert ? "text-red-800" : "text-gray-500"}`}>{title}</h3>
       <p className={`text-3xl font-bold mt-2 ${alert ? "text-red-600" : "text-gray-900"}`}>{value}</p>
       {href ? (
-        <p className="text-xs text-gray-500 mt-2 underline">{t("supplier_portal.compliance.text.view_in_exception_centre")}</p>
+        <p className="text-xs text-gray-500 mt-2 underline">{"View in Exception Centre"}</p>
       ) : null}
     </div>
   );

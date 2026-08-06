@@ -51,10 +51,10 @@ export type VehicleFormState = {
 };
 
 export const orgRoleOptions: Array<{ value: Role; label: string }> = [
-  { value: "ADMIN", label: t("supplier_portal.residual.text.supplier_operator") },
-  { value: "WAREHOUSE_ADMIN", label: t("supplier_portal.residual.text.warehouse_admin") },
-  { value: "FACTORY_ADMIN", label: t("supplier_portal.residual.text.factory_admin") },
-  { value: "PAYLOAD", label: t("supplier_portal.residual.text.payload_staff") },
+  { value: "ADMIN", label: "Supplier operator" },
+  { value: "WAREHOUSE_ADMIN", label: "Warehouse admin" },
+  { value: "FACTORY_ADMIN", label: "Factory admin" },
+  { value: "PAYLOAD", label: "Payload staff" },
 ];
 
 export const defaultOrgForm: OrgFormState = {

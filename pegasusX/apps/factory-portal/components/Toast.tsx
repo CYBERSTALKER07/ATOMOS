@@ -35,6 +35,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function ToastCard({
+  const t = usePortalT();
   toast,
   dismiss,
   typeStyle,
@@ -179,6 +180,7 @@ function ToastCard({
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const t = usePortalT();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 

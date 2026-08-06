@@ -25,6 +25,7 @@ export function DriverForm({
   api: ApiClient;
   onCreated: () => void;
 }) {
+  const t = usePortalT();
   const [driverForm, setDriverForm] = useState<DriverFormState>(defaultDriverForm);
   const [driverSubmitting, setDriverSubmitting] = useState(false);
   const [driverMessage, setDriverMessage] = useState<string | null>(null);

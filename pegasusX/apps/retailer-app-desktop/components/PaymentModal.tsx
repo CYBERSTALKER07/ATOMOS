@@ -67,7 +67,7 @@ function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
     gateway: gateway,
     currency: session.currency || "UZS",
     available_card_gateways: gateway === "CASH" ? [] : [gateway],
-    message: t("retailer_desktop.residual.text.pending_payment_requires_completion"),
+    message: "Pending payment requires completion.",
   };
 }
 

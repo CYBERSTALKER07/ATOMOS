@@ -25,6 +25,7 @@ export function VehicleForm({
   api: ApiClient;
   onCreated: () => void;
 }) {
+  const t = usePortalT();
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(defaultVehicleForm);
   const [vehicleSubmitting, setVehicleSubmitting] = useState(false);
   const [vehicleMessage, setVehicleMessage] = useState<string | null>(null);
