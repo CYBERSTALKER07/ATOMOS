@@ -323,12 +323,12 @@ h3,
 
 /* Pill nav uses GSAP for hover — disable global link transitions */
 .pill-nav a,
-.pill-nav button {
+.pill-nav button:not(.lang-switcher__btn) {
   transition: none !important;
 }
 
 .pill-nav a:hover,
-.pill-nav button:hover {
+.pill-nav button:not(.lang-switcher__btn):hover {
   color: inherit;
 }
 
