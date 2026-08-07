@@ -249,7 +249,7 @@ func TestRefund_FiscalCorrectiveChainLinked(t *testing.T) {
 	if _, err := client.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertMap("OrderFiscalReceipts", map[string]any{
 			"OrderId":         orderID,
-			"AttemptId":       "att-" + orderID,
+			"AttemptId":       fmt.Sprintf("att-rf-%d", time.Now().UnixNano()),
 			"SupplierId":      "sup-refund",
 			"RetailerId":      "ret-refund",
 			"Provider":        FiscalProviderPegasus,

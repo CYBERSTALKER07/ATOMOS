@@ -273,7 +273,7 @@ func (r *SpannerRepository) GetDeliveredOrderLines(ctx context.Context, orderId 
 		}()
 		fiscalIter := r.client.Single().Query(ctx, spanner.Statement{
 			SQL: `
-				SELECT LineSku, TaxableMinor, VatMinor, TotalMinor, AppliedVatRateBps
+				SELECT OrderLineId, NetMinor, VatMinor, GrossMinor, VatRateBps
 				FROM OrderLineFiscalSnapshots
 				WHERE OrderId = @orderId
 			`,

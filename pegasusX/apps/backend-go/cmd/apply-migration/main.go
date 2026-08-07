@@ -331,7 +331,9 @@ func isBenignDDLConflict(err error) bool {
 			strings.Contains(msg, "already has a constraint")
 	case codes.FailedPrecondition:
 		// Only exact "already exists" style precondition messages; real ALTER failures must fail closed.
+		// The emulator reports CREATE-on-existing-object as FailedPrecondition "Duplicate name in schema".
 		return strings.Contains(msg, "already exists") ||
+			strings.Contains(msg, "duplicate name in schema") ||
 			strings.Contains(msg, "duplicate column") ||
 			strings.Contains(msg, "column already")
 	default:

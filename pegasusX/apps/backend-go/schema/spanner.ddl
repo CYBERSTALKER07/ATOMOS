@@ -1625,15 +1625,20 @@ CREATE INDEX Idx_TaxRegimeVersions_Effective
   ON TaxRegimeVersions(CountryCode, EffectiveFrom DESC);
 
 CREATE TABLE OrderLineFiscalSnapshots (
-  OrderId           STRING(36) NOT NULL,
-  LineSku           STRING(64) NOT NULL,
-  RegimeVersionId   STRING(36) NOT NULL,
-  TaxableMinor      INT64      NOT NULL,
-  VatMinor          INT64      NOT NULL,
-  TotalMinor        INT64      NOT NULL,
-  AppliedVatRateBps INT64      NOT NULL,
-) PRIMARY KEY (OrderId, LineSku),
+  OrderId         STRING(36) NOT NULL,
+  OrderLineId     STRING(36) NOT NULL,
+  RegimeId        STRING(36) NOT NULL,          -- FK → TaxRegimeVersions.Id
+  VatRateBps      INT64 NOT NULL,               -- denormalised for fast audit
+  NetMinor        INT64 NOT NULL,               -- line net in tiyin
+  VatMinor        INT64 NOT NULL,
+  GrossMinor      INT64 NOT NULL,
+  SnapshotAt      TIMESTAMP NOT NULL,           -- = order completion time
+  CreatedAt       TIMESTAMP NOT NULL,
+) PRIMARY KEY (OrderId, OrderLineId),
   INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+CREATE INDEX OrderLineFiscalSnapshots_ByRegime
+ON OrderLineFiscalSnapshots (RegimeId);
 
 CREATE TABLE ExceptionTickets (
     TicketId STRING(36) NOT NULL,

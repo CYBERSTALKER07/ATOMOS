@@ -421,6 +421,9 @@ func (s *Service) recordRefundCreditNote(ctx context.Context, refundID string, o
 	}
 
 	creditNoteID = s.newID()
+	// CreditNotes.CreatedAt/IssuedAt predate allow_commit_timestamp (DDL has no
+	// OPTIONS) — wall clock here, consistent with the creditnote repository.
+	cnNow := s.now().UTC()
 	_, err = s.spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertMap("CreditNotes", map[string]any{
 			"CreditNoteId":  creditNoteID,
@@ -434,8 +437,8 @@ func (s *Service) recordRefundCreditNote(ctx context.Context, refundID string, o
 			"TotalGrossMinor": amount,
 			"OriginalEhfId": spanner.NullString{StringVal: originalEhf, Valid: originalEhf != ""},
 			"CreatedBy":     actor,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"IssuedAt":      spanner.CommitTimestamp,
+			"CreatedAt":     cnNow,
+			"IssuedAt":      cnNow,
 		}),
 		spanner.UpdateMap("Refunds", map[string]any{
 			"RefundId":     refundID,

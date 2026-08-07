@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Mail, Zap, Clock } from 'lucide-react';
+import { Mail, Zap, Clock, Send } from 'lucide-react';
 import ChamferButton from '@/app/components/ChamferButton';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 
@@ -88,9 +88,9 @@ export default function ContactPage() {
       activeHref="/contact"
       sectionTitle="CONTACT"
       title="Let's Connect"
-      summary="Questions about Pegasus, partnerships, or your logistics network — we respond within one business day."
-      primaryHref="/join"
-      primaryLabel="REQUEST DEMO"
+      summary="Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum."
+      primaryHref="https://t.me/DominusMunerum"
+      primaryLabel="CHAT ON TELEGRAM"
       secondaryHref="/platform"
       secondaryLabel="EXPLORE PLATFORM"
       section06={
@@ -142,7 +142,7 @@ export default function ContactPage() {
                   </div>
                   {submitStatus === 'success' && (
                     <p className="border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm text-[#8DDC96]" role="status">
-                      Message sent — we&apos;ll be in touch soon.
+                      Message sent via Resend API — we&apos;ll be in touch soon.
                     </p>
                   )}
                   {submitStatus === 'error' && (
@@ -151,21 +151,29 @@ export default function ContactPage() {
                     </p>
                   )}
                   <ChamferButton type="submit" variant="fill" className="w-full justify-center" disabled={isSubmitting}>
-                    {isSubmitting ? 'Sending...' : 'Send message'}
+                    {isSubmitting ? 'Sending via Resend...' : 'Send Message'}
                   </ChamferButton>
                 </form>
               </div>
               <div className="space-y-4 lg:col-span-2">
                 {[
+                  { icon: Send, title: 'Telegram', body: '@DominusMunerum', href: 'https://t.me/DominusMunerum', external: true },
                   { icon: Mail, title: 'Email', body: 'cyberstalkerx7@gmail.com', href: 'mailto:cyberstalkerx7@gmail.com' },
-                  { icon: Zap, title: 'Response time', body: '24–48 hours on business days' },
+                  { icon: Zap, title: 'Response time', body: 'Instant on Telegram, < 24h on Email' },
                   { icon: Clock, title: 'Office hours', body: 'Mon–Fri 9:00–18:00' },
-                ].map(({ icon: Icon, title, body, href }) => (
+                ].map(({ icon: Icon, title, body, href, external }) => (
                   <div key={title} className="docs-card p-6">
                     <Icon className="mb-3 h-6 w-6 text-white/80" />
                     <h3 className="font-semibold">{title}</h3>
                     {href ? (
-                      <a href={href} className="mt-2 block text-sm text-white/60 hover:text-white">{body}</a>
+                      <a 
+                        href={href} 
+                        target={external ? '_blank' : undefined} 
+                        rel={external ? 'noopener noreferrer' : undefined} 
+                        className="mt-2 block text-sm text-white/60 hover:text-white"
+                      >
+                        {body} {external ? '↗' : ''}
+                      </a>
                     ) : (
                       <p className="mt-2 text-sm text-white/60">{body}</p>
                     )}

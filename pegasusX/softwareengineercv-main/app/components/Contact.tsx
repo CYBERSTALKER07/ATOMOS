@@ -116,10 +116,10 @@ export default function Contact() {
   };
 
   const contactInfo = [
-    { title: 'Email', detail: 'demo@pegasus.io', link: 'mailto:demo@pegasus.io' },
-    { title: 'LinkedIn', detail: 'Follow Pegasus', link: 'https://linkedin.com' },
-    { title: 'Platform', detail: 'Explore modules', link: '#projects' },
-    { title: 'Sales', detail: 'Enterprise inquiries', link: 'mailto:sales@pegasus.io' }
+    { title: 'Telegram', detail: '@DominusMunerum', link: 'https://t.me/DominusMunerum' },
+    { title: 'Email', detail: 'cyberstalkerx7@gmail.com', link: 'mailto:cyberstalkerx7@gmail.com' },
+    { title: 'Platform', detail: 'Explore modules', link: '/platform' },
+    { title: 'Sales & Demo', detail: 'Enterprise inquiries', link: '/join' }
   ];
 
   const tabs = [

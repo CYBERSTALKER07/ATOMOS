@@ -21,4 +21,7 @@ func TestIsBenignDDLConflictNarrow(t *testing.T) {
 	if !isBenignDDLConflict(status.Error(codes.InvalidArgument, "Table already exists: SchemaMigrations")) {
 		t.Fatal("InvalidArgument already exists should be benign")
 	}
+	if !isBenignDDLConflict(status.Error(codes.FailedPrecondition, "Duplicate name in schema: SchemaMigrations.")) {
+		t.Fatal("emulator duplicate-name FailedPrecondition should be benign")
+	}
 }
