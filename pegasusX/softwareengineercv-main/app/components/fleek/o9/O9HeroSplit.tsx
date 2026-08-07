@@ -35,9 +35,11 @@ export default function O9HeroSplit({
   proofItems = DEFAULT_PROOF,
   showProofStrip = true,
 }: O9HeroSplitProps) {
+  const hasVisual = Boolean(visual || imageSrc);
+
   return (
     <section className="o9-hero-split">
-      <div className="o9-hero-split__grid">
+      <div className={`o9-hero-split__grid ${!hasVisual ? 'o9-hero-split__grid--single' : ''}`}>
         <O9Hero
           categoryLabel={categoryLabel}
           categoryHref={categoryHref}
@@ -45,11 +47,11 @@ export default function O9HeroSplit({
           summary={summary}
           badge={badge}
         />
-        <div className="o9-hero-split__visual">
-          {visual ??
-            (imageSrc ? (
+        {hasVisual ? (
+          <div className="o9-hero-split__visual">
+            {visual ?? (
               <Image
-                src={imageSrc}
+                src={imageSrc!}
                 alt={imageAlt || title}
                 width={1200}
                 height={800}
@@ -57,8 +59,9 @@ export default function O9HeroSplit({
                 priority
                 sizes="(max-width: 900px) 100vw, 50vw"
               />
-            ) : null)}
-        </div>
+            )}
+          </div>
+        ) : null}
       </div>
       {showProofStrip ? (
         <div className="o9-hero-split__proof">

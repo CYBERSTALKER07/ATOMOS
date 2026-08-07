@@ -5364,7 +5364,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 @media (min-width: 900px) {
-  .o9-hero-split__grid {
+  .o9-hero-split__grid:not(.o9-hero-split__grid--single) {
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
   }
