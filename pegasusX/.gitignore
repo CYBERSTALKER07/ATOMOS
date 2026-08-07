@@ -71,3 +71,4 @@ web-build/
 *.tfstate.*
 *.tfplan
 **/.build/
+.ssmr/
