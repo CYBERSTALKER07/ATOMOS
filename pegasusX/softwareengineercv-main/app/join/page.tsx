@@ -8,11 +8,13 @@ import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import ChamferButton from '@/app/components/ChamferButton';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 import LazyWhenInView from '@/app/components/LazyWhenInView';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const Lanyard = dynamic(() => import('@/app/components/Lanyard'), { ssr: false });
 
 export default function JoinPage() {
   const { allowHeavyFx } = usePerfProfile();
+  const { t, language } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -26,8 +28,8 @@ export default function JoinPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    document.title = 'Request Demo | Pegasus';
-  }, []);
+    document.title = language === 'ru' ? 'Запросить демо | Pegasus' : 'Request Demo | Pegasus';
+  }, [language]);
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -90,12 +92,12 @@ export default function JoinPage() {
     <FleekSecondaryLayout
       activeHref="/join"
       sectionTitle="REQUEST DEMO"
-      title="Request a Demo"
-      summary="See dispatch, tracking, and payments for supplier-led logistics networks — shared order truth, six roles, portal and native."
+      title={t('join_title')}
+      summary={t('join_subtitle')}
       primaryHref="#demo-form"
-      primaryLabel="BOOK WALKTHROUGH"
+      primaryLabel={t('btn_request_demo')}
       secondaryHref="/platform"
-      secondaryLabel="PLATFORM TOUR"
+      secondaryLabel={t('nav_tour').toUpperCase()}
       showStack={false}
       heroVisual={<PixelDualHero />}
       section06={

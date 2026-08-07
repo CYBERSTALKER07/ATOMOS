@@ -82,9 +82,8 @@ export const metadata: Metadata = {
   icons: {
     icon: BRAND_LOGO,
     shortcut: BRAND_LOGO,
-    apple: '/web-app-manifest-192x192.png',
+    apple: BRAND_LOGO,
   },
-  manifest: '/manifest.json',
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? {
         verification: {

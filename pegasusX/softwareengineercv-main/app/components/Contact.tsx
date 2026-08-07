@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import CurvedLoop from './CurvedLoop';
 import ContentCard from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,6 +14,7 @@ type InquiryType = 'general' | 'client' | 'sponsor';
 
 export default function Contact() {
   const { isMobile } = useIsMobile();
+  const { t, language } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -118,14 +120,14 @@ export default function Contact() {
   const contactInfo = [
     { title: 'Telegram', detail: '@DominusMunerum', link: 'https://t.me/DominusMunerum' },
     { title: 'Email', detail: 'cyberstalkerx7@gmail.com', link: 'mailto:cyberstalkerx7@gmail.com' },
-    { title: 'Platform', detail: 'Explore modules', link: '/platform' },
-    { title: 'Sales & Demo', detail: 'Enterprise inquiries', link: '/join' }
+    { title: t('nav_platform'), detail: t('btn_explore'), link: '/platform' },
+    { title: t('contact_sales_demo'), detail: 'Enterprise inquiries', link: '/join' }
   ];
 
   const tabs = [
-    { id: 'general' as InquiryType, label: 'General Inquiry' },
-    { id: 'client' as InquiryType, label: 'Request Demo' },
-    { id: 'sponsor' as InquiryType, label: 'Partner With Us' }
+    { id: 'general' as InquiryType, label: t('contact_tab_general') },
+    { id: 'client' as InquiryType, label: t('contact_tab_demo') },
+    { id: 'sponsor' as InquiryType, label: t('contact_tab_partner') }
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {

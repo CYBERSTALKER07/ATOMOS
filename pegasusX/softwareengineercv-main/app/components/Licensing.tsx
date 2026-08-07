@@ -6,38 +6,38 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import GlitchText from './GlitchText';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const DEPLOYMENT_CARDS = [
-  {
-    tone: 'dark' as const,
-    tag: 'DISCOVER THE PLATFORM',
-    title: 'Take a Tour',
-    description:
-      'See how Pegasus unifies dispatch, fleet tracking, payments, and coordination across every role in your network.',
-    image: EDITORIAL_IMAGES[4],
-    href: '/#solutions',
-    ctaLabel: 'TAKE PLATFORM TOUR',
-  },
-  {
-    tone: 'light' as const,
-    tag: 'DISCOVER OUR PLATFORM',
-    title: 'Live Demo with a Pegasus Expert',
-    description:
-      'Get a personalized walkthrough and see how to run supplier-led logistics with faster, smarter decisions across your enterprise.',
-    image: EDITORIAL_IMAGES[1],
-    href: '/join',
-    ctaLabel: 'REQUEST DEMO',
-  },
-];
-
 export default function Licensing() {
   const { isMobile } = useIsMobile();
+  const { t } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
+
+  const deploymentCards = [
+    {
+      tone: 'dark' as const,
+      tag: t('licensing_tour_tag'),
+      title: t('licensing_tour_title'),
+      description: t('licensing_tour_desc'),
+      image: EDITORIAL_IMAGES[4],
+      href: '/platform',
+      ctaLabel: t('nav_tour').toUpperCase(),
+    },
+    {
+      tone: 'light' as const,
+      tag: t('licensing_demo_tag'),
+      title: t('licensing_demo_title'),
+      description: t('licensing_demo_desc'),
+      image: EDITORIAL_IMAGES[1],
+      href: '/join',
+      ctaLabel: t('nav_demo').toUpperCase(),
+    },
+  ];
 
   useEffect(() => {
     if (sectionRef.current && titleRef.current && contentRef.current && cardsRef.current) {
@@ -98,7 +98,7 @@ export default function Licensing() {
           </div>
 
           <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto">
-            {DEPLOYMENT_CARDS.map((card) => (
+            {deploymentCards.map((card) => (
               <ContentCard
                 key={card.title}
                 variant="vertical"

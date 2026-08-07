@@ -2,42 +2,30 @@
 
 import Link from 'next/link';
 import { Linkedin, Youtube, Instagram } from 'lucide-react';
-
-const PLATFORM_LINKS = [
-  { name: 'Platform overview', href: '/platform' },
-  { name: 'Order lifecycle', href: '/platform/order-lifecycle' },
-  { name: 'How Pegasus works', href: '/platform/how-pegasus-works' },
-  { name: 'Trust & reliability', href: '/platform/trust-reliability' },
-];
-
-const COMPANY_LINKS = [
-  { name: 'Request demo', href: '/join' },
-  { name: 'Contact Us', href: '/contact' },
-  { name: 'Roles', href: '/roles' },
-  { name: 'Modules', href: '/projects' },
-];
-
-const POLICIES_LINKS = [
-  { name: 'Platform tour', href: '/platform' },
-  { name: 'Apps & Deploy', href: '/apps-deploy' },
-];
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
-
-const SOCIAL_LINKS = [
-  { name: 'X', href: 'https://twitter.com', Icon: XIcon },
-  { name: 'LinkedIn', href: 'https://linkedin.com', Icon: Linkedin },
-  { name: 'YouTube', href: 'https://youtube.com', Icon: Youtube },
-  { name: 'Instagram', href: 'https://instagram.com', Icon: Instagram },
-];
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLanguage();
+
+  const platformLinks = [
+    { name: t('nav_platform'), href: '/platform' },
+    { name: 'Order lifecycle', href: '/platform/order-lifecycle' },
+    { name: 'How Pegasus works', href: '/platform/how-pegasus-works' },
+    { name: 'Trust & reliability', href: '/platform/trust-reliability' },
+  ];
+
+  const companyLinks = [
+    { name: t('nav_demo'), href: '/join' },
+    { name: t('nav_contact'), href: '/contact' },
+    { name: t('nav_roles'), href: '/roles' },
+    { name: t('nav_modules'), href: '/projects' },
+  ];
+
+  const policiesLinks = [
+    { name: t('nav_tour'), href: '/platform' },
+    { name: 'Apps & Deploy', href: '/apps-deploy' },
+  ];
+
   return (
     <footer className="bg-[#000000] text-white border-t border-white/5 overflow-hidden font-sans relative">
 
@@ -50,7 +38,7 @@ export default function Footer() {
         <div className="flex bg-[#1a1a1a] border border-white/10 rounded-sm overflow-hidden w-full max-w-[400px]">
           <input
             type="email"
-            placeholder="jane@framer.com"
+            placeholder={t('footer_email_placeholder')}
             className="bg-transparent text-white/80 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono"
           />
           <button className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center gap-2 text-sm font-medium border-l border-white/10">
@@ -59,7 +47,7 @@ export default function Footer() {
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            Subscribe
+            {t('footer_subscribe_btn')}
           </button>
         </div>
       </div>
@@ -80,7 +68,7 @@ export default function Footer() {
         <div className="p-12 max-md:border-b border-white/5">
           <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Platform</h4>
           <ul className="space-y-4">
-            {PLATFORM_LINKS.map(link => (
+            {platformLinks.map(link => (
               <li key={link.name}>
                 <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
@@ -92,9 +80,9 @@ export default function Footer() {
 
         {/* Company col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Company</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_company')}</h4>
           <ul className="space-y-4">
-            {COMPANY_LINKS.map(link => (
+            {companyLinks.map(link => (
               <li key={link.name}>
                 <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
@@ -104,11 +92,11 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Policies col */}
+        {/* Resources col */}
         <div className="p-12">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Policies</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
           <ul className="space-y-4 mb-10">
-            {POLICIES_LINKS.map(link => (
+            {policiesLinks.map(link => (
               <li key={link.name}>
                 <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
@@ -116,14 +104,6 @@ export default function Footer() {
               </li>
             ))}
           </ul>
-
-          <div className="flex gap-2">
-            {SOCIAL_LINKS.map(({ name, href, Icon }) => (
-              <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="w-9 h-9 flex items-center justify-center border border-white/10 bg-white/5 hover:bg-white/10 transition-colors rounded-sm group">
-                <Icon className="w-3.5 h-3.5 text-white/60 group-hover:text-white transition-colors" />
-              </a>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -136,7 +116,7 @@ export default function Footer() {
 
       {/* Copyright */}
       <div className="py-6 text-center text-white/40 text-[11px] font-mono relative z-10">
-        ©2026 Pegasus. All rights reserved.
+        ©2026 Pegasus. {t('footer_rights')}
       </div>
     </footer>
   );

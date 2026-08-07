@@ -23,7 +23,7 @@ export const translations = {
     cto_role: 'CTO · Pegasus',
     read_case_study: 'Read case study',
 
-    // Contact Page / Section
+    // Contact Page & Section
     contact_title: "Let's Connect",
     contact_subtitle: 'Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum.',
     contact_send_msg: 'Send a message',
@@ -41,6 +41,34 @@ export const translations = {
     contact_hours: 'Office hours',
     contact_hours_val: 'Mon–Fri 9:00–18:00',
     contact_chat_telegram: 'CHAT ON TELEGRAM',
+    contact_tab_general: 'General Inquiry',
+    contact_tab_demo: 'Request Demo',
+    contact_tab_partner: 'Partner With Us',
+    contact_sales_demo: 'Sales & Demo',
+
+    // Licensing / Deployment Cards
+    licensing_tour_tag: 'DISCOVER THE PLATFORM',
+    licensing_tour_title: 'Take a Tour',
+    licensing_tour_desc: 'See how Pegasus unifies dispatch, fleet tracking, payments, and coordination across every role in your network.',
+    licensing_demo_tag: 'DISCOVER OUR PLATFORM',
+    licensing_demo_title: 'Live Demo with a Pegasus Expert',
+    licensing_demo_desc: 'Get a personalized walkthrough and see how to run supplier-led logistics with faster, smarter decisions across your enterprise.',
+
+    // Fleek CTA Band
+    cta_band_title: 'SUPERCHARGE YOUR LOGISTICS STACK',
+    cta_band_body: 'Dispatch boards, live fleet maps, and treasury on one shared order truth — portal and native apps for every role.',
+
+    // Request Demo Page (/join)
+    join_title: 'Request a Live Pegasus Demo',
+    join_subtitle: 'Experience how Pegasus replaces fragmented logistics tools with one real-time platform across 6 roles.',
+    join_full_name: 'Full Name',
+    join_work_email: 'Work Email',
+    join_company_name: 'Company Name',
+    join_company_size: 'Fleet / Network Size',
+    join_role_label: 'Your Primary Role',
+    join_submit: 'Schedule Demo Walkthrough',
+    join_submitting: 'Submitting Request...',
+    join_success: 'Demo request received. Our team will contact you shortly.',
 
     // Site Assistant / Grok Modal
     assistant_title: 'Pegasus AI Assistant',
@@ -52,9 +80,17 @@ export const translations = {
     assistant_suggested_3: 'How does Pegasus handle offline drivers & mobile queues?',
     assistant_suggested_4: 'Compare Pegasus against Oracle SCM, Google Twin & Blue Yonder.',
 
-    // Footer & Generic CTAs
+    // Footer
     footer_tagline: 'Pegasus — The Logistics Operating System for Supplier-Led Networks.',
     footer_rights: 'All rights reserved. Built with precision for global supply chains.',
+    footer_subscribe: 'Subscribe to Logistics Updates',
+    footer_email_placeholder: 'your.name@company.com',
+    footer_subscribe_btn: 'Subscribe',
+    footer_platform: 'Platform Overview',
+    footer_company: 'Company',
+    footer_policies: 'Resources',
+
+    // Generic CTAs
     btn_request_demo: 'REQUEST DEMO',
     btn_chat_telegram: 'TELEGRAM @DominusMunerum',
     btn_explore: 'EXPLORE PLATFORM',
@@ -83,7 +119,7 @@ export const translations = {
     cto_role: 'CTO · Pegasus',
     read_case_study: 'Читать кейс',
 
-    // Contact Page / Section
+    // Contact Page & Section
     contact_title: 'Связаться с нами',
     contact_subtitle: 'Вопросы по Pegasus, партнерству или масштабированию логистики — напишите нам на Email или в Telegram @DominusMunerum.',
     contact_send_msg: 'Отправить сообщение',
@@ -101,6 +137,34 @@ export const translations = {
     contact_hours: 'Рабочие часы',
     contact_hours_val: 'Пн–Пт 9:00–18:00',
     contact_chat_telegram: 'НАПИСАТЬ В TELEGRAM',
+    contact_tab_general: 'Общие вопросы',
+    contact_tab_demo: 'Запросить демо',
+    contact_tab_partner: 'Стать партнером',
+    contact_sales_demo: 'Отдел продаж и демо',
+
+    // Licensing / Deployment Cards
+    licensing_tour_tag: 'ОЗНАКОМЬТЕСЬ С ПЛАТФОРМОЙ',
+    licensing_tour_title: 'Пройти виртуальный тур',
+    licensing_tour_desc: 'Узнайте, как Pegasus объединяет диспетчеризацию, мониторинг автопарка, платежи и координацию 6 ролей.',
+    licensing_demo_tag: 'ОТКРЫЙТЕ ВОЗМОЖНОСТИ PEGASUS',
+    licensing_demo_title: 'Живая демонстрация с экспертом Pegasus',
+    licensing_demo_desc: 'Получите персональную презентацию и узнайте, как автоматизировать логистику и принимать быстрые решения на уровне предприятия.',
+
+    // Fleek CTA Band
+    cta_band_title: 'УСКОРЬТЕ ВАШ ЛОГИСТИЧЕСКИЙ СТЕК',
+    cta_band_body: 'Диспетчерские панели, карта автопарка и казначейство на основе единых достоверных данных — портал и мобильные приложения для всех ролей.',
+
+    // Request Demo Page (/join)
+    join_title: 'Запросить демо-версию Pegasus',
+    join_subtitle: 'Оцените, как Pegasus заменяет разрозненные инструменты единой платформой реального времени для 6 ролей.',
+    join_full_name: 'ФИО',
+    join_work_email: 'Рабочая почта',
+    join_company_name: 'Название компании',
+    join_company_size: 'Размер автопарка / Сети',
+    join_role_label: 'Ваша основная роль',
+    join_submit: 'Запланировать показ демо',
+    join_submitting: 'Отправка заявки...',
+    join_success: 'Заявка на демо принята. Наш эксперт свяжется с вами в ближайшее время.',
 
     // Site Assistant / Grok Modal
     assistant_title: 'ИИ-Ассистент Pegasus',
@@ -112,9 +176,17 @@ export const translations = {
     assistant_suggested_3: 'Как Pegasus обрабатывает оффлайн-режим водителей и очереди в мобильных приложениях?',
     assistant_suggested_4: 'Сравните Pegasus с Oracle SCM, Google Twin и Blue Yonder.',
 
-    // Footer & Generic CTAs
+    // Footer
     footer_tagline: 'Pegasus — Операционная система логистики для сетей поставщиков.',
     footer_rights: 'Все права защищены. Создано с максимальной точностью для международных цепей поставок.',
+    footer_subscribe: 'Подписка на обновления логистики',
+    footer_email_placeholder: 'imya@company.ru',
+    footer_subscribe_btn: 'Подписаться',
+    footer_platform: 'Обзор платформы',
+    footer_company: 'О компании',
+    footer_policies: 'Ресурсы',
+
+    // Generic CTAs
     btn_request_demo: 'ЗАПРОСИТЬ ДЕМО',
     btn_chat_telegram: 'TELEGRAM @DominusMunerum',
     btn_explore: 'ИЗУЧИТЬ ПЛАТФОРМУ',
