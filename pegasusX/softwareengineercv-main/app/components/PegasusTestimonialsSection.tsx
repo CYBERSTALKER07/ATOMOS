@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export function PegasusTestimonialsSection() {
   return (
@@ -35,9 +36,9 @@ export function PegasusTestimonialsSection() {
               </div>
             </div>
             
-            <a href="#" className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white transition-colors group">
+            <Link href="/contact" className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white transition-colors group">
               Read case study <span className="group-hover:translate-x-1 transition-transform">→</span>
-            </a>
+            </Link>
           </div>
         </div>
 
