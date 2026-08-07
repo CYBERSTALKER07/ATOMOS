@@ -24,25 +24,21 @@ export default function FormLanyardPage({
 
   return (
     <FleekPageShell activeHref={activeHref}>
-      <div className="relative grid min-h-[calc(100svh-4.5rem)] lg:min-h-[calc(100svh-5rem)] lg:grid-cols-2">
-        <aside
-          className="relative h-[42vh] min-h-[280px] overflow-hidden border-b border-white/10 bg-black lg:h-auto lg:min-h-full lg:border-b-0 lg:border-r"
-          aria-hidden={!allowHeavyFx}
-        >
-          {allowHeavyFx ? (
+      <div
+        className={`relative grid min-h-[calc(100svh-4.5rem)] lg:min-h-[calc(100svh-5rem)] ${
+          allowHeavyFx ? 'lg:grid-cols-2' : ''
+        }`}
+      >
+        {allowHeavyFx ? (
+          <aside
+            className="relative h-[42vh] min-h-[280px] overflow-hidden border-b border-white/10 bg-black lg:h-auto lg:min-h-full lg:border-b-0 lg:border-r"
+            aria-hidden
+          >
             <div className="absolute inset-0">
               <Lanyard position={[0, 0, 22]} gravity={[0, -40, 0]} fov={18} transparent />
             </div>
-          ) : (
-            <div className="flex h-full items-center justify-center p-8">
-              <img
-                src="/pegasus.jpg"
-                alt=""
-                className="max-h-[70%] max-w-[min(280px,70%)] object-contain opacity-90"
-              />
-            </div>
-          )}
-        </aside>
+          </aside>
+        ) : null}
 
         <section className="flex items-center px-5 py-10 sm:px-8 md:px-12 lg:py-16">
           <div className="mx-auto w-full max-w-lg">

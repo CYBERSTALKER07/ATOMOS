@@ -107,9 +107,14 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     icons: {
-      icon: BRAND_LOGO,
-      shortcut: BRAND_LOGO,
-      apple: BRAND_LOGO,
+      icon: [
+        { url: '/favicon.ico', sizes: 'any' },
+        { url: '/pegasus-icon-192.png', sizes: '192x192', type: 'image/png' },
+        { url: '/pegasus-icon-512.png', sizes: '512x512', type: 'image/png' },
+        { url: BRAND_LOGO, type: 'image/jpeg' },
+      ],
+      shortcut: '/favicon.ico',
+      apple: [{ url: '/pegasus-icon-192.png', sizes: '180x180', type: 'image/png' }],
     },
     ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
       ? {
