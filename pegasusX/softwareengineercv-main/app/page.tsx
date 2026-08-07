@@ -62,7 +62,7 @@ export default function Home() {
         <About />
         {/* <PlatformValue /> */}
         <LocalizedLaneDivider index="02" labelKey="home_lane_signal" />
-        {/* <SignalFeatureCards /> */}
+        <SignalFeatureCards />
 
         <DispatchVisualSection />
         <PlatformFeatures />
