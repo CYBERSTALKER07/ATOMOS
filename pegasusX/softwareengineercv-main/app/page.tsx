@@ -16,6 +16,7 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
 
+const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
