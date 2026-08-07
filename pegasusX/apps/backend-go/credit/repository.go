@@ -148,14 +148,17 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 	if !p.Status.Valid() {
 		return fmt.Errorf("invalid credit profile status: %s", p.Status)
 	}
+	// The closure may be re-invoked by the Spanner client after an abort, so the
+	// caller's expected version must be captured before the closure mutates p.
+	callerVersion := p.Version
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		expectedVersion, reserved, balance, found, err := readProfileVersionReservedBalance(ctx, txn, p.RetailerID, p.SupplierID)
 		if err != nil {
 			return err
 		}
 		if found {
-			if p.Version != 0 && expectedVersion != p.Version {
-				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", expectedVersion, p.Version)
+			if callerVersion != 0 && expectedVersion != callerVersion {
+				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", expectedVersion, callerVersion)
 			}
 			p.Version = expectedVersion + 1
 			if p.ReservedMinor == 0 {

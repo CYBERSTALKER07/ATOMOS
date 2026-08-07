@@ -13,7 +13,7 @@ import {
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 
-const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
+
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
@@ -58,7 +58,7 @@ export default function Home() {
         {/* <PlatformValue /> */}
         <LaneDivider index="02" label="Signal" />
         {/* <SignalFeatureCards /> */}
-        <OrderCycleVisualSection />
+
         <DispatchVisualSection />
         <PlatformFeatures />
         <PromptDashboardSection />
