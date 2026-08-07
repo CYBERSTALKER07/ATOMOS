@@ -205,6 +205,10 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		return fmt.Errorf("marshal order line items: %w", err)
 	}
 
+	// The Spanner client re-invokes this closure after an aborted commit, so the
+	// CAS must compare against the caller's version captured once — not o.Version,
+	// which a prior invocation of this same closure may already have incremented.
+	callerVersion := o.Version
 	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{
 			"Version", "Status", "OrderSource", "LineItemsJson", "SupplierId", "WarehouseId",
@@ -223,8 +227,8 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
 			return err
 		}
-		if version != o.Version {
-			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", o.Version, version)
+		if version != callerVersion {
+			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", callerVersion, version)
 		}
 
 		if o.Status == StatusCancelled && !strings.EqualFold(strings.TrimSpace(prevStatus), string(StatusCancelled)) {
@@ -1509,6 +1513,10 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 		return fmt.Errorf("marshal order line items: %w", err)
 	}
 
+	// The Spanner client re-invokes this closure after an aborted commit, so the
+	// CAS must compare against the caller's version captured once — not o.Version,
+	// which a prior invocation of this same closure may already have incremented.
+	callerVersion := o.Version
 	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{
 			"Version", "Status", "OrderSource", "LineItemsJson", "SupplierId", "WarehouseId",
@@ -1527,8 +1535,8 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
 			return err
 		}
-		if version != o.Version {
-			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", o.Version, version)
+		if version != callerVersion {
+			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", callerVersion, version)
 		}
 
 		if o.Status == StatusCancelled && !strings.EqualFold(strings.TrimSpace(prevStatus), string(StatusCancelled)) {
