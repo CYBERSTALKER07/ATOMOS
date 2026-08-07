@@ -115,6 +115,10 @@ jobs:
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
         run: bash scripts/money_path_gate.sh
+      - name: Phase-1 gate (AR/refund/payout/billing + Soliq + GP simulator)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/phase1_gate.sh
 
   ai-worker:
     runs-on: ubuntu-latest

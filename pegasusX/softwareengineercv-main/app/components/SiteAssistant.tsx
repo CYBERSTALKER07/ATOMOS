@@ -14,7 +14,7 @@ type ChatMessage = {
 
 type QuickAction = {
   id: string;
-  emoji: string;
+  badge: string;
   label: string;
   category: 'versus' | 'tech' | 'roles' | 'business' | 'action';
   prompt?: string;
@@ -25,57 +25,57 @@ type QuickAction = {
 const QUICK_ACTIONS: QuickAction[] = [
   {
     id: 'versus-giants',
-    emoji: '⚡',
+    badge: 'VS',
     label: 'Why Pegasus vs Amazon, o9 & Oracle?',
     category: 'versus',
     prompt: 'Compare Pegasus with tech giants & legacy ERPs (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). Why choose Pegasus?',
   },
   {
     id: 'tech-stack',
-    emoji: '⚙️',
+    badge: 'TECH',
     label: 'Go Backend, Spanner & Outbox System',
     category: 'tech',
     prompt: 'Explain the technical architecture of Pegasus: Go microservices, Cloud Spanner transactions, Transactional Outbox pattern, Kafka, WebSockets, and offline mobile sync.',
   },
   {
     id: 'six-roles',
-    emoji: '👥',
+    badge: 'ROLES',
     label: '6 Ecosystem Roles & Capabilities',
     category: 'roles',
     prompt: 'What are the 6 ecosystem roles in Pegasus (Supplier, Warehouse, Retailer, Driver, Factory, Payload/Gate) and their key capabilities?',
   },
   {
     id: 'business-roi',
-    emoji: '💼',
+    badge: 'ROI',
     label: 'Business Benefits & Operational ROI',
     category: 'business',
     prompt: 'What are the core business outcomes, ROI, and workflow improvements Pegasus delivers for supply chain leadership?',
   },
   {
     id: 'demo-tour',
-    emoji: '📺',
+    badge: 'DEMO',
     label: 'Watch Platform Walkthrough',
     category: 'action',
     href: '/demo',
   },
   {
     id: 'contact-expert',
-    emoji: '💬',
+    badge: 'TALK',
     label: 'Talk to a Logistics Expert',
     category: 'action',
     href: '/contact',
   },
   {
     id: 'join-careers',
-    emoji: '👩‍💻',
+    badge: 'JOIN',
     label: 'Careers & Schedule Demo',
     category: 'action',
     href: '/join',
   },
   {
     id: 'dismiss',
-    emoji: '🙈',
-    label: 'Just browsing',
+    badge: 'HIDE',
+    label: 'Dismiss prompt assistant',
     category: 'action',
     dismiss: true,
   },
@@ -85,38 +85,38 @@ const SIDEBAR_CATEGORIES = [
   {
     id: 'all',
     title: 'Featured Prompts',
-    icon: '✨',
+    badge: 'ALL',
     filter: () => true,
   },
   {
     id: 'versus',
     title: 'vs. Tech Giants',
-    icon: '⚡',
+    badge: 'VS',
     filter: (a: QuickAction) => a.category === 'versus',
   },
   {
     id: 'tech',
     title: 'Technical Stack',
-    icon: '⚙️',
+    badge: 'STACK',
     filter: (a: QuickAction) => a.category === 'tech',
   },
   {
     id: 'roles',
     title: '6 Role Capabilities',
-    icon: '👥',
+    badge: 'ROLES',
     filter: (a: QuickAction) => a.category === 'roles',
   },
   {
     id: 'business',
     title: 'Business & ROI',
-    icon: '💼',
+    badge: 'ROI',
     filter: (a: QuickAction) => a.category === 'business',
   },
 ];
 
 const HIDDEN_PREFIXES = ['/admin', '/resume'];
 const WELCOME =
-  'Welcome to Pegasus! Ask me anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
+  'Welcome to Pegasus. Ask anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
 
 function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -126,6 +126,10 @@ export default function SiteAssistant() {
   const pathname = usePathname();
   const panelId = useId();
   const listRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const [open, setOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
@@ -133,18 +137,97 @@ export default function SiteAssistant() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'welcome', role: 'assistant', content: WELCOME },
   ]);
 
+  // Close assistant on route changes
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
+  // Auto-scroll message list when new messages arrive
   useEffect(() => {
     if (!open) return;
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, open, loading]);
+
+  // Auto-focus input when chat opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
+
+  // Lock body scroll when fullscreen modal is active
+  useEffect(() => {
+    if (open && fullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open, fullscreen]);
+
+  // Keyboard shortcut: Cmd+K / Ctrl+K to toggle assistant
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  // Click outside to close assistant
+  useEffect(() => {
+    if (!open) return;
+
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      const targetNode = e.target as Node | null;
+      if (!targetNode) return;
+
+      const isOutsideContainer = containerRef.current && !containerRef.current.contains(targetNode);
+      const isOutsideLauncher = launcherRef.current && !launcherRef.current.contains(targetNode);
+
+      if (isOutsideContainer && isOutsideLauncher) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [open]);
+
+  // Escape key to close
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (fullscreen) {
+          setFullscreen(false);
+        } else {
+          setOpen(false);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, fullscreen]);
 
   if (HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
     return null;
@@ -202,6 +285,12 @@ export default function SiteAssistant() {
     setError(null);
   }
 
+  function copyToClipboard(msgId: string, text: string) {
+    void navigator.clipboard.writeText(text);
+    setCopiedId(msgId);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
   const currentCategoryObj = SIDEBAR_CATEGORIES.find((c) => c.id === activeCategory) || SIDEBAR_CATEGORIES[0];
   const filteredQuickActions = QUICK_ACTIONS.filter(currentCategoryObj.filter);
 
@@ -213,22 +302,28 @@ export default function SiteAssistant() {
       {open ? (
         <div
           id={panelId}
+          ref={containerRef}
           className={`site-assistant__panel ${fullscreen ? 'site-assistant__panel--grok-modal' : 'site-assistant__panel--chat'}`}
           role="dialog"
           aria-label="Pegasus assistant"
+          onClick={(e) => {
+            if (fullscreen && e.target === e.currentTarget) {
+              setOpen(false);
+            }
+          }}
         >
           <div className="site-assistant__chat-card">
             
-            {/* Grok Fullscreen Left Sidebar (Only visible in fullscreen) */}
+            {/* Grok Fullscreen Left Sidebar (Only in fullscreen mode) */}
             {fullscreen ? (
               <aside className="site-assistant__grok-sidebar">
                 <div className="site-assistant__sidebar-header">
                   <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
-                  <span className="site-assistant__grok-logo-text">Pegasus Grok</span>
+                  <span className="site-assistant__grok-logo-text">PEGASUS OS</span>
                 </div>
 
                 <div className="site-assistant__sidebar-section">
-                  <p className="site-assistant__sidebar-title">Explore Topics</p>
+                  <p className="site-assistant__sidebar-title">Categories</p>
                   <ul className="site-assistant__sidebar-menu">
                     {SIDEBAR_CATEGORIES.map((cat) => (
                       <li key={cat.id}>
@@ -237,7 +332,7 @@ export default function SiteAssistant() {
                           className={`site-assistant__sidebar-btn ${activeCategory === cat.id ? 'is-active' : ''}`}
                           onClick={() => setActiveCategory(cat.id)}
                         >
-                          <span className="site-assistant__sidebar-icon">{cat.icon}</span>
+                          <span className="site-assistant__tag-badge">{cat.badge}</span>
                           <span>{cat.title}</span>
                         </button>
                       </li>
@@ -247,13 +342,13 @@ export default function SiteAssistant() {
 
                 <div className="site-assistant__sidebar-footer">
                   <button type="button" className="site-assistant__clear-btn" onClick={clearHistory}>
-                    <span>🗑️</span> Clear Chat History
+                    Clear History
                   </button>
                 </div>
               </aside>
             ) : null}
 
-            {/* Main Chat Area */}
+            {/* Main Chat Content Window */}
             <div className="site-assistant__grok-main">
               
               {/* Header Bar */}
@@ -262,9 +357,9 @@ export default function SiteAssistant() {
                   <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
                   <div>
                     <p className="site-assistant__chat-title">
-                      Pegasus Bot <span className="site-assistant__grok-badge">Grok Mode</span>
+                      Pegasus Bot <span className="site-assistant__grok-badge">Full Mode</span>
                     </p>
-                    <p className="site-assistant__meta">Trained on Architecture, Competitors & 6 Roles</p>
+                    <p className="site-assistant__meta">Architecture, Competitors & Role System Knowledge</p>
                   </div>
                 </div>
 
@@ -272,16 +367,16 @@ export default function SiteAssistant() {
                   <button
                     type="button"
                     className="site-assistant__toggle-fullscreen"
-                    title={fullscreen ? 'Exit Fullscreen' : 'Expand Grok Layout'}
+                    title={fullscreen ? 'Compact View' : 'Fullscreen View'}
                     onClick={() => setFullscreen((v) => !v)}
                   >
-                    {fullscreen ? '↙ Compact' : '⤢ Fullscreen'}
+                    {fullscreen ? 'Compact' : 'Fullscreen'}
                   </button>
                   
                   <button
                     type="button"
                     className="site-assistant__close-btn"
-                    title="Close Assistant"
+                    title="Close (Esc)"
                     onClick={() => setOpen(false)}
                   >
                     ×
@@ -296,19 +391,36 @@ export default function SiteAssistant() {
                     key={msg.id}
                     className={`site-assistant__msg site-assistant__msg--${msg.role}`}
                   >
-                    <div className="site-assistant__msg-header">
-                      {msg.role === 'assistant' ? '🤖 Pegasus AI' : '👤 You'}
+                    <div className="site-assistant__msg-header-bar">
+                      <span className="site-assistant__msg-header">
+                        {msg.role === 'assistant' ? 'PEGASUS OS' : 'YOU'}
+                      </span>
+                      
+                      {msg.role === 'assistant' ? (
+                        <button
+                          type="button"
+                          className="site-assistant__copy-btn"
+                          onClick={() => copyToClipboard(msg.id, msg.content)}
+                        >
+                          {copiedId === msg.id ? 'Copied' : 'Copy'}
+                        </button>
+                      ) : null}
                     </div>
+                    
                     <div className="site-assistant__msg-body">
                       {msg.content}
                     </div>
                   </div>
                 ))}
+                
                 {loading ? (
                   <div className="site-assistant__msg site-assistant__msg--assistant">
-                    <div className="site-assistant__msg-header">🤖 Pegasus AI</div>
-                    <div className="site-assistant__typing-dots">
-                      <span></span><span></span><span></span> Thinking...
+                    <div className="site-assistant__msg-header-bar">
+                      <span className="site-assistant__msg-header">PEGASUS OS</span>
+                    </div>
+                    <div className="site-assistant__status-indicator">
+                      <span className="site-assistant__pulse-dot"></span>
+                      <span>Processing response...</span>
                     </div>
                   </div>
                 ) : null}
@@ -329,7 +441,7 @@ export default function SiteAssistant() {
                           setDismissed(true);
                         }}
                       >
-                        <span aria-hidden="true">{action.emoji}</span>
+                        <span className="site-assistant__pill-badge">{action.badge}</span>
                         <span>{action.label}</span>
                       </button>
                     ) : action.prompt ? (
@@ -339,12 +451,12 @@ export default function SiteAssistant() {
                         disabled={loading}
                         onClick={() => void sendPrompt(action.prompt!)}
                       >
-                        <span aria-hidden="true">{action.emoji}</span>
+                        <span className="site-assistant__pill-badge">{action.badge}</span>
                         <span>{action.label}</span>
                       </button>
                     ) : (
                       <Link href={action.href!} className="site-assistant__pill" onClick={() => setOpen(false)}>
-                        <span aria-hidden="true">{action.emoji}</span>
+                        <span className="site-assistant__pill-badge">{action.badge}</span>
                         <span>{action.label}</span>
                       </Link>
                     )}
@@ -355,10 +467,11 @@ export default function SiteAssistant() {
               {/* Message Composer */}
               <form className="site-assistant__composer" onSubmit={onSubmit}>
                 <input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about architecture, competitors (Amazon/o9), 6 role capabilities..."
+                  placeholder="Ask about Go architecture, competitors (Amazon/o9/Oracle), 6 role capabilities..."
                   maxLength={2000}
                   disabled={loading}
                   aria-label="Message"
@@ -376,6 +489,7 @@ export default function SiteAssistant() {
       {/* Floating Action Button Launcher */}
       {!open ? (
         <button
+          ref={launcherRef}
           type="button"
           className="site-assistant__launcher"
           aria-expanded={open}
@@ -385,7 +499,7 @@ export default function SiteAssistant() {
         >
           <img src="/pegasus.jpg" alt="" width={40} height={40} className="site-assistant__launcher-logo" />
           <span className="site-assistant__badge" aria-hidden="true">
-            1
+            ⌘K
           </span>
         </button>
       ) : null}

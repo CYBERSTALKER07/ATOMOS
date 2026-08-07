@@ -168,6 +168,59 @@ func TestMySoliqContract_MissingEhfIDFails(t *testing.T) {
 	}
 }
 
+func TestMySoliqContract_CorrectiveReceipt(t *testing.T) {
+	var gotBody []byte
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"data":{"ehf_id":"EHF-CORR-1"}}`))
+	}))
+	defer ts.Close()
+
+	p := newSoliqContractProvider(t, ts.URL)
+	res, err := p.CreateCorrectiveReceipt(context.Background(), FiscalCorrectiveRequest{
+		AttemptID:         "corr-att-1",
+		OrderID:           "ord-contract-1",
+		SupplierID:        "sup-contract",
+		RetailerID:        "ret-contract",
+		OriginalReceiptID: "EHF-9001",
+		AmountMinor:       50000,
+		Currency:          "UZS",
+		ReasonCode:        "CUSTOMER_RETURN",
+	})
+	if err != nil {
+		t.Fatalf("CreateCorrectiveReceipt: %v", err)
+	}
+	if res.FiscalReceiptID != "EHF-CORR-1" {
+		t.Fatalf("corrective id = %q", res.FiscalReceiptID)
+	}
+	var submitted map[string]any
+	if err := json.Unmarshal(gotBody, &submitted); err != nil {
+		t.Fatalf("submitted body not JSON: %v", err)
+	}
+	if submitted["corrects_ehf_id"] != "EHF-9001" {
+		t.Fatalf("corrects_ehf_id = %v", submitted["corrects_ehf_id"])
+	}
+	if submitted["payment_method"] != "REFUND" {
+		t.Fatalf("payment_method = %v, want REFUND", submitted["payment_method"])
+	}
+	if sig, _ := submitted["signature"].(string); !strings.HasPrefix(sig, "DEVHMAC.") {
+		t.Fatalf("corrective must be signed: %q", sig)
+	}
+}
+
+// Corrective without an original receipt reference is a client-side error —
+// an unlinked corrective EHF must never reach the gateway.
+func TestMySoliqContract_CorrectiveRequiresOriginal(t *testing.T) {
+	p := newSoliqContractProvider(t, "http://unused.invalid")
+	_, err := p.CreateCorrectiveReceipt(context.Background(), FiscalCorrectiveRequest{
+		AttemptID: "corr-att-2", OrderID: "ord-1", AmountMinor: 100, Currency: "UZS",
+	})
+	if err == nil || !strings.Contains(err.Error(), "original receipt id required") {
+		t.Fatalf("want original receipt id error, got %v", err)
+	}
+}
+
 func TestSoliqSignerFromEnv_FailClosed(t *testing.T) {
 	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "")
 	if _, err := fiscal.SignerFromEnv("dev"); err == nil {
