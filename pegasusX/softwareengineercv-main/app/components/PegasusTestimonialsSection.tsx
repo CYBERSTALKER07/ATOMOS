@@ -30,7 +30,7 @@ export function PegasusTestimonialsSection() {
                 PEGASUS
               </div>
               <div className="flex flex-col">
-                <span className="text-base font-semibold text-zinc-100 leading-tight">Greg Demoge</span>
+                <span className="text-base font-semibold text-zinc-100 leading-tight">Shakhzod Soliyev</span>
                 <span className="text-xs text-zinc-400 leading-tight">CTO · Pegasus</span>
               </div>
             </div>
