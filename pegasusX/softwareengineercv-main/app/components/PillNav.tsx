@@ -6,6 +6,7 @@ import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
+import LanguageSwitcher from './LanguageSwitcher';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 export type PillNavItem = {
@@ -438,7 +439,8 @@ const PillNav: React.FC<PillNavProps> = ({
             </ul>
           </div>
 
-          <div className="shrink-0 ml-auto flex items-center gap-0 pointer-events-auto">
+          <div className="shrink-0 ml-auto flex items-center gap-2 pointer-events-auto">
+            <LanguageSwitcher className="mr-1 sm:mr-2" />
             <button
               ref={hamburgerRef}
               onClick={toggleMobileMenu}

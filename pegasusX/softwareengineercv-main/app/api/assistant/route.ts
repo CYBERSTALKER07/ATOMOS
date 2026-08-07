@@ -57,12 +57,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Send at least one user message' }, { status: 400 });
   }
 
+  const language = (body as { language?: string })?.language;
+  const isRussian = language === 'ru' || messages.some((m) => /[а-яА-ЯёЁ]/.test(m.content));
+
+  let systemPromptContent = assistantSystemPrompt(getKnowledge());
+  if (isRussian) {
+    systemPromptContent += '\n\nIMPORTANT: The user prefers Russian. Always respond fluently, concisely, and professionally in Russian (русский язык) using standard high-tech logistics terminology. Do NOT use emojis under any circumstances.';
+  }
+
   const payload = {
     model: MODEL,
     temperature: 0.35,
     max_tokens: 700,
     messages: [
-      { role: 'system', content: assistantSystemPrompt(getKnowledge()) },
+      { role: 'system', content: systemPromptContent },
       ...messages,
     ],
   };

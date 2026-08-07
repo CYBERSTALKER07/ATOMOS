@@ -7,12 +7,14 @@ import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
+import { useLanguage } from '../context/LanguageContext';
 
 const HERO_VIDEO_PAUSE_AT = 5;
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
+  const { t, language } = useLanguage();
 
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -21,6 +23,10 @@ export default function Hero() {
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const typedPhrases = language === 'ru' 
+    ? ["Логистическая платформа", "Система диспетчеризации", "Мониторинг автопарка", "Финансовая прозрачность"]
+    : ["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"];
 
   const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
     if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
@@ -178,7 +184,8 @@ export default function Hero() {
 
               <div ref={subtitleRef} className="mb-6">
                 <TextType
-                  text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
+                  key={language}
+                  text={typedPhrases}
                   typingSpeed={isMobile ? 100 : 75}
                   pauseDuration={1500}
                   deletingSpeed={isMobile ? 70 : 50}
@@ -197,18 +204,17 @@ export default function Hero() {
                 ref={descRef}
                 className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
               >
-                Run supplier-led logistics from one platform — dispatch, tracking, payments,
-                and coordination across every team in your network.
+                {t('hero_desc')}
               </p>
             </div>
 
             {/* CTA Buttons */}
             <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
               <ChamferButton onClick={scrollToNext} variant="fill">
-                Explore Platform
+                {t('hero_explore')}
               </ChamferButton>
               <ChamferButton href="/join" variant="ghost">
-                Request Demo
+                {t('hero_demo')}
               </ChamferButton>
             </div>
           </div>

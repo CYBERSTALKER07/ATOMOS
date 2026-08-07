@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLanguage } from '../context/LanguageContext';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -21,6 +22,40 @@ type QuickAction = {
   href?: string;
   dismiss?: boolean;
 };
+
+const QUICK_ACTIONS_RU: QuickAction[] = [
+  {
+    id: 'versus-giants',
+    badge: 'VS',
+    label: 'Почему Pegasus превосходит Amazon, o9 и Oracle?',
+    category: 'versus',
+    prompt: 'Сравните Pegasus с гигантами отрасли и legacy ERP (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). В чем наши ключевые преимущества?',
+  },
+  {
+    id: 'tech-stack',
+    badge: 'TECH',
+    label: 'Backend на Go, Spanner и Transactional Outbox',
+    category: 'tech',
+    prompt: 'Расскажите о технической архитектуре Pegasus: микросервисы на Go, транзакции в Cloud Spanner, паттерн Transactional Outbox, Kafka, WebSockets и оффлайн-синхронизация.',
+  },
+  {
+    id: 'role-parity',
+    badge: 'ROLES',
+    label: '6 ключевых ролей в единой экосистеме',
+    category: 'roles',
+    prompt: 'Какие 6 ролей объединены в Pegasus (Поставщик, Завод, Склад, Водитель, Розничный продавец, Служба доставки) и как устроена их единая сеть данных?',
+  },
+  {
+    id: 'contact-team',
+    badge: 'JOIN',
+    label: 'Запросить демо / Написать в Telegram',
+    category: 'action',
+    href: 'https://t.me/DominusMunerum',
+  },
+];
+
+const WELCOME_RU =
+  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте о нашей Go-архитектуре, Cloud Spanner outbox или почему клиенты выбирают нас вместо Amazon AWS Supply Chain и o9.';
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
@@ -125,6 +160,7 @@ function newId() {
 export default function SiteAssistant() {
   const pathname = usePathname();
   const panelId = useId();
+  const { t, language } = useLanguage();
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
@@ -138,9 +174,22 @@ export default function SiteAssistant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const currentWelcome = language === 'ru' ? WELCOME_RU : WELCOME;
+  const currentQuickActions = language === 'ru' ? QUICK_ACTIONS_RU : QUICK_ACTIONS;
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'welcome', role: 'assistant', content: WELCOME },
+    { id: 'welcome', role: 'assistant', content: currentWelcome },
   ]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [{ id: 'welcome', role: 'assistant', content: currentWelcome }];
+      }
+      return prev;
+    });
+  }, [language, currentWelcome]);
 
   // Close assistant on route changes
   useEffect(() => {
@@ -252,6 +301,7 @@ export default function SiteAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextHistory.map(({ role, content }) => ({ role, content })),
+          language,
         }),
       });
       const data = (await res.json()) as { reply?: string; error?: string };
@@ -267,7 +317,9 @@ export default function SiteAssistant() {
         {
           id: newId(),
           role: 'assistant',
-          content: `I couldn’t answer that just now (${message}). Try again, or visit /contact.`,
+          content: language === 'ru' 
+            ? `Не удалось получить ответ (${message}). Попробуйте еще раз или напишите в /contact.`
+            : `I couldn’t answer that just now (${message}). Try again, or visit /contact.`,
         },
       ]);
     } finally {
@@ -281,7 +333,7 @@ export default function SiteAssistant() {
   }
 
   function clearHistory() {
-    setMessages([{ id: newId(), role: 'assistant', content: WELCOME }]);
+    setMessages([{ id: newId(), role: 'assistant', content: currentWelcome }]);
     setError(null);
   }
 
@@ -292,7 +344,7 @@ export default function SiteAssistant() {
   }
 
   const currentCategoryObj = SIDEBAR_CATEGORIES.find((c) => c.id === activeCategory) || SIDEBAR_CATEGORIES[0];
-  const filteredQuickActions = QUICK_ACTIONS.filter(currentCategoryObj.filter);
+  const filteredQuickActions = currentQuickActions.filter(currentCategoryObj.filter);
 
   return (
     <div 
@@ -471,13 +523,13 @@ export default function SiteAssistant() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about Go architecture, competitors (Amazon/o9/Oracle), 6 role capabilities..."
+                  placeholder={t('assistant_placeholder')}
                   maxLength={2000}
                   disabled={loading}
                   aria-label="Message"
                 />
                 <button type="submit" disabled={loading || !input.trim()}>
-                  Send
+                  {language === 'ru' ? 'Отправить' : 'Send'}
                 </button>
               </form>
 
