@@ -9,6 +9,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // SpannerStore persists and reads outbox events from OutboxEvents.
@@ -229,4 +230,84 @@ func (s *SpannerStore) MarkPublished(ctx context.Context, eventIDs []string, at 
 		return fmt.Errorf("outbox spanner store: mark published: %w", err)
 	}
 	return nil
+}
+
+// RecordPublishFailures increments PublishAttempts per event and atomically moves
+// events that reach maxAttempts into OutboxDeadLetters (copy + delete), so poison
+// events leave the retry set with a full forensic record instead of retrying
+// forever or being dropped.
+func (s *SpannerStore) RecordPublishFailures(ctx context.Context, eventIDs []string, lastErr string, maxAttempts int64) ([]string, error) {
+	if len(eventIDs) == 0 {
+		return nil, nil
+	}
+	if s == nil || s.client == nil {
+		return nil, fmt.Errorf("outbox spanner store: nil client")
+	}
+	if maxAttempts <= 0 {
+		maxAttempts = 20
+	}
+	if len(lastErr) > 1024 {
+		lastErr = lastErr[:1024]
+	}
+	var deadLettered []string
+	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var mutations []*spanner.Mutation
+		for _, id := range eventIDs {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			row, readErr := txn.ReadRow(ctx, "OutboxEvents", spanner.Key{id}, []string{
+				"EventId", "AggregateType", "AggregateId", "TopicName", "Payload", "CreatedAt", "PublishAttempts",
+			})
+			if readErr != nil {
+				if spanner.ErrCode(readErr) == codes.NotFound {
+					continue
+				}
+				return fmt.Errorf("outbox spanner store: read for failure record %s: %w", id, readErr)
+			}
+			var (
+				eventID, aggregateType, aggregateID, topicName string
+				payload                                      []byte
+				createdAt                                    time.Time
+				attempts                                     int64
+			)
+			if scanErr := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &attempts); scanErr != nil {
+				return fmt.Errorf("outbox spanner store: scan for failure record %s: %w", id, scanErr)
+			}
+			attempts++
+			if attempts >= maxAttempts {
+				mutations = append(mutations,
+					spanner.InsertOrUpdateMap("OutboxDeadLetters", map[string]interface{}{
+						"EventId":        eventID,
+						"AggregateType":  aggregateType,
+						"AggregateId":    aggregateID,
+						"TopicName":      topicName,
+						"Payload":        payload,
+						"CreatedAt":      createdAt.UTC(),
+						"DeadLetteredAt": spanner.CommitTimestamp,
+						"Attempts":       attempts,
+						"LastError":      lastErr,
+					}),
+					spanner.Delete("OutboxEvents", spanner.Key{id}),
+				)
+				deadLettered = append(deadLettered, eventID)
+				continue
+			}
+			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
+				"EventId":         eventID,
+				"PublishAttempts": attempts,
+				"ClaimedBy":       spanner.NullString{},
+				"ClaimedUntil":    spanner.NullTime{},
+			}))
+		}
+		if len(mutations) == 0 {
+			return nil
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("outbox spanner store: record publish failures: %w", err)
+	}
+	return deadLettered, nil
 }

@@ -70,3 +70,4 @@ web-build/
 *.tfstate
 *.tfstate.*
 *.tfplan
+**/.build/

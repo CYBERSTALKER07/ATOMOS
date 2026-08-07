@@ -304,8 +304,10 @@ type WarehouseResolver interface {
 }
 
 // PaymentCapturer allows the order service to trigger synchronous card captures.
+// Implementations must be retry-safe: a repeated capture for an already-settled
+// payment returns success with the provider reference instead of double-charging.
 type PaymentCapturer interface {
-	CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error
+	CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) (providerRef string, err error)
 }
 
 // RateLimiter is a simple interface for rate limiting.
@@ -1885,26 +1887,47 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 					return err
 				}
 			}
-			row := orderRecord.PendingFiscalReceipts[0]
-			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CARD")
+			// PAYMENT_CLEARED and FISCAL_RECEIPT_REQUESTED are emitted by the
+			// post-commit settlement step: for card tenders only after provider
+			// capture confirms, otherwise immediately (see settleOutstandingCardPayment).
+			return nil
 		},
 		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
 			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
 			if err != nil {
 				return err
 			}
-			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, delivered, 0); err != nil {
+			paid, err := s.getCapturedPaymentMinorTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
 				return err
 			}
+			exceptions, err := s.getExceptionsTotalMinorTxn(txnCtx, txn, req.OrderID)
+			if err != nil {
+				return err
+			}
+			due := delivered - paid - exceptions
+			if due < 0 {
+				due = 0
+			}
+			if err := s.AssertMoneyCoversDelivery(txnCtx, req.OrderID, due, 0); err != nil {
+				return err
+			}
+			if due == 0 {
+				// Fully covered by credit/cash legs and exceptions; nothing to capture.
+				return nil
+			}
+			// Record the card leg PENDING. It becomes CAPTURED only after the
+			// provider confirms the capture (settleOutstandingCardPayment); the
+			// stable idempotency key makes a duplicate card leg impossible once
+			// the unique index is in place.
 			leg := PaymentLeg{
 				OrderID:        req.OrderID,
 				LegID:          s.newID(),
 				Method:         MethodCard,
-				AmountMinor:    delivered,
-				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("card-%s-%s", req.OrderID, s.newID()),
+				AmountMinor:    due,
+				Status:         PaymentStatusPending,
+				IdempotencyKey: fmt.Sprintf("card-capture-%s", req.OrderID),
 				CreatedAt:      s.now(),
-				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 			}
 			return s.RecordPaymentLeg(txnCtx, txn, leg)
 		},
@@ -1918,15 +1941,12 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 				s.log.Error("clear credit balance failed", "order_id", result.Order.OrderID, "err", clearErr)
 			}
 		}
-		if s.paymentCapturer != nil && result.Order.TotalMinor > 0 {
-			go func() {
-				captureCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				if err := s.paymentCapturer.CaptureCardPayment(captureCtx, result.Order.OrderID, result.Order.TotalMinor, result.Order.Currency); err != nil {
-					s.log.Error("failed to capture card payment", "order_id", result.Order.OrderID, "error", err)
-				}
-			}()
-		}
+	}
+	// Synchronous provider-confirmed settlement. Runs on both the fresh
+	// transition and idempotent retries (NoChange) so a capture interrupted
+	// mid-flight is driven to CAPTURED or FAILED, never left optimistic.
+	if err := s.settleOutstandingCardPayment(ctx, result.Order); err != nil {
+		return DriverOrderResponse{}, err
 	}
 
 	msg := "Payment captured. Waiting for fiscal receipt."

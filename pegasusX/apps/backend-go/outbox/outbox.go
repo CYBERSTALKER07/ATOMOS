@@ -57,6 +57,11 @@ type Store interface {
 	Fetch(ctx context.Context, limit int) ([]Event, error)
 	MarkPublished(ctx context.Context, eventIDs []string, at time.Time) error
 	CountUnpublished(ctx context.Context) (int64, error)
+	// RecordPublishFailures increments the persistent per-event attempt counter.
+	// Events reaching maxAttempts are moved to the dead-letter sink in the same
+	// transaction and their IDs returned; they leave the retry set permanently
+	// (never silently dropped).
+	RecordPublishFailures(ctx context.Context, eventIDs []string, lastErr string, maxAttempts int64) (deadLettered []string, err error)
 }
 
 // WithTraceID attaches request trace context used by outbox emitters.

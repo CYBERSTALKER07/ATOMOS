@@ -38,6 +38,24 @@ images:
     newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
     digest: sha256:a5b31a6bd963757780aa675e9778989ac75cd25329b785f4e202cd82c5e4a181
 
+# Production Kafka = GCP Managed Service for Apache Kafka (same as staging).
+# ACTIVATION (owner-controlled, one-time):
+#   1. terraform apply -var="enable_managed_kafka=true" -var="environment=prod"
+#   2. Grant the prod backend GSA roles/managedkafka.client on the cluster.
+#   3. Uncomment the configMapGenerator block below, replacing CLUSTER_ID with
+#      the cluster_id from `terraform output managed_kafka_bootstrap`.
+#   4. kubectl apply -k infra/k8s/overlays/prod (standard prod promotion).
+# configMapGenerator:
+#   - name: backend-go-config
+#     behavior: merge
+#     literals:
+#       - KAFKA_BROKERS=bootstrap.CLUSTER_ID.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
+#       - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
+#       - KAFKA_SASL_USERNAME=prod-backend@pegasus-503013.iam.gserviceaccount.com
+#       - KAFKA_TOPIC_MAIN_DLQ=prod.events.orders-dlq
+#       - KAFKA_TOPIC_DUAL_WRITE=false
+#       - KAFKA_TOPIC_CONSUME_DOMAIN=false
+
 patches:
   - path: ingress-managed-cert-patch.yaml
   - path: backend-go-externalsecret-patch.yaml

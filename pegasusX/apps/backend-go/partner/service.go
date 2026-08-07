@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
 
@@ -25,6 +26,7 @@ type Service struct {
 	ediOut         *EdiOutboundWorker
 	orders         *order.Service
 	catalog        *catalog.Service
+	idem           idempotency.Store
 	log            *slog.Logger
 	now            func() time.Time
 	oauthJWTSecret string
@@ -41,6 +43,23 @@ func NewService(keys KeyRepository, webhooks WebhookRepository, orders *order.Se
 		keys: keys, webhooks: webhooks, orders: orders, catalog: cat, log: log,
 		now: func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetIdempotencyStore wires the shared idempotency store (Redis in production)
+// used to honor Idempotency-Key on mutating partner endpoints.
+func (s *Service) SetIdempotencyStore(store idempotency.Store) {
+	if s == nil {
+		return
+	}
+	s.idem = store
+}
+
+// IdempotencyStore exposes the configured store for handlers.
+func (s *Service) IdempotencyStore() idempotency.Store {
+	if s == nil {
+		return nil
+	}
+	return s.idem
 }
 
 // SetExportRepos wire Wave-2A export + SFTP repos.

@@ -43,6 +43,7 @@ locals {
 resource "google_project_service" "required_apis" {
   for_each = toset([
     "compute.googleapis.com",
+    "managedkafka.googleapis.com",
     "monitoring.googleapis.com",
     "redis.googleapis.com",
     "secretmanager.googleapis.com",

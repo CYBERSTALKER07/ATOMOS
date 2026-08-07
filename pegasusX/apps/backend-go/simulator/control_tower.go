@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -46,6 +48,13 @@ type ControlTowerH3Payload struct {
 
 func StartControlTowerSimulation(telemetryHub *ws.Hub, supplierID string, warehouseID string) {
 	if telemetryHub == nil {
+		return
+	}
+	// Defense-in-depth: the random-data simulator is demo/dev-only. Bootstrap
+	// already gates on CONTROL_TOWER_SIMULATOR_ENABLED + env; guard here too so
+	// no future callsite can emit fabricated telemetry on real environments.
+	switch env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))); env {
+	case "ssmr", "production", "prod", "staging":
 		return
 	}
 

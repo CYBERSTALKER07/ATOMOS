@@ -20,6 +20,9 @@ type RelayConfig struct {
 	MaxBackoff       time.Duration
 	WatchdogInterval time.Duration
 	StuckThreshold   time.Duration
+	// MaxTotalAttempts is the persistent per-event publish budget across ticks;
+	// on exhaustion the event moves to the dead-letter sink. Default 20.
+	MaxTotalAttempts int64
 }
 
 func (c *RelayConfig) applyDefaults() {
@@ -43,6 +46,9 @@ func (c *RelayConfig) applyDefaults() {
 	}
 	if c.StuckThreshold <= 0 {
 		c.StuckThreshold = 60 * time.Second
+	}
+	if c.MaxTotalAttempts <= 0 {
+		c.MaxTotalAttempts = 20
 	}
 }
 
@@ -131,6 +137,7 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		return
 	}
 	published := make([]string, 0, len(events))
+	failed := make(map[string]error)
 	for _, e := range events {
 		if err := r.publishWithRetry(ctx, e); err != nil {
 			r.log.Error("outbox publish exhausted retries",
@@ -140,15 +147,42 @@ func (r *Relay) drainOnce(ctx context.Context) {
 				"topic", e.TopicName,
 				"err", err,
 			)
+			failed[e.EventID] = err
 			continue
 		}
 		published = append(published, e.EventID)
 	}
-	if len(published) == 0 {
-		return
+	if len(published) > 0 {
+		if err := r.store.MarkPublished(ctx, published, time.Now().UTC()); err != nil {
+			r.log.Error("outbox mark published failed", "count", len(published), "err", err)
+		}
 	}
-	if err := r.store.MarkPublished(ctx, published, time.Now().UTC()); err != nil {
-		r.log.Error("outbox mark published failed", "count", len(published), "err", err)
+	if len(failed) > 0 {
+		ids := make([]string, 0, len(failed))
+		var firstErr error
+		for id, ferr := range failed {
+			ids = append(ids, id)
+			if firstErr == nil {
+				firstErr = ferr
+			}
+		}
+		errText := "outbox publish failed"
+		if firstErr != nil {
+			errText = firstErr.Error()
+		}
+		deadLettered, derr := r.store.RecordPublishFailures(ctx, ids, errText, r.cfg.MaxTotalAttempts)
+		if derr != nil {
+			r.log.Error("outbox record publish failures failed", "count", len(ids), "err", derr)
+			return
+		}
+		if len(deadLettered) > 0 {
+			IncDeadLettered(len(deadLettered))
+			r.log.Error("outbox events dead-lettered after exhausting attempts",
+				"event_ids", deadLettered,
+				"max_total_attempts", r.cfg.MaxTotalAttempts,
+				"err", errText,
+			)
+		}
 	}
 }
 

@@ -1,15 +1,19 @@
 package partner
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
 
@@ -34,6 +38,10 @@ func readBody(r *http.Request) ([]byte, error) {
 }
 
 // HandleCreateOrder POST /partner/v1/orders
+// Honors Idempotency-Key: a replay with the same tenant + key + body returns the
+// stored response; the same key with a different body is rejected 409. The store
+// (Redis in production) is the latency layer; OrderPaymentLegs/PaymentLedgerEntries
+// unique indexes are the database guarantee for the money side effects.
 func (h *Handlers) HandleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	p, _ := PrincipalFromContext(r.Context())
 	body, err := readBody(r)
@@ -54,12 +62,64 @@ func (h *Handlers) HandleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(body, &wrap)
 		retailerID = strings.TrimSpace(wrap.RetailerID)
 	}
+
+	store := h.Svc.IdempotencyStore()
+	rawKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	guardKey := ""
+	bodyHash := ""
+	if rawKey != "" && store != nil {
+		sum := sha256.Sum256(body)
+		bodyHash = hex.EncodeToString(sum[:])
+		guardKey = idempotency.ScopeKey(string(p.TenantType)+":"+p.TenantID, "POST /partner/v1/orders", rawKey)
+		rec, hit, gErr := idempotency.Guard(r.Context(), store, guardKey, bodyHash)
+		if gErr != nil {
+			switch {
+			case errors.Is(gErr, idempotency.ErrConflict):
+				writePartnerError(w, http.StatusConflict, "idempotency_key_payload_mismatch")
+			case errors.Is(gErr, idempotency.ErrInProgress):
+				writePartnerError(w, http.StatusConflict, "request_in_progress")
+			default:
+				writePartnerError(w, http.StatusInternalServerError, "idempotency_guard_failed")
+			}
+			return
+		}
+		if hit {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(rec.StatusCode)
+			_, _ = w.Write(rec.Response)
+			return
+		}
+	}
+
 	resp, err := h.Svc.CreateOrder(r.Context(), p, retailerID, req)
 	if err != nil {
+		if guardKey != "" {
+			_ = store.Release(r.Context(), guardKey)
+		}
 		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	respBytes, mErr := json.Marshal(resp)
+	if mErr != nil {
+		if guardKey != "" {
+			_ = store.Release(r.Context(), guardKey)
+		}
+		writePartnerError(w, http.StatusInternalServerError, "encode_error")
+		return
+	}
+	if guardKey != "" {
+		if saveErr := store.Save(r.Context(), guardKey, idempotency.Record{
+			BodyHash:   bodyHash,
+			StatusCode: http.StatusCreated,
+			Response:   respBytes,
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour); saveErr != nil {
+			slog.Warn("partner order idempotency save failed", "err", saveErr)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleGetOrder GET /partner/v1/orders/{orderID}

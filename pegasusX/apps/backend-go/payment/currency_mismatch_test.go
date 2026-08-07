@@ -43,6 +43,9 @@ func TestInitCheckoutSessionEmptyUsesOrderCurrency(t *testing.T) {
 	t.Parallel()
 	repo := &paymentRepoStub{}
 	svc := newPaymentServiceForExecutionTest(repo)
+	if gp, ok := svc.execution.executors["GLOBAL_PAY"].(*globalpayProviderExecutor); ok {
+		gp.allowStub = true
+	}
 	svc.now = func() time.Time { return time.Date(2026, 8, 6, 0, 0, 0, 0, time.UTC) }
 	svc.newID = func(prefix string) string { return prefix + "-1" }
 	svc.BindOrderCheckoutReader(stubOrderReader{currency: "KZT"})

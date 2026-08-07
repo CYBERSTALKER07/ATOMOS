@@ -1304,6 +1304,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
 	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
+	partnerSvc.SetIdempotencyStore(idemStore)
 	var partnerAs2 partner.As2ConfigRepository = partner.NewMemoryAs2ConfigRepository()
 	if spannerClient != nil {
 		partnerAs2 = partner.NewSpannerAs2ConfigRepository(spannerClient)

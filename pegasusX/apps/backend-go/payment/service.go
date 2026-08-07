@@ -648,15 +648,54 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 }
 
 // CaptureCardPayment synchronously executes the capture action for a completed card-based order.
-func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error {
-	_, err := s.execution.Execute(ctx, ExecutionRequest{
-		Gateway:     "GLOBALPAY",
+// It resolves the checkout session for the order (gateway + provider payment id) and
+// short-circuits when the payment is already settled, so retries never double-capture.
+// Returns the provider reference of the confirmed capture.
+func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) (string, error) {
+	gateway := "GLOBAL_PAY"
+	sessionID := ""
+	if s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, orderID); err == nil && ok {
+			if g := strings.ToUpper(strings.TrimSpace(session.Gateway)); g != "" {
+				gateway = g
+			}
+			sessionID = session.SessionID
+			switch strings.ToUpper(strings.TrimSpace(session.Status)) {
+			case "PAID", "CAPTURED", "SUCCESS":
+				return sessionID, nil
+			}
+		}
+	}
+	// Query-before-capture: if the provider already settled this payment (a prior
+	// capture succeeded but our confirmation write was lost), do not capture twice.
+	if res, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
+		Action:      ExecutionActionStatusCheck,
+		OrderID:     orderID,
+		SessionID:   sessionID,
+		AmountMinor: amountMinor,
+		Currency:    currency,
+	}); err == nil {
+		switch strings.ToUpper(strings.TrimSpace(res.ProviderRef)) {
+		case "PAID", "CAPTURED", "SUCCESS":
+			if res.ProviderRef != "" {
+				return res.ProviderRef, nil
+			}
+			return sessionID, nil
+		}
+	}
+	result, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
 		Action:      ExecutionActionCheckoutCapture,
 		OrderID:     orderID,
+		SessionID:   sessionID,
 		AmountMinor: amountMinor,
 		Currency:    currency,
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return result.ProviderRef, nil
 }
 
 // ClaimChargebackInput is used by claims.Service for marketplace chargebacks.

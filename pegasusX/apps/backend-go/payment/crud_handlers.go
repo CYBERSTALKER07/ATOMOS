@@ -6,14 +6,23 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
 )
 
 // HandleCreatePayer serves POST /v1/payers
+// Role-gated: only retailers (self) and admins may create payer profiles;
+// an explicit payer_id must belong to the caller (fail-closed ownership).
 func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin {
+		web.JSONError(w, "forbidden: only retailers or admins can create payers", http.StatusForbidden)
+		return
+	}
 	var req Payer
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -26,11 +35,10 @@ func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PayerID == "" {
-		if ok && claims.Subject != "" {
-			req.PayerID = claims.Subject
-		} else {
-			req.PayerID = uuid.New().String()
-		}
+		req.PayerID = claims.Subject
+	} else if claims.Role != auth.RoleAdmin && req.PayerID != claims.Subject {
+		web.JSONError(w, "forbidden: cannot create another payer profile", http.StatusForbidden)
+		return
 	}
 
 	if err := s.repo.CreatePayer(r.Context(), req); err != nil {
@@ -49,11 +57,14 @@ func (s *Service) HandleGetPayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
-			web.JSONError(w, "forbidden: cannot access another payer profile", http.StatusForbidden)
-			return
-		}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+		web.JSONError(w, "forbidden: cannot access another payer profile", http.StatusForbidden)
+		return
 	}
 
 	p, err := s.repo.GetPayer(r.Context(), payerID)
@@ -73,11 +84,14 @@ func (s *Service) HandleUpdatePayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
-			web.JSONError(w, "forbidden: cannot update another payer profile", http.StatusForbidden)
-			return
-		}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+		web.JSONError(w, "forbidden: cannot update another payer profile", http.StatusForbidden)
+		return
 	}
 
 	var req Payer

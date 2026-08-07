@@ -9,6 +9,9 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type PaymentMethod string
@@ -233,4 +236,230 @@ func (s *Service) RecordSettlementException(ctx context.Context, txn *spanner.Re
 		return err
 	}
 	return txn.BufferWrite([]*spanner.Mutation{m})
+}
+
+// recordPaymentLegStandalone inserts a payment leg outside an order-update
+// transaction (e.g. the deferred-payment sweeper recording a confirmed capture).
+func (s *Service) recordPaymentLegStandalone(ctx context.Context, leg PaymentLeg) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner client not configured")
+	}
+	m, err := spanner.InsertStruct("OrderPaymentLegs", leg)
+	if err != nil {
+		return err
+	}
+	_, err = s.spannerClient.Apply(ctx, []*spanner.Mutation{m})
+	return err
+}
+
+// latestCardPaymentLeg returns the most recent CARD payment leg for the order.
+func (s *Service) latestCardPaymentLeg(ctx context.Context, orderID string) (PaymentLeg, bool, error) {
+	if s.spannerClient == nil {
+		return PaymentLeg{}, false, fmt.Errorf("spanner client not configured")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, LegId, Method, AmountMinor, Status, IdempotencyKey, ProviderRef, CreatedAt, CapturedAt
+		      FROM OrderPaymentLegs
+		      WHERE OrderId = @order_id AND Method = @method
+		      ORDER BY CreatedAt DESC
+		      LIMIT 1`,
+		Params: map[string]interface{}{
+			"order_id": orderID,
+			"method":   string(MethodCard),
+		},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return PaymentLeg{}, false, nil
+	}
+	if err != nil {
+		return PaymentLeg{}, false, fmt.Errorf("query card payment leg: %w", err)
+	}
+	var leg PaymentLeg
+	if err := row.ToStruct(&leg); err != nil {
+		return PaymentLeg{}, false, fmt.Errorf("decode card payment leg: %w", err)
+	}
+	return leg, true, nil
+}
+
+// bufferedOutboxMutations converts buffered outbox events into OutboxEvents mutations.
+func bufferedOutboxMutations(buf *spannerTxnBuffer, fallback time.Time) []*spanner.Mutation {
+	mutations := make([]*spanner.Mutation, 0, len(buf.events))
+	for _, e := range buf.events {
+		createdAt := e.CreatedAt.UTC()
+		if createdAt.IsZero() {
+			createdAt = fallback
+		}
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+			"EventId":       e.EventID,
+			"AggregateType": e.AggregateType,
+			"AggregateId":   e.AggregateID,
+			"TopicName":     e.TopicName,
+			"Payload":       e.Payload,
+			"CreatedAt":     createdAt,
+			"PublishedAt":   nil,
+		}))
+	}
+	return mutations
+}
+
+// finalizeCardSettlement emits PAYMENT_CLEARED and FISCAL_RECEIPT_REQUESTED in one
+// transaction. When leg is non-nil the same commit marks it CAPTURED with the
+// provider reference, so a card leg is only ever CAPTURED after provider confirmation.
+func (s *Service) finalizeCardSettlement(ctx context.Context, orderRecord Order, leg *PaymentLeg, attemptRow FiscalReceiptRow, providerRef string) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner client not configured")
+	}
+	now := s.now().UTC()
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if err := emitPaymentCleared(ctx, buf, orderRecord, string(MethodCard)); err != nil {
+			return err
+		}
+		if err := emitFiscalReceiptRequested(ctx, buf, attemptRow); err != nil {
+			return err
+		}
+		mutations := bufferedOutboxMutations(buf, now)
+		if leg != nil {
+			mutations = append(mutations, spanner.UpdateMap("OrderPaymentLegs", map[string]any{
+				"OrderId":     leg.OrderID,
+				"LegId":       leg.LegID,
+				"Status":      string(PaymentStatusCaptured),
+				"ProviderRef": nullableString(providerRef),
+				"CapturedAt":  now,
+			}))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	return err
+}
+
+// failCardCapture marks a card leg FAILED and records an open settlement exception
+// so a capture shortfall is visible to ops and finance instead of being absorbed.
+func (s *Service) failCardCapture(ctx context.Context, orderRecord Order, leg PaymentLeg, cause error) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner client not configured")
+	}
+	now := s.now().UTC()
+	reason := "card capture failed"
+	if cause != nil {
+		reason = cause.Error()
+	}
+	if len(reason) > 512 {
+		reason = reason[:512]
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.FinanceEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventPaymentFailed, Timestamp: now.Format(time.RFC3339Nano)},
+			OrderID:     orderRecord.OrderID,
+			SupplierID:  orderRecord.SupplierID,
+			RetailerID:  orderRecord.RetailerID,
+			Status:      "CARD_CAPTURE_FAILED",
+			AmountMinor: leg.AmountMinor,
+			Currency:    orderRecord.Currency,
+			Source:      "order.card_capture",
+		}); err != nil {
+			return err
+		}
+		mutations := bufferedOutboxMutations(buf, now)
+		mutations = append(mutations,
+			spanner.UpdateMap("OrderPaymentLegs", map[string]any{
+				"OrderId": leg.OrderID,
+				"LegId":   leg.LegID,
+				"Status":  string(PaymentStatusFailed),
+			}),
+			spanner.InsertMap("OrderSettlementExceptions", map[string]any{
+				"OrderId":     orderRecord.OrderID,
+				"ExceptionId": s.newID(),
+				"Type":        "CARD_CAPTURE_FAILED",
+				"AmountMinor": leg.AmountMinor,
+				"Status":      "OPEN",
+				"Reason":      reason,
+				"CreatedBy":   "system",
+				"CreatedAt":   now,
+			}),
+		)
+		return txn.BufferWrite(mutations)
+	})
+	return err
+}
+
+// settleOutstandingCardPayment performs the deferred card settlement for an order
+// entering FISCALIZING: captures any outstanding (PENDING/FAILED) card leg with the
+// provider and only then emits the fiscal receipt request. When no card leg exists,
+// delivery is already covered by other tender and fiscal is requested directly.
+func (s *Service) settleOutstandingCardPayment(ctx context.Context, orderRecord Order) error {
+	if s.spannerClient == nil {
+		return nil
+	}
+	leg, found, err := s.latestCardPaymentLeg(ctx, orderRecord.OrderID)
+	if err != nil {
+		return err
+	}
+	if found && (leg.Status == PaymentStatusPending || leg.Status == PaymentStatusFailed) {
+		if s.paymentCapturer == nil {
+			return fmt.Errorf("card capture outstanding for order %s but payment capturer is not configured", orderRecord.OrderID)
+		}
+		captureCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		providerRef, capErr := s.paymentCapturer.CaptureCardPayment(captureCtx, orderRecord.OrderID, leg.AmountMinor, orderRecord.Currency)
+		cancel()
+		if capErr != nil {
+			if ferr := s.failCardCapture(ctx, orderRecord, leg, capErr); ferr != nil {
+				s.log.Error("persist card capture failure failed", "order_id", orderRecord.OrderID, "err", ferr)
+			}
+			return fmt.Errorf("card capture failed: %w", capErr)
+		}
+		attemptRow, rowErr := s.resolveLatestFiscalAttemptRow(ctx, orderRecord)
+		if rowErr != nil {
+			return fmt.Errorf("card capture succeeded but fiscal attempt unavailable: %w", rowErr)
+		}
+		if cerr := s.finalizeCardSettlement(ctx, orderRecord, &leg, attemptRow, providerRef); cerr != nil {
+			// Money moved but the confirmation commit failed. The leg stays PENDING;
+			// the next CompleteOrder retry short-circuits at the provider
+			// (already-captured) and re-confirms here.
+			return fmt.Errorf("card capture confirmation failed: %w", cerr)
+		}
+		return nil
+	}
+	if found {
+		// A CAPTURED card leg implies its settlement events were committed atomically.
+		return nil
+	}
+	// No card tender for this order: request fiscalization when it has not started.
+	if orderRecord.Status == StatusFiscalizing && orderRecord.FiscalStatus == FiscalStatusPending {
+		attemptRow, rowErr := s.resolveLatestFiscalAttemptRow(ctx, orderRecord)
+		if rowErr != nil {
+			return rowErr
+		}
+		if attemptRow.Status != FiscalAttemptPending {
+			return nil
+		}
+		return s.finalizeCardSettlement(ctx, orderRecord, nil, attemptRow, "")
+	}
+	return nil
+}
+
+// resolveLatestFiscalAttemptRow returns the pending fiscal attempt row prepared by
+// the completing transition, loading it from the repository when the in-memory
+// order snapshot does not carry it (idempotent retry path).
+func (s *Service) resolveLatestFiscalAttemptRow(ctx context.Context, orderRecord Order) (FiscalReceiptRow, error) {
+	for _, row := range orderRecord.PendingFiscalReceipts {
+		if row.AttemptID != "" {
+			return row, nil
+		}
+	}
+	if orderRecord.LatestFiscalAttemptID == "" {
+		return FiscalReceiptRow{}, fmt.Errorf("no fiscal attempt pending for order %s", orderRecord.OrderID)
+	}
+	row, found, err := s.repo.GetFiscalAttempt(ctx, orderRecord.OrderID, orderRecord.LatestFiscalAttemptID)
+	if err != nil {
+		return FiscalReceiptRow{}, err
+	}
+	if !found {
+		return FiscalReceiptRow{}, fmt.Errorf("fiscal attempt %s not found", orderRecord.LatestFiscalAttemptID)
+	}
+	return row, nil
 }

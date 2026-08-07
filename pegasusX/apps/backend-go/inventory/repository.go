@@ -165,7 +165,9 @@ func (r *SpannerRepository) AdjustStock(ctx context.Context, inventoryID string,
 		}
 		newOnHand := onHand + delta
 		if newOnHand < 0 {
-			newOnHand = 0
+			// Fail loudly: silently clamping negative stock to zero hides
+			// oversells and corrupts availability math downstream.
+			return fmt.Errorf("insufficient stock for %s: on_hand %d + delta %d would go negative", inventoryID, onHand, delta)
 		}
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":    inventoryID,

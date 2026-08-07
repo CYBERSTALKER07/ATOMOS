@@ -617,6 +617,10 @@ CREATE INDEX Idx_PaymentLedger_ByOrderOccurred ON PaymentLedgerEntries(OrderId, 
 CREATE INDEX Idx_PaymentLedger_BySessionOccurred ON PaymentLedgerEntries(SessionId, OccurredAt DESC);
 CREATE INDEX Idx_PaymentLedger_BySupplierGatewayEntryOccurred ON PaymentLedgerEntries(SupplierId, Gateway, EntryType, OccurredAt DESC);
 
+-- One ledger entry per provider-side fact (20260816_payment_idempotency_indexes.ddl).
+CREATE UNIQUE NULL_FILTERED INDEX Idx_PaymentLedgerEntries_GatewayTypeRef
+  ON PaymentLedgerEntries(Gateway, EntryType, ReferenceId);
+
 CREATE TABLE OutboxEvents (
   EventId          STRING(36)    NOT NULL,
   AggregateType    STRING(64)    NOT NULL,
@@ -627,9 +631,23 @@ CREATE TABLE OutboxEvents (
   PublishedAt      TIMESTAMP,
   ClaimedBy        STRING(64),
   ClaimedUntil     TIMESTAMP,
+  PublishAttempts  INT64         NOT NULL DEFAULT (0),
 ) PRIMARY KEY (EventId);
 
 CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(PublishedAt, CreatedAt);
+
+-- Dead-letter sink for events that exhaust publish attempts (20260816_outbox_dlq.ddl).
+CREATE TABLE OutboxDeadLetters (
+  EventId        STRING(36)   NOT NULL,
+  AggregateType  STRING(64)   NOT NULL,
+  AggregateId    STRING(64)   NOT NULL,
+  TopicName      STRING(128)  NOT NULL,
+  Payload        BYTES(MAX)   NOT NULL,
+  CreatedAt      TIMESTAMP    NOT NULL,
+  DeadLetteredAt TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  Attempts       INT64        NOT NULL,
+  LastError      STRING(MAX),
+) PRIMARY KEY (EventId);
 
 -- Migration version ledger: refuse checksum drift on re-apply.
 CREATE TABLE SchemaMigrations (
@@ -1670,6 +1688,10 @@ CREATE TABLE OrderPaymentLegs (
   CapturedAt        TIMESTAMP,
 ) PRIMARY KEY (OrderId, LegId),
   INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
+
+-- DB-enforced financial idempotency (20260816_payment_idempotency_indexes.ddl).
+CREATE UNIQUE INDEX Idx_OrderPaymentLegs_IdempotencyKey
+  ON OrderPaymentLegs(IdempotencyKey);
 
 -- Explicit shortfalls / discrepancies
 CREATE TABLE OrderSettlementExceptions (

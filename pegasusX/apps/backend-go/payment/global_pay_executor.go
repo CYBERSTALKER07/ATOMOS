@@ -20,6 +20,7 @@ type globalpayProviderExecutor struct {
 	username      string
 	password      string
 	simulatorBase string // overrides base URL for local/dev simulation
+	allowStub     bool   // test-only escape hatch; production can never stub
 	httpClient    *http.Client
 	breaker       *circuit.Breaker
 }
@@ -54,6 +55,28 @@ func (e *globalpayProviderExecutor) doHTTP(ctx context.Context, call func(contex
 		return e.breaker.Do(ctx, call)
 	}
 	return call(ctx)
+}
+
+// errGlobalPayCredentialsMissing is returned when a gateway call is attempted
+// without merchant credentials and stub mode is not explicitly enabled.
+var errGlobalPayCredentialsMissing = fmt.Errorf("globalpay credentials missing (GLOBAL_PAY_SERVICE_ID/GLOBAL_PAY_USERNAME/GLOBAL_PAY_PASSWORD) and GLOBAL_PAY_STUB_MODE is not enabled")
+
+// stubMode reports whether fabricated-success stub responses are permitted.
+// Stubs exist only for non-production load testing and must be opted into
+// explicitly; production never stubs — missing credentials are hard errors.
+func (e *globalpayProviderExecutor) stubMode() bool {
+	if e.env == "production" {
+		return false
+	}
+	if e.allowStub {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GLOBAL_PAY_STUB_MODE"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func (e *globalpayProviderExecutor) getCheckoutBaseURL() string {
@@ -111,10 +134,13 @@ type gpTokenResponse struct {
 // env-overridable (GLOBAL_PAY_REFUND_ACTION, default "RF") until merchant docs confirm.
 func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	if e.username == "" || e.password == "" {
+		if !e.stubMode() {
+			return ExecutionResult{}, errGlobalPayCredentialsMissing
+		}
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",
 			Mode:            ExecutionModeDirect,
-			PolicySource:    "SUPPLIER_DEFAULT",
+			PolicySource:    "GLOBAL_PAY_STUB",
 			ProviderRef:     "gp_refund_stub_" + req.OrderID,
 		}, nil
 	}
@@ -249,10 +275,13 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	if req.Action == ExecutionActionCheckoutCapture {
 		if e.username == "" || e.password == "" {
+			if !e.stubMode() {
+				return ExecutionResult{}, errGlobalPayCredentialsMissing
+			}
 			return ExecutionResult{
 				ResolvedGateway: "GLOBAL_PAY",
 				Mode:            ExecutionModeDirect,
-				PolicySource:    "SUPPLIER_DEFAULT",
+				PolicySource:    "GLOBAL_PAY_STUB",
 				ProviderRef:     "gp_capture_stub_" + req.OrderID,
 			}, nil
 		}
@@ -311,11 +340,14 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	if req.Action == ExecutionActionStatusCheck {
 		if e.username == "" || e.password == "" {
+			if !e.stubMode() {
+				return ExecutionResult{}, errGlobalPayCredentialsMissing
+			}
 			return ExecutionResult{
 				ResolvedGateway: "GLOBAL_PAY",
 				Mode:            ExecutionModeDirect,
-				PolicySource:    "SUPPLIER_DEFAULT",
-				ProviderRef:     "gp_status_stub_paid", // Stub paid status
+				PolicySource:    "GLOBAL_PAY_STUB",
+				ProviderRef:     "gp_status_stub_paid", // Stub paid status (load-test only)
 			}, nil
 		}
 		token, err := e.authenticate(ctx)
@@ -359,13 +391,17 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 		}, nil
 	}
 
-	// Stub mode: if no API keys are provided, return a mock redirect URL
-	// to allow production-rate load testing without a real gateway contract.
+	// Stub mode: with no merchant credentials, return a mock redirect URL to
+	// allow non-production load testing without a real gateway contract. Must be
+	// explicitly enabled via GLOBAL_PAY_STUB_MODE; never available in production.
 	if e.username == "" || e.password == "" {
+		if !e.stubMode() {
+			return ExecutionResult{}, errGlobalPayCredentialsMissing
+		}
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",
 			Mode:            ExecutionModeHostedRedirect,
-			PolicySource:    "SUPPLIER_DEFAULT",
+			PolicySource:    "GLOBAL_PAY_STUB",
 			RedirectURL:     fmt.Sprintf("https://test.globalpay.uz/checkout-stub/%s", req.OrderID),
 		}, nil
 	}
