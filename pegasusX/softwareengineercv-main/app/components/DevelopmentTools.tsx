@@ -39,6 +39,7 @@ import {
 } from 'react-icons/si';
 import { VscCode } from 'react-icons/vsc';
 import { FaAws } from 'react-icons/fa6';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -124,6 +125,7 @@ function revealLogo(el: HTMLElement) {
 }
 
 export default function DevelopmentTools() {
+  const { t } = useLanguage();
   const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '0px' });
   const titleRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -222,16 +224,19 @@ export default function DevelopmentTools() {
       <div ref={titleRef}>
         <SectionHeader
           align="center"
-          eyebrow="Under the hood"
-          title="Built to run at network scale"
-          description="Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages."
+          eyebrow={t('tools_eyebrow', 'Under the hood')}
+          title={t('tools_title', 'Built to run at network scale')}
+          description={t(
+            'tools_desc',
+            'Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages.'
+          )}
         />
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/technology" className="editorial-btn">
-            VIEW TECHNOLOGY
+            {t('tools_cta_tech', 'VIEW TECHNOLOGY')}
           </Link>
           <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
-            OPEN SOURCE STACK →
+            {t('tools_cta_oss', 'OPEN SOURCE STACK →')}
           </Link>
         </div>
       </div>
@@ -256,7 +261,7 @@ export default function DevelopmentTools() {
                 fadeOut
                 fadeOutColor="#000000"
                 active={isInView}
-                ariaLabel="Platform stack technologies"
+                ariaLabel={t('tools_aria_stack', 'Platform stack technologies')}
               />
             </div>
           ))}

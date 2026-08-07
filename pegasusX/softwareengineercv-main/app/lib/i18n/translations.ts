@@ -488,6 +488,25 @@ export const translations = {
     asst_role_caps: '6 Role Capabilities',
     asst_business_roi: 'Business & ROI',
     platform_value_eyebrow: 'Platform overview',
+    feat_secure_title: 'Secure Guard',
+    feat_secure_desc:
+      'We fortify your logistics deployments with robust security protocols. Our system ensures every order adheres to strict data privacy standards.',
+    feat_agent_title: 'Agent Build',
+    feat_agent_desc:
+      'Tailored automation agents designed for your specific needs. We develop custom logic and workflows that integrate deeply with your existing tools.',
+    feat_cloud_title: 'Cloud Scale',
+    feat_cloud_desc:
+      'Infrastructure optimization for high-traffic networks. We ensure your systems remain fast, responsive, and ready for any level of demand.',
+    feat_data_title: 'Data Mining',
+    feat_data_desc:
+      "Transform raw fleet information into actionable intelligence. We build the pipelines and vector stores that power your organization's future.",
+    tools_eyebrow: 'Under the hood',
+    tools_title: 'Built to run at network scale',
+    tools_desc:
+      'Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages.',
+    tools_cta_tech: 'VIEW TECHNOLOGY',
+    tools_cta_oss: 'OPEN SOURCE STACK →',
+    tools_aria_stack: 'Platform stack technologies',
 
     demo_portal: 'Demo portal',
     demo_persona_workspaces: 'Persona workspaces',
@@ -995,6 +1014,25 @@ export const translations = {
     asst_role_caps: 'Возможности 6 ролей',
     asst_business_roi: 'Бизнес и ROI',
     platform_value_eyebrow: 'Обзор платформы',
+    feat_secure_title: 'Защитный контур',
+    feat_secure_desc:
+      'Усиливаем логистические развёртывания надёжными протоколами безопасности. Система гарантирует, что каждый заказ соответствует строгим стандартам конфиденциальности данных.',
+    feat_agent_title: 'Сборка агентов',
+    feat_agent_desc:
+      'Автоматизационные агенты под ваши задачи. Разрабатываем кастомную логику и рабочие процессы с глубокой интеграцией в существующие инструменты.',
+    feat_cloud_title: 'Облачный масштаб',
+    feat_cloud_desc:
+      'Оптимизация инфраструктуры для высоконагруженных сетей. Системы остаются быстрыми, отзывчивыми и готовыми к любому уровню спроса.',
+    feat_data_title: 'Добыча данных',
+    feat_data_desc:
+      'Превращаем сырые данные автопарка в практическую аналитику. Строим пайплайны и векторные хранилища, которые питают развитие организации.',
+    tools_eyebrow: 'Под капотом',
+    tools_title: 'Построено для масштаба сети',
+    tools_desc:
+      'Инфраструктура промышленного уровня держит операции надёжными — изучите полный технологический стек, open-source компоненты и архитектуру на страницах технологий.',
+    tools_cta_tech: 'СМОТРЕТЬ ТЕХНОЛОГИИ',
+    tools_cta_oss: 'OPEN SOURCE СТЕК →',
+    tools_aria_stack: 'Технологии платформенного стека',
 
     demo_portal: 'Демо-портал',
     demo_persona_workspaces: 'Рабочие пространства персон',

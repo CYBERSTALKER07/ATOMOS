@@ -1,26 +1,38 @@
 'use client';
 
-import PageSection from './layout/PageSection';
+import { useLanguage } from '../context/LanguageContext';
 
 const FEATURES = [
   {
+    titleKey: 'feat_secure_title',
+    descKey: 'feat_secure_desc',
     title: 'Secure Guard',
-    description: 'We fortify your logistics deployments with robust security protocols. Our system ensures every order adheres to strict data privacy standards.',
+    description:
+      'We fortify your logistics deployments with robust security protocols. Our system ensures every order adheres to strict data privacy standards.',
     icon: 'lock',
   },
   {
+    titleKey: 'feat_agent_title',
+    descKey: 'feat_agent_desc',
     title: 'Agent Build',
-    description: 'Tailored automation agents designed for your specific needs. We develop custom logic and workflows that integrate deeply with your existing tools.',
+    description:
+      'Tailored automation agents designed for your specific needs. We develop custom logic and workflows that integrate deeply with your existing tools.',
     icon: 'nodes',
   },
   {
+    titleKey: 'feat_cloud_title',
+    descKey: 'feat_cloud_desc',
     title: 'Cloud Scale',
-    description: 'Infrastructure optimization for high-traffic networks. We ensure your systems remain fast, responsive, and ready for any level of demand.',
+    description:
+      'Infrastructure optimization for high-traffic networks. We ensure your systems remain fast, responsive, and ready for any level of demand.',
     icon: 'server',
   },
   {
+    titleKey: 'feat_data_title',
+    descKey: 'feat_data_desc',
     title: 'Data Mining',
-    description: 'Transform raw fleet information into actionable intelligence. We build the pipelines and vector stores that power your organization\'s future.',
+    description:
+      "Transform raw fleet information into actionable intelligence. We build the pipelines and vector stores that power your organization's future.",
     icon: 'data',
   },
 ];
@@ -108,17 +120,15 @@ function FeatureIcon({ type }: { type: string }) {
 }
 
 export default function PlatformFeatures() {
+  const { t } = useLanguage();
+
   return (
     <section className="bg-black text-white relative border-t border-white/5 overflow-hidden">
       <div className="max-w-[1600px] mx-auto">
-        {/* Header Section */}
-
-
-        {/* 4-Column Grid Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border-t border-white/5 relative z-10">
           {FEATURES.map((feature, index) => (
             <div
-              key={feature.title}
+              key={feature.titleKey}
               className={`group p-8 md:p-12 relative flex flex-col items-center text-center border-white/5 transition-colors duration-300 hover:bg-white/[0.03]
                 ${index < FEATURES.length - 1 ? 'border-b lg:border-b-0 lg:border-r' : ''}
                 ${index === 1 ? 'md:border-r-0 lg:border-r' : ''}
@@ -126,20 +136,17 @@ export default function PlatformFeatures() {
                 ${index < 2 ? 'md:border-b lg:border-b-0' : ''}
               `}
             >
-              {/* Dotted Background */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:24px_24px] opacity-20 pointer-events-none" />
 
-              {/* Icon Container */}
               <div className="h-48 w-full flex items-center justify-center relative z-10 mb-8">
                 <FeatureIcon type={feature.icon} />
               </div>
 
-              {/* Text Content */}
               <h3 className="text-white font-mono text-sm tracking-widest uppercase mb-4 relative z-10 transition-colors duration-300 group-hover:text-[#FBFF63]">
-                {feature.title}
+                {t(feature.titleKey, feature.title)}
               </h3>
               <p className="text-white/60 text-sm leading-relaxed relative z-10 transition-colors duration-300 group-hover:text-white/90">
-                {feature.description}
+                {t(feature.descKey, feature.description)}
               </p>
             </div>
           ))}
