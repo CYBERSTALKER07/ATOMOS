@@ -346,6 +346,7 @@ type Service struct {
 	cache           *cache.Cache
 	warehouse       WarehouseResolver
 	paymentCapturer PaymentCapturer
+	paymentRefunder PaymentRefunder
 	promotions      *promotion.Service
 	credit          *credit.Service
 	ar              *ar.Service

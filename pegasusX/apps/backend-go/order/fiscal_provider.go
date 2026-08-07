@@ -183,16 +183,19 @@ func (p *MySoliqProvider) SetSigner(signer fiscal.EDSSigner) {
 }
 
 type mySoliqReceiptRequest struct {
-	AttemptID     string                   `json:"attempt_id"`
-	OrderID       string                   `json:"order_id"`
-	SupplierID    string                   `json:"supplier_id"`
-	RetailerID    string                   `json:"retailer_id,omitempty"`
-	TIN           string                   `json:"tin"`
-	AmountMinor   int64                    `json:"amount_minor"`
-	Currency      string                   `json:"currency"`
-	PaymentMethod string                   `json:"payment_method"`
-	LineItems     []mySoliqReceiptLineItem `json:"line_items,omitempty"`
-	IdempotencyKey string                  `json:"idempotency_key"`
+	AttemptID      string                   `json:"attempt_id"`
+	OrderID        string                   `json:"order_id"`
+	SupplierID     string                   `json:"supplier_id"`
+	RetailerID     string                   `json:"retailer_id,omitempty"`
+	TIN            string                   `json:"tin"`
+	AmountMinor    int64                    `json:"amount_minor"`
+	Currency       string                   `json:"currency"`
+	PaymentMethod  string                   `json:"payment_method"`
+	LineItems      []mySoliqReceiptLineItem `json:"line_items,omitempty"`
+	IdempotencyKey string                   `json:"idempotency_key"`
+	// Corrective chain: set on refund EHF that reverses an earlier receipt.
+	CorrectsEhfID  string                   `json:"corrects_ehf_id,omitempty"`
+	CorrectReason  string                   `json:"correct_reason,omitempty"`
 }
 
 type mySoliqReceiptLineItem struct {
@@ -269,6 +272,53 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 
 func (p *MySoliqProvider) GetSoliqClient() soliq.SoliqClient {
 	return p.soliqClient
+}
+
+// CreateCorrectiveReceipt submits the corrective (refund) EHF referencing the
+// original receipt. Same signed envelope plus corrects_ehf_id; idempotency key
+// is the corrective attempt id so retries never double-issue.
+func (p *MySoliqProvider) CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error) {
+	if p == nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq: nil provider")
+	}
+	if strings.TrimSpace(req.OriginalReceiptID) == "" {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective: original receipt id required")
+	}
+	if p.signer == nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq: no EDSSigner configured")
+	}
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" {
+		currency = "UZS"
+	}
+	body := mySoliqReceiptRequest{
+		AttemptID:      req.AttemptID,
+		OrderID:        req.OrderID,
+		SupplierID:     req.SupplierID,
+		RetailerID:     req.RetailerID,
+		TIN:            p.TIN,
+		AmountMinor:    req.AmountMinor,
+		Currency:       currency,
+		PaymentMethod:  "REFUND",
+		IdempotencyKey: req.AttemptID,
+		CorrectsEhfID:  req.OriginalReceiptID,
+		CorrectReason:  req.ReasonCode,
+	}
+	signedPayload, err := fiscal.AttachSignature(ctx, p.signer, body)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq attach signature: %w", err)
+	}
+	resp, err := p.soliqClient.Submit(ctx, signedPayload, req.AttemptID)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq submit corrective: %w", err)
+	}
+	if !resp.Success {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective error (code=%s): %s", resp.ErrorCode, resp.ErrorMessage)
+	}
+	if resp.EhfID == "" {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective missing receipt_id in response")
+	}
+	return FiscalCreateResult{FiscalReceiptID: resp.EhfID, RawPayload: resp.RawBody}, nil
 }
 
 func firstNonEmpty(vals ...string) string {

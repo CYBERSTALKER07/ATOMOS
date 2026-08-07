@@ -42,6 +42,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
@@ -246,6 +247,8 @@ type App struct {
 	PartnerEdiOutbound      *partner.EdiOutboundWorker
 	PartnerEventConsumer    *kafka.Consumer
 	ARDunningWorker         *ar.DunningWorker
+	PayoutService           *payout.Service
+	BillingInvoiceWorker    *billing.InvoiceWorker
 	ForecastAccuracy        *planning.AccuracyService
 	ForecastRunner          *planning.ForecastRunner
 	cleanup                 []func()
@@ -705,6 +708,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	creditSvc.SetPolicyGate(creditPolicySvc)
 	arSvc := ar.NewService(arRepo)
 	arDunning := ar.NewDunningWorker(arSvc, log)
+	// Phase 1 money surfaces: payouts (bank-file) + billing fee schedule.
+	var payoutSvc *payout.Service
+	var billingInvoiceWorker *billing.InvoiceWorker
+	if spannerClient != nil {
+		feeResolver := billing.NewFeeScheduleResolver(spannerClient)
+		payoutSvc = payout.NewService(payout.NewRepository(spannerClient))
+		payoutSvc.SetCommissionResolver(feeResolver)
+		billingInvoiceWorker = billing.NewInvoiceWorker(spannerClient, arSvc, feeResolver, log)
+	}
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -1099,6 +1111,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
+	orderSvc.SetPaymentRefunder(paymentSvc)
 
 	// Theatre #13: FX rates (ConvertMinor + admin GET/PUT). Operating currency stays UZS.
 	var fxRepo fxrates.Repository = fxrates.NewMemoryRepository()
@@ -1641,6 +1654,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PartnerEdiOutbound:      partnerEdiOut,
 		PartnerEventConsumer:    partnerEventConsumer,
 		ARDunningWorker:         arDunning,
+		PayoutService:           payoutSvc,
+		BillingInvoiceWorker:    billingInvoiceWorker,
 		ForecastAccuracy:        forecastAccuracy,
 		ForecastRunner:          forecastRunner,
 		cleanup:                 cleanup,

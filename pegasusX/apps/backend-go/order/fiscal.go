@@ -128,6 +128,26 @@ type FiscalCreateResult struct {
 	RawPayload      []byte
 }
 
+// FiscalCorrectiveRequest issues a corrective (credit-note) receipt that
+// references the original fiscal receipt — UZ practice for refunds/returns.
+type FiscalCorrectiveRequest struct {
+	AttemptID         string
+	OrderID           string
+	SupplierID        string
+	RetailerID        string
+	OriginalReceiptID string
+	AmountMinor       int64
+	Currency          string
+	ReasonCode        string
+}
+
+// CorrectiveFiscalProvider is an optional extension of FiscalProvider for the
+// refund corrective chain. Providers that cannot issue corrective receipts do
+// not implement it; callers type-assert and record the gap instead of faking.
+type CorrectiveFiscalProvider interface {
+	CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error)
+}
+
 func defaultFiscalProvider() FiscalProvider {
 	return ProviderFromEnv()
 }

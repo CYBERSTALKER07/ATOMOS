@@ -52,6 +52,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/collect-cash", d.Service.HandleCollectCash)
 		gr.With(auth.RequireRole(auth.RoleDriver, auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/fiscal/retry", d.Service.HandleFiscalRetry)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/force-complete", d.Service.HandleForceComplete)
+		// Refunds: supplier admin or warehouse admin initiates; provider-confirmed.
+		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/refunds", d.Service.HandleInitiateRefund)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/shop-closed/resolve", d.Service.HandleResolveShopClosed)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/fleet/route/request-early-complete", d.Service.HandleRequestEarlyComplete)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/confirm-payment-bypass", d.Service.HandleConfirmPaymentBypass)

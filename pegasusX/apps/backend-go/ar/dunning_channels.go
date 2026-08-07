@@ -104,7 +104,13 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 
 		var targets []Contact
 		if c, err := resolver.ResolveRetailer(ctx, inv.RetailerID); err != nil {
-			log.WarnContext(ctx, "dunning contact resolve failed", "retailer_id", inv.RetailerID, "err", err)
+			// Platform-billing invoices (SupplierId=PLATFORM) dun the billed
+			// supplier: fall back to that supplier's staff contacts.
+			if staff, sErr := resolver.ResolveSupplierStaff(ctx, inv.RetailerID); sErr == nil && len(staff) > 0 {
+				targets = append(targets, staff...)
+			} else {
+				log.WarnContext(ctx, "dunning contact resolve failed", "retailer_id", inv.RetailerID, "err", err)
+			}
 		} else {
 			targets = append(targets, c)
 		}

@@ -32,6 +32,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
@@ -347,6 +349,12 @@ func main() {
 	if app.FxRatesHandlers != nil {
 		fxrates.RegisterAdminRoutes(r, app.FxRatesHandlers)
 		fxrates.RegisterSupplierRoutes(r, app.FxRatesHandlers)
+	}
+	if app.PayoutService != nil {
+		payout.RegisterRoutes(r, &payout.Handlers{Svc: app.PayoutService})
+	}
+	if app.BillingInvoiceWorker != nil {
+		billing.RegisterRoutes(r, &billing.Handlers{Worker: app.BillingInvoiceWorker})
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,

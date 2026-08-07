@@ -698,6 +698,46 @@ func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amount
 	return result.ProviderRef, nil
 }
 
+// RefundCardPayment reverses a captured card payment (full or partial) via the
+// gateway. Implements order.PaymentRefunder. Retry-safety comes from the
+// execution layer's idempotency keys plus the caller's refund idempotency key.
+func (s *Service) RefundCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) (string, error) {
+	if s == nil || s.execution == nil {
+		return "", fmt.Errorf("payment execution unavailable")
+	}
+	if strings.TrimSpace(orderID) == "" || amountMinor <= 0 {
+		return "", fmt.Errorf("order_id and positive amount_minor required")
+	}
+	gateway := "GLOBAL_PAY"
+	sessionID := ""
+	if s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, orderID); err == nil && ok {
+			if g := strings.ToUpper(strings.TrimSpace(session.Gateway)); g != "" {
+				gateway = g
+			}
+			sessionID = session.SessionID
+		}
+	}
+	if currency == "" {
+		currency = s.currency
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	result, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
+		Action:      ExecutionActionRefund,
+		OrderID:     orderID,
+		SessionID:   sessionID,
+		AmountMinor: amountMinor,
+		Currency:    currency,
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.ProviderRef, nil
+}
+
 // ClaimChargebackInput is used by claims.Service for marketplace chargebacks.
 type ClaimChargebackInput struct {
 	ClaimID           string

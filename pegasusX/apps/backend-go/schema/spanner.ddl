@@ -2691,3 +2691,23 @@ CREATE TABLE PayoutBatches (
 
 CREATE UNIQUE INDEX UQ_PayoutBatches_IdempotencyKey ON PayoutBatches(IdempotencyKey);
 CREATE UNIQUE INDEX UQ_PayoutBatches_SupplierPeriod ON PayoutBatches(SupplierId, PeriodStart, PeriodEnd);
+
+-- Phase 1: billing fee schedule (per-order / GMV-bps / subscription, per supplier or tier).
+-- Monthly fees become AR open items (SupplierId='PLATFORM') reusing the dunning engine.
+CREATE TABLE BillingFeeSchedules (
+  FeeScheduleId            STRING(36)  NOT NULL,
+  SupplierId               STRING(36)  NOT NULL,  -- '' = tier-level default
+  Tier                     STRING(32)  NOT NULL,  -- STANDARD | VOLUME | ENTERPRISE
+  PerOrderMinor            INT64       NOT NULL,
+  GmvBps                   INT64       NOT NULL,  -- basis points of captured GMV
+  MonthlySubscriptionMinor INT64       NOT NULL,
+  Currency                 STRING(8)   NOT NULL,
+  EffectiveFrom            TIMESTAMP   NOT NULL,
+  EffectiveTo              TIMESTAMP,
+  CreatedAt                TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (FeeScheduleId);
+
+CREATE INDEX Idx_BillingFeeSchedules_BySupplier ON BillingFeeSchedules(SupplierId);
+CREATE INDEX Idx_BillingFeeSchedules_ByTier ON BillingFeeSchedules(Tier);
+
+ALTER TABLE SupplierProfiles ADD COLUMN Tier STRING(32);
