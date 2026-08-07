@@ -145,6 +145,12 @@ const (
 	EventPaymentFailed       = "PAYMENT_FAILED"
 	EventPaymentRequired     = "PAYMENT_REQUIRED"
 	EventSettlementRequired  = "SETTLEMENT_REQUIRED"
+	// @Sync(FinanceEvent) refund lifecycle (provider-confirmed reversal legs)
+	EventRefundRequested = "REFUND_REQUESTED"
+	EventRefundSucceeded = "REFUND_SUCCEEDED"
+	EventRefundFailed    = "REFUND_FAILED"
+	// @Sync(FiscalReceiptEvent) fiscal corrective chain (credit note EHF)
+	EventFiscalCorrectiveRequested = "FISCAL_CORRECTIVE_REQUESTED"
 
 	// @Sync(FiscalReceiptEvent) ADR-009 fiscal hard-gate
 	EventFiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
