@@ -1,8 +1,10 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-07 (Theatre #13 FX Wave 2+ order currency picker + Theatre #8 seasonality + Gate-0 CI + FX Wave 1+2 + partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
+*Last Updated: 2026-08-07 (Gate 5 Phase 1 ADR + Theatre #13 FX Wave 2+ order currency picker + Theatre #8 seasonality + Gate-0 CI + FX Wave 1+2 + partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
 
 ## 1. Code completeness (this closure)
+
+**Gate 5 / §8.10 Phase 1 (program ADR only):** Accepted multi-week roadmap for request-scoped multi-tenancy — freeze multi-supplier register, `TenantContext` + fail-closed middleware, domain verticals, outbox `SupplierId` partition, per-tenant rate limits, bootstrap seed removal, IDOR/SSMR proof. **No runtime code in this closure** — runtime remains single-supplier (~1/10). Doc: [`docs/MULTI_TENANCY_GATE5_PHASE1.md`](../docs/MULTI_TENANCY_GATE5_PHASE1.md).
 
 **Theatre #13 FX Wave 2+:** Flag-gated `ORDER_CURRENCY_PICKER_ENABLED` + `ORDER_CURRENCY_ALLOWLIST`; `GET /v1/order/currencies`; Create/UnifiedCheckout stamp allowlisted currency (422 `currency_not_allowed`); desktop/Android/iOS picker when enabled. Marker `PX_E2E_ORDER_CURRENCY_PICKER_OK` / `_SKIPPED`. Residual: AR multi-currency ledger, Airwallex live FX. Docs: [`docs/FX_RATES.md`](../docs/FX_RATES.md).
 

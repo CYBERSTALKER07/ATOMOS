@@ -438,6 +438,8 @@ Per §7 this is the highest-leverage work in the report relative to its cost, be
 
 ### 8.10 Multi-tenancy — the honest migration path
 
+**Program ADR (Phase 1):** [`docs/MULTI_TENANCY_GATE5_PHASE1.md`](./docs/MULTI_TENANCY_GATE5_PHASE1.md) — 12-week request-scoped tenancy roadmap (freeze register → TenantContext → vertical slices → outbox partition → tenant rate limits → bootstrap cleanup). **Status: Accepted plan; runtime still single-supplier.**
+
 **Phase 1 — request-scoped tenancy. This is the whole game and it cannot be done incrementally.** Add `SupplierID` to the auth claim set and to a request-scoped tenant context; delete the `supplierID` field from every service struct; change the ~15 constructor sites in `bootstrap.go`; thread tenant context through every repository method that currently takes a constructor-bound ID; add middleware that **fails closed** when tenant context is absent. Tables changed: none — the schema is already correctly shaped, which is a genuine asset. Code changed: **150–250 files** (`order/` alone is 74 files, `warehouse/` 67, `supplier/` 61, `dispatch/` 26, `payment/` 28).
 
 The reason it can't be incremental: today isolation is safe *only because* the ID is a startup constant. The moment it becomes request-derived, all 411 endpoints are potential IDOR vectors and there is no central enforcement point to lean on. Either every path is tenant-aware or none are safe. **Until Phase 1 lands, disable multi-supplier registration** (`supplier/service.go:433-447` currently mints up to 10 tenants the runtime cannot serve, and their orders would be attributed to `seed-supplier-1` — worse than refusing).
@@ -484,7 +486,7 @@ Cross-cutting, all surfaces: localization (0% on web, 0% on iOS, ~1% on Android 
 
 **Gate 4 — Make the warehouse executable (8–12 weeks).** §8.7. This is the gate that changes *what* you can sell — food and pharma become addressable, and pick/load/route becomes one optimized problem.
 
-**Gate 5 — Multi-tenancy (10–16 weeks).** §8.10 Phase 1, then 2. Do not start before Gate 3, because a partner API and outbound webhooks designed single-tenant will have to be rebuilt.
+**Gate 5 — Multi-tenancy (10–16 weeks).** §8.10 Phase 1, then 2. Do not start before Gate 3, because a partner API and outbound webhooks designed single-tenant will have to be rebuilt. **Phase 1 program ADR:** [`docs/MULTI_TENANCY_GATE5_PHASE1.md`](./docs/MULTI_TENANCY_GATE5_PHASE1.md) (Accepted; not yet coded).
 
 **Gate 6 — Marketplace, if the economics justify it.** §8.10 Phases 3–5. Per §6, decide this on evidence from Gates 1–4, not on the premise that no competitor exists. The survivors in this category monetize credit and data, not distribution margin — and Gate 1 is what makes credit monetizable.
 
