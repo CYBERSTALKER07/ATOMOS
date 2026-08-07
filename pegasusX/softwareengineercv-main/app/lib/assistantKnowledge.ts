@@ -1,4 +1,4 @@
-import { TOPIC_CONTENT_BY_PATH } from '@/app/data/topicContent';
+import { TOPIC_CONTENT_EN } from '@/app/data/topicContent';
 import { MEGA_NAV_CATEGORIES } from '@/app/data/megaNavigation';
 import { ROLES_DATA } from '@/app/data/rolesData';
 
@@ -102,7 +102,7 @@ Tech Stack & System Design:
 
   // Section 6: Topic Pages Deep Dive
   parts.push('# Deep Dive Topic Pages');
-  for (const [path, content] of Object.entries(TOPIC_CONTENT_BY_PATH)) {
+  for (const [path, content] of Object.entries(TOPIC_CONTENT_EN)) {
     const outcomes = content.outcomes?.length ? `Outcomes: ${content.outcomes.join('; ')}` : '';
     const how = (content.howItWorks ?? [])
       .slice(0, 4)

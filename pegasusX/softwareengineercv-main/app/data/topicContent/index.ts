@@ -21,8 +21,24 @@ export const TOPIC_CONTENT_EN: Record<string, TopicContent> = {
 };
 
 // Russian content (partial, imported gracefully later as they are created)
+import { platformTopicsRu } from './platform_ru';
+import { solutionsTopicsRu } from './solutions_ru';
+import { rolesTopicsRu } from './roles_ru';
+import { technologyTopicsRu } from './technology_ru';
+import { capabilitiesTopicsRu } from './capabilities_ru';
+import { aiVisionTopicsRu } from './ai-vision_ru';
+import { operationsTopicsRu } from './operations_ru';
+import { appsDeployTopicsRu } from './apps-deploy_ru';
+
 export const TOPIC_CONTENT_RU: Record<string, TopicContent> = {
-  // We will map _ru files here
+  ...Object.fromEntries(Object.entries(platformTopicsRu).map(([slug, c]) => [`platform/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(solutionsTopicsRu).map(([slug, c]) => [`solutions/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(rolesTopicsRu).map(([slug, c]) => [`roles/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(technologyTopicsRu).map(([slug, c]) => [`technology/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(capabilitiesTopicsRu).map(([slug, c]) => [`capabilities/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(aiVisionTopicsRu).map(([slug, c]) => [`ai-vision/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(operationsTopicsRu).map(([slug, c]) => [`operations/${slug}`, c])),
+  ...Object.fromEntries(Object.entries(appsDeployTopicsRu).map(([slug, c]) => [`apps-deploy/${slug}`, c])),
 };
 
 export function getTopicContent(categoryId: string, slug: string): BilingualContent | undefined {
