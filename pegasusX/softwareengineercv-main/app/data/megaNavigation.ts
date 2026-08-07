@@ -40,14 +40,14 @@ export const DEFAULT_MEGA_PROMO: MegaNavPromo = {
   secondaryHref: '/join',
 };
 
-export const MEGA_NAV_FOOTER_LINKS = [
+export const getMegaNavFooterLinks = (t: any) => [
   { label: 'About', href: '/#about' },
   { label: 'Request Demo', href: '/join' },
   { label: 'Contact', href: '/contact' },
   { label: 'All Modules', href: '/projects' },
-] as const;
+];
 
-export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
+export const getMegaNavCategories = (t: any): MegaNavCategory[] => [
   {
     id: 'platform',
     label: 'Platform',

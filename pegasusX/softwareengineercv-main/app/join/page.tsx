@@ -33,10 +33,10 @@ export default function JoinPage() {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!formData.name.trim()) next.name = 'Enter your full name.';
-    if (!formData.email.trim()) next.email = 'Enter a work email.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) next.email = 'Enter a valid email.';
-    if (!formData.position.trim()) next.position = 'Select your role.';
+    if (!formData.name.trim()) next.name = t('join_err_name');
+    if (!formData.email.trim()) next.email = t('join_err_email');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) next.email = t('join_err_email_valid');
+    if (!formData.position.trim()) next.position = t('join_err_role');
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -103,14 +103,14 @@ export default function JoinPage() {
       section06={
         <>
           <section className="docs-section">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">what you will see</p>
-            <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">Walkthrough coverage</h2>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">{t('join_what_you_see')}</p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">{t('join_walkthrough')}</h2>
             <div className="mt-10 grid gap-12 lg:grid-cols-2 lg:gap-16">
               <div className="space-y-3">
                 {[
-                  { tag: 'Dispatch', title: 'Dispatch Accuracy', desc: 'Visual warehouse boards with smart truck matching.', img: 0 },
-                  { tag: 'Visibility', title: 'Fleet Visibility', desc: 'Live maps with planned-vs-actual routes.', img: 1 },
-                  { tag: 'Finance', title: 'Payment Confidence', desc: 'One reconciled flow from checkout to treasury.', img: 2 },
+                  { tag: t('join_card1_tag'), title: t('join_card1_title'), desc: t('join_card1_desc'), img: 0 },
+                  { tag: t('join_card2_tag'), title: t('join_card2_title'), desc: t('join_card2_desc'), img: 1 },
+                  { tag: t('join_card3_tag'), title: t('join_card3_title'), desc: t('join_card3_desc'), img: 2 },
                 ].map((card) => (
                   <ContentCard
                     key={card.title}
@@ -135,12 +135,12 @@ export default function JoinPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="docs-surface docs-grain p-6 md:p-8" noValidate>
-                <h2 className="text-xl font-semibold">Book your walkthrough</h2>
+                <h2 className="text-xl font-semibold">{t('join_book_walkthrough')}</h2>
                 <div className="mt-6 space-y-4">
                   {[
-                    { name: 'name', label: 'Full name', type: 'text', required: true, autoComplete: 'name' },
-                    { name: 'email', label: 'Email', type: 'email', required: true, autoComplete: 'email' },
-                    { name: 'portfolio', label: 'Company website', type: 'url', required: false, autoComplete: 'url' },
+                    { name: 'name', label: t('join_full_name_form'), type: 'text', required: true, autoComplete: 'name' },
+                    { name: 'email', label: t('join_email_form'), type: 'email', required: true, autoComplete: 'email' },
+                    { name: 'portfolio', label: t('join_portfolio_form'), type: 'url', required: false, autoComplete: 'url' },
                   ].map((f) => (
                     <div key={f.name} className="docs-form-field">
                       <label htmlFor={`join-${f.name}`} className="text-xs font-mono uppercase tracking-wider text-white/50">
@@ -169,7 +169,7 @@ export default function JoinPage() {
                   ))}
                   <div className="docs-form-field">
                     <label htmlFor="join-position" className="text-xs font-mono uppercase tracking-wider text-white/50">
-                      Your role *
+                      {t('join_role_form')}
                     </label>
                     <select
                       id="join-position"
@@ -194,7 +194,7 @@ export default function JoinPage() {
                   </div>
                   <div className="docs-form-field">
                     <label htmlFor="join-message" className="text-xs font-mono uppercase tracking-wider text-white/50">
-                      Tell us about your network
+                      {t('join_about_network')}
                     </label>
                     <textarea
                       id="join-message"
@@ -204,13 +204,13 @@ export default function JoinPage() {
                       rows={4}
                       disabled={isSubmitting}
                       className="docs-textarea disabled:opacity-50"
-                      placeholder="Sites, fleet size, dispatch volume..."
+                      placeholder={t('join_network_placeholder')}
                     />
                   </div>
                 </div>
                 {submitStatus === 'success' && (
                   <p className="mt-4 border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm font-medium text-[#8DDC96]" role="status">
-                    Demo request submitted — we&apos;ll reach out within one business day.
+                    {t('join_success_msg')}
                   </p>
                 )}
                 {submitStatus === 'error' && (
@@ -220,7 +220,7 @@ export default function JoinPage() {
                 )}
                 <div className="mt-6">
                   <ChamferButton type="submit" variant="fill" className="w-full justify-center" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Request demo'}
+                    {isSubmitting ? t('join_submitting_btn') : t('join_submit_btn')}
                   </ChamferButton>
                 </div>
               </form>

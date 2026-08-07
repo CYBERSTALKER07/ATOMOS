@@ -24,9 +24,12 @@ export default function Hero() {
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const typedPhrases = language === 'ru' 
-    ? ["Логистическая платформа", "Система диспетчеризации", "Мониторинг автопарка", "Финансовая прозрачность"]
-    : ["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"];
+  const typedPhrases = [
+    t('hero_type_1'),
+    t('hero_type_2'),
+    t('hero_type_3'),
+    t('hero_type_4'),
+  ];
 
   const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
     if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
@@ -258,7 +261,7 @@ export default function Hero() {
         aria-label="Scroll to next section"
       >
         <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-sm font-light tracking-widest">SCROLL</span>
+          <span className="text-sm font-light tracking-widest">{t('hero_scroll')}</span>
           <svg
             className="w-6 h-6 animate-bounce"
             fill="none"

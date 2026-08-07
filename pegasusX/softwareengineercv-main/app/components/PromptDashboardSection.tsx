@@ -66,7 +66,7 @@ function BentoCard({ className, children }: { className?: string; children: Reac
   return (
     <div
       className={cn(
-        'rounded-xl border border-white/[0.12] bg-[#0c0c0c] p-4 sm:p-5 md:p-6 overflow-hidden',
+        'rounded-xl border border-white/[0.12] bg-[#000000] p-4 sm:p-5 md:p-6 overflow-hidden',
         className
       )}
     >

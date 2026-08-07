@@ -9,9 +9,9 @@ export default function Footer() {
 
   const platformLinks = [
     { name: t('nav_platform'), href: '/platform' },
-    { name: 'Order lifecycle', href: '/platform/order-lifecycle' },
-    { name: 'How Pegasus works', href: '/platform/how-pegasus-works' },
-    { name: 'Trust & reliability', href: '/platform/trust-reliability' },
+    { name: t('footer_order_lifecycle'), href: '/platform/order-lifecycle' },
+    { name: t('footer_how_it_works'), href: '/platform/how-pegasus-works' },
+    { name: t('footer_trust'), href: '/platform/trust-reliability' },
   ];
 
   const companyLinks = [
@@ -23,7 +23,7 @@ export default function Footer() {
 
   const policiesLinks = [
     { name: t('nav_tour'), href: '/platform' },
-    { name: 'Apps & Deploy', href: '/apps-deploy' },
+    { name: t('footer_apps_deploy'), href: '/apps-deploy' },
   ];
 
   return (
@@ -66,7 +66,7 @@ export default function Footer() {
 
         {/* Platform Links col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Platform</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
           <ul className="space-y-4">
             {platformLinks.map(link => (
               <li key={link.name}>
