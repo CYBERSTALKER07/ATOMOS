@@ -290,12 +290,24 @@ func runReturnGateReceiveE2E(
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, "return-gate-collect:"+orderID)
-	if err != nil {
-		return err
-	}
-	if status != http.StatusOK {
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, fmt.Sprintf("return-gate-collect:%s:%d", orderID, attempt))
+		if err != nil {
+			return err
+		}
+		if status == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(respBody), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("return-gate collect cash status %d body %s", status, string(respBody))
+	}
+	if !collectOK {
+		return fmt.Errorf("return-gate collect cash failed after retries")
 	}
 
 	// ADR-009 Phase 6: return-complete is blocked while any order is FISCALIZING / FISCAL_FAILED.

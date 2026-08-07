@@ -182,7 +182,10 @@ func runPartnerIntegrationE2E(
 	}))
 	defer srv.Close()
 
-	whBody, _ := json.Marshal(map[string]any{"url": srv.URL, "event_types": []string{"PARTNER_WEBHOOK_PING", "ORDER_CREATED"}})
+	// The smokecheck runs on the host while the backend runs in a container, so
+	// 127.0.0.1 in the registered URL must point at the host gateway instead.
+	webhookURL := strings.Replace(srv.URL, "127.0.0.1", "host.docker.internal", 1)
+	whBody, _ := json.Marshal(map[string]any{"url": webhookURL, "event_types": []string{"PARTNER_WEBHOOK_PING", "ORDER_CREATED"}})
 	whSt, whResp, _, err := clientPost(ctx, client, base+"/partner/v1/webhooks", whBody, issued.Secret, "")
 	if err != nil {
 		return err

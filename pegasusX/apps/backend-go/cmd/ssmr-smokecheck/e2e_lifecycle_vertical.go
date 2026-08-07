@@ -226,21 +226,34 @@ func completeLifecycleDelivery(
 		"longitude": cfg.DeliveryZoneCenterLng,
 		// amount_received omitted → backend defaults to order total (compat)
 	})
-	collectReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
-	if err != nil {
-		return err
-	}
-	collectReq.Header.Set("Authorization", "Bearer "+driverToken)
-	collectReq.Header.Set("Content-Type", "application/json")
-	collectReq.Header.Set("Idempotency-Key", "lifecycle-collect-cash-"+orderID)
-	collectResp, err := client.Do(collectReq)
-	if err != nil {
-		return fmt.Errorf("collect cash request: %w", err)
-	}
-	defer collectResp.Body.Close()
-	body, _ := io.ReadAll(collectResp.Body)
-	if collectResp.StatusCode != http.StatusOK {
+	var body []byte
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		collectReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
+		if err != nil {
+			return err
+		}
+		collectReq.Header.Set("Authorization", "Bearer "+driverToken)
+		collectReq.Header.Set("Content-Type", "application/json")
+		collectReq.Header.Set("Idempotency-Key", fmt.Sprintf("lifecycle-collect-cash-%s-%d", orderID, attempt))
+		collectResp, err := client.Do(collectReq)
+		if err != nil {
+			return fmt.Errorf("collect cash request: %w", err)
+		}
+		body, _ = io.ReadAll(collectResp.Body)
+		collectResp.Body.Close()
+		if collectResp.StatusCode == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(body), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
+	}
+	if !collectOK {
+		return fmt.Errorf("collect cash failed after retries: %s", string(body))
 	}
 	// ADR-009: collect enters FISCALIZING; wait for worker SUCCESS → COMPLETED.
 	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); err != nil {

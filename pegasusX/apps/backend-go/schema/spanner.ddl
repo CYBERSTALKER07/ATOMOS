@@ -971,7 +971,7 @@ CREATE TABLE FactoryInternalTransfers (
   SourceInsightId STRING(36),
   WarehouseId     STRING(36),
   TransferMode    STRING(10),
-  ReceivedAt      TIMESTAMP,
+  ReceivedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true),
   CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (TransferId);

@@ -428,18 +428,30 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
 	})
-	collectReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
-	collectReq.Header.Set("Authorization", "Bearer "+driverToken)
-	collectReq.Header.Set("Content-Type", "application/json")
-	collectReq.Header.Set("Idempotency-Key", "ssmr-collect-cash-"+orderID)
-	collectResp, err := client.Do(collectReq)
-	if err != nil {
-		return fmt.Errorf("collect cash request: %w", err)
-	}
-	defer collectResp.Body.Close()
-	if collectResp.StatusCode != http.StatusOK {
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		collectReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
+		collectReq.Header.Set("Authorization", "Bearer "+driverToken)
+		collectReq.Header.Set("Content-Type", "application/json")
+		collectReq.Header.Set("Idempotency-Key", fmt.Sprintf("ssmr-collect-cash-%s-%d", orderID, attempt))
+		collectResp, err := client.Do(collectReq)
+		if err != nil {
+			return fmt.Errorf("collect cash request: %w", err)
+		}
 		body, _ := io.ReadAll(collectResp.Body)
+		collectResp.Body.Close()
+		if collectResp.StatusCode == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(body), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
+	}
+	if !collectOK {
+		return fmt.Errorf("collect cash failed after retries")
 	}
 
 	return nil

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
@@ -97,7 +98,7 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 		      WHERE SupplierId = @sid AND IsActive = true
 		        AND StartDate <= @on AND EndDate >= @on
 		      ORDER BY StartDate DESC LIMIT 1`,
-		Params: map[string]any{"sid": supplierID, "on": on},
+		Params: map[string]any{"sid": supplierID, "on": civil.DateOf(on)},
 	})
 	defer iter.Stop()
 	row, err := iter.Next()
@@ -108,12 +109,12 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 		return nil, err
 	}
 	var r SeasonalOverrideRow
-	var start, end time.Time
+	var start, end civil.Date
 	if err := row.Columns(&r.OverrideID, &r.SupplierID, &r.TemplateID, &r.Name, &start, &end, &r.IsActive, &r.Multiplier); err != nil {
 		return nil, err
 	}
-	r.StartDate = start.Format("2006-01-02")
-	r.EndDate = end.Format("2006-01-02")
+	r.StartDate = start.String()
+	r.EndDate = end.String()
 	if r.Multiplier <= 0 {
 		r.Multiplier = seasonalcore.ResolveOverrideMultiplier(nil, r.TemplateID)
 	}
@@ -158,8 +159,8 @@ func (s *Service) CreateSeasonalOverride(ctx context.Context, supplierID string,
 			"SupplierId": supplierID,
 			"TemplateId": templateID,
 			"Name":       row.Name,
-			"StartDate":  start,
-			"EndDate":    end,
+			"StartDate":  civil.DateOf(start),
+			"EndDate":    civil.DateOf(end),
 			"IsActive":   true,
 			"Multiplier": mult,
 			"CreatedAt":  spanner.CommitTimestamp,
@@ -195,12 +196,12 @@ func (s *Service) ListSeasonalOverrides(ctx context.Context, supplierID string) 
 			return nil, err
 		}
 		var r SeasonalOverrideRow
-		var start, end time.Time
+		var start, end civil.Date
 		if err := row.Columns(&r.OverrideID, &r.SupplierID, &r.TemplateID, &r.Name, &start, &end, &r.IsActive, &r.Multiplier); err != nil {
 			continue
 		}
-		r.StartDate = start.Format("2006-01-02")
-		r.EndDate = end.Format("2006-01-02")
+		r.StartDate = start.String()
+		r.EndDate = end.String()
 		if r.Multiplier <= 0 {
 			r.Multiplier = seasonalcore.ResolveOverrideMultiplier(nil, r.TemplateID)
 		}

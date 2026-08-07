@@ -390,6 +390,7 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
 		envOr("KAFKA_TOPIC_INVENTORY_IMPORT", events.TopicInventoryImportEvents),
 		envOr("KAFKA_TOPIC_DEMAND", events.TopicDemand),
+		envOr("KAFKA_TOPIC_EXCEPTIONS", events.TopicExceptions),
 		events.TopicPlanningSignalIngest,
 		events.TopicPlanningForecastRequest,
 		events.TopicPlanningForecastResult,

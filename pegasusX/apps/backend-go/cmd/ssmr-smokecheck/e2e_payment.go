@@ -228,12 +228,24 @@ func completeCashSettlementAfterArrive(
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, fmt.Sprintf("ssmr-cash-collect-%s-%d", orderID, time.Now().UnixNano()))
-	if err != nil {
-		return err
-	}
-	if status != http.StatusOK {
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, fmt.Sprintf("ssmr-cash-collect-%s-%d-%d", orderID, time.Now().UnixNano(), attempt))
+		if err != nil {
+			return err
+		}
+		if status == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(respBody), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("collect cash status %d body %s", status, string(respBody))
+	}
+	if !collectOK {
+		return fmt.Errorf("collect cash failed after retries")
 	}
 	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 60*time.Second); err != nil {
 		// Fiscal worker lag / PEGASUS PENDING — same unstick as lifecycle vertical.
