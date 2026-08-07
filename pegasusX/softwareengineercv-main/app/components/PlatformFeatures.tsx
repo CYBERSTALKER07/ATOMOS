@@ -136,7 +136,7 @@ export default function PlatformFeatures() {
                 ${index < 2 ? 'md:border-b lg:border-b-0' : ''}
               `}
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:24px_24px] opacity-20 pointer-events-none" />
+              <div className="absolute inset-0 bg-[#000000] bg-[size:24px_24px] opacity-20 pointer-events-none" />
 
               <div className="h-48 w-full flex items-center justify-center relative z-10 mb-8">
                 <FeatureIcon type={feature.icon} />

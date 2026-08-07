@@ -39,7 +39,7 @@ function QueryBlock({ tokens }: { tokens: AskPromptMetric['queryLines'] }) {
 
 function MetricDefinitionCard({ metric }: { metric: AskPromptMetric }) {
   return (
-    <div className="ask-metrics-card rounded-xl border border-white/[0.12] bg-[#0c0c0c] p-5 sm:p-6 h-full flex flex-col">
+    <div className="ask-metrics-card rounded-xl border border-white/[0.12] bg-[#000000] p-5 sm:p-6 h-full flex flex-col">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-lg sm:text-xl font-medium text-white tracking-tight">{metric.label}</p>
@@ -56,7 +56,7 @@ function MetricChartCard({ metric, animate }: { metric: AskPromptMetric; animate
   const max = Math.max(...metric.chartBars, 1);
 
   return (
-    <div className="ask-metrics-card rounded-xl border border-white/[0.12] bg-[#0c0c0c] p-5 sm:p-6 h-full flex flex-col">
+    <div className="ask-metrics-card rounded-xl border border-white/[0.12] bg-[#000000] p-5 sm:p-6 h-full flex flex-col">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-white/45">{metric.chartTitle}</p>
         {metric.verified && <VerifiedBadge />}
