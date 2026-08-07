@@ -103,6 +103,44 @@ export function getCityAnalytics(cityId?: string): LogisticsCityAnalytics {
   return found ?? LOGISTICS_CITIES[0];
 }
 
-export function formatUsd(value: number): string {
-  return value.toLocaleString('en-US');
+const MONTH_RU: Record<string, string> = {
+  Feb: 'Фев',
+  Mar: 'Мар',
+  Apr: 'Апр',
+  May: 'Май',
+  Jun: 'Июн',
+  Jul: 'Июл',
+  Aug: 'Авг',
+  Sep: 'Сен',
+  Oct: 'Окт',
+  Nov: 'Ноя',
+  Dec: 'Дек',
+  Jan: 'Янв',
+};
+
+export function localizeMonthLabel(label: string, lang: 'en' | 'ru' = 'en'): string {
+  if (lang !== 'ru') return label;
+  const [mon, year] = label.split(' ');
+  return `${MONTH_RU[mon] ?? mon} ${year ?? ''}`.trim();
+}
+
+export function formatUsd(value: number, lang: 'en' | 'ru' = 'en'): string {
+  return value.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
+}
+
+export function getLocalizedCities(lang: 'en' | 'ru' = 'en'): LogisticsCityAnalytics[] {
+  if (lang !== 'ru') return LOGISTICS_CITIES;
+  const names: Record<string, string> = {
+    'new-york': 'Нью-Йорк',
+    london: 'Лондон',
+    shanghai: 'Шанхай',
+  };
+  return LOGISTICS_CITIES.map((city) => ({
+    ...city,
+    name: names[city.id] ?? city.name,
+    pricingTrends: city.pricingTrends.map((m) => ({
+      ...m,
+      label: localizeMonthLabel(m.label, 'ru'),
+    })),
+  }));
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import AdminShell from '../components/AdminShell';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 interface Message {
   id: string;
@@ -15,6 +16,7 @@ interface Message {
 }
 
 export default function MessagesPage() {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMsg, setSelectedMsg] = useState<Message | null>(null);
   const [notification, setNotification] = useState<Message | null>(null);
@@ -22,7 +24,7 @@ export default function MessagesPage() {
   const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = 'Customer Messages | Admin Dashboard';
+    document.title = `${t('admin_nav_messages', 'Messages')} | Pegasus Admin`;
 
     if (listRef.current) {
       gsap.fromTo(listRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' });
@@ -37,7 +39,7 @@ export default function MessagesPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
   const loadMessages = () => {
     const stored = localStorage.getItem('customer_messages');
@@ -111,7 +113,7 @@ export default function MessagesPage() {
   };
 
   const deleteMessage = (id: string) => {
-    const updated = messages.filter(msg => msg.id !== id);
+    const updated = messages.filter(m => m.id !== id);
     setMessages(updated);
     localStorage.setItem('customer_messages', JSON.stringify(updated));
     setSelectedMsg(null);
@@ -121,18 +123,18 @@ export default function MessagesPage() {
 
   return (
     <AdminShell
-      title="Customer messages"
-      subtitle="View and manage contact form inquiries."
+      title={t('admin_messages_title', 'Customer messages')}
+      subtitle={t('admin_messages_sub', 'View and manage contact form inquiries.')}
       badge={
         unreadCount > 0 ? (
           <span className="border border-[#A9EBF9] bg-[#A9EBF9]/10 px-4 py-2 font-mono text-sm text-[#A9EBF9]">
-            {unreadCount} unread
+            {unreadCount} {t('admin_badge_new', 'unread')}
           </span>
         ) : undefined
       }
       nav={[
-        { label: 'Applications', href: '/admin' },
-        { label: 'Messages', href: '/admin/messages', active: true },
+        { label: t('admin_nav_apps', 'Applications'), href: '/admin' },
+        { label: t('admin_nav_messages', 'Messages'), href: '/admin/messages', active: true },
       ]}
     >
       {notification && (
@@ -145,14 +147,14 @@ export default function MessagesPage() {
               <span className="text-2xl">💬</span>
             </div>
             <div className="flex-1">
-              <h4 className="font-light text-lg mb-1 text-[#A9EBF9]">New Message!</h4>
+              <h4 className="font-light text-lg mb-1 text-[#A9EBF9]">{t('admin_new_msg', 'New Message!')}</h4>
               <p className="text-white font-semibold">{notification.name}</p>
               <p className="text-gray-400 text-sm truncate">{notification.subject}</p>
               <button
                 onClick={() => viewMessage(notification)}
                 className="mt-3 text-[#A9EBF9] hover:text-white transition-colors text-sm font-semibold"
               >
-                Read Message →
+                {t('admin_view_details', 'Read Message →')}
               </button>
             </div>
             <button
@@ -175,9 +177,9 @@ export default function MessagesPage() {
       <div ref={listRef}>
         {messages.length === 0 ? (
           <div className="border border-white/15 p-8 text-center md:p-12">
-            <h3 className="text-xl font-semibold">No messages yet</h3>
+            <h3 className="text-xl font-semibold">{t('admin_no_msgs', 'No messages yet')}</h3>
             <p className="mt-2 text-sm text-white/50">
-              Customer messages appear here from the contact form.
+              {t('admin_no_msgs_desc', 'Customer messages appear here from the contact form.')}
             </p>
           </div>
         ) : (
@@ -196,7 +198,9 @@ export default function MessagesPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{msg.name}</h3>
                       {!msg.read ? (
-                        <span className="bg-[#A9EBF9] px-2 py-0.5 font-mono text-[10px] text-black">NEW</span>
+                        <span className="bg-[#A9EBF9] px-2 py-0.5 font-mono text-[10px] text-black">
+                          {t('admin_badge_new', 'NEW')}
+                        </span>
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm font-medium text-white/80">{msg.subject}</p>

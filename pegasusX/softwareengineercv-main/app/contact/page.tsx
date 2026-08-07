@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { Mail, Zap, Clock, Send } from 'lucide-react';
 import ChamferButton from '@/app/components/ChamferButton';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function ContactPage() {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,8 +20,8 @@ export default function ContactPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    document.title = "Let's Connect | Pegasus";
-  }, []);
+    document.title = `${t('contact_title')} | Pegasus`;
+  }, [t]);
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -78,25 +80,25 @@ export default function ContactPage() {
   };
 
   const fieldMeta = {
-    name: { label: 'Your name', type: 'text' as const, autoComplete: 'name' },
-    email: { label: 'Email', type: 'email' as const, autoComplete: 'email' },
-    subject: { label: 'Subject', type: 'text' as const, autoComplete: 'off' },
+    name: { label: t('contact_your_name', 'Your name'), type: 'text' as const, autoComplete: 'name' },
+    email: { label: t('contact_email', 'Email'), type: 'email' as const, autoComplete: 'email' },
+    subject: { label: t('contact_subject', 'Subject'), type: 'text' as const, autoComplete: 'off' },
   };
 
   return (
     <FleekSecondaryLayout
       activeHref="/contact"
-      sectionTitle="CONTACT"
-      title="Let's Connect"
-      summary="Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum."
+      sectionTitle={t('nav_contact', 'CONTACT')}
+      title={t('contact_title', "Let's Connect")}
+      summary={t('contact_subtitle', 'Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum.')}
       primaryHref="https://t.me/DominusMunerum"
-      primaryLabel="CHAT ON TELEGRAM"
+      primaryLabel={t('contact_chat_telegram', 'CHAT ON TELEGRAM')}
       secondaryHref="/platform"
-      secondaryLabel="EXPLORE PLATFORM"
+      secondaryLabel={t('btn_explore_platform', 'EXPLORE PLATFORM')}
       section06={
         <>
           <section className="docs-section">
-            <h2 className="text-3xl font-semibold tracking-tight">Send a message</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">{t('contact_send_msg', 'Send a message')}</h2>
             <div className="mt-10 grid gap-10 lg:grid-cols-5">
               <div className="lg:col-span-3">
                 <form onSubmit={handleSubmit} className="docs-surface docs-grain space-y-5 p-6 md:p-8" noValidate>
@@ -127,7 +129,7 @@ export default function ContactPage() {
                   ))}
                   <div className="docs-form-field">
                     <label htmlFor="contact-message" className="text-xs font-mono uppercase tracking-wider text-white/50">
-                      Message *
+                      {t('contact_message', 'Message')} *
                     </label>
                     <textarea
                       id="contact-message"
@@ -142,7 +144,7 @@ export default function ContactPage() {
                   </div>
                   {submitStatus === 'success' && (
                     <p className="border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm text-[#8DDC96]" role="status">
-                      Message sent via Resend API — we&apos;ll be in touch soon.
+                      {t('contact_success', "Message sent via Resend API — we'll be in touch soon.")}
                     </p>
                   )}
                   {submitStatus === 'error' && (
@@ -151,16 +153,16 @@ export default function ContactPage() {
                     </p>
                   )}
                   <ChamferButton type="submit" variant="fill" className="w-full justify-center" disabled={isSubmitting}>
-                    {isSubmitting ? 'Sending via Resend...' : 'Send Message'}
+                    {isSubmitting ? t('contact_submitting', 'Sending via Resend...') : t('contact_submit', 'Send Message')}
                   </ChamferButton>
                 </form>
               </div>
               <div className="space-y-4 lg:col-span-2">
                 {[
-                  { icon: Send, title: 'Telegram', body: '@DominusMunerum', href: 'https://t.me/DominusMunerum', external: true },
-                  { icon: Mail, title: 'Email', body: 'cyberstalkerx7@gmail.com', href: 'mailto:cyberstalkerx7@gmail.com' },
-                  { icon: Zap, title: 'Response time', body: 'Instant on Telegram, < 24h on Email' },
-                  { icon: Clock, title: 'Office hours', body: 'Mon–Fri 9:00–18:00' },
+                  { icon: Send, title: t('contact_telegram_label', 'Telegram'), body: '@DominusMunerum', href: 'https://t.me/DominusMunerum', external: true },
+                  { icon: Mail, title: t('contact_email_label', 'Email'), body: 'cyberstalkerx7@gmail.com', href: 'mailto:cyberstalkerx7@gmail.com' },
+                  { icon: Zap, title: t('contact_response_time', 'Response time'), body: t('contact_response_time_val', 'Instant on Telegram, < 24h on Email') },
+                  { icon: Clock, title: t('contact_hours', 'Office hours'), body: t('contact_hours_val', 'Mon–Fri 9:00–18:00') },
                 ].map(({ icon: Icon, title, body, href, external }) => (
                   <div key={title} className="docs-card p-6">
                     <Icon className="mb-3 h-6 w-6 text-white/80" />

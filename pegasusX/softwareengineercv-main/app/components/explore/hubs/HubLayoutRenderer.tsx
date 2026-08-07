@@ -8,7 +8,6 @@ import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
-
 import { useLanguage } from '@/app/context/LanguageContext';
 
 const FleetScrollShowcase = dynamic(() => import('@/app/components/fleet/FleetScrollShowcase'), {
@@ -21,31 +20,32 @@ type HubLayoutRendererProps = {
 };
 
 export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const categoryLabel = t(`nav_${hub.id}`, hub.label);
   
   const fleetBand =
     config.showFleetBand && hub.id === 'apps-deploy' ? (
       <FleetScrollShowcase
-        eyebrow="Deploy"
-        title="Fleet-ready on every surface"
-        subtitle="Warehouse boards, driver missions, and retailer tracking — the same fleet picture whether you deploy portal, mobile, or desktop."
+        eyebrow={t('nav_apps-deploy', 'Deploy')}
+        title={t('fleet_showcase_title', 'Fleet-ready on every surface')}
+        subtitle={t('fleet_showcase_sub', 'Warehouse boards, driver missions, and retailer tracking — the same fleet picture whether you deploy portal, mobile, or desktop.')}
         learnMoreHref="/apps-deploy/dispatch-fleet"
       />
     ) : null;
 
-  const capabilities = hub.topics.map((t, i) => {
-    const content = t.content[language] || t.content.en;
+  const capabilities = hub.topics.map((item, i) => {
+    const content = item.content[language] || item.content.en;
     return {
       title: content.title,
       description: content.summary,
-      href: `/${hub.id}/${t.slug}`,
+      href: `/${hub.id}/${item.slug}`,
       image: EDITORIAL_IMAGES[i % EDITORIAL_IMAGES.length],
-      tag: hub.label,
+      tag: categoryLabel,
     };
   });
 
-  const differentiators = hub.topics.slice(0, 4).map((t) => {
-    const content = t.content[language] || t.content.en;
+  const differentiators = hub.topics.slice(0, 4).map((item) => {
+    const content = item.content[language] || item.content.en;
     return {
       title: content.title,
       description: content.summary,
@@ -55,17 +55,17 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
   return (
     <FleekPageShell activeHref={`/${hub.id}`}>
       <O9FleekPageLayout
-        categoryLabel={hub.label}
+        categoryLabel={categoryLabel}
         categoryHref={`/${hub.id}`}
-        title={config.intro?.title ?? hub.label}
-        summary={config.intro?.body ?? hub.promo?.body ?? `Explore ${hub.label} on Pegasus.`}
+        title={config.intro?.title ? t(`hub_${hub.id}_title`, config.intro.title) : categoryLabel}
+        summary={config.intro?.body ? t(`hub_${hub.id}_body`, config.intro.body) : `${categoryLabel}`}
         heroImageSrc={EDITORIAL_IMAGES[hub.topics.length % EDITORIAL_IMAGES.length]}
         proofItems={DEFAULT_PROOF}
         hubId={hub.id}
         differentiators={differentiators}
-        differentiatorsTitle={config.intro?.title ?? `Tailored ${hub.label.toLowerCase()} for your network`}
+        differentiatorsTitle={t(`hub_${hub.id}_diff_title`, `Why leaders choose Pegasus ${categoryLabel}`)}
         capabilities={capabilities}
-        capabilitiesTitle={`${hub.label} capabilities`}
+        capabilitiesTitle={`${categoryLabel}`}
         fleetBand={fleetBand ? <div className="o9-section">{fleetBand}</div> : undefined}
         showTourCta
         details={
@@ -76,14 +76,16 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
                   {config.intro.eyebrow}
                 </p>
                 <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
-                  {config.intro.title}
+                  {t(`hub_${hub.id}_title`, config.intro.title)}
                 </h2>
-                <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">{config.intro.body}</p>
+                <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">
+                  {t(`hub_${hub.id}_body`, config.intro.body)}
+                </p>
               </section>
             ) : null}
             <HubTopicGrid
               hubId={hub.id}
-              hubLabel={hub.label}
+              hubLabel={categoryLabel}
               topics={hub.topics}
               layout={config.topicGridLayout}
             />

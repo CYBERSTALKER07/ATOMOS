@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type O9SplitTourCTAProps = {
   relatedProjectSlug?: string;
@@ -19,6 +20,7 @@ export default function O9SplitTourCTA({
   demoHref = '/join',
   tourHref,
 }: O9SplitTourCTAProps) {
+  const { t } = useLanguage();
   const resolvedTourHref = tourHref ?? (relatedProjectSlug ? `/projects/${relatedProjectSlug}` : '/platform');
 
   return (
@@ -35,14 +37,13 @@ export default function O9SplitTourCTA({
             />
           </div>
           <div className="o9-split-cta__body">
-            <p className="o9-split-cta__eyebrow">Discover our platform</p>
-            <h3 className="o9-split-cta__heading">Live demo with a Pegasus expert</h3>
+            <p className="o9-split-cta__eyebrow">{t('licensing_demo_tag')}</p>
+            <h3 className="o9-split-cta__heading">{t('licensing_demo_title')}</h3>
             <p className="o9-split-cta__copy">
-              Get a personalized walkthrough with a Pegasus specialist and see how to run
-              dispatch, fleet tracking, and payments across your network.
+              {t('licensing_demo_desc')}
             </p>
             <Link href={demoHref} className="o9-btn o9-btn--fill">
-              Request demo
+              {t('nav_demo')}
             </Link>
           </div>
         </article>
@@ -58,14 +59,13 @@ export default function O9SplitTourCTA({
             />
           </div>
           <div className="o9-split-cta__body">
-            <p className="o9-split-cta__eyebrow o9-split-cta__eyebrow--dark">Discover the platform</p>
-            <h3 className="o9-split-cta__heading o9-split-cta__heading--dark">Take a tour</h3>
+            <p className="o9-split-cta__eyebrow o9-split-cta__eyebrow--dark">{t('licensing_tour_tag')}</p>
+            <h3 className="o9-split-cta__heading o9-split-cta__heading--dark">{t('licensing_tour_title')}</h3>
             <p className="o9-split-cta__copy o9-split-cta__copy--dark">
-              See how Pegasus unifies planning, dispatch, and execution through one control
-              plane for every role in your network.
+              {t('licensing_tour_desc')}
             </p>
             <Link href={resolvedTourHref} className="o9-btn o9-btn--dark">
-              Take platform tour
+              {t('nav_tour')}
             </Link>
           </div>
         </article>

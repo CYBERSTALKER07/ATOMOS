@@ -7,14 +7,15 @@ import type {
   AxionTechFeature,
 } from '@/app/data/axionSectionContent';
 import {
-  DEFAULT_INDUSTRIES,
-  DEFAULT_SOLUTIONS,
-  DEFAULT_TECH_FEATURES,
+  getDefaultIndustries,
+  getDefaultSolutions,
+  getDefaultTechFeatures,
 } from '@/app/data/axionSectionContent';
 import AxionHeroSection from './AxionHeroSection';
 import AxionSolutionsGrid from './AxionSolutionsGrid';
 import AxionIndustriesSection from './AxionIndustriesSection';
 import AxionTechnologySection from './AxionTechnologySection';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export type AxionPageLayoutProps = {
   hero: {
@@ -57,26 +58,28 @@ export default function AxionPageLayout({
   betweenTechAndDetails,
   details,
 }: AxionPageLayoutProps) {
+  const { language } = useLanguage();
+
   return (
     <>
       <AxionHeroSection {...hero} />
       <AxionSolutionsGrid
         title={solutions?.title}
         subtitle={solutions?.subtitle}
-        items={solutions?.items ?? DEFAULT_SOLUTIONS}
+        items={solutions?.items ?? getDefaultSolutions(language)}
         seeAllHref={solutions?.seeAllHref}
       />
       <AxionIndustriesSection
         eyebrow={industries?.eyebrow}
         title={industries?.title}
         description={industries?.description}
-        items={industries?.items ?? DEFAULT_INDUSTRIES}
+        items={industries?.items ?? getDefaultIndustries(language)}
       />
       <AxionTechnologySection
         eyebrow={technology?.eyebrow}
         title={technology?.title}
         imageSrc={technology?.imageSrc}
-        features={technology?.features ?? DEFAULT_TECH_FEATURES}
+        features={technology?.features ?? getDefaultTechFeatures(language)}
       >
         {technology?.extra}
       </AxionTechnologySection>

@@ -85,6 +85,81 @@ export const DEFAULT_TECH_FEATURES: AxionTechFeature[] = [
   },
 ];
 
+export const DEFAULT_SOLUTIONS_RU: AxionSolutionCard[] = [
+  {
+    title: 'Международные перевозки',
+    image: SITE_IMAGES.containerShip,
+    href: '/operations',
+    size: 'large',
+  },
+  {
+    title: 'Складирование и дистрибуция',
+    image: SITE_IMAGES.warehouseAutomation,
+    href: '/roles/warehouse',
+    size: 'large',
+  },
+  {
+    title: 'Доставка последней мили',
+    image: SITE_IMAGES.truckTerminal,
+    href: '/capabilities/smarter-dispatch',
+    size: 'small',
+  },
+  {
+    title: 'Оптимизация цепи поставок',
+    image: SITE_IMAGES.multimodalHub,
+    href: '/platform/how-pegasus-works',
+    size: 'small',
+  },
+  {
+    title: 'Таможенное оформление',
+    image: SITE_IMAGES.operationsTeam,
+    href: '/operations',
+    size: 'small',
+  },
+];
+
+export const DEFAULT_INDUSTRIES_RU: AxionIndustryCard[] = [
+  { title: 'Ритейл', icon: 'retail', href: '/roles/retailer' },
+  { title: 'Здравоохранение', icon: 'health', href: '/capabilities' },
+  { title: 'Технологии', icon: 'tech', href: '/technology' },
+  { title: 'Производство', icon: 'manufacturing', href: '/roles/factory', highlight: true },
+];
+
+export const DEFAULT_TECH_FEATURES_RU: AxionTechFeature[] = [
+  {
+    title: 'Отслеживание в реальном времени',
+    description: 'Живое состояние автопарка и заказов на одной правде — портал, мобильные и ворота.',
+    href: '/technology/redis-kafka',
+  },
+  {
+    title: 'Аналитика данных',
+    description: 'Тренды цен, заполнение и эффективность линий без дрейфа таблиц.',
+    href: '/platform/atomos-control-plane',
+  },
+  {
+    title: 'Автоматические обновления',
+    description: 'Живая синхронизация после каждого изменения — каждая роль видит один статус.',
+    href: '/platform/reliable-updates',
+  },
+  {
+    title: 'Безопасный портал',
+    description: 'API со scoped-claims и поверхности под роли для сетей под управлением поставщика.',
+    href: '/platform/supplier-control-plane',
+  },
+];
+
+export function getDefaultSolutions(lang: 'en' | 'ru' = 'en'): AxionSolutionCard[] {
+  return lang === 'ru' ? DEFAULT_SOLUTIONS_RU : DEFAULT_SOLUTIONS;
+}
+
+export function getDefaultIndustries(lang: 'en' | 'ru' = 'en'): AxionIndustryCard[] {
+  return lang === 'ru' ? DEFAULT_INDUSTRIES_RU : DEFAULT_INDUSTRIES;
+}
+
+export function getDefaultTechFeatures(lang: 'en' | 'ru' = 'en'): AxionTechFeature[] {
+  return lang === 'ru' ? DEFAULT_TECH_FEATURES_RU : DEFAULT_TECH_FEATURES;
+}
+
 export function mapTopicsToSolutions(
   topics: { label: string; href: string; description?: string }[],
   images: string[]

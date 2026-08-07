@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 const SEGMENTS = [
   { label: 'QuickSync', value: 26, amount: '$26B' },
   { label: 'DataPulse', value: 22, amount: '$22B' },
@@ -12,6 +14,8 @@ const SEGMENTS = [
 const GRAYS = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373', '#525252', '#262626'];
 
 export default function MarketShareDonut() {
+  const { language } = useLanguage();
+
   let cumulative = 0;
   const gradientParts = SEGMENTS.map((s, i) => {
     const start = cumulative;
@@ -35,7 +39,7 @@ export default function MarketShareDonut() {
         >
           <div className="market-share-card__donut-hole">
             <p className="market-share-card__total">$100B</p>
-            <p className="market-share-card__total-label">Globe Ecosystem</p>
+            <p className="market-share-card__total-label">{language === 'ru' ? 'Глобальная экосистема' : 'Globe Ecosystem'}</p>
           </div>
         </div>
       </div>

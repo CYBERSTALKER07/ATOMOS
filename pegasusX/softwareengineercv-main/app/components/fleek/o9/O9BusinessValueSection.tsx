@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { O9ValueTab } from '@/app/data/o9FleekDefaults';
 import { O9SectionLabel } from '@/app/components/page-sections/o9/O9Sections';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type O9BusinessValueSectionProps = {
   tabs: O9ValueTab[];
@@ -12,16 +13,20 @@ type O9BusinessValueSectionProps = {
 
 export default function O9BusinessValueSection({
   tabs,
-  title = 'Examples of business value on the Pegasus platform',
+  title,
 }: O9BusinessValueSectionProps) {
+  const { language, t } = useLanguage();
   const [activeId, setActiveId] = useState(tabs[0]?.id ?? '');
-  const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
   if (!active) return null;
+
+  const resolvedTitle =
+    title ?? (language === 'ru' ? 'Примеры ценности бизнеса на платформе Pegasus' : 'Examples of business value on the Pegasus platform');
 
   return (
     <section className="o9-section">
-      <O9SectionLabel>BUSINESS VALUE</O9SectionLabel>
-      <h2 className="o9-section__title">{title}</h2>
+      <O9SectionLabel>{language === 'ru' ? 'ЦЕННОСТЬ ДЛЯ БИЗНЕСА' : 'BUSINESS VALUE'}</O9SectionLabel>
+      <h2 className="o9-section__title">{resolvedTitle}</h2>
       {tabs.length > 1 ? (
         <div className="o9-tab-row" role="tablist" aria-label="Business value examples">
           {tabs.map((tab) => (

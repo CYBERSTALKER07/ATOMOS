@@ -81,10 +81,10 @@ export default function Licensing() {
         <div className="max-w-6xl mx-auto">
           <div ref={titleRef} className="text-center mb-12 md:mb-16">
             {isMobile ? (
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">DEPLOYMENT</h2>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">{t('deployment_heading')}</h2>
             ) : (
               <GlitchText speed={1} enableShadows={true} enableOnHover={true} className="mb-6">
-                DEPLOYMENT
+                {t('deployment_heading')}
               </GlitchText>
             )}
             <div className="w-20 h-1 bg-white rounded-full mx-auto" />
@@ -92,8 +92,7 @@ export default function Licensing() {
 
           <div ref={contentRef} className="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
             <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-              Deploy Pegasus across your network with guided onboarding, live demos, and expert
-              walkthroughs tailored to how your teams run dispatch and delivery today.
+              {t('deployment_desc')}
             </p>
           </div>
 
@@ -112,7 +111,7 @@ export default function Licensing() {
                 ctaStyle="button"
                 splitCta
                 className="deployment-card min-h-[28rem]"
-                hoverLabel={card.ctaLabel.includes('TOUR') ? 'VIEW' : 'DEMO'}
+                hoverLabel={card.href === '/platform' ? t('licensing_hover_view') : t('licensing_hover_demo')}
               />
             ))}
           </div>

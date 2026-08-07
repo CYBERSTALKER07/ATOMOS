@@ -47,7 +47,15 @@ export const MEGA_NAV_FOOTER_LINKS = [
   { label: 'All Modules', href: '/projects' },
 ];
 
-export const getMegaNavFooterLinks = (_t?: any) => MEGA_NAV_FOOTER_LINKS;
+export const getMegaNavFooterLinks = (t?: (key: string, fallback?: string) => string) => {
+  if (!t) return MEGA_NAV_FOOTER_LINKS;
+  return [
+    { label: t('footer_about', 'About'), href: '/#about' },
+    { label: t('nav_demo', 'Request Demo'), href: '/join' },
+    { label: t('nav_contact', 'Contact'), href: '/contact' },
+    { label: t('nav_all_modules', 'All Modules'), href: '/projects' },
+  ];
+};
 
 export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
   {
@@ -221,5 +229,40 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
   },
 ];
 
-export const getMegaNavCategories = (_t?: any): MegaNavCategory[] => MEGA_NAV_CATEGORIES;
+import { TOPIC_CONTENT_RU } from './topicContent';
+
+export const getMegaNavCategories = (t?: (key: string, fallback?: string) => string): MegaNavCategory[] => {
+  if (!t) return MEGA_NAV_CATEGORIES;
+
+  return MEGA_NAV_CATEGORIES.map((cat) => {
+    const localizedCatLabel = t(`nav_${cat.id}`, cat.label);
+    const isRu = t('nav_platform') === 'Платформа';
+
+    return {
+      ...cat,
+      label: localizedCatLabel,
+      links: cat.links.map((link) => {
+        const fullKey = `${cat.id}/${link.slug}`;
+        const ruContent = TOPIC_CONTENT_RU[fullKey];
+        if (isRu && ruContent) {
+          return {
+            ...link,
+            label: ruContent.title,
+            description: ruContent.summary,
+          };
+        }
+        return link;
+      }),
+      promo: cat.promo
+        ? {
+            ...cat.promo,
+            title: t(`promo_${cat.id}_title`, cat.promo.title),
+            body: t(`promo_${cat.id}_body`, cat.promo.body),
+            primaryLabel: t('btn_explore', cat.promo.primaryLabel),
+            secondaryLabel: t('nav_demo', cat.promo.secondaryLabel),
+          }
+        : undefined,
+    };
+  });
+};
 

@@ -1,13 +1,18 @@
 'use client';
 
 import type { FleekImpactMetric } from '@/app/data/fleekPageContent';
-import { DEFAULT_IMPACT_METRIC } from '@/app/data/fleekPageContent';
+import { getImpactMetric } from '@/app/data/fleekPageContent';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type ImpactMetricCardProps = {
   metric?: FleekImpactMetric;
 };
 
-export default function ImpactMetricCard({ metric = DEFAULT_IMPACT_METRIC }: ImpactMetricCardProps) {
+export default function ImpactMetricCard({ metric }: ImpactMetricCardProps) {
+  const { language } = useLanguage();
+  const resolved = metric ?? getImpactMetric(language);
+  const clientLabel = language === 'ru' ? 'клиент' : 'client';
+
   return (
     <article className="impact-card">
       <div className="impact-card__header">
@@ -20,16 +25,17 @@ export default function ImpactMetricCard({ metric = DEFAULT_IMPACT_METRIC }: Imp
         <div className="impact-card__metric-col">
           <div className="impact-card__hatch" aria-hidden />
           <div className="impact-card__metric-block">
-            <span className="impact-card__value">{metric.value}</span>
-            <span className="impact-card__unit">{metric.unit ?? '%'}</span>
+            <span className="impact-card__value">{resolved.value}</span>
+            <span className="impact-card__unit">{resolved.unit ?? '%'}</span>
           </div>
         </div>
         <div className="impact-card__content">
           <p className="impact-card__nav">
-            <span aria-hidden>←</span> client: {metric.client} <span aria-hidden>→</span>
+            <span aria-hidden>←</span> {clientLabel}: {resolved.client}{' '}
+            <span aria-hidden>→</span>
           </p>
-          <h3 className="impact-card__title">{metric.title}</h3>
-          <p className="impact-card__desc">{metric.description}</p>
+          <h3 className="impact-card__title">{resolved.title}</h3>
+          <p className="impact-card__desc">{resolved.description}</p>
         </div>
       </div>
     </article>

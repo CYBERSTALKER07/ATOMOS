@@ -23,10 +23,10 @@ export function KpiCard({ label, value, delta, deltaPositive }: KpiCardProps) {
   );
 }
 
-export function DemoPageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+export function DemoPageHeader({ title, subtitle, label = 'Demo' }: { title: string; subtitle: string; label?: string }) {
   return (
     <div className="mb-8 border-b border-white/10 pb-6">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">Demo</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">{label}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
       <p className="mt-2 max-w-2xl text-sm text-white/55">{subtitle}</p>
     </div>

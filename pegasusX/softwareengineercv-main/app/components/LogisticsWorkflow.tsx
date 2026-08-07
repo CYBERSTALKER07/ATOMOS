@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import PageSection from './layout/PageSection';
 import gsap from 'gsap';
@@ -164,6 +165,8 @@ const nodeTypes = {
 };
 
 export default function LogisticsWorkflow() {
+  const { t } = useLanguage();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeRole, setActiveRole] = useState<WorkflowRole>('supplier');
 
@@ -241,13 +244,13 @@ export default function LogisticsWorkflow() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 15l8-8 8 8" />
             </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Our Product</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('workflow_eyebrow', 'Our Product')}</span>
           </div>
           <h2 className="text-5xl md:text-6xl font-medium tracking-tight mb-6 text-white leading-tight max-w-xl">
             Build logic at scale
           </h2>
           <p className="text-white/50 max-w-xl text-base md:text-lg leading-relaxed">
-            Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.
+            {t('workflow_desc', 'Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.')}
           </p>
         </div>
 

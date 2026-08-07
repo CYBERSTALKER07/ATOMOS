@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type AdminShellProps = {
   title: string;
@@ -11,13 +12,15 @@ type AdminShellProps = {
 };
 
 export default function AdminShell({ title, subtitle, badge, nav, children }: AdminShellProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen bg-black text-white">
       <header className="border-b border-white/10 bg-[#0a0a0a]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div className="flex flex-wrap items-center gap-6">
             <Link href="/" className="editorial-btn editorial-btn--sm">
-              ← Home
+              {t('admin_home', '← Home')}
             </Link>
             {nav?.map((item) => (
               <Link
@@ -32,11 +35,11 @@ export default function AdminShell({ title, subtitle, badge, nav, children }: Ad
             ))}
           </div>
           <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-widest text-white/40">
-            <span>6 roles</span>
+            <span>{t('admin_six_roles', '6 roles')}</span>
             <span className="text-white/20">·</span>
-            <span>One source of truth</span>
+            <span>{t('admin_one_truth', 'One source of truth')}</span>
             <span className="text-white/20">·</span>
-            <span>Ops console</span>
+            <span>{t('admin_ops_console', 'Ops console')}</span>
           </div>
         </div>
       </header>
@@ -44,7 +47,9 @@ export default function AdminShell({ title, subtitle, badge, nav, children }: Ad
       <div className="mx-auto max-w-7xl px-4 py-10 md:py-14">
         <div className="mb-10 flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-8">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">Admin</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">
+              {t('admin_label', 'Admin')}
+            </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
             <p className="mt-2 max-w-2xl text-white/55">{subtitle}</p>
           </div>

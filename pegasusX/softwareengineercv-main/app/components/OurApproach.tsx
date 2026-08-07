@@ -1,8 +1,13 @@
+'use client';
+
 import React from 'react';
 import { Star, Eye, Zap } from 'lucide-react';
 import Digit369 from './Digit369';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function OurApproach() {
+  const { t } = useLanguage();
+
   return (
     <section className="w-full flex flex-col lg:flex-row min-h-0 lg:min-h-[640px] xl:min-h-[800px] border-t border-white/10 overflow-hidden">
       <div className="flex-1 relative bg-black min-h-[240px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full">
@@ -21,15 +26,20 @@ export default function OurApproach() {
                 <path d="M 7.998 4 L 80.998 4 L 80.998 13 L 7.998 13 Z" fill="transparent" />
                 <path d="M 56.561 14.72 L 40.21 0 L 38.553 1.84 L 54.903 16.561 Z M 64.021 14.72 L 47.672 0 L 46.014 1.84 L 62.364 16.561 Z M 71.482 14.72 L 55.133 0 L 53.475 1.84 L 69.825 16.561 Z M 78.943 14.72 L 62.594 0 L 60.936 1.84 L 77.286 16.561 Z M 86.404 14.72 L 70.055 0 L 68.397 1.84 L 84.747 16.561 Z M 93.865 14.72 L 77.516 0 L 75.858 1.84 L 92.208 16.561 Z M 48.85 14.72 L 32.5 0 L 30.842 1.84 L 47.192 16.561 Z M 41.138 14.72 L 24.79 0 L 23.131 1.84 L 39.481 16.561 Z M 33.428 14.72 L 17.078 0 L 15.421 1.84 L 31.771 16.561 Z M 25.717 14.72 L 9.367 0 L 7.711 1.84 L 24.058 16.562 Z M 18.006 14.72 L 1.656 0 L 0 1.84 L 16.348 16.562 Z" />
               </svg>
-              <span className="text-xs tracking-widest font-mono text-black/60 uppercase">OUR APPROACH</span>
+              <span className="text-xs tracking-widest font-mono text-black/60 uppercase">
+                {t('approach_eyebrow', 'OUR APPROACH')}
+              </span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight mb-5 sm:mb-8">
-              Built for the long term
+              {t('approach_title', 'Built for the long term')}
             </h2>
 
             <p className="text-base sm:text-lg text-black/70 max-w-xl leading-relaxed">
-              We don't just ship code; we architect neural ecosystems. Our approach combines rigorous testing with rapid deployment cycles.
+              {t(
+                'approach_desc',
+                "We don't just ship code; we architect neural ecosystems. Our approach combines rigorous testing with rapid deployment cycles."
+              )}
             </p>
           </div>
 
@@ -39,9 +49,14 @@ export default function OurApproach() {
                 <Star strokeWidth={1.5} className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">Prime Logic</h3>
+                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
+                  {t('approach_prime_title', 'Prime Logic')}
+                </h3>
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
-                  We prioritize high-fidelity model alignment to ensure your agents deliver consistent results.
+                  {t(
+                    'approach_prime_desc',
+                    'We prioritize high-fidelity model alignment to ensure your agents deliver consistent results.'
+                  )}
                 </p>
               </div>
             </div>
@@ -51,9 +66,14 @@ export default function OurApproach() {
                 <Eye strokeWidth={1.5} className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">Total Clarity</h3>
+                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
+                  {t('approach_clarity_title', 'Total Clarity')}
+                </h3>
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
-                  Gain full observability into how your data is processed, indexed, and retrieved by your AI.
+                  {t(
+                    'approach_clarity_desc',
+                    'Gain full observability into how your data is processed, indexed, and retrieved by your AI.'
+                  )}
                 </p>
               </div>
             </div>
@@ -63,9 +83,14 @@ export default function OurApproach() {
                 <Zap strokeWidth={1.5} className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">Fast Cycles</h3>
+                <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
+                  {t('approach_cycles_title', 'Fast Cycles')}
+                </h3>
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
-                  Transition from prototype to production in weeks, not months, with our pre-built frameworks.
+                  {t(
+                    'approach_cycles_desc',
+                    'Transition from prototype to production in weeks, not months, with our pre-built frameworks.'
+                  )}
                 </p>
               </div>
             </div>

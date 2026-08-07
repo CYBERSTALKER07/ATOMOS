@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import PageSection from './layout/PageSection';
 import DigitalCardHover from './DigitalCardHover';
 import { usePerfProfile } from '../hooks/useDevice';
+import { useLanguage } from '../context/LanguageContext';
 
 type CapabilityCard = {
   title: string;
@@ -195,6 +196,12 @@ function CapabilityCardItem({ card }: { card: CapabilityCard }) {
 }
 
 export default function Skills() {
+  const { t } = useLanguage();
+  const localizedCards = capabilityCards.map((card, i) => ({
+    ...card,
+    title: t(`skills_c${i + 1}_title`, card.title),
+    description: t(`skills_c${i + 1}_desc`, card.description),
+  }));
   return (
     <PageSection
       id="capabilities"
@@ -203,7 +210,7 @@ export default function Skills() {
       innerClassName="w-full max-w-[1600px] mx-auto px-0"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 bg-white/10 gap-px border-b border-white/10">
-        {capabilityCards.map((card, index) => (
+        {localizedCards.map((card, index) => (
           <CapabilityCardItem key={index} card={card} />
         ))}
       </div>

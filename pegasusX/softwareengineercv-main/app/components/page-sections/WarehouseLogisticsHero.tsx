@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -96,6 +98,8 @@ export default function WarehouseLogisticsHero({
   title,
   summary,
 }: WarehouseLogisticsHeroProps) {
+  const { language } = useLanguage();
+
   const [activeTab, setActiveTab] = useState<string>('trucks');
 
   return (
@@ -187,7 +191,7 @@ export default function WarehouseLogisticsHero({
                   <rect x="4" y="5" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M8 3v4M16 3v4M4 11h16" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
-                <span className="text-white/55">July 07, 2025</span>
+                <span className="text-white/55">{language === 'ru' ? '07 июля 2025' : 'July 07, 2025'}</span>
               </div>
               <div className="warehouse-logistics-hero__field">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>

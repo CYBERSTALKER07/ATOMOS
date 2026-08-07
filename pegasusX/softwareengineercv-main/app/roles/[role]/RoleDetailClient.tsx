@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { RoleData } from '@/app/data/rolesData';
+import { RoleData, getRolesData } from '@/app/data/rolesData';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -25,8 +26,21 @@ const PLATFORM_ICONS = {
   )
 };
 
-export default function RoleDetailClient({ role }: { role: RoleData }) {
+export default function RoleDetailClient({ role: roleProp }: { role: RoleData }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
+  const role =
+    getRolesData(language).find((r) => r.id === roleProp.id) ?? roleProp;
+
+  const platformLabel = (platform: string) => {
+    if (language !== 'ru') return `${platform} App`;
+    const map: Record<string, string> = {
+      web: 'Веб-приложение',
+      mobile: 'Мобильное приложение',
+      desktop: 'Десктопное приложение',
+    };
+    return map[platform] ?? platform;
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -74,19 +88,28 @@ export default function RoleDetailClient({ role }: { role: RoleData }) {
       
       {/* App Presentation / Platforms */}
       <div className="platform-section border-t border-[var(--border)] pt-16">
-        <h2 className="text-3xl font-semibold mb-8 text-[var(--text)]">Available Platforms</h2>
+        <h2 className="text-3xl font-semibold mb-8 text-[var(--text)]">{t('role_available_platforms')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {role.platforms.map((platform) => (
             <div key={platform} className="platform-card bg-[var(--surface)] border border-[var(--border)] rounded-[24px] overflow-hidden">
               <div className="p-6 border-b border-[var(--border)] flex items-center text-[var(--text)] font-medium capitalize">
                 {PLATFORM_ICONS[platform]}
-                {platform} App
+                {platformLabel(platform)}
               </div>
               <div className="aspect-[4/3] bg-[var(--bg)] flex items-center justify-center p-8">
                 {/* PLACEHOLDER FOR IMAGES */}
                 <div className="w-full h-full border-2 border-dashed border-[var(--border)] rounded-xl flex items-center justify-center text-[var(--text-secondary)] text-sm font-mono text-center px-4">
-                  [ {platform.toUpperCase()} PRESENTATION IMAGE ]<br/>
-                  Target: {role.name} / {platform}
+                  {language === 'ru' ? (
+                    <>
+                      [ ИЗОБРАЖЕНИЕ {platform.toUpperCase()} ]<br />
+                      Цель: {role.name} / {platform}
+                    </>
+                  ) : (
+                    <>
+                      [ {platform.toUpperCase()} PRESENTATION IMAGE ]<br />
+                      Target: {role.name} / {platform}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -96,7 +119,7 @@ export default function RoleDetailClient({ role }: { role: RoleData }) {
 
       {/* Subtopics / Flow Breakdown */}
       <div className="space-y-16">
-        <h2 className="text-3xl font-semibold mb-8 text-[var(--text)] border-b border-[var(--border)] pb-4">Role Capabilities</h2>
+        <h2 className="text-3xl font-semibold mb-8 text-[var(--text)] border-b border-[var(--border)] pb-4">{t('role_capabilities_title')}</h2>
         
         {role.subtopics.map((topic, index) => (
           <div 
@@ -107,7 +130,7 @@ export default function RoleDetailClient({ role }: { role: RoleData }) {
             {/* Text Content */}
             <div className={`space-y-6 ${index % 2 !== 0 ? 'lg:order-2' : ''}`}>
               <div className="inline-block px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-mono text-[var(--text-secondary)]">
-                {String(index + 1).padStart(2, '0')} // CAPABILITY
+                {String(index + 1).padStart(2, '0')} // {language === 'ru' ? 'ВОЗМОЖНОСТЬ' : 'CAPABILITY'}
               </div>
               <h3 className="text-3xl font-bold text-[var(--text)] leading-tight">
                 {topic.title}
@@ -118,12 +141,12 @@ export default function RoleDetailClient({ role }: { role: RoleData }) {
               
               <div className="space-y-4 pt-4">
                 <div className="bg-[var(--surface)] p-6 rounded-[20px] border border-[var(--border)]">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">Business Logic</h4>
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">{t('role_business_logic')}</h4>
                   <p className="text-[var(--text-secondary)] leading-relaxed">{topic.businessLogic}</p>
                 </div>
                 
                 <div className="bg-[var(--surface)] p-6 rounded-[20px] border border-[var(--border)]">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">Edge Cases Handled</h4>
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">{t('role_edge_cases')}</h4>
                   <p className="text-[var(--text-secondary)] leading-relaxed">{topic.edgeCases}</p>
                 </div>
               </div>
@@ -136,7 +159,7 @@ export default function RoleDetailClient({ role }: { role: RoleData }) {
                 <svg className="w-12 h-12 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                [ VISUALIZATION IMAGE NEEDED ]<br/>
+                [ {language === 'ru' ? 'НУЖНА ВИЗУАЛИЗАЦИЯ' : 'VISUALIZATION IMAGE NEEDED'} ]<br/>
                 <span className="mt-2 text-xs opacity-75">{topic.title}</span>
               </div>
             </div>

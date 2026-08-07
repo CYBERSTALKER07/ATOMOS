@@ -1,13 +1,18 @@
 import { Metadata } from 'next';
 import SolutionsAccordion from './SolutionsAccordion';
 import { pageMetadata } from '@/app/lib/seo';
+import { getServerLanguage } from '@/app/lib/i18n/server';
+import { translations } from '@/app/lib/i18n/translations';
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Solutions',
-  description:
-    'Pegasus solutions for supplier control, warehouse dispatch, retailer tracking, treasury reconciliation, driver execution, factory loading, and gate returns — one platform across six roles.',
-  path: '/solutions',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getServerLanguage();
+  const dict = translations[lang] ?? translations.en;
+  return pageMetadata({
+    title: dict.meta_solutions_title,
+    description: dict.meta_solutions_desc,
+    path: '/solutions',
+  });
+}
 
 export default function SolutionsPage() {
   return <SolutionsAccordion />;

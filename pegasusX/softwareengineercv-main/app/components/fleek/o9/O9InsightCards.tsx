@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { O9SectionLabel } from '@/app/components/page-sections/o9/O9Sections';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type InsightCard = {
   id: string;
@@ -33,6 +34,33 @@ const CARDS: InsightCard[] = [
     title: 'Payment & gate confidence',
     description:
       'Reconcile COD, gate seals, and capacity utilization so treasury and payload teams close the day without spreadsheet fire drills.',
+    href: '/capabilities/payment-confidence',
+    visual: 'bars',
+  },
+];
+
+const CARDS_RU: InsightCard[] = [
+  {
+    id: 'dispatch',
+    title: 'Умная диспетчеризация и подбор грузов',
+    description:
+      'Подбирайте заказы для грузовиков на основе прогнозируемого спроса, емкости и ограничений складов — с ручным подтверждением назначения.',
+    href: '/capabilities/smarter-dispatch',
+    visual: 'line-dual',
+  },
+  {
+    id: 'fleet',
+    title: 'Живой автопарк и своевременная доставка',
+    description:
+      'Сравнивайте плановые и фактические маршруты по всей сети. Выявляйте отклонения до звонков ритейлеров и держите все роли на одном ETA.',
+    href: '/capabilities/live-fleet-tracking',
+    visual: 'line-metrics',
+  },
+  {
+    id: 'payments',
+    title: 'Уверенность в платежах и на КПП',
+    description:
+      'Сверяйте наложенный платеж, пломбы КПП и использование емкости, чтобы казначейство и логистика завершали день без экселя.',
     href: '/capabilities/payment-confidence',
     visual: 'bars',
   },
@@ -175,21 +203,26 @@ type O9InsightCardsProps = {
 };
 
 export default function O9InsightCards({
-  eyebrow = 'Capabilities',
-  title = 'Plan, dispatch, and settle on one picture',
+  eyebrow,
+  title,
 }: O9InsightCardsProps) {
+  const { language, t } = useLanguage();
+  const cards = language === 'ru' ? CARDS_RU : CARDS;
+  const resolvedEyebrow = eyebrow ?? t('sec_capabilities_label', 'Capabilities');
+  const resolvedTitle = title ?? (language === 'ru' ? 'Планируйте, отправляйте и рассчитывайтесь в едином окне' : 'Plan, dispatch, and settle on one picture');
+
   return (
     <section className="o9-section o9-insight-cards">
-      <O9SectionLabel>{eyebrow}</O9SectionLabel>
-      <h2 className="o9-section__title">{title}</h2>
+      <O9SectionLabel>{resolvedEyebrow}</O9SectionLabel>
+      <h2 className="o9-section__title">{resolvedTitle}</h2>
       <div className="o9-insight-cards__grid">
-        {CARDS.map((card) => (
+        {cards.map((card) => (
           <article key={card.id} className="o9-insight-card">
             <Visual kind={card.visual} />
             <h3 className="o9-insight-card__title">{card.title}</h3>
             <p className="o9-insight-card__copy">{card.description}</p>
             <Link href={card.href} className="o9-insight-card__link">
-              Read more <span aria-hidden="true">&gt;</span>
+              {t('btn_read_more', 'Read more')} <span aria-hidden="true">&gt;</span>
             </Link>
           </article>
         ))}

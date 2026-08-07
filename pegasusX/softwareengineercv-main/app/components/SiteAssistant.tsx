@@ -102,38 +102,40 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
-const SIDEBAR_CATEGORIES = [
-  {
-    id: 'all',
-    title: 'Featured Prompts',
-    badge: 'ALL',
-    filter: () => true,
-  },
-  {
-    id: 'versus',
-    title: 'vs. Tech Giants',
-    badge: 'VS',
-    filter: (a: QuickAction) => a.category === 'versus',
-  },
-  {
-    id: 'tech',
-    title: 'Technical Stack',
-    badge: 'STACK',
-    filter: (a: QuickAction) => a.category === 'tech',
-  },
-  {
-    id: 'roles',
-    title: '6 Role Capabilities',
-    badge: 'ROLES',
-    filter: (a: QuickAction) => a.category === 'roles',
-  },
-  {
-    id: 'business',
-    title: 'Business & ROI',
-    badge: 'ROI',
-    filter: (a: QuickAction) => a.category === 'business',
-  },
-];
+function getSidebarCategories(t: (key: string, fallback?: string) => string) {
+  return [
+    {
+      id: 'all',
+      title: t('asst_featured', 'Featured Prompts'),
+      badge: 'ALL',
+      filter: () => true,
+    },
+    {
+      id: 'versus',
+      title: t('asst_vs_giants', 'vs. Tech Giants'),
+      badge: 'VS',
+      filter: (a: QuickAction) => a.category === 'versus',
+    },
+    {
+      id: 'tech',
+      title: t('asst_tech_stack', 'Technical Stack'),
+      badge: 'STACK',
+      filter: (a: QuickAction) => a.category === 'tech',
+    },
+    {
+      id: 'roles',
+      title: t('asst_role_caps', '6 Role Capabilities'),
+      badge: 'ROLES',
+      filter: (a: QuickAction) => a.category === 'roles',
+    },
+    {
+      id: 'business',
+      title: t('asst_business_roi', 'Business & ROI'),
+      badge: 'ROI',
+      filter: (a: QuickAction) => a.category === 'business',
+    },
+  ];
+}
 
 const HIDDEN_PREFIXES = ['/admin', '/resume', '/platform', '/roles', '/technology', '/solutions'];
 const WELCOME =
@@ -359,6 +361,7 @@ export default function SiteAssistant() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  const SIDEBAR_CATEGORIES = getSidebarCategories(t);
   const currentCategoryObj = SIDEBAR_CATEGORIES.find((c) => c.id === activeCategory) || SIDEBAR_CATEGORIES[0];
   const filteredQuickActions = currentQuickActions.filter(currentCategoryObj.filter);
 
@@ -373,7 +376,7 @@ export default function SiteAssistant() {
           ref={containerRef}
           className={`site-assistant__panel ${fullscreen ? 'site-assistant__panel--grok-modal' : 'site-assistant__panel--chat'}`}
           role="dialog"
-          aria-label="Pegasus assistant"
+          aria-label={language === 'ru' ? 'Ассистент Pegasus' : 'Pegasus assistant'}
         >
           <div className="site-assistant__chat-card">
             
@@ -386,7 +389,7 @@ export default function SiteAssistant() {
                 </div>
 
                 <div className="site-assistant__sidebar-section">
-                  <p className="site-assistant__sidebar-title">Categories</p>
+                  <p className="site-assistant__sidebar-title">{t('asst_categories', 'Categories')}</p>
                   <ul className="site-assistant__sidebar-menu">
                     {SIDEBAR_CATEGORIES.map((cat) => (
                       <li key={cat.id}>
@@ -405,7 +408,7 @@ export default function SiteAssistant() {
 
                 <div className="site-assistant__sidebar-footer">
                   <button type="button" className="site-assistant__clear-btn" onClick={clearHistory}>
-                    Clear History
+                    {t('asst_clear', 'Clear History')}
                   </button>
                 </div>
               </aside>
@@ -420,9 +423,9 @@ export default function SiteAssistant() {
                   <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
                   <div>
                     <p className="site-assistant__chat-title">
-                      Pegasus Bot <span className="site-assistant__grok-badge">Full Mode</span>
+                      Pegasus Bot <span className="site-assistant__grok-badge">{t('asst_full_mode', 'Full Mode')}</span>
                     </p>
-                    <p className="site-assistant__meta">Architecture, Competitors & Role System Knowledge</p>
+                    <p className="site-assistant__meta">{t('asst_meta', 'Architecture, Competitors & Role System Knowledge')}</p>
                   </div>
                 </div>
 
@@ -430,16 +433,16 @@ export default function SiteAssistant() {
                   <button
                     type="button"
                     className="site-assistant__toggle-fullscreen"
-                    title={fullscreen ? 'Compact View' : 'Fullscreen View'}
+                    title={fullscreen ? t('asst_compact', 'Compact') : t('asst_fullscreen', 'Fullscreen')}
                     onClick={() => setFullscreen((v) => !v)}
                   >
-                    {fullscreen ? 'Compact' : 'Fullscreen'}
+                    {fullscreen ? t('asst_compact', 'Compact') : t('asst_fullscreen', 'Fullscreen')}
                   </button>
                   
                   <button
                     type="button"
                     className="site-assistant__close-btn"
-                    title="Close (Esc)"
+                    title={t('asst_close', 'Close (Esc)')}
                     onClick={() => setOpen(false)}
                   >
                     ×
@@ -456,7 +459,7 @@ export default function SiteAssistant() {
                   >
                     <div className="site-assistant__msg-header-bar">
                       <span className="site-assistant__msg-header">
-                        {msg.role === 'assistant' ? 'PEGASUS OS' : 'YOU'}
+                        {msg.role === 'assistant' ? 'PEGASUS OS' : t('asst_you', 'YOU')}
                       </span>
                       
                       {msg.role === 'assistant' ? (
@@ -465,7 +468,7 @@ export default function SiteAssistant() {
                           className="site-assistant__copy-btn"
                           onClick={() => copyToClipboard(msg.id, msg.content)}
                         >
-                          {copiedId === msg.id ? 'Copied' : 'Copy'}
+                          {copiedId === msg.id ? t('asst_copied', 'Copied') : t('asst_copy', 'Copy')}
                         </button>
                       ) : null}
                     </div>
@@ -483,7 +486,7 @@ export default function SiteAssistant() {
                     </div>
                     <div className="site-assistant__status-indicator">
                       <span className="site-assistant__pulse-dot"></span>
-                      <span>Processing response...</span>
+                      <span>{t('asst_processing', 'Processing response...')}</span>
                     </div>
                   </div>
                 ) : null}
@@ -537,7 +540,7 @@ export default function SiteAssistant() {
                   placeholder={t('assistant_placeholder')}
                   maxLength={2000}
                   disabled={loading}
-                  aria-label="Message"
+                  aria-label={language === 'ru' ? 'Сообщение' : 'Message'}
                 />
                 <button type="submit" disabled={loading || !input.trim()}>
                   {language === 'ru' ? 'Отправить' : 'Send'}
@@ -557,7 +560,7 @@ export default function SiteAssistant() {
           className="site-assistant__launcher"
           aria-expanded={open}
           aria-controls={panelId}
-          aria-label="Open assistant"
+          aria-label={t('asst_open', 'Open assistant')}
           onClick={() => setOpen(true)}
         >
           <img src="/pegasus.jpg" alt="" width={40} height={40} className="site-assistant__launcher-logo" />

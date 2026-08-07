@@ -5,7 +5,6 @@ import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 import type { TopicPage } from '@/app/data/topicTypes';
 import { cn } from '@/lib/utils';
-
 import { useLanguage } from '@/app/context/LanguageContext';
 
 const FLEET_HUB_IDS = new Set(['solutions', 'apps-deploy']);
@@ -30,8 +29,9 @@ export default function HubTopicGrid({
   topics,
   layout = 'uniform',
 }: HubTopicGridProps) {
-  const { language } = useLanguage();
-  
+  const { language, t } = useLanguage();
+  const localizedTag = t(`nav_${hubId}`, hubLabel);
+
   if (layout === 'featured' && topics.length > 0) {
     const [featured, ...rest] = topics;
     const featuredContent = featured.content[language] || featured.content.en;
@@ -40,9 +40,9 @@ export default function HubTopicGrid({
         <ContentCard
           variant="featured"
           tone="light"
-          tag={hubLabel}
-          title={featured.label}
-          description={featured.description ?? featuredContent.summary}
+          tag={localizedTag}
+          title={featuredContent.title}
+          description={featuredContent.summary}
           href={featured.href}
           image={hubTopicImage(hubId, 0)}
           className="min-h-[280px]"
@@ -55,9 +55,9 @@ export default function HubTopicGrid({
                 key={topic.slug}
                 variant="vertical"
                 tone={i % 3 === 0 ? 'light' : 'dark'}
-                tag={hubLabel}
-                title={topic.label}
-                description={topic.description ?? content.summary}
+                tag={localizedTag}
+                title={content.title}
+                description={content.summary}
                 href={topic.href}
                 image={hubTopicImage(hubId, i + 1)}
               />
@@ -78,9 +78,9 @@ export default function HubTopicGrid({
               key={topic.slug}
               variant={i % 5 === 0 ? 'featured' : i % 2 === 0 ? 'split' : 'vertical'}
               tone={i % 4 === 0 ? 'light' : 'dark'}
-              tag={hubLabel}
-              title={topic.label}
-              description={topic.description ?? content.summary}
+              tag={localizedTag}
+              title={content.title}
+              description={content.summary}
               href={topic.href}
               image={hubTopicImage(hubId, i)}
               className={cn(i % 5 === 0 && 'md:col-span-2')}
@@ -100,9 +100,9 @@ export default function HubTopicGrid({
             key={topic.slug}
             variant="vertical"
             tone={i % 3 === 0 ? 'light' : 'dark'}
-            tag={hubLabel}
-            title={topic.label}
-            description={topic.description ?? content.summary}
+            tag={localizedTag}
+            title={content.title}
+            description={content.summary}
             href={topic.href}
             image={hubTopicImage(hubId, i)}
           />

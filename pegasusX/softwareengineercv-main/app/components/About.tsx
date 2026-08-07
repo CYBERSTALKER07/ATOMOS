@@ -8,6 +8,7 @@ import TextType from './TextType';
 import DigitalizedImage from './DigitalizedImage';
 import { useIsMobile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -15,6 +16,7 @@ const PEGASUS_LOGO = '/pegasus.jpg';
 
 export default function About() {
   const { isMobile } = useIsMobile();
+  const { t, language } = useLanguage();
   const aboutRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -65,17 +67,18 @@ export default function About() {
         <div ref={contentRef} className="space-y-6">
           <div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
-              About Pegasus
+              {t('about_title')}
             </h2>
             <div className="w-20 h-[0.5px] bg-white rounded-full mb-6" />
 
             <div className="mb-6">
               <TextType
+                key={language}
                 text={[
-                  'Supplier-led logistics networks',
-                  'Dispatch, tracking, and payments',
-                  'Six roles on one platform',
-                  'Operations teams stay aligned',
+                  t('about_type_1'),
+                  t('about_type_2'),
+                  t('about_type_3'),
+                  t('about_type_4'),
                 ]}
                 typingSpeed={60}
                 pauseDuration={2000}
@@ -92,20 +95,18 @@ export default function About() {
           </div>
 
           <p className="text-lg md:text-xl text-white/65 leading-relaxed font-light">
-            Pegasus is the logistics operating system for supplier-led networks. From morning
-            dispatch to live fleet tracking and payment reconciliation, every team — supplier,
-            warehouse, factory, driver, retailer, and gate — works from the same source of truth.
+            {t('about_desc')}
           </p>
 
           <div className="flex flex-wrap gap-4">
             <Link href="/solutions/visual-dispatch-engine" className="editorial-btn editorial-btn--sm">
-              Dispatch & Fleet
+              {t('about_btn_dispatch')}
             </Link>
             <Link href="/capabilities/payment-confidence" className="editorial-btn editorial-btn--sm">
-              Payments & Treasury
+              {t('about_btn_payments')}
             </Link>
             <Link href="/capabilities/instant-coordination" className="editorial-btn editorial-btn--sm">
-              Live Coordination
+              {t('about_btn_coordination')}
             </Link>
           </div>
         </div>

@@ -1,6 +1,10 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 export default function WorkflowCircuit() {
+  const { language } = useLanguage();
+
   return (
     <div className="workflow-circuit" aria-hidden>
       <svg className="workflow-circuit__svg" viewBox="0 0 800 400" fill="none">
@@ -29,7 +33,7 @@ export default function WorkflowCircuit() {
         <circle cx="154" cy="212" r="8" stroke="#fff" strokeWidth="1.5" />
         <line x1="178" y1="212" x2="220" y2="212" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
       </svg>
-      <p className="workflow-circuit__tag">Low-code ops automation</p>
+      <p className="workflow-circuit__tag">{language === 'ru' ? 'Low-code автоматизация операций' : 'Low-code ops automation'}</p>
       <p className="workflow-circuit__brand">pegasus</p>
     </div>
   );

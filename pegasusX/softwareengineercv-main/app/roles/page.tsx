@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ROLES_DATA } from '@/app/data/rolesData';
+import { getRolesData } from '@/app/data/rolesData';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 function roleImage(index: number): string {
   return index % 2 === 0
@@ -16,15 +17,18 @@ function roleImage(index: number): string {
 }
 
 export default function RolesPage() {
-  const capabilities = ROLES_DATA.map((role, i) => ({
+  const { language, t } = useLanguage();
+  const rolesData = getRolesData(language);
+
+  const capabilities = rolesData.map((role, i) => ({
     title: role.name,
     description: role.description,
     href: `/roles/${role.id}`,
     image: roleImage(i),
-    tag: 'Role',
+    tag: t('nav_roles', 'Role'),
   }));
 
-  const differentiators = ROLES_DATA.slice(0, 4).map((role) => ({
+  const differentiators = rolesData.slice(0, 4).map((role) => ({
     title: role.name,
     description: role.description,
   }));
@@ -32,21 +36,21 @@ export default function RolesPage() {
   return (
     <FleekPageShell activeHref="/roles">
       <O9FleekPageLayout
-        categoryLabel="Roles"
+        categoryLabel={t('nav_roles', 'Roles')}
         categoryHref="/roles"
-        title="Six roles, one order truth"
-        summary="Supplier, warehouse, factory, driver, retailer, and payload/gate — features mapped across portal, mobile, and desktop on one shared order record."
+        title={t('roles_hero_title', 'Six roles, one order truth')}
+        summary={t('roles_hero_summary', 'Supplier, warehouse, factory, driver, retailer, and payload/gate — features mapped across portal, mobile, and desktop on one shared order record.')}
         heroImageSrc={EDITORIAL_IMAGES[0]}
         proofItems={DEFAULT_PROOF}
         hubId="roles"
         differentiators={differentiators}
-        differentiatorsTitle="Tailored logistics for every business role"
+        differentiatorsTitle={t('roles_diff_title', 'Tailored logistics for every business role')}
         capabilities={capabilities}
-        capabilitiesTitle="Role solutions"
+        capabilitiesTitle={t('roles_cap_title', 'Role solutions')}
         showTourCta
         details={
           <div className="space-y-16">
-            {ROLES_DATA.map((role, roleIndex) => (
+            {rolesData.map((role, roleIndex) => (
               <section key={role.id} id={role.id} className="scroll-mt-28 docs-section">
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
                   {String(roleIndex + 1).padStart(2, '0')}
@@ -69,7 +73,7 @@ export default function RolesPage() {
                         <h3 className="text-lg font-semibold">{subtopic.title}</h3>
                         <p className="mt-2 text-sm leading-relaxed text-white/65">{subtopic.description}</p>
                         <Link href={`/roles/${role.id}`} className="o9-btn o9-btn--fill mt-4">
-                          Explore more
+                          {t('btn_read_more', 'Explore more')}
                         </Link>
                       </div>
                     </article>

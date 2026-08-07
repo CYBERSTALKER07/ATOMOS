@@ -5,6 +5,17 @@ export const FLEEK_NAV_LINKS = [
   { label: 'Technology', href: '/technology' },
 ] as const;
 
+export const FLEEK_NAV_LINKS_RU = [
+  { label: 'О нас', href: '/platform' },
+  { label: 'Сервисы', href: '/capabilities' },
+  { label: 'Наш подход', href: '/operations' },
+  { label: 'Технологии', href: '/technology' },
+] as const;
+
+export function getFleekNavLinks(lang: 'en' | 'ru' = 'en') {
+  return lang === 'ru' ? FLEEK_NAV_LINKS_RU : FLEEK_NAV_LINKS;
+}
+
 /** Match active state for Fleek nav links (hub prefixes + app-family routes). */
 export function isFleekNavLinkActive(href: string, pathname: string, activeHref?: string): boolean {
   const ref = activeHref ?? pathname;

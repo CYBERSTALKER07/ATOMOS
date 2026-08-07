@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -20,12 +21,15 @@ const SUBSCRIPTION_BARS = [
 
 const COHORT_ROW = { cohort: '1', w1: 248, w2: 200, w3: 140, w4: 108, w5: 64, w6: 25 };
 
-const PROMPT_TEXT = 'Generate a dashboard showing our core growth KPIs';
-const PROMPT_TEXT_MOBILE = 'Generate a core growth KPIs dashboard';
+const PROMPT_TEXT_EN = 'Generate a dashboard showing our core growth KPIs';
+const PROMPT_TEXT_MOBILE_EN = 'Generate a core growth KPIs dashboard';
+const PROMPT_TEXT_RU = 'Сгенерируй дашборд с ключевыми KPI роста';
+const PROMPT_TEXT_MOBILE_RU = 'Сгенерируй дашборд KPI роста';
 
-const TITLE = 'Create dashboards with a prompt';
+const TITLE_EN = 'Create dashboards with a prompt';
+const TITLE_RU = 'Создавайте дашборды промптом';
 
-function SectionTitle({ compact }: { compact: boolean }) {
+function SectionTitle({ compact, title }: { compact: boolean; title: string }) {
   return (
     <h2
       className={cn(
@@ -35,7 +39,7 @@ function SectionTitle({ compact }: { compact: boolean }) {
           : 'text-[clamp(2.25rem,4.8vw,3.5rem)]'
       )}
     >
-      {TITLE}
+      {title}
     </h2>
   );
 }
@@ -205,11 +209,15 @@ function PromptOverlay({
   isLowEnd,
   isMobile,
   inView,
+  promptText,
+  promptTextMobile,
 }: {
   reducedMotion: boolean;
   isLowEnd: boolean;
   isMobile: boolean;
   inView: boolean;
+  promptText: string;
+  promptTextMobile: string;
 }) {
   const [cursorOn, setCursorOn] = useState(true);
   const showFx = !reducedMotion && !isLowEnd && inView;
@@ -244,7 +252,7 @@ function PromptOverlay({
         )}
       >
         <p className="text-center text-[0.8rem] sm:text-sm text-white/95 font-light leading-snug">
-          {isMobile ? PROMPT_TEXT_MOBILE : PROMPT_TEXT}
+          {isMobile ? promptTextMobile : promptText}
           {!reducedMotion && (
             <span
               className={cn(
@@ -261,6 +269,12 @@ function PromptOverlay({
 }
 
 export default function PromptDashboardSection() {
+  const { t, language } = useLanguage();
+
+  const PROMPT_TEXT = language === 'ru' ? PROMPT_TEXT_RU : PROMPT_TEXT_EN;
+  const PROMPT_TEXT_MOBILE = language === 'ru' ? PROMPT_TEXT_MOBILE_RU : PROMPT_TEXT_MOBILE_EN;
+  const TITLE = language === 'ru' ? TITLE_RU : TITLE_EN;
+
   const { isMobile, isTablet, prefersReducedMotion, isLowEnd } = usePerfProfile();
   const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '80px' });
   const headerRef = useRef<HTMLDivElement>(null);
@@ -309,10 +323,12 @@ export default function PromptDashboardSection() {
       <div className="max-w-[68rem] mx-auto px-4 sm:px-6 md:px-10 lg:px-12">
         {/* Header */}
         <div ref={headerRef} className="text-center mb-10 sm:mb-12 md:mb-14">
-          <SectionTitle compact={compact} />
+          <SectionTitle compact={compact} title={TITLE} />
           <p className="mt-4 sm:mt-5 text-sm sm:text-base text-white/50 max-w-xl mx-auto leading-relaxed font-light">
-            Describe what you want to track and let Pegasus generate a custom dashboard for you in
-            minutes.
+            {t(
+              'prompt_subtitle',
+              'Describe what you want to track and let Pegasus generate a custom dashboard for you in minutes.'
+            )}
           </p>
         </div>
 
@@ -332,7 +348,7 @@ export default function PromptDashboardSection() {
             {/* New subscriptions */}
             <BentoCard className="lg:col-span-6">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs sm:text-sm text-white/45 font-normal">New subscriptions</p>
+                <p className="text-xs sm:text-sm text-white/45 font-normal">{t('prompt_new_subs', 'New subscriptions')}</p>
                 <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-emerald-400">
                   <span
                     className={cn(
@@ -357,6 +373,8 @@ export default function PromptDashboardSection() {
                 isLowEnd={isLowEnd}
                 isMobile={isMobile}
                 inView={isInView}
+                promptText={PROMPT_TEXT}
+                promptTextMobile={PROMPT_TEXT_MOBILE}
               />
             </div>
 
@@ -378,7 +396,7 @@ export default function PromptDashboardSection() {
 
             {/* Cohort retention */}
             <BentoCard className="sm:col-span-2 lg:col-span-6">
-              <p className="text-xs sm:text-sm text-white/45">Cohort retention</p>
+              <p className="text-xs sm:text-sm text-white/45">{t('prompt_cohort', 'Cohort retention')}</p>
               <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <p className="text-2xl sm:text-3xl font-light tracking-tight text-white">457</p>
                 <MetricChange pct="-31%" delta="659" positive={false} />
@@ -422,6 +440,8 @@ export default function PromptDashboardSection() {
               isLowEnd={isLowEnd}
               isMobile={false}
               inView={isInView}
+              promptText={PROMPT_TEXT}
+              promptTextMobile={PROMPT_TEXT_MOBILE}
             />
           </div>
         </div>

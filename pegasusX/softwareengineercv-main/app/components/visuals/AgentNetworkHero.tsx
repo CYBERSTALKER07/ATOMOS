@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 import type { CSSProperties } from 'react';
 
 const NODES = [
@@ -10,6 +12,8 @@ const NODES = [
 ] as const;
 
 export default function AgentNetworkHero() {
+  const { language } = useLanguage();
+
   return (
     <div className="agent-network-hero">
       <div className="agent-network-hero__diagram" aria-hidden>
@@ -50,7 +54,7 @@ export default function AgentNetworkHero() {
         <div className="agent-network-hero__glow-line" />
       </div>
       <div className="agent-network-hero__copy">
-        <h3 className="agent-network-hero__title">Agents who work while you dream.</h3>
+        <h3 className="agent-network-hero__title">{language === 'ru' ? 'Агенты, которые работают, пока вы отдыхаете.' : 'Agents who work while you dream.'}</h3>
         <p className="agent-network-hero__mono">
           From depot to remote networks,<br />
           dispatch assist never sleeps.<br />

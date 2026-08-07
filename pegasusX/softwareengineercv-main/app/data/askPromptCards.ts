@@ -57,3 +57,22 @@ export const PEGASUS_ASK_PROMPTS: AskPromptSectionContent = {
   },
   cards: [],
 };
+
+export const PEGASUS_ASK_PROMPTS_RU: AskPromptSectionContent = {
+  title: 'Спросите что угодно о вашей сети',
+  subtitle:
+    'Дайте ИИ утверждённые логистические определения для повторного использования в чате, графиках и дашбордах.',
+  metric: {
+    ...PEGASUS_ASK_PROMPTS.metric!,
+    title: 'Доставка вовремя',
+    description: 'Доля доставок, завершённых в обещанном окне SLA.',
+    prompt: 'Как меняется наша доставка вовремя?',
+    chartTitle: 'OTD по месяцам',
+    chartLabels: ['Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг'],
+  },
+  cards: [],
+};
+
+export function getAskPromptContent(lang: 'en' | 'ru' = 'en'): AskPromptSectionContent {
+  return lang === 'ru' ? PEGASUS_ASK_PROMPTS_RU : PEGASUS_ASK_PROMPTS;
+}

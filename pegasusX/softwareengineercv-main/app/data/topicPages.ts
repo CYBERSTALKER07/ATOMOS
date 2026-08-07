@@ -4,7 +4,7 @@ import {
   type MegaNavLink,
 } from './megaNavigation';
 import { getTopicContent } from './topicContent';
-import type { TopicContent, TopicPage } from './topicTypes';
+import type { TopicContent, TopicPage, BilingualContent } from './topicTypes';
 import { topicHref } from './topicTypes';
 
 export type CategoryHub = {

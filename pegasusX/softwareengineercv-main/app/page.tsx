@@ -3,7 +3,7 @@ import Hero from './components/Hero';
 import About from './components/About';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
-import LaneDivider from './components/layout/LaneDivider';
+import LocalizedLaneDivider from './components/layout/LocalizedLaneDivider';
 import type { Metadata } from 'next';
 import {
   pageMetadata,
@@ -12,6 +12,8 @@ import {
   softwareApplicationJsonLd,
   jsonLdGraphScript,
 } from '@/app/lib/seo';
+import { getServerLanguage } from '@/app/lib/i18n/server';
+import { translations } from '@/app/lib/i18n/translations';
 
 
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
@@ -28,12 +30,15 @@ const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTes
 const Licensing = dynamic(() => import('./components/Licensing'));
 const Footer = dynamic(() => import('./components/Footer'));
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Home',
-  description:
-    'Pegasus is the logistics operating system for supplier-led networks — dispatch, fleet tracking, payments, and coordination across supplier, warehouse, retailer, driver, factory, and gate teams.',
-  path: '/',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getServerLanguage();
+  const dict = translations[lang] ?? translations.en;
+  return pageMetadata({
+    title: dict.meta_home_title,
+    description: dict.meta_home_desc,
+    path: '/',
+  });
+}
 
 export default function Home() {
   const structuredData = [
@@ -53,10 +58,10 @@ export default function Home() {
         <SiteNav activeHref="/" />
 
         <Hero />
-        <LaneDivider index="01" label="Network" />
+        <LocalizedLaneDivider index="01" labelKey="home_lane_network" />
         <About />
         {/* <PlatformValue /> */}
-        <LaneDivider index="02" label="Signal" />
+        <LocalizedLaneDivider index="02" labelKey="home_lane_signal" />
         {/* <SignalFeatureCards /> */}
 
         <DispatchVisualSection />
@@ -66,10 +71,10 @@ export default function Home() {
         <EcosystemStats />
         <LogisticsWorkflow />
         <OurApproach />
-        <LaneDivider index="03" label="Operations" />
+        <LocalizedLaneDivider index="03" labelKey="home_lane_operations" />
         <Skills />
         <DevelopmentTools />
-        <LaneDivider index="04" label="Proof" />
+        <LocalizedLaneDivider index="04" labelKey="home_lane_proof" />
         <PegasusTestimonialsSection />
         <Projects />
         <Companies />

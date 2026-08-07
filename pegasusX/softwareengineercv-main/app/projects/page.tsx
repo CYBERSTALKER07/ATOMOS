@@ -1,23 +1,46 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import Link from 'next/link';
 import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
-import { projects, getAllCategories } from '@/app/data/projects';
+import { getAllCategories } from '@/app/data/projects';
+import {
+  getAllCategoriesLocalized,
+  getEnCategoryForSlug,
+  getProjects,
+} from '@/app/data/projects_ru';
 import { bentoPlacement, bentoVariant } from '@/app/lib/bento';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function AllProjectsPage() {
+  const { t, language } = useLanguage();
   const gridRef = useRef<HTMLDivElement>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  const categories = ['All', ...getAllCategories()];
+  const projects = useMemo(() => getProjects(language), [language]);
+  const enCategories = useMemo(() => getAllCategories(), []);
+  const localizedCategories = useMemo(
+    () => getAllCategoriesLocalized(language),
+    [language]
+  );
+  // Keep filter keyed to EN category so switching language doesn't break selection.
+  const categories = useMemo(
+    () => ['All', ...enCategories],
+    [enCategories]
+  );
+  const categoryLabel = (enCat: string) => {
+    if (enCat === 'All') return t('projects_filter_all', 'All');
+    if (language !== 'ru') return enCat;
+    const idx = enCategories.indexOf(enCat);
+    return idx >= 0 ? localizedCategories[idx] ?? enCat : enCat;
+  };
   const filteredProjects =
     selectedCategory === 'All'
       ? projects
-      : projects.filter((p) => p.category === selectedCategory);
+      : projects.filter((p) => getEnCategoryForSlug(p.slug) === selectedCategory);
 
   const featured = filteredProjects[0];
 
@@ -33,18 +56,18 @@ export default function AllProjectsPage() {
   return (
     <FleekSecondaryLayout
       activeHref="/projects"
-      sectionTitle="MODULES"
-      title="All Modules"
-      summary={`Explore ${filteredProjects.length} modules powering supplier-led logistics — dispatch, payments, fleet, and role apps on one shared order record.`}
+      sectionTitle={t('projects_section_title', 'MODULES')}
+      title={t('projects_title', 'All Modules')}
+      summary={`${t('projects_summary_prefix', 'Explore ')}${filteredProjects.length}${t('projects_summary_suffix', ' modules powering supplier-led logistics — dispatch, payments, fleet, and role apps on one shared order record.')}`}
       secondaryHref="/platform"
-      secondaryLabel="EXPLORE PLATFORM"
+      secondaryLabel={t('btn_explore_platform', 'EXPLORE PLATFORM')}
       hubId="capabilities"
       dataExtra={
         <ImpactMetricCard
           metric={{
             client: 'NOVA',
-            title: 'Module coverage',
-            description: 'Performance score across dispatch, fleet, and treasury modules.',
+            title: t('projects_coverage_title', 'Module coverage'),
+            description: t('projects_coverage_desc', 'Performance score across dispatch, fleet, and treasury modules.'),
             value: 72,
             unit: '%',
           }}
@@ -56,7 +79,7 @@ export default function AllProjectsPage() {
             href="/join"
             className="fleek-btn fleek-btn--accent fixed bottom-8 right-8 z-50"
           >
-            Request Demo →
+            {t('nav_demo', 'Request Demo →')}
           </Link>
 
           <div className="flex flex-wrap gap-2">
@@ -67,7 +90,7 @@ export default function AllProjectsPage() {
                 onClick={() => setSelectedCategory(category)}
                 className={`fleek-btn ${selectedCategory === category ? 'fleek-btn--accent' : ''}`}
               >
-                {category}
+                {categoryLabel(category)}
               </button>
             ))}
           </div>
@@ -82,7 +105,7 @@ export default function AllProjectsPage() {
                 description={featured.description}
                 image={featured.image || EDITORIAL_IMAGES[0]}
                 href={`/projects/${featured.slug}`}
-                ctaLabel="VIEW MODULE"
+                ctaLabel={t('nav_modules', 'VIEW MODULE')}
                 ctaStyle="button"
               />
             </div>
@@ -90,7 +113,7 @@ export default function AllProjectsPage() {
 
           <section className="docs-section mt-16">
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Modules covered on the Pegasus platform
+              {t('projects_heading', 'Modules covered on the Pegasus platform')}
             </h2>
             <div ref={gridRef} className="editorial-bento mt-10 max-w-7xl">
               {filteredProjects
@@ -105,7 +128,7 @@ export default function AllProjectsPage() {
                     description={project.description}
                     image={project.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
                     href={`/projects/${project.slug}`}
-                    ctaLabel="READ MORE"
+                    ctaLabel={t('btn_read_more', 'READ MORE')}
                     ctaStyle="link"
                     className={bentoPlacement(index)}
                   />

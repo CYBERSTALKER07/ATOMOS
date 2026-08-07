@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -163,6 +164,8 @@ function VelocityScroll({ companies, velocity, numCopies = 2 }: VelocityScrollPr
 }
 
 export default function Companies() {
+  const { t, language } = useLanguage();
+
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
@@ -281,6 +284,24 @@ export default function Companies() {
     }
   ];
 
+
+  const rowOneCompaniesRu: Company[] = [
+    { name: 'Поставщик', logo: 'S', logoStyle: 'text-3xl font-black', role: 'Контроль сети', tags: 'Проверка, Топология, Казначейство, Диспетчеризация', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Мобильные' },
+    { name: 'Склад', logo: 'W', logoStyle: 'text-3xl font-black', role: 'Хаб диспетчеризации', tags: 'Предзаказы, Сток, Карта автопарка', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Android' },
+    { name: 'Завод', logo: 'F', logoStyle: 'text-3xl font-black', role: 'Погрузка и пломба', tags: 'Манифесты, Поставка, Погрузочные полосы', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Мобильные' },
+    { name: 'Водитель', logo: 'D', logoStyle: 'text-2xl font-black', role: 'Исполнение в поле', tags: 'Маршруты, Доставка, Сбор наличных', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Android + iOS' },
+    { name: 'Ритейлер', logo: 'R', logoStyle: 'text-3xl font-black', role: 'Коммерция и отслеживание', tags: 'Каталог, Оформление, Живой трекинг', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Десктоп + Мобильные' },
+  ];
+  const rowTwoCompaniesRu: Company[] = [
+    { name: 'Payload', logo: 'P', logoStyle: 'text-2xl font-black', role: 'Контроль ворот', tags: 'Пломба, Скан, Терминал, Подотчётность', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Терминал + Мобильные' },
+    { name: 'FMCG-сеть', logo: 'FN', logoStyle: 'text-2xl font-black', role: 'Высокообъёмная дистрибуция', tags: 'Пиковая диспетчеризация, Мультисайт, COD', badge: 'СЕГМЕНТ', remote: 'Мультирегион' },
+    { name: 'Холодовая цепь', logo: 'CC', logoStyle: 'text-2xl font-black', role: 'Температурно-чувствительные', tags: 'Видимость автопарка, SLA', badge: 'СЕГМЕНТ', remote: 'Региональный' },
+    { name: 'Стройматериалы', logo: 'BM', logoStyle: 'text-2xl font-black', role: 'Тяжёлые грузы', tags: 'Планирование вместимости, Мультистоп', badge: 'СЕГМЕНТ', remote: 'Региональный' },
+    { name: 'Наложенный платёж', logo: 'COD', logoStyle: 'text-xl font-black', role: 'Оплата у двери', tags: 'Сбор водителем, Сверка', badge: 'СЕГМЕНТ', remote: 'По всей сети' },
+  ];
+  const rowOne = language === 'ru' ? rowOneCompaniesRu : rowOneCompanies;
+  const rowTwo = language === 'ru' ? rowTwoCompaniesRu : rowTwoCompanies;
+
   return (
     <PageSection
       ref={sectionRef}
@@ -292,15 +313,15 @@ export default function Companies() {
         <div ref={titleRef}>
           <SectionHeader
             align="center"
-            title="Six Roles, One Network"
-            description="Every team in a supplier-led logistics network — connected on Pegasus"
+            title={t('companies_title', 'Six Roles, One Network')}
+            description={t('companies_desc', 'Every team in a supplier-led logistics network — connected on Pegasus')}
             className="mb-0"
           />
         </div>
       </div>
 
-      <VelocityScroll companies={rowOneCompanies} velocity={30} numCopies={2} />
-      <VelocityScroll companies={rowTwoCompanies} velocity={-30} numCopies={2} />
+      <VelocityScroll companies={rowOne} velocity={30} numCopies={2} />
+      <VelocityScroll companies={rowTwo} velocity={-30} numCopies={2} />
     </PageSection>
   );
 }

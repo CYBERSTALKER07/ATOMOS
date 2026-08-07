@@ -1,13 +1,17 @@
 import type { Metadata } from 'next';
 import SiteNav from '@/app/components/explore/SiteNav';
 import { pageMetadata } from '@/app/lib/seo';
+import { getServerLanguage } from '@/app/lib/i18n/server';
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Admin',
-  description: 'Internal Pegasus admin.',
-  path: '/admin',
-  noIndex: true,
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getServerLanguage();
+  return pageMetadata({
+    title: lang === 'ru' ? 'Админ' : 'Admin',
+    description: lang === 'ru' ? 'Внутренняя админ-панель Pegasus.' : 'Internal Pegasus admin.',
+    path: '/admin',
+    noIndex: true,
+  });
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (

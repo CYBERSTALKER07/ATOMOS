@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { ProofItem, TopicCard } from '@/app/data/topicTypes';
-import { getBusinessValueTabs } from '@/app/data/o9FleekDefaults';
+import { getBusinessValueTabs, getTestimonials } from '@/app/data/o9FleekDefaults';
 import { O9HowItWorks } from '@/app/components/page-sections/o9/O9Sections';
 import O9HeroSplit from './O9HeroSplit';
 import O9DifferentiatorGrid from './O9DifferentiatorGrid';
@@ -11,6 +11,7 @@ import O9TestimonialRow from './O9TestimonialRow';
 import O9CapabilityShowcase, { type O9CapabilityCard } from './O9CapabilityShowcase';
 import O9InsightCards from './O9InsightCards';
 import O9SplitTourCTA from './O9SplitTourCTA';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export type O9FleekPageLayoutProps = {
   variant?: 'full' | 'secondary';
@@ -67,13 +68,15 @@ export default function O9FleekPageLayout({
   tourCta,
   relatedProjectSlug,
 }: O9FleekPageLayoutProps) {
+  const { language } = useLanguage();
   const isSecondary = variant === 'secondary';
   const showMarketing =
     !isSecondary ||
     differentiators.length > 0 ||
     capabilities.length > 0 ||
     howItWorks.length > 0;
-  const valueTabs = getBusinessValueTabs(hubId, outcomes);
+  const valueTabs = getBusinessValueTabs(hubId, outcomes, language);
+  const testimonials = getTestimonials(language);
   const footerCta = showTourCta ? (tourCta ?? <O9SplitTourCTA relatedProjectSlug={relatedProjectSlug} />) : null;
 
   return (
@@ -96,7 +99,7 @@ export default function O9FleekPageLayout({
           <O9DifferentiatorGrid items={differentiators} title={differentiatorsTitle} />
           {!isSecondary ? <O9BusinessValueSection tabs={valueTabs} /> : null}
           <O9CapabilityShowcase items={capabilities} title={capabilitiesTitle} />
-          {showTestimonials ? <O9TestimonialRow /> : null}
+          {showTestimonials ? <O9TestimonialRow items={testimonials} /> : null}
           <O9HowItWorks steps={howItWorks} variant="list" />
           {fleetBand}
         </>

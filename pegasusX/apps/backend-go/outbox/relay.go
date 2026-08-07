@@ -23,6 +23,13 @@ type RelayConfig struct {
 	// MaxTotalAttempts is the persistent per-event publish budget across ticks;
 	// on exhaustion the event moves to the dead-letter sink. Default 20.
 	MaxTotalAttempts int64
+	// PublishTimeout bounds one broker produce attempt. Without it a wedged
+	// publish blocks the single-threaded drain loop indefinitely (observed as
+	// multi-minute system-wide event delays with no logs). Default 10s.
+	PublishTimeout time.Duration
+	// StoreTimeout bounds Fetch/MarkPublished/RecordPublishFailures calls for
+	// the same reason. Default 15s.
+	StoreTimeout time.Duration
 }
 
 func (c *RelayConfig) applyDefaults() {
@@ -49,6 +56,12 @@ func (c *RelayConfig) applyDefaults() {
 	}
 	if c.MaxTotalAttempts <= 0 {
 		c.MaxTotalAttempts = 20
+	}
+	if c.PublishTimeout <= 0 {
+		c.PublishTimeout = 10 * time.Second
+	}
+	if c.StoreTimeout <= 0 {
+		c.StoreTimeout = 15 * time.Second
 	}
 }
 
@@ -128,7 +141,10 @@ func (r *Relay) watchdogOnce(ctx context.Context) {
 }
 
 func (r *Relay) drainOnce(ctx context.Context) {
-	events, err := r.store.Fetch(ctx, r.cfg.BatchSize)
+	started := time.Now()
+	fetchCtx, cancelFetch := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+	events, err := r.store.Fetch(fetchCtx, r.cfg.BatchSize)
+	cancelFetch()
 	if err != nil {
 		r.log.Error("outbox fetch failed", "err", err)
 		return
@@ -153,7 +169,10 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		published = append(published, e.EventID)
 	}
 	if len(published) > 0 {
-		if err := r.store.MarkPublished(ctx, published, time.Now().UTC()); err != nil {
+		markCtx, cancelMark := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		err := r.store.MarkPublished(markCtx, published, time.Now().UTC())
+		cancelMark()
+		if err != nil {
 			r.log.Error("outbox mark published failed", "count", len(published), "err", err)
 		}
 	}
@@ -170,7 +189,9 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		if firstErr != nil {
 			errText = firstErr.Error()
 		}
-		deadLettered, derr := r.store.RecordPublishFailures(ctx, ids, errText, r.cfg.MaxTotalAttempts)
+		recordCtx, cancelRecord := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		deadLettered, derr := r.store.RecordPublishFailures(recordCtx, ids, errText, r.cfg.MaxTotalAttempts)
+		cancelRecord()
 		if derr != nil {
 			r.log.Error("outbox record publish failures failed", "count", len(ids), "err", derr)
 			return
@@ -183,6 +204,14 @@ func (r *Relay) drainOnce(ctx context.Context) {
 				"err", errText,
 			)
 		}
+	}
+	if dur := time.Since(started); dur > 5*time.Second {
+		r.log.Warn("outbox drain slow",
+			"duration", dur.String(),
+			"batch", len(events),
+			"published", len(published),
+			"failed", len(failed),
+		)
 	}
 }
 
@@ -197,7 +226,9 @@ func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
 		}
 		attemptErr := error(nil)
 		for _, topic := range topics {
-			err := publishOutboxEvent(ctx, r.publisher, topic, granularRoutingKey(e), e)
+			pubCtx, cancel := context.WithTimeout(ctx, r.cfg.PublishTimeout)
+			err := publishOutboxEvent(pubCtx, r.publisher, topic, granularRoutingKey(e), e)
+			cancel()
 			if err != nil {
 				attemptErr = err
 				break

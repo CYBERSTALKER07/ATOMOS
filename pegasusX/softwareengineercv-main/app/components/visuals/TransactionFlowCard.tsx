@@ -1,11 +1,15 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 export default function TransactionFlowCard() {
+  const { language } = useLanguage();
+
   return (
     <div className="transaction-flow-card">
       <div className="transaction-flow-card__head">
         <div>
-          <h3 className="transaction-flow-card__title">Transactions Review</h3>
+          <h3 className="transaction-flow-card__title">{language === 'ru' ? 'Обзор транзакций' : 'Transactions Review'}</h3>
           <p className="transaction-flow-card__sub">
             Access and manage fulfillment transactions across the last two fiscal years.
           </p>
@@ -17,7 +21,7 @@ export default function TransactionFlowCard() {
 
       <div className="transaction-flow-card__stats">
         <div>
-          <p className="transaction-flow-card__stat-label">Overall transaction</p>
+          <p className="transaction-flow-card__stat-label">{language === 'ru' ? 'Общая транзакция' : 'Overall transaction'}</p>
           <p className="transaction-flow-card__stat-value">$456,245</p>
         </div>
         <div>

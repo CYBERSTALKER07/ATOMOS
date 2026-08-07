@@ -1,13 +1,17 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 const NODES = ['Dispatch', 'Fleet', 'Treasury', 'Tracking', 'Topology', 'Payments'] as const;
 
 export default function IntegrationsHubVisual() {
+  const { language } = useLanguage();
+
   return (
     <div className="integrations-hub">
       <div className="integrations-hub__stage" aria-hidden>
         <div className="integrations-hub__ring">
-          <span>AUTOMATIONS UNLEASHED</span>
+          <span>{language === 'ru' ? 'АВТОМАТИЗАЦИЯ БЕЗ ГРАНИЦ' : 'AUTOMATIONS UNLEASHED'}</span>
         </div>
         {NODES.map((label, i) => {
           const angle = (i / NODES.length) * Math.PI * 2 - Math.PI / 2;

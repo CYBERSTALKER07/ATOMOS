@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import PageSectionBlock from './PageSectionBlock';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type RoleRow = { role: string; touchpoint: string };
 
@@ -13,16 +14,17 @@ type RoleMatrixProps = {
 
 export default function RoleMatrix({ crossRole, variant = 'tabs' }: RoleMatrixProps) {
   const [active, setActive] = useState(0);
+  const { t } = useLanguage();
 
   if (variant === 'table') {
     return (
-      <PageSectionBlock eyebrow="Roles" title="Who's involved">
+      <PageSectionBlock eyebrow={t('sec_roles_eyebrow')} title={t('sec_roles_title')}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[400px] text-left text-sm">
             <thead>
               <tr className="border-b border-white/20 font-mono text-xs uppercase text-white/50">
-                <th className="py-3 pr-4">Role</th>
-                <th className="py-3">Touchpoint</th>
+                <th className="py-3 pr-4">{t('sec_role_col')}</th>
+                <th className="py-3">{t('sec_touchpoint_col')}</th>
               </tr>
             </thead>
             <tbody>
@@ -42,7 +44,7 @@ export default function RoleMatrix({ crossRole, variant = 'tabs' }: RoleMatrixPr
   const current = crossRole[active];
 
   return (
-    <PageSectionBlock eyebrow="Roles" title="Who's involved">
+    <PageSectionBlock eyebrow={t('sec_roles_eyebrow')} title={t('sec_roles_title')}>
       <div className="flex flex-wrap gap-2">
         {crossRole.map((row, i) => (
           <button

@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
@@ -19,6 +21,8 @@ export default function WarehouseAppHero({
   title,
   summary,
 }: WarehouseAppHeroProps) {
+  const { language } = useLanguage();
+
   return (
     <header className="warehouse-app-hero -mx-4 md:-mx-[calc((100vw-100%)/2+1rem)]">
       <div className="warehouse-app-hero__stripes" aria-hidden />
@@ -104,7 +108,7 @@ export default function WarehouseAppHero({
 
         <div className="warehouse-app-hero__actions">
           <Link href="/join" className="warehouse-app-hero__cta">Request quote</Link>
-          <Link href="/demo/warehouse" className="warehouse-app-hero__cta-secondary">Open dispatch board</Link>
+          <Link href="/demo/warehouse" className="warehouse-app-hero__cta-secondary">{language === 'ru' ? 'Открыть доску диспетчеризации' : 'Open dispatch board'}</Link>
         </div>
       </div>
     </header>

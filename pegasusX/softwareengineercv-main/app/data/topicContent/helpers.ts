@@ -13,6 +13,13 @@ export const DEFAULT_PROOF: ProofItem[] = [
   { label: 'Surfaces', value: 'Portal · Mobile · Desktop' },
 ];
 
+export const DEFAULT_PROOF_RU: ProofItem[] = [
+  { label: 'Роли', value: '6 подключено' },
+  { label: 'Система учета', value: 'Единая истина' },
+  { label: 'Обновления', value: 'Синхронизация досок' },
+  { label: 'Интерфейсы', value: 'Портал · Мобильный · Десктоп' },
+];
+
 export const DEFAULT_AI_DATA: TopicCard[] = [
   {
     title: 'Reliable change events',
@@ -28,6 +35,24 @@ export const DEFAULT_AI_DATA: TopicCard[] = [
     title: 'AI with proven fallback',
     description:
       'Smart assist for dispatch and recommendations always falls back to proven planning rules — never blocks the floor if models are slow.',
+  },
+];
+
+export const DEFAULT_AI_DATA_RU: TopicCard[] = [
+  {
+    title: 'Надежные события изменений',
+    description:
+      'Каждое подтвержденное обновление уведомляет нужные приложения в том же шаге — экраны никогда не расходятся с истиной заказа.',
+  },
+  {
+    title: 'Живая координация',
+    description:
+      'Диспетчерские доски, карты автопарка и отслеживание ритейлера автоматически синхронизируются без ручного обновления.',
+  },
+  {
+    title: 'ИИ с надежным откатом',
+    description:
+      'Умный помощник диспетчера всегда откатывается к проверенным правилам планирования — работа не останавливается, если модели задерживаются.',
   },
 ];
 

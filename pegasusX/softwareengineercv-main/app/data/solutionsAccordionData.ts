@@ -160,3 +160,152 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
     ],
   },
 ];
+
+export const SOLUTIONS_ACCORDION_DATA_RU: AccordionSolution[] = [
+  {
+    id: 'supplier',
+    numberLabel: '[1]',
+    title: 'Поставщик',
+    overview:
+      'Сотрудничайте с поставщиками без трения. Управляйте заказами, прогнозируйте спрос и сохраняйте полный контроль над сетью поставок.',
+    solutionHref: '/roles/supplier',
+    useCases: [
+      {
+        title: 'Панель управления поставщика',
+        href: '/solutions/supplier-control-panel',
+        slug: 'supplier-control-panel',
+        image: SITE_IMAGES.operationsTeam,
+      },
+      {
+        title: 'Сотрудничество и проверка заказов',
+        href: '/solutions/supplier-collaboration',
+        slug: 'supplier-collaboration',
+        image: SITE_IMAGES.multimodalHub,
+      },
+      {
+        title: 'ИИ/ML спрос и рекомендации',
+        href: '/solutions/ai-ml-demand',
+        slug: 'ai-ml-demand',
+        image: SITE_IMAGES.terminalArchitecture,
+      },
+    ],
+  },
+  {
+    id: 'warehouse',
+    numberLabel: '[2]',
+    title: 'Склад',
+    overview:
+      'Оптимизируйте диспетчеризацию и управляйте запасами эффективно на всех уровнях цепи.',
+    solutionHref: '/roles/warehouse',
+    useCases: [
+      {
+        title: 'Умный ассистент диспетчеризации',
+        href: '/solutions/smart-dispatch-assist',
+        slug: 'smart-dispatch-assist',
+        image: SITE_IMAGES.warehouseAutomation,
+      },
+      {
+        title: 'Оптимизация многоуровневых запасов',
+        href: '/solutions/multi-echelon-inventory',
+        slug: 'multi-echelon-inventory',
+        image: SITE_IMAGES.warehouseWireframe,
+      },
+    ],
+  },
+  {
+    id: 'retailer',
+    numberLabel: '[3]',
+    title: 'Ритейлер',
+    overview:
+      'Видимость живого отслеживания и планирование ассортимента для максимальной эффективности ритейла.',
+    solutionHref: '/roles/retailer',
+    useCases: [
+      {
+        title: 'Диспетчерская и живое отслеживание',
+        href: '/solutions/control-tower',
+        slug: 'control-tower',
+        image: SITE_IMAGES.logisticsPlatformUi,
+      },
+      {
+        title: 'Планирование товаров и ассортимента',
+        href: '/solutions/merchandise-planning',
+        slug: 'merchandise-planning',
+        image: SITE_IMAGES.truckTerminal,
+      },
+    ],
+  },
+  {
+    id: 'finance-treasury',
+    numberLabel: '[4]',
+    title: 'Финансы и казначейство',
+    overview:
+      'Сверяйте платежи, анализируйте логистические итоги и согласуйте продажи с операционным планированием.',
+    solutionHref: '/roles/finance',
+    useCases: [
+      {
+        title: 'Итоговый анализ и сверка',
+        href: '/solutions/post-game-analysis',
+        slug: 'post-game-analysis',
+        image: SITE_IMAGES.pegasusContainer,
+      },
+      {
+        title: 'Планирование продаж и операций (S&OP)',
+        href: '/solutions/sales-operations-planning',
+        slug: 'sales-operations-planning',
+        image: SITE_IMAGES.portCraneScene,
+      },
+    ],
+  },
+  {
+    id: 'driver',
+    numberLabel: '[5]',
+    title: 'Водитель',
+    overview:
+      'Дайте водителям приложения исполнения для навигации, задач и подтверждения доставки.',
+    solutionHref: '/roles/driver',
+    useCases: [
+      {
+        title: 'Приложение водителя',
+        href: '/solutions/driver-execution-app',
+        slug: 'driver-execution-app',
+        image: SITE_IMAGES.truckTerminal,
+      },
+    ],
+  },
+  {
+    id: 'factory',
+    numberLabel: '[6]',
+    title: 'Завод',
+    overview:
+      'Координируйте погрузку на заводе и упрощайте заявки на поставку, привязанные к доступности транспорта.',
+    solutionHref: '/roles/factory',
+    useCases: [
+      {
+        title: 'Погрузка и заявки на снабжение',
+        href: '/solutions/factory-loading',
+        slug: 'factory-loading',
+        image: SITE_IMAGES.warehouseAutomation,
+      },
+    ],
+  },
+  {
+    id: 'payload-gate',
+    numberLabel: '[7]',
+    title: 'Ворота / Payload',
+    overview:
+      'Защищайте въезд и выезд с обработкой возвратов и контролем штрихкодов на воротах.',
+    solutionHref: '/roles/payload-gate',
+    useCases: [
+      {
+        title: 'Возвраты и контроль штрихкодов на воротах',
+        href: '/solutions/returns-barcode-gate',
+        slug: 'returns-barcode-gate',
+        image: SITE_IMAGES.deliveryDrone,
+      },
+    ],
+  },
+];
+
+export function getSolutionsAccordionData(lang: 'en' | 'ru' = 'en'): AccordionSolution[] {
+  return lang === 'ru' ? SOLUTIONS_ACCORDION_DATA_RU : SOLUTIONS_ACCORDION_DATA;
+}

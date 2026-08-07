@@ -3,6 +3,7 @@
 import { Box, Layers, Shield, Zap } from 'lucide-react';
 import type { TopicCard } from '@/app/data/topicTypes';
 import { O9SectionLabel } from '@/app/components/page-sections/o9/O9Sections';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 const ICONS = [Layers, Zap, Shield, Box];
 
@@ -13,14 +14,17 @@ type O9DifferentiatorGridProps = {
 
 export default function O9DifferentiatorGrid({
   items,
-  title = 'What makes Pegasus different',
+  title,
 }: O9DifferentiatorGridProps) {
+  const { t } = useLanguage();
   if (!items.length) return null;
+
+  const resolvedTitle = title ?? t('sec_key_differentiators_title');
 
   return (
     <section className="o9-section">
-      <O9SectionLabel>KEY DIFFERENTIATORS</O9SectionLabel>
-      <h2 className="o9-section__title">{title}</h2>
+      <O9SectionLabel>{t('sec_key_differentiators_label')}</O9SectionLabel>
+      <h2 className="o9-section__title">{resolvedTitle}</h2>
       <div className="o9-diff-grid">
         {items.slice(0, 4).map((item, i) => {
           const Icon = ICONS[i % ICONS.length];

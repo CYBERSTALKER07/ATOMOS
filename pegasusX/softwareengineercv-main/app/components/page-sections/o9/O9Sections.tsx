@@ -3,6 +3,7 @@
 import type { TopicCard, WhyItMatters } from '@/app/data/topicTypes';
 import ProcessRGrid from '@/app/components/visuals/ProcessRGrid';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export function O9SectionLabel({ children }: { children: string }) {
   return (
@@ -17,13 +18,14 @@ export function O9WhyItMatters({
   why?: WhyItMatters;
   problemFallback: string;
 }) {
-  const headline = why?.headline ?? 'Why it matters';
+  const { t } = useLanguage();
+  const headline = why?.headline ?? t('sec_why_it_matters_title');
   const body = why?.body ?? problemFallback;
   const insights = why?.insights ?? [];
 
   return (
     <section className="docs-section">
-      <O9SectionLabel>why it matters</O9SectionLabel>
+      <O9SectionLabel>{t('sec_why_it_matters_label')}</O9SectionLabel>
       <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">{headline}</h2>
       <p className="docs-body mt-6 max-w-3xl text-base leading-relaxed text-white/70 md:text-lg">{body}</p>
       {insights.length > 0 ? (
@@ -53,8 +55,8 @@ export function O9WhyItMatters({
 
 export function O9CapabilityGrid({
   capabilities,
-  label = 'CORE CAPABILITIES',
-  title = 'What this solution enables',
+  label,
+  title,
   layout = 'cards',
 }: {
   capabilities: TopicCard[];
@@ -62,7 +64,11 @@ export function O9CapabilityGrid({
   title?: string;
   layout?: 'cards' | 'r-grid';
 }) {
+  const { t } = useLanguage();
   if (!capabilities.length) return null;
+
+  const resolvedLabel = label ?? 'CORE CAPABILITIES';
+  const resolvedTitle = title ?? 'What this solution enables';
 
   const useRGrid = layout === 'r-grid' && capabilities.length >= 3 && capabilities.length <= 8;
   const rGridSteps = capabilities.map((cap) => ({
@@ -72,8 +78,8 @@ export function O9CapabilityGrid({
 
   return (
     <section className="docs-section">
-      <O9SectionLabel>{label}</O9SectionLabel>
-      <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">{title}</h2>
+      <O9SectionLabel>{resolvedLabel}</O9SectionLabel>
+      <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">{resolvedTitle}</h2>
       {useRGrid ? (
         <div className="mt-10">
           <ProcessRGrid steps={rGridSteps} />
@@ -104,12 +110,13 @@ export function O9CapabilityGrid({
 }
 
 export function O9DifferentiatorList({ items }: { items: TopicCard[] }) {
+  const { t } = useLanguage();
   if (!items.length) return null;
   return (
     <section className="docs-section">
-      <O9SectionLabel>KEY DIFFERENTIATORS</O9SectionLabel>
+      <O9SectionLabel>{t('sec_key_differentiators_label')}</O9SectionLabel>
       <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
-        What makes Pegasus different
+        {t('sec_key_differentiators_title')}
       </h2>
       <div className="mt-10 space-y-4">
         {items.map((item, i) => (
@@ -133,12 +140,13 @@ export function O9HowItWorks({
   steps: { title: string; description: string }[];
   variant?: 'list' | 'r-grid';
 }) {
+  const { t } = useLanguage();
   if (!steps.length) return null;
   return (
     <section className="docs-section">
-      <O9SectionLabel>HOW IT WORKS</O9SectionLabel>
+      <O9SectionLabel>{t('sec_how_it_works_label')}</O9SectionLabel>
       <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
-        From signal to settled outcome
+        {t('sec_how_it_works_title')}
       </h2>
       {variant === 'r-grid' ? (
         <div className="mt-10">
@@ -169,12 +177,13 @@ export function O9HowItWorks({
 }
 
 export function O9EdgeCaseGrid({ items }: { items?: TopicCard[] }) {
+  const { t } = useLanguage();
   if (!items?.length) return null;
   return (
     <section className="docs-section">
-      <O9SectionLabel>EDGE CASES</O9SectionLabel>
+      <O9SectionLabel>{t('sec_edge_cases_label')}</O9SectionLabel>
       <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
-        Exception paths that stay consistent
+        {t('sec_edge_cases_title')}
       </h2>
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         {items.map((item) => (
@@ -192,12 +201,13 @@ export function O9EdgeCaseGrid({ items }: { items?: TopicCard[] }) {
 }
 
 export function O9AiDataPanel({ items }: { items?: TopicCard[] }) {
+  const { t } = useLanguage();
   if (!items?.length) return null;
   return (
     <section className="docs-section">
-      <O9SectionLabel>AI & DATA</O9SectionLabel>
+      <O9SectionLabel>{t('sec_ai_data_label')}</O9SectionLabel>
       <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
-        Intelligence on a consistent data plane
+        {t('sec_ai_data_title')}
       </h2>
       <div className="mt-10 grid gap-4 lg:grid-cols-3">
         {items.map((item) => (

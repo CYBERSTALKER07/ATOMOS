@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -115,5 +116,52 @@ func TestRelayDrainOnceSkipsMarkWhenPublishExhausted(t *testing.T) {
 	}
 	if len(store.markIDs) != 0 {
 		t.Fatalf("mark ids = %v, want empty", store.markIDs)
+	}
+}
+
+// blockingPublisher simulates a wedged broker write: blocks until ctx deadline.
+type blockingPublisher struct {
+	calls int32
+}
+
+func (p *blockingPublisher) Publish(ctx context.Context, _ string, _ []byte, _ []byte) error {
+	atomic.AddInt32(&p.calls, 1)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// Regression: before PublishTimeout, a wedged WriteMessages blocked the
+// single-threaded drain loop indefinitely (observed as multi-minute stalls of
+// ALL event delivery in SSMR with no relay logs). The drain must fail the
+// event within MaxPublishTries × PublishTimeout and move on.
+func TestRelayDrainOnceBoundsWedgedPublisher(t *testing.T) {
+	t.Parallel()
+
+	store := &relayTestStore{events: []Event{
+		{EventID: "wedged", AggregateID: "a-w", TopicName: "t1", Payload: []byte("p1")},
+		{EventID: "healthy", AggregateID: "a-h", TopicName: "t2", Payload: []byte("p2")},
+	}}
+	pub := &blockingPublisher{}
+	relay := NewRelay(store, pub, RelayConfig{
+		MaxPublishTries: 2,
+		BaseBackoff:     time.Millisecond,
+		MaxBackoff:      2 * time.Millisecond,
+		PublishTimeout:  50 * time.Millisecond,
+	}, nil)
+
+	// Both events hit the blocking publisher; drain must finish in bounded time.
+	start := time.Now()
+	relay.drainOnce(context.Background())
+	elapsed := time.Since(start)
+
+	// 2 events × 2 tries × 50ms + small backoffs = ~400ms upper bound; allow margin.
+	if elapsed > 5*time.Second {
+		t.Fatalf("drainOnce took %v, want bounded by per-attempt publish timeout", elapsed)
+	}
+	if got := atomic.LoadInt32(&pub.calls); got != 4 {
+		t.Fatalf("publish call count = %d, want 4 (2 events × 2 tries)", got)
+	}
+	if store.markCalls != 0 {
+		t.Fatalf("no event should be marked published, got %d mark calls", store.markCalls)
 	}
 }

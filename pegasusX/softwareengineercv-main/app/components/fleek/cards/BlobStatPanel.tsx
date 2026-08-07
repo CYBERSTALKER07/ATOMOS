@@ -1,17 +1,25 @@
 'use client';
 
 import type { FleekBlobStat } from '@/app/data/fleekPageContent';
-import { DEFAULT_BLOB_STATS } from '@/app/data/fleekPageContent';
+import { getBlobStats } from '@/app/data/fleekPageContent';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type BlobStatPanelProps = {
   stats?: FleekBlobStat[];
 };
 
-export default function BlobStatPanel({ stats = DEFAULT_BLOB_STATS }: BlobStatPanelProps) {
+export default function BlobStatPanel({ stats }: BlobStatPanelProps) {
+  const { language } = useLanguage();
+  const resolved = stats ?? getBlobStats(language);
+  const nav =
+    language === 'ru'
+      ? ['СТАРТАПЫ', 'СКЛАД', 'АВТОПАРК', 'РИТЕЙЛ']
+      : ['STARTUPS', 'WAREHOUSE', 'FLEET', 'RETAIL'];
+
   return (
     <div className="blob-panel">
-      <nav className="blob-panel__nav" aria-label="Industries">
-        {['STARTUPS', 'WAREHOUSE', 'FLEET', 'RETAIL'].map((item) => (
+      <nav className="blob-panel__nav" aria-label={language === 'ru' ? 'Отрасли' : 'Industries'}>
+        {nav.map((item) => (
           <span key={item} className="blob-panel__nav-item">{item}</span>
         ))}
       </nav>
@@ -20,7 +28,7 @@ export default function BlobStatPanel({ stats = DEFAULT_BLOB_STATS }: BlobStatPa
         <div className="blob-panel__blob blob-panel__blob--sub" />
       </div>
       <div className="blob-panel__callouts">
-        {stats.map((stat, i) => (
+        {resolved.map((stat, i) => (
           <div
             key={stat.value}
             className={`blob-panel__callout ${stat.highlight ? 'is-highlight' : ''} blob-panel__callout--${i}`}

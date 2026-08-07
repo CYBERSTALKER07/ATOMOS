@@ -7,6 +7,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useIsMobile, useReducedMotion } from '@/app/hooks/useDevice';
 import { useInView } from '@/app/hooks/useInView';
+import { useLanguage } from '@/app/context/LanguageContext';
 import {
   FLEET_SHOWCASE_CAPTIONS,
   FLEET_TRUCK_IMAGES,
@@ -27,6 +28,7 @@ export default function FleetScrollShowcase({
   subtitle = 'Scroll through load planning, gate accountability, and live route tracking — one honest picture of every truck in the network.',
   learnMoreHref = '/solutions/fleet-visibility',
 }: FleetScrollShowcaseProps) {
+  const { t } = useLanguage();
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
   const { ref: inViewRef, isInView } = useInView<HTMLElement>({ rootMargin: '400px', exit: true });
@@ -113,7 +115,7 @@ export default function FleetScrollShowcase({
               <div className="mt-4 h-px w-full max-w-xs bg-white/15 origin-left scale-x-0" ref={progressRef} />
               {learnMoreHref ? (
                 <Link href={learnMoreHref} className="editorial-btn mt-8 inline-flex">
-                  Explore fleet tracking
+                  {t('fleet_explore_btn')}
                 </Link>
               ) : null}
             </div>
@@ -139,7 +141,7 @@ export default function FleetScrollShowcase({
 
           <div className="mt-12 overflow-hidden">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-              {showStatic ? 'Fleet renders' : 'Scroll to scrub the yard'}
+              {showStatic ? t('fleet_renders') : t('fleet_scroll_yard')}
             </p>
             <div
               ref={filmstripRef}

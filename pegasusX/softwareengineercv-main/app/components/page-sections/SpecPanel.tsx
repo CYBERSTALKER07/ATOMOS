@@ -1,6 +1,7 @@
 'use client';
 
 import PageSectionBlock from './PageSectionBlock';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type Spec = { label: string; value: string };
 
@@ -10,9 +11,11 @@ type SpecPanelProps = {
 };
 
 export default function SpecPanel({ specs, variant = 'terminal' }: SpecPanelProps) {
+  const { t } = useLanguage();
+
   if (variant === 'grid') {
     return (
-      <PageSectionBlock eyebrow="Specs" title="Technical details">
+      <PageSectionBlock eyebrow={t('sec_specs_eyebrow')} title={t('sec_specs_title')}>
         <dl className="grid gap-px bg-white/10 md:grid-cols-2">
           {specs.map((spec) => (
             <div key={spec.label} className="flex justify-between bg-black p-4 font-mono text-xs">
@@ -26,7 +29,7 @@ export default function SpecPanel({ specs, variant = 'terminal' }: SpecPanelProp
   }
 
   return (
-    <PageSectionBlock eyebrow="Specs" title="Technical details">
+    <PageSectionBlock eyebrow={t('sec_specs_eyebrow')} title={t('sec_specs_title')}>
       <div className="overflow-hidden border border-white/15 bg-[#050505] font-mono text-xs">
         <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2 text-white/40">
           <span className="h-2 w-2 rounded-full bg-[#FE5934]/80" />

@@ -180,11 +180,11 @@ export default function JoinPage() {
                       aria-invalid={Boolean(fieldErrors.position)}
                       className="docs-select disabled:opacity-50"
                     >
-                      <option>Supplier Operations</option>
-                      <option>Warehouse Manager</option>
-                      <option>Fleet / Dispatch Lead</option>
-                      <option>IT / Platform Owner</option>
-                      <option>Executive / Founder</option>
+                      <option value="Supplier Operations">{t('join_role_supplier', 'Supplier Operations')}</option>
+                      <option value="Warehouse Manager">{t('join_role_warehouse', 'Warehouse Manager')}</option>
+                      <option value="Fleet / Dispatch Lead">{t('join_role_fleet', 'Fleet / Dispatch Lead')}</option>
+                      <option value="IT / Platform Owner">{t('join_role_it', 'IT / Platform Owner')}</option>
+                      <option value="Executive / Founder">{t('join_role_executive', 'Executive / Founder')}</option>
                     </select>
                     {fieldErrors.position ? (
                       <p className="text-sm text-[#FE5934]" role="alert">

@@ -6,11 +6,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import PageSection from '../layout/PageSection';
 import { usePerfProfile } from '../../hooks/useDevice';
 import { useInView } from '../../hooks/useInView';
-import { PEGASUS_ASK_PROMPTS } from '@/app/data/askPromptCards';
+import { PEGASUS_ASK_PROMPTS, getAskPromptContent } from '@/app/data/askPromptCards';
 import type { AskPromptSectionContent } from './types';
 import AskPromptTitle from './AskPromptTitle';
 import AskPromptMetricsFlow from './AskPromptMetricsFlow';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -21,10 +22,12 @@ export type AskPromptSectionProps = {
 };
 
 export default function AskPromptSection({
-  content = PEGASUS_ASK_PROMPTS,
+  content: contentProp,
   id = 'ask-prompt',
   className,
 }: AskPromptSectionProps) {
+  const { language } = useLanguage();
+  const content = contentProp ?? getAskPromptContent(language);
   const { isMobile, isTablet, prefersReducedMotion, isLowEnd } = usePerfProfile();
   const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '80px' });
   const headerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +35,7 @@ export default function AskPromptSection({
   const [chartsAnimated, setChartsAnimated] = useState(false);
   const compact = isMobile || isTablet;
 
-  const metric = content.metric ?? PEGASUS_ASK_PROMPTS.metric!;
+  const metric = content.metric ?? getAskPromptContent(language).metric!;
 
   useEffect(() => {
     if (isInView && !prefersReducedMotion && !isLowEnd) setChartsAnimated(true);

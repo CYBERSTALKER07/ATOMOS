@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -13,11 +12,14 @@ import (
 )
 
 // Default publisher reliability knobs.
-// MaxAttempts is intentionally very high; WriteTimeout bounds total wait on
-// transient broker/network failures (kafka-go retries within that envelope).
+// WriteTimeout bounds each socket write; MaxAttempts caps kafka-go's internal
+// retries per WriteMessages call. Internal retries MUST stay finite and small:
+// the outbox relay above owns the retry/backoff/DLQ policy, and an unbounded
+// internal retry makes WriteMessages block invisibly (no relay logs), which
+// stalled all event delivery for minutes in SSMR.
 const (
-	defaultKafkaPublishMaxAttempts = math.MaxInt32
-	defaultKafkaPublishWriteTimeout = 30 * time.Second
+	defaultKafkaPublishMaxAttempts  = 3
+	defaultKafkaPublishWriteTimeout = 10 * time.Second
 	defaultKafkaPublishReadTimeout  = 10 * time.Second
 	defaultKafkaPublishBatchTimeout = 250 * time.Millisecond
 )

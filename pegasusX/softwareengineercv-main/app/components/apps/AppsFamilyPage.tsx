@@ -8,15 +8,19 @@ import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
 import type { AppsFamilyConfig } from './AppsFamilyPage.types';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
 type AppsFamilyPageProps = {
   config: AppsFamilyConfig;
+  configRu?: AppsFamilyConfig;
 };
 
-export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
+export default function AppsFamilyPage({ config, configRu }: AppsFamilyPageProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
+  const active = language === 'ru' && configRu ? configRu : config;
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -39,47 +43,47 @@ export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
   }, []);
 
   const navHref =
-    config.surface === 'web'
+    active.surface === 'web'
       ? '/web-apps'
-      : config.surface === 'mobile'
+      : active.surface === 'mobile'
         ? '/mobile-apps'
         : '/desktop-apps';
 
   return (
     <FleekSecondaryLayout
       activeHref={navHref}
-      sectionTitle={config.laneLabel.toUpperCase()}
-      title={config.title}
-      summary={config.subtitle}
+      sectionTitle={active.laneLabel.toUpperCase()}
+      title={active.title}
+      summary={active.subtitle}
       secondaryHref="/apps-deploy"
-      secondaryLabel="ALL SURFACES"
+      secondaryLabel={t('sec_all_surfaces', 'ALL SURFACES')}
       hubId="apps-deploy"
       heroVisual={
         <div className="flex h-full min-h-[180px] items-center justify-center">
-          {config.deviceVisual}
+          {active.deviceVisual}
         </div>
       }
       section06={
         <>
           <section className="docs-section">
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Core surfaces on this channel
+              {t('sec_core_surfaces', 'Core surfaces on this channel')}
             </h2>
             <div ref={gridRef} className="mt-10 editorial-grid grid grid-cols-1 lg:grid-cols-2">
               <div className="lg:col-span-2">
                 <ContentCard
                   variant="featured"
                   tone="light"
-                  tag={config.featured.tag}
-                  title={config.featured.title}
-                  description={config.featured.description}
-                  image={config.featured.image}
-                  href={config.featured.href}
-                  ctaLabel={config.featured.ctaLabel ?? 'REQUEST DEMO'}
+                  tag={active.featured.tag}
+                  title={active.featured.title}
+                  description={active.featured.description}
+                  image={active.featured.image}
+                  href={active.featured.href}
+                  ctaLabel={active.featured.ctaLabel ?? t('nav_demo', 'REQUEST DEMO')}
                   ctaStyle="button"
                 />
               </div>
-              {config.apps.map((app) => (
+              {active.apps.map((app) => (
                 <ContentCard
                   key={app.title}
                   variant={app.variant ?? 'split'}
@@ -89,7 +93,7 @@ export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
                   description={app.description}
                   image={app.image}
                   href={app.href}
-                  ctaLabel={app.ctaLabel ?? 'READ MORE'}
+                  ctaLabel={app.ctaLabel ?? t('btn_read_more', 'READ MORE')}
                   className={app.className}
                 />
               ))}
@@ -98,10 +102,10 @@ export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
 
           <section className="docs-section">
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Why this surface fits the network
+              {t('sec_why_surface_fits', 'Why this surface fits the network')}
             </h2>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {config.features.map((f) => (
+              {active.features.map((f) => (
                 <ContentCard
                   key={f.title}
                   variant="vertical"
@@ -111,7 +115,7 @@ export default function AppsFamilyPage({ config }: AppsFamilyPageProps) {
                   description={f.description}
                   image={f.image}
                   href={f.href}
-                  ctaLabel="READ MORE"
+                  ctaLabel={t('btn_read_more', 'READ MORE')}
                 />
               ))}
             </div>
