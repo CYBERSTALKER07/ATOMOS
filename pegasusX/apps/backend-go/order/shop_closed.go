@@ -818,18 +818,16 @@ func (s *Service) invalidateOrderCache(ctx context.Context, orderID string) {
 }
 
 func outboxMutation(e outbox.Event) *spanner.Mutation {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
 	row := map[string]any{
 		"EventId":       e.EventID,
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
 		"TopicName":     e.TopicName,
 		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
+		// Commit timestamp: row creation time is commit time. Wall-clock
+		// timestamps here fail on any client/host clock skew.
+		"CreatedAt":   spanner.CommitTimestamp,
+		"PublishedAt": nil,
 	}
 	if e.PublishedAt != nil {
 		row["PublishedAt"] = e.PublishedAt.UTC()

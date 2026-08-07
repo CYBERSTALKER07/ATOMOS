@@ -285,20 +285,18 @@ func (s *Service) latestCardPaymentLeg(ctx context.Context, orderID string) (Pay
 }
 
 // bufferedOutboxMutations converts buffered outbox events into OutboxEvents mutations.
-func bufferedOutboxMutations(buf *spannerTxnBuffer, fallback time.Time) []*spanner.Mutation {
+// CreatedAt is the commit timestamp: row creation time is commit time, and
+// wall-clock writes fail under any client/host clock skew.
+func bufferedOutboxMutations(buf *spannerTxnBuffer, _ time.Time) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = fallback
-		}
 		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
 			"EventId":       e.EventID,
 			"AggregateType": e.AggregateType,
 			"AggregateId":   e.AggregateID,
 			"TopicName":     e.TopicName,
 			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
+			"CreatedAt":     spanner.CommitTimestamp,
 			"PublishedAt":   nil,
 		}))
 	}

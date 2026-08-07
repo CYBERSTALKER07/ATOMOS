@@ -24,6 +24,7 @@ const OurApproach = dynamic(() => import('./components/OurApproach'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
+const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
 const Licensing = dynamic(() => import('./components/Licensing'));
 const Footer = dynamic(() => import('./components/Footer'));
 
@@ -69,6 +70,7 @@ export default function Home() {
         <Skills />
         <DevelopmentTools />
         <LaneDivider index="04" label="Proof" />
+        <PegasusTestimonialsSection />
         <Projects />
         <Companies />
         <Licensing />

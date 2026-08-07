@@ -157,6 +157,13 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 			timeout = time.Duration(n) * time.Millisecond
 		}
 	}
+	// EDS signing is mandatory: MY_SOLIQ issues legal tax receipts (EHF), and an
+	// unsigned receipt must never reach the gateway. Fail-closed at construction
+	// instead of per-receipt so misconfiguration surfaces at deploy, not at sale.
+	signer, err := fiscal.SignerFromEnv(os.Getenv("PEGASUSX_ENV"))
+	if err != nil {
+		return nil, err
+	}
 	cfg := soliq.SoliqConfig{
 		BaseURL: base,
 		APIKey:  key,
@@ -166,8 +173,13 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 	return &MySoliqProvider{
 		TIN:         tin,
 		soliqClient: soliq.NewClient(cfg),
-		// Signer is nil initially, it must be injected or set later for EHFs
+		signer:      signer,
 	}, nil
+}
+
+// SetSigner injects the EDS signer (contract tests wire the dev-hmac signer here).
+func (p *MySoliqProvider) SetSigner(signer fiscal.EDSSigner) {
+	p.signer = signer
 }
 
 type mySoliqReceiptRequest struct {

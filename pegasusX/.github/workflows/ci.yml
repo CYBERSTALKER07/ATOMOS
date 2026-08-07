@@ -45,6 +45,10 @@ jobs:
         run: make validate-ai-worker-k8s
       - name: Fail on placeholder / :latest prod images
         run: bash scripts/ci_fail_placeholder_images.sh infra/k8s/overlays/prod
+      - name: Fail on TODO:Inject orphaned-client placeholders
+        run: bash scripts/ci_fail_todo_inject.sh
+      - name: No mock Control Tower strings in retailer clients
+        run: bash scripts/ci_no_mock_control_tower.sh
       - name: Wire-ready gate (prod profile + parity + k8s; no SSMR in CI — see ssmr-infra workflow)
         run: |
           bash scripts/validate_production_profile.sh
@@ -107,6 +111,10 @@ jobs:
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
         run: bash scripts/ci_schema_drift_gate.sh
+      - name: Phase-0 money-path gate (capture/idempotency/credit proofs)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/money_path_gate.sh
 
   ai-worker:
     runs-on: ubuntu-latest
