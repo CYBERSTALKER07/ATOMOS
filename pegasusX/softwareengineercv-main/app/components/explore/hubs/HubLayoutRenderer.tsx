@@ -9,6 +9,8 @@ import FleekPageShell from '@/app/components/fleek/FleekPageShell';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 const FleetScrollShowcase = dynamic(() => import('@/app/components/fleet/FleetScrollShowcase'), {
   ssr: false,
 });
@@ -19,6 +21,8 @@ type HubLayoutRendererProps = {
 };
 
 export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProps) {
+  const { language } = useLanguage();
+  
   const fleetBand =
     config.showFleetBand && hub.id === 'apps-deploy' ? (
       <FleetScrollShowcase
@@ -29,18 +33,24 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
       />
     ) : null;
 
-  const capabilities = hub.topics.map((t, i) => ({
-    title: t.content.title,
-    description: t.content.summary,
-    href: `/${hub.id}/${t.slug}`,
-    image: EDITORIAL_IMAGES[i % EDITORIAL_IMAGES.length],
-    tag: hub.label,
-  }));
+  const capabilities = hub.topics.map((t, i) => {
+    const content = t.content[language] || t.content.en;
+    return {
+      title: content.title,
+      description: content.summary,
+      href: `/${hub.id}/${t.slug}`,
+      image: EDITORIAL_IMAGES[i % EDITORIAL_IMAGES.length],
+      tag: hub.label,
+    };
+  });
 
-  const differentiators = hub.topics.slice(0, 4).map((t) => ({
-    title: t.content.title,
-    description: t.content.summary,
-  }));
+  const differentiators = hub.topics.slice(0, 4).map((t) => {
+    const content = t.content[language] || t.content.en;
+    return {
+      title: content.title,
+      description: content.summary,
+    };
+  });
 
   return (
     <FleekPageShell activeHref={`/${hub.id}`}>

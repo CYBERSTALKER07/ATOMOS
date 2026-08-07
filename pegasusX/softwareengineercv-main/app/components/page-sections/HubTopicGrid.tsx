@@ -6,6 +6,8 @@ import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 import type { TopicPage } from '@/app/data/topicTypes';
 import { cn } from '@/lib/utils';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 const FLEET_HUB_IDS = new Set(['solutions', 'apps-deploy']);
 
 function hubTopicImage(hubId: string, index: number): string {
@@ -28,8 +30,11 @@ export default function HubTopicGrid({
   topics,
   layout = 'uniform',
 }: HubTopicGridProps) {
+  const { language } = useLanguage();
+  
   if (layout === 'featured' && topics.length > 0) {
     const [featured, ...rest] = topics;
+    const featuredContent = featured.content[language] || featured.content.en;
     return (
       <div className="mt-16 space-y-4">
         <ContentCard
@@ -37,24 +42,27 @@ export default function HubTopicGrid({
           tone="light"
           tag={hubLabel}
           title={featured.label}
-          description={featured.description ?? featured.content.summary}
+          description={featured.description ?? featuredContent.summary}
           href={featured.href}
           image={hubTopicImage(hubId, 0)}
           className="min-h-[280px]"
         />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {rest.map((topic, i) => (
-            <ContentCard
-              key={topic.slug}
-              variant="vertical"
-              tone={i % 3 === 0 ? 'light' : 'dark'}
-              tag={hubLabel}
-              title={topic.label}
-              description={topic.description ?? topic.content.summary}
-              href={topic.href}
-              image={hubTopicImage(hubId, i + 1)}
-            />
-          ))}
+          {rest.map((topic, i) => {
+            const content = topic.content[language] || topic.content.en;
+            return (
+              <ContentCard
+                key={topic.slug}
+                variant="vertical"
+                tone={i % 3 === 0 ? 'light' : 'dark'}
+                tag={hubLabel}
+                title={topic.label}
+                description={topic.description ?? content.summary}
+                href={topic.href}
+                image={hubTopicImage(hubId, i + 1)}
+              />
+            );
+          })}
         </div>
       </div>
     );
@@ -63,37 +71,43 @@ export default function HubTopicGrid({
   if (layout === 'masonry') {
     return (
       <div className="mt-16 editorial-bento max-w-none">
-        {topics.map((topic, i) => (
-          <ContentCard
-            key={topic.slug}
-            variant={i % 5 === 0 ? 'featured' : i % 2 === 0 ? 'split' : 'vertical'}
-            tone={i % 4 === 0 ? 'light' : 'dark'}
-            tag={hubLabel}
-            title={topic.label}
-            description={topic.description ?? topic.content.summary}
-            href={topic.href}
-            image={hubTopicImage(hubId, i)}
-            className={cn(i % 5 === 0 && 'md:col-span-2')}
-          />
-        ))}
+        {topics.map((topic, i) => {
+          const content = topic.content[language] || topic.content.en;
+          return (
+            <ContentCard
+              key={topic.slug}
+              variant={i % 5 === 0 ? 'featured' : i % 2 === 0 ? 'split' : 'vertical'}
+              tone={i % 4 === 0 ? 'light' : 'dark'}
+              tag={hubLabel}
+              title={topic.label}
+              description={topic.description ?? content.summary}
+              href={topic.href}
+              image={hubTopicImage(hubId, i)}
+              className={cn(i % 5 === 0 && 'md:col-span-2')}
+            />
+          );
+        })}
       </div>
     );
   }
 
   return (
     <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {topics.map((topic, i) => (
-        <ContentCard
-          key={topic.slug}
-          variant="vertical"
-          tone={i % 3 === 0 ? 'light' : 'dark'}
-          tag={hubLabel}
-          title={topic.label}
-          description={topic.description ?? topic.content.summary}
-          href={topic.href}
-          image={hubTopicImage(hubId, i)}
-        />
-      ))}
+      {topics.map((topic, i) => {
+        const content = topic.content[language] || topic.content.en;
+        return (
+          <ContentCard
+            key={topic.slug}
+            variant="vertical"
+            tone={i % 3 === 0 ? 'light' : 'dark'}
+            tag={hubLabel}
+            title={topic.label}
+            description={topic.description ?? content.summary}
+            href={topic.href}
+            image={hubTopicImage(hubId, i)}
+          />
+        );
+      })}
     </div>
   );
 }

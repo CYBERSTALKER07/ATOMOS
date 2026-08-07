@@ -40,14 +40,16 @@ export const DEFAULT_MEGA_PROMO: MegaNavPromo = {
   secondaryHref: '/join',
 };
 
-export const getMegaNavFooterLinks = (t: any) => [
+export const MEGA_NAV_FOOTER_LINKS = [
   { label: 'About', href: '/#about' },
   { label: 'Request Demo', href: '/join' },
   { label: 'Contact', href: '/contact' },
   { label: 'All Modules', href: '/projects' },
 ];
 
-export const getMegaNavCategories = (t: any): MegaNavCategory[] => [
+export const getMegaNavFooterLinks = (_t?: any) => MEGA_NAV_FOOTER_LINKS;
+
+export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
   {
     id: 'platform',
     label: 'Platform',
@@ -215,7 +217,9 @@ export const getMegaNavCategories = (t: any): MegaNavCategory[] => [
       { slug: 'payments-treasury', label: 'Payments & Treasury', description: 'Financial integrity across the network.', href: topicHref('apps-deploy', 'payments-treasury'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
       { slug: 'realtime-coordination', label: 'Realtime Coordination', description: 'Live updates across every surface.', href: topicHref('apps-deploy', 'realtime-coordination'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'enterprise-rollout', label: 'Enterprise Rollout', description: 'Multi-site networks and deployment pillars.', href: topicHref('apps-deploy', 'enterprise-rollout'), flow: 'controlPlane' },
-      { slug: 'request-demo', label: 'Request Demo', description: 'Live walkthrough with the Pegasus team.', href: topicHref('apps-deploy', 'request-demo'), flow: 'orderLifecycle' },
     ],
   },
 ];
+
+export const getMegaNavCategories = (_t?: any): MegaNavCategory[] => MEGA_NAV_CATEGORIES;
+

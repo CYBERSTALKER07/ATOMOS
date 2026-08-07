@@ -20,7 +20,9 @@ func e2eTimeout() time.Duration {
 			return time.Duration(secs) * time.Second
 		}
 	}
-	return 3 * time.Minute
+	// The full ecosystem chain (orders, claims, refunds, partner export polling)
+	// no longer fits in 3 minutes even on a healthy stack.
+	return 8 * time.Minute
 }
 
 // runE2ECheck exercises supplier topology, retailer registration, order create,

@@ -35,12 +35,16 @@ func TestUpdateOrder_ClosureReplayIsIdempotent(t *testing.T) {
 			"OrderId":            orderID,
 			"RetailerId":         "ret-replay",
 			"SupplierId":         "sup-replay",
-			"Status":             string(StatusDraft),
+			"WarehouseId":        "wh-replay",
+			"Status":             string(StatusPending),
 			"OrderSource":        string(OrderSourceManual),
 			"ConfirmationStatus": string(ConfirmationStatusConfirmed),
 			"LineItemsJson":      []byte("[]"),
 			"TotalMinor":         int64(1000),
 			"Currency":           "UZS",
+			"H3Cell":             "",
+			"Lat":                float64(41.31),
+			"Lng":                float64(69.25),
 			"Version":            int64(1),
 			"CreatedAt":          now,
 			"UpdatedAt":          now,
@@ -55,7 +59,7 @@ func TestUpdateOrder_ClosureReplayIsIdempotent(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("get order: ok=%v err=%v", ok, err)
 	}
-	current.Status = StatusConfirmed
+	current.Status = StatusCompleted
 
 	// Force the transaction fn to be replayed: first invocation returns
 	// Aborted, which the Spanner client treats as a transaction abort and
@@ -88,8 +92,8 @@ func TestUpdateOrder_ClosureReplayIsIdempotent(t *testing.T) {
 	if version != 2 {
 		t.Errorf("want Version=2 after single update, got %d", version)
 	}
-	if statusVal != string(StatusConfirmed) {
-		t.Errorf("want Status=%s, got %s", StatusConfirmed, statusVal)
+	if statusVal != string(StatusCompleted) {
+		t.Errorf("want Status=%s, got %s", StatusCompleted, statusVal)
 	}
 
 	// A genuinely stale caller struct must still fail the CAS cleanly.

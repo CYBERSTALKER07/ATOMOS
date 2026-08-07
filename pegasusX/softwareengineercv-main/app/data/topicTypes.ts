@@ -59,6 +59,11 @@ export type TopicContent = {
   proofItems?: ProofItem[];
 };
 
+export type BilingualContent = {
+  en: TopicContent;
+  ru?: TopicContent;
+};
+
 export type TopicPage = {
   categoryId: string;
   categoryLabel: string;
@@ -67,7 +72,7 @@ export type TopicPage = {
   description?: string;
   badge?: 'NEW';
   href: string;
-  content: TopicContent;
+  content: BilingualContent;
 };
 
 export const EXPLORE_CATEGORY_IDS = [

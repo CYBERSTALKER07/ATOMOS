@@ -16,6 +16,8 @@ function imageFor(flow: FlowVariant, index: number) {
   return EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length];
 }
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 export function O9RelatedUseCases({
   siblings,
   categoryLabel,
@@ -25,6 +27,7 @@ export function O9RelatedUseCases({
   categoryLabel: string;
   flow: FlowVariant;
 }) {
+  const { language } = useLanguage();
   if (!siblings.length) return null;
   return (
     <section className="docs-section">
@@ -33,19 +36,22 @@ export function O9RelatedUseCases({
         Related use cases on the Pegasus platform
       </h2>
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {siblings.slice(0, 6).map((s, i) => (
-          <ContentCard
-            key={s.slug}
-            variant="vertical"
-            tone="dark"
-            tag={categoryLabel}
-            title={s.label}
-            description={s.description ?? s.content.summary}
-            href={s.href}
-            image={imageFor(flow, i)}
-            ctaLabel="Read more"
-          />
-        ))}
+        {siblings.slice(0, 6).map((s, i) => {
+          const content = s.content[language] || s.content.en;
+          return (
+            <ContentCard
+              key={s.slug}
+              variant="vertical"
+              tone="dark"
+              tag={categoryLabel}
+              title={s.label}
+              description={s.description ?? content.summary}
+              href={s.href}
+              image={imageFor(flow, i)}
+              ctaLabel="Read more"
+            />
+          );
+        })}
       </div>
     </section>
   );

@@ -76,7 +76,7 @@ export function getSiblingTopics(categoryId: string, slug: string, limit = 4): T
   return ALL_TOPICS.filter((t) => t.categoryId === categoryId && t.slug !== slug).slice(0, limit);
 }
 
-export function getTopicContentOrThrow(categoryId: string, slug: string): TopicContent {
+export function getTopicContentOrThrow(categoryId: string, slug: string): BilingualContent {
   const topic = getTopicByPath(categoryId, slug);
   if (!topic) throw new Error(`Missing topic: ${categoryId}/${slug}`);
   return topic.content;

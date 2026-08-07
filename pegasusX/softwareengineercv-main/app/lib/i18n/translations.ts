@@ -103,10 +103,10 @@ export const translations = {
     // Site Assistant / Grok Modal
     assistant_title: 'Pegasus AI Assistant',
     assistant_badge: 'GROK ARCHITECTURE · REALTIME ENGINE',
-    assistant_placeholder: 'Ask about Pegasus architecture, Cloud Spanner outbox, roles, or competitive matrix...',
+    assistant_placeholder: 'Ask about Pegasus architecture, roles, or competitive matrix...',
     assistant_quick_prompts: 'QUICK KNOWLEDGE PROMPTS',
     assistant_suggested_1: 'Why choose Pegasus over Amazon AWS Supply Chain & o9?',
-    assistant_suggested_2: 'Explain Go backend, Cloud Spanner outbox & WebSockets.',
+    assistant_suggested_2: 'Explain WebSockets & Realtime engine.',
     assistant_suggested_3: 'How does Pegasus handle offline drivers & mobile queues?',
     assistant_suggested_4: 'Compare Pegasus against Oracle SCM, Google Twin & Blue Yonder.',
 
@@ -129,6 +129,27 @@ export const translations = {
     btn_request_demo: 'REQUEST DEMO',
     btn_chat_telegram: 'TELEGRAM @DominusMunerum',
     btn_explore: 'EXPLORE PLATFORM',
+    
+    // Admin Dashboard
+    admin_title: 'Demo applications',
+    admin_subtitle: 'Manage demo requests submitted from the join form.',
+    admin_new: 'new',
+    admin_nav_apps: 'Applications',
+    admin_nav_messages: 'Messages',
+    admin_new_app: 'New Application!',
+    admin_view_details: 'View Details →',
+    admin_no_apps: 'No applications yet',
+    admin_no_apps_desc: 'Applications appear here when someone submits the join form.',
+    admin_badge_new: 'NEW',
+    admin_modal_title: 'Application Details',
+    admin_label_name: 'Name',
+    admin_label_email: 'Email',
+    admin_label_position: 'Position',
+    admin_label_portfolio: 'Portfolio',
+    admin_label_message: 'Message',
+    admin_label_submitted: 'Submitted',
+    admin_btn_close: 'Close',
+    admin_btn_delete: 'Delete',
   },
   ru: {
     // Navigation & Header
@@ -234,10 +255,10 @@ export const translations = {
     // Site Assistant / Grok Modal
     assistant_title: 'ИИ-Ассистент Pegasus',
     assistant_badge: 'АРХИТЕКТУРА GROK · ИИ-ДВИЖОК РЕАЛЬНОГО ВРЕМЕНИ',
-    assistant_placeholder: 'Задайте вопрос об архитектуре Pegasus, Cloud Spanner, ролях или сравнении с конкурентами...',
+    assistant_placeholder: 'Задайте вопрос об архитектуре Pegasus, ролях или сравнении с конкурентами...',
     assistant_quick_prompts: 'БЫСТРЫЕ ВОПРОСЫ ПО БАЗЕ ЗНАНИЙ',
     assistant_suggested_1: 'Почему Pegasus превосходит Amazon AWS Supply Chain и o9?',
-    assistant_suggested_2: 'Объясните backend на Go, transactional outbox в Cloud Spanner и WebSockets.',
+    assistant_suggested_2: 'Объясните работу WebSockets и движка реального времени.',
     assistant_suggested_3: 'Как Pegasus обрабатывает оффлайн-режим водителей и очереди в мобильных приложениях?',
     assistant_suggested_4: 'Сравните Pegasus с Oracle SCM, Google Twin и Blue Yonder.',
 
@@ -260,7 +281,30 @@ export const translations = {
     btn_request_demo: 'ЗАПРОСИТЬ ДЕМО',
     btn_chat_telegram: 'TELEGRAM @DominusMunerum',
     btn_explore: 'ИЗУЧИТЬ ПЛАТФОРМУ',
+    
+    // Admin Dashboard
+    admin_title: 'Заявки на демо',
+    admin_subtitle: 'Управление заявками на демо из формы.',
+    admin_new: 'новых',
+    admin_nav_apps: 'Заявки',
+    admin_nav_messages: 'Сообщения',
+    admin_new_app: 'Новая заявка!',
+    admin_view_details: 'Смотреть детали →',
+    admin_no_apps: 'Пока нет заявок',
+    admin_no_apps_desc: 'Заявки появятся здесь, когда кто-то заполнит форму.',
+    admin_badge_new: 'НОВАЯ',
+    admin_modal_title: 'Детали заявки',
+    admin_label_name: 'Имя',
+    admin_label_email: 'Email',
+    admin_label_position: 'Должность',
+    admin_label_portfolio: 'Сайт/Портфолио',
+    admin_label_message: 'Сообщение',
+    admin_label_submitted: 'Отправлено',
+    admin_btn_close: 'Закрыть',
+    admin_btn_delete: 'Удалить',
   },
 } as const;
 
 export type TranslationKey = keyof typeof translations.en;
+export type Language = keyof typeof translations;
+

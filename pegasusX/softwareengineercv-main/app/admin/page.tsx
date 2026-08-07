@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import AdminShell from './components/AdminShell';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Application {
   id: string;
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [notification, setNotification] = useState<Application | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     document.title = 'Admin Dashboard | Applications';
@@ -126,18 +128,18 @@ export default function AdminPage() {
 
   return (
     <AdminShell
-      title="Demo applications"
-      subtitle="Manage demo requests submitted from the join form."
+      title={t('admin_title')}
+      subtitle={t('admin_subtitle')}
       badge={
         unreadCount > 0 ? (
           <span className="border border-[#FBFF63] bg-[#FBFF63]/10 px-4 py-2 font-mono text-sm text-[#FBFF63]">
-            {unreadCount} new
+            {unreadCount} {t('admin_new')}
           </span>
         ) : undefined
       }
       nav={[
-        { label: 'Applications', href: '/admin', active: true },
-        { label: 'Messages', href: '/admin/messages' },
+        { label: t('admin_nav_apps'), href: '/admin', active: true },
+        { label: t('admin_nav_messages'), href: '/admin/messages' },
       ]}
     >
       {notification && (
@@ -150,14 +152,14 @@ export default function AdminPage() {
               <span className="text-xl md:text-2xl">🎉</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-light text-base md:text-lg mb-1 text-[#8DDC96]">New Application!</h4>
+              <h4 className="font-light text-base md:text-lg mb-1 text-[#8DDC96]">{t('admin_new_app')}</h4>
               <p className="text-white font-semibold text-sm md:text-base truncate">{notification.name}</p>
               <p className="text-gray-400 text-xs md:text-sm truncate">{notification.position}</p>
               <button
                 onClick={() => viewApplication(notification)}
                 className="mt-2 md:mt-3 text-[#8DDC96] hover:text-white transition-colors text-xs md:text-sm font-semibold"
               >
-                View Details →
+                {t('admin_view_details')}
               </button>
             </div>
             <button
@@ -180,9 +182,9 @@ export default function AdminPage() {
       <div ref={listRef}>
           {applications.length === 0 ? (
             <div className="border border-white/15 p-8 text-center md:p-12">
-              <h3 className="text-xl font-semibold">No applications yet</h3>
+              <h3 className="text-xl font-semibold">{t('admin_no_apps')}</h3>
               <p className="mt-2 text-sm text-white/50">
-                Applications appear here when someone submits the join form.
+                {t('admin_no_apps_desc')}
               </p>
             </div>
           ) : (
@@ -204,7 +206,7 @@ export default function AdminPage() {
                         <h3 className="font-semibold">{app.name}</h3>
                         {!app.read ? (
                           <span className="bg-[#FBFF63] px-2 py-0.5 font-mono text-[10px] text-black">
-                            NEW
+                            {t('admin_badge_new')}
                           </span>
                         ) : null}
                       </div>
@@ -226,7 +228,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-2xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl md:text-3xl font-light">Application Details</h2>
+              <h2 className="text-2xl md:text-3xl font-light">{t('admin_modal_title')}</h2>
               <button
                 onClick={closeModal}
                 className="text-white hover:text-[#FE5934] transition-colors text-xl md:text-2xl flex-shrink-0 ml-4"
@@ -237,12 +239,12 @@ export default function AdminPage() {
 
             <div className="space-y-6">
               <div>
-                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Name</label>
+                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_name')}</label>
                 <p className="text-lg md:text-xl font-light mt-1 break-words">{selectedApp.name}</p>
               </div>
 
               <div>
-                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Email</label>
+                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_email')}</label>
                 <a 
                   href={`mailto:${selectedApp.email}`}
                   className="text-lg md:text-xl font-light mt-1 block text-[#A9EBF9] hover:text-white transition-colors break-all"
@@ -252,13 +254,13 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Position</label>
+                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_position')}</label>
                 <p className="text-lg md:text-xl font-light mt-1 break-words">{selectedApp.position}</p>
               </div>
 
               {selectedApp.portfolio && (
                 <div>
-                  <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Portfolio</label>
+                  <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_portfolio')}</label>
                   <a 
                     href={selectedApp.portfolio}
                     target="_blank"
@@ -272,7 +274,7 @@ export default function AdminPage() {
 
               {selectedApp.message && (
                 <div>
-                  <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Message</label>
+                  <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_message')}</label>
                   <p className="text-sm md:text-lg mt-2 leading-relaxed bg-black p-4 rounded-xl border-2 border-white break-words">
                     {selectedApp.message}
                   </p>
@@ -280,16 +282,16 @@ export default function AdminPage() {
               )}
 
               <div>
-                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Submitted</label>
+                <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_submitted')}</label>
                 <p className="text-sm md:text-lg mt-1">{new Date(selectedApp.timestamp).toLocaleString()}</p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <button type="button" onClick={closeModal} className="editorial-btn editorial-btn--inverted flex-1">
-                  Close
+                  {t('admin_btn_close')}
                 </button>
                 <button type="button" onClick={() => deleteApplication(selectedApp.id)} className="editorial-btn flex-1">
-                  Delete
+                  {t('admin_btn_delete')}
                 </button>
               </div>
             </div>

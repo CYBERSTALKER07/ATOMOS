@@ -4,6 +4,7 @@ import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 import { BRAND_LOGO, OG_IMAGE } from "@/app/lib/siteAssets";
 import { absoluteAsset, SITE_NAME, SITE_URL } from "@/app/lib/seo";
+import { getServerLanguage } from "@/app/lib/i18n/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -93,13 +94,14 @@ export const metadata: Metadata = {
     : {}),
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = await getServerLanguage();
   return (
-    <html lang="en">
+    <html lang={lang}>
       <head>
         <meta name="theme-color" content="#000000" />
       </head>
@@ -112,7 +114,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <ClientLayout>
+        <ClientLayout initialLanguage={lang}>
           <main id="main-content" tabIndex={-1} className="outline-none">
             {children}
           </main>

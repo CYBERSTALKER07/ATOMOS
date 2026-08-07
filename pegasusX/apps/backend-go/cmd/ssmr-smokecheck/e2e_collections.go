@@ -32,8 +32,8 @@ func runCollectionsDunningE2E(
 	}
 	defer spannerClient.Close()
 
-	invoiceID := "ari-e2e-" + uuid.NewString()
-	orderID := "ord-dunning-" + uuid.NewString()
+	invoiceID := fmt.Sprintf("ari-e2e-%s", uuid.NewString()[:20])
+	orderID := fmt.Sprintf("ord-dun-%s", uuid.NewString()[:18])
 	now := time.Now().UTC()
 	dueAt := now.Add(-22 * 24 * time.Hour)
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{

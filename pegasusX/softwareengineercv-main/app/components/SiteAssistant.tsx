@@ -32,13 +32,6 @@ const QUICK_ACTIONS_RU: QuickAction[] = [
     prompt: 'Сравните Pegasus с гигантами отрасли и legacy ERP (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). В чем наши ключевые преимущества?',
   },
   {
-    id: 'tech-stack',
-    badge: 'TECH',
-    label: 'Backend на Go, Spanner и Transactional Outbox',
-    category: 'tech',
-    prompt: 'Расскажите о технической архитектуре Pegasus: микросервисы на Go, транзакции в Cloud Spanner, паттерн Transactional Outbox, Kafka, WebSockets и оффлайн-синхронизация.',
-  },
-  {
     id: 'role-parity',
     badge: 'ROLES',
     label: '6 ключевых ролей в единой экосистеме',
@@ -64,13 +57,6 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Why Pegasus vs Amazon, o9 & Oracle?',
     category: 'versus',
     prompt: 'Compare Pegasus with tech giants & legacy ERPs (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). Why choose Pegasus?',
-  },
-  {
-    id: 'tech-stack',
-    badge: 'TECH',
-    label: 'Go Backend, Spanner & Outbox System',
-    category: 'tech',
-    prompt: 'Explain the technical architecture of Pegasus: Go microservices, Cloud Spanner transactions, Transactional Outbox pattern, Kafka, WebSockets, and offline mobile sync.',
   },
   {
     id: 'six-roles',
@@ -149,12 +135,35 @@ const SIDEBAR_CATEGORIES = [
   },
 ];
 
-const HIDDEN_PREFIXES = ['/admin', '/resume'];
+const HIDDEN_PREFIXES = ['/admin', '/resume', '/platform', '/roles', '/technology', '/solutions'];
 const WELCOME =
   'Welcome to Pegasus. Ask anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
 
 function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function FormattedMessage({ text }: { text: string }) {
+  const formatBold = (str: string) => {
+    const parts = str.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  return (
+    <>
+      {text.split('\n').map((line, i) => (
+        <span key={i}>
+          {formatBold(line)}
+          <br />
+        </span>
+      ))}
+    </>
+  );
 }
 
 export default function SiteAssistant() {
@@ -365,11 +374,6 @@ export default function SiteAssistant() {
           className={`site-assistant__panel ${fullscreen ? 'site-assistant__panel--grok-modal' : 'site-assistant__panel--chat'}`}
           role="dialog"
           aria-label="Pegasus assistant"
-          onClick={(e) => {
-            if (fullscreen && e.target === e.currentTarget) {
-              setOpen(false);
-            }
-          }}
         >
           <div className="site-assistant__chat-card">
             
@@ -467,7 +471,7 @@ export default function SiteAssistant() {
                     </div>
                     
                     <div className="site-assistant__msg-body">
-                      {msg.content}
+                      <FormattedMessage text={msg.content} />
                     </div>
                   </div>
                 ))}
