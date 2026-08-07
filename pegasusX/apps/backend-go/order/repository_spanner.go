@@ -247,7 +247,10 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}
 		}
 
-		o.Version++
+		// Derive from the version read in this transaction, not the caller struct:
+		// Spanner may abort and re-run this closure, and `o.Version++` would then
+		// compare an already-incremented copy against the still-old row.
+		o.Version = version + 1
 		o.UpdatedAt = time.Now().UTC()
 
 		buf := &spannerTxnBuffer{}
@@ -1548,7 +1551,10 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 			}
 		}
 
-		o.Version++
+		// Derive from the version read in this transaction, not the caller struct:
+		// Spanner may abort and re-run this closure, and `o.Version++` would then
+		// compare an already-incremented copy against the still-old row.
+		o.Version = version + 1
 		o.UpdatedAt = time.Now().UTC()
 
 		buf := &spannerTxnBuffer{}

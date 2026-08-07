@@ -55,7 +55,7 @@ const QUICK_ACTIONS_RU: QuickAction[] = [
 ];
 
 const WELCOME_RU =
-  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте о нашей Go-архитектуре, Cloud Spanner outbox или почему клиенты выбирают нас вместо Amazon AWS Supply Chain и o9.';
+  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте, почему клиенты выбирают нас вместо Amazon AWS Supply Chain и o9.';
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
@@ -253,6 +253,7 @@ export default function SiteAssistant() {
       const isOutsideLauncher = launcherRef.current && !launcherRef.current.contains(targetNode);
 
       if (isOutsideContainer && isOutsideLauncher) {
+        if (fullscreen) return;
         setOpen(false);
         setFullscreen(false);
       }

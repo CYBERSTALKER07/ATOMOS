@@ -23,7 +23,6 @@ help:
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
 	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  schema-drift-gate         EH0.3 fail if shop-closed Spanner columns/tables missing"
-&
 	@echo "  phase1-gate               Phase-1 exit gate: AR/refund/payout/billing proofs + Soliq + GP simulator"
 	@echo "  apply-shop-closed-ddl     EH0.2 apply 20260729 shop-closed DDL + verify (SSMR default)"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"

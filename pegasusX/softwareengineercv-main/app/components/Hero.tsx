@@ -6,10 +6,7 @@ import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
-import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
 import { useLanguage } from '../context/LanguageContext';
-
-const HERO_VIDEO_PAUSE_AT = 5;
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
@@ -22,7 +19,6 @@ export default function Hero() {
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const typedPhrases = [
     t('hero_type_1'),
@@ -31,55 +27,6 @@ export default function Hero() {
     t('hero_type_4'),
   ];
 
-  const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
-    if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
-      video.pause();
-      video.currentTime = HERO_VIDEO_PAUSE_AT;
-    }
-  }, []);
-
-  const playIntro = useCallback(async (video: HTMLVideoElement) => {
-    video.currentTime = 0;
-    try {
-      await video.play();
-    } catch {
-      video.pause();
-      video.currentTime = 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (prefersReducedMotion) {
-      video.pause();
-      video.currentTime = 0;
-      return;
-    }
-
-    video.muted = true;
-
-    const onTimeUpdate = () => clampAndPauseAtMark(video);
-    const startIntro = () => {
-      void playIntro(video);
-    };
-
-    video.addEventListener('timeupdate', onTimeUpdate);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      startIntro();
-    } else {
-      video.addEventListener('loadeddata', startIntro, { once: true });
-      video.addEventListener('canplay', startIntro, { once: true });
-    }
-
-    return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadeddata', startIntro);
-      video.removeEventListener('canplay', startIntro);
-    };
-  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -229,14 +176,9 @@ export default function Hero() {
           >
             <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[120px] sm:rounded-tl-[160px] lg:rounded-tl-[200px] rounded-br-[60px] sm:rounded-br-[80px] lg:rounded-br-[100px] border-none">
               <div className="absolute inset-0">
-                <video
-                  ref={videoRef}
-                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
-                  poster={HERO_VIDEO_POSTER}
+                <img
+                  src="/EbszSCwA.jpeg"
+                  alt="Pegasus Logistics"
                   className="h-full w-full object-cover"
                 />
               </div>
