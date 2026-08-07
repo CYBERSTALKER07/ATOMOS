@@ -6108,7 +6108,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 /* ── Grok Full-Screen Modal & Layout Overrides ── */
-.site-assistant--fullscreen {
+.site-assistant[data-open="true"].site-assistant--fullscreen {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;

@@ -194,7 +194,15 @@ export default function SiteAssistant() {
   // Close assistant on route changes
   useEffect(() => {
     setOpen(false);
+    setFullscreen(false);
   }, [pathname]);
+
+  // Reset fullscreen when closed
+  useEffect(() => {
+    if (!open) {
+      setFullscreen(false);
+    }
+  }, [open]);
 
   // Auto-scroll message list when new messages arrive
   useEffect(() => {
@@ -246,6 +254,7 @@ export default function SiteAssistant() {
 
       if (isOutsideContainer && isOutsideLauncher) {
         setOpen(false);
+        setFullscreen(false);
       }
     }
 
@@ -264,11 +273,8 @@ export default function SiteAssistant() {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (fullscreen) {
-          setFullscreen(false);
-        } else {
-          setOpen(false);
-        }
+        setOpen(false);
+        setFullscreen(false);
       }
     }
 
@@ -276,7 +282,7 @@ export default function SiteAssistant() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open, fullscreen]);
+  }, [open]);
 
   if (HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
     return null;
@@ -348,7 +354,7 @@ export default function SiteAssistant() {
 
   return (
     <div 
-      className={`site-assistant ${fullscreen ? 'site-assistant--fullscreen' : ''}`} 
+      className={`site-assistant ${open && fullscreen ? 'site-assistant--fullscreen' : ''}`} 
       data-open={open ? 'true' : 'false'}
     >
       {open ? (
