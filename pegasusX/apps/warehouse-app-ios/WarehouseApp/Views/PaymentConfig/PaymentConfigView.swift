@@ -12,14 +12,14 @@ struct PaymentConfigView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if gateways.isEmpty {
-                ContentUnavailableView("No Gateways", systemImage: "creditcard", description: Text("No payment gateways configured"))
+                ContentUnavailableView("No Gateways", systemImage: "creditcard", description: Text("warehouse_portal.payment_config.text.no_payment_gateways_configured"))
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(gateways) { gw in

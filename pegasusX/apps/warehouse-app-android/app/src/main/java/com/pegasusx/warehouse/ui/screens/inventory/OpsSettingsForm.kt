@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
@@ -59,7 +61,7 @@ fun OpsSettingsForm(
     onScheduleJSONChange: (String) -> Unit,
     scheduleError: String?,
 ) {
-    SettingsCard(title = "Pre-order lead window") {
+    SettingsCard(title = stringResource(R.string.warehouse_portal_settings_ops_settings_form_text_pre_order_lead_window)) {
         Text(
             "Retailers can request delivery between these lead days from today.",
             style = MaterialTheme.typography.bodySmall,
@@ -83,7 +85,7 @@ fun OpsSettingsForm(
         }
     }
 
-    SettingsCard(title = "Out-of-stock orders") {
+    SettingsCard(title = stringResource(R.string.warehouse_portal_settings_ops_settings_form_text_out_of_stock_orders)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -96,18 +98,18 @@ fun OpsSettingsForm(
             )
         }
         PolicyOption(
-            label = "Reject orders when out of stock",
+            label = stringResource(R.string.supplier_portal_residual_text_reject_orders_when_out_of_stock),
             selected = policy == "REJECT",
             onSelect = { onPolicyChange("REJECT") },
         )
         PolicyOption(
-            label = "Accept orders — warn retailer, fulfill when stock arrives",
+            label = stringResource(R.string.mobile_warehouse_ui_accept_orders_warn_retailer_fulfill_when_stock_arrives),
             selected = policy == "ACCEPT_BACKORDER",
             onSelect = { onPolicyChange("ACCEPT_BACKORDER") },
         )
     }
 
-    SettingsCard(title = "Retailer catalog display") {
+    SettingsCard(title = stringResource(R.string.mobile_warehouse_ui_retailer_catalog_display)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -118,7 +120,7 @@ fun OpsSettingsForm(
         }
     }
 
-    SettingsCard(title = "Order line quantity limits") {
+    SettingsCard(title = stringResource(R.string.mobile_warehouse_ui_order_line_quantity_limits)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = clearOrderLineMin, onCheckedChange = onClearOrderLineMinChange)
             Text("No minimum quantity", style = MaterialTheme.typography.bodyMedium)
@@ -147,7 +149,7 @@ fun OpsSettingsForm(
         }
     }
 
-    SettingsCard(title = "Express delivery") {
+    SettingsCard(title = stringResource(R.string.mobile_warehouse_ui_express_delivery)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -165,7 +167,7 @@ fun OpsSettingsForm(
         )
     }
 
-    SettingsCard(title = "Delivery fee rules") {
+    SettingsCard(title = stringResource(R.string.mobile_warehouse_ui_delivery_fee_rules)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = clearFeeRules, onCheckedChange = onClearFeeRulesChange)
             Text("No delivery fee rules", style = MaterialTheme.typography.bodyMedium)
@@ -222,7 +224,7 @@ fun OpsSettingsForm(
         }
     }
 
-    SettingsCard(title = "Order acceptance hours") {
+    SettingsCard(title = stringResource(R.string.warehouse_portal_settings_ops_settings_form_text_order_acceptance_hours)) {
         Text(
             "When enforcement is on, retailers cannot preview or create orders outside the window.",
             style = MaterialTheme.typography.bodySmall,

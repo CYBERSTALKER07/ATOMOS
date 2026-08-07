@@ -296,14 +296,14 @@ Until SG passes, these stay **Theatre / Partial** (see `PLATFORM_AUDIT.md` §2):
 | ~~Touchless `MinConfidenceScore`~~ | **WIRED** — `TouchlessEligible` + tests | — |
 | ~~AI confidence gate always-pass~~ | **WIRED** — base 0.15 / rejectable + tests | — |
 | Promo elasticity / closed-loop | **Partial** — elasticity input + line `promotion_id` attribution | Demand-model curves still open; keep `sandbox_only` |
-| Seasonality multipliers | READERS missing | Multiply in forecast qty or remove UI |
+| Seasonality multipliers | **WIRED** — persisted override `Multiplier` + `seasonalcore` shared windows on forecast + replenishment | Residual: HW annual library / weather; estimate drafts flag-gated |
 | Weather/POS “signals” | SOURCES fake constants | Real feed or delete |
 | Forecast MAPE in portal | **WIRED** server WAPE/bias/TS (`ForecastAccuracyDaily`) | Enable `FORECAST_ACCURACY_ENABLED` + migration |
 | Billing meter | WIRED (schema + amount_minor decode) | Residual: fee schedule / invoices; e2e meter event |
 | Soliq legal OFD | PROOF skipped | `PX_E2E_SOLIQ_SANDBOX_OK` required |
-| Cold chain | **Partial** — solver flags + WMS ingest | Always-on prod sensor fleet / full excursion automation |
-| Multi-currency FX | **Partial→Wired (Wave 1)** — `FxRates` + `ConvertMinor` + mismatch gate | Residual: multi-currency ledger / Airwallex FX / client pickers — [`FX_RATES.md`](./FX_RATES.md) |
-| i18n catalogs | **Desktop portals UI: Wired (draft translations)**; mobile still Partial / unwired | Do not claim full-platform or certified-linguistic Done |
+| Cold chain | **Partial→Wired** — solver flags + WMS ingest + band hydrate + TEMPERATURE_BREACH auto-raise | Residual: Bluetooth sensor fleet / cumulative minutes |
+| Multi-currency FX | **Partial→Wired (Wave 1+2+)** — `FxRates` + `ConvertMinor` + mismatch gate + billing/settlement operating rollup + portal FX UI + flag-gated order currency picker | Residual: multi-currency AR ledger / Airwallex FX — [`FX_RATES.md`](./FX_RATES.md) |
+| i18n catalogs | **Desktop + Mobile UI: Wired (draft) incl. interpolations** | Do not claim certified-linguistic Done; ICU plurals / embedded-copy residuals remain |
 | Mobile shared kit / offline (§8.8) | **Partial→Wired** — kit packages + capture-time coords + Room migrations; scan UX residual | See [`MOBILE_SHARED_KIT.md`](./MOBILE_SHARED_KIT.md); PR-7 scan still open |
 | Supplier/WH claim-window **portal UX** | UI missing (API Done) | Portal/settings screens |
 | Quantity negotiations | Flag off / SKIPPED | Product enable + OK marker |

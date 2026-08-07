@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dashboard.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,7 +73,7 @@ fun PredictionCard(
                     if (forecast.isBlocked) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Insufficient history",
+                            text = stringResource(R.string.mobile_retailer_ui_insufficient_history),
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
                             color = StatusOrange,
                             modifier = Modifier
@@ -100,7 +102,7 @@ fun PredictionCard(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "units",
+                    text = stringResource(R.string.retailer_desktop_auto_order_auto_order_list_text_units),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -110,7 +112,7 @@ fun PredictionCard(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.AddShoppingCart,
-                        contentDescription = "Create preorder",
+                        contentDescription = stringResource(R.string.mobile_retailer_ui_create_preorder),
                     )
                 }
             }
@@ -159,7 +161,7 @@ fun ConfidenceRing(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "${(confidence * 100).toInt()}%",
+            text = stringResource(R.string.mobile_retailer_ui_toint, (confidence * 100).toInt()),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = color,

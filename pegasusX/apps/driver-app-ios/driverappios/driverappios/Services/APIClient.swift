@@ -578,10 +578,12 @@ final class APIClient: @unchecked Sendable {
     func markCreditDelivery(
         orderId: String,
         photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
         forceBypassToken: String? = nil
     ) async throws -> [String: String] {
         var body: [String: String] = ["order_id": orderId]
         if let url = photoProofUrl { body["photo_proof_url"] = url }
+        if let url = signatureUrl { body["signature_url"] = url }
         if let token = forceBypassToken { body["force_bypass_token"] = token }
         return try await post(
             "v1/delivery/credit-delivery",

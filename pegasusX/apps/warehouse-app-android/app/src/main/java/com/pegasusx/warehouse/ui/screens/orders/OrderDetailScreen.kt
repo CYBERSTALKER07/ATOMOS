@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -207,7 +209,7 @@ fun OrderDetailScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     Text(
-                        "Order $orderId",
+                        stringResource(R.string.mobile_warehouse_ui_order_orderid, orderId),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -313,7 +315,7 @@ fun OrderDetailScreen(
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            text = "Retailer: ${current.retailerName.ifBlank { "—" }}",
+                            text = stringResource(R.string.mobile_warehouse_ui_retailer_ifblank, current.retailerName.ifBlank { "—" }),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

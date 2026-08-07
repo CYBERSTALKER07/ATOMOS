@@ -44,7 +44,7 @@ struct CategoryProductsView: View {
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(AppTheme.textPrimary)
                                 Spacer()
-                                Text("\(group.products.count) items")
+                                Text(L10n.format("mobile_retailer.ui.count_items_2", "\(group.products.count)"))
                                     .font(.system(.caption2, design: .rounded))
                                     .foregroundStyle(AppTheme.textTertiary)
                             }
@@ -156,10 +156,10 @@ struct CategoryProductsView: View {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
                 Image(systemName: category.icon).font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
             }
-            Text("No Products")
+            Text("mobile_retailer.ui.no_products")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("No products found in \(category.name)")
+            Text(L10n.format("mobile_retailer.ui.no_products_found_in_name", "\(category.name)"))
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()

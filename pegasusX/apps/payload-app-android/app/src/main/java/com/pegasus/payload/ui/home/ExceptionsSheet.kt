@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,13 +51,13 @@ fun ManifestExceptionsSheet(
             ) {
                 Text("Manifest exceptions", style = MaterialTheme.typography.titleLarge)
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh exceptions")
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_exceptions))
                 }
             }
             HorizontalDivider()
             when {
                 loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading exceptions",
+                    title = stringResource(R.string.mobile_payload_ui_loading_exceptions),
                     body = "Fetching overflow, damaged, and manual removals.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
@@ -86,11 +88,11 @@ fun ManifestExceptionsSheet(
                                 }
                             }
                             Text(
-                                "Order ${row.orderId.take(8)} · Manifest ${row.manifestId.take(8)}",
+                                stringResource(R.string.mobile_payload_ui_order_take_manifest_take_2, row.orderId.take(8), row.manifestId.take(8)),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(
-                                "Attempts ${row.attemptCount}",
+                                stringResource(R.string.mobile_payload_ui_attempts_attemptcount, row.attemptCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

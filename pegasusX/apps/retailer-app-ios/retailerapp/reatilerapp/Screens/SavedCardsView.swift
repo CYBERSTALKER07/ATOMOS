@@ -34,11 +34,11 @@ struct SavedCardsView: View {
             if returnTo == "delivery_payment" {
                 Section {
                     HStack {
-                        Text("Add a card, then return to complete delivery payment.")
+                        Text("mobile_retailer.ui.add_a_card_then_return_to_complete_delivery_payment")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("Return") {
+                        Button("mobile_retailer.ui.return") {
                             onReturnToPayment?()
                         }
                         .font(.footnote.weight(.semibold))
@@ -53,7 +53,7 @@ struct SavedCardsView: View {
                 Text(error)
                     .foregroundColor(.red)
             } else if cards.isEmpty {
-                Text("No saved cards. Add one to checkout faster.")
+                Text("mobile_retailer.ui.no_saved_cards_add_one_to_checkout_faster")
                     .foregroundColor(.gray)
             } else {
                 ForEach(cards) { card in
@@ -61,7 +61,7 @@ struct SavedCardsView: View {
                 }
             }
         }
-        .navigationTitle("Saved Cards")
+        .navigationTitle("retailer_desktop.settings.cards.text.saved_cards")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { showingAddCard = true }) {
@@ -77,10 +77,10 @@ struct SavedCardsView: View {
                 Form {
                     if let token = pendingCardToken {
                         Section("Confirm OTP") {
-                            TextField("OTP Code", text: $optCode)
+                            TextField("mobile_retailer.ui.otp_code", text: $optCode)
                                 .keyboardType(.numberPad)
                             
-                            Button("Confirm") {
+                            Button("mobile_retailer.ui.confirm") {
                                 Task {
                                     await confirmCard(token: token)
                                 }
@@ -89,11 +89,11 @@ struct SavedCardsView: View {
                         }
                     } else {
                         Section("Add New Card") {
-                            Text("This will initiate tokenization securely via GlobalPay.")
+                            Text("mobile_retailer.ui.this_will_initiate_tokenization_securely_via_globalpay")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                             
-                            Button("Start Tokenization") {
+                            Button("mobile_retailer.ui.start_tokenization") {
                                 Task {
                                     await initiateSave()
                                 }
@@ -102,10 +102,10 @@ struct SavedCardsView: View {
                         }
                     }
                 }
-                .navigationTitle("Add Card")
+                .navigationTitle("mobile_retailer.ui.add_card")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
+                        Button("common.action.cancel") {
                             showingAddCard = false
                             pendingCardToken = nil
                             optCode = ""
@@ -127,10 +127,10 @@ struct SavedCardsView: View {
                 .foregroundColor(card.isDefault ? .blue : .primary)
             
             VStack(alignment: .leading) {
-                Text("\(card.cardType) •••• \(card.cardLast4)")
+                Text(L10n.format("mobile_retailer.ui.cardtype_cardlast4", "\(card.cardType)", "\(card.cardLast4)"))
                     .font(.headline)
                 if card.isDefault {
-                    Text("Default")
+                    Text("mobile_retailer.ui.default")
                         .font(.caption)
                         .foregroundColor(.blue)
                 }
@@ -139,11 +139,11 @@ struct SavedCardsView: View {
             
             Menu {
                 if !card.isDefault {
-                    Button("Set Default") {
+                    Button("mobile_retailer.ui.set_default") {
                         Task { await setDefault(card.tokenId) }
                     }
                 }
-                Button("Remove", role: .destructive) {
+                Button("supplier_portal.demand.payday_calendar.text.remove", role: .destructive) {
                     Task { await deactivate(card.tokenId) }
                 }
             } label: {

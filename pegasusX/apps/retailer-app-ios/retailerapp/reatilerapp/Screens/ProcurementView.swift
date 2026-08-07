@@ -43,11 +43,11 @@ struct ProcurementView: View {
         .alert("Order Created", isPresented: $showSuccess) {
             Button("OK") { selectedItems.removeAll(); quantities.removeAll() }
         } message: {
-            Text("Your procurement order has been submitted successfully.")
+            Text("mobile_retailer.ui.your_procurement_order_has_been_submitted_successfully")
         }
         .alert("Order Failed", isPresented: $showError) {
-            Button("Retry") { Task { await createOrder() } }
-            Button("Cancel", role: .cancel) {}
+            Button("common.action.retry") { Task { await createOrder() } }
+            Button("common.action.cancel", role: .cancel) {}
         } message: {
             Text(errorMessage)
         }
@@ -62,7 +62,7 @@ struct ProcurementView: View {
                     Text("\(forecasts.count)")
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("Suggestions")
+                    Text("mobile_retailer.ui.suggestions")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -73,7 +73,7 @@ struct ProcurementView: View {
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.accent)
                         .contentTransition(.numericText())
-                    Text("Selected")
+                    Text("common.action.selected")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -91,7 +91,7 @@ struct ProcurementView: View {
                     Image(systemName: "lightbulb.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppTheme.accent)
-                    Text("Suggestions")
+                    Text("mobile_retailer.ui.suggestions")
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
@@ -150,7 +150,7 @@ struct ProcurementView: View {
                         Text(forecast.productName)
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Confidence: \(forecast.confidencePercent)")
+                        Text(L10n.format("mobile_retailer.ui.confidence_confidencepercent", "\(forecast.confidencePercent)"))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -160,7 +160,7 @@ struct ProcurementView: View {
                     if isSelected {
                         QuantityStepper(quantity: Binding(get: { qty }, set: { quantities[forecast.id] = $0 }), compact: true)
                     } else {
-                        Text("\(forecast.predictedQuantity) units")
+                        Text(L10n.format("mobile_retailer.ui.predictedquantity_units", "\(forecast.predictedQuantity)"))
                             .font(.system(.caption, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.accent)
                     }
@@ -189,7 +189,7 @@ struct ProcurementView: View {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(AppTheme.accent)
-                    Text("\(selectedItems.count) items selected")
+                    Text(L10n.format("mobile_retailer.ui.count_items_selected", "\(selectedItems.count)"))
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
@@ -199,7 +199,7 @@ struct ProcurementView: View {
                     font: .system(.subheadline, design: .rounded, weight: .bold),
                     color: AppTheme.accent
                 )
-                Text("units")
+                Text("retailer_desktop.auto_order.auto_order_list.text.units")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }

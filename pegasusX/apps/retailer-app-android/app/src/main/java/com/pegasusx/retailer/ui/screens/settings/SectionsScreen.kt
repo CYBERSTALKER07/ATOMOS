@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -88,7 +90,7 @@ fun SectionsScreen(
                 title = { Text("Sections") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -135,7 +137,7 @@ fun SectionsScreen(
                 Card(onClick = { selectedId = row.id }) {
                     Column(Modifier.padding(14.dp)) {
                         Text(row.name, style = MaterialTheme.typography.titleMedium)
-                        row.aisle?.let { Text("Aisle $it", style = MaterialTheme.typography.bodySmall) }
+                        row.aisle?.let { Text(stringResource(R.string.mobile_retailer_ui_aisle_it, it), style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.portal
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,7 +47,7 @@ fun PortalHandoffScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -68,7 +70,7 @@ fun PortalHandoffScreen(
             )
             Spacer(Modifier.height(PegasusSpacing.lg))
             Text(
-                text = "Manage on web portal",
+                text = stringResource(R.string.mobile_warehouse_ui_manage_on_web_portal),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
             )

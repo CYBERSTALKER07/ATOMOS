@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.orders.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -88,7 +90,7 @@ fun ActiveOrderCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Order #${order.id.takeLast(3)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (order.isAiGenerated) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -101,7 +103,7 @@ fun ActiveOrderCard(
                             )
                         }
                     }
-                    Text("${order.itemCount} items · ${order.displayTotal}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 OrderStatusBadge(order.status)
             }
@@ -217,7 +219,7 @@ fun OrderedCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Order #${order.id.takeLast(3)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (order.isAiGenerated) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -230,7 +232,7 @@ fun OrderedCard(
                             )
                         }
                     }
-                    Text("${order.itemCount} items · ${order.displayTotal}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 OrderStatusBadge(order.status)
             }
@@ -252,7 +254,7 @@ fun OrderedCard(
                     order.proposedDeliveryDate?.let { date ->
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Proposed: $date",
+                            stringResource(R.string.mobile_retailer_ui_proposed_date_2, date),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         )
@@ -439,7 +441,7 @@ fun AiPlannedCard(
                             )
                         }
                     }
-                    Text("${forecast.predictedQuantity} units", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.mobile_retailer_ui_predictedquantity_units, forecast.predictedQuantity), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 // Execution date + pre-order
@@ -474,7 +476,7 @@ fun AiPlannedCard(
                 Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    "AI will place on ${forecast.suggestedOrderDate}",
+                    stringResource(R.string.mobile_retailer_ui_ai_will_place_on_suggestedorderdate, forecast.suggestedOrderDate),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )

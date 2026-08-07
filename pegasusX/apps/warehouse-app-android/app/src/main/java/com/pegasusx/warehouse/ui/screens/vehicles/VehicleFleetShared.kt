@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -183,8 +185,7 @@ fun FleetTruckDispatchCard(
                         vehicle.label.ifBlank { vehicle.licensePlate },
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    Text(
-                        "${vehicle.licensePlate} · ${vehicle.vehicleClass}",
+                    Text(stringResource(R.string.mobile_warehouse_ui_licenseplate_vehicleclass, vehicle.licensePlate, vehicle.vehicleClass),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

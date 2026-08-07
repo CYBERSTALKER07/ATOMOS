@@ -46,7 +46,7 @@ struct PredictionCard: View {
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                         if forecast.isBlocked {
-                            Text("Insufficient history")
+                            Text("mobile_retailer.ui.insufficient_history")
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .foregroundStyle(AppTheme.warning)
                                 .padding(.horizontal, 6)
@@ -68,7 +68,7 @@ struct PredictionCard: View {
                     Text("\(forecast.predictedQuantity)")
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("units")
+                    Text("retailer_desktop.auto_order.auto_order_list.text.units")
                         .font(.system(size: 9, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
 

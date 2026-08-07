@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.pricing
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -96,12 +98,12 @@ fun RetailerOverridesScreen(
                 title = { Text("Retailer overrides") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showCreate = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Create")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_create))
                     }
                 },
             )
@@ -132,7 +134,7 @@ fun RetailerOverridesScreen(
                     ListItem(
                         headlineContent = { Text(row.productId.take(12)) },
                         supportingContent = {
-                            Text("Retailer ${row.retailerId.take(8)} · price ${row.price}")
+                            Text(stringResource(R.string.mobile_supplier_ui_retailer_take_price_price, row.retailerId.take(8), row.price))
                         },
                         trailingContent = {
                             IconButton(onClick = {
@@ -145,7 +147,7 @@ fun RetailerOverridesScreen(
                                     load()
                                 }
                             }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.mobile_supplier_ui_delete))
                             }
                         },
                     )
@@ -177,10 +179,10 @@ fun RetailerOverridesScreen(
                             ElevatedCard(Modifier.fillMaxWidth()) {
                                 Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                     Text("Impact preview", style = MaterialTheme.typography.titleSmall)
-                                    Text("Retailers on SKU: ${p.retailersOnSkuCount}")
-                                    Text("Active overrides: ${p.activeOverrideCount}")
-                                    Text("Catalog list price: ${p.catalogListPrice}")
-                                    Text("Margin delta / unit: ${p.marginDeltaPerUnit} (${p.marginEstimateLabel})")
+                                    Text(stringResource(R.string.mobile_supplier_ui_retailers_on_sku_retailersonskucount, p.retailersOnSkuCount))
+                                    Text(stringResource(R.string.mobile_supplier_ui_active_overrides_activeoverridecount, p.activeOverrideCount))
+                                    Text(stringResource(R.string.mobile_supplier_ui_catalog_list_price_cataloglistprice, p.catalogListPrice))
+                                    Text(stringResource(R.string.mobile_supplier_ui_margin_delta_unit_margindeltaperunit_marginestimatelabel, p.marginDeltaPerUnit, p.marginEstimateLabel))
                                 }
                             }
                         }
@@ -224,7 +226,7 @@ fun RetailerOverridesScreen(
                         }
                     },
                     enabled = !saving,
-                ) { Text("Create") }
+                ) { Text(stringResource(R.string.mobile_supplier_ui_create)) }
             },
             dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
         )

@@ -97,6 +97,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/profile", icon: "supplier", labelKey: "portal.nav.profile" },
       { href: "/settings/tax-regimes", icon: "overview", labelKey: "portal.nav.tax_regimes" },
+      { href: "/settings/fx-rates", icon: "overview", labelKey: "portal.nav.fx_rates" },
       { href: "/settings/planning", icon: "overview", labelKey: "portal.nav.planning" },
       { href: "/settings/return-policy", icon: "returns", labelKey: "portal.nav.return_policy" },
       { href: "/settings/notification-preferences", icon: "overview", labelKey: "portal.nav.notifications" },

@@ -36,6 +36,10 @@ targets:
           - "Views/Components/LoadingBay/PayloadOverrideView.swift"
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: FactoryApp/Assets.xcassets
       - path: FactoryApp/Preview Assets.xcassets
       - path: FactoryApp/GoogleService-Info.plist

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -18,7 +20,7 @@ import com.pegasusx.driver.ui.theme.MotionTokens
  * Apply to any placeholder Box/Surface for loading skeletons.
  */
 fun Modifier.shimmer(): Modifier = composed {
-    val transition = rememberInfiniteTransition(label = "shimmer")
+    val transition = rememberInfiniteTransition(label = stringResource(R.string.mobile_driver_ui_shimmer))
     val alpha by transition.animateFloat(
         initialValue = 0.15f,
         targetValue = 0.45f,

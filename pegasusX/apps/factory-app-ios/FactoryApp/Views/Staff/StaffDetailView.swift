@@ -13,11 +13,11 @@ struct StaffDetailView: View {
                 ProgressView()
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             } else if let staff {
                 ResponsiveGridContentWrapper {
@@ -32,7 +32,7 @@ struct StaffDetailView: View {
                 }
             }
         }
-        .navigationTitle("Staff")
+        .navigationTitle("portal.nav.staff")
         .task(id: staffId) { await load() }
     }
 

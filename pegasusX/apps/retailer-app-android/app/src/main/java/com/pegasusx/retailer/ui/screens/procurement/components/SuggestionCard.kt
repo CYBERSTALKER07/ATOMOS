@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.procurement.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -50,7 +52,7 @@ fun SuggestionCard(
                         maxLines = 1,
                     )
                     Text(
-                        "Confidence: ${forecast.confidencePercent}",
+                        stringResource(R.string.mobile_retailer_ui_confidence_confidencepercent, forecast.confidencePercent),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
@@ -59,7 +61,7 @@ fun SuggestionCard(
                     QuantityStepper(quantity = quantity, onDecrement = onDecrement, onIncrement = onIncrement)
                 } else {
                     Text(
-                        "${forecast.predictedQuantity} units",
+                        stringResource(R.string.mobile_retailer_ui_predictedquantity_units, forecast.predictedQuantity),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary,
                     )

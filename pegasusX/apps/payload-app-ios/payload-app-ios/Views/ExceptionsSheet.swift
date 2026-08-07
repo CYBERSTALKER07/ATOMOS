@@ -29,10 +29,10 @@ struct ManifestExceptionsSheet: View {
                                             PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
                                         }
                                     }
-                                    Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
+                                    Text(L10n.format("mobile_payload.ui.order_prefix_manifest_prefix_2", "\(row.orderId.prefix(8))", "\(row.manifestId.prefix(8))"))
                                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                                         .foregroundStyle(TermTheme.secondary)
-                                    Text("Attempts \(row.attemptCount)")
+                                    Text(L10n.format("mobile_payload.ui.attempts_attemptcount", "\(row.attemptCount)"))
                                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                                         .foregroundStyle(TermTheme.tertiary)
                                 }
@@ -43,10 +43,10 @@ struct ManifestExceptionsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Manifest exceptions")
+            .navigationTitle("mobile_payload.ui.manifest_exceptions")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { viewModel.toggleExceptionsPanel() }
+                    Button("common.action.close") { viewModel.toggleExceptionsPanel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

@@ -45,6 +45,10 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplyFulfillOptions,
   SettlementAuthorityQuery,
   SettlementAuthorityResponse,
+  FxRateRow,
+  FxRatesListResponse,
+  FxRateUpsertInput,
+  FxRateUpsertResponse,
   SupplierBillingSetupRequest,
   SupplierBillingSetupResponse,
   SupplierBusinessSetupRequest,
@@ -145,6 +149,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   GovernedAgentInvocationResponse,
   SeasonalOverrideInput,
   SeasonalOverrideRow,
+  SeasonalEstimateResult,
   SeasonalTemplatesResponse,
   PlanningSignalIngestInput,
   SparsityGateResult,
@@ -223,6 +228,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   WarehouseOpsSettings,
   WarehouseOpsSettingsPatchRequest,
   CheckoutPreviewResponse,
+  OrderCurrencyOptions,
   WarehouseOrderDetail,
   OrderTimelineResponse,
   WarehouseOrderMutationRequest,
@@ -1585,6 +1591,16 @@ export class ApiClient {
     });
   }
 
+  async estimateSeasonalMultipliers(
+    persistDrafts = false,
+    idempotencyKey?: string,
+  ): Promise<SeasonalEstimateResult> {
+    return this.request<SeasonalEstimateResult>("/v1/supplier/planning/seasonal-estimate", "POST", {
+      body: { persist_drafts: persistDrafts },
+      idempotencyKey,
+    });
+  }
+
   async ingestPlanningSignal(
     request: PlanningSignalIngestInput,
     idempotencyKey: string,
@@ -2079,6 +2095,10 @@ export class ApiClient {
     return this.request<CheckoutPreviewResponse>("/v1/checkout/preview", "POST", { body });
   }
 
+  async getOrderCurrencies(): Promise<OrderCurrencyOptions> {
+    return this.request<OrderCurrencyOptions>("/v1/order/currencies", "GET");
+  }
+
   async getWarehouseOrders(query: { warehouse_id?: string; state?: string } = {}): Promise<WarehouseOrdersResponse> {
     return this.request<WarehouseOrdersResponse>(appendQuery("/v1/warehouse/ops/orders", query as Record<string, unknown>), "GET");
   }
@@ -2465,6 +2485,18 @@ export class ApiClient {
 
   async getPaymentSettlementAuthority(query: SettlementAuthorityQuery = {}): Promise<SettlementAuthorityResponse> {
     return this.request<SettlementAuthorityResponse>(appendQuery("/v1/payment/settlement/authority", query as Record<string, unknown>), "GET");
+  }
+
+  async getAdminFxRates(limit = 100): Promise<FxRatesListResponse> {
+    return this.request<FxRatesListResponse>(appendQuery("/v1/admin/fx-rates", { limit }), "GET");
+  }
+
+  async putAdminFxRate(request: FxRateUpsertInput): Promise<FxRateUpsertResponse> {
+    return this.request<FxRateUpsertResponse>("/v1/admin/fx-rates", "PUT", { body: request });
+  }
+
+  async getSupplierFxRates(limit = 100): Promise<FxRatesListResponse> {
+    return this.request<FxRatesListResponse>(appendQuery("/v1/supplier/fx-rates", { limit }), "GET");
   }
 
   async getPaymentReconciliationMismatches(query: ReconciliationMismatchQuery = {}): Promise<ReconciliationMismatchResponse> {

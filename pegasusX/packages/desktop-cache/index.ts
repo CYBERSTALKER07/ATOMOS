@@ -3,7 +3,16 @@ export {
   isDesktopCacheAvailable,
   withDatabase,
 } from "./db";
-export { cacheDelete, cacheGet, cacheSet } from "./kv";
+export {
+  DEFAULT_CACHE_MAX_AGE_MS,
+  cacheClearAll,
+  cacheClearPrefix,
+  cacheDelete,
+  cacheGet,
+  cacheSet,
+  scopedCacheKey,
+  type CacheGetOptions,
+} from "./kv";
 export {
   enqueuePendingCheckout,
   isRetryableCheckoutError,

@@ -34,6 +34,10 @@ targets:
           - EANBarcode.swift
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: SupplierApp/Assets.xcassets
       - path: SupplierApp/GoogleService-Info.plist
     info:

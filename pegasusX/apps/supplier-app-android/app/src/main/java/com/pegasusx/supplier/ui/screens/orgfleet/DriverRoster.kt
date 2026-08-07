@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orgfleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,7 +25,7 @@ fun DriverRoster(drivers: List<FleetDriver>, topology: SupplierTopologyResponse?
             ListItem(
                 headlineContent = { Text(driver.name) },
                 supportingContent = {
-                    Text("${nodeLabel(driver.homeNodeType, driver.homeNodeId, topology)} · ${driver.phone}")
+                    Text(stringResource(R.string.mobile_supplier_ui_nodelabel_phone, nodeLabel(driver.homeNodeType, driver.homeNodeId, topology), driver.phone))
                 },
             )
         }

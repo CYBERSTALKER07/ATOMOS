@@ -21,15 +21,15 @@ struct CatalogCreateSheet: View {
         NavigationStack {
             Form {
                 Section("Product") {
-                    TextField("Name", text: $name)
+                    TextField("retailer_desktop.pos.text.name", text: $name)
                     Picker("Category", selection: $categoryId) {
                         ForEach(categories) { category in
                             Text(category.name).tag(category.categoryId)
                         }
                     }
-                    TextField("Price (minor units)", text: $priceMinor)
+                    TextField("mobile_supplier.ui.price_minor_units", text: $priceMinor)
                         .keyboardType(.numberPad)
-                    TextField("Unit VU", text: $unitVu)
+                    TextField("supplier_portal.catalog.components.catalog_table.text.unit_vu", text: $unitVu)
                         .keyboardType(.decimalPad)
                     CatalogBarcodeField(value: $barcode, enabled: !creating)
                     PhotosPicker(selection: $photoItem, matching: .images) {
@@ -49,10 +49,10 @@ struct CatalogCreateSheet: View {
                     }
                 }
             }
-            .navigationTitle("Add product")
+            .navigationTitle("mobile_supplier.ui.add_product")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                         .disabled(creating)
                 }
                 ToolbarItem(placement: .confirmationAction) {

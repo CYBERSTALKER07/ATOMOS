@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,12 +129,12 @@ fun ExceptionsScreen(
                             )
                             if (row.orderId.isNotBlank()) {
                                 TextButton(onClick = { onOrderClick(row.orderId) }) {
-                                    Text("Order ${row.orderId}")
+                                    Text(stringResource(R.string.mobile_warehouse_ui_order_orderid, row.orderId))
                                 }
                             }
                             if (row.manifestId.isNotBlank()) {
                                 Text(
-                                    "Manifest ${row.manifestId}",
+                                    stringResource(R.string.mobile_warehouse_ui_manifest_manifestid, row.manifestId),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -51,7 +53,7 @@ fun NotificationPreferencesScreen(ops: SupplierOperationsRepository, onBack: () 
                 title = { Text("Notification preferences") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -62,7 +64,7 @@ fun NotificationPreferencesScreen(ops: SupplierOperationsRepository, onBack: () 
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Notification preferences",
                 modifier = Modifier.padding(padding),
             )

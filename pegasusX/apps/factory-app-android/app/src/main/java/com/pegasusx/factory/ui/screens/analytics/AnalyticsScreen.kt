@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 
 import androidx.compose.foundation.layout.*
@@ -41,13 +43,13 @@ private val analyticsKpis = listOf(
     AnalyticsKpi("Transfers Total", { it.transfersTotal.toString() }, Icons.Default.LocalShipping),
     AnalyticsKpi("Active Manifests", { it.manifestsActive.toString() }, Icons.Default.Analytics),
     AnalyticsKpi(
-        label = "Exception Queue",
+        label = stringResource(R.string.mobile_factory_ui_exception_queue),
         value = { it.exceptionQueue.toString() },
         icon = Icons.Default.Warning,
         alert = { it.exceptionQueue > 0 },
     ),
     AnalyticsKpi(
-        label = "Avg Lead Time (min)",
+        label = stringResource(R.string.mobile_factory_ui_avg_lead_time_min),
         value = { String.format("%.1f", it.avgLeadTimeMins) },
         icon = Icons.Default.Schedule,
     ),
@@ -92,7 +94,7 @@ fun AnalyticsScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Analytics Overview")
                         Text(
-                            text = "Throughput, manifest pressure, and exceptions",
+                            text = stringResource(R.string.mobile_factory_ui_throughput_manifest_pressure_and_exceptions),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -113,7 +115,7 @@ fun AnalyticsScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading analytics",
+                title = stringResource(R.string.mobile_factory_ui_loading_analytics),
                 body = "Fetching factory throughput, manifest pressure, and exception queue.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -173,7 +175,7 @@ private fun AnalyticsContent(
         }
         if (overview.dailyActivity.isNotEmpty()) {
             item {
-                FactorySectionTitle(title = "7-day transfer activity")
+                FactorySectionTitle(title = stringResource(R.string.mobile_factory_ui_7_day_transfer_activity))
             }
             items(overview.dailyActivity, key = { it.date }) { day ->
                 FactoryOpsListCard(

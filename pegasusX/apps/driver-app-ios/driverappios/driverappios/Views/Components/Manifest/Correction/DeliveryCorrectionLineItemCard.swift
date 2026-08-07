@@ -21,7 +21,7 @@ struct DeliveryCorrectionLineItemCard: View {
                         .strikethrough(isRejected)
                         .foregroundStyle(isRejected ? LabTheme.destructive : LabTheme.fg)
 
-                    Text("\(item.quantity) × \(item.unit_price.formattedAmount)")
+                    Text(L10n.format("mobile_driver.ui.quantity_formattedamount", "\(item.quantity)", "\(item.unit_price.formattedAmount)"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
@@ -44,7 +44,7 @@ struct DeliveryCorrectionLineItemCard: View {
                 .frame(height: 0.5)
 
             HStack {
-                Text("Line total")
+                Text("mobile_driver.ui.line_total")
                     .font(.caption)
                     .foregroundStyle(LabTheme.fgTertiary)
                 Spacer()
@@ -56,7 +56,7 @@ struct DeliveryCorrectionLineItemCard: View {
 
             if isRejected {
                 HStack {
-                    Text("Reason")
+                    Text("supplier_portal.admin.control_center.field.reason")
                         .font(.caption)
                         .foregroundStyle(LabTheme.fgTertiary)
                     Spacer()

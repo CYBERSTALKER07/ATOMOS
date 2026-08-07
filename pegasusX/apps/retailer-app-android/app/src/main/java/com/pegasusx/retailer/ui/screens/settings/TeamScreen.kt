@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -104,7 +106,7 @@ fun TeamScreen(
                 title = { Text("Team") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -174,7 +176,7 @@ fun TeamScreen(
                 Card {
                     Column(Modifier.padding(14.dp)) {
                         Text(m.name, style = MaterialTheme.typography.titleSmall)
-                        Text("${m.phone} · ${m.role}", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_retailer_ui_phone_role, m.phone, m.role), style = MaterialTheme.typography.bodySmall)
                         if (m.isOwner) Text("Owner", style = MaterialTheme.typography.labelSmall)
                         if (!m.isActive) Text("Inactive", color = MaterialTheme.colorScheme.error)
                         if (!m.isOwner && m.isActive) {

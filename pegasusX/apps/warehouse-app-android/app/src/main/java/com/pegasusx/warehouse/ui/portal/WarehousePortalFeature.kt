@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.portal
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -17,28 +19,28 @@ enum class WarehousePortalFeature(
 ) {
     REGISTER(
         routeKey = "register",
-        title = "Register warehouse",
+        title = stringResource(R.string.mobile_warehouse_ui_register_warehouse),
         subtitle = "Create a new warehouse account",
         portalPath = "/auth/register",
         icon = Icons.Default.Store,
     ),
     SETUP(
         routeKey = "setup",
-        title = "Warehouse setup",
+        title = stringResource(R.string.warehouse_portal_setup_setup_wizard_shell_text_warehouse_setup),
         subtitle = "Location, billing, and configuration",
         portalPath = "/setup/location",
         icon = Icons.Default.Settings,
     ),
     PROFILE(
         routeKey = "profile",
-        title = "Profile",
+        title = stringResource(R.string.portal_nav_profile),
         subtitle = "Account and warehouse identity",
         portalPath = "/profile",
         icon = Icons.Default.Person,
     ),
     SEARCH(
         routeKey = "search",
-        title = "Global search",
+        title = stringResource(R.string.mobile_warehouse_ui_global_search),
         subtitle = "Jump to any portal page",
         portalPath = "/",
         icon = Icons.Default.Search,

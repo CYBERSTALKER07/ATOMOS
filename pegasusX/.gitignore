@@ -11,6 +11,7 @@ out/
 *.out
 *.exe
 vendor/
+.bin/
 # Local build artifact (never commit; ~59MB)
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*

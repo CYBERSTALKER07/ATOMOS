@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,7 +46,7 @@ private fun LaneCard(lane: SupplierSupplyLaneRow) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(lane.name.ifEmpty { lane.warehouseId }, style = MaterialTheme.typography.titleMedium)
-                Text("${lane.h3Cells} cells", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.mobile_supplier_ui_h3cells_cells, lane.h3Cells), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             }
             LaneMetric("Active drivers", lane.drivers.toString())
             LaneMetric("Orders today", lane.ordersToday.toString())

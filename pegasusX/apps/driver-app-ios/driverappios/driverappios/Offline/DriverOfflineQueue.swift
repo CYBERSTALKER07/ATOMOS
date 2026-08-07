@@ -152,10 +152,19 @@ final class DriverOfflineQueue {
                 }
             }
             do {
+                let body = try await resolvePodLocalFiles(
+                    endpoint: action.endpoint,
+                    bodyJSON: action.bodyJSONForFlush(),
+                    orderId: action.orderId
+                )
+                guard let body else {
+                    recordAttempt(action, error: "pod_upload_pending")
+                    continue
+                }
                 let (status, _) = try await api.rawRequest(
                     endpoint: action.endpoint,
                     method: action.method,
-                    body: action.bodyJSONForFlush(),
+                    body: body,
                     idempotencyKey: action.id
                 )
                 if DriverOfflineActionCatalog.isSuccessHTTP(status) {
@@ -177,6 +186,54 @@ final class DriverOfflineQueue {
             }
         }
         return (sent, pending().count)
+    }
+
+    /// Upload local PoD JPEGs before credit / shop-closed flush. Returns nil to keep pending.
+    private func resolvePodLocalFiles(endpoint: String, bodyJSON: String, orderId: String) async throws -> String? {
+        let ep = DriverOfflineActionCatalog.normalize(endpoint)
+        guard ep == DriverOfflineActionCatalog.credit || ep == DriverOfflineActionCatalog.shopClosed else {
+            return bodyJSON
+        }
+        guard let data = bodyJSON.data(using: .utf8),
+              var obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return bodyJSON
+        }
+        let photoLocal = (obj["photo_local_path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigLocal = (obj["signature_local_path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoProof = (obj["photo_proof_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoUrl = (obj["photo_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigUrl = (obj["signature_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if !photoLocal.isEmpty && photoProof.isEmpty && photoUrl.isEmpty {
+            let bytes = try MediaUploadService.readLocalJPEG(photoLocal)
+            let url = try await MediaUploadService.uploadJPEGData(bytes, purpose: "credit_proof", orderId: orderId)
+            if ep == DriverOfflineActionCatalog.credit {
+                obj["photo_proof_url"] = url
+            } else {
+                obj["photo_url"] = url
+            }
+            obj.removeValue(forKey: "photo_local_path")
+        }
+        if !sigLocal.isEmpty && sigUrl.isEmpty {
+            let bytes = try MediaUploadService.readLocalJPEG(sigLocal)
+            let url = try await MediaUploadService.uploadJPEGData(bytes, purpose: "credit_proof", orderId: orderId)
+            obj["signature_url"] = url
+            obj.removeValue(forKey: "signature_local_path")
+        }
+
+        let proofAfter = (obj["photo_proof_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoAfter = (obj["photo_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if ep == DriverOfflineActionCatalog.credit && proofAfter.isEmpty {
+            return nil
+        }
+        if ep == DriverOfflineActionCatalog.shopClosed && photoAfter.isEmpty {
+            return nil
+        }
+        guard let out = try? JSONSerialization.data(withJSONObject: obj),
+              let str = String(data: out, encoding: .utf8) else {
+            return nil
+        }
+        return str
     }
 
     private func flushDeliverBatch(_ actions: [QueuedDriverAction], api: APIClient) async -> Int {

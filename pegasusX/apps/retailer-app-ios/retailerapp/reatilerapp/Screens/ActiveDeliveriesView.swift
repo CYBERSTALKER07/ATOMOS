@@ -45,10 +45,10 @@ struct ActiveDeliveriesView: View {
             .task(id: refreshCenter.refreshToken) { await loadOrders() }
             .refreshable { await loadOrders() }
             .alert("Failed to Load", isPresented: $loadError) {
-                Button("Retry") { Task { await loadOrders() } }
+                Button("common.action.retry") { Task { await loadOrders() } }
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Could not load deliveries. Check your connection.")
+                Text("mobile_retailer.ui.could_not_load_deliveries_check_your_connection")
             }
 
             // 3/4 Detail Sheet
@@ -98,10 +98,10 @@ struct ActiveDeliveriesView: View {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
                 Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
             }
-            Text("No Active Orders")
+            Text("mobile_retailer.ui.no_active_orders")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Your en-route and confirmed deliveries will appear here")
+            Text("mobile_retailer.ui.your_en_route_and_confirmed_deliveries_will_appear_here")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)
@@ -153,10 +153,10 @@ struct DeliveryCard: View {
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.accent)
                     }
-                    Text("Order #\(order.id.suffix(3))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("\(order.itemCount) items · \(order.displayTotal)")
+                    Text(L10n.format("mobile_retailer.ui.itemcount_items_displaytotal", "\(order.itemCount)", "\(order.displayTotal)"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -182,7 +182,7 @@ struct DeliveryCard: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                     CountdownText(targetISO: eta, font: .system(.caption, design: .monospaced, weight: .bold), color: AppTheme.textPrimary)
-                    Text("until arrival")
+                    Text("mobile_retailer.ui.until_arrival")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
@@ -203,7 +203,7 @@ struct DeliveryCard: View {
                         .clipShape(.capsule)
                 }
                 if order.items.count > 3 {
-                    Text("+\(order.items.count - 3)")
+                    Text(L10n.format("mobile_retailer.ui.count_3", "\(order.items.count - 3)"))
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -218,7 +218,7 @@ struct DeliveryCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "doc.text")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("Details")
+                        Text("mobile_retailer.ui.details")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
@@ -234,7 +234,7 @@ struct DeliveryCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: "qrcode")
                                 .font(.system(size: 12, weight: .semibold))
-                            Text("Show QR")
+                            Text("mobile_retailer.ui.show_qr")
                                 .font(.system(.caption, design: .rounded, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -246,7 +246,7 @@ struct DeliveryCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "qrcode")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("Awaiting Driver")
+                        Text("mobile_retailer.ui.awaiting_driver")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textTertiary)
@@ -257,7 +257,7 @@ struct DeliveryCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "qrcode")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("Awaiting Dispatch")
+                        Text("mobile_retailer.ui.awaiting_dispatch")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textTertiary)
@@ -331,7 +331,7 @@ struct OrderDetailSheet: View {
                     // Status header
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Order #\(order.id.suffix(3))")
+                            Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                                 .font(.system(.title3, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
                             Text(order.status.displayName)
@@ -349,7 +349,7 @@ struct OrderDetailSheet: View {
                     if let eta = order.estimatedDelivery {
                         LabCard {
                             VStack(spacing: AppTheme.spacingSM) {
-                                Text("Estimated Arrival")
+                                Text("mobile_retailer.ui.estimated_arrival")
                                     .font(.system(.caption, design: .rounded))
                                     .foregroundStyle(AppTheme.textTertiary)
                                 CountdownText(targetISO: eta, font: .system(.title2, design: .monospaced, weight: .bold), color: AppTheme.textPrimary)
@@ -372,7 +372,7 @@ struct OrderDetailSheet: View {
                                         .font(.system(.subheadline, design: .rounded))
                                         .foregroundStyle(AppTheme.textPrimary)
                                     Spacer()
-                                    Text("×\(item.quantity)")
+                                    Text(L10n.format("mobile_retailer.ui.quantity", "\(item.quantity)"))
                                         .font(.system(.caption, design: .rounded, weight: .bold))
                                         .foregroundStyle(AppTheme.textTertiary)
                                         .padding(.horizontal, 8).padding(.vertical, 3)
@@ -392,7 +392,7 @@ struct OrderDetailSheet: View {
                             summaryRow("Logistics Fee", value: "$2.50")
                             Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
                             HStack {
-                                Text("Total")
+                                Text("retailer_desktop.pos.text.total")
                                     .font(.system(.headline, design: .rounded))
                                     .foregroundStyle(AppTheme.textPrimary)
                                 Spacer()
@@ -409,7 +409,7 @@ struct OrderDetailSheet: View {
                     if order.status.hasDeliveryToken, let qrData = order.deliveryQRCodePayload {
                         VStack(spacing: AppTheme.spacingSM) {
                             QRCodeView(data: qrData, size: 180)
-                            Text("Show this QR code to the driver")
+                            Text("mobile_retailer.ui.show_this_qr_code_to_the_driver")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -424,10 +424,10 @@ struct OrderDetailSheet: View {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 28))
                                 .foregroundStyle(AppTheme.textTertiary)
-                            Text("Awaiting Dispatch")
+                            Text("mobile_retailer.ui.awaiting_dispatch")
                                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                 .foregroundStyle(AppTheme.textSecondary)
-                            Text("QR code will appear when your order is on the way")
+                            Text("mobile_retailer.ui.qr_code_will_appear_when_your_order_is_on_the_way")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                                 .multilineTextAlignment(.center)
@@ -445,13 +445,13 @@ struct OrderDetailSheet: View {
                     // Post-delivery claims — gated by claim-eligibility countdown (G2)
                     if claimCandidate {
                         if let claimElig, claimElig.eligible {
-                            Text("Eligible until \(formatClaimEndsAt(claimElig.endsAt)) (\(claimElig.hoursRemaining)h left)")
+                            Text(L10n.format("mobile_retailer.ui.eligible_until_formatclaimendsat_hoursremainingh_left", "\(formatClaimEndsAt(claimElig.endsAt))", "\(claimElig.hoursRemaining)"))
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                             Button { showFileClaim = true } label: {
                                 HStack(spacing: AppTheme.spacingSM) {
                                     Image(systemName: "exclamationmark.bubble")
-                                    Text("Report damage or missing items")
+                                    Text("mobile_retailer.ui.report_damage_or_missing_items")
                                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                 }
                                 .frame(maxWidth: .infinity)
@@ -475,7 +475,7 @@ struct OrderDetailSheet: View {
                             Button { showFileClaim = true } label: {
                                 HStack(spacing: AppTheme.spacingSM) {
                                     Image(systemName: "exclamationmark.bubble")
-                                    Text("Report damage or missing items")
+                                    Text("mobile_retailer.ui.report_damage_or_missing_items")
                                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                 }
                                 .frame(maxWidth: .infinity)
@@ -518,7 +518,7 @@ struct OrderDetailSheet: View {
                         HStack(spacing: AppTheme.spacingSM) {
                             Image(systemName: "exclamationmark.triangle")
                                 .font(.system(.caption))
-                            Text("Order in progress. Cannot be cancelled.")
+                            Text("mobile_retailer.ui.order_in_progress_cannot_be_cancelled")
                                 .font(.system(.caption, design: .rounded))
                         }
                         .foregroundStyle(AppTheme.textTertiary)
@@ -530,24 +530,24 @@ struct OrderDetailSheet: View {
                 .padding(AppTheme.spacingLG)
                 .padding(.bottom, AppTheme.spacingXXL)
             }            .scrollIndicators(.hidden)            .background(AppTheme.background)
-            .navigationTitle("Order Details")
+            .navigationTitle("mobile_retailer.ui.order_details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 }
             }
             .alert("Cancel Order", isPresented: $showCancelConfirm) {
-                Button("Cancel Order", role: .destructive) { Task { await cancelOrder() } }
-                Button("Keep Order", role: .cancel) {}
+                Button("mobile_retailer.ui.cancel_order", role: .destructive) { Task { await cancelOrder() } }
+                Button("mobile_retailer.ui.keep_order", role: .cancel) {}
             } message: {
-                Text("Cancel order #\(order.id.suffix(3))? This cannot be undone.")
+                Text(L10n.format("mobile_retailer.ui.cancel_order_suffix_this_cannot_be_undone", "\(order.id.suffix(3))"))
             }
             .alert("Cancellation Failed", isPresented: $cancelError) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Could not cancel the order. Please try again.")
+                Text("mobile_retailer.ui.could_not_cancel_the_order_please_try_again")
             }
             .sheet(isPresented: $showFileClaim) {
                 FileClaimView(order: order)
@@ -626,7 +626,7 @@ struct QROverlay: View {
 
             // QR content
             VStack(spacing: AppTheme.spacingXL) {
-                Text("Order #\(order.id.suffix(3))")
+                Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(AppTheme.textPrimary)
 
@@ -642,7 +642,7 @@ struct QROverlay: View {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 40))
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text("Token not yet generated")
+                        Text("mobile_retailer.ui.token_not_yet_generated")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -653,7 +653,7 @@ struct QROverlay: View {
                     .shadow(color: AppTheme.shadowColor, radius: 16, y: 8)
                 }
 
-                Text("Show to driver for delivery confirmation")
+                Text("mobile_retailer.ui.show_to_driver_for_delivery_confirmation")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
 
@@ -661,7 +661,7 @@ struct QROverlay: View {
                     Haptics.light()
                     onDismiss()
                 } label: {
-                    Text("Dismiss")
+                    Text("factory_portal.toast.text.dismiss")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                         .padding(.horizontal, AppTheme.spacingXL)
@@ -692,11 +692,11 @@ struct OrderStatusHistorySection: View {
         LabCardWithHeader(title: "Status history", subtitle: nil, icon: "clock.arrow.circlepath") {
             Group {
                 if loading {
-                    Text("Loading…")
+                    Text("warehouse_portal.bins.text.loading")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 } else if items.isEmpty {
-                    Text("No status history yet.")
+                    Text("supplier_portal.order_timeline_panel.text.no_status_history_yet")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 } else {

@@ -8,7 +8,7 @@ struct AutoOrderExplainerCard: View {
                     Image(systemName: "info.circle.fill")
                         .font(.system(size: 14))
                         .foregroundStyle(AppTheme.accent)
-                    Text("How It Works")
+                    Text("retailer_desktop.auto_order.text.how_it_works")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                 }

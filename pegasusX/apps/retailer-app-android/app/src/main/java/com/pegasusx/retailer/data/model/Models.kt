@@ -1014,6 +1014,14 @@ data class UnifiedCheckoutRequest(
     @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
     @SerialName("delivery_priority") val deliveryPriority: String? = null,
     @SerialName("checkout_policy_token") val checkoutPolicyToken: String? = null,
+    @SerialName("currency") val currency: String? = null,
+)
+
+@Serializable
+data class OrderCurrencyOptions(
+    @SerialName("enabled") val enabled: Boolean = false,
+    @SerialName("operating_currency") val operatingCurrency: String = "UZS",
+    @SerialName("allowlist") val allowlist: List<String> = emptyList(),
 )
 
 // ── Delivery Tracking (real-time driver positions) ──

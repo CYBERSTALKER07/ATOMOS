@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.supply.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,7 +44,7 @@ fun SupplyRequestCard(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Request ${request.id.take(8)}",
+                        text = stringResource(R.string.mobile_factory_ui_request_take, request.id.take(8)),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -91,7 +93,7 @@ fun SupplyRequestCard(
             val actions = actionsForState(request.state)
             if (actions.isEmpty()) {
                 Text(
-                    text = "No manual action is available for the current state.",
+                    text = stringResource(R.string.mobile_factory_ui_no_manual_action_is_available_for_the_current_state),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

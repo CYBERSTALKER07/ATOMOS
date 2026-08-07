@@ -6,7 +6,7 @@ struct WeekdayPatternView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Ordering Pattern by Day")
+            Text("mobile_retailer.ui.ordering_pattern_by_day")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
 

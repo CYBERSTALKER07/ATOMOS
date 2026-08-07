@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.inbound
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,13 +54,13 @@ fun InboundReturnsList(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Qty ${row.receivedQty}/${row.expectedQty} · ${row.reason}",
+                        stringResource(R.string.mobile_payload_ui_qty_receivedqty_expectedqty_reason, row.receivedQty, row.expectedQty, row.reason),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (row.barcode.isNotBlank()) {
                         Text(
-                            "EAN ${row.barcode}",
+                            stringResource(R.string.mobile_payload_ui_ean_barcode_3, row.barcode),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -132,7 +134,7 @@ fun LocationPickerScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.Place,
-                contentDescription = "Selected location",
+                contentDescription = stringResource(R.string.mobile_retailer_ui_selected_location),
                 tint = Color.Black,
                 modifier = Modifier
                     .size(48.dp)
@@ -151,12 +153,12 @@ fun LocationPickerScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.common_action_back),
                     tint = Color.Black,
                 )
             }
             Text(
-                text = "Pick Store Location",
+                text = stringResource(R.string.mobile_retailer_ui_pick_store_location),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.Black,
                 modifier = Modifier.weight(1f),
@@ -187,7 +189,7 @@ fun LocationPickerScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Drag map to adjust pin position",
+                text = stringResource(R.string.mobile_retailer_ui_drag_map_to_adjust_pin_position),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Black.copy(alpha = 0.4f),
             )
@@ -274,7 +276,7 @@ fun LocationPickerScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.MyLocation,
-                contentDescription = "Use my location",
+                contentDescription = stringResource(R.string.mobile_retailer_ui_use_my_location),
             )
         }
     }

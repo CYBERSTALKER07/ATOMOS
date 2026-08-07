@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,7 +55,7 @@ fun CollectCashView(
     )
     Spacer(modifier = Modifier.height(24.dp))
     Text(
-        text = "COLLECT CASH",
+        text = stringResource(R.string.mobile_driver_ui_collect_cash),
         fontSize = 11.sp,
         fontWeight = FontWeight.Black,
         fontFamily = FontFamily.Monospace,
@@ -62,7 +64,7 @@ fun CollectCashView(
     )
     Spacer(modifier = Modifier.height(12.dp))
     Text(
-        text = "Expected ${amount.formattedAmount()}",
+        text = stringResource(R.string.mobile_driver_ui_expected_formattedamount, amount.formattedAmount()),
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,
         color = lab.fgTertiary
@@ -87,7 +89,7 @@ fun CollectCashView(
     if (shortfallMinor > 0) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Shortfall ${shortfallMinor.formattedAmount()} — fiscal uses received amount",
+            text = stringResource(R.string.mobile_driver_ui_shortfall_formattedamount_fiscal_uses_received_amount, shortfallMinor.formattedAmount()),
             fontSize = 13.sp,
             color = StatusRed,
             textAlign = TextAlign.Center,
@@ -95,7 +97,7 @@ fun CollectCashView(
     } else if (overageMinor > 0) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Overage ${overageMinor.formattedAmount()} recorded",
+            text = stringResource(R.string.mobile_driver_ui_overage_formattedamount_recorded, overageMinor.formattedAmount()),
             fontSize = 13.sp,
             color = lab.fgTertiary,
             textAlign = TextAlign.Center,
@@ -103,7 +105,7 @@ fun CollectCashView(
     }
     Spacer(modifier = Modifier.height(16.dp))
     Text(
-        text = "Enter cash actually taken. Fiscal receipt uses this amount (not order total if different).",
+        text = stringResource(R.string.mobile_driver_ui_enter_cash_actually_taken_fiscal_receipt_uses_this_amount_not_or),
         fontSize = 14.sp,
         color = lab.fgTertiary,
         textAlign = TextAlign.Center
@@ -129,7 +131,7 @@ fun CollectCashView(
         shape = MaterialTheme.shapes.medium,
     ) {
         Text(
-            text = "Split Payment (Pay Now + Pay Later)",
+            text = stringResource(R.string.mobile_driver_ui_split_payment_pay_now_pay_later),
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp
         )

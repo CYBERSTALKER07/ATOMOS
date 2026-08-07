@@ -85,22 +85,22 @@ struct DashboardView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Factory")
+            .navigationTitle("factory_portal.setup.factory.text.factory")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Notifications", systemImage: "bell") {
+                    Button("portal.nav.notifications", systemImage: "bell") {
                         showNotifications = true
                     }
                     .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                    Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                         tokenStore.clear()
                     }
                     .labelStyle(.iconOnly)

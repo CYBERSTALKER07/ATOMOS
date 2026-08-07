@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -82,12 +84,12 @@ fun ManifestDetailScreen(
                 title = { Text("Manifest") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -96,7 +98,7 @@ fun ManifestDetailScreen(
         val data = detail
         when {
             loading -> PegasusLoadingState(
-                title = "Loading manifest…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_manifest),
                 body = manifestId,
                 modifier = Modifier.padding(padding),
             )
@@ -140,7 +142,7 @@ fun ManifestDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 data.vehiclePlate?.let {
-                                    Text("Vehicle $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(R.string.mobile_supplier_ui_vehicle_it, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -151,7 +153,7 @@ fun ManifestDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         ) {
                             SupplierKpiTile(
-                                label = "Orders",
+                                label = stringResource(R.string.portal_nav_orders),
                                 value = data.ordersCount.toString(),
                                 icon = Icons.Default.ShoppingCart,
                                 modifier = Modifier.weight(1f),
@@ -159,7 +161,7 @@ fun ManifestDetailScreen(
                             val volume = data.totalVolumeVu.takeIf { it > 0.0 } ?: data.totalVu.toDouble()
                             if (volume > 0.0 || data.maxVolumeVu > 0.0) {
                                 SupplierKpiTile(
-                                    label = "Volume",
+                                    label = stringResource(R.string.supplier_portal_promotions_text_volume),
                                     value = if (data.maxVolumeVu > 0.0) {
                                         "%.1f / %.1f VU".format(volume, data.maxVolumeVu)
                                     } else {

@@ -36,6 +36,8 @@ type UnifiedCheckoutRequest struct {
 	DeliverBefore         string `json:"deliver_before,omitempty"`
 	DeliveryPriority      string `json:"delivery_priority,omitempty"`
 	CheckoutPolicyToken   string `json:"checkout_policy_token,omitempty"`
+	// Currency optional; same rules as CreateRequest.Currency.
+	Currency string `json:"currency,omitempty"`
 }
 
 // SupplierOrderResult is one supplier slice returned to clients.
@@ -162,6 +164,8 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
 		case errors.Is(err, ErrInventoryExhausted):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrInventoryExhausted.Error()})
+		case errors.Is(err, ErrCurrencyNotAllowed):
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
 		default:
 			if raw, ok := MarshalInventoryCheckoutError(err); ok {
 				writeJSONBytes(w, http.StatusConflict, raw)
@@ -210,6 +214,7 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		DeliverBefore:         req.DeliverBefore,
 		DeliveryPriority:      req.DeliveryPriority,
 		CheckoutPolicyToken:   req.CheckoutPolicyToken,
+		Currency:              req.Currency,
 	})
 	if err != nil {
 		return UnifiedCheckoutResponse{}, err

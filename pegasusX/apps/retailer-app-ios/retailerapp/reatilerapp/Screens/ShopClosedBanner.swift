@@ -18,11 +18,11 @@ struct ShopClosedBanner: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.yellow)
-                Text("Driver \(event.driverName) reported your shop is closed.")
+                Text(L10n.format("mobile_retailer.ui.driver_drivername_reported_your_shop_is_closed", "\(event.driverName)"))
                     .font(.headline)
             }
 
-            Text("Please confirm your status so we can manage your order.")
+            Text("mobile_retailer.ui.please_confirm_your_status_so_we_can_manage_your_order")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
@@ -33,7 +33,7 @@ struct ShopClosedBanner: View {
             }
 
             if bypassPending {
-                Text("Doorway / drop-off proof is required for authorize bypass.")
+                Text("mobile_retailer.ui.doorway_drop_off_proof_is_required_for_authorize_bypass")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 PhotosPicker(selection: $photoItem, matching: .images) {
@@ -52,13 +52,13 @@ struct ShopClosedBanner: View {
                     Task { await uploadBypassPhoto(item) }
                 }
                 if bypassPhotoURL != nil {
-                    Button("Confirm bypass") {
+                    Button("mobile_retailer.ui.confirm_bypass") {
                         respond(with: "AUTHORIZE_BYPASS", photoURL: bypassPhotoURL)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isSubmitting || uploading)
                 }
-                Button("Cancel bypass") {
+                Button("mobile_retailer.ui.cancel_bypass") {
                     bypassPending = false
                     bypassPhotoURL = nil
                     photoItem = nil

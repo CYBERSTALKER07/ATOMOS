@@ -363,10 +363,18 @@ export interface UnifiedCheckoutResponse {
   status: string;
   invoice_id: string;
   total: number;
+  currency?: string;
   supplier_orders: SupplierOrderResult[];
   backordered_item_count?: number;
   backorder_order_id?: string;
   stock_warnings?: StockWarning[];
+}
+
+/** GET /v1/order/currencies — flag-gated order currency picker. */
+export interface OrderCurrencyOptions {
+  enabled: boolean;
+  operating_currency: string;
+  allowlist: string[];
 }
 
 export interface CashCheckoutResponse {

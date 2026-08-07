@@ -1473,6 +1473,7 @@ CREATE TABLE SeasonalTemplateOverrides (
   StartDate    DATE        NOT NULL,
   EndDate      DATE        NOT NULL,
   IsActive     BOOL        NOT NULL,
+  Multiplier   FLOAT64,
   CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId, OverrideId);
 

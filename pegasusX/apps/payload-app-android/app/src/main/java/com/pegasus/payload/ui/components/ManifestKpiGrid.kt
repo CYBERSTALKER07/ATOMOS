@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,7 +33,7 @@ fun ManifestKpiGrid(manifest: Manifest, modifier: Modifier = Modifier) {
         ) {
             PayloadStatusChip(status = manifest.state)
             PayloadKpiTile(
-                label = "PAYLOAD VOLUME",
+                label = stringResource(R.string.mobile_payload_ui_payload_volume),
                 value = "%.1f / %.1f VU".format(total, manifest.maxVolumeVu),
                 modifier = Modifier.weight(1f),
                 footer = {
@@ -49,20 +51,20 @@ fun ManifestKpiGrid(manifest: Manifest, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(PayloadSpacing.md),
         ) {
             PayloadKpiTile(
-                label = "TARGET STOPS",
+                label = stringResource(R.string.mobile_payload_ui_target_stops),
                 value = "${manifest.stopCount} UNITS",
                 modifier = Modifier.weight(1f),
             )
             if (manifest.regionCode.isNotBlank()) {
                 PayloadKpiTile(
-                    label = "DEPLOYMENT ZONE",
+                    label = stringResource(R.string.mobile_payload_ui_deployment_zone),
                     value = manifest.regionCode.uppercase(),
                     modifier = Modifier.weight(1f),
                 )
             }
         }
         Text(
-            "Manifest ${manifest.manifestId.take(8)}",
+            stringResource(R.string.mobile_payload_ui_manifest_take, manifest.manifestId.take(8)),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

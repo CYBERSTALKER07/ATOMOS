@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.dashboard.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Computer
@@ -44,54 +46,54 @@ fun WorkflowLaunchCard(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                     Text(
-                        text = "Operator workflows",
+                        text = stringResource(R.string.mobile_factory_ui_operator_workflows),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Warehouse demand acknowledgements and live manifest overrides are available on mobile in streamlined native flows.",
+                        text = stringResource(R.string.mobile_factory_ui_warehouse_demand_acknowledgements_and_live_manifest_overrides_ar),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             WorkflowLaunchRow(
-                title = "Supply requests",
+                title = stringResource(R.string.factory_portal_supply_requests_text_supply_requests),
                 supporting = "Review warehouse demand and advance requests through production states.",
                 actionLabel = "Open requests",
                 onClick = { onNavigate(FactoryRoutes.SUPPLY_REQUESTS) },
             )
             WorkflowLaunchRow(
-                title = "Payload override",
+                title = stringResource(R.string.factory_portal_payload_override_text_payload_override),
                 supporting = "Move transfers between loading manifests or release them back to approved stock.",
                 actionLabel = "Open override",
                 onClick = { onNavigate(FactoryRoutes.PAYLOAD_OVERRIDE) },
             )
             WorkflowLaunchRow(
-                title = "Manifest lifecycle",
+                title = stringResource(R.string.mobile_factory_ui_manifest_lifecycle),
                 supporting = "Advance manifests through draft, loading, sealed, dispatched, and completed.",
                 actionLabel = "Open manifests",
                 onClick = { onNavigate(FactoryRoutes.MANIFESTS) },
             )
             WorkflowLaunchRow(
-                title = "Gate exceptions",
+                title = stringResource(R.string.factory_portal_manifest_exceptions_text_gate_exceptions),
                 supporting = "Review transfers removed from manifests and DLQ escalations.",
                 actionLabel = "Open exceptions",
                 onClick = { onNavigate(FactoryRoutes.MANIFEST_EXCEPTIONS) },
             )
             WorkflowLaunchRow(
-                title = "Create transfer",
+                title = stringResource(R.string.factory_portal_transfers_create_text_create_transfer),
                 supporting = "Stage a new factory-to-warehouse movement with volume and optional fleet assignment.",
                 actionLabel = "Create transfer",
                 onClick = { onNavigate(FactoryRoutes.TRANSFER_CREATE) },
             )
             WorkflowLaunchRow(
-                title = "Replenishment insights",
+                title = stringResource(R.string.factory_portal_insights_text_replenishment_insights),
                 supporting = "Warehouse stock velocity and reorder pressure linked to this factory.",
                 actionLabel = "Open insights",
                 onClick = { onNavigate(FactoryRoutes.INSIGHTS) },
             )
             WorkflowLaunchRow(
-                title = "Analytics overview",
+                title = stringResource(R.string.factory_portal_analytics_text_analytics_overview),
                 supporting = "Factory throughput, active manifests, exception queue, and lead time.",
                 actionLabel = "Open analytics",
                 onClick = { onNavigate(FactoryRoutes.ANALYTICS) },

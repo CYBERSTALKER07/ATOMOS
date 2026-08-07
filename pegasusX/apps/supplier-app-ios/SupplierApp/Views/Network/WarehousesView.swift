@@ -25,7 +25,7 @@ struct WarehousesView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Warehouses")
+        .navigationTitle("portal.nav.warehouses")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

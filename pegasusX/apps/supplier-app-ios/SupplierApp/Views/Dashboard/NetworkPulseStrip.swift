@@ -6,12 +6,12 @@ struct NetworkPulseStrip: View {
 
     var body: some View {
         if loading && events.isEmpty {
-            Text("Loading network pulse…")
+            Text("mobile_supplier.ui.loading_network_pulse")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                Text("Network pulse")
+                Text("factory_portal.app.text.network_pulse")
                     .font(.headline)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: SupplierTheme.spacingMD) {

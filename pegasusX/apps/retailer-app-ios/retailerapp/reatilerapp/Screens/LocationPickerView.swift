@@ -81,7 +81,7 @@ struct LocationPickerView: View {
 
                     Spacer()
 
-                    Text("Pick Store Location")
+                    Text("mobile_retailer.ui.pick_store_location")
                         .font(.system(.headline, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
 
@@ -142,7 +142,7 @@ struct LocationPickerView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
-                            Text("Confirm Location")
+                            Text("mobile_retailer.ui.confirm_location")
                                 .font(.system(.headline, design: .rounded))
                         }
                         .foregroundStyle(.white)

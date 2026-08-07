@@ -148,6 +148,20 @@
         "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
       ]
     },
+    "fx_settlement_convert": {
+      "description": "Theatre #13 Wave 2: settlement authority operating_currency_total_minor (SKIPPED until FxRates/payment available)",
+      "markers": [
+        "PX_E2E_FX_SETTLEMENT_CONVERT_OK",
+        "PX_E2E_FX_SETTLEMENT_CONVERT_SKIPPED"
+      ]
+    },
+    "order_currency_picker": {
+      "description": "Theatre #13 Wave 2+: GET /v1/order/currencies + flag-gated allowlist (default off)",
+      "markers": [
+        "PX_E2E_ORDER_CURRENCY_PICKER_OK",
+        "PX_E2E_ORDER_CURRENCY_PICKER_SKIPPED"
+      ]
+    },
     "gs1_labels": {
       "description": "§8.9 Wave 2C GS1 SSCC at seal + ZPL label render (flag-gated GS1_LABELS_ENABLED)",
       "markers": [
@@ -185,10 +199,12 @@
       ]
     },
     "wms_cold_chain": {
-      "description": "§8.7 PR-6 TemperatureReadings + quarantine (flag-gated WMS_COLD_CHAIN_ENABLED)",
+      "description": "§8.7 PR-6 TemperatureReadings + quarantine + TEMPERATURE_BREACH auto-raise (flag-gated WMS_COLD_CHAIN_ENABLED)",
       "markers": [
         "PX_E2E_WMS_COLD_CHAIN_OK",
-        "PX_E2E_WMS_COLD_CHAIN_SKIPPED"
+        "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
+        "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
+        "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
       ]
     },
     "optimizer_constraints": {
@@ -231,6 +247,13 @@
       "markers": [
         "PX_E2E_SAFETY_STOCK_REPLAY_OK",
         "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
+      ]
+    },
+    "seasonal_override": {
+      "description": "Theatre #8: seasonal override Multiplier persist + GET echo (SKIPPED until Multiplier migration)",
+      "markers": [
+        "PX_E2E_SEASONAL_OVERRIDE_OK",
+        "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
       ]
     }
   },
@@ -430,6 +453,14 @@
       "PX_E2E_CURRENCY_MISMATCH_DENIED",
       "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
     ],
+    "fx_settlement_convert": [
+      "PX_E2E_FX_SETTLEMENT_CONVERT_OK",
+      "PX_E2E_FX_SETTLEMENT_CONVERT_SKIPPED"
+    ],
+    "order_currency_picker": [
+      "PX_E2E_ORDER_CURRENCY_PICKER_OK",
+      "PX_E2E_ORDER_CURRENCY_PICKER_SKIPPED"
+    ],
     "gs1_sscc": [
       "PX_E2E_GS1_SSCC_OK",
       "PX_E2E_GS1_SSCC_SKIPPED"
@@ -464,7 +495,9 @@
     ],
     "wms_cold_chain": [
       "PX_E2E_WMS_COLD_CHAIN_OK",
-      "PX_E2E_WMS_COLD_CHAIN_SKIPPED"
+      "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
+      "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
+      "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
     ],
     "optimizer_constraints": [
       "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
@@ -489,6 +522,10 @@
     "safety_stock_replay": [
       "PX_E2E_SAFETY_STOCK_REPLAY_OK",
       "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
+    ],
+    "seasonal_override": [
+      "PX_E2E_SEASONAL_OVERRIDE_OK",
+      "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
     ]
   }
 }

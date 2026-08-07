@@ -152,7 +152,8 @@ final class CartManager {
         deliveryMode: String? = nil,
         requestedDeliveryDate: String? = nil,
         deliveryPriority: String? = nil,
-        checkoutPolicyToken: String? = nil
+        checkoutPolicyToken: String? = nil,
+        currency: String? = nil
     ) -> UnifiedCheckoutPayload {
         UnifiedCheckoutPayload(
             retailerId: retailerId,
@@ -169,7 +170,8 @@ final class CartManager {
             deliveryMode: deliveryMode,
             requestedDeliveryDate: requestedDeliveryDate,
             deliveryPriority: deliveryPriority,
-            checkoutPolicyToken: checkoutPolicyToken
+            checkoutPolicyToken: checkoutPolicyToken,
+            currency: currency
         )
     }
 
@@ -268,6 +270,7 @@ struct UnifiedCheckoutPayload: Codable {
     let requestedDeliveryDate: String?
     let deliveryPriority: String?
     let checkoutPolicyToken: String?
+    let currency: String?
 
     struct Item: Codable {
         let skuId: String
@@ -289,6 +292,19 @@ struct UnifiedCheckoutPayload: Codable {
         case requestedDeliveryDate = "requested_delivery_date"
         case deliveryPriority = "delivery_priority"
         case checkoutPolicyToken = "checkout_policy_token"
+        case currency
+    }
+}
+
+struct OrderCurrencyOptions: Codable {
+    let enabled: Bool
+    let operatingCurrency: String
+    let allowlist: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case enabled
+        case operatingCurrency = "operating_currency"
+        case allowlist
     }
 }
 

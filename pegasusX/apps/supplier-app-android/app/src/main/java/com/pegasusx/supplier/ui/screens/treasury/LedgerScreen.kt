@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,7 +50,7 @@ fun LedgerScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Payment ledger") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -79,8 +81,8 @@ fun LedgerScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.lg)) {
                             Text(row.entryType, style = MaterialTheme.typography.titleMedium)
-                            Text("${row.currency} ${row.amountMinor}", style = MaterialTheme.typography.bodyMedium)
-                            row.orderId?.let { Text("Order $it", style = MaterialTheme.typography.bodySmall) }
+                            Text(stringResource(R.string.mobile_supplier_ui_currency_amountminor, row.currency, row.amountMinor), style = MaterialTheme.typography.bodyMedium)
+                            row.orderId?.let { Text(stringResource(R.string.mobile_supplier_ui_order_it, it), style = MaterialTheme.typography.bodySmall) }
                             Text(row.occurredAt, style = MaterialTheme.typography.bodySmall)
                         }
                     }

@@ -41,10 +41,10 @@ struct FleetLiveMapView: View {
                 VStack(spacing: 0) {
                 if !zoneOverrides.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Active control-tower zones")
+                        Text("mobile_supplier.ui.active_control_tower_zones")
                             .font(.subheadline.bold())
                         ForEach(zoneOverrides.prefix(3)) { override in
-                            Text("\(override.action) · expires \(override.ttlExpiresAt.prefix(19))")
+                            Text(L10n.format("mobile_supplier.ui.action_expires_prefix", "\(override.action)", "\(override.ttlExpiresAt.prefix(19))"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -97,7 +97,7 @@ struct FleetLiveMapView: View {
                     ResponsiveGridContentWrapper {
                         ForEach(exceptionCells) { cell in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
+                                Text(L10n.format("mobile_supplier.ui.cell_prefix_severity", "\(cell.h3Cell.prefix(12))", "\(cell.severity)"))
                                     .font(.subheadline.bold())
                                 Text("Total \(cell.counts["total", default: 0]) · shop closed \(cell.counts["shop_closed", default: 0])")
                                     .font(.caption)
@@ -109,10 +109,10 @@ struct FleetLiveMapView: View {
                 }
             }
         }
-        .navigationTitle("Live fleet")
+        .navigationTitle("portal.nav.live_fleet")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Publish zone", systemImage: "map") {
+                Button("mobile_supplier.ui.publish_zone", systemImage: "map") {
                     showPublishSheet = true
                 }
             }
@@ -131,7 +131,7 @@ struct FleetLiveMapView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .navigationTitle("Control tower")
+                .navigationTitle("supplier_portal.control_tower_command_panel.text.control_tower")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(publishing ? "Publishing…" : "Publish") {
@@ -140,7 +140,7 @@ struct FleetLiveMapView: View {
                         .disabled(publishing)
                     }
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { showPublishSheet = false }
+                        Button("common.action.close") { showPublishSheet = false }
                     }
                 }
             }

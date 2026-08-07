@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.data.api
 
+import androidx.compose.ui.res.stringResource
+
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.ProblemDetail
@@ -148,7 +150,7 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
                     throw ProblemDetailException(
                         ProblemDetail(
                             type = "about:blank",
-                            title = "Too many requests",
+                            title = stringResource(R.string.mobile_retailer_ui_too_many_requests),
                             status = 429,
                             detail = "Too many requests. Please try again later.",
                             instance = null,

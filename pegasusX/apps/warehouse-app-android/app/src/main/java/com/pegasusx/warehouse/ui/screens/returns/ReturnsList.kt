@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.returns
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,7 +80,7 @@ fun ReturnsList(
                         )
                         if (r.suggestedDisposition.isNotBlank()) {
                             Text(
-                                "Suggested: ${r.suggestedDisposition}",
+                                stringResource(R.string.mobile_warehouse_ui_suggested_suggesteddisposition, r.suggestedDisposition),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -92,7 +94,7 @@ fun ReturnsList(
                         }
                         if (r.barcode.isNotBlank()) {
                             Text(
-                                "EAN ${r.barcode}",
+                                stringResource(R.string.mobile_warehouse_ui_ean_barcode, r.barcode),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

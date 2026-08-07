@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
@@ -154,7 +156,7 @@ fun HomeScreen(
             contentAlignment = Alignment.Center,
         ) {
             DriverLoadingState(
-                title = "Loading your route",
+                title = stringResource(R.string.mobile_driver_ui_loading_your_route),
                 body = "Checking manifest assignments, vehicle profile, and delivery status.",
                 compact = true,
             )
@@ -183,7 +185,7 @@ fun HomeScreen(
                 IconButton(onClick = onNotificationsClick) {
                     Icon(
                         Icons.Outlined.Notifications,
-                        contentDescription = "Notifications",
+                        contentDescription = stringResource(R.string.portal_nav_notifications),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -284,12 +286,12 @@ fun HomeScreen(
                 ) {
                     Column(modifier = Modifier.padding(PegasusSpacing.s16)) {
                         Text(
-                            text = "Pending cash collection",
+                            text = stringResource(R.string.mobile_driver_ui_pending_cash_collection),
                             fontWeight = FontWeight.Bold,
                             color = lab.fg,
                         )
                         Text(
-                            text = "Order ${pending.orderId.takeLast(6)} · ${pending.amount.formattedAmount()}",
+                            text = stringResource(R.string.mobile_driver_ui_order_takelast_formattedamount, pending.orderId.takeLast(6), pending.amount.formattedAmount()),
                             fontSize = 13.sp,
                             color = lab.fgTertiary,
                         )
@@ -387,17 +389,17 @@ private fun StatusChips(hasActiveRoute: Boolean, isReturning: Boolean) {
         when {
             isReturning -> StatusChip(
                 icon = Icons.Default.Home,
-                label = "Returning",
+                label = stringResource(R.string.mobile_driver_ui_returning),
                 active = true
             )
             hasActiveRoute -> StatusChip(
                 icon = Icons.Default.Sync,
-                label = "On Route",
+                label = stringResource(R.string.mobile_driver_ui_on_route),
                 active = true
             )
             else -> StatusChip(
                 icon = Icons.Default.ShieldMoon,
-                label = "Idle",
+                label = stringResource(R.string.mobile_driver_ui_idle),
                 active = false
             )
         }

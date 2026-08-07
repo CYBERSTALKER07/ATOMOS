@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -240,7 +242,7 @@ fun SupplyRequestsScreen(
             ) {
                 Text("Confirm fulfill", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Warehouse: ${options.warehouseName} · Mode: ${options.transferMode}" +
+                    stringResource(R.string.mobile_factory_ui_warehouse_warehousename_mode_transfermode, options.warehouseName, options.transferMode) +
                         if (options.coLocated) " · Co-located site" else "",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -250,10 +252,10 @@ fun SupplyRequestsScreen(
                     color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 ) {
                     Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                        Text("INTERNAL: ${options.outcomeInternal}", style = MaterialTheme.typography.bodySmall)
-                        Text("TRUCK: ${options.outcomeTruck}", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_factory_ui_internal_outcomeinternal, options.outcomeInternal), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_factory_ui_truck_outcometruck, options.outcomeTruck), style = MaterialTheme.typography.bodySmall)
                         options.linkedDriverEta?.let {
-                            Text("Linked transfer updated: $it", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.mobile_factory_ui_linked_transfer_updated_it, it), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -291,7 +293,7 @@ fun SupplyRequestsScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading supply requests",
+                title = stringResource(R.string.mobile_factory_ui_loading_supply_requests),
                 body = "Fetching the current warehouse demand queue for this factory.",
                 modifier = Modifier
                     .fillMaxSize()

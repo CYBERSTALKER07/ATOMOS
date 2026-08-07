@@ -101,10 +101,10 @@ struct DeliveryMapView: View {
             // Recent receipts (ADR-009: fiscal label + QR when available)
             if !recentReceipts.isEmpty {
                 VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                    Text("Recent receipts")
+                    Text("retailer_desktop.tracking.tracking_status.text.recent_receipts")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("Completed deliveries. Tap for fiscal QR when available.")
+                    Text("mobile_retailer.ui.completed_deliveries_tap_for_fiscal_qr_when_available")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
 
@@ -120,7 +120,7 @@ struct DeliveryMapView: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(receipt.supplierName.isEmpty ? "Supplier" : receipt.supplierName)
                                                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                            Text("#\(receipt.orderId.suffix(8)) · \(receipt.fiscalReceiptLabel)")
+                                            Text(L10n.format("mobile_retailer.ui.suffix_fiscalreceiptlabel", "\(receipt.orderId.suffix(8))", "\(receipt.fiscalReceiptLabel)"))
                                                 .font(.system(.caption2, design: .monospaced))
                                                 .foregroundStyle(AppTheme.textTertiary)
                                         }
@@ -209,7 +209,7 @@ struct DeliveryMapView: View {
                 .animation(.spring(response: 0.35), value: selectedOrder?.orderId)
             }
         }
-        .navigationTitle("Delivery Map")
+        .navigationTitle("mobile_retailer.ui.delivery_map")
         .navigationBarTitleDisplayMode(.inline)
         .task { await startPolling() }
         .task { await observeWebSocket() }
@@ -218,7 +218,7 @@ struct DeliveryMapView: View {
         .sheet(item: $fiscalQRReceipt) { receipt in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
-                    Text("Pegasus receipt")
+                    Text("mobile_retailer.ui.pegasus_receipt")
                         .font(.system(.title3, design: .rounded, weight: .bold))
                     Text(receipt.fiscalReceiptLabel)
                         .font(.system(.subheadline, design: .rounded))
@@ -227,7 +227,7 @@ struct DeliveryMapView: View {
                         QRCodeView(data: receipt.fiscalQr, size: 220)
                     }
                     if !receipt.latestFiscalReceiptId.isEmpty {
-                        Text("ID · \(receipt.latestFiscalReceiptId)")
+                        Text(L10n.format("mobile_retailer.ui.id_latestfiscalreceiptid", "\(receipt.latestFiscalReceiptId)"))
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -247,7 +247,7 @@ struct DeliveryMapView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { fiscalQRReceipt = nil }
+                        Button("common.action.close") { fiscalQRReceipt = nil }
                     }
                 }
             }

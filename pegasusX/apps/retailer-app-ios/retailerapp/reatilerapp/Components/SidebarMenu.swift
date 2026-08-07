@@ -64,7 +64,7 @@ struct SidebarMenu: View {
                             .padding(.top, AppTheme.spacingSM)
 
                         // Version
-                        Text("Pegasus · v1.0.0")
+                        Text("mobile_retailer.ui.pegasus_v1_0_0")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                             .padding(.horizontal, AppTheme.spacingXL)

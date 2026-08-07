@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"google.golang.org/api/iterator"
 )
@@ -38,11 +39,14 @@ type CycleResult struct {
 
 // Engine scans warehouse inventory against burn rates and persists insights.
 type Engine struct {
-	Spanner                *spanner.Client
-	Log                    *slog.Logger
-	Now                    func() time.Time
-	EchelonTargetsEnabled  bool
-	SegmentSvc             *segment.Service
+	Spanner               *spanner.Client
+	Log                   *slog.Logger
+	Now                   func() time.Time
+	EchelonTargetsEnabled bool
+	SegmentSvc            *segment.Service
+	// SeasonalReader applies Spanner seasonal overrides on suggested qty.
+	// When nil, builtins from seasonalcore are used.
+	SeasonalReader seasonalcore.MultiplierReader
 }
 
 // NewEngine returns an engine bound to Spanner.
@@ -50,9 +54,14 @@ func NewEngine(client *spanner.Client, log *slog.Logger) *Engine {
 	if log == nil {
 		log = slog.Default()
 	}
+	var reader seasonalcore.MultiplierReader
+	if client != nil {
+		reader = &seasonalcore.SpannerOverrideReader{Client: client}
+	}
 	return &Engine{
-		Spanner: client,
-		Log:     log,
+		Spanner:        client,
+		Log:            log,
+		SeasonalReader: reader,
 		Now: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -334,7 +343,7 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 				suggestedQty = computeSuggestedQtyWithEchelon(*sku, reorderPoint, target.TargetQty, true)
 			}
 		}
-		seasonMul := seasonalMultiplierFor(e.Now())
+		seasonMul := e.resolveSeasonalMultiplier(ctx, wh.SupplierId, e.Now())
 		if seasonMul > 0 && seasonMul != 1.0 {
 			suggestedQty = int64(math.Ceil(float64(suggestedQty) * seasonMul))
 			if suggestedQty < 1 {

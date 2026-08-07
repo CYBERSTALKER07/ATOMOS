@@ -13,7 +13,7 @@ struct VehicleListView: View {
                     ForEach(vehicles) { vehicle in
                         VStack(alignment: .leading) {
                             Text(vehicle.label ?? vehicle.licensePlate).font(.headline)
-                            Text("\(vehicle.licensePlate) · \(nodeLabel(topology: topology, type: vehicle.homeNodeType, id: vehicle.homeNodeId))")
+                            Text(L10n.format("mobile_supplier.ui.licenseplate_nodelabel", "\(vehicle.licensePlate)", "\(nodeLabel(topology: topology, type: vehicle.homeNodeType, id: vehicle.homeNodeId))"))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -175,7 +177,7 @@ fun DashboardScreen(
 
                 if (uiState.recentProducts.isNotEmpty()) {
                     item {
-                        RetailerSectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
+                        RetailerSectionHeader(title = stringResource(R.string.mobile_retailer_ui_quick_reorder), icon = Icons.Rounded.History)
                         Spacer(modifier = Modifier.height(PegasusSpacing.md))
                         QuickReorderRow(
                             products = uiState.recentProducts,
@@ -187,7 +189,7 @@ fun DashboardScreen(
                 if (uiState.predictions.isNotEmpty()) {
                     item {
                         RetailerSectionHeader(
-                            title = "AI predictions",
+                            title = stringResource(R.string.mobile_retailer_ui_ai_predictions),
                             icon = Icons.Rounded.AutoAwesome,
                             count = uiState.predictions.size,
                         )

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -138,7 +140,7 @@ fun ReturnPolicySettingsScreen(
                 title = { Text("Return policy") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -149,7 +151,7 @@ fun ReturnPolicySettingsScreen(
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Return policy",
                 modifier = Modifier.padding(padding),
             )
@@ -176,7 +178,7 @@ fun ReturnPolicySettingsScreen(
                 )
                 if (sourceHint.isNotBlank()) {
                     Text(
-                        "Source hint: $sourceHint",
+                        stringResource(R.string.mobile_supplier_ui_source_hint_sourcehint_2, sourceHint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -197,7 +199,7 @@ fun ReturnPolicySettingsScreen(
                         FilterChip(
                             selected = hours == preset,
                             onClick = { applyHours(preset) },
-                            label = { Text("${preset}h") },
+                            label = { Text(stringResource(R.string.mobile_supplier_ui_preseth, preset)) },
                         )
                     }
                 }
@@ -212,8 +214,7 @@ fun ReturnPolicySettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
-                Text(
-                    "Preview: retailers may file claims for ${hoursText.ifBlank { "—" }}h after delivery.",
+                Text(stringResource(R.string.mobile_supplier_ui_preview_retailers_may_file_claims_for_ifblankh_after_delivery, hoursText.ifBlank { "—" }),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

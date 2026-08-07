@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -97,7 +99,7 @@ fun LocalSkusScreen(
                 title = { Text("Local SKUs") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -148,7 +150,7 @@ fun LocalSkusScreen(
                         Text(row.name, style = MaterialTheme.typography.titleSmall)
                         Text("${row.id} · ${row.priceMinor} minor · ${if (row.active) "active" else "inactive"}", style = MaterialTheme.typography.bodySmall)
                         if (row.barcode.isNotBlank()) {
-                            Text("Barcode ${row.barcode}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_retailer_ui_barcode_barcode, row.barcode), style = MaterialTheme.typography.bodySmall)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = {

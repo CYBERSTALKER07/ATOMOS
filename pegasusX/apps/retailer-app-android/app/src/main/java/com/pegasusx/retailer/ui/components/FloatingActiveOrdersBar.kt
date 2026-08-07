@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -105,8 +107,7 @@ fun FloatingActiveOrdersBar(
 
                 // Title + subtitle
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "$orderCount Active Order${if (orderCount != 1) "s" else ""}",
+                    Text(stringResource(R.string.mobile_retailer_ui_ordercount_active_orderif_s_else, orderCount, if (orderCount != 1) "s" else ""),
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = (-0.2).sp,
@@ -114,8 +115,7 @@ fun FloatingActiveOrdersBar(
                         color = colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(1.dp))
-                    Text(
-                        "$statusText · $totalDisplay",
+                    Text(stringResource(R.string.mobile_retailer_ui_statustext_totaldisplay, statusText, totalDisplay),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurface.copy(alpha = 0.5f),
                     )
@@ -143,7 +143,7 @@ fun FloatingActiveOrdersBar(
                 ) {
                     Icon(
                         Icons.Rounded.KeyboardArrowUp,
-                        contentDescription = "Expand",
+                        contentDescription = stringResource(R.string.mobile_retailer_ui_expand),
                         modifier = Modifier.size(20.dp),
                         tint = colorScheme.onSurface.copy(alpha = 0.7f),
                     )

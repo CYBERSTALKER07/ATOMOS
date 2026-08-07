@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -115,13 +117,13 @@ fun VehicleDetailScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -130,7 +132,7 @@ fun VehicleDetailScreen(
     ) { innerPadding ->
         when {
             loading && vehicle == null -> PegasusLoadingState(
-                title = "Loading truck…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_truck),
                 body = "Fleet vehicle details",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -155,7 +157,7 @@ fun VehicleDetailScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "${v.licensePlate} · ${v.vehicleClass} · ${v.capacityVu} VU",
+                            stringResource(R.string.mobile_warehouse_ui_licenseplate_vehicleclass_capacityvu_vu, v.licensePlate, v.vehicleClass, v.capacityVu),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

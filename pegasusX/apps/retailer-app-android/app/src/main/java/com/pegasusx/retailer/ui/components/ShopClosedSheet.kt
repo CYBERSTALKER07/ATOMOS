@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -126,12 +128,12 @@ fun ShopClosedSheet(
                         tint = MaterialTheme.colorScheme.tertiary,
                     )
                     Text(
-                        text = "Driver ${alert.driverName} reported your shop is closed.",
+                        text = stringResource(R.string.mobile_retailer_ui_driver_drivername_reported_your_shop_is_closed, alert.driverName),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Confirm your status so we can manage order #${alert.orderId.takeLast(6)}.",
+                        text = stringResource(R.string.mobile_retailer_ui_confirm_your_status_so_we_can_manage_order_takelast, alert.orderId.takeLast(6)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -145,7 +147,7 @@ fun ShopClosedSheet(
                     }
                     if (bypassPending) {
                         Text(
-                            text = "Doorway / drop-off proof is required for authorize bypass.",
+                            text = stringResource(R.string.mobile_retailer_ui_doorway_drop_off_proof_is_required_for_authorize_bypass),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

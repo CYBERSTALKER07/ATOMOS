@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -89,7 +91,7 @@ fun OrderInfoCard(
         }
 
         Text(
-            text = "${order.state.name} — ${order.items.size} item${if (order.items.size != 1) "s" else ""} — ${formatAmount(order.totalAmount)}",
+            text = stringResource(R.string.mobile_driver_ui_name_size_itemif_s_else_formatamount, order.state.name, order.items.size, if (order.items.size != 1) "s" else "", formatAmount(order.totalAmount)),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -79,7 +81,7 @@ fun TreasuryScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading treasury…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_treasury),
                 body = "Financial overview and invoices",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -94,7 +96,7 @@ fun TreasuryScreen(
             else -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Invoices (${invoices.size})") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_invoices_size, invoices.size)) })
                 }
                 when (tab) {
                     0 -> overview?.let { o ->
@@ -111,12 +113,12 @@ fun TreasuryScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     WarehouseMetricTile(
-                                        label = "Outstanding",
+                                        label = stringResource(R.string.warehouse_portal_residual_text_outstanding),
                                         value = "${fmt.format(o.totalOutstanding)} UZS",
                                         modifier = Modifier.weight(1f),
                                     )
                                     WarehouseMetricTile(
-                                        label = "Invoiced",
+                                        label = stringResource(R.string.mobile_warehouse_ui_invoiced),
                                         value = "${fmt.format(o.totalInvoiced)} UZS",
                                         modifier = Modifier.weight(1f),
                                     )
@@ -124,7 +126,7 @@ fun TreasuryScreen(
                             }
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 WarehouseMetricTile(
-                                    label = "Paid",
+                                    label = stringResource(R.string.warehouse_portal_residual_text_paid),
                                     value = "${fmt.format(o.totalPaid)} UZS",
                                     modifier = Modifier.fillMaxWidth(0.5f),
                                 )

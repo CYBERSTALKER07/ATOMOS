@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.promotions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,7 +95,7 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
         topBar = { TopAppBar(title = { Text("Promotions") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create promotion")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_create_promotion))
             }
         },
     ) { padding ->
@@ -120,13 +122,12 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                             supportingContent = {
                                 val sim = simResults[promo.promotionId]
                                 Column {
-                                    Text(
-                                        "${promo.discountBps / 100.0}% · ${promo.scopeType} · ${promo.retailerScope}" +
+                                    Text(stringResource(R.string.mobile_supplier_ui_n_0_scopetype_retailerscope, promo.discountBps / 100.0, promo.scopeType, promo.retailerScope) +
                                             if (promo.isActive) "" else " · inactive",
                                     )
                                     sim?.let {
                                         Text(
-                                            "P&L sandbox: ${it.projectedVolume} units · margin ${it.projectedMarginMinor / 100.0} (${it.marginDeltaPct}%)",
+                                            stringResource(R.string.mobile_supplier_ui_p_l_sandbox_projectedvolume_units_margin_n_0_margindeltapct, it.projectedVolume, it.projectedMarginMinor / 100.0, it.marginDeltaPct),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }

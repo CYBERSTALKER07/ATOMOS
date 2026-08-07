@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.pricing
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,7 +59,7 @@ fun PricingScreen(api: SupplierApi, onBack: () -> Unit) {
                 title = { Text("Pricing") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -148,7 +150,7 @@ private fun ProductPricingDialog(
                 OutlinedTextField(
                     value = priceMajor,
                     onValueChange = { priceMajor = it },
-                    label = { Text("List price (${product.currency})") },
+                    label = { Text(stringResource(R.string.mobile_supplier_ui_list_price_currency, product.currency)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )

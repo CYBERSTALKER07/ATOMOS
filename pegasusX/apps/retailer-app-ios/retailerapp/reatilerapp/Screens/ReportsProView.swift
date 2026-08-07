@@ -14,13 +14,13 @@ struct ReportsProView: View {
             if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
             Section("Last 7 days") {
                 Text(String(format: "Sales %.2f", Double(salesMinor) / 100.0))
-                Text("Sale count: \(saleCount)")
-                Text("On-hand SKUs: \(onHand)")
-                Text("Low stock bins: \(lowStock)")
-                Text("Top SKU: \(topLine)")
+                Text(L10n.format("mobile_retailer.ui.sale_count_salecount_2", "\(saleCount)"))
+                Text(L10n.format("mobile_retailer.ui.on_hand_skus_onhand_2", "\(onHand)"))
+                Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(lowStock)"))
+                Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(topLine)"))
             }
         }
-        .navigationTitle("Reports Pro")
+        .navigationTitle("portal.nav.reports_pro")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }

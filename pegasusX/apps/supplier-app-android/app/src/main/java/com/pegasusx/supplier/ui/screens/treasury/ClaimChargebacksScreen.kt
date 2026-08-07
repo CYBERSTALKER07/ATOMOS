@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,7 +60,7 @@ fun ClaimChargebacksScreen(
                 title = { Text("Claim chargebacks") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -81,7 +83,7 @@ fun ClaimChargebacksScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { load() }) { Text("Refresh") }
                 Text(
-                    "${items.size} rows · total $total minor",
+                    stringResource(R.string.mobile_supplier_ui_size_rows_total_total_minor, items.size, total),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -111,9 +113,8 @@ fun ClaimChargebacksScreen(
                                     "${row.amountMinor} ${row.currency.ifBlank { "UZS" }}",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                Text("Order ${row.orderId ?: "—"}", style = MaterialTheme.typography.bodySmall)
-                                Text(
-                                    "Ref ${row.referenceId ?: "—"}",
+                                Text(stringResource(R.string.mobile_supplier_ui_order_orderid_2, row.orderId ?: "—"), style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_ref_referenceid, row.referenceId ?: "—"),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                                 Text(

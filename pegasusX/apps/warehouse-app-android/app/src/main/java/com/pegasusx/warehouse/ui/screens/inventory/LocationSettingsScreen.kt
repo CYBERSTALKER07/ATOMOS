@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -99,7 +101,7 @@ fun LocationSettingsScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -133,7 +135,7 @@ fun LocationSettingsScreen(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Depot address",
+                    label = stringResource(R.string.factory_portal_settings_location_text_depot_address),
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(

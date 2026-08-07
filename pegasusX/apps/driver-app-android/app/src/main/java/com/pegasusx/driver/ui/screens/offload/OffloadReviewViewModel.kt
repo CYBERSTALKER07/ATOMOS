@@ -20,11 +20,13 @@ import com.pegasusx.driver.offline.DriverOfflineActionCatalog
 import com.pegasusx.driver.offline.DriverOfflineQueue
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URLDecoder
 import javax.inject.Inject
 
@@ -50,6 +52,10 @@ data class OffloadReviewUiState(
     val offloadResult: ConfirmOffloadResponse? = null,
     val creditDeliveryRecorded: Boolean = false,
     val evidencePhotoUrl: String = "",
+    /** Local JPEG path for offline credit/shop-closed flush. */
+    val evidencePhotoLocalPath: String = "",
+    val signatureUrl: String = "",
+    val signatureLocalPath: String = "",
     val isUploadingPhoto: Boolean = false,
     val photoPreviewUri: String? = null,
     /** Settlement proximity: payment modes locked until unlock. */
@@ -169,9 +175,30 @@ class OffloadReviewViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                val proof = photoProofUrl?.takeIf { it.isNotBlank() }
-                    ?: _state.value.evidencePhotoUrl.takeIf { it.isNotBlank() }
-                if (proof.isNullOrBlank()) {
+                val current = _state.value
+                var proof = photoProofUrl?.takeIf { it.isNotBlank() }
+                    ?: current.evidencePhotoUrl.takeIf { it.isNotBlank() }
+                var signature = current.signatureUrl.takeIf { it.isNotBlank() }
+                if (proof.isNullOrBlank() && current.evidencePhotoLocalPath.isNotBlank()) {
+                    // Will upload on flush if offline; for online try upload now.
+                    runCatching {
+                        proof = mediaUpload.uploadJpegBytes(
+                            mediaUpload.readLocalJpeg(current.evidencePhotoLocalPath),
+                            purpose = "credit_proof",
+                            orderId = orderId,
+                        )
+                    }
+                }
+                if (signature.isNullOrBlank() && current.signatureLocalPath.isNotBlank()) {
+                    runCatching {
+                        signature = mediaUpload.uploadJpegBytes(
+                            mediaUpload.readLocalJpeg(current.signatureLocalPath),
+                            purpose = "credit_proof",
+                            orderId = orderId,
+                        )
+                    }
+                }
+                if (proof.isNullOrBlank() && current.evidencePhotoLocalPath.isBlank()) {
                     _state.update {
                         it.copy(
                             isSubmitting = false,
@@ -180,7 +207,16 @@ class OffloadReviewViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                if (!_state.value.proximityUnlocked && forceBypassToken.isNullOrBlank()) {
+                if (signature.isNullOrBlank() && current.signatureLocalPath.isBlank()) {
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Signature required for credit leave — sign the pad and tap Save.",
+                        )
+                    }
+                    return@launch
+                }
+                if (!current.proximityUnlocked && forceBypassToken.isNullOrBlank()) {
                     _state.update {
                         it.copy(
                             isSubmitting = false,
@@ -193,13 +229,25 @@ class OffloadReviewViewModel @Inject constructor(
                 val body = buildMap<String, Any?> {
                     put("order_id", orderId)
                     put("client_timestamp", ts)
-                    put("photo_proof_url", proof)
+                    if (!proof.isNullOrBlank()) put("photo_proof_url", proof)
+                    if (!signature.isNullOrBlank()) put("signature_url", signature)
+                    if (current.evidencePhotoLocalPath.isNotBlank() && proof.isNullOrBlank()) {
+                        put("photo_local_path", current.evidencePhotoLocalPath)
+                    }
+                    if (current.signatureLocalPath.isNotBlank() && signature.isNullOrBlank()) {
+                        put("signature_local_path", current.signatureLocalPath)
+                    }
                     forceBypassToken?.takeIf { it.isNotBlank() }?.let { put("force_bypass_token", it) }
                 }
                 val key = DriverIdempotencyKeys.creditDelivery(orderId)
                 try {
+                    if (proof.isNullOrBlank()) {
+                        // Must be offline-path with local files only.
+                        throw java.io.IOException("network_required_for_upload")
+                    }
                     val resp = api.markCreditDelivery(
-                        body.mapValues { it.value?.toString().orEmpty() },
+                        body.mapValues { it.value?.toString().orEmpty() }
+                            .filterKeys { it != "photo_local_path" && it != "signature_local_path" },
                         key,
                     )
                     val due = resp["due_at"].orEmpty()
@@ -207,11 +255,15 @@ class OffloadReviewViewModel @Inject constructor(
                         it.copy(
                             isSubmitting = false,
                             creditDeliveryRecorded = true,
+                            evidencePhotoUrl = proof.orEmpty(),
+                            signatureUrl = signature.orEmpty(),
                             error = if (due.isNotBlank()) "Credit leave recorded · due $due" else null,
                         )
                     }
                 } catch (e: Exception) {
-                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                    if (DriverOfflineActionCatalog.isNetworkEnqueueable(e) ||
+                        e.message == "network_required_for_upload"
+                    ) {
                         offlineQueue.enqueueMap(
                             endpoint = DriverOfflineActionCatalog.ENDPOINT_CREDIT,
                             body = body,
@@ -359,22 +411,43 @@ class OffloadReviewViewModel @Inject constructor(
                 it.copy(isUploadingPhoto = true, error = null, photoPreviewUri = uri.toString())
             }
             try {
-                val publicUrl = mediaUpload.uploadJpegUri(
-                    uri = uri,
-                    purpose = "driver_exception",
-                    orderId = orderId,
-                )
+                val bytes = withContext(Dispatchers.IO) { mediaUpload.compressJpegUri(uri) }
+                val localPath = mediaUpload.savePodJpeg(orderId, "photo", bytes)
+                val publicUrl = runCatching {
+                    mediaUpload.uploadJpegBytes(bytes, purpose = "credit_proof", orderId = orderId)
+                }.getOrDefault("")
                 _state.update {
-                    it.copy(isUploadingPhoto = false, evidencePhotoUrl = publicUrl)
+                    it.copy(
+                        isUploadingPhoto = false,
+                        evidencePhotoUrl = publicUrl,
+                        evidencePhotoLocalPath = localPath,
+                    )
                 }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
                         isUploadingPhoto = false,
                         evidencePhotoUrl = "",
+                        evidencePhotoLocalPath = "",
                         error = e.message ?: "Photo upload failed",
                     )
                 }
+            }
+        }
+    }
+
+    fun saveSignatureJpeg(bytes: ByteArray) {
+        viewModelScope.launch {
+            try {
+                val localPath = mediaUpload.savePodJpeg(orderId, "signature", bytes)
+                val publicUrl = runCatching {
+                    mediaUpload.uploadJpegBytes(bytes, purpose = "credit_proof", orderId = orderId)
+                }.getOrDefault("")
+                _state.update {
+                    it.copy(signatureLocalPath = localPath, signatureUrl = publicUrl, error = null)
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message ?: "Signature save failed") }
             }
         }
     }

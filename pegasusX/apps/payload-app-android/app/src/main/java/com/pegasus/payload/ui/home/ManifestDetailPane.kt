@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -113,7 +115,7 @@ fun ManifestDetailPane(
 
             when {
                 state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading manifest",
+                    title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )
                 state.manifest == null -> PegasusStatePane(
@@ -216,11 +218,11 @@ fun DetailHeader(
         Spacer(Modifier.width(12.dp))
         if (showInject) {
             IconButton(onClick = onShowInject) {
-                Icon(Icons.Filled.Add, contentDescription = "Inject order")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.mobile_payload_ui_inject_order))
             }
         }
         IconButton(onClick = onRefresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Refresh manifest")
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_manifest))
         }
     }
 }

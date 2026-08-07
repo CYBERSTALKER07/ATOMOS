@@ -67,10 +67,10 @@ struct PayloadOverrideView: View {
                     }
                 }
             }
-            .navigationTitle("Payload Override")
+            .navigationTitle("portal.nav.payload_override")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .disabled(isProcessing)
@@ -113,28 +113,28 @@ struct PayloadOverrideView: View {
                 get: { cancelTransferCandidate != nil },
                 set: { if !$0 { cancelTransferCandidate = nil } }
             )) {
-                Button("Keep", role: .cancel) {}
-                Button("Release", role: .destructive) {
+                Button("mobile_factory.ui.keep", role: .cancel) {}
+                Button("mobile_factory.ui.release", role: .destructive) {
                     if let candidate = cancelTransferCandidate {
                         Task { await releaseTransfer(candidate) }
                     }
                 }
             } message: {
-                Text("Release transfer back to APPROVED so it can be reassigned.")
+                Text("mobile_factory.ui.release_transfer_back_to_approved_so_it_can_be_reassigned")
             }
             // Cancel Manifest Confirmation
             .alert("Cancel Manifest", isPresented: Binding(
                 get: { cancelManifestCandidate != nil },
                 set: { if !$0 { cancelManifestCandidate = nil } }
             )) {
-                Button("Keep", role: .cancel) {}
-                Button("Cancel Manifest", role: .destructive) {
+                Button("mobile_factory.ui.keep", role: .cancel) {}
+                Button("mobile_factory.ui.cancel_manifest_2", role: .destructive) {
                     if let manifest = cancelManifestCandidate {
                         Task { await cancelManifest(manifest) }
                     }
                 }
             } message: {
-                Text("Cancel manifest and return all linked transfers to APPROVED.")
+                Text("mobile_factory.ui.cancel_manifest_and_return_all_linked_transfers_to_approved")
             }
         }
     }

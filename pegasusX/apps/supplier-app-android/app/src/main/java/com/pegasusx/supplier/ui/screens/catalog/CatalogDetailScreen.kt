@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,7 +54,7 @@ fun CatalogDetailScreen(
                 title = { Text("Product detail") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -80,14 +82,14 @@ fun CatalogDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     ) {
                         Text(p.name, style = MaterialTheme.typography.headlineSmall)
-                        Text("ID: ${p.productId}", style = MaterialTheme.typography.bodySmall)
-                        Text("Category: ${p.categoryId}", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.mobile_supplier_ui_id_productid, p.productId), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_supplier_ui_category_categoryid, p.categoryId), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "Price: ${formatMinorAmount(p.priceMinor, p.currency)}",
+                            stringResource(R.string.mobile_supplier_ui_price_formatminoramount, formatMinorAmount(p.priceMinor, p.currency)),
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        Text("Unit: ${p.unit} · VU ${p.unitVolumeVu}", style = MaterialTheme.typography.bodyMedium)
-                        p.barcode?.let { Text("Barcode: $it", style = MaterialTheme.typography.bodyMedium) }
+                        Text(stringResource(R.string.mobile_supplier_ui_unit_unit_vu_unitvolumevu, p.unit, p.unitVolumeVu), style = MaterialTheme.typography.bodyMedium)
+                        p.barcode?.let { Text(stringResource(R.string.mobile_supplier_ui_barcode_it, it), style = MaterialTheme.typography.bodyMedium) }
                         Text(
                             if (p.isActive) "Active" else "Inactive",
                             style = MaterialTheme.typography.labelLarge,

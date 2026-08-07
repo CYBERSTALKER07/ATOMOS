@@ -159,10 +159,10 @@ struct InsightsView: View {
             VStack(alignment: .leading, spacing: AppTheme.spacingXL) {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Expense Insights")
+                    Text("mobile_retailer.ui.expense_insights")
                         .font(.system(.title2, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("Track your procurement spending")
+                    Text("mobile_retailer.ui.track_your_procurement_spending")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -216,7 +216,7 @@ struct InsightsView: View {
 
                 if !vm.predictions.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("AI Demand Signals")
+                        Text("mobile_retailer.ui.ai_demand_signals")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                             .padding(.horizontal, AppTheme.spacingLG)
@@ -229,7 +229,7 @@ struct InsightsView: View {
                                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                             .foregroundStyle(AppTheme.textPrimary)
                                         if forecast.isBlocked {
-                                            Text("Insufficient history")
+                                            Text("mobile_retailer.ui.insufficient_history")
                                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                                 .foregroundStyle(AppTheme.warning)
                                                 .padding(.horizontal, 8)
@@ -238,7 +238,7 @@ struct InsightsView: View {
                                                 .clipShape(Capsule())
                                         }
                                     }
-                                    Text("\(forecast.predictedQuantity) units · \(forecast.confidencePercent)")
+                                    Text(L10n.format("mobile_retailer.ui.predictedquantity_units_confidencepercent", "\(forecast.predictedQuantity)", "\(forecast.confidencePercent)"))
                                         .font(.system(.caption, design: .rounded))
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
@@ -263,7 +263,7 @@ struct InsightsView: View {
                 // Monthly Trend Chart
                 if let expenses = vm.analytics?.monthlyExpenses, !expenses.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Monthly Trend")
+                        Text("mobile_retailer.ui.monthly_trend")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
 
@@ -323,7 +323,7 @@ struct InsightsView: View {
                 // Top Suppliers
                 if let suppliers = vm.analytics?.topSuppliers, !suppliers.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Top Suppliers")
+                        Text("mobile_retailer.ui.top_suppliers")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
 
@@ -357,7 +357,7 @@ struct InsightsView: View {
                 // Top Products
                 if let products = vm.analytics?.topProducts, !products.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Top Products")
+                        Text("warehouse_portal.analytics.text.top_products")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
 
@@ -368,7 +368,7 @@ struct InsightsView: View {
                                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                                         .foregroundStyle(AppTheme.textPrimary)
                                         .lineLimit(1)
-                                    Text("\(product.quantity) units")
+                                    Text(L10n.format("mobile_retailer.ui.quantity_units", "\(product.quantity)"))
                                         .font(.system(.caption2, design: .rounded))
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
@@ -395,10 +395,10 @@ struct InsightsView: View {
                         Image(systemName: "chart.line.uptrend.xyaxis")
                             .font(.system(size: 40))
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text("No Analytics Data")
+                        Text("mobile_retailer.ui.no_analytics_data")
                             .font(.system(.headline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Complete a few orders and your expense insights will appear here")
+                        Text("mobile_retailer.ui.complete_a_few_orders_and_your_expense_insights_will_appear_here")
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(AppTheme.textSecondary)
                             .multilineTextAlignment(.center)

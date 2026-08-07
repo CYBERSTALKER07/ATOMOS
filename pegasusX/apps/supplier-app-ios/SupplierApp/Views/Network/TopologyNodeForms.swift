@@ -144,15 +144,15 @@ struct AddWarehouseSheet: View {
           Section { Text(error).foregroundStyle(.red) }
         }
         Section("Warehouse") {
-          TextField("Name", text: $name)
+          TextField("retailer_desktop.pos.text.name", text: $name)
           AddressLocationField(value: $location, label: "Warehouse address")
-          TextField("Coverage radius (km)", text: $coverageKm).keyboardType(.decimalPad)
+          TextField("supplier_portal.residual.text.coverage_radius_km", text: $coverageKm).keyboardType(.decimalPad)
         }
       }
-      .navigationTitle("Add warehouse")
+      .navigationTitle("supplier_portal.warehouses.components.warehouse_form.text.add_warehouse")
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
+          Button("common.action.cancel") { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(saving ? "Saving…" : "Save") { Task { await save() } }
@@ -197,14 +197,14 @@ struct AddFactorySheet: View {
           Section { Text(error).foregroundStyle(.red) }
         }
         Section("Factory") {
-          TextField("Name", text: $name)
+          TextField("retailer_desktop.pos.text.name", text: $name)
           AddressLocationField(value: $location, label: "Factory address")
         }
       }
-      .navigationTitle("Add factory")
+      .navigationTitle("supplier_portal.factories.components.factory_form.text.add_factory")
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
+          Button("common.action.cancel") { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(saving ? "Saving…" : "Save") { Task { await save() } }

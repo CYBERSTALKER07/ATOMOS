@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -46,7 +48,7 @@ fun OrderChecklist(
 ) {
     if (loading) {
         com.pegasus.design.PegasusLoadingState(
-            title = "Fetching manifest",
+            title = stringResource(R.string.mobile_payload_ui_fetching_manifest),
             body = "Loading the checklist items assigned to this vehicle.",
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
         )
@@ -68,7 +70,7 @@ fun OrderChecklist(
     ) {
         Column(Modifier.padding(PayloadSpacing.lg), verticalArrangement = Arrangement.spacedBy(PayloadSpacing.md)) {
             PayloadSectionTitle(
-                title = "Orders (${sealedOrderIds.size}/${orders.size} sealed)",
+                title = stringResource(R.string.mobile_payload_ui_orders_size_size_2_sealed, sealedOrderIds.size, orders.size),
             )
             // Order chips
             LazyVerticalGrid(
@@ -95,7 +97,7 @@ fun OrderChecklist(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Items — ${selected.orderId.take(8)}",
+                        stringResource(R.string.mobile_payload_ui_items_take, selected.orderId.take(8)),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -131,7 +133,7 @@ fun OrderChecklist(
                 }
                 if (selected.orderId in sealedOrderIds) {
                     Text(
-                        "Order sealed. Dispatch code ${dispatchCodes[selected.orderId].orEmpty()}.",
+                        stringResource(R.string.mobile_payload_ui_order_sealed_dispatch_code_orempty, dispatchCodes[selected.orderId].orEmpty()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -213,17 +215,16 @@ private fun OrderChip(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             if (sealed) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = "Sealed", modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.mobile_payload_ui_sealed), modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Order ${order.orderId.take(8)}",
+                    stringResource(R.string.mobile_payload_ui_order_take, order.orderId.take(8)),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
-                Text(
-                    "${order.items.size} item${if (order.items.size == 1) "" else "s"}",
+                Text(stringResource(R.string.mobile_payload_ui_size_itemif_else_s, order.items.size, if (order.items.size == 1) "" else "s"),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -264,7 +265,7 @@ private fun ItemRow(
             modifier = Modifier.weight(1f),
         )
         Text(
-            "x$quantity",
+            stringResource(R.string.mobile_payload_ui_xquantity, quantity),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
         )

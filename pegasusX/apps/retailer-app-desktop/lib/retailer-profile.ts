@@ -1,4 +1,4 @@
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import type { RetailerProfile } from "./types";
 
@@ -19,7 +19,9 @@ function readLegacyLocalProfile(): RetailerProfile | null {
 
 /** Load profile from SQLite (Tauri) or migrate legacy localStorage into cache. */
 export async function initRetailerProfile(): Promise<void> {
-  const cached = await cacheGet<RetailerProfile>(RETAILER_PROFILE_CACHE_KEY);
+  const cached = await cacheGet<RetailerProfile>(RETAILER_PROFILE_CACHE_KEY, {
+    maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+  });
   if (cached?.id) {
     memoryProfile = cached;
     return;

@@ -84,21 +84,21 @@ struct SupplierAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: SupplierSection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: SupplierSection.dashboard.icon) }
                 .tag(CompactTab.dashboard)
 
             sectionView(.orders)
-                .tabItem { Label("Orders", systemImage: SupplierSection.orders.icon) }
+                .tabItem { Label("portal.nav.orders", systemImage: SupplierSection.orders.icon) }
                 .tag(CompactTab.orders)
 
             sectionView(.fleet)
-                .tabItem { Label("Fleet", systemImage: SupplierSection.fleet.icon) }
+                .tabItem { Label("portal.nav.fleet", systemImage: SupplierSection.fleet.icon) }
                 .tag(CompactTab.fleet)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_supplier.ui.more", systemImage: "ellipsis.circle") }
             .tag(CompactTab.more)
         }
     }

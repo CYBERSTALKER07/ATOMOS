@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -165,7 +167,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowUp,
-                                                contentDescription = "Move up",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_up),
                                                 tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -177,7 +179,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Move down",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_down),
                                                 tint = if (index < displayOrders.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -212,7 +214,7 @@ fun ManifestScreen(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ) {
-                Icon(Icons.Default.Warning, contentDescription = "Request Early Complete")
+                Icon(Icons.Default.Warning, contentDescription = stringResource(R.string.mobile_driver_ui_request_early_complete))
             }
         }
     } // end Box

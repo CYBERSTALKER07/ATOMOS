@@ -14,13 +14,13 @@ struct SectionsView: View {
         List {
             if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
             Section("New section") {
-                TextField("Name", text: $name)
-                TextField("Aisle tag", text: $aisle)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("retailer_desktop.sections.text.aisle_tag", text: $aisle)
                 Button(busy ? "…" : "Create") { Task { await create() } }.disabled(busy)
             }
-            Section("Sections") {
+            Section("portal.nav.sections") {
                 if items.isEmpty {
-                    Text("None yet").foregroundStyle(AppTheme.textTertiary)
+                    Text("mobile_retailer.ui.none_yet").foregroundStyle(AppTheme.textTertiary)
                 } else {
                     ForEach(items) { row in
                         Button {
@@ -37,12 +37,12 @@ struct SectionsView: View {
             }
             if selectedId != nil {
                 Section("Map SKUs") {
-                    TextField("SKU list (comma-separated)", text: $skuText)
-                    Button("Save SKUs") { Task { await saveSkus() } }.disabled(busy)
+                    TextField("mobile_retailer.ui.sku_list_comma_separated", text: $skuText)
+                    Button("mobile_retailer.ui.save_skus") { Task { await saveSkus() } }.disabled(busy)
                 }
             }
         }
-        .navigationTitle("Sections")
+        .navigationTitle("portal.nav.sections")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }
     }

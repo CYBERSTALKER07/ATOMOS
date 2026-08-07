@@ -4,10 +4,72 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 )
+
+func TestBillingFX_ConvertUSDToUZS(t *testing.T) {
+	t.Parallel()
+	repo := fxrates.NewMemoryRepository()
+	at := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	_ = repo.Upsert(context.Background(), fxrates.ScaledRate("USD", "UZS", 12_750_000_000, "TEST", at))
+	fx := fxrates.NewService(repo)
+
+	// Resolve conversion the same way as HandleMessage for a USD event.
+	minor := billing.ResolveMeterAmountMinor(200, 0, 0, 0)
+	converted, err := fx.ConvertMinor(context.Background(), "USD", "UZS", minor, at.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := billing.MinorToMajor(converted)
+	if got != 255.0 {
+		t.Fatalf("got %v want 255", got)
+	}
+}
+
+func TestBillingFX_MissingRateSkips(t *testing.T) {
+	t.Parallel()
+	fx := fxrates.NewService(fxrates.NewMemoryRepository())
+	w := NewBillingTierWorker(billing.NewMeterWorker(nil)).WithFx(fx, "UZS")
+	w.Now = func() time.Time { return time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC) }
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventOrderFinalized,
+		"order_id":     "ord-usd-1",
+		"supplier_id":  "sup-1",
+		"amount_minor": int64(200),
+		"total": map[string]any{
+			"amount":   int64(200),
+			"currency": "EUR",
+		},
+	})
+	// MeterWorker with nil client returns error on Process — but missing rate should return nil before meter.
+	if err := w.HandleMessage(context.Background(), payload); err != nil {
+		t.Fatalf("expected skip nil, got %v", err)
+	}
+}
+
+func TestBillingFX_SameCurrencyMeters(t *testing.T) {
+	t.Parallel()
+	w := NewBillingTierWorker(billing.NewMeterWorker(nil)).WithFx(nil, "UZS")
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventOrderFinalized,
+		"order_id":     "ord-uzs-1",
+		"supplier_id":  "sup-1",
+		"amount_minor": int64(12500),
+		"total": map[string]any{
+			"amount":   int64(12500),
+			"currency": "UZS",
+		},
+	})
+	// nil MeterWorker client → ProcessOrderFinalized returns error for positive amount.
+	err := w.HandleMessage(context.Background(), payload)
+	if err == nil {
+		t.Fatal("expected meter error with nil client (proves path reached ProcessOrderFinalized)")
+	}
+}
 
 func TestBillingTierWorker_LiveORDER_FINALIZEDShape(t *testing.T) {
 	t.Parallel()

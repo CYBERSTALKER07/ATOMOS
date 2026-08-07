@@ -16,7 +16,7 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: LabTheme.spacingSM) {
-                Text("Pegasus Warehouse")
+                Text("mobile_warehouse.ui.pegasus_warehouse")
                     .font(.largeTitle.bold())
                 Text(useOtp ? "Sign in with phone OTP" : "Dev fallback: phone + PIN")
                     .font(.subheadline)
@@ -24,14 +24,14 @@ struct LoginView: View {
             }
 
             VStack(spacing: LabTheme.spacingLG) {
-                TextField("Phone", text: $phone)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
 
                 if useOtp {
                     if otpSent {
-                        TextField("Verification code", text: $otpCode)
+                        TextField("mobile_warehouse.ui.verification_code", text: $otpCode)
                             .textContentType(.oneTimeCode)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
@@ -94,7 +94,7 @@ struct LoginView: View {
             Button {
                 openURL(WarehousePortalLinks.url(for: .register))
             } label: {
-                Text("New warehouse? Register on the web portal")
+                Text("mobile_warehouse.ui.new_warehouse_register_on_the_web_portal")
                     .font(.footnote)
             }
             .padding(.top, LabTheme.spacingSM)

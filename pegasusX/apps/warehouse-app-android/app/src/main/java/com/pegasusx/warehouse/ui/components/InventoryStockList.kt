@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -53,7 +55,7 @@ fun InventoryStockList(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.productName, style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    "Qty: ${item.quantity} · Reorder at: ${item.reorderThreshold}",
+                                    stringResource(R.string.mobile_warehouse_ui_qty_quantity_reorder_at_reorderthreshold, item.quantity, item.reorderThreshold),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
@@ -561,7 +562,14 @@ func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, tas
 			if sku == "" || qty <= 0 {
 				continue
 			}
-			if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, sku, qty); err != nil {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+					ctx, txn, supplierID, warehouseID, sku,
+					stocklots.DefaultReturnsLocationID, "RETURNS", qty,
+				); err != nil {
+					return err
+				}
+			} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, sku, qty); err != nil {
 				return err
 			}
 		}

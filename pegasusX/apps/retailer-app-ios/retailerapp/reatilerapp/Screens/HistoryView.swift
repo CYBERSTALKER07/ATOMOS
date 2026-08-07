@@ -89,10 +89,10 @@ struct HistoryView: View {
                 Circle().fill(AppTheme.accentSoft.opacity(0.3)).frame(width: 80, height: 80)
                 Image(systemName: "clock").font(.system(size: 32)).foregroundStyle(AppTheme.accent.opacity(0.4))
             }
-            Text("No Orders Found")
+            Text("mobile_retailer.ui.no_orders_found")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Your order history will appear here")
+            Text("mobile_retailer.ui.your_order_history_will_appear_here")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()

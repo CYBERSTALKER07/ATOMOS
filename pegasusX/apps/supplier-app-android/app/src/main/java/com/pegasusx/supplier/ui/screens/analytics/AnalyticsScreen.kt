@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -150,12 +152,12 @@ fun AnalyticsScreen(
                 title = { Text("Analytics") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -163,7 +165,7 @@ fun AnalyticsScreen(
     ) { padding ->
         when {
             showFullScreenLoading(loading, hasSnapshot) -> PegasusLoadingState(
-                title = "Loading analytics…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_analytics),
                 body = "Velocity, revenue, and demand",
                 modifier = Modifier.padding(padding),
             )

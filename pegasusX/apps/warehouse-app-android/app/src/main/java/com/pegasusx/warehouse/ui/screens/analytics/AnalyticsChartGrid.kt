@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +54,7 @@ fun AnalyticsChartGrid(
             }
         }
         Text(
-            text = "Peak day: ${formatter.format(daily.maxOf { it.revenue })} UZS",
+            text = stringResource(R.string.mobile_warehouse_ui_peak_day_format_uzs, formatter.format(daily.maxOf { it.revenue })),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

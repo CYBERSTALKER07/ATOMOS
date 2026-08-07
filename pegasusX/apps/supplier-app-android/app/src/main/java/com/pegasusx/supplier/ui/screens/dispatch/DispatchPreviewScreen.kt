@@ -226,7 +226,7 @@ fun DispatchPreviewScreen(
                     title = { Text("Dispatch") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     },
                 )
@@ -364,8 +364,7 @@ private fun DispatchPreviewBody(
                 if (dispatchMode == DispatchMode.Manual && p.undispatchedOrders.isNotEmpty()) {
                     Text("Manual assignment", style = MaterialTheme.typography.titleSmall)
                     if (truckMax > 0) {
-                        Text(
-                            "Selected ${"%.1f".format(selectedVolume)} / ${"%.1f".format(truckEffective)} VU",
+                        Text(stringResource(R.string.mobile_supplier_ui_selected_format_format_2_vu, "%.1f".format(selectedVolume), "%.1f".format(truckEffective)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -393,7 +392,7 @@ private fun DispatchPreviewBody(
                                     DropdownMenuItem(
                                         text = {
                                             val vu = driver.maxVolumeVu?.let { " · ${it.toInt()} VU" }.orEmpty()
-                                            Text("${driver.name.ifBlank { driver.driverId }}$vu")
+                                            Text(stringResource(R.string.mobile_supplier_ui_driveridvu, driver.name.ifBlank { driver.driverId }, vu))
                                         },
                                         onClick = {
                                             onDriverSelected(driver.driverId)
@@ -423,8 +422,7 @@ private fun DispatchPreviewBody(
                                 )
                                 Text(order.orderId.take(12), style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(
-                                "${"%.1f".format(order.volumeVu)} VU",
+                            Text(stringResource(R.string.mobile_supplier_ui_format_vu, "%.1f".format(order.volumeVu)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -435,7 +433,7 @@ private fun DispatchPreviewBody(
                     Text("Route map", style = MaterialTheme.typography.titleSmall)
                     p.optimizerSource?.takeIf { it.isNotBlank() }?.let { source ->
                         Text(
-                            "Source: $source",
+                            stringResource(R.string.mobile_supplier_ui_source_source_2, source),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

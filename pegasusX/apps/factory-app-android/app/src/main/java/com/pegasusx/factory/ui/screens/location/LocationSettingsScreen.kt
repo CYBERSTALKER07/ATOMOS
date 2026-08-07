@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.location
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -120,7 +122,7 @@ fun LocationSettingsScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -129,7 +131,7 @@ fun LocationSettingsScreen(
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Updating...",
+                title = stringResource(R.string.mobile_factory_ui_updating),
                 body = "Applying location settings...",
                 modifier = Modifier.padding(padding).fillMaxSize()
             )
@@ -160,7 +162,7 @@ fun LocationSettingsScreen(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Factory address",
+                    label = stringResource(R.string.factory_portal_residual_text_factory_address),
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(

@@ -759,27 +759,19 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 	if view == "" {
 		view = "overview"
 	}
+	// Fail-closed honesty: never return hardcoded fake invoices/totals.
+	if view == "invoices" {
+		writeJSON(w, http.StatusOK, map[string]any{"invoices": []any{}})
+		return
+	}
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
-		if view == "invoices" {
-			writeJSON(w, http.StatusOK, map[string]any{"invoices": []any{}})
-			return
-		}
 		writeJSON(w, http.StatusOK, s.loadWarehouseTreasuryOverview(r.Context(), whID))
 		return
 	}
-	s.ensurePortalSeed()
-	if view == "invoices" {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"invoices": []map[string]any{
-				{"invoice_id": "inv-1", "status": "PAID", "amount_uzs": 45000000, "payout_uzs": 42750000},
-			},
-		})
-		return
-	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"total_invoiced":    int64(120000000),
-		"total_paid":        int64(98000000),
-		"total_outstanding": int64(22000000),
+		"total_invoiced":    int64(0),
+		"total_paid":        int64(0),
+		"total_outstanding": int64(0),
 	})
 }
 

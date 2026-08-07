@@ -66,6 +66,18 @@ func main() {
 			os.Exit(1)
 		}
 		slog.Info("planning forecast complete", "written", written, "skipped", skipped)
+		if planning.SeasonalEstimateEnabled() && strings.TrimSpace(*supplierID) != "" {
+			planSvc := planning.NewService(client)
+			est, estErr := planSvc.EstimateCalendarMultipliers(ctx, strings.TrimSpace(*supplierID), time.Time{}, true)
+			if estErr != nil {
+				slog.Warn("seasonal estimate failed", "err", estErr)
+			} else {
+				slog.Info("seasonal estimate complete",
+					"suggestions", len(est.Suggestions),
+					"persisted_drafts", est.PersistedDrafts,
+				)
+			}
+		}
 	}
 }
 

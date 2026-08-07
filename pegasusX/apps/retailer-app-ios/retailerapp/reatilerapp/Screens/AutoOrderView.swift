@@ -300,7 +300,7 @@ struct AutoOrderView: View {
             }
             .scrollIndicators(.hidden)
             .background(AppTheme.background)
-            .navigationTitle("Auto-Order")
+            .navigationTitle("portal.nav.auto_order")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -335,13 +335,13 @@ struct AutoOrderView: View {
                     }
                 }
             ), actions: {
-                Button("Use History") {
+                Button("mobile_retailer.ui.use_history") {
                     Task { await confirmEnable(useHistory: true) }
                 }
-                Button("Start Fresh", role: .destructive) {
+                Button("mobile_retailer.ui.start_fresh", role: .destructive) {
                     Task { await confirmEnable(useHistory: false) }
                 }
-                Button("Cancel", role: .cancel) {
+                Button("common.action.cancel", role: .cancel) {
                     if let target = pendingTarget {
                         switch target {
                         case .global: globalAutoOrder = false
@@ -352,7 +352,7 @@ struct AutoOrderView: View {
                     pendingTarget = nil
                 }
             }, message: {
-                Text("Enable \(alertEntityLabel) using your existing order history, or start fresh? Starting fresh requires at least 2 orders before predictions begin.")
+                Text(L10n.format("mobile_retailer.ui.enable_alertentitylabel_using_your_existing_order_history_or_start_fresh", "\(alertEntityLabel)"))
             })
         }
     }
@@ -364,7 +364,7 @@ struct AutoOrderView: View {
             Spacer(minLength: 100)
             ProgressView()
                 .tint(AppTheme.accent)
-            Text("Loading settings…")
+            Text("mobile_retailer.ui.loading_settings")
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()
@@ -374,9 +374,9 @@ struct AutoOrderView: View {
 
     private var executionModeCard: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-            Text("Execution mode")
+            Text("mobile_retailer.ui.execution_mode")
                 .font(.system(.headline, design: .rounded))
-            Text("Off / Shadow (recommended) / Draft cart / Place. Scope toggles below choose SKUs; disable blocks even when global is on.")
+            Text("mobile_retailer.ui.off_shadow_recommended_draft_cart_place_scope_toggles_below_choo")
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
             HStack(spacing: 6) {
@@ -402,15 +402,15 @@ struct AutoOrderView: View {
 
     private var shadowInboxCard: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-            Text("Shadow inbox")
+            Text("mobile_retailer.ui.shadow_inbox")
                 .font(.system(.headline, design: .rounded))
             if shadowProposals.isEmpty {
-                Text("No shadow proposals yet. Set mode to Shadow and run Shadow now.")
+                Text("mobile_retailer.ui.no_shadow_proposals_yet_set_mode_to_shadow_and_run_shadow_now")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             } else {
                 ForEach(shadowProposals.prefix(8)) { p in
-                    Text("\(p.sku) · qty \(p.proposedQty) · IP \(Int(p.ip)) · ROP \(Int(p.reorderPoint))")
+                    Text(L10n.format("mobile_retailer.ui.sku_qty_proposedqty_ip_ip_rop_reorderpoint", "\(p.sku)", "\(p.proposedQty)", "\(Int(p.ip))", "\(Int(p.reorderPoint))"))
                         .font(.system(.caption, design: .rounded))
                 }
             }
@@ -425,11 +425,11 @@ struct AutoOrderView: View {
             HStack {
                 Image(systemName: "play.circle.fill")
                     .foregroundStyle(AppTheme.accent)
-                Text("Auto-order worker")
+                Text("mobile_retailer.ui.auto_order_worker")
                     .font(.system(.headline, design: .rounded))
                 Spacer()
             }
-            Text("Shadow records proposals only. Draft stages cart lines. Place creates real supplier orders when the server flag is on.")
+            Text("mobile_retailer.ui.shadow_records_proposals_only_draft_stages_cart_lines_place_crea")
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
             HStack(spacing: AppTheme.spacingSM) {
@@ -479,12 +479,12 @@ struct AutoOrderView: View {
                 isPresented: $placeConfirmOpen,
                 titleVisibility: .visible
             ) {
-                Button("Confirm place", role: .destructive) {
+                Button("mobile_retailer.ui.confirm_place", role: .destructive) {
                     Task { await runAutoOrder(mode: "place") }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
-                Text("Place mode creates real procurement orders (AUTO_ORDER). Requires primary location geo, place permission, and AUTO_ORDER_PLACE_ENABLED.")
+                Text("mobile_retailer.ui.place_mode_creates_real_procurement_orders_auto_order_requires_p")
             }
 
             if let lastRun {
@@ -498,24 +498,24 @@ struct AutoOrderView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
                 ForEach(lastRun.placedOrders ?? []) { po in
-                    Text("\(po.orderId)\(po.supplierId.map { " · \($0)" } ?? "") · \(po.lineCount) lines")
+                    Text(L10n.format("mobile_retailer.ui.orderidmap_linecount_lines", "\(po.orderId)", "\(po.supplierId.map { " · \($0)" } ?? "")", "\(po.lineCount)"))
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(AppTheme.accent)
                 }
             }
 
             if runs.isEmpty {
-                Text("No runs yet. Enable auto-order and use Draft or Place.")
+                Text("mobile_retailer.ui.no_runs_yet_enable_auto_order_and_use_draft_or_place")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             } else {
-                Text("Last runs")
+                Text("mobile_retailer.ui.last_runs")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.textSecondary)
                 ForEach(runs.prefix(8)) { run in
                     let p = run.placedLines ?? 0
                     HStack {
-                        Text("\(run.scheduleBucket ?? String(run.startedAt.prefix(10))) · \(run.mode) · d\(run.draftLines)\(p > 0 ? " p\(p)" : "")")
+                        Text(L10n.format("mobile_retailer.ui.schedulebucket_string_mode_ddraftlinesp_0_p", "\(run.scheduleBucket ?? String(run.startedAt.prefix(10)))", "\(run.mode)", "\(run.draftLines)", "\(p > 0 ? " p\(p)" : "")"))
                             .font(.system(.caption2, design: .rounded))
                         Spacer()
                         Text(run.status)
@@ -532,13 +532,13 @@ struct AutoOrderView: View {
 
     private var reorderSuggestionsCard: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            Text("Reorder suggestions")
+            Text("supplier_portal.replenishment.suggestions.text.reorder_suggestions")
                 .font(.system(.headline, design: .rounded))
-            Text("Sell-through aware OPEN suggestions (Store POS / Wholesale)")
+            Text("mobile_retailer.ui.sell_through_aware_open_suggestions_store_pos_wholesale")
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
             if reorderSuggestions.isEmpty {
-                Text("No OPEN suggestions yet. POS sell-through and demand batch populate this list.")
+                Text("mobile_retailer.ui.no_open_suggestions_yet_pos_sell_through_and_demand_batch_popula")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             } else {
@@ -573,7 +573,7 @@ struct AutoOrderView: View {
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(3)
             Spacer()
-            Button("Retry") {
+            Button("common.action.retry") {
                 Task { await loadAll() }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))

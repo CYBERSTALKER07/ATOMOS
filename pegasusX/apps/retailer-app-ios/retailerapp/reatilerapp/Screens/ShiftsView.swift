@@ -14,7 +14,7 @@ struct ShiftsView: View {
     var body: some View {
         List {
             Section {
-                Text("Clock in before POS when SHIFTS is on. Close shift with counted cash for variance alerts.")
+                Text("mobile_retailer.ui.clock_in_before_pos_when_shifts_is_on_close_shift_with_counted_c")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -27,32 +27,32 @@ struct ShiftsView: View {
                     Button(busy ? "…" : "Clock in") { Task { await clockIn() } }
                         .disabled(busy)
                 } else {
-                    Button("Clock out") { Task { await clockOut() } }
+                    Button("mobile_retailer.ui.clock_out") { Task { await clockOut() } }
                         .disabled(busy)
                 }
             }
             Section("Cash shift") {
-                TextField("Opening float (minor)", text: $floatMinor)
+                TextField("mobile_retailer.ui.opening_float_minor", text: $floatMinor)
                     .keyboardType(.numberPad)
-                TextField("Closing cash (minor)", text: $closingCash)
+                TextField("mobile_retailer.ui.closing_cash_minor", text: $closingCash)
                     .keyboardType(.numberPad)
                 Button(busy ? "…" : "Open shift") { Task { await openShift() } }
                     .disabled(busy || !clockedIn)
             }
-            Section("Shifts") {
+            Section("portal.nav.shifts") {
                 if shifts.isEmpty {
-                    Text("No shifts yet").foregroundStyle(AppTheme.textTertiary)
+                    Text("mobile_retailer.ui.no_shifts_yet").foregroundStyle(AppTheme.textTertiary)
                 } else {
                     ForEach(shifts) { row in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(row.status) · float \(Double(row.openingFloatMinor) / 100.0)")
+                            Text(L10n.format("mobile_retailer.ui.status_float_n_0", "\(row.status)", "\(Double(row.openingFloatMinor) / 100.0)"))
                             if let v = row.varianceMinor {
                                 Text(String(format: "Variance %.2f", Double(v) / 100.0))
                                     .font(.caption)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
                             if row.status == "OPEN" {
-                                Button("Close shift") { Task { await closeShift(id: row.id) } }
+                                Button("mobile_retailer.ui.close_shift") { Task { await closeShift(id: row.id) } }
                                     .disabled(busy)
                             }
                         }
@@ -60,7 +60,7 @@ struct ShiftsView: View {
                 }
             }
         }
-        .navigationTitle("Shifts")
+        .navigationTitle("portal.nav.shifts")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }
     }

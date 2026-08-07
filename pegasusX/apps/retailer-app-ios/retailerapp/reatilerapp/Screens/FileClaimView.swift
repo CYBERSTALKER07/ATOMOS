@@ -34,14 +34,14 @@ struct FileClaimView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Order #\(order.id.suffix(6))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(6))"))
                         .font(.headline)
                     if eligLoading {
-                        Text("Checking claim window…")
+                        Text("mobile_retailer.ui.checking_claim_window")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if let eligibility, eligibility.eligible {
-                        Text("Eligible until \(formatEndsAt(eligibility.endsAt)) (\(eligibility.hoursRemaining)h left). Amounts use your order prices.")
+                        Text(L10n.format("mobile_retailer.ui.eligible_until_formatendsat_hoursremainingh_left_amounts_use_your_order_", "\(formatEndsAt(eligibility.endsAt))", "\(eligibility.hoursRemaining)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if let eligibility, !eligibility.eligible {
@@ -49,7 +49,7 @@ struct FileClaimView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     } else {
-                        Text("File within 48 hours of delivery (server enforces). Amounts are calculated from your order prices.")
+                        Text("mobile_retailer.ui.file_within_48_hours_of_delivery_server_enforces_amounts_are_cal")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -72,7 +72,7 @@ struct FileClaimView: View {
                         Stepper(value: binding(for: sku), in: 0...max(item.quantity, 0)) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.productName)
-                                Text("SKU \(sku) · ordered \(item.quantity)")
+                                Text(L10n.format("mobile_retailer.ui.sku_sku_ordered_quantity", "\(sku)", "\(item.quantity)"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -101,17 +101,17 @@ struct FileClaimView: View {
                             .clipShape(.rect(cornerRadius: 12))
                     }
                     if !photoURL.isEmpty {
-                        Text("Photo ready")
+                        Text("mobile_retailer.ui.photo_ready")
                             .font(.caption)
                             .foregroundStyle(.green)
                     }
-                    Text("Required for damage / concealed damage / tamper / temperature claims.")
+                    Text("mobile_retailer.ui.required_for_damage_concealed_damage_tamper_temperature_claims")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
                 Section("Details") {
-                    TextField("What happened?", text: $descriptionText, axis: .vertical)
+                    TextField("mobile_retailer.ui.what_happened", text: $descriptionText, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
@@ -123,7 +123,7 @@ struct FileClaimView: View {
 
                 if let successClaimId {
                     Section {
-                        Text("Claim filed: \(successClaimId)")
+                        Text(L10n.format("mobile_retailer.ui.claim_filed_successclaimid_2", "\(successClaimId)"))
                             .foregroundStyle(.green)
                     }
                 }
@@ -132,7 +132,7 @@ struct FileClaimView: View {
                     Section("Previous claims") {
                         ForEach(existing) { c in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("\(c.claimType) · \(c.status)")
+                                Text(L10n.format("mobile_retailer.ui.claimtype_status", "\(c.claimType)", "\(c.status)"))
                                     .font(.subheadline.weight(.semibold))
                                 Text("\(c.amountMinor ?? 0) \(c.currency ?? "UZS") · \(c.claimId)")
                                     .font(.caption2)
@@ -142,14 +142,14 @@ struct FileClaimView: View {
                     }
                 }
             }
-            .navigationTitle("File claim")
+            .navigationTitle("mobile_retailer.ui.file_claim")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("common.action.close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") { Task { await submit() } }
+                    Button("warehouse_portal.cycle_counts.text.submit") { Task { await submit() } }
                         .disabled(!canSubmit)
                 }
             }

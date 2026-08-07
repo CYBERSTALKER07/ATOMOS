@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -83,7 +85,7 @@ fun FleetLiveMapScreen(
                 title = { Text("Live fleet") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -180,7 +182,7 @@ fun FleetLiveMapScreen(
                                 Text("Active control-tower zones", style = MaterialTheme.typography.titleSmall)
                                 zoneOverrides.take(3).forEach { override ->
                                     Text(
-                                        "${override.action} · expires ${override.ttlExpiresAt.take(19)}",
+                                        stringResource(R.string.mobile_supplier_ui_action_expires_take, override.action, override.ttlExpiresAt.take(19)),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -234,8 +236,8 @@ private fun FleetLiveRouteCard(route: SupplierFleetLiveRoute) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
             Text(route.driverName ?: route.driverId, style = MaterialTheme.typography.titleMedium)
-            Text("${route.manifestState} · ${route.stopCountLabel(pointCount)}", style = MaterialTheme.typography.bodyMedium)
-            Text("Manifest ${route.manifestId.take(8)}…", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.mobile_supplier_ui_manifeststate_stopcountlabel, route.manifestState, route.stopCountLabel(pointCount)), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.mobile_supplier_ui_manifest_take, route.manifestId.take(8)), style = MaterialTheme.typography.bodySmall)
             if (route.liveLocationAvailable && route.driverLocation != null) {
                 val stale = route.locationStale == true
                 val location = route.driverLocation

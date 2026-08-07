@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -98,19 +100,19 @@ fun DriverCard(orders: List<Order>, hasActiveRoute: Boolean) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 InfoTile(
-                    label = "Truck",
+                    label = stringResource(R.string.mobile_driver_ui_truck),
                     value = truckId,
                     icon = Icons.Default.LocalShipping,
                     modifier = Modifier.weight(1f)
                 )
                 InfoTile(
-                    label = "Plate",
+                    label = stringResource(R.string.factory_portal_fleet_text_plate),
                     value = plate,
                     icon = Icons.Default.DirectionsCar,
                     modifier = Modifier.weight(1f)
                 )
                 InfoTile(
-                    label = "Completed",
+                    label = stringResource(R.string.portal_page_orders_filter_completed),
                     value = "$completedCount",
                     icon = Icons.Default.CheckCircle,
                     modifier = Modifier.weight(1f)

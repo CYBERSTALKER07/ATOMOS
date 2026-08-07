@@ -5,127 +5,127 @@ struct MoreHubView: View {
         ResponsiveGridContentWrapper {
             Section("Fulfillment") {
                 NavigationLink { ManifestsView() } label: {
-                    Label("Manifests", systemImage: "doc.text")
+                    Label("portal.nav.manifests", systemImage: "doc.text")
                 }
                 NavigationLink { DispatchPreviewView() } label: {
-                    Label("Dispatch preview", systemImage: "paperplane")
+                    Label("mobile_supplier.ui.dispatch_preview", systemImage: "paperplane")
                 }
                 NavigationLink { FleetOrdersView() } label: {
-                    Label("Fleet orders", systemImage: "truck.box")
+                    Label("supplier_portal.fleet.orders.text.fleet_orders", systemImage: "truck.box")
                 }
             }
             Section("Insights") {
                 NavigationLink { AnalyticsView() } label: {
-                    Label("Analytics", systemImage: "chart.bar")
+                    Label("portal.nav.analytics", systemImage: "chart.bar")
                 }
                 NavigationLink { DemandHistoryView() } label: {
-                    Label("Demand forecast", systemImage: "chart.xyaxis.line")
+                    Label("supplier_portal.analytics.demand.text.demand_forecast", systemImage: "chart.xyaxis.line")
                 }
                 NavigationLink { PlanningBrainView() } label: {
-                    Label("Planning sandbox", systemImage: "brain.head.profile")
+                    Label("mobile_supplier.ui.planning_sandbox", systemImage: "brain.head.profile")
                 }
                 NavigationLink { KnowledgeGraphView() } label: {
-                    Label("Knowledge graph", systemImage: "point.3.connected.trianglepath.dotted")
+                    Label("mobile_supplier.ui.knowledge_graph", systemImage: "point.3.connected.trianglepath.dotted")
                 }
                 NavigationLink { PlanningSettingsView() } label: {
-                    Label("Planning settings", systemImage: "calendar")
+                    Label("supplier_portal.settings.planning.text.planning_settings", systemImage: "calendar")
                 }
                 NavigationLink { ReturnPolicySettingsView() } label: {
-                    Label("Return policy", systemImage: "arrow.uturn.backward.circle")
+                    Label("portal.nav.return_policy", systemImage: "arrow.uturn.backward.circle")
                 }
                 NavigationLink { ActivityView() } label: {
-                    Label("Activity", systemImage: "clock.arrow.circlepath")
+                    Label("portal.nav.activity", systemImage: "clock.arrow.circlepath")
                 }
                 NavigationLink { AIRecommendationsView() } label: {
-                    Label("AI recommendations", systemImage: "sparkles")
+                    Label("mobile_supplier.ui.ai_recommendations", systemImage: "sparkles")
                 }
                 NavigationLink { GeoReportView() } label: {
-                    Label("Geo report", systemImage: "map")
+                    Label("supplier_portal.geo_report.text.geo_report", systemImage: "map")
                 }
             }
             Section("Network") {
                 NavigationLink { TopologyView() } label: {
-                    Label("Topology", systemImage: "building.2.crop.circle")
+                    Label("portal.nav.topology", systemImage: "building.2.crop.circle")
                 }
                 NavigationLink { FactoriesView() } label: {
-                    Label("Factories", systemImage: "building.2")
+                    Label("portal.nav.factories", systemImage: "building.2")
                 }
                 NavigationLink { WarehousesView() } label: {
-                    Label("Warehouses", systemImage: "shippingbox.fill")
+                    Label("portal.nav.warehouses", systemImage: "shippingbox.fill")
                 }
                 NavigationLink { DeliveryZonesView() } label: {
-                    Label("Delivery zones", systemImage: "mappin.and.ellipse")
+                    Label("supplier_portal.delivery_zones.text.delivery_zones", systemImage: "mappin.and.ellipse")
                 }
                 NavigationLink { SupplyLanesView() } label: {
-                    Label("Supply lanes", systemImage: "arrow.triangle.swap")
+                    Label("supplier_portal.supply_lanes.text.supply_lanes", systemImage: "arrow.triangle.swap")
                 }
             }
             Section("Treasury") {
                 NavigationLink { TreasuryHubView() } label: {
-                    Label("Treasury hub", systemImage: "building.columns")
+                    Label("mobile_supplier.ui.treasury_hub", systemImage: "building.columns")
                 }
                 NavigationLink { LedgerView() } label: {
-                    Label("Payment ledger", systemImage: "banknote")
+                    Label("mobile_supplier.ui.payment_ledger", systemImage: "banknote")
                 }
                 NavigationLink { PaymentsView() } label: {
-                    Label("Payments", systemImage: "creditcard")
+                    Label("portal.nav.payments", systemImage: "creditcard")
                 }
                 NavigationLink { ChargebacksView() } label: {
-                    Label("Chargebacks", systemImage: "exclamationmark.bubble")
+                    Label("portal.nav.chargebacks", systemImage: "exclamationmark.bubble")
                 }
                 NavigationLink { ReconciliationView() } label: {
-                    Label("Reconciliation", systemImage: "scalemass")
+                    Label("portal.nav.reconciliation", systemImage: "scalemass")
                 }
                 NavigationLink { OperationsView() } label: {
-                    Label("Operations", systemImage: "wrench.and.screwdriver")
+                    Label("portal.nav.operations", systemImage: "wrench.and.screwdriver")
                 }
                 NavigationLink { ReplenishmentPoliciesView() } label: {
-                    Label("Replenishment policies", systemImage: "doc.text")
+                    Label("supplier_portal.operations.replenishment_policies.text.replenishment_policies", systemImage: "doc.text")
                 }
             }
             Section("Account") {
                 NavigationLink { NotificationInboxView() } label: {
-                    Label("Notifications", systemImage: "bell")
+                    Label("portal.nav.notifications", systemImage: "bell")
                 }
                 NavigationLink { NotificationPreferencesView() } label: {
-                    Label("Notification preferences", systemImage: "bell.badge")
+                    Label("supplier_portal.settings.notification_preferences.text.notification_preferences", systemImage: "bell.badge")
                 }
                 NavigationLink { CatalogView() } label: {
-                    Label("Catalog", systemImage: "square.grid.2x2")
+                    Label("portal.nav.catalog", systemImage: "square.grid.2x2")
                 }
                 NavigationLink { InventoryView() } label: {
-                    Label("Inventory", systemImage: "archivebox")
+                    Label("portal.nav.inventory", systemImage: "archivebox")
                 }
                 NavigationLink { InventoryImportView() } label: {
-                    Label("Import inventory", systemImage: "square.and.arrow.down")
+                    Label("mobile_supplier.ui.import_inventory", systemImage: "square.and.arrow.down")
                 }
                 NavigationLink { PricingView() } label: {
-                    Label("Pricing", systemImage: "dollarsign.circle")
+                    Label("portal.nav.pricing", systemImage: "dollarsign.circle")
                 }
                 NavigationLink { RetailerOverridesView() } label: {
-                    Label("Retailer overrides", systemImage: "tag.circle")
+                    Label("supplier_portal.pricing.retailer_overrides.text.retailer_overrides", systemImage: "tag.circle")
                 }
                 NavigationLink { PromotionsView() } label: {
-                    Label("Promotions", systemImage: "tag")
+                    Label("portal.nav.promotions", systemImage: "tag")
                 }
                 NavigationLink { ReturnsView() } label: {
-                    Label("Returns", systemImage: "arrow.uturn.backward")
+                    Label("portal.nav.returns", systemImage: "arrow.uturn.backward")
                 }
                 NavigationLink { OrgFleetView() } label: {
-                    Label("Org & fleet", systemImage: "person.3")
+                    Label("mobile_supplier.ui.org_and_fleet", systemImage: "person.3")
                 }
                 NavigationLink { EarningsView() } label: {
-                    Label("Earnings", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("portal.nav.earnings", systemImage: "chart.line.uptrend.xyaxis")
                 }
                 NavigationLink { ProfileView() } label: {
-                    Label("Profile", systemImage: "building.2")
+                    Label("portal.nav.profile", systemImage: "building.2")
                 }
                 NavigationLink { BusinessSetupView() } label: {
-                    Label("Business setup", systemImage: "gearshape.2")
+                    Label("mobile_supplier.ui.business_setup", systemImage: "gearshape.2")
                 }
             }
         }
-        .navigationTitle("More")
+        .navigationTitle("mobile_supplier.ui.more")
         .background(SupplierTheme.background)
     }
 }

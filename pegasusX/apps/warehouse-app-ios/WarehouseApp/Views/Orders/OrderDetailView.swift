@@ -32,11 +32,11 @@ struct OrderDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if let order {
                 let showReceipt = ["COMPLETED", "FISCALIZING", "FISCAL_FAILED"].contains(order.state.uppercased())
@@ -48,7 +48,7 @@ struct OrderDetailView: View {
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())
                         if showReceipt {
-                            Button("View Pegasus receipt") {
+                            Button("mobile_warehouse.ui.view_pegasus_receipt") {
                                 Task { await openReceipt() }
                             }
                         }
@@ -66,10 +66,10 @@ struct OrderDetailView: View {
                 }
             }
         }
-        .navigationTitle("Order detail")
+        .navigationTitle("mobile_warehouse.ui.order_detail")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task { load() }
@@ -78,20 +78,20 @@ struct OrderDetailView: View {
                 Form {
                     DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                     Section {
-                        TextField("Reason", text: $reasonInput, axis: .vertical)
+                        TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                             .lineLimit(3...5)
                     } footer: {
-                        Text("The retailer is notified and can accept or reject the new date.")
+                        Text("mobile_warehouse.ui.the_retailer_is_notified_and_can_accept_or_reject_the_new_date")
                     }
                 }
-                .navigationTitle("Propose new date")
+                .navigationTitle("mobile_warehouse.ui.propose_new_date")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showProposeSheet = false }
+                        Button("common.action.cancel") { showProposeSheet = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Send") { submitPropose() }
+                        Button("mobile_warehouse.ui.send") { submitPropose() }
                             .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
@@ -110,7 +110,7 @@ struct OrderDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(rec.driverName).foregroundColor(.primary)
-                                        Text("\(rec.vehicleClass) • \(rec.licensePlate)").font(.caption).foregroundColor(.secondary)
+                                        Text(L10n.format("mobile_warehouse.ui.vehicleclass_licenseplate", "\(rec.vehicleClass)", "\(rec.licensePlate)")).font(.caption).foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     if selectedDriverId == rec.driverId {
@@ -122,18 +122,18 @@ struct OrderDetailView: View {
                     }
                     Section("Options") {
                         Toggle("Partial Reassignment", isOn: $isPartialReassign)
-                        TextField("Reason (optional)", text: $reasonInput, axis: .vertical)
+                        TextField("warehouse_portal.inventory.text.reason_optional", text: $reasonInput, axis: .vertical)
                             .lineLimit(2...4)
                     }
                 }
-                .navigationTitle("Reassign Order")
+                .navigationTitle("supplier_portal.orders.re_dispatch_dialog.text.reassign_order")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showReassignSheet = false }
+                        Button("common.action.cancel") { showReassignSheet = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Confirm") { submitReassign() }
+                        Button("mobile_warehouse.ui.confirm") { submitReassign() }
                             .disabled(selectedDriverId == nil || mutating)
                     }
                 }

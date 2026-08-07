@@ -9,7 +9,7 @@
 | Supplier/WH return-policy settings | **Wired** | Portal + Android + iOS; types + `@pegasusx/api-client` |
 | Driver PoD photo for credit leave | **Wired** | Android + iOS require evidence photo before credit |
 | Empty analytics chart theatre | **Closed** | Forecast / heatmap / velocity unmounted; SpendAnalytics thin-wired |
-| Portal i18n bootstrap | **Desktop Wired (draft)** / mobile Partial | Four desktop portals wired to `usePortalT` + expanded en/ru/uz catalogs (~2750 keys); `generated/*` regenerated. Mobile consumers still unwired. Draft translations — **not** product-linguistic Done |
+| Portal i18n bootstrap | **Desktop + Mobile Wired (draft)** | Desktop portals + 12 mobile apps consume generated en/ru/uz (~4045 keys). Draft translations — **not** product-linguistic Done |
 | Interactive Substance Gate UI walks | READY_FOR_WALK | [`artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md`](../artifacts/SUBSTANCE_GATE_CLIENT_SIGNOFF_2026-08-05.md); human PASS/FAIL pending |
 
 ## Claims / chargebacks (2026-07-29)
@@ -39,7 +39,8 @@ See also: `docs/CLAIM_ROLE_ROW.md`.
 | Spanner DDL applied on live SSMR | **Wired** | `20260729_shop_closed_proximity_partial.ddl` applied; CI `schema-drift-gate` + `ssmr-smokecheck spanner` assert Orders grace/proximity cols + `OrderShopClosedLog` |
 | Offline action queue (full driver offline flush orchestrator) | **Wired** | Android Room/WorkManager + iOS QueuedDriverAction/BGTask; Sync Queue UI; 4.1 order; dead-letter; **§8.8** capture-time lat/lng + non-destructive Room migration; kit: [`docs/MOBILE_SHARED_KIT.md`](../docs/MOBILE_SHARED_KIT.md) |
 | Mobile shared kit (HTTP/WS/offline) | **Partial→Wired** | `mobile-android-kit` + `PegasusKit` SPM; warehouse/factory prefs→kit store; payload Room v2; scan UX still residual |
-| Desktop full uz/ru i18n | **Wired (draft)** | supplier/warehouse/factory/retailer-desktop UI on `usePortalT`; domains `supplier_portal.*` / `warehouse_portal.*` / `factory_portal.*` / `retailer_desktop.*`; extract/wire scripts under `packages/i18n/scripts/`; residual: human linguistic QA + mobile |
+| Desktop full uz/ru i18n | **Wired (draft)** |
+| Mobile full uz/ru i18n | **Wired (draft) + interpolations** | Named `{ph}` catalogs → `%n$s`/`%@`; `L10n.format` / `stringResource(_, args)`; residual: ICU plurals / embedded-copy (~37) + pure values |
 | AUTHORIZE_BYPASS photo capture on retailer | **Wired** | 2026-08-05 Client Parity Closure |
 
 See: `docs/big-platform-baseline/last-mile/`.

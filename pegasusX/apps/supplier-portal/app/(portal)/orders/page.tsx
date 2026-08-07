@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '@pegasusx/api-client';
-import { cacheGet, cacheSet } from '@pegasusx/desktop-cache';
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from '@pegasusx/desktop-cache';
 import { isTauri } from '@pegasusx/desktop-bridge';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
@@ -48,7 +48,9 @@ export default function OrdersPage() {
     let hydratedFromCache = false;
 
     if (isTauri()) {
-      const cached = await cacheGet<{ orders: SupplierOrder[]; total: number }>(cacheKey);
+      const cached = await cacheGet<{ orders: SupplierOrder[]; total: number }>(cacheKey, {
+        maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+      });
       if (cached) {
         setOrders(cached.orders);
         setTotal(cached.total);

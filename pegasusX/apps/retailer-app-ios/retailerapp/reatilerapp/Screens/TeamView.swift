@@ -17,7 +17,7 @@ struct TeamView: View {
     var body: some View {
         List {
             Section {
-                Text("Invite staff with roles. First invite enables the TEAM pack.")
+                Text("mobile_retailer.ui.invite_staff_with_roles_first_invite_enables_the_team_pack")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -27,15 +27,15 @@ struct TeamView: View {
             if let errorText {
                 Section {
                     Text(errorText).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             }
             Section("Invite") {
-                TextField("Name", text: $name)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                 SecureField("Password", text: $password)
-                TextField("Role (e.g. CASHIER)", text: $role)
+                TextField("mobile_retailer.ui.role_e_g_cashier", text: $role)
                 Button(busy ? "…" : "Create member") {
                     Task { await invite() }
                 }
@@ -50,17 +50,17 @@ struct TeamView: View {
                         HStack {
                             Text(m.name).font(.headline)
                             if m.isOwner {
-                                Text("Owner").font(.caption2).foregroundStyle(AppTheme.textTertiary)
+                                Text("mobile_retailer.ui.owner").font(.caption2).foregroundStyle(AppTheme.textTertiary)
                             }
                             if !m.isActive {
-                                Text("Inactive").font(.caption2).foregroundStyle(.red)
+                                Text("retailer_desktop.settings.team.text.inactive").font(.caption2).foregroundStyle(.red)
                             }
                         }
-                        Text("\(m.phone) · \(m.retailerRole)")
+                        Text(L10n.format("mobile_retailer.ui.phone_retailerrole", "\(m.phone)", "\(m.retailerRole)"))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                         if !m.isOwner && m.isActive {
-                            Button("Deactivate", role: .destructive) {
+                            Button("supplier_portal.demand.signals.text.deactivate", role: .destructive) {
                                 Task { await deactivate(m.userId) }
                             }
                             .font(.caption)
@@ -70,7 +70,7 @@ struct TeamView: View {
                 }
             }
         }
-        .navigationTitle("Team")
+        .navigationTitle("retailer_desktop.settings.team.text.team")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

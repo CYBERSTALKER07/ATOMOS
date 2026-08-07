@@ -78,7 +78,7 @@ struct FleetView: View {
                                         Text(vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                        Text("\(Int(vehicle.capacityKg))kg · \(Int(vehicle.capacityL))L")
+                                        Text(L10n.format("mobile_factory.ui.capacitykgkg_capacityll", "\(Int(vehicle.capacityKg))", "\(Int(vehicle.capacityL))"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -92,10 +92,10 @@ struct FleetView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Fleet")
+            .navigationTitle("portal.nav.fleet")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
             }

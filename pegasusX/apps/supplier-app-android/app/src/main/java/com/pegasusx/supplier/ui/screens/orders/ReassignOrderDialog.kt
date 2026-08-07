@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,7 +22,7 @@ fun ReassignOrderDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isReassigning) onDismiss() },
-        title = { Text("Reassign Order ${orderId.take(8)}") },
+        title = { Text(stringResource(R.string.mobile_supplier_ui_reassign_order_take, orderId.take(8))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (recs == null) {
@@ -29,7 +31,7 @@ fun ReassignOrderDialog(
                     Text("No suitable trucks available.")
                 } else {
                     Text(
-                        "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
+                        stringResource(R.string.mobile_supplier_ui_retailername_1f_vu, recs.retailerName).format(recs.orderVolumeVu),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     LazyColumn(

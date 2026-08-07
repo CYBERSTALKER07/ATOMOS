@@ -37,6 +37,14 @@ func RegisterAdminRoutes(r chi.Router, h *Handlers) {
 	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/admin/fx-rates", h.HandleUpsert)
 }
 
+// RegisterSupplierRoutes mounts GET /v1/supplier/fx-rates (supplier portal ADMIN session, read-only).
+func RegisterSupplierRoutes(r chi.Router, h *Handlers) {
+	if h == nil || h.Repo == nil {
+		return
+	}
+	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/fx-rates", h.HandleList)
+}
+
 type rateDTO struct {
 	RateID        string `json:"rate_id"`
 	BaseCurrency  string `json:"base_currency"`

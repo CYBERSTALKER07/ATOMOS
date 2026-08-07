@@ -6,13 +6,13 @@ struct PulseStrip: View {
 
     var body: some View {
         if loading && events.isEmpty {
-            Text("Loading network pulse…")
+            Text("mobile_payload.ui.loading_network_pulse")
                 .font(.footnote)
                 .foregroundStyle(TermTheme.tertiary)
                 .padding(.vertical, 8)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("NETWORK PULSE")
+                Text("mobile_payload.ui.network_pulse")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(TermTheme.tertiary)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -70,7 +70,7 @@ struct ExplainStatusBanner: View {
                 }
                 if let steps = explain?.nextSteps {
                     ForEach(steps, id: \.self) { step in
-                        Text("• \(step)").font(.caption)
+                        Text(L10n.format("mobile_payload.ui.step", "\(step)")).font(.caption)
                     }
                 }
             }
@@ -94,7 +94,7 @@ struct HandoffInboxCard: View {
             }
             if let fields = metadata.fields {
                 ForEach(fields.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                    Text("\(key.replacingOccurrences(of: "_", with: " ")): \(value)")
+                    Text(L10n.format("mobile_payload.ui.replacingoccurrences_value", "\(key.replacingOccurrences(of: "_", with: " "))", "\(value)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

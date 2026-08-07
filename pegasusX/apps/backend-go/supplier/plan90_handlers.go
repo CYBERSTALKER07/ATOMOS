@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -312,6 +313,35 @@ func (s *Service) HandlePlanningSeasonalOverrides(w http.ResponseWriter, r *http
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandlePlanningSeasonalEstimate serves POST /v1/supplier/planning/seasonal-estimate.
+// Flag-gated by FORECAST_SEASONAL_ESTIMATE_ENABLED. Returns YoY/month suggestions;
+// optional persist_drafts upserts inactive overrides for review (never auto-activates).
+func (s *Service) HandlePlanningSeasonalEstimate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if !planning.SeasonalEstimateEnabled() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "seasonal_estimate_disabled"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	var body struct {
+		PersistDrafts bool `json:"persist_drafts"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 4*1024)).Decode(&body)
+	result, err := svc.EstimateCalendarMultipliers(r.Context(), s.scopedSupplierID(r), time.Time{}, body.PersistDrafts)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 // HandlePlanningSignalIngest serves POST /v1/supplier/planning/signals/ingest.

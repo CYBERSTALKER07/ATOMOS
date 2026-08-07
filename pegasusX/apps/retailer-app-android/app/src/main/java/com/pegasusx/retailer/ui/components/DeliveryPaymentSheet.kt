@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -282,7 +284,7 @@ private fun ChooseContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Order #${event.orderId.takeLast(6)}",
+            stringResource(R.string.mobile_retailer_ui_order_takelast, event.orderId.takeLast(6)),
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
@@ -297,7 +299,7 @@ private fun ChooseContent(
 
         PaymentOptionRow(
             icon = Icons.Rounded.LocalAtm,
-            label = "Cash on Delivery",
+            label = stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label),
             description = "Pay the driver in cash",
             onClick = onSelectCash,
         )

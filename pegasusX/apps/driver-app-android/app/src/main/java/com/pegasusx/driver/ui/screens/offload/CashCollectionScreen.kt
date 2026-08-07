@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -136,7 +138,7 @@ fun CashCollectionScreen(
                     else -> ""
                 }
                 Text(
-                    "You received ${state.amountReceivedMinor.formattedAmount()} from the retailer " +
+                    stringResource(R.string.mobile_driver_ui_you_received_formattedamount_from_the_retailer, state.amountReceivedMinor.formattedAmount()) +
                         "(expected ${state.amount.formattedAmount()}).$varianceNote " +
                         "Payment will be captured and a fiscal receipt requested for the received amount."
                 )

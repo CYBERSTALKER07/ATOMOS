@@ -31,37 +31,37 @@ struct TreasuryHubView: View {
                         ResponsiveGridContentWrapper {
                             Section("Treasury surfaces") {
                                 NavigationLink { LedgerView() } label: {
-                                    Label("Payment ledger", systemImage: "banknote")
+                                    Label("mobile_supplier.ui.payment_ledger", systemImage: "banknote")
                                 }
                                 NavigationLink { PaymentsView() } label: {
-                                    Label("Payments", systemImage: "creditcard")
+                                    Label("portal.nav.payments", systemImage: "creditcard")
                                 }
                                 NavigationLink { ChargebacksView() } label: {
-                                    Label("Chargebacks", systemImage: "exclamationmark.bubble")
+                                    Label("portal.nav.chargebacks", systemImage: "exclamationmark.bubble")
                                 }
                                 NavigationLink { ClaimChargebacksView() } label: {
-                                    Label("Claim chargebacks", systemImage: "list.bullet.rectangle")
+                                    Label("portal.nav.claim_chargebacks", systemImage: "list.bullet.rectangle")
                                 }
                                 NavigationLink { ClaimsView() } label: {
-                                    Label("Claims queue", systemImage: "exclamationmark.triangle.fill")
+                                    Label("supplier_portal.exceptions.claims.text.claims_queue", systemImage: "exclamationmark.triangle.fill")
                                 }
                                 NavigationLink { ReconciliationView() } label: {
-                                    Label("Reconciliation", systemImage: "scalemass")
+                                    Label("portal.nav.reconciliation", systemImage: "scalemass")
                                 }
                                 NavigationLink { CashReconciliationsView() } label: {
-                                    Label("Cash reconciliations", systemImage: "dollarsign.circle")
+                                    Label("portal.nav.cash_reconciliations", systemImage: "dollarsign.circle")
                                 }
                                 NavigationLink { CreditNotesListView() } label: {
-                                    Label("Credit notes", systemImage: "doc.text")
+                                    Label("portal.nav.credit_notes", systemImage: "doc.text")
                                 }
                                 NavigationLink { CreditProfilesView() } label: {
-                                    Label("Credit profiles", systemImage: "creditcard.and.123")
+                                    Label("mobile_supplier.ui.credit_profiles", systemImage: "creditcard.and.123")
                                 }
                                 NavigationLink { RoutePerformanceListView() } label: {
-                                    Label("Route performance", systemImage: "map")
+                                    Label("portal.nav.route_performance", systemImage: "map")
                                 }
                                 NavigationLink { EarningsView() } label: {
-                                    Label("Earnings", systemImage: "chart.line.uptrend.xyaxis")
+                                    Label("portal.nav.earnings", systemImage: "chart.line.uptrend.xyaxis")
                                 }
                             }
                         }
@@ -73,7 +73,7 @@ struct TreasuryHubView: View {
             .padding()
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Treasury")
+        .navigationTitle("portal.nav.treasury")
         .task { await vm.load() }
         .refreshable { await vm.load(silent: true) }
         .silentRealtimeRefresh(

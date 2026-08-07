@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,8 +37,7 @@ fun HandoffInboxCard(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             metadata.fields?.forEach { (key, value) ->
-                Text(
-                    "${key.replace('_', ' ')}: $value",
+                Text(stringResource(R.string.mobile_payload_ui_replace_value, key.replace('_', ' '), value),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

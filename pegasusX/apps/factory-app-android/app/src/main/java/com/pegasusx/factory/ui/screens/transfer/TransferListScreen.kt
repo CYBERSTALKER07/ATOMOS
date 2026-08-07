@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -81,7 +83,7 @@ fun TransferListScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Transfers")
                         Text(
-                            text = "Factory-to-warehouse movement pipeline",
+                            text = stringResource(R.string.mobile_factory_ui_factory_to_warehouse_movement_pipeline),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -110,7 +112,7 @@ fun TransferListScreen(
 
             when {
                 loading && transfers.isEmpty() -> PegasusLoadingState(
-                    title = "Loading transfers",
+                    title = stringResource(R.string.mobile_factory_ui_loading_transfers),
                     body = "Fetching the current transfer pipeline for this factory.",
                     modifier = Modifier.fillMaxSize(),
                 )

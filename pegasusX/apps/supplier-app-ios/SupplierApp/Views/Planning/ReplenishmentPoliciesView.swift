@@ -25,12 +25,12 @@ struct ReplenishmentPoliciesView: View {
                         LabeledContent("Target service level", value: String(format: "%.0f%%", policy.targetServiceLevel * 100))
                         LabeledContent("Lead time (days)", value: "\(policy.leadTimeDays)")
                         LabeledContent("Lead σ (days, assumed)", value: String(format: "%.1f", policy.leadTimeSigmaDays))
-                        Text("Lead σ is assumed until ≥10 transfers have ReceivedAt history.")
+                        Text("mobile_supplier.ui.lead_is_assumed_until_10_transfers_have_receivedat_history")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Section {
-                        Text("Supplier: \(policy.supplierId)")
+                        Text(L10n.format("mobile_supplier.ui.supplier_supplierid", "\(policy.supplierId)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -38,7 +38,7 @@ struct ReplenishmentPoliciesView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Replenishment policies")
+        .navigationTitle("supplier_portal.operations.replenishment_policies.text.replenishment_policies")
         .task { await load() }
         .refreshable { await load(silent: true) }
     }

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,7 +64,7 @@ fun LineItemCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "SKU: ${audit.item.productId}",
+                        text = stringResource(R.string.mobile_driver_ui_sku_productid, audit.item.productId),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -77,7 +79,7 @@ fun LineItemCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = stringResource(R.string.supplier_portal_demand_signals_text_edit),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -94,7 +96,7 @@ fun LineItemCard(
                 // Quantity breakdown
                 Column {
                     Text(
-                        text = "Original: ${audit.item.quantity}",
+                        text = stringResource(R.string.mobile_driver_ui_original_quantity, audit.item.quantity),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -153,7 +155,7 @@ fun LineItemCard(
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
-                            text = "${audit.rejectedQty} rejected · ${audit.reason.label}",
+                            text = stringResource(R.string.mobile_driver_ui_rejectedqty_rejected_label, audit.rejectedQty, audit.reason.label),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer

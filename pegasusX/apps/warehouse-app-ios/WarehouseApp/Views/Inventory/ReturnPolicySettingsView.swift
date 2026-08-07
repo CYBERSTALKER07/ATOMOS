@@ -18,7 +18,7 @@ struct ReturnPolicySettingsView: View {
             } else {
                 Form {
                     Section {
-                        Text("Reverse-dock SLA and optional retailer claim-window override. Override may only lengthen the supplier base window.")
+                        Text("mobile_warehouse.ui.reverse_dock_sla_and_optional_retailer_claim_window_override_ove")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -30,12 +30,12 @@ struct ReturnPolicySettingsView: View {
                     }
                     if saved {
                         Section {
-                            Text("Return policy saved.").foregroundStyle(.green)
+                            Text("supplier_portal.settings.return_policy.text.return_policy_saved").foregroundStyle(.green)
                         }
                     }
 
                     Section("Reverse dock") {
-                        TextField("SLA hours", text: $reverseSla)
+                        TextField("mobile_warehouse.ui.sla_hours", text: $reverseSla)
                             .keyboardType(.numberPad)
                             .onChange(of: reverseSla) { _, newValue in
                                 let digits = newValue.filter(\.isNumber)
@@ -46,7 +46,7 @@ struct ReturnPolicySettingsView: View {
                     Section("Retailer window") {
                         Toggle("Override retailer claim filing window (lengthen only)", isOn: $canOverride)
                         if canOverride {
-                            TextField("Retailer file window (hours)", text: $retailerWindow)
+                            TextField("mobile_warehouse.ui.retailer_file_window_hours", text: $retailerWindow)
                                 .keyboardType(.numberPad)
                                 .onChange(of: retailerWindow) { _, newValue in
                                     let digits = newValue.filter(\.isNumber)
@@ -62,10 +62,10 @@ struct ReturnPolicySettingsView: View {
                 }
             }
         }
-        .navigationTitle("Returns & reverse SLA")
+        .navigationTitle("warehouse_portal.settings.return_policy_settings_section.text.returns_and_reverse_sla")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
             }
         }
         .task { await load() }

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -114,7 +116,7 @@ fun AnalyticsScreen(
                 if (freshness.lastSessionId.isNotBlank() || freshness.lastAppliedAt.isNotBlank()) {
                     item {
                         ImportMetaCard(
-                            title = "Last import",
+                            title = stringResource(R.string.mobile_warehouse_ui_last_import),
                             sessionId = freshness.lastSessionId,
                             timestamp = freshness.lastAppliedAt,
                         )
@@ -124,7 +126,7 @@ fun AnalyticsScreen(
                 if (anomaly.lastSessionId.isNotBlank() || anomaly.lastDetail.isNotBlank()) {
                     item {
                         ImportMetaCard(
-                            title = "Latest anomaly",
+                            title = stringResource(R.string.mobile_warehouse_ui_latest_anomaly),
                             sessionId = anomaly.lastSessionId,
                             timestamp = anomaly.lastDetectedAt,
                             detail = anomaly.lastDetail,
@@ -148,7 +150,7 @@ fun AnalyticsScreen(
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text("${tp.displayUnits} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.mobile_warehouse_ui_displayunits_units_format_uzs, tp.displayUnits, fmt.format(tp.revenue)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -169,7 +171,7 @@ private fun ImportMetaCard(
         Column(modifier = Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.labelLarge)
             if (sessionId.isNotBlank()) {
-                Text("Session: $sessionId", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.mobile_warehouse_ui_session_sessionid, sessionId), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (timestamp.isNotBlank()) {
                 Text(timestamp, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

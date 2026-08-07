@@ -12,7 +12,7 @@ struct FactoryHandoffTimelineSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Handoff timeline")
+            Text("warehouse_portal.dispatch.text.handoff_timeline")
                 .font(.headline)
             Text(subtitle)
                 .font(.caption)

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.tomorrowboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -64,7 +66,7 @@ fun TomorrowBoardScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -74,7 +76,7 @@ fun TomorrowBoardScreen(
         if (loading) {
             Box(Modifier.padding(innerPadding)) {
                 com.pegasus.design.PegasusLoadingState(
-                    title = "Loading board...",
+                    title = stringResource(R.string.mobile_warehouse_ui_loading_board),
                     body = "Fetching operations for $date",
                 )
             }

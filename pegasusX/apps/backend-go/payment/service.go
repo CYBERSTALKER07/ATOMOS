@@ -233,9 +233,10 @@ type Service struct {
 
 	webhookInbox *WebhookInboxStore
 
-	log   *slog.Logger
-	now   func() time.Time
-	newID func(prefix string) string
+	fx     *fxrates.Service
+	log    *slog.Logger
+	now    func() time.Time
+	newID  func(prefix string) string
 }
 
 // ServiceConfig is constructor input.
@@ -264,6 +265,8 @@ type ServiceConfig struct {
 	NewID func(prefix string) string
 
 	Policy PolicyResolver
+
+	Fx *fxrates.Service
 }
 
 // CheckoutRequest is the wire payload for checkout endpoints.
@@ -386,10 +389,19 @@ func NewService(c ServiceConfig) *Service {
 		clickWebhookSecret:     c.ClickWebhookSecret,
 		webhookInbox:           c.WebhookInbox,
 		policy:                 c.Policy,
+		fx:                     c.Fx,
 		log:                    c.Log,
 		now:                    c.Now,
 		newID:                  c.NewID,
 	}
+}
+
+// SetFxRates attaches theatre #13 ConvertMinor for settlement operating rollups.
+func (s *Service) SetFxRates(fx *fxrates.Service) {
+	if s == nil {
+		return
+	}
+	s.fx = fx
 }
 
 // HandleB2BCheckout serves POST /v1/checkout/b2b.
@@ -1000,15 +1012,24 @@ func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Reque
 		return currencyTotals[i].Currency < currencyTotals[j].Currency
 	})
 
+	operating := fxrates.NormalizeCurrency(s.currency)
+	if operating == "" {
+		operating = "UZS"
+	}
+	opTotal, opPartial := rollupOperatingCurrencyMinor(r.Context(), s.fx, operating, rows, s.now)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"items":              rows,
-		"count":              len(rows),
-		"group_limit":        groupLimit,
-		"supplier_id":        supplierID,
-		"entry_count_total":  entryCountTotal,
-		"totals_by_currency": currencyTotals,
+		"items":                          rows,
+		"count":                          len(rows),
+		"group_limit":                    groupLimit,
+		"supplier_id":                    supplierID,
+		"entry_count_total":              entryCountTotal,
+		"totals_by_currency":             currencyTotals,
+		"operating_currency":             operating,
+		"operating_currency_total_minor": opTotal,
+		"operating_conversion_partial":   opPartial,
 		"filters": map[string]any{
 			"gateway":       gateway,
 			"entry_type":    entryType,

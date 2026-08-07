@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.navigation
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -53,7 +55,9 @@ import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.services.TelemetrySyncScheduler
 import com.pegasusx.driver.service.AutoUpdater
 import com.pegasusx.driver.service.EnterpriseUpdateConfig
 import com.pegasusx.driver.data.remote.TokenHolder
@@ -119,6 +123,7 @@ object DriverRoutes {
 fun DriverNavigation(
     api: DriverApi,
     driverWebSocket: DriverWebSocket,
+    telemetrySocket: TelemetrySocket,
     windowSizeClass: WindowSizeClass? = null,
 ) {
     val navController = rememberNavController()
@@ -200,6 +205,9 @@ fun DriverNavigation(
                 mainHandler.post {
                     if (!networkAvailable) {
                         OfflineSyncScheduler.enqueue(context)
+                        driverWebSocket.resetAndReconnect()
+                        telemetrySocket.resetAndReconnect()
+                        TelemetrySyncScheduler.enqueue(context)
                     }
                     networkAvailable = true
                 }
@@ -547,7 +555,7 @@ private fun DriverOutdatedOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "App Update Required",
+                text = stringResource(R.string.mobile_driver_ui_app_update_required),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -557,12 +565,12 @@ private fun DriverOutdatedOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Blocked event: $blocked | Required schema: $required",
+                text = stringResource(R.string.mobile_driver_ui_blocked_event_blocked_required_schema_required),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onSignOut) {
-                Text(text = "Sign Out")
+                Text(text = stringResource(R.string.common_action_sign_out))
             }
         }
     }

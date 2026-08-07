@@ -1,4 +1,6 @@
 package com.pegasusx.retailer.ui.components
+
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -93,7 +95,7 @@ private fun ExpandedDrawer(
             IconButton(onClick = onToggleExpanded) {
                 Icon(
                     imageVector = Icons.Default.MenuOpen,
-                    contentDescription = "Collapse menu",
+                    contentDescription = stringResource(R.string.mobile_retailer_ui_collapse_menu),
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -182,7 +184,7 @@ private fun ExpandedDrawer(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "View Profile",
+                    text = stringResource(R.string.mobile_retailer_ui_view_profile),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -211,7 +213,7 @@ private fun CollapsedRail(
             ) {
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Expand menu",
+                    contentDescription = stringResource(R.string.mobile_retailer_ui_expand_menu),
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }

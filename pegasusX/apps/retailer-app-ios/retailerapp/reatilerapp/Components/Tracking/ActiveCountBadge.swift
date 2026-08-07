@@ -7,7 +7,7 @@ struct ActiveCountBadge: View {
         HStack(spacing: 4) {
             Image(systemName: "box.truck.fill")
                 .font(.system(size: 12, weight: .semibold))
-            Text("\(count) active")
+            Text(L10n.format("supplier_portal.admin.empathy.hierarchy.active_count", "\(count)"))
                 .font(.system(.caption, design: .rounded, weight: .bold))
         }
         .foregroundStyle(AppTheme.textPrimary)

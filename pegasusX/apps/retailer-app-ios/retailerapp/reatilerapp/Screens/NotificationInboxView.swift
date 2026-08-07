@@ -137,7 +137,7 @@ struct NotificationInboxView: View {
                     ContentUnavailableView(
                         "No Notifications",
                         systemImage: "bell.slash",
-                        description: Text("You'll be notified about order updates here")
+                        description: Text("mobile_retailer.ui.youll_be_notified_about_order_updates_here")
                     )
                 } else {
                     ResponsiveGridContentWrapper {
@@ -172,18 +172,18 @@ struct NotificationInboxView: View {
                     }
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("portal.nav.notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
                 }
                 if vm.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             Task { await vm.markAllRead() }
                         } label: {
-                            Label("Read All", systemImage: "checkmark.circle")
+                            Label("mobile_retailer.ui.read_all", systemImage: "checkmark.circle")
                                 .labelStyle(.titleAndIcon)
                                 .font(.caption)
                         }

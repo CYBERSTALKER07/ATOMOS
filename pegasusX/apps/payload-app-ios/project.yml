@@ -56,6 +56,10 @@ targets:
           - EANBarcodeScannerView.swift
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: payload-app-ios/Assets.xcassets
       - path: payload-app-ios/GoogleService-Info.plist
     info:

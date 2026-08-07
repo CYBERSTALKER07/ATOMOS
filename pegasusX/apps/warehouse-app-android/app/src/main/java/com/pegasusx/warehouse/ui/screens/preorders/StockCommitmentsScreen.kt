@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -40,7 +42,7 @@ fun StockCommitmentsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -62,9 +64,9 @@ fun StockCommitmentsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {
                             Text(row.name ?: row.skuId, style = MaterialTheme.typography.titleSmall)
-                            Text("Available ${row.availableQty} · ASAP ${row.reservedAsap} · Scheduled ${row.reservedScheduled}")
-                            Text("On hand ${row.onHand}", style = MaterialTheme.typography.bodySmall)
-                            if (row.deficitQty > 0) Text("Short ${row.deficitQty}", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.mobile_warehouse_ui_available_availableqty_asap_reservedasap_scheduled_reservedscheduled, row.availableQty, row.reservedAsap, row.reservedScheduled))
+                            Text(stringResource(R.string.mobile_warehouse_ui_on_hand_onhand, row.onHand), style = MaterialTheme.typography.bodySmall)
+                            if (row.deficitQty > 0) Text(stringResource(R.string.mobile_warehouse_ui_short_deficitqty, row.deficitQty), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }

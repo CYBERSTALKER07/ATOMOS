@@ -92,11 +92,14 @@ struct FleetMapView: View {
                                 onShopClosed: { orderId in
                                     navPath.append("shop-closed-waiting")
                                 },
-                                onCreditDelivery: { orderId, photoUrl in
+                                onCreditDelivery: { orderId, photoUrl, signatureUrl, photoLocal, sigLocal in
                                     Task {
                                         await vm.markCreditDelivery(
                                             orderId: orderId,
-                                            photoProofUrl: photoUrl
+                                            photoProofUrl: photoUrl.isEmpty ? nil : photoUrl,
+                                            signatureUrl: signatureUrl.isEmpty ? nil : signatureUrl,
+                                            photoLocalPath: photoLocal,
+                                            signatureLocalPath: sigLocal
                                         )
                                     }
                                 }

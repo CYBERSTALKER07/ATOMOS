@@ -150,7 +150,7 @@ struct ContentView: View {
         .sheet(isPresented: $showActiveOrderDetail) {
             NavigationStack {
                 ActiveDeliveriesView()
-                    .navigationTitle("Active Deliveries")
+                    .navigationTitle("mobile_retailer.ui.active_deliveries")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -162,7 +162,7 @@ struct ContentView: View {
                             }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showActiveOrderDetail = false }
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showActiveOrderDetail = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -175,7 +175,7 @@ struct ContentView: View {
                 ProfileView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showProfile = false }
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showProfile = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -188,7 +188,7 @@ struct ContentView: View {
                 CartView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showCart = false }
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showCart = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -210,7 +210,7 @@ struct ContentView: View {
                 ProcurementView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showProcurement = false }
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showProcurement = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -224,7 +224,7 @@ struct ContentView: View {
                 ControlTowerView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showControlTower = false }
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showControlTower = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -281,7 +281,7 @@ struct ContentView: View {
                     shopClosedAlert = nil
                     Task { await loadActiveOrders() }
                 }
-                .navigationTitle("Shop Status")
+                .navigationTitle("mobile_retailer.ui.shop_status")
                 .navigationBarTitleDisplayMode(.inline)
             }
             .presentationDetents([.medium, .large])
@@ -307,7 +307,7 @@ struct ContentView: View {
                                 Image(systemName: "leaf.fill")
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(AppTheme.accent)
-                                Text("Pegasus")
+                                Text("auth.login.title")
                                     .font(.system(.title3, design: .rounded)).fontWeight(.heavy)
                                     .foregroundStyle(AppTheme.textPrimary)
                             }
@@ -345,7 +345,7 @@ struct ContentView: View {
                                     .font(.system(.subheadline, design: .rounded)).fontWeight(.bold)
                                     .foregroundStyle(AppTheme.textPrimary)
                                     .lineLimit(1)
-                                Text("Online")
+                                Text("mobile_retailer.ui.online")
                                     .font(.system(.caption2, design: .rounded)).fontWeight(.medium)
                                     .foregroundStyle(AppTheme.success)
                                     .lineLimit(1)
@@ -606,7 +606,7 @@ struct ContentView: View {
                 Image(systemName: "leaf.fill")
                     .font(.system(size: 13))
                     .foregroundStyle(AppTheme.accent)
-                Text("Pegasus")
+                Text("auth.login.title")
                     .font(.system(.headline, design: .rounded)).fontWeight(.bold)
                     .foregroundStyle(AppTheme.textPrimary)
             }

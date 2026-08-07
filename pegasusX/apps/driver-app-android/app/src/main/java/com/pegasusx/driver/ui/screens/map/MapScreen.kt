@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -335,7 +337,7 @@ fun MapScreen(
             if (isCameraLocked && mapPhase == MapPhase.NAVIGATING && driverPin != null) {
                 Marker(
                     state = MarkerState(position = driverPin),
-                    title = "You",
+                    title = stringResource(R.string.mobile_driver_ui_you),
                     rotation = displayBearing,
                     flat = true,
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),

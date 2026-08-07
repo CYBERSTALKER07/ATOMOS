@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -63,7 +65,7 @@ fun OperationsBroadcastForm(
                     )
                     if (template.source == "custom") {
                         IconButton(onClick = { onDeleteTemplate(template) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Delete ${template.title}")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mobile_warehouse_ui_delete_title, template.title))
                         }
                     }
                 }

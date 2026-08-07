@@ -43,7 +43,7 @@ struct PlanningBrainView: View {
                 }
 
                 VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                    Text("Scenario run")
+                    Text("supplier_portal.planning_brain_panel.text.scenario_run")
                         .font(.subheadline.bold())
                     Stepper("Downtime \(Int(downtimeHours))h", value: $downtimeHours, in: 0...168, step: 1)
                     Stepper("Demand \(Int(demandDeltaPct))%", value: $demandDeltaPct, in: -50...200, step: 5)
@@ -52,7 +52,7 @@ struct PlanningBrainView: View {
                     }
                     .disabled(running)
                     if let scenario {
-                        Text("SLA risk \(Int(scenario.slaRiskPct))% · fleet \(scenario.fleetVolumeOrders) · stockouts \(scenario.stockoutSkus.count)")
+                        Text(L10n.format("mobile_supplier.ui.sla_risk_slariskpct_fleet_fleetvolumeorders_stockouts_count", "\(Int(scenario.slaRiskPct))", "\(scenario.fleetVolumeOrders)", "\(scenario.stockoutSkus.count)"))
                             .font(.caption)
                             .foregroundStyle(SupplierTheme.secondaryLabel)
                     }
@@ -65,7 +65,7 @@ struct PlanningBrainView: View {
             .padding()
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Planning sandbox")
+        .navigationTitle("mobile_supplier.ui.planning_sandbox")
         .task { await load() }
     }
 

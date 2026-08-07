@@ -11,6 +11,7 @@ struct TransferActionsView: View {
     @State private var putawayExpiry = ""
     @State private var pickManifestId = ""
     @State private var pickScan = ""
+    @State private var pickScannedQty = 0
     @State private var activeWave: PickWave?
     @State private var busy = false
     @State private var statusMessage: String?
@@ -25,12 +26,12 @@ struct TransferActionsView: View {
 
                 Form {
                     Section("Payload") {
-                        TextField("Volume (VU)", text: $volumeInput)
+                        TextField("warehouse_portal.transfers.text.volume_vu", text: $volumeInput)
                             .keyboardType(.decimalPad)
-                        TextField("Notes (optional)", text: $notesInput)
+                        TextField("supplier_portal.returns.text.notes_optional", text: $notesInput)
                     }
                     Section("Actions") {
-                        Button("Create emergency transfer") {
+                        Button("mobile_warehouse.ui.create_emergency_transfer") {
                             run(label: "Emergency transfer") {
                                 try await WarehouseOperationsService.emergencyTransfer(
                                     totalVolumeVu: Double(volumeInput) ?? 20,
@@ -39,7 +40,7 @@ struct TransferActionsView: View {
                             }
                         }
                         .disabled(busy)
-                        Button("Force receive payload") {
+                        Button("mobile_warehouse.ui.force_receive_payload") {
                             run(label: "Force receive") {
                                 try await WarehouseOperationsService.forceReceive(
                                     totalVolumeVu: Double(volumeInput) ?? 20,
@@ -50,9 +51,9 @@ struct TransferActionsView: View {
                         .disabled(busy)
                     }
                     Section("Receive inbound") {
-                        TextField("Transfer ID", text: $transferIdInput)
+                        TextField("mobile_warehouse.ui.transfer_id", text: $transferIdInput)
                             .textInputAutocapitalization(.never)
-                        Button("Receive transfer") {
+                        Button("mobile_warehouse.ui.receive_transfer") {
                             let id = transferIdInput.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !id.isEmpty else {
                                 statusMessage = "Transfer ID required"
@@ -65,15 +66,15 @@ struct TransferActionsView: View {
                         .disabled(busy)
                     }
                     Section("WMS putaway (lots)") {
-                        TextField("Product ID", text: $putawayProduct)
+                        TextField("factory_portal.analytics.text.product_id", text: $putawayProduct)
                             .textInputAutocapitalization(.never)
-                        TextField("Location / bin ID", text: $putawayLocation)
+                        TextField("mobile_warehouse.ui.location_bin_id", text: $putawayLocation)
                             .textInputAutocapitalization(.never)
-                        TextField("Quantity", text: $putawayQty)
+                        TextField("warehouse_portal.inventory.inventory_stock_list.text.quantity", text: $putawayQty)
                             .keyboardType(.numberPad)
-                        TextField("Expiry YYYY-MM-DD", text: $putawayExpiry)
+                        TextField("mobile_warehouse.ui.expiry_yyyy_mm_dd", text: $putawayExpiry)
                             .textInputAutocapitalization(.never)
-                        Button("Ensure STAGE bin") {
+                        Button("mobile_warehouse.ui.ensure_stage_bin") {
                             runAny(label: "Create bin") {
                                 _ = try await WarehouseService.createBin(
                                     locationId: putawayLocation.isEmpty ? nil : putawayLocation,
@@ -83,7 +84,7 @@ struct TransferActionsView: View {
                             }
                         }
                         .disabled(busy)
-                        Button("Putaway lot") {
+                        Button("mobile_warehouse.ui.putaway_lot") {
                             let pid = putawayProduct.trimmingCharacters(in: .whitespacesAndNewlines)
                             let lid = putawayLocation.trimmingCharacters(in: .whitespacesAndNewlines)
                             let qty = Int(putawayQty) ?? 0
@@ -103,9 +104,9 @@ struct TransferActionsView: View {
                         .disabled(busy)
                     }
                     Section("WMS pick waves") {
-                        TextField("Manifest ID", text: $pickManifestId)
+                        TextField("mobile_warehouse.ui.manifest_id", text: $pickManifestId)
                             .textInputAutocapitalization(.never)
-                        Button("Create pick wave") {
+                        Button("mobile_warehouse.ui.create_pick_wave") {
                             let mid = pickManifestId.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !mid.isEmpty else {
                                 statusMessage = "Manifest ID required"
@@ -113,26 +114,36 @@ struct TransferActionsView: View {
                             }
                             runAny(label: "Create wave") {
                                 activeWave = try await WarehouseService.createPickWave(manifestId: mid)
+                                pickScannedQty = 0
                             }
                         }
                         .disabled(busy)
-                        Button("Load pick waves") {
+                        Button("mobile_warehouse.ui.load_pick_waves") {
                             runAny(label: "Load waves") {
                                 let list = try await WarehouseService.listPickWaves(
                                     manifestId: pickManifestId.isEmpty ? nil : pickManifestId
                                 )
                                 if let first = list.waves.first {
                                     activeWave = try await WarehouseService.getPickWave(waveId: first.waveId)
+                                    pickScannedQty = 0
                                 } else {
                                     statusMessage = "No pick waves"
                                 }
                             }
                         }
                         .disabled(busy)
-                        TextField("Scan product / lot ID", text: $pickScan)
+                        EANBarcodeScannerView(
+                            onBarcode: { code in
+                                onPickBarcode(code)
+                            },
+                            enabled: !busy,
+                            previewHeight: 180
+                        )
+                        TextField("mobile_warehouse.ui.scan_product_lot_id", text: $pickScan)
                             .textInputAutocapitalization(.never)
+                            .onSubmit { onPickBarcode(pickScan) }
                         if let wave = activeWave {
-                            Text("Wave \(wave.waveId.prefix(8))… · \(wave.status)")
+                            Text(L10n.format("mobile_warehouse.ui.wave_prefix_status", "\(wave.waveId.prefix(8))", "\(wave.status)"))
                                 .font(.footnote)
                             if let task = wave.tasks?.first(where: { t in
                                 t.status == "PENDING" && (
@@ -141,16 +152,23 @@ struct TransferActionsView: View {
                                     t.lotId.caseInsensitiveCompare(pickScan) == .orderedSame
                                 )
                             }) {
-                                Text("Next: \(task.productId) @ \(task.locationId ?? "—") qty \(task.quantityRequested)")
+                                Text(L10n.format("mobile_warehouse.ui.next_productid_locationid_qty_quantityrequested", "\(task.productId)", "\(task.locationId ?? "—")", "\(task.quantityRequested)"))
                                     .font(.caption)
-                                Button("Confirm pick") {
+                                Text("Scanned \(pickScannedQty) / \(task.quantityRequested)")
+                                    .font(.caption)
+                                    .foregroundStyle(.tint)
+                                Button("mobile_warehouse.ui.confirm_pick") {
+                                    let qty = pickScannedQty > 0
+                                        ? min(pickScannedQty, task.quantityRequested)
+                                        : task.quantityRequested
                                     runAny(label: "Confirm pick") {
                                         activeWave = try await WarehouseService.confirmPickTask(
                                             waveId: wave.waveId,
                                             taskId: task.taskId,
-                                            quantityPicked: task.quantityRequested
+                                            quantityPicked: qty
                                         )
                                         pickScan = ""
+                                        pickScannedQty = 0
                                     }
                                 }
                                 .disabled(busy)
@@ -158,11 +176,11 @@ struct TransferActionsView: View {
                         }
                     }
                     Section("WMS cycle counts") {
-                        TextField("Count location ID", text: $putawayLocation)
+                        TextField("mobile_warehouse.ui.count_location_id", text: $putawayLocation)
                             .textInputAutocapitalization(.never)
-                        TextField("Count product ID", text: $putawayProduct)
+                        TextField("mobile_warehouse.ui.count_product_id", text: $putawayProduct)
                             .textInputAutocapitalization(.never)
-                        Button("Create cycle count") {
+                        Button("mobile_warehouse.ui.create_cycle_count") {
                             let lid = putawayLocation.trimmingCharacters(in: .whitespacesAndNewlines)
                             let pid = putawayProduct.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !lid.isEmpty, !pid.isEmpty else {
@@ -174,7 +192,7 @@ struct TransferActionsView: View {
                             }
                         }
                         .disabled(busy)
-                        Button("Submit first OPEN @ expected") {
+                        Button("mobile_warehouse.ui.submit_first_open_expected") {
                             runAny(label: "Submit count") {
                                 let list = try await WarehouseService.listCycleCounts()
                                 guard let open = list.counts.first(where: { $0.status == "OPEN" }) else {
@@ -203,7 +221,7 @@ struct TransferActionsView: View {
             .padding()
         }
         .background(LabTheme.background)
-        .navigationTitle("Transfer actions")
+        .navigationTitle("warehouse_portal.transfers.text.transfer_actions")
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busy {
                 busy = false
@@ -239,6 +257,37 @@ struct TransferActionsView: View {
             } catch {
                 statusMessage = error.localizedDescription
             }
+        }
+    }
+
+    private func onPickBarcode(_ code: String) {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !busy else { return }
+        pickScan = trimmed
+        if putawayProduct.isEmpty {
+            putawayProduct = trimmed
+        }
+        guard let wave = activeWave,
+              let task = wave.tasks?.first(where: { t in
+                  t.status == "PENDING" && (
+                      t.productId.caseInsensitiveCompare(trimmed) == .orderedSame ||
+                      t.lotId.caseInsensitiveCompare(trimmed) == .orderedSame
+                  )
+              }) else { return }
+        let next = pickScannedQty + 1
+        pickScannedQty = next
+        if next >= task.quantityRequested {
+            runAny(label: "Confirm pick") {
+                activeWave = try await WarehouseService.confirmPickTask(
+                    waveId: wave.waveId,
+                    taskId: task.taskId,
+                    quantityPicked: task.quantityRequested
+                )
+                pickScan = ""
+                pickScannedQty = 0
+            }
+        } else {
+            statusMessage = "Scanned \(next) / \(task.quantityRequested)"
         }
     }
 }

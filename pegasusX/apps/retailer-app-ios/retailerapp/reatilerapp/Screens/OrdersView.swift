@@ -65,7 +65,7 @@ struct OrdersView: View {
                 get: { vm.loadError != nil },
                 set: { if !$0 { vm.loadError = nil } }
             )) {
-                Button("Retry") { Task { await vm.loadData() } }
+                Button("common.action.retry") { Task { await vm.loadData() } }
                 Button("OK", role: .cancel) { vm.loadError = nil }
             } message: {
                 Text(vm.loadError ?? "Check your connection and try again.")

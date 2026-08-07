@@ -991,6 +991,7 @@ data class SeasonalOverrideInput(
     @SerialName("start_date") val startDate: String,
     @SerialName("end_date") val endDate: String,
     val name: String? = null,
+    val multiplier: Double? = null,
 )
 
 @Serializable
@@ -1002,12 +1003,14 @@ data class SeasonalOverrideRow(
     @SerialName("start_date") val startDate: String = "",
     @SerialName("end_date") val endDate: String = "",
     @SerialName("is_active") val isActive: Boolean = true,
+    val multiplier: Double = 1.2,
 )
 
 @Serializable
 data class SeasonalBuiltinTemplate(
     val id: String = "",
     val name: String = "",
+    val multiplier: Double? = null,
 )
 
 @Serializable

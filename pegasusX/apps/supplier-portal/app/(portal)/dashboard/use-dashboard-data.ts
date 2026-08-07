@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePolling } from "@pegasusx/api-client";
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import type { OrderStatus } from "@pegasusx/types";
 import type { SupplierDashboardResponse } from "@pegasusx/types";
@@ -136,7 +136,9 @@ export function useDashboardData() {
     let hydratedFromCache = false;
 
     if (isTauri()) {
-      const cached = await cacheGet<DashboardCacheBundle>(cacheKey);
+      const cached = await cacheGet<DashboardCacheBundle>(cacheKey, {
+        maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+      });
       if (cached?.data) {
         setData(cached.data);
         setIsPaymentConfigured(cached.isPaymentConfigured);

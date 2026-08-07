@@ -25,11 +25,11 @@ struct LoginView: View {
                         Image(systemName: "shippingbox.fill")
                             .font(.system(size: 48, weight: .medium))
                             .foregroundStyle(LabTheme.fg)
-                        Text("PEGASUS DRIVER")
+                        Text("mobile_driver.ui.pegasus_driver_2")
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(LabTheme.fgSecondary)
                             .tracking(2)
-                        Text("TERMINAL ACCESS")
+                        Text("mobile_driver.ui.terminal_access")
                             .font(.system(size: 28, weight: .black, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
                         Text(viewModel.mode == .otp
@@ -50,7 +50,7 @@ struct LoginView: View {
                                 Image(systemName: "phone.fill")
                                     .font(.system(size: 14))
                                     .foregroundStyle(LabTheme.fgTertiary)
-                                TextField("+998 …", text: $viewModel.phone)
+                                TextField("mobile_driver.ui.998", text: $viewModel.phone)
                                     .keyboardType(.phonePad)
                                     .textContentType(.telephoneNumber)
                                     .focused($focusedField, equals: .phone)
@@ -71,7 +71,7 @@ struct LoginView: View {
 
                         if viewModel.mode == .otp, viewModel.otpSent {
                             VStack(alignment: .leading, spacing: LabTheme.s8) {
-                                Text("VERIFICATION CODE")
+                                Text("mobile_driver.ui.verification_code")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(LabTheme.fgTertiary)
                                 TextField("000000", text: Binding(
@@ -98,7 +98,7 @@ struct LoginView: View {
 
                         if viewModel.mode == .pinDev {
                             VStack(alignment: .leading, spacing: LabTheme.s8) {
-                                Text("6-DIGIT PIN")
+                                Text("mobile_driver.ui.6_digit_pin")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(LabTheme.fgTertiary)
                                 HStack(spacing: LabTheme.s12) {
@@ -163,7 +163,7 @@ struct LoginView: View {
                             Button {
                                 Task { await viewModel.sendOtp() }
                             } label: {
-                                Text("RESEND CODE")
+                                Text("mobile_driver.ui.resend_code")
                                     .font(.system(size: 14, weight: .bold, design: .monospaced))
                                     .frame(maxWidth: .infinity, minHeight: 48)
                             }

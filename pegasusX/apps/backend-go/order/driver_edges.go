@@ -396,6 +396,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		OrderID          string `json:"order_id"`
 		PhotoProofURL    string `json:"photo_proof_url"`
+		SignatureURL     string `json:"signature_url"`
 		ForceBypassToken string `json:"force_bypass_token,omitempty"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -403,8 +404,14 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.OrderID = strings.TrimSpace(req.OrderID)
+	req.PhotoProofURL = strings.TrimSpace(req.PhotoProofURL)
+	req.SignatureURL = strings.TrimSpace(req.SignatureURL)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	if req.PhotoProofURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_proof_url_required"})
 		return
 	}
 
@@ -448,12 +455,14 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
 			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
-				BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
-				OrderID:    orderRecord.OrderID,
-				DriverID:   claims.Subject,
-				SupplierID: orderRecord.SupplierID,
-				RetailerID: orderRecord.RetailerID,
-				Status:     string(StatusDeliveredOnCredit),
+				BaseEvent:     events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+				OrderID:       orderRecord.OrderID,
+				DriverID:      claims.Subject,
+				SupplierID:    orderRecord.SupplierID,
+				RetailerID:    orderRecord.RetailerID,
+				Status:        string(StatusDeliveredOnCredit),
+				PhotoProofURL: req.PhotoProofURL,
+				SignatureURL:  req.SignatureURL,
 			}); err != nil {
 				return err
 			}

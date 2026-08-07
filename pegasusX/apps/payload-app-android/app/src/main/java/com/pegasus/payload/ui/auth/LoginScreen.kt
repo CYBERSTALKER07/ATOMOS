@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.auth
 
+import androidx.compose.ui.res.stringResource
+
 import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,7 +58,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     Text(
-                        text = "Pegasus Payload Terminal",
+                        text = stringResource(R.string.mobile_payload_ui_pegasus_payload_terminal),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -179,7 +181,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f)) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, modifier = Modifier.padding(32.dp)) {
-                            com.pegasus.design.PegasusLoadingState(title = "Authenticating", body = "Verifying credentials with dispatch.", modifier = Modifier.padding(32.dp))
+                            com.pegasus.design.PegasusLoadingState(title = stringResource(R.string.mobile_payload_ui_authenticating), body = "Verifying credentials with dispatch.", modifier = Modifier.padding(32.dp))
                         }
                     }
                 }

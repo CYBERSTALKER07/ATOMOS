@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -527,7 +528,14 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 			})}
 
 			if disposition == DispositionRestock && creditQty > 0 {
-				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, skuID, creditQty); err != nil {
+				if stocklots.LotsEnabled() {
+					if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+						ctx, txn, supplierID, warehouseID, skuID,
+						stocklots.DefaultReturnsLocationID, "RETURNS", creditQty,
+					); err != nil {
+						return err
+					}
+				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, skuID, creditQty); err != nil {
 					return err
 				}
 			}

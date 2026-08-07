@@ -34,18 +34,18 @@ struct AccountProfileView: View {
             }
 
             Section {
-                TextField("Entity name", text: $name)
-                TextField("Company", text: $company)
-                TextField("Phone", text: $phone)
+                TextField("mobile_retailer.ui.entity_name", text: $name)
+                TextField("retailer_desktop.residual.text.company", text: $company)
+                TextField("common.field.phone", text: $phone)
                     .disabled(true)
             } header: {
-                Text("Business")
+                Text("supplier_portal.auth.register.steps.business")
             } footer: {
-                Text("Receiving hours feed dispatch SLA scheduling for your deliveries.")
+                Text("mobile_retailer.ui.receiving_hours_feed_dispatch_sla_scheduling_for_your_deliveries")
             }
 
             Section("Receiving window") {
-                TextField("Opens (HH:MM)", text: $receivingWindowOpen)
+                TextField("mobile_retailer.ui.opens_hh_mm", text: $receivingWindowOpen)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.numbersAndPunctuation)
@@ -57,7 +57,7 @@ struct AccountProfileView: View {
                         .foregroundStyle(AppTheme.error)
                 }
 
-                TextField("Closes (HH:MM)", text: $receivingWindowClose)
+                TextField("mobile_retailer.ui.closes_hh_mm", text: $receivingWindowClose)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.numbersAndPunctuation)
@@ -79,7 +79,7 @@ struct AccountProfileView: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("Save profile")
+                            Text("mobile_retailer.ui.save_profile")
                                 .fontWeight(.semibold)
                         }
                         Spacer()
@@ -88,7 +88,7 @@ struct AccountProfileView: View {
                 .disabled(isLoading || isSaving)
             }
         }
-        .navigationTitle("Account")
+        .navigationTitle("supplier_portal.auth.register.steps.account")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadProfile() }
         .refreshable { await loadProfile() }

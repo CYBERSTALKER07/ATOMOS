@@ -23,7 +23,7 @@ struct MissionDetailSheet: View {
             // MARK: - Header
             ZStack(alignment: .topTrailing) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())") // Increased tactical length
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(6).uppercased())")) // Increased tactical length
                         .font(.system(size: 26, weight: .black, design: .monospaced)) // Black weight
                         .foregroundStyle(LabTheme.fg)
                         .tracking(1.2)
@@ -57,7 +57,7 @@ struct MissionDetailSheet: View {
 
             // MARK: - Delivery Endpoint Card
             VStack(alignment: .leading, spacing: 10) {
-                Text("TACTICAL ENDPOINT") // Strategic relabel
+                Text("mobile_driver.ui.tactical_endpoint") // Strategic relabel
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1.4)
@@ -157,7 +157,7 @@ struct MissionDetailSheet: View {
         .alert("Out of Range", isPresented: $showOutOfRangeAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("You must be within the geofence boundary to initiate proof of delivery.")
+            Text("mobile_driver.ui.you_must_be_within_the_geofence_boundary_to_initiate_proof_of_de")
         }
     }
 }

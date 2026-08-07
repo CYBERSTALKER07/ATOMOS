@@ -107,16 +107,16 @@ struct AnalyticsView: View {
 
                             VStack(spacing: SupplierTheme.spacingSM) {
                                 NavigationLink { PlanningBrainView() } label: {
-                                    Label("Planning sandbox", systemImage: "brain.head.profile")
+                                    Label("mobile_supplier.ui.planning_sandbox", systemImage: "brain.head.profile")
                                 }
                                 NavigationLink { KnowledgeGraphView() } label: {
-                                    Label("Knowledge graph", systemImage: "point.3.connected.trianglepath.dotted")
+                                    Label("mobile_supplier.ui.knowledge_graph", systemImage: "point.3.connected.trianglepath.dotted")
                                 }
                                 NavigationLink { PlanningSettingsView() } label: {
-                                    Label("Planning settings", systemImage: "calendar")
+                                    Label("supplier_portal.settings.planning.text.planning_settings", systemImage: "calendar")
                                 }
                                 NavigationLink { ReturnPolicySettingsView() } label: {
-                                    Label("Return policy", systemImage: "arrow.uturn.backward.circle")
+                                    Label("portal.nav.return_policy", systemImage: "arrow.uturn.backward.circle")
                                 }
                             }
                         }
@@ -126,10 +126,10 @@ struct AnalyticsView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Analytics")
+            .navigationTitle("portal.nav.analytics")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(silent: true) }
                     }
                     .labelStyle(.iconOnly)
@@ -219,7 +219,7 @@ private struct PlanningBrainSection: View {
             }
 
             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                Text("Scenario run")
+                Text("supplier_portal.planning_brain_panel.text.scenario_run")
                     .font(.subheadline.bold())
                 HStack {
                     Stepper("Downtime \(Int(downtimeHours))h", value: $downtimeHours, in: 0...168, step: 1)
@@ -234,7 +234,7 @@ private struct PlanningBrainSection: View {
                 .disabled(running)
 
                 if let scenario {
-                    Text("SLA risk \(Int(scenario.slaRiskPct))% · fleet \(scenario.fleetVolumeOrders) · stockouts \(scenario.stockoutSkus.count)")
+                    Text(L10n.format("mobile_supplier.ui.sla_risk_slariskpct_fleet_fleetvolumeorders_stockouts_count", "\(Int(scenario.slaRiskPct))", "\(scenario.fleetVolumeOrders)", "\(scenario.stockoutSkus.count)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -122,10 +124,10 @@ fun DashboardScreen(
                 title = { Text("Dashboard", fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                     IconButton(onClick = onOpenNotifications) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        Icon(Icons.Default.Notifications, contentDescription = stringResource(R.string.portal_nav_notifications))
                     }
                 },
             )
@@ -133,7 +135,7 @@ fun DashboardScreen(
     ) { padding ->
         when {
             showFullScreenLoading(loading, dashboard != null) -> PegasusLoadingState(
-                title = "Loading dashboard…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_dashboard),
                 body = "Fetching supplier KPIs",
                 modifier = Modifier.padding(padding),
             )
@@ -192,7 +194,7 @@ fun DashboardScreen(
                             Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                 Text("MEIO network", style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "${mei.warehousesScanned} warehouses · ${mei.transferRecommendations} transfer recs · ${mei.insightsGenerated} insights",
+                                    stringResource(R.string.mobile_supplier_ui_warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig, mei.warehousesScanned, mei.transferRecommendations, mei.insightsGenerated),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -227,7 +229,7 @@ fun DashboardScreen(
                         }
                     }
                     Text(
-                        "Updated ${d.updatedAt}",
+                        stringResource(R.string.mobile_supplier_ui_updated_updatedat, d.updatedAt),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = PegasusSpacing.lg),

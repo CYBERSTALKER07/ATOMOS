@@ -18,8 +18,8 @@ struct OffloadReviewView: View {
     let onConfirm: (ConfirmOffloadResponse) -> Void
     let onCancel: () -> Void
     var onShopClosed: ((String) -> Void)?
-    /// orderId + PoD photo public URL (required for credit leave).
-    var onCreditDelivery: ((String, String) -> Void)?
+    /// orderId + photo URL + signature URL + optional local paths for offline flush.
+    var onCreditDelivery: ((String, String, String, String?, String?) -> Void)?
     var onReportMissing: ((String) -> Void)?
 
     @State private var rejectedQty: [String: Int] = [:]
@@ -31,6 +31,9 @@ struct OffloadReviewView: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var evidencePhotoURL = ""
+    @State private var evidencePhotoLocalPath = ""
+    @State private var signatureURL = ""
+    @State private var signatureLocalPath = ""
     @State private var isUploadingPhoto = false
 
     private let fleetService: FleetServiceProtocol = FleetServiceLive.shared
@@ -61,7 +64,7 @@ struct OffloadReviewView: View {
             // MARK: - Header
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("OFFLOAD REVIEW")
+                    Text("mobile_driver.ui.offload_review")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(LabTheme.fgTertiary)
                     Text(response.orderId)
@@ -102,7 +105,7 @@ struct OffloadReviewView: View {
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundStyle(fullyRejected ? LabTheme.fgTertiary : LabTheme.fg)
                                         .strikethrough(fullyRejected)
-                                    Text("\(item.quantity) × \(item.unitPrice.formattedAmount)")
+                                    Text(L10n.format("mobile_driver.ui.quantity_formattedamount", "\(item.quantity)", "\(item.unitPrice.formattedAmount)"))
                                         .font(.system(size: 12, design: .monospaced))
                                         .foregroundStyle(LabTheme.fgTertiary)
                                 }
@@ -176,7 +179,7 @@ struct OffloadReviewView: View {
                                     }
                                 }
                                 if selectedReason(for: item) == .OTHER {
-                                    TextField("Describe the issue", text: Binding(
+                                    TextField("mobile_driver.ui.describe_the_issue", text: Binding(
                                         get: { customReasons[item.id] ?? "" },
                                         set: { customReasons[item.id] = $0 }
                                     ), axis: .vertical)
@@ -194,7 +197,7 @@ struct OffloadReviewView: View {
 
             // MARK: - PoD / damage photo proof
             VStack(alignment: .leading, spacing: 8) {
-                Text("PROOF OF DELIVERY PHOTO")
+                Text("mobile_driver.ui.proof_of_delivery_photo")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
                 PhotosPicker(selection: $pickedPhoto, matching: .images) {
@@ -222,9 +225,17 @@ struct OffloadReviewView: View {
                         .frame(maxHeight: 140)
                         .clipShape(.rect(cornerRadius: 10))
                 }
-                Text("Required for credit leave and for damaged or wrong-item rejections.")
+                Text("mobile_driver.ui.required_for_credit_leave_and_for_damaged_or_wrong_item_rejectio")
                     .font(.caption2)
                     .foregroundStyle(LabTheme.fgTertiary)
+                SignaturePadView { data in
+                    Task { await saveSignature(data) }
+                }
+                if !signatureURL.isEmpty || !signatureLocalPath.isEmpty {
+                    Text("Signature ready")
+                        .font(.caption2)
+                        .foregroundStyle(LabTheme.success)
+                }
             }
             .padding(.horizontal, LabTheme.s24)
             .padding(.bottom, LabTheme.s12)
@@ -244,11 +255,23 @@ struct OffloadReviewView: View {
                 isSubmitting: isSubmitting || isUploadingPhoto,
                 onShopClosed: onShopClosed,
                 onCreditDelivery: { orderId in
-                    guard !evidencePhotoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    let hasPhoto = !evidencePhotoURL.isEmpty || !evidencePhotoLocalPath.isEmpty
+                    let hasSig = !signatureURL.isEmpty || !signatureLocalPath.isEmpty
+                    guard hasPhoto else {
                         errorMessage = "PoD photo required for credit leave — take a photo of the handoff first."
                         return
                     }
-                    onCreditDelivery?(orderId, evidencePhotoURL)
+                    guard hasSig else {
+                        errorMessage = "Signature required for credit leave — sign the pad and tap Save."
+                        return
+                    }
+                    onCreditDelivery?(
+                        orderId,
+                        evidencePhotoURL,
+                        signatureURL,
+                        evidencePhotoLocalPath.isEmpty ? nil : evidencePhotoLocalPath,
+                        signatureLocalPath.isEmpty ? nil : signatureLocalPath
+                    )
                 },
                 onReportMissing: onReportMissing,
                 onConfirm: { confirmOffload() }
@@ -279,14 +302,42 @@ struct OffloadReviewView: View {
                 return
             }
             previewImage = image
-            evidencePhotoURL = try await MediaUploadService.uploadJPEG(
-                image: image,
-                purpose: "driver_exception",
-                orderId: response.orderId
-            )
+            if let jpeg = image.jpegData(compressionQuality: 0.82) {
+                evidencePhotoLocalPath = (try? MediaUploadService.savePodJPEG(jpeg, prefix: "photo")) ?? ""
+            }
+            do {
+                evidencePhotoURL = try await MediaUploadService.uploadJPEG(
+                    image: image,
+                    purpose: "credit_proof",
+                    orderId: response.orderId
+                )
+            } catch {
+                // Keep local path for offline credit flush.
+                evidencePhotoURL = ""
+                if evidencePhotoLocalPath.isEmpty {
+                    errorMessage = "Photo upload failed: \(error.localizedDescription)"
+                }
+            }
         } catch {
             evidencePhotoURL = ""
             errorMessage = "Photo upload failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func saveSignature(_ data: Data) async {
+        errorMessage = nil
+        signatureLocalPath = (try? MediaUploadService.savePodJPEG(data, prefix: "sig")) ?? ""
+        do {
+            signatureURL = try await MediaUploadService.uploadJPEGData(
+                data,
+                purpose: "credit_proof",
+                orderId: response.orderId
+            )
+        } catch {
+            signatureURL = ""
+            if signatureLocalPath.isEmpty {
+                errorMessage = "Signature upload failed: \(error.localizedDescription)"
+            }
         }
     }
 

@@ -12,13 +12,13 @@ struct StaffView: View {
         NavigationStack {
             StaffList(staff: staff, loading: loading, error: error, onRetry: { load() })
             .background(LabTheme.background)
-            .navigationTitle("Staff")
+            .navigationTitle("portal.nav.staff")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Staff", systemImage: "plus") { showCreate = true }
+                    Button("mobile_warehouse.ui.add_staff", systemImage: "plus") { showCreate = true }
                 }
             }
             .task { load() }
@@ -36,9 +36,9 @@ struct StaffView: View {
                 get: { createdPin != nil },
                 set: { if !$0 { createdPin = nil } }
             )) {
-                Button("Done") { createdPin = nil }
+                Button("warehouse_portal.kpi_stat_card.text.done") { createdPin = nil }
             } message: {
-                Text("One-time PIN: \(createdPin ?? "")\nSave it now.")
+                Text(L10n.format("mobile_warehouse.ui.one_time_pin_createdpin_nsave_it_now", "\(createdPin ?? "")"))
             }
         }
     }
@@ -71,22 +71,22 @@ private struct CreateStaffSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
-                TextField("Role", text: $role)
+                TextField("warehouse_portal.staff.text.role", text: $role)
                 if let error {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Staff")
+            .navigationTitle("mobile_warehouse.ui.add_staff")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button("mobile_warehouse.ui.create") { create() }
                         .disabled(submitting || name.isEmpty || phone.isEmpty)
                 }
             }

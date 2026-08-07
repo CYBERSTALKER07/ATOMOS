@@ -13,15 +13,15 @@ struct LocalSkusView: View {
         List {
             if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
             Section("Add local SKU") {
-                TextField("Name", text: $name)
-                TextField("Barcode", text: $barcode)
-                TextField("Price (minor)", text: $price)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("retailer_desktop.stock.local_skus.text.barcode", text: $barcode)
+                TextField("supplier_portal.catalog.components.catalog_table.text.price_minor", text: $price)
                 Button(busy ? "…" : "Create") { Task { await create() } }
                     .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             Section("Catalog") {
                 if rows.isEmpty {
-                    Text("No local SKUs").foregroundStyle(AppTheme.textTertiary)
+                    Text("mobile_retailer.ui.no_local_skus").foregroundStyle(AppTheme.textTertiary)
                 } else {
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 4) {
@@ -37,7 +37,7 @@ struct LocalSkusView: View {
                 }
             }
         }
-        .navigationTitle("Local SKUs")
+        .navigationTitle("portal.nav.local_skus")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

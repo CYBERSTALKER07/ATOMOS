@@ -175,8 +175,8 @@ final class FleetServiceLive: FleetServiceProtocol {
         )
     }
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async throws -> [String: String] {
-        try await api.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil, signatureUrl: String? = nil) async throws -> [String: String] {
+        try await api.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl, signatureUrl: signatureUrl)
     }
 
     func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String? = nil) async throws -> SplitPaymentResponse {

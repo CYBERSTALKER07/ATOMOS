@@ -1,26 +1,43 @@
-# PegasusX native mobile clients — Android + iOS compile gates
+# PegasusX native mobile clients — Android + iOS compile gates (all 12 apps).
 name: PegasusX Native Mobile Build
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
     paths:
       - "pegasusX/apps/*-app-android/**"
       - "pegasusX/apps/*-app-ios/**"
+      - "pegasusX/packages/mobile-android-kit/**"
+      - "pegasusX/packages/mobile-ios-kit/**"
+      - "pegasusX/packages/mobile-ios-barcode/**"
+      - "pegasusX/packages/mobile-ios-design/**"
+      - "pegasusX/scripts/ci_android_apps.sh"
+      - "pegasusX/scripts/ci_ios_apps.sh"
       - "pegasusX/scripts/build_native_android_store.sh"
       - ".github/workflows/pegasusx-native-mobile-build.yml"
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
     paths:
       - "pegasusX/apps/*-app-android/**"
       - "pegasusX/apps/*-app-ios/**"
+      - "pegasusX/packages/mobile-android-kit/**"
+      - "pegasusX/packages/mobile-ios-kit/**"
+      - "pegasusX/packages/mobile-ios-barcode/**"
+      - "pegasusX/packages/mobile-ios-design/**"
+      - "pegasusX/scripts/ci_android_apps.sh"
+      - "pegasusX/scripts/ci_ios_apps.sh"
       - ".github/workflows/pegasusx-native-mobile-build.yml"
+
+concurrency:
+  group: pegasusx-mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
     name: Android / ${{ matrix.app }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +62,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Compile Kotlin (storeDebug, fallback enterpriseDebug)
+        run: |
+          chmod +x ./gradlew
+          if ./gradlew --no-daemon --stacktrace :app:compileStoreDebugKotlin; then
+            echo "OK compileStoreDebugKotlin"
+          else
+            echo "storeDebug unavailable — compileEnterpriseDebugKotlin"
+            ./gradlew --no-daemon --stacktrace :app:compileEnterpriseDebugKotlin
+          fi
+
       - name: Assemble enterpriseDebug
         run: ./gradlew :app:assembleEnterpriseDebug --stacktrace
 
@@ -57,29 +84,51 @@ jobs:
           retention-days: 7
 
   ios:
-    name: iOS / ${{ matrix.scheme }}
+    name: iOS / ${{ matrix.name }}
     runs-on: macos-15
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - scheme: reatilerapp
+          - name: retailer
+            scheme: reatilerapp
             project: pegasusX/apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj
-          - scheme: SupplierAppIOS
+            xcodegen_dir: ""
+          - name: supplier
+            scheme: SupplierAppIOS
             project: pegasusX/apps/supplier-app-ios/SupplierAppIOS.xcodeproj
-          - scheme: driverappios
+            xcodegen_dir: pegasusX/apps/supplier-app-ios
+          - name: driver
+            scheme: driverappios
             project: pegasusX/apps/driver-app-ios/driverappios/driverappios.xcodeproj
-          - scheme: WarehouseAppIOS
+            xcodegen_dir: ""
+          - name: warehouse
+            scheme: WarehouseAppIOS
             project: pegasusX/apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj
-          - scheme: FactoryAppIOS
+            xcodegen_dir: pegasusX/apps/warehouse-app-ios
+          - name: factory
+            scheme: FactoryAppIOS
             project: pegasusX/apps/factory-app-ios/FactoryAppIOS.xcodeproj
-          - scheme: payload-app-ios
+            xcodegen_dir: pegasusX/apps/factory-app-ios
+          - name: payload
+            scheme: payload-app-ios
             project: pegasusX/apps/payload-app-ios/payload-app-ios.xcodeproj
+            xcodegen_dir: pegasusX/apps/payload-app-ios
     steps:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Install XcodeGen
+        if: matrix.xcodegen_dir != ''
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        if: matrix.xcodegen_dir != ''
+        working-directory: ${{ matrix.xcodegen_dir }}
+        run: xcodegen generate
 
       - name: Resolve package dependencies
         run: |
@@ -88,8 +137,6 @@ jobs:
 
       - name: Build for iOS Simulator
         run: |
-          DEST=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $1,$2}' | head -1 | sed 's/[[:space:]]*$//')
-          # Prefer a concrete available iPhone simulator
           if xcrun simctl list devices available | grep -q "iPhone 16"; then
             DEST_ARG='platform=iOS Simulator,name=iPhone 16'
           elif xcrun simctl list devices available | grep -q "iPhone 17"; then
@@ -104,4 +151,5 @@ jobs:
             -destination "$DEST_ARG" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             build

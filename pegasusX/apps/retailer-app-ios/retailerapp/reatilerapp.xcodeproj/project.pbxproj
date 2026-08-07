@@ -193,8 +193,10 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
+				ru,
+				uz,
 			);
 			mainGroup = 2E6B77652F689E6000F2D3D7;
 			minimizedProjectReferenceProxies = 1;

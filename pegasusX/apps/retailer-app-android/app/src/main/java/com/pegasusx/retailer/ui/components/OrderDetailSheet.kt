@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -89,7 +91,7 @@ fun OrderDetailSheet(
                     Text("Keep Order")
                 }
             },
-            title = { Text("Cancel Order #${order.id.takeLast(3)}") },
+            title = { Text(stringResource(R.string.mobile_retailer_ui_cancel_order_takelast, order.id.takeLast(3))) },
             text = { Text("Are you sure? This order cannot be reinstated once cancelled.") },
         )
     }
@@ -186,7 +188,7 @@ fun OrderDetailSheetContent(
                 ) {
                     Column {
                         Text(
-                            "Order #${order.id.takeLast(3)}",
+                            stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
@@ -262,8 +264,7 @@ fun OrderDetailSheetContent(
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "×${item.quantity}",
+                        Text(stringResource(R.string.mobile_retailer_ui_quantity, item.quantity),
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         )
@@ -333,7 +334,7 @@ fun OrderDetailSheetContent(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 Icons.Outlined.QrCode2,
-                                contentDescription = "QR Code",
+                                contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
@@ -386,7 +387,7 @@ fun OrderDetailSheetContent(
                     when {
                         claimElig?.eligible == true -> {
                             Text(
-                                "Eligible until ${formatClaimEndsAt(claimElig?.endsAt)} (${claimElig?.hoursRemaining}h left)",
+                                stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left, formatClaimEndsAt(claimElig?.endsAt), claimElig?.hoursRemaining),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                             )

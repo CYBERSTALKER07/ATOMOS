@@ -29,8 +29,8 @@ struct LocationSetupView: View {
                             .foregroundStyle(.secondary)
                         }
                         if !hasAssignedWarehouse {
-                            Section("Warehouse name") {
-                                TextField("Warehouse name", text: $warehouseName)
+                            Section("warehouse_portal.residual.text.warehouse_name") {
+                                TextField("warehouse_portal.residual.text.warehouse_name", text: $warehouseName)
                             }
                         } else if !warehouseName.isEmpty {
                             Section { Text(warehouseName) }
@@ -52,7 +52,7 @@ struct LocationSetupView: View {
                     }
                 }
             }
-            .navigationTitle("Warehouse location")
+            .navigationTitle("warehouse_portal.setup.location.text.warehouse_location")
         }
         .task { await loadExistingIfNeeded() }
     }

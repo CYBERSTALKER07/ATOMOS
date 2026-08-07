@@ -22,6 +22,7 @@ import { getRetailerProfile } from "@/lib/retailer-profile";
 import type {
   ActiveFulfillmentsResponse,
   CheckoutPreviewResponse,
+  OrderCurrencyOptions,
   PendingPaymentsResponse,
   UnifiedCheckoutResponse,
   RetailerProfile,
@@ -61,6 +62,8 @@ export default function CheckoutModal({
   const [deliveryMode, setDeliveryMode] = useState<"STANDARD" | "SCHEDULED">("STANDARD");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [expressPriority, setExpressPriority] = useState(false);
+  const [currencyOptions, setCurrencyOptions] = useState<OrderCurrencyOptions | null>(null);
+  const [orderCurrency, setOrderCurrency] = useState("UZS");
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -81,6 +84,25 @@ export default function CheckoutModal({
           }
         })
         .catch(() => setHasCardConfigured(false));
+
+      apiFetch("/v1/order/currencies")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: OrderCurrencyOptions | null) => {
+          if (!data) {
+            setCurrencyOptions(null);
+            return;
+          }
+          setCurrencyOptions(data);
+          const op = data.operating_currency || "UZS";
+          setOrderCurrency(
+            data.enabled && data.allowlist?.length
+              ? data.allowlist.includes(op)
+                ? op
+                : data.allowlist[0]
+              : op,
+          );
+        })
+        .catch(() => setCurrencyOptions(null));
     }
   }, [isOpen]);
 
@@ -296,6 +318,9 @@ export default function CheckoutModal({
         delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
         checkout_policy_token: checkoutPolicyToken ?? preview.checkout_policy_token,
       };
+      if (currencyOptions?.enabled && orderCurrency) {
+        checkoutPayload.currency = orderCurrency;
+      }
       if (deliveryDate) {
         const iso = new Date(`${deliveryDate}T12:00:00+05:00`).toISOString();
         if (deliveryMode === "SCHEDULED") {
@@ -477,6 +502,30 @@ export default function CheckoutModal({
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
                   Delivery Intent
                 </span>
+                {currencyOptions?.enabled && (currencyOptions.allowlist?.length ?? 0) > 0 ? (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
+                      Order currency
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {currencyOptions.allowlist.map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => setOrderCurrency(code)}
+                          className={`px-4 py-2 rounded-xl border text-sm font-medium ${
+                            orderCurrency === code
+                              ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5"
+                              : "border-[var(--desk-border)]"
+                          }`}
+                        >
+                          {code}
+                          {code === currencyOptions.operating_currency ? " (default)" : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"

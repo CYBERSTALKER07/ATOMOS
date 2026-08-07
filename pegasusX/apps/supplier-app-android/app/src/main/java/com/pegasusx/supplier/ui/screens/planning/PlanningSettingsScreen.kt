@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,6 +41,7 @@ fun PlanningSettingsScreen(
     var name by remember { mutableStateOf("") }
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
+    var multiplier by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
@@ -64,7 +67,7 @@ fun PlanningSettingsScreen(
                 title = { Text("Planning settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -101,12 +104,14 @@ fun PlanningSettingsScreen(
                         name = name,
                         startDate = startDate,
                         endDate = endDate,
+                        multiplier = multiplier,
                         formError = formError,
                         saving = saving,
                         onTemplateIdChange = { templateId = it },
                         onNameChange = { name = it },
                         onStartDateChange = { startDate = it },
                         onEndDateChange = { endDate = it },
+                        onMultiplierChange = { multiplier = it },
                         onSubmit = {
                             if (startDate.isBlank() || endDate.isBlank()) {
                                 formError = "Start and end dates are required"
@@ -117,12 +122,14 @@ fun PlanningSettingsScreen(
                                 formError = null
                                 val scopeId = SupplierIdempotencyKeys.supplierScopeId()
                                 val key = SupplierIdempotencyKeys.seasonalOverrideCreate(scopeId, startDate, endDate)
+                                val multVal = multiplier.trim().toDoubleOrNull()
                                 val resp = ops.createSeasonalOverride(
                                     SeasonalOverrideInput(
                                         templateId = templateId.ifBlank { null },
                                         startDate = startDate.trim(),
                                         endDate = endDate.trim(),
                                         name = name.ifBlank { null },
+                                        multiplier = multVal,
                                     ),
                                     key,
                                 )
@@ -136,6 +143,7 @@ fun PlanningSettingsScreen(
                                     startDate = ""
                                     endDate = ""
                                     templateId = ""
+                                    multiplier = ""
                                     snackbar.showSnackbar("Override created")
                                 } else {
                                     formError = "Create failed (${resp.code()})"

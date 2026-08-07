@@ -43,7 +43,7 @@ struct OrdersView: View {
                 )
             }
             .background(LabTheme.background)
-            .navigationTitle("Orders")
+            .navigationTitle("portal.nav.orders")
             .navigationDestination(for: String.self) { orderId in
                 OrderDetailView(orderId: orderId)
             }
@@ -63,12 +63,12 @@ struct OrdersView: View {
                                 }
                             }
                         } label: {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                            Label("mobile_warehouse.ui.filter", systemImage: "line.3.horizontal.decrease.circle")
                         }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task(id: "\(hubTab)-\(selectedState)") { load() }
@@ -81,18 +81,18 @@ struct OrdersView: View {
                 NavigationStack {
                     Form {
                         DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
-                        TextField("Reason (required)", text: $reasonInput, axis: .vertical)
+                        TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $reasonInput, axis: .vertical)
                     }
-                    .navigationTitle("Propose new delivery date")
+                    .navigationTitle("mobile_warehouse.ui.propose_new_delivery_date")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") {
+                            Button("common.action.cancel") {
                                 proposeTarget = nil
                                 reasonInput = ""
                             }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Notify retailer") {
+                            Button("mobile_warehouse.ui.notify_retailer") {
                                 Task { await submitPropose(orderId: target.id) }
                             }
                             .disabled(reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -105,8 +105,8 @@ struct OrdersView: View {
                 get: { rejectTarget != nil },
                 set: { if !$0 { rejectTarget = nil; reasonInput = "" } },
             )) {
-                TextField("Reason (required)", text: $reasonInput)
-                Button("Cancel order", role: .destructive) {
+                TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $reasonInput)
+                Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) {
                     guard let orderId = rejectTarget, !reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                     Task {
                         do {
@@ -125,9 +125,9 @@ struct OrdersView: View {
                         }
                     }
                 }
-                Button("Cancel", role: .cancel) { rejectTarget = nil; reasonInput = "" }
+                Button("common.action.cancel", role: .cancel) { rejectTarget = nil; reasonInput = "" }
             } message: {
-                Text("The retailer will be notified.")
+                Text("mobile_warehouse.ui.the_retailer_will_be_notified")
             }
             .overlay(alignment: .bottom) {
                 if let statusMessage {

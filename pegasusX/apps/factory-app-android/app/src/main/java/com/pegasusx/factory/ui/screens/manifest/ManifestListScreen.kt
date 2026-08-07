@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -102,7 +104,7 @@ fun ManifestListScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Manifests")
                         Text(
-                            text = "Draft through dispatch lifecycle",
+                            text = stringResource(R.string.mobile_factory_ui_draft_through_dispatch_lifecycle),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -123,7 +125,7 @@ fun ManifestListScreen(
     ) { innerPadding ->
         when {
             loading && manifests.isEmpty() -> PegasusLoadingState(
-                title = "Loading manifests",
+                title = stringResource(R.string.mobile_factory_ui_loading_manifests),
                 body = "Fetching manifest pipeline for the loading gate.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
@@ -153,7 +155,7 @@ fun ManifestListScreen(
                     ManifestListSummary(count = manifests.size)
                 }
                 item {
-                    FactorySectionTitle(title = "Manifest pipeline")
+                    FactorySectionTitle(title = stringResource(R.string.factory_portal_manifests_text_manifest_pipeline))
                 }
                 items(manifests, key = { it.id }) { manifest ->
                     val next = nextManifestLifecycleStep(manifest.state)
@@ -185,11 +187,11 @@ private fun ManifestListSummary(count: Int) {
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(
-                text = "$count manifests in pipeline",
+                text = stringResource(R.string.mobile_factory_ui_count_manifests_in_pipeline),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Advance manifests through draft, loading, sealed, dispatched, and completed.",
+                text = stringResource(R.string.mobile_factory_ui_advance_manifests_through_draft_loading_sealed_dispatched_and_co),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

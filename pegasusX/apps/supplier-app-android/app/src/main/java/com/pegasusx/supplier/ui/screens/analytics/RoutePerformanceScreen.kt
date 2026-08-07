@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,7 +41,7 @@ fun RoutePerformanceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit
                 title = { Text("Route performance") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -47,14 +49,14 @@ fun RoutePerformanceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit
     ) { padding ->
         if (loading) {
             PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Fetching route performance metrics.",
                 modifier = Modifier.padding(padding),
             )
         } else {
             Column(Modifier.padding(padding).padding(PegasusSpacing.md)) {
                 rows.forEach { row ->
-                    Text("Route ${row.routeId} · driver ${row.driverId} · ${row.ordersCompleted} orders")
+                    Text(stringResource(R.string.mobile_supplier_ui_route_routeid_driver_driverid_orderscompleted_orders, row.routeId, row.driverId, row.ordersCompleted))
                 }
             }
         }

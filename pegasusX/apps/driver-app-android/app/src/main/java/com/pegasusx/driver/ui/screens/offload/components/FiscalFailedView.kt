@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,7 +40,7 @@ fun FiscalFailedView(
     )
     Spacer(modifier = Modifier.height(24.dp))
     Text(
-        text = "FISCAL FAILED",
+        text = stringResource(R.string.mobile_driver_ui_fiscal_failed),
         fontSize = 11.sp,
         fontWeight = FontWeight.Black,
         fontFamily = FontFamily.Monospace,
@@ -47,7 +49,7 @@ fun FiscalFailedView(
     )
     Spacer(modifier = Modifier.height(12.dp))
     Text(
-        text = "Retry fiscal receipt or call supervisor for force-complete.",
+        text = stringResource(R.string.mobile_driver_ui_retry_fiscal_receipt_or_call_supervisor_for_force_complete),
         fontSize = 14.sp,
         color = lab.fgTertiary,
         textAlign = TextAlign.Center
@@ -73,7 +75,7 @@ fun FiscalFailedView(
                 strokeWidth = 2.dp
             )
         } else {
-            Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(text = stringResource(R.string.mobile_driver_ui_retry_fiscal), fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }

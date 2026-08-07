@@ -13,14 +13,14 @@ struct CRMView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if retailers.isEmpty {
-                    ContentUnavailableView("No Retailers", systemImage: "storefront", description: Text("No retailer relationships"))
+                    ContentUnavailableView("No Retailers", systemImage: "storefront", description: Text("mobile_warehouse.ui.no_retailer_relationships"))
                 } else {
                     ResponsiveGridContentWrapper {
                         ForEach(retailers) { retailer in
@@ -31,9 +31,9 @@ struct CRMView: View {
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                                Text("\(retailer.totalOrders) orders")
+                                Text(L10n.format("mobile_warehouse.ui.totalorders_orders", "\(retailer.totalOrders)"))
                                     .font(.caption)
-                                Text("\(retailer.totalRevenue.formatted()) UZS")
+                                Text(L10n.format("mobile_warehouse.ui.formatted_uzs", "\(retailer.totalRevenue.formatted())"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -43,10 +43,10 @@ struct CRMView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Retailers")
+            .navigationTitle("portal.nav.retailers")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

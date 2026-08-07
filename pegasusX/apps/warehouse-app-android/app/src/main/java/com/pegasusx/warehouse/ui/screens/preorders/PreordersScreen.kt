@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -156,7 +158,7 @@ fun PreordersScreen(
                         enabled = reason.isNotBlank(),
                     ) { Text("Send proposal") }
                 },
-                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text("Back") } },
+                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text(stringResource(R.string.common_action_back)) } },
             )
         }
 
@@ -178,7 +180,7 @@ fun PreordersScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -192,7 +194,7 @@ fun PreordersScreen(
     ) { padding ->
         when {
             loading && rows.isEmpty() -> PegasusLoadingState(
-                title = "Loading pre-orders…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_pre_orders),
                 body = "Fetching scheduled deliveries",
                 modifier = Modifier.fillMaxSize().padding(padding)
             )

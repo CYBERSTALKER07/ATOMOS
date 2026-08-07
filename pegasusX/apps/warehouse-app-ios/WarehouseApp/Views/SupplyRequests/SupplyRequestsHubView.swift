@@ -33,7 +33,7 @@ struct SupplyRequestsHubView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(String(request.requestId.prefix(8)))
                                     .font(.headline)
-                                Text("\(request.priority) · \(Int(request.totalVolumeVu)) VU")
+                                Text(L10n.format("mobile_warehouse.ui.priority_totalvolumevu_vu", "\(request.priority)", "\(Int(request.totalVolumeVu))"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 if !request.notes.isEmpty {
@@ -51,7 +51,7 @@ struct SupplyRequestsHubView: View {
             }
             }
         }
-        .navigationTitle("Supply Requests")
+        .navigationTitle("portal.nav.supply_requests")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Picker("State", selection: $stateFilter) {
@@ -60,10 +60,10 @@ struct SupplyRequestsHubView: View {
                 .pickerStyle(.menu)
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("New", systemImage: "plus") { showCreate = true }
+                Button("mobile_warehouse.ui.new", systemImage: "plus") { showCreate = true }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .sheet(isPresented: $showCreate) {

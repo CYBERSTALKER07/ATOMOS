@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.cart
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
@@ -64,6 +66,10 @@ data class CartUiState(
     val deliveryMode: String = "STANDARD",
     val deliveryDate: String? = null,
     val expressPriority: Boolean = false,
+    val currencyPickerEnabled: Boolean = false,
+    val currencyAllowlist: List<String> = emptyList(),
+    val operatingCurrency: String = "UZS",
+    val orderCurrency: String = "UZS",
     val preorderMinLeadDays: Long = 3,
     val preorderMaxLeadDays: Long = 0,
     val deliveryFeeMinor: Long = 0,
@@ -117,9 +123,9 @@ private fun com.pegasusx.retailer.data.model.CheckoutPreviewResponse.orderableCa
 }
 
 private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
-    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
-    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = stringResource(R.string.mobile_retailer_ui_globalpay_new)),
+    CheckoutPaymentOption(gateway = "ADYEN", label = stringResource(R.string.supplier_portal_residual_text_adyen)),
+    CheckoutPaymentOption(gateway = "CASH", label = stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)),
 )
 
 @HiltViewModel
@@ -143,6 +149,7 @@ class CartViewModel @Inject constructor(
 init { 
         flushPendingOrders()
         fetchPaymentOptions()
+        fetchOrderCurrencies()
         refreshCartFromServer()
         observeCartSyncUpdates()
     }
@@ -150,6 +157,7 @@ init {
     fun retrySync() {
         refreshCartFromServer()
         fetchPaymentOptions()
+        fetchOrderCurrencies()
     }
 
     private fun cartSignature(items: List<CartItem>): String {
@@ -365,6 +373,29 @@ init {
                     loadIssue = issue,
                 )
             }
+        }
+    }
+
+    private fun fetchOrderCurrencies() = viewModelScope.launch {
+        try {
+            val opts = api.getOrderCurrencies()
+            val op = opts.operatingCurrency.ifBlank { "UZS" }
+            val selected = when {
+                !opts.enabled -> op
+                opts.allowlist.isEmpty() -> op
+                opts.allowlist.contains(op) -> op
+                else -> opts.allowlist.first()
+            }
+            _uiState.update {
+                it.copy(
+                    currencyPickerEnabled = opts.enabled,
+                    currencyAllowlist = opts.allowlist,
+                    operatingCurrency = op,
+                    orderCurrency = selected,
+                )
+            }
+        } catch (_: Exception) {
+            // Flag off / unreachable — keep operating default, hide picker.
         }
     }
 
@@ -649,7 +680,12 @@ init {
             requestedDeliveryDate = if (state.deliveryMode == "SCHEDULED") requestedDeliveryDate else null,
             deliveryPriority = if (state.expressPriority) "EXPRESS" else "STANDARD",
             checkoutPolicyToken = state.checkoutPolicyToken,
+            currency = if (state.currencyPickerEnabled) state.orderCurrency else null,
         )
+    }
+
+    fun setOrderCurrency(code: String) {
+        _uiState.update { it.copy(orderCurrency = code.trim().uppercase()) }
     }
 
     fun setSupplierIsActive(value: Boolean) {

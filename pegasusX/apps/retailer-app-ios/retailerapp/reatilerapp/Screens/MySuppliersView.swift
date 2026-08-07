@@ -33,7 +33,7 @@ struct MySuppliersView: View {
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
-                                Button("Remove vendor", role: .destructive) {
+                                Button("mobile_retailer.ui.remove_vendor", role: .destructive) {
                                     supplierPendingRemoval = supplier
                                 }
                             }
@@ -48,10 +48,10 @@ struct MySuppliersView: View {
         }
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
-        .navigationTitle("My suppliers")
+        .navigationTitle("mobile_retailer.ui.my_suppliers")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Connect") { showConnectSheet = true }
+                Button("mobile_retailer.ui.connect") { showConnectSheet = true }
             }
         }
         .sheet(isPresented: $showConnectSheet) {
@@ -68,14 +68,14 @@ struct MySuppliersView: View {
             titleVisibility: .visible
         ) {
             if let supplier = supplierPendingRemoval {
-                Button("Remove \(supplier.name)", role: .destructive) {
+                Button(L10n.format("mobile_retailer.ui.remove_name", "\(supplier.name)"), role: .destructive) {
                     Task { await removeSupplier(supplier.id) }
                 }
             }
-            Button("Cancel", role: .cancel) { supplierPendingRemoval = nil }
+            Button("common.action.cancel", role: .cancel) { supplierPendingRemoval = nil }
         } message: {
             if let supplier = supplierPendingRemoval {
-                Text("\(supplier.name) will be removed from your connected suppliers.")
+                Text(L10n.format("mobile_retailer.ui.name_will_be_removed_from_your_connected_suppliers", "\(supplier.name)"))
             }
         }
         .task { await loadSuppliers() }
@@ -114,7 +114,7 @@ struct MySuppliersView: View {
             }
 
             HStack(spacing: AppTheme.spacingXS) {
-                Text("\(supplier.orderCount) orders")
+                Text(L10n.format("mobile_retailer.ui.ordercount_orders_2", "\(supplier.orderCount)"))
                     .font(.system(.caption2, design: .rounded, weight: .medium))
                     .foregroundStyle(AppTheme.textSecondary)
                     .padding(.horizontal, 6).padding(.vertical, 3)
@@ -139,7 +139,7 @@ struct MySuppliersView: View {
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(3)
             Spacer()
-            Button("Retry") {
+            Button("common.action.retry") {
                 Task { await loadSuppliers() }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))
@@ -158,7 +158,7 @@ struct MySuppliersView: View {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
                 Image(systemName: "building.2").font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
             }
-            Text("No Suppliers Yet")
+            Text("mobile_retailer.ui.no_suppliers_yet")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(errorMessage ?? "Connect vendors from the network or browse category catalogs.")

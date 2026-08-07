@@ -26,11 +26,11 @@ struct OrderCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Order #\(order.id.suffix(3))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
 
-                    Text("\(order.itemCount) items · \(order.displayTotal)")
+                    Text(L10n.format("mobile_retailer.ui.itemcount_items_displaytotal", "\(order.itemCount)", "\(order.displayTotal)"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -43,7 +43,7 @@ struct OrderCardView: View {
 
             if order.needsDeliveryProposalReview {
                 HStack(spacing: AppTheme.spacingSM) {
-                    Text("Review Delivery")
+                    Text("retailer_desktop.orders.text.review_delivery")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.warning)
                         .padding(.horizontal, 8)
@@ -51,7 +51,7 @@ struct OrderCardView: View {
                         .background(AppTheme.warning.opacity(0.15))
                         .clipShape(.capsule)
                     if let date = order.proposedDeliveryDate, !date.isEmpty {
-                        Text("Proposed: \(date)")
+                        Text(L10n.format("mobile_retailer.ui.proposed_date_2", "\(date)"))
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textSecondary)
                             .lineLimit(1)
@@ -95,7 +95,7 @@ struct OrderCardView: View {
 
                         Spacer()
 
-                        Text("×\(item.quantity)")
+                        Text(L10n.format("mobile_retailer.ui.quantity", "\(item.quantity)"))
                             .font(.system(.caption2, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.textTertiary)
                             .padding(.horizontal, 6)
@@ -105,7 +105,7 @@ struct OrderCardView: View {
                     }
                 }
                 if order.items.count > 3 {
-                    Text("+\(order.items.count - 3) more items")
+                    Text(L10n.format("mobile_retailer.ui.count_3_more_items", "\(order.items.count - 3)"))
                         .font(.caption2)
                         .foregroundStyle(AppTheme.textTertiary)
                         .italic()
@@ -126,7 +126,7 @@ struct OrderCardView: View {
                             Haptics.medium()
                             onReviewDeliveryProposal?()
                         } label: {
-                            Text("Review Proposal")
+                            Text("mobile_retailer.ui.review_proposal")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.cardBackground)
                                 .padding(.horizontal, AppTheme.spacingMD)
@@ -139,7 +139,7 @@ struct OrderCardView: View {
                             Haptics.medium()
                             onRejectAi?()
                         } label: {
-                            Text("Reject")
+                            Text("mobile_retailer.ui.reject")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.destructive)
                                 .padding(.horizontal, AppTheme.spacingMD)
@@ -154,7 +154,7 @@ struct OrderCardView: View {
                             Haptics.success()
                             onConfirmAi?()
                         } label: {
-                            Text("Confirm Suggestion")
+                            Text("mobile_retailer.ui.confirm_suggestion")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.cardBackground)
                                 .padding(.horizontal, AppTheme.spacingMD)
@@ -167,7 +167,7 @@ struct OrderCardView: View {
                             Haptics.medium()
                             onEditPreorder?()
                         } label: {
-                            Text("Edit")
+                            Text("supplier_portal.demand.signals.text.edit")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textSecondary)
                                 .padding(.horizontal, AppTheme.spacingMD)
@@ -182,7 +182,7 @@ struct OrderCardView: View {
                             Haptics.success()
                             onConfirmPreorder?()
                         } label: {
-                            Text("Confirm Preorder")
+                            Text("mobile_retailer.ui.confirm_preorder")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.cardBackground)
                                 .padding(.horizontal, AppTheme.spacingMD)
@@ -199,7 +199,7 @@ struct OrderCardView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 10, weight: .bold))
-                                Text("Cancel Order")
+                                Text("mobile_retailer.ui.cancel_order")
                                     .font(.system(.caption, design: .rounded, weight: .semibold))
                             }
                             .foregroundStyle(AppTheme.destructive)

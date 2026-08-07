@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,7 +55,7 @@ fun ForecastConfidenceView(
             }
             if (pct != null && !blocked) {
                 Text(
-                    "$pct% confidence",
+                    stringResource(R.string.mobile_supplier_ui_pct_confidence_2, pct),
                     style = MaterialTheme.typography.bodySmall,
                     color = confidenceColor(pct),
                 )

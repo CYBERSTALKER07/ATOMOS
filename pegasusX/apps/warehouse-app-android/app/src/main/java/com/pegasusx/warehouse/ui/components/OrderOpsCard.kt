@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -125,7 +127,7 @@ fun OrderOpsCard(
                             enabled = enabled,
                             modifier = Modifier.size(44.dp),
                         ) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Order actions")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.supplier_portal_orders_order_kebab_menu_text_order_actions))
                         }
                         DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(

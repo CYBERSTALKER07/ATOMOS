@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.earnings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,9 +74,9 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                         Modifier.padding(PegasusSpacing.lg),
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     ) {
-                        Text("Today: ${e.currency} ${e.todayMinor}", style = MaterialTheme.typography.titleLarge)
-                        Text("Week: ${e.currency} ${e.weekMinor}")
-                        Text("Month: ${e.currency} ${e.monthMinor}")
+                        Text(stringResource(R.string.mobile_supplier_ui_today_currency_todayminor, e.currency, e.todayMinor), style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.mobile_supplier_ui_week_currency_weekminor, e.currency, e.weekMinor))
+                        Text(stringResource(R.string.mobile_supplier_ui_month_currency_monthminor, e.currency, e.monthMinor))
                         if (!e.authoritative) {
                             Text("Indicative only", style = MaterialTheme.typography.labelSmall)
                         }

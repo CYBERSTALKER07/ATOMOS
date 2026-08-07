@@ -29,10 +29,10 @@ struct StoreStockView: View {
     var body: some View {
         List {
             Section {
-                Text("Receive deliveries into backroom, putaway to floor, adjust quantities.")
+                Text("mobile_retailer.ui.receive_deliveries_into_backroom_putaway_to_floor_adjust_quantit")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
-                Button("Request return / chargeback") {
+                Button("mobile_retailer.ui.request_return_chargeback") {
                     openRequestReturn(skuHint: nil)
                 }
             }
@@ -40,7 +40,7 @@ struct StoreStockView: View {
                 Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
             }
             Section("Receive order") {
-                TextField("Order ID", text: $orderId)
+                TextField("supplier_portal.admin.control_center.field.order_id", text: $orderId)
                 Button(busy ? "…" : "Receive to BACKROOM") {
                     Task { await receive() }
                 }
@@ -48,20 +48,20 @@ struct StoreStockView: View {
             }
             Section("Putaway / adjust") {
                 TextField("SKU", text: $sku)
-                TextField("Qty", text: $qty)
-                Button("Putaway BACKROOM→FLOOR") { Task { await transfer() } }
+                TextField("retailer_desktop.pos.text.qty", text: $qty)
+                Button("mobile_retailer.ui.putaway_backroom_floor") { Task { await transfer() } }
                     .disabled(busy || sku.isEmpty)
-                Button("Adjust BACKROOM by qty") { Task { await adjust() } }
+                Button("mobile_retailer.ui.adjust_backroom_by_qty") { Task { await adjust() } }
                     .disabled(busy || sku.isEmpty)
             }
             Section("Balances") {
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.sku).font(.headline)
-                        Text("\(row.bin): on hand \(row.onHand) · available \(row.available)")
+                        Text(L10n.format("mobile_retailer.ui.bin_on_hand_onhand_available_available", "\(row.bin)", "\(row.onHand)", "\(row.available)"))
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
-                        Button("Request return") {
+                        Button("mobile_retailer.ui.request_return") {
                             openRequestReturn(skuHint: row.sku)
                         }
                         .font(.caption)
@@ -69,11 +69,11 @@ struct StoreStockView: View {
                 }
             }
         }
-        .navigationTitle("Store stock")
+        .navigationTitle("portal.nav.store_stock")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Return") { openRequestReturn(skuHint: nil) }
+                Button("mobile_retailer.ui.return") { openRequestReturn(skuHint: nil) }
             }
         }
         .task { await load() }
@@ -82,14 +82,14 @@ struct StoreStockView: View {
             NavigationStack {
                 List {
                     Section {
-                        Text("Pick a completed delivery, then file the same claim as order detail. Window is within 48h (server enforces).")
+                        Text("mobile_retailer.ui.pick_a_completed_delivery_then_file_the_same_claim_as_order_deta")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         if let preferredSku {
-                            Text("Preferred SKU from stock: \(preferredSku)")
+                            Text(L10n.format("mobile_retailer.ui.preferred_sku_from_stock_preferredsku_2", "\(preferredSku)"))
                                 .font(.caption)
                         }
-                        TextField("Search by order id", text: $pickerQuery)
+                        TextField("retailer_desktop.stock_request_return_modal.text.search_by_order_id", text: $pickerQuery)
                     }
                     if let pickerError {
                         Section {
@@ -100,7 +100,7 @@ struct StoreStockView: View {
                         if pickerLoading {
                             ProgressView()
                         } else if filteredOrders.isEmpty {
-                            Text("No COMPLETED / DELIVERED_ON_CREDIT orders found.")
+                            Text("mobile_retailer.ui.no_completed_delivered_on_credit_orders_found")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(filteredOrders) { order in
@@ -108,7 +108,7 @@ struct StoreStockView: View {
                                     Task { await pickOrder(order) }
                                 } label: {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("#\(order.id.suffix(8)) · \(order.status.rawValue.replacingOccurrences(of: "_", with: " "))")
+                                        Text(L10n.format("mobile_retailer.ui.suffix_replacingoccurrences", "\(order.id.suffix(8))", "\(order.status.rawValue.replacingOccurrences(of: "_", with: " "))"))
                                             .font(.subheadline.weight(.semibold))
                                         Text(order.id)
                                             .font(.caption2)
@@ -119,11 +119,11 @@ struct StoreStockView: View {
                         }
                     }
                 }
-                .navigationTitle("Request return")
+                .navigationTitle("mobile_retailer.ui.request_return")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { showOrderPicker = false }
+                        Button("common.action.close") { showOrderPicker = false }
                     }
                 }
             }

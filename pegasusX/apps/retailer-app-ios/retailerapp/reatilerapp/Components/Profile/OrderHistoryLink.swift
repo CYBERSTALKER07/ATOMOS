@@ -17,13 +17,13 @@ struct OrderHistoryLink: View {
                         .foregroundStyle(AppTheme.textSecondary)
                 }
 
-                Text("Order History")
+                Text("mobile_retailer.ui.order_history")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(AppTheme.textPrimary)
 
                 Spacer()
 
-                Text("\(orderCount) orders")
+                Text(L10n.format("mobile_retailer.ui.ordercount_orders_2", "\(orderCount)"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
 

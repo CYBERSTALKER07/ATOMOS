@@ -7,9 +7,9 @@ struct SelectOrgView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Choose organization")
+            Text("retailer_desktop.auth.select_org.text.choose_organization")
                 .font(.title2.weight(.semibold))
-            Text("Your phone is linked to more than one retailer.")
+            Text("mobile_retailer.ui.your_phone_is_linked_to_more_than_one_retailer")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -41,7 +41,7 @@ struct SelectOrgView: View {
                 }
                 .listStyle(.plain)
             } else {
-                Text("No organizations available.")
+                Text("mobile_retailer.ui.no_organizations_available")
                     .foregroundStyle(.secondary)
             }
 
@@ -52,7 +52,7 @@ struct SelectOrgView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button("Back to sign in") {
+            Button("mobile_retailer.ui.back_to_sign_in") {
                 auth.logout()
             }
             .font(.subheadline)

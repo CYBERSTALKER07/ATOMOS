@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
 
@@ -648,6 +649,9 @@ func (r *SpannerRepository) loadWarehouseSupplierID(ctx context.Context, warehou
 }
 
 func (r *SpannerRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
+	if stocklots.LotsEnabled() {
+		return fmt.Errorf("absolute SupplierInventoryV2 set forbidden when WMS_LOTS_ENABLED — use putaway or cycle-count adjust")
+	}
 	supplierID, err := r.loadWarehouseSupplierID(ctx, warehouseID)
 	if err != nil {
 		return err

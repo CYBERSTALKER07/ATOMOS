@@ -21,11 +21,11 @@ struct ReturnPolicySettingsView: View {
             } else {
                 Form {
                     Section {
-                        Text("Claim filing windows applied when orders complete. Retailers see the countdown from this policy.")
+                        Text("supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         if !sourceHint.isEmpty {
-                            Text("Source hint: \(sourceHint)")
+                            Text(L10n.format("mobile_supplier.ui.source_hint_sourcehint_2", "\(sourceHint)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -38,14 +38,14 @@ struct ReturnPolicySettingsView: View {
                     }
                     if saved {
                         Section {
-                            Text("Return policy saved.").foregroundStyle(SupplierTheme.success)
+                            Text("supplier_portal.settings.return_policy.text.return_policy_saved").foregroundStyle(SupplierTheme.success)
                         }
                     }
 
                     Section("Default claim window (hours)") {
                         HStack {
                             ForEach(hourPresets, id: \.self) { preset in
-                                Button("\(preset)h") {
+                                Button(L10n.format("mobile_supplier.ui.preseth", "\(preset)")) {
                                     hours = preset
                                     hoursText = String(preset)
                                 }
@@ -53,20 +53,20 @@ struct ReturnPolicySettingsView: View {
                                 .tint(hours == preset ? Color.accentColor : .secondary)
                             }
                         }
-                        TextField("Custom 1–168", text: $hoursText)
+                        TextField("mobile_supplier.ui.custom_1_168", text: $hoursText)
                             .keyboardType(.numberPad)
                             .onChange(of: hoursText) { _, newValue in
                                 let digits = newValue.filter(\.isNumber)
                                 if digits != newValue { hoursText = digits }
                                 if let parsed = Int64(digits) { hours = parsed }
                             }
-                        Text("Preview: retailers may file claims for \(hoursText.isEmpty ? "—" : hoursText)h after delivery.")
+                        Text(L10n.format("mobile_supplier.ui.preview_retailers_may_file_claims_for_isempty_hourstexth_after_delivery", "\(hoursText.isEmpty ? "—" : hoursText)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
                     Section("Concealed damage (optional)") {
-                        TextField("Hours (same as default if empty)", text: $concealed)
+                        TextField("mobile_supplier.ui.hours_same_as_default_if_empty", text: $concealed)
                             .keyboardType(.numberPad)
                             .onChange(of: concealed) { _, newValue in
                                 let digits = newValue.filter(\.isNumber)
@@ -86,10 +86,10 @@ struct ReturnPolicySettingsView: View {
                 }
             }
         }
-        .navigationTitle("Return policy")
+        .navigationTitle("portal.nav.return_policy")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
             }
         }
         .task { await load() }

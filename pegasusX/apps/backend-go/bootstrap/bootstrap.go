@@ -736,24 +736,26 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	orderSvc := order.NewService(order.ServiceConfig{
-		Repo:                          orderRepo,
-		Cache:                         cacheClient,
-		Warehouse:                     orderWarehouseResolver,
-		Promotions:                    promotionSvc,
-		Credit:                        creditSvc,
-		SupplierID:                    supplierSeed.SupplierID,
-		SupplierName:                  cfg.SeedSupplierName,
-		Currency:                      cfg.SeedSupplierCurrency,
-		RetailerHub:                   retailerHub,
-		SupplierHub:                   supplierHub,
-		DriverHub:                     driverHub,
-		SpannerClient:                 spannerClient,
-		ShopClosedGrace: shopClosedGraceDuration(),
-		Log:             log,
-		JWTSecret:       cfg.JWTSecret,
-		Handoff:         handoffEngine,
-		Idem:            idemStore,
-		Replanner:       routingSvc,
+		Repo:                  orderRepo,
+		Cache:                 cacheClient,
+		Warehouse:             orderWarehouseResolver,
+		Promotions:            promotionSvc,
+		Credit:                creditSvc,
+		SupplierID:            supplierSeed.SupplierID,
+		SupplierName:          cfg.SeedSupplierName,
+		Currency:              cfg.SeedSupplierCurrency,
+		CurrencyPickerEnabled: order.OrderCurrencyPickerEnabled(),
+		CurrencyAllowlist:     order.ParseCurrencyAllowlist(os.Getenv("ORDER_CURRENCY_ALLOWLIST"), cfg.SeedSupplierCurrency),
+		RetailerHub:           retailerHub,
+		SupplierHub:           supplierHub,
+		DriverHub:             driverHub,
+		SpannerClient:         spannerClient,
+		ShopClosedGrace:       shopClosedGraceDuration(),
+		Log:                   log,
+		JWTSecret:             cfg.JWTSecret,
+		Handoff:               handoffEngine,
+		Idem:                  idemStore,
+		Replanner:             routingSvc,
 	})
 	orderSvc.SetManifestStore(manifestStore)
 	if spannerClient != nil {
@@ -1115,6 +1117,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		// Table may be absent until migration; warn and continue (SSMR prints SKIPPED).
 		log.Warn("fx rates seed skipped or failed", "err", err)
 	}
+	paymentSvc.SetFxRates(fxSvc)
 
 	orderSvc.SetARService(arSvc)
 	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
@@ -1148,6 +1151,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	stocklots.SetPickSShapeEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_SSHAPE_ENABLED")), "true"))
 	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
 	stocklots.SetColdChainEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_COLD_CHAIN_ENABLED")), "true"))
+	stocklots.SetTemperatureBreachRaiser(func(ctx context.Context, txn *spanner.ReadWriteTransaction, args stocklots.TemperatureBreachArgs) error {
+		return orderSvc.RaiseSystemTemperatureBreachInTxn(ctx, txn, order.SystemTemperatureBreachArgs{
+			ManifestID: args.ManifestID,
+			ReadingID:  args.ReadingID,
+			TempC:      args.TempC,
+			MinC:       args.MinC,
+			MaxC:       args.MaxC,
+			OrderIDs:   args.OrderIDs,
+		})
+	})
 
 	warehouseSvc := warehouse.NewService(warehouse.ServiceConfig{
 		Repo:                 warehouseRepo,
@@ -1394,7 +1407,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			if spannerClient != nil {
 				const billingConsumerGroup = "void-billing-tier"
 				meterWorker := billing.NewMeterWorker(spannerClient)
-				billingWorker := kafka.NewBillingTierWorker(meterWorker)
+				billingWorker := kafka.NewBillingTierWorker(meterWorker).WithFx(fxSvc, cfg.SeedSupplierCurrency)
 				billingHandler := kafka.WithEventDedup(kafkaEventDedup, billingConsumerGroup, billingWorker.HandleEvent)
 				billingTierConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 					Brokers:   strings.Split(cfg.KafkaBrokers, ","),

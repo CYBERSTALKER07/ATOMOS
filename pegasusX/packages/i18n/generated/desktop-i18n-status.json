@@ -1,19 +1,26 @@
 {
   "status": "desktop_wired_draft",
+  "locales": [
+    "en",
+    "ru",
+    "uz"
+  ],
   "generated_at": "2026-08-06",
   "catalog_keys": 2754,
-  "scripts": [
-    "packages/i18n/scripts/extract-desktop-portals.mjs",
-    "packages/i18n/scripts/merge-desktop-catalog.mjs",
-    "packages/i18n/scripts/wire-desktop-portals.mjs",
-    "packages/i18n/scripts/residual-desktop-portals.mjs",
-    "packages/i18n/scripts/repair-desktop-wire.mjs"
-  ],
-  "known_false_positives": [
-    "ISO date placeholders in forms",
-    "ALL_CAPS lifecycle/status enum codes left as codes",
-    "Developer console strings",
-    "Some residual.ru==en short technical labels pending linguistic QA"
+  "domain_ru_eq_en_remaining": 110,
+  "domain_ru_eq_en_note": "mostly brands, sample IDs, snake_case error tokens, technical codes",
+  "i18n_tsc_cannot_find_t": 0,
+  "local_next_build": {
+    "factory-portal": "FAIL pre-existing DRIVER_LOCATION_UPDATED type compare (maplibre css shim added)",
+    "warehouse-portal": "FAIL pre-existing eslint no-explicit-any",
+    "supplier-portal": "webpack OK; FAIL pre-existing @pegasusx/types RetailerStockCountCommitResponse",
+    "retailer-app-desktop": "FAIL pre-existing missing claimFileKey export"
+  },
+  "i18n_build_blockers_cleared": [
+    "layout use client + metadata conflict",
+    "PageChrome subtitle -> description",
+    "missing usePortalT in nested components",
+    "module-level t() in metadata/maps"
   ],
   "non_claims": [
     "Not full platform i18n Done",

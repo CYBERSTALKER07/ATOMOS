@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,13 +61,21 @@ fun ShopClosedWaitingScreen(
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
 
-    // Countdown timer (3 minutes escalation window)
+    // Countdown timer (3 minutes escalation window) — starts after photo report.
     var remainingSeconds by remember { mutableIntStateOf(180) }
-    LaunchedEffect(Unit) {
-        viewModel.reportShopClosed(orderId)
-        while (remainingSeconds > 0) {
-            delay(1000L)
-            remainingSeconds--
+    var timerStarted by remember { mutableStateOf(false) }
+    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) viewModel.attachShopClosedPhoto(orderId, uri)
+    }
+    LaunchedEffect(state.reported) {
+        if (state.reported && !timerStarted) {
+            timerStarted = true
+            while (remainingSeconds > 0) {
+                delay(1000L)
+                remainingSeconds--
+            }
         }
     }
 
@@ -87,10 +97,10 @@ fun ShopClosedWaitingScreen(
                 .padding(top = 56.dp, start = 8.dp, end = 16.dp, bottom = 8.dp)
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = lab.fg)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back), tint = lab.fg)
             }
             Text(
-                text = "SHOP CLOSED",
+                text = stringResource(R.string.mobile_driver_ui_shop_closed),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold
@@ -106,6 +116,47 @@ fun ShopClosedWaitingScreen(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
+            if (!state.reported) {
+                Text(
+                    text = "Photograph the closed storefront, then report.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = lab.fg,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { photoPicker.launch("image/*") },
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (state.photoLocalPath.isNotBlank() || state.photoUrl.isNotBlank()) {
+                            "Photo ready — change"
+                        } else {
+                            "Take / choose photo"
+                        },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { viewModel.reportShopClosed(orderId) },
+                    enabled = !state.isSubmitting &&
+                        (state.photoLocalPath.isNotBlank() || state.photoUrl.isNotBlank()),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (state.isSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Report shop closed")
+                    }
+                }
+                state.error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                }
+                return@Column
+            }
+
             Icon(
                 Icons.Filled.Timer,
                 contentDescription = null,
@@ -131,7 +182,7 @@ fun ShopClosedWaitingScreen(
                 val minutes = remainingSeconds / 60
                 val seconds = remainingSeconds % 60
                 Text(
-                    text = "Escalation in %d:%02d".format(minutes, seconds),
+                    text = stringResource(R.string.mobile_driver_ui_escalation_in_d_02d).format(minutes, seconds),
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold
@@ -171,7 +222,7 @@ fun ShopClosedWaitingScreen(
             ) {
                 if (state.bypassToken != null) {
                     Text(
-                        text = "Admin issued bypass token:",
+                        text = stringResource(R.string.mobile_driver_ui_admin_issued_bypass_token),
                         style = MaterialTheme.typography.bodyMedium,
                         color = lab.fg
                     )
@@ -191,7 +242,7 @@ fun ShopClosedWaitingScreen(
                 // 6-digit bypass input
                 var bypassInput by remember { mutableStateOf("") }
                 Text(
-                    text = "Enter bypass token:",
+                    text = stringResource(R.string.mobile_driver_ui_enter_bypass_token),
                     style = MaterialTheme.typography.labelLarge,
                     color = lab.fg
                 )

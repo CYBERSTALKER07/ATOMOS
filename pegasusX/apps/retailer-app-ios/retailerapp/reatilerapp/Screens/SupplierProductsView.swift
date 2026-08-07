@@ -194,10 +194,10 @@ struct SupplierProductsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Auto-Order")
+                    Text("portal.nav.auto_order")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("Auto-order all from \(supplier.name)")
+                    Text(L10n.format("mobile_retailer.ui.auto_order_all_from_name", "\(supplier.name)"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -231,7 +231,7 @@ struct SupplierProductsView: View {
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(3)
             Spacer()
-            Button("Retry") {
+            Button("common.action.retry") {
                 Task {
                     await loadProducts()
                     await loadAutoOrderState()
@@ -252,11 +252,11 @@ struct SupplierProductsView: View {
     private var productsSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
             HStack {
-                Text("Products by Category")
+                Text("mobile_retailer.ui.products_by_category")
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Text("\(products.count) items")
+                Text(L10n.format("mobile_retailer.ui.count_items_2", "\(products.count)"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -326,7 +326,7 @@ struct SupplierProductsView: View {
                     .font(.system(size: 30, weight: .medium))
                     .foregroundStyle(AppTheme.textTertiary)
             }
-            Text("No Products Yet")
+            Text("mobile_retailer.ui.no_products_yet")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(errorMessage ?? "This supplier has no active catalog items right now.")

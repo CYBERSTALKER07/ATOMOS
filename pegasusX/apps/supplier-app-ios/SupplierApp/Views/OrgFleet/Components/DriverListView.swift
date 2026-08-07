@@ -13,7 +13,7 @@ struct DriverListView: View {
                     ForEach(drivers) { driver in
                         VStack(alignment: .leading) {
                             Text(driver.name).font(.headline)
-                            Text("\(nodeLabel(topology: topology, type: driver.homeNodeType, id: driver.homeNodeId)) · \(driver.phone)")
+                            Text(L10n.format("mobile_supplier.ui.nodelabel_phone", "\(nodeLabel(topology: topology, type: driver.homeNodeType, id: driver.homeNodeId))", "\(driver.phone)"))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }

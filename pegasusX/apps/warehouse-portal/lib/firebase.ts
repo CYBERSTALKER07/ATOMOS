@@ -72,6 +72,12 @@ export async function getFirebaseIdToken(): Promise<string> {
 
 export async function firebaseSignOut(): Promise<void> {
   try {
+    const { cacheClearAll } = await import("@pegasusx/desktop-cache");
+    await cacheClearAll();
+  } catch {
+    // ignore cache wipe failures
+  }
+  try {
     await auth.signOut();
   } catch {
     // ignore

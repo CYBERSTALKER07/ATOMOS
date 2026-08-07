@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.predictions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -65,7 +67,7 @@ fun FutureDemandScreen(
             title = { Text("Reorder suggestions") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -86,14 +88,14 @@ fun FutureDemandScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 PegasusEmptyState(
                     icon = Icons.Rounded.AutoAwesome,
-                    title = "Loading predictions",
+                    title = stringResource(R.string.mobile_retailer_ui_loading_predictions),
                     message = "Fetching AI demand forecasts for your store.",
                 )
             }
         } else if (uiState.predictions.isEmpty()) {
             PegasusEmptyState(
                 icon = Icons.Rounded.AutoAwesome,
-                title = "No AI Predictions",
+                title = stringResource(R.string.mobile_retailer_ui_no_ai_predictions),
                 message = "AI-predicted orders based on your history will appear here.",
             )
         } else {
@@ -126,7 +128,7 @@ fun FutureDemandScreen(
             title = { Text("Correct Prediction") },
             text = {
                 Column {
-                    Text("${forecast.productName} — AI predicted ${forecast.predictedQuantity} units")
+                    Text(stringResource(R.string.mobile_retailer_ui_productname_ai_predicted_predictedquantity_units, forecast.productName, forecast.predictedQuantity))
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = correctionAmount,

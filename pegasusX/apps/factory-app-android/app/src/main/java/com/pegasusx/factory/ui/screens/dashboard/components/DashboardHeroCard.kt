@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.dashboard.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -29,11 +31,11 @@ fun DashboardHeroCard(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                 Text(
-                    text = "Outbound floor status",
+                    text = stringResource(R.string.mobile_factory_ui_outbound_floor_status),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "${stats.pendingTransfers + stats.loadingTransfers} transfers are active across release and bay lanes.",
+                    text = stringResource(R.string.mobile_factory_ui_loadingtransfers_transfers_are_active_across_release_and_bay_lanes, stats.pendingTransfers + stats.loadingTransfers),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -43,17 +45,17 @@ fun DashboardHeroCard(
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 FactoryMetricTile(
-                    label = "Queued",
+                    label = stringResource(R.string.mobile_factory_ui_queued),
                     value = stats.pendingTransfers.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 FactoryMetricTile(
-                    label = "Loading",
+                    label = stringResource(R.string.supplier_portal_dispatch_text_loading),
                     value = stats.loadingTransfers.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 FactoryMetricTile(
-                    label = "Critical",
+                    label = stringResource(R.string.mobile_factory_ui_critical),
                     value = stats.criticalInsights.toString(),
                     modifier = Modifier.weight(1f),
                 )

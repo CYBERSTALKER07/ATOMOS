@@ -91,10 +91,10 @@ struct PayloadOverrideView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Payload Override")
+            .navigationTitle("portal.nav.payload_override")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(background: !manifests.isEmpty) }
                     }
                     .labelStyle(.iconOnly)
@@ -148,12 +148,12 @@ struct PayloadOverrideView: View {
                 ),
                 presenting: cancelTransferCandidate
             ) { candidate in
-                Button("Release", role: .destructive) {
+                Button("mobile_factory.ui.release", role: .destructive) {
                     Task { await cancelTransfer(candidate: candidate) }
                 }
-                Button("Keep", role: .cancel) { }
+                Button("mobile_factory.ui.keep", role: .cancel) { }
             } message: { candidate in
-                Text("Release transfer \(candidate.transfer.id.prefix(8)) back to APPROVED so it can be reassigned.")
+                Text(L10n.format("mobile_factory.ui.release_transfer_prefix_back_to_approved_so_it_can_be_reassigned", "\(candidate.transfer.id.prefix(8))"))
             }
             .alert(
                 "Cancel manifest?",
@@ -163,12 +163,12 @@ struct PayloadOverrideView: View {
                 ),
                 presenting: cancelManifestCandidate
             ) { manifest in
-                Button("Cancel manifest", role: .destructive) {
+                Button("mobile_factory.ui.cancel_manifest", role: .destructive) {
                     Task { await cancelManifest(manifest) }
                 }
-                Button("Keep", role: .cancel) { }
+                Button("mobile_factory.ui.keep", role: .cancel) { }
             } message: { manifest in
-                Text("Cancel manifest \(manifest.id.prefix(8)) and return all linked transfers to APPROVED.")
+                Text(L10n.format("mobile_factory.ui.cancel_manifest_prefix_and_return_all_linked_transfers_to_approved", "\(manifest.id.prefix(8))"))
             }
         }
     }
@@ -264,9 +264,9 @@ struct OverrideSummaryCard: View {
         let transferCount = manifests.reduce(into: 0) { $0 += $1.transfers.count }
 
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Live manifest override")
+            Text("mobile_factory.ui.live_manifest_override")
                 .font(.title2.bold())
-            Text("\(manifests.count) loading manifests, \(transferCount) transfers available for rebalance or release.")
+            Text(L10n.format("mobile_factory.ui.count_loading_manifests_transfercount_transfers_available_for_rebalance_", "\(manifests.count)", "\(transferCount)"))
                 .font(.body)
                 .foregroundStyle(.secondary)
             Text(runtimeStatus)
@@ -296,12 +296,12 @@ struct OverrideManifestCard: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
                         .font(.subheadline.bold())
-                    Text("Manifest \(manifest.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.manifest_prefix", "\(manifest.id.prefix(8))"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel Manifest", action: onCancelManifest)
+                Button("mobile_factory.ui.cancel_manifest_2", action: onCancelManifest)
                     .buttonStyle(.bordered)
                     .disabled(actingKey != nil)
             }
@@ -318,7 +318,7 @@ struct OverrideManifestCard: View {
             }
 
             if manifest.transfers.isEmpty {
-                Text("No transfers are assigned to this manifest.")
+                Text("mobile_factory.ui.no_transfers_are_assigned_to_this_manifest")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -370,12 +370,12 @@ struct OverrideTransferCard: View {
             }
 
             HStack(spacing: LabTheme.spacingSM) {
-                Button("Move", action: onMove)
+                Button("mobile_factory.ui.move", action: onMove)
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
                     .disabled(!canMove || busy)
 
-                Button("Release", action: onRelease)
+                Button("mobile_factory.ui.release", action: onRelease)
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
                     .disabled(busy)
@@ -418,7 +418,7 @@ struct MoveTransferSheet: View {
             ResponsiveGridContentWrapper {
                 Section("Select target manifest") {
                     if manifests.isEmpty {
-                        Text("No alternate loading manifest is available right now.")
+                        Text("mobile_factory.ui.no_alternate_loading_manifest_is_available_right_now")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(manifests) { manifest in
@@ -428,7 +428,7 @@ struct MoveTransferSheet: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
-                                        Text("\(overrideVolumeLabel(manifest.totalVolumeVU)) / \(overrideVolumeLabel(manifest.maxCapacityVU))")
+                                        Text(L10n.format("mobile_factory.ui.overridevolumelabel_overridevolumelabel_2", "\(overrideVolumeLabel(manifest.totalVolumeVU))", "\(overrideVolumeLabel(manifest.maxCapacityVU))"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -444,10 +444,10 @@ struct MoveTransferSheet: View {
                     }
                 }
             }
-            .navigationTitle("Move Transfer")
+            .navigationTitle("mobile_factory.ui.move_transfer")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("common.action.close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isWorking ? "Moving…" : "Move") {

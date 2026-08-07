@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.rescues
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -199,8 +201,7 @@ fun RescuesScreen(
                             ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(d.name.ifBlank { d.driverId }, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        "${d.vehicleLabel.ifBlank { "—" }} · ${d.truckStatus}",
+                                    Text(stringResource(R.string.mobile_warehouse_ui_ifblank_truckstatus, d.vehicleLabel.ifBlank { "—" }, d.truckStatus),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -216,7 +217,7 @@ fun RescuesScreen(
                     item {
                         Spacer(Modifier.height(PegasusSpacing.md))
                         Text(
-                            "Rescue Options for ${broken.name.ifBlank { broken.driverId }}",
+                            stringResource(R.string.mobile_warehouse_ui_rescue_options_for_driverid, broken.name.ifBlank { broken.driverId }),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -239,8 +240,7 @@ fun RescuesScreen(
                                 ) {
                                     Column(Modifier.weight(1f)) {
                                         Text(opt.name.ifBlank { opt.driverId }, style = MaterialTheme.typography.titleSmall)
-                                        Text(
-                                            "${opt.licensePlate} · Capacity: ${"%.1f".format(opt.effectiveCapacityVu)} VU",
+                                        Text(stringResource(R.string.mobile_warehouse_ui_licenseplate_capacity_format_vu, opt.licensePlate, "%.1f".format(opt.effectiveCapacityVu)),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )

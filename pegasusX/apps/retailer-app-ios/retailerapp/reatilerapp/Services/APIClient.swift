@@ -166,6 +166,10 @@ final class APIClient {
         let response: RetailerCardsResponse = try await get(path: "/v1/retailer/cards")
         return response.cards
     }
+
+    func getOrderCurrencies() async throws -> OrderCurrencyOptions {
+        try await get(path: "/v1/order/currencies")
+    }
     
     func initiateCardSave(gateway: String = "GLOBAL_PAY") async throws -> CardInitiateResponse {
         return try await post(path: "/v1/retailer/card/initiate", body: CardInitiateRequest(gateway: gateway))

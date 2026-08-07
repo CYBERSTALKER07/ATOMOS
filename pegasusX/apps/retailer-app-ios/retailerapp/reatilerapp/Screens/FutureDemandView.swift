@@ -27,7 +27,7 @@ struct FutureDemandView: View {
             }
             .scrollIndicators(.hidden)
             .background(AppTheme.background)
-            .navigationTitle("AI Demand Forecast")
+            .navigationTitle("mobile_retailer.ui.ai_demand_forecast")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -51,26 +51,26 @@ struct FutureDemandView: View {
                 get: { correctionForecast != nil },
                 set: { if !$0 { correctionForecast = nil; correctionAmount = "" } }
             )) {
-                TextField("Correct amount", text: $correctionAmount)
+                TextField("mobile_retailer.ui.correct_amount", text: $correctionAmount)
                     .keyboardType(.numberPad)
-                Button("Submit") {
+                Button("warehouse_portal.cycle_counts.text.submit") {
                     if let forecast = correctionForecast, let amt = Int64(correctionAmount) {
                         Task { await correctPrediction(forecast, amount: amt) }
                     }
                     correctionForecast = nil; correctionAmount = ""
                 }
-                Button("Reject", role: .destructive) {
+                Button("mobile_retailer.ui.reject", role: .destructive) {
                     if let forecast = correctionForecast {
                         Task { await rejectPrediction(forecast) }
                     }
                     correctionForecast = nil; correctionAmount = ""
                 }
-                Button("Cancel", role: .cancel) {
+                Button("common.action.cancel", role: .cancel) {
                     correctionForecast = nil; correctionAmount = ""
                 }
             } message: {
                 if let forecast = correctionForecast {
-                    Text("\(forecast.productName) — AI predicted \(forecast.predictedQuantity) units")
+                    Text(L10n.format("mobile_retailer.ui.productname_ai_predicted_predictedquantity_units", "\(forecast.productName)", "\(forecast.predictedQuantity)"))
                 }
             }
         }
@@ -137,7 +137,7 @@ struct FutureDemandView: View {
                                 .font(.system(.headline, design: .rounded))
                                 .foregroundStyle(AppTheme.textPrimary)
                             if forecast.isBlocked {
-                                Text("Insufficient history")
+                                Text("mobile_retailer.ui.insufficient_history")
                                     .font(.system(size: 10, weight: .bold, design: .rounded))
                                     .foregroundStyle(AppTheme.warning)
                                     .padding(.horizontal, 8)
@@ -146,7 +146,7 @@ struct FutureDemandView: View {
                                     .clipShape(Capsule())
                             }
                         }
-                        Text("Order by \(forecast.suggestedOrderDate)")
+                        Text(L10n.format("mobile_retailer.ui.order_by_suggestedorderdate", "\(forecast.suggestedOrderDate)"))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -157,7 +157,7 @@ struct FutureDemandView: View {
                         Text("\(forecast.predictedQuantity)")
                             .font(.system(.title3, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.accent)
-                        Text("units")
+                        Text("retailer_desktop.auto_order.auto_order_list.text.units")
                             .font(.system(size: 9, weight: .medium, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -189,7 +189,7 @@ struct FutureDemandView: View {
                     Button {
                         correctionForecast = forecast
                     } label: {
-                        Label("Correct", systemImage: "pencil.line")
+                        Label("mobile_retailer.ui.correct", systemImage: "pencil.line")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textSecondary)
                             .padding(.horizontal, AppTheme.spacingMD)
@@ -201,7 +201,7 @@ struct FutureDemandView: View {
                     Button {
                         Task { await rejectPrediction(forecast) }
                     } label: {
-                        Label("Reject", systemImage: "xmark")
+                        Label("mobile_retailer.ui.reject", systemImage: "xmark")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.destructive)
                             .padding(.horizontal, AppTheme.spacingMD)

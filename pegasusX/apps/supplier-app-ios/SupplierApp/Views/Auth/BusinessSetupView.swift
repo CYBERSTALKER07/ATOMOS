@@ -8,20 +8,20 @@ struct BusinessSetupView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Provide tax and headquarters information to complete supplier registration.")
+                    Text("mobile_supplier.ui.provide_tax_and_headquarters_information_to_complete_supplier_re")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 Section("Tax & registration") {
-                    TextField("Tax ID (VAT / TIN)", text: $vm.taxId)
-                    TextField("Company registration number", text: $vm.registrationNumber)
+                    TextField("supplier_portal.residual.text.tax_id_vat_tin", text: $vm.taxId)
+                    TextField("supplier_portal.residual.text.company_registration_number", text: $vm.registrationNumber)
                 }
 
                 Section("Location") {
-                    TextField("Headquarters address", text: $vm.headquartersAddress)
-                    TextField("City", text: $vm.city)
-                    TextField("Postal code", text: $vm.postalCode)
+                    TextField("mobile_supplier.ui.headquarters_address", text: $vm.headquartersAddress)
+                    TextField("supplier_portal.analytics.demand.signals.text.city", text: $vm.city)
+                    TextField("supplier_portal.residual.text.postal_code", text: $vm.postalCode)
                 }
 
                 if let error = vm.error {
@@ -34,13 +34,13 @@ struct BusinessSetupView: View {
                     }
                     .disabled(vm.loading)
 
-                    Button("Skip for now", role: .cancel) {
+                    Button("common.action.skip_for_now", role: .cancel) {
                         tokenStore.markRegistered(true)
                     }
                     .disabled(vm.loading)
                 }
             }
-            .navigationTitle("Business setup")
+            .navigationTitle("mobile_supplier.ui.business_setup")
         }
     }
 }

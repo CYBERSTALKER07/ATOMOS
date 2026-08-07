@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -34,7 +36,7 @@ fun ProfileHeader() {
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Profile",
+            text = stringResource(R.string.portal_nav_profile),
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
         )

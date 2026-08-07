@@ -176,6 +176,8 @@ func (s *Service) ReportCondition(ctx context.Context, claims auth.Claims, req C
 			},
 			ReportID:      report.ReportID,
 			OrderID:       report.OrderID,
+			SupplierID:    report.SupplierID,
+			RetailerID:    report.RetailerID,
 			ReporterID:    report.ReportedBy,
 			ReporterRole:  report.ReportedByRole,
 			ConditionType: string(report.ConditionType),

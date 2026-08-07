@@ -8,17 +8,17 @@ struct DeliveryProposalReviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingLG) {
-            Text("Review Delivery Date")
+            Text("mobile_retailer.ui.review_delivery_date")
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text("Warehouse proposed a new delivery date for order #\(order.id.suffix(3)).")
+            Text(L10n.format("mobile_retailer.ui.warehouse_proposed_a_new_delivery_date_for_order_suffix", "\(order.id.suffix(3))"))
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
 
             VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
                 if let date = order.proposedDeliveryDate, !date.isEmpty {
-                    Label("Proposed: \(date)", systemImage: "calendar")
+                    Label(L10n.format("mobile_retailer.ui.proposed_date_2", "\(date)"), systemImage: "calendar")
                         .font(.system(.body, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.accent)
                 }
@@ -38,7 +38,7 @@ struct DeliveryProposalReviewSheet: View {
                     Haptics.medium()
                     onReject()
                 } label: {
-                    Text("Reject")
+                    Text("mobile_retailer.ui.reject")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.destructive)
                         .frame(maxWidth: .infinity)
@@ -52,7 +52,7 @@ struct DeliveryProposalReviewSheet: View {
                     Haptics.success()
                     onAccept()
                 } label: {
-                    Text("Accept Date")
+                    Text("mobile_retailer.ui.accept_date")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.cardBackground)
                         .frame(maxWidth: .infinity)

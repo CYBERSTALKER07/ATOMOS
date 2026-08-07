@@ -94,7 +94,7 @@ struct CatalogView: View {
                 SearchView()
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { showFullSearch = false }
+                            Button("common.action.close") { showFullSearch = false }
                         }
                     }
             }

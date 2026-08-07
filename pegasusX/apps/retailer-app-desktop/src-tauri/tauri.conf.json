@@ -50,7 +50,7 @@
         "https://storage.googleapis.com/pegasusx-ssmr-app-updates/retailer-desktop/{{target}}/{{arch}}/updater.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "basic"
       }
     }
   }

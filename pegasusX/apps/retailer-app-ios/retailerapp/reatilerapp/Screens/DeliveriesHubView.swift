@@ -43,7 +43,7 @@ struct DeliveriesHubView: View {
             }
         }
         .background(AppTheme.background)
-        .navigationTitle("Deliveries")
+        .navigationTitle("mobile_retailer.ui.deliveries")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: initialTab) { _, tab in
             selectedTab = tab

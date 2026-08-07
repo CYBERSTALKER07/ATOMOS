@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.supply.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,11 +34,11 @@ fun SupplySummaryCard(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
         ) {
             Text(
-                text = "Warehouse demand queue",
+                text = stringResource(R.string.mobile_factory_ui_warehouse_demand_queue),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "$visible requests in view, $total total across the factory queue.",
+                text = stringResource(R.string.mobile_factory_ui_visible_requests_in_view_total_total_across_the_factory_queue),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

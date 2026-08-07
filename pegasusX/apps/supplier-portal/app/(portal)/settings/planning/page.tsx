@@ -21,6 +21,7 @@ const EMPTY_FORM: OverrideForm = {
   name: "",
   start_date: "",
   end_date: "",
+  multiplier: "",
 };
 
 export default function PlanningSettingsPage() {
@@ -67,6 +68,16 @@ export default function PlanningSettingsPage() {
       };
       if (form.template_id.trim()) payload.template_id = form.template_id.trim();
       if (form.name.trim()) payload.name = form.name.trim();
+      const multRaw = form.multiplier.trim();
+      if (multRaw) {
+        const mult = Number(multRaw);
+        if (!Number.isFinite(mult)) {
+          setFormError("Multiplier must be a number");
+          setSaving(false);
+          return;
+        }
+        payload.multiplier = mult;
+      }
       const row = await api.createSeasonalOverride(
         payload,
         supplierSeasonalOverrideCreateKey(scopeId, form.start_date, form.end_date),

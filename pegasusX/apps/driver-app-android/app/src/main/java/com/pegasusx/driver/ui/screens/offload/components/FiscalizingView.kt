@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -51,7 +53,7 @@ fun FiscalizingView(amount: Long) {
     )
     Spacer(modifier = Modifier.height(16.dp))
     Text(
-        text = "Cash captured. Waiting for fiscal receipt…",
+        text = stringResource(R.string.mobile_driver_ui_cash_captured_waiting_for_fiscal_receipt),
         fontSize = 14.sp,
         color = lab.fgTertiary,
         textAlign = TextAlign.Center

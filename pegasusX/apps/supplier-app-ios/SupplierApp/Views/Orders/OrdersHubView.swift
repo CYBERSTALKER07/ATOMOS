@@ -59,7 +59,7 @@ struct OrdersQueueView: View {
       } else {
         NavigationStack {
           phoneContent
-            .navigationTitle("Orders")
+            .navigationTitle("portal.nav.orders")
             .toolbar { ordersToolbar }
         }
       }
@@ -114,7 +114,7 @@ struct OrdersQueueView: View {
         filterTabs
         ordersList
       }
-      .navigationTitle("Orders")
+      .navigationTitle("portal.nav.orders")
       .toolbar { ordersToolbar }
     } detail: {
       if let selection = vm.selection {
@@ -177,7 +177,7 @@ struct OrdersQueueView: View {
   @ToolbarContentBuilder
   private var ordersToolbar: some ToolbarContent {
     ToolbarItem(placement: .topBarTrailing) {
-      Button("Refresh", systemImage: "arrow.clockwise") {
+      Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
         Task { await vm.load(silent: true) }
       }
       .labelStyle(.iconOnly)

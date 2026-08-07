@@ -15,7 +15,7 @@ struct CartView: View {
                     VStack(spacing: AppTheme.spacingMD) {
                         // Cart count header
                         HStack {
-                            Text("\(cart.totalItems) items in your cart")
+                            Text(L10n.format("mobile_retailer.ui.totalitems_items_in_your_cart", "\(cart.totalItems)"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(AppTheme.textSecondary)
                             Spacer()
@@ -23,7 +23,7 @@ struct CartView: View {
                                 Haptics.medium()
                                 withAnimation(AnimationConstants.fluid) { cart.clear() }
                             } label: {
-                                Text("Clear All")
+                                Text("mobile_retailer.ui.clear_all")
                                     .font(.system(.caption, design: .rounded, weight: .semibold))
                                     .foregroundStyle(AppTheme.destructive)
                             }
@@ -97,7 +97,7 @@ struct CartView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
 
-                Text("\(Int(item.variant.price).formatted()) each")
+                Text(L10n.format("mobile_retailer.ui.formatted_each", "\(Int(item.variant.price).formatted())"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -155,7 +155,7 @@ struct CartView: View {
             VStack(spacing: AppTheme.spacingMD) {
                 // Summary rows
                 HStack {
-                    Text("Subtotal")
+                    Text("mobile_retailer.ui.subtotal")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
@@ -166,11 +166,11 @@ struct CartView: View {
                 }
 
                 HStack {
-                    Text("Delivery")
+                    Text("mobile_retailer.ui.delivery")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
-                    Text("Free")
+                    Text("mobile_retailer.ui.free")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.success)
                 }
@@ -179,7 +179,7 @@ struct CartView: View {
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Total")
+                        Text("retailer_desktop.pos.text.total")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                         Text(cart.displayTotal)
@@ -195,7 +195,7 @@ struct CartView: View {
                         showCheckout = true
                     } label: {
                         HStack(spacing: AppTheme.spacingSM) {
-                            Text("Checkout")
+                            Text("mobile_retailer.ui.checkout")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 13, weight: .bold))
@@ -246,11 +246,11 @@ struct CartView: View {
             }
 
             VStack(spacing: AppTheme.spacingSM) {
-                Text("Your cart is empty")
+                Text("mobile_retailer.ui.your_cart_is_empty")
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 
-                Text("Browse the catalog and add\nproducts to get started")
+                Text("mobile_retailer.ui.browse_the_catalog_and_add_nproducts_to_get_started")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .multilineTextAlignment(.center)
@@ -262,7 +262,7 @@ struct CartView: View {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 14, weight: .semibold))
-                    Text("Browse Catalog")
+                    Text("mobile_retailer.ui.browse_catalog")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 }
                 .foregroundStyle(.white)

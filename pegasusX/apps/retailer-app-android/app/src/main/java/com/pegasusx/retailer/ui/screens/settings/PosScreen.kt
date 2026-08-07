@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -131,7 +133,7 @@ fun PosScreen(
                 title = { Text("POS") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -235,7 +237,7 @@ fun PosScreen(
                                             }
                                         }
                                     },
-                                ) { Text("Sync ${pending.size} offline sale(s)") }
+                                ) { Text(stringResource(R.string.mobile_retailer_ui_sync_size_offline_sale_s, pending.size)) }
                             }
                         }
                     }
@@ -246,8 +248,7 @@ fun PosScreen(
                     Text("Offline queue", style = MaterialTheme.typography.titleSmall)
                 }
                 items(pending, key = { it.id }) { p ->
-                    Text(
-                        "${p.clientReceipt} · ${p.status}" +
+                    Text(stringResource(R.string.mobile_retailer_ui_clientreceipt_status, p.clientReceipt, p.status) +
                             (p.lastError?.let { " · $it" } ?: ""),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (p.status == "FAILED") {
@@ -284,13 +285,13 @@ fun PosScreen(
                 items(cart) { line ->
                     Card {
                         Row(Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${line.sku} × ${line.qty}")
+                            Text(stringResource(R.string.mobile_retailer_ui_sku_qty, line.sku, line.qty))
                             Text("${line.qty * line.unitPriceMinor / 100.0}")
                         }
                     }
                 }
                 item {
-                    Text("Total: ${totalMinor / 100.0}", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.mobile_retailer_ui_total_n_0, totalMinor / 100.0), style = MaterialTheme.typography.titleLarge)
                     Button(
                         enabled = !busy && cart.isNotEmpty(),
                         onClick = {

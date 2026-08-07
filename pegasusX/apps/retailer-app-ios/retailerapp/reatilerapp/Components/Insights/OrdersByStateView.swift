@@ -16,7 +16,7 @@ struct OrdersByStateView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Orders by Status")
+            Text("mobile_retailer.ui.orders_by_status")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -38,7 +38,7 @@ struct OrdersByStateView: View {
                         Circle()
                             .fill(stateColors[item.state] ?? .gray)
                             .frame(width: 8, height: 8)
-                        Text("\(item.state.replacingOccurrences(of: "_", with: " ")) (\(item.count))")
+                        Text(L10n.format("mobile_retailer.ui.replacingoccurrences_count", "\(item.state.replacingOccurrences(of: "_", with: " "))", "\(item.count)"))
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textSecondary)
                     }

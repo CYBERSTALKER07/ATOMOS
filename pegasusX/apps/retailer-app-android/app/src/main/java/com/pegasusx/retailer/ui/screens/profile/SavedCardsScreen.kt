@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -60,7 +62,7 @@ fun SavedCardsScreen(
                 title = { Text("Saved Cards") },
                 navigationIcon = {
                     IconButton(onClick = handleBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -71,7 +73,7 @@ fun SavedCardsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add Card")
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.mobile_retailer_ui_add_card))
             }
         }
     ) { padding ->
@@ -88,7 +90,7 @@ fun SavedCardsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "Add a card, then return to complete delivery payment.",
+                        text = stringResource(R.string.mobile_retailer_ui_add_a_card_then_return_to_complete_delivery_payment),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -185,12 +187,12 @@ fun SavedCardsScreen(
                                         IconButton(onClick = { viewModel.setDefault(card.id) }) {
                                             Icon(
                                                 imageVector = if (card.isDefault) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                                                contentDescription = "Default",
+                                                contentDescription = stringResource(R.string.mobile_retailer_ui_default),
                                                 tint = if (card.isDefault) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                         IconButton(onClick = { viewModel.deleteCard(card.id) }) {
-                                            Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                            Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.mobile_retailer_ui_delete), tint = MaterialTheme.colorScheme.error)
                                         }
                                     }
                                 }
@@ -205,7 +207,7 @@ fun SavedCardsScreen(
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("Add Card") },
+            title = { Text(stringResource(R.string.mobile_retailer_ui_add_card)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (uiState.addError != null) {

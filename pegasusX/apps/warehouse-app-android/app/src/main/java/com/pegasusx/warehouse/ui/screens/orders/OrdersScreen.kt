@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -339,7 +341,7 @@ fun OrdersScreen(
         val recs = reassignRecommendations
         AlertDialog(
             onDismissRequest = { if (!reassigning) reassignTarget = null },
-            title = { Text("Reassign Order ${orderId.take(8)}") },
+            title = { Text(stringResource(R.string.mobile_warehouse_ui_reassign_order_take, orderId.take(8))) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (recs == null) {
@@ -348,7 +350,7 @@ fun OrdersScreen(
                         Text("No suitable trucks available.")
                     } else {
                         Text(
-                            "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
+                            stringResource(R.string.mobile_warehouse_ui_retailername_1f_vu, recs.retailerName).format(recs.orderVolumeVu),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         LazyVerticalGrid(

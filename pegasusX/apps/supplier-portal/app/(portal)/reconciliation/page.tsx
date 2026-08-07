@@ -23,10 +23,16 @@ export default function ReconciliationPage() {
       .then((snapshot) => {
         if (cancelled) return;
         setMismatchCount(snapshot.mismatches.length);
-        const primary = snapshot.authority.totals_by_currency?.[0];
-        if (primary) {
-          setCurrency(primary.currency);
-          setNetMinor(primary.amount_minor_total);
+        const auth = snapshot.authority;
+        if (auth.operating_currency && auth.operating_currency_total_minor != null) {
+          setCurrency(auth.operating_currency);
+          setNetMinor(auth.operating_currency_total_minor);
+        } else {
+          const primary = auth.totals_by_currency?.[0];
+          if (primary) {
+            setCurrency(primary.currency);
+            setNetMinor(primary.amount_minor_total);
+          }
         }
       })
       .catch((err) => {

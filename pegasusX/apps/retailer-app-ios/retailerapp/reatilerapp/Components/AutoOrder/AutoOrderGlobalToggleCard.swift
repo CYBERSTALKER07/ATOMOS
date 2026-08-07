@@ -19,10 +19,10 @@ struct AutoOrderGlobalToggleCard: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Global Auto-Order")
+                        Text("retailer_desktop.auto_order.auto_order_rules.text.global_auto_order")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Auto-order everything from all suppliers")
+                        Text("retailer_desktop.auto_order.auto_order_rules.text.auto_order_everything_from_all_suppliers")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -46,7 +46,7 @@ struct AutoOrderGlobalToggleCard: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 12))
                             .foregroundStyle(AppTheme.success)
-                        Text("Global auto-order active. Overrides all supplier/product settings.")
+                        Text("mobile_retailer.ui.global_auto_order_active_overrides_all_supplier_product_settings")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -60,7 +60,7 @@ struct AutoOrderGlobalToggleCard: View {
                         Image(systemName: "calendar.badge.clock")
                             .font(.system(size: 12))
                             .foregroundStyle(AppTheme.accent)
-                        Text("Analytics since: \(dateStr)")
+                        Text(L10n.format("mobile_retailer.ui.analytics_since_datestr_2", "\(dateStr)"))
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }

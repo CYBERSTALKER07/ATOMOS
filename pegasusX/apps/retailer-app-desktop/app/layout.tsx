@@ -1,6 +1,3 @@
-"use client";
-
-import { usePortalT } from "@/lib/i18n";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
 import LocaleBootstrap from "../components/LocaleBootstrap";
@@ -29,7 +26,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const t = usePortalT();
   return (
     <html lang="en" suppressHydrationWarning className={`${fontJakarta.variable} ${fontGaramond.variable}`}>
       <head>

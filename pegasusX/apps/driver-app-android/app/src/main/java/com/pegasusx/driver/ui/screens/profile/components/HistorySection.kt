@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,13 +45,13 @@ fun HistorySection(historyRows: List<DriverHistoryRow>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Ride History",
+                text = stringResource(R.string.mobile_driver_ui_ride_history),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = lab.fg,
             )
             Text(
-                text = "${historyRows.size} rides",
+                text = stringResource(R.string.mobile_driver_ui_size_rides, historyRows.size),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.Monospace,
@@ -73,7 +75,7 @@ fun HistorySection(historyRows: List<DriverHistoryRow>) {
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "No completed rides yet",
+                        text = stringResource(R.string.mobile_driver_ui_no_completed_rides_yet),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgSecondary

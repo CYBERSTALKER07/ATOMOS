@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -76,10 +78,10 @@ fun FleetScreen(
                 title = { Text("Fleet") },
                 actions = {
                     IconButton(onClick = onOpenLiveMap) {
-                        Icon(Icons.Default.Map, contentDescription = "Live map")
+                        Icon(Icons.Default.Map, contentDescription = stringResource(R.string.retailer_desktop_tracking_tracking_map_text_live_map))
                     }
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -87,8 +89,8 @@ fun FleetScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Drivers (${drivers.size})") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_supplier_ui_drivers_size, drivers.size)) })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_supplier_ui_vehicles_size, vehicles.size)) })
             }
             when {
                 showFullScreenLoading(loading, hasData) -> PegasusLoadingState("Loading fleet…", "Drivers and vehicles")

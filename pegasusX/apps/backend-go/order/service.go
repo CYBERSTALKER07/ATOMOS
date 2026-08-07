@@ -375,6 +375,9 @@ type Service struct {
 	allocator          Allocator
 	allocationRequired bool
 	returnPolicies     ReturnPolicyStore
+
+	currencyPickerEnabled bool
+	currencyAllowlist     []string
 }
 
 // RouteReplanner handles continuous dynamic resequencing.
@@ -412,6 +415,10 @@ type ServiceConfig struct {
 	Idem            idempotency.Store
 	Allocator       Allocator
 	ReturnPolicies  ReturnPolicyStore
+
+	// CurrencyPickerEnabled + CurrencyAllowlist gate CreateRequest.currency (theatre #13 Wave 2+).
+	CurrencyPickerEnabled bool
+	CurrencyAllowlist     []string
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -429,31 +436,40 @@ func NewService(c ServiceConfig) *Service {
 	if grace <= 0 {
 		grace = 5 * time.Minute
 	}
+	if c.Currency == "" {
+		c.Currency = "UZS"
+	}
+	allow := c.CurrencyAllowlist
+	if len(allow) == 0 {
+		allow = ParseCurrencyAllowlist("", c.Currency)
+	}
 	svc := &Service{
-		repo:               c.Repo,
-		cache:              c.Cache,
-		warehouse:          c.Warehouse,
-		promotions:         c.Promotions,
-		replanner:          c.Replanner,
-		supplierID:         c.SupplierID,
-		supplierName:       strings.TrimSpace(c.SupplierName),
-		currency:           c.Currency,
-		retailerHub:        c.RetailerHub,
-		supplierHub:        c.SupplierHub,
-		driverHub:          c.DriverHub,
-		spannerClient:      c.SpannerClient,
-		shopGrace: grace,
-		log:       c.Log,
-		now:                c.Now,
-		newID:              c.NewID,
-		jwtSecret:          c.JWTSecret,
-		handoff:            c.Handoff,
-		idem:               c.Idem,
-		credit:             c.Credit,
-		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
-		allocator:          c.Allocator,
-		allocationRequired: false,
-		returnPolicies:     c.ReturnPolicies,
+		repo:                  c.Repo,
+		cache:                 c.Cache,
+		warehouse:             c.Warehouse,
+		promotions:            c.Promotions,
+		replanner:             c.Replanner,
+		supplierID:            c.SupplierID,
+		supplierName:          strings.TrimSpace(c.SupplierName),
+		currency:              c.Currency,
+		retailerHub:           c.RetailerHub,
+		supplierHub:           c.SupplierHub,
+		driverHub:             c.DriverHub,
+		spannerClient:         c.SpannerClient,
+		shopGrace:             grace,
+		log:                   c.Log,
+		now:                   c.Now,
+		newID:                 c.NewID,
+		jwtSecret:             c.JWTSecret,
+		handoff:               c.Handoff,
+		idem:                  c.Idem,
+		credit:                c.Credit,
+		previewRateLimiter:    newSimpleRateLimiter(100 * time.Millisecond),
+		allocator:             c.Allocator,
+		allocationRequired:    false,
+		returnPolicies:        c.ReturnPolicies,
+		currencyPickerEnabled: c.CurrencyPickerEnabled,
+		currencyAllowlist:     allow,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -549,6 +565,9 @@ type CreateRequest struct {
 	// Source forces order provenance when set (e.g. AUTO_ORDER from auto-order place).
 	// When empty, ClassifyDelivery assigns MANUAL / preorder sources.
 	Source OrderSource `json:"order_source,omitempty"`
+	// Currency is optional ISO-4217. Honoured only when ORDER_CURRENCY_PICKER_ENABLED
+	// and value is on ORDER_CURRENCY_ALLOWLIST; otherwise operating currency is stamped.
+	Currency string `json:"currency,omitempty"`
 }
 
 // CreateResponse is what callers get back.
@@ -1133,6 +1152,11 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
+	orderCurrency, err := s.resolveOrderCurrency(req.Currency)
+	if err != nil {
+		return CreateResponse{}, err
+	}
+
 	supplierID := strings.TrimSpace(req.SupplierID)
 	if supplierID == "" {
 		supplierID = s.supplierID
@@ -1243,9 +1267,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	// All lines are backordered — single BACKORDERED order (no empty primary).
 	if len(lineItems) == 0 && len(invPlan.Backorder) > 0 {
 		boID, err := s.createBackorderOrder(ctx, retailerID, warehouseID, "", invPlan.Backorder, Order{
-			H3Cell: req.H3Cell,
-			Lat:    req.Lat,
-			Lng:    req.Lng,
+			H3Cell:   req.H3Cell,
+			Lat:      req.Lat,
+			Lng:      req.Lng,
+			Currency: orderCurrency,
 		})
 		if err != nil {
 			return CreateResponse{}, fmt.Errorf("persist backorder: %w", err)
@@ -1261,7 +1286,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			Source:               OrderSourceBackorder,
 			ConfirmationStatus:   ConfirmationStatusConfirmed,
 			TotalMinor:           boTotal,
-			Currency:             s.currency,
+			Currency:             orderCurrency,
 			CreatedAt:            s.now().Format(time.RFC3339Nano),
 			BackorderedItemCount: invPlan.BackorderCount,
 			StockWarnings:        invPlan.Warnings,
@@ -1278,7 +1303,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		ConfirmationStatus:    confirmation,
 		LineItems:             lineItems,
 		TotalMinor:            total,
-		Currency:              s.currency,
+		Currency:              orderCurrency,
 		H3Cell:                req.H3Cell,
 		Lat:                   req.Lat,
 		Lng:                   req.Lng,
@@ -1415,6 +1440,10 @@ func (s *Service) createBackorderOrder(
 	for _, li := range lines {
 		total += li.Quantity * li.UnitPrice
 	}
+	boCurrency := strings.TrimSpace(parent.Currency)
+	if boCurrency == "" {
+		boCurrency = s.currency
+	}
 	bo := Order{
 		OrderID:            s.newID(),
 		SupplierID:         s.supplierID,
@@ -1425,7 +1454,7 @@ func (s *Service) createBackorderOrder(
 		ConfirmationStatus: ConfirmationStatusConfirmed,
 		LineItems:          lines,
 		TotalMinor:         total,
-		Currency:           s.currency,
+		Currency:           boCurrency,
 		H3Cell:             parent.H3Cell,
 		Lat:                parent.Lat,
 		Lng:                parent.Lng,
@@ -2353,6 +2382,8 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": ErrOrderAcceptanceClosed.Error()})
 		case errors.Is(err, ErrServiceabilityUnavailable):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
+		case errors.Is(err, ErrCurrencyNotAllowed):
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
 		default:
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}

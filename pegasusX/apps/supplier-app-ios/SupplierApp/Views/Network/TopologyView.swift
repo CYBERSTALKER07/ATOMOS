@@ -37,14 +37,14 @@ struct TopologyView: View {
             } else if warehouses.isEmpty && factories.isEmpty {
                 VStack(spacing: SupplierTheme.spacingLG) {
                     SupplierEmptyView(title: "No nodes", message: "No warehouses or factories configured.")
-                    Button("Configure topology") { editing = true }
+                    Button("mobile_supplier.ui.configure_topology") { editing = true }
                 }
             } else {
                 readOnlyList
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Factories & warehouses")
+        .navigationTitle("supplier_portal.topology.text.factories_and_warehouses")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if editing {
@@ -53,12 +53,12 @@ struct TopologyView: View {
                     }
                     .disabled(saving)
                 } else {
-                    Button("Edit") { beginEditing() }
+                    Button("supplier_portal.demand.signals.text.edit") { beginEditing() }
                 }
             }
             if editing {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button("common.action.cancel") {
                         applyDraftsFromLoaded()
                         editing = false
                         error = nil
@@ -71,7 +71,7 @@ struct TopologyView: View {
 
     private var readOnlyList: some View {
         ResponsiveGridContentWrapper {
-            Section("Warehouses (\(warehouses.count))") {
+            Section(L10n.format("mobile_supplier.ui.warehouses_count", "\(warehouses.count)")) {
                 ForEach(warehouses) { node in
                     NodeRow(
                         name: node.name,
@@ -80,7 +80,7 @@ struct TopologyView: View {
                     )
                 }
             }
-            Section("Factories (\(factories.count))") {
+            Section(L10n.format("mobile_supplier.ui.factories_count", "\(factories.count)")) {
                 ForEach(factories) { node in
                     NodeRow(
                         name: node.name,
@@ -99,12 +99,12 @@ struct TopologyView: View {
             }
             Section("Warehouses") {
                 ForEach($warehouseDrafts) { $draft in
-                    TextField("Name", text: $draft.name)
+                    TextField("retailer_desktop.pos.text.name", text: $draft.name)
                     AddressLocationField(value: $draft.location, label: "Warehouse address")
-                    TextField("Coverage km", text: $draft.coverageRadiusKm)
+                    TextField("supplier_portal.warehouses.components.warehouse_form.text.coverage_km", text: $draft.coverageRadiusKm)
                         .keyboardType(.decimalPad)
                 }
-                Button("Add warehouse") {
+                Button("supplier_portal.warehouses.components.warehouse_form.text.add_warehouse") {
                     warehouseDrafts.append(
                         WarehouseDraft(
                             id: "new-wh-\(warehouseDrafts.count)",
@@ -118,10 +118,10 @@ struct TopologyView: View {
             }
             Section("Factories") {
                 ForEach($factoryDrafts) { $draft in
-                    TextField("Name", text: $draft.name)
+                    TextField("retailer_desktop.pos.text.name", text: $draft.name)
                     AddressLocationField(value: $draft.location, label: "Factory address")
                 }
-                Button("Add factory") {
+                Button("supplier_portal.factories.components.factory_form.text.add_factory") {
                     factoryDrafts.append(
                         FactoryDraft(
                             id: "new-fc-\(factoryDrafts.count)",

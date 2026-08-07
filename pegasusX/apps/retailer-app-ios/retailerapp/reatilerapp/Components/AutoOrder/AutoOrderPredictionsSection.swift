@@ -27,7 +27,7 @@ struct AutoOrderPredictionsSection: View {
                                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .lineLimit(1)
-                            Text("Order by \(forecast.suggestedOrderDate)")
+                            Text(L10n.format("mobile_retailer.ui.order_by_suggestedorderdate", "\(forecast.suggestedOrderDate)"))
                                 .font(.system(.caption2, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -38,7 +38,7 @@ struct AutoOrderPredictionsSection: View {
                             Text("\(forecast.predictedQuantity)")
                                 .font(.system(.headline, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.accent)
-                            Text("units")
+                            Text("retailer_desktop.auto_order.auto_order_list.text.units")
                                 .font(.system(size: 8, weight: .medium, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
@@ -72,7 +74,7 @@ fun TransitControlCard(
                     ) {
                         PulsingDot(color = lab.live)
                         Text(
-                            text = "IN TRANSIT",
+                            text = stringResource(R.string.mobile_driver_ui_in_transit),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
@@ -80,7 +82,7 @@ fun TransitControlCard(
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
-                            text = "${inTransitOrders.size} deliveries",
+                            text = stringResource(R.string.mobile_driver_ui_size_deliveries, inTransitOrders.size),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = lab.fgTertiary
@@ -88,7 +90,7 @@ fun TransitControlCard(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Telemetry active — drive safely",
+                        text = stringResource(R.string.mobile_driver_ui_telemetry_active_drive_safely),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgTertiary
@@ -97,7 +99,7 @@ fun TransitControlCard(
                 loadedOrders.isNotEmpty() -> {
                     // Ready to depart
                     Text(
-                        text = "READY TO DEPART",
+                        text = stringResource(R.string.mobile_driver_ui_ready_to_depart),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
@@ -105,7 +107,7 @@ fun TransitControlCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${loadedOrders.size} orders loaded",
+                        text = stringResource(R.string.mobile_driver_ui_size_orders_loaded, loadedOrders.size),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgTertiary
@@ -134,7 +136,7 @@ fun TransitControlCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "START TRANSIT",
+                                text = stringResource(R.string.mobile_driver_ui_start_transit),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
@@ -155,7 +157,7 @@ fun TransitControlCard(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "No orders loaded yet",
+                            text = stringResource(R.string.mobile_driver_ui_no_orders_loaded_yet),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = lab.fgTertiary
@@ -193,7 +195,7 @@ fun ReturningToWarehouseCard(
             ) {
                 PulsingDot(color = lab.warning)
                 Text(
-                    text = "RETURNING TO WAREHOUSE",
+                    text = stringResource(R.string.mobile_driver_ui_returning_to_warehouse),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -202,7 +204,7 @@ fun ReturningToWarehouseCard(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "All deliveries completed. Return to warehouse to finish shift.",
+                text = stringResource(R.string.mobile_driver_ui_all_deliveries_completed_return_to_warehouse_to_finish_shift),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = lab.fgTertiary
@@ -210,14 +212,14 @@ fun ReturningToWarehouseCard(
             if (totalUnits > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "$totalUnits item(s) to return on truck",
+                    text = stringResource(R.string.mobile_driver_ui_totalunits_item_s_to_return_on_truck),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = lab.warning
                 )
                 returnLines.take(4).forEach { line ->
                     Text(
-                        text = "• ${line.productName} × ${line.quantity} (${line.reason})",
+                        text = stringResource(R.string.mobile_driver_ui_productname_quantity_reason, line.productName, line.quantity, line.reason),
                         style = MaterialTheme.typography.bodySmall,
                         color = lab.fgTertiary
                     )
@@ -226,7 +228,7 @@ fun ReturningToWarehouseCard(
             if (showCashRecon) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Cash reconciliation required before shift end",
+                    text = stringResource(R.string.mobile_driver_ui_cash_reconciliation_required_before_shift_end),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = lab.warning,
@@ -269,7 +271,7 @@ fun ReturningToWarehouseCard(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Navigate to $warehouseLabel", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.mobile_driver_ui_navigate_to_warehouselabel, warehouseLabel), style = MaterialTheme.typography.labelLarge)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -291,7 +293,7 @@ fun ReturningToWarehouseCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "ARRIVED AT WAREHOUSE",
+                        text = stringResource(R.string.mobile_driver_ui_arrived_at_warehouse),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
@@ -304,7 +306,7 @@ fun ReturningToWarehouseCard(
 
 @Composable
 fun PulsingDot(color: androidx.compose.ui.graphics.Color) {
-    val transition = rememberInfiniteTransition(label = "pulse")
+    val transition = rememberInfiniteTransition(label = stringResource(R.string.mobile_driver_ui_pulse))
     val alpha by transition.animateFloat(
         initialValue = 1f,
         targetValue = 0.3f,

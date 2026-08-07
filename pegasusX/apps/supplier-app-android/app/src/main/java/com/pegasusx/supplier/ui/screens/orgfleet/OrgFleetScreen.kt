@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orgfleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -87,7 +89,7 @@ fun OrgFleetScreen(
                 title = { Text("Org & fleet") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -98,7 +100,7 @@ fun OrgFleetScreen(
                             else -> showOrgDialog = true
                         }
                     }) {
-                        Icon(Icons.Default.Add, contentDescription = "Create")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_create))
                     }
                 },
             )
@@ -127,9 +129,9 @@ fun OrgFleetScreen(
                 )
 
                 TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Drivers (${drivers.size})") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
-                    Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Org (${orgMembers.size})") })
+                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_supplier_ui_drivers_size, drivers.size)) })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_supplier_ui_vehicles_size, vehicles.size)) })
+                    Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text(stringResource(R.string.mobile_supplier_ui_org_size, orgMembers.size)) })
                 }
                 when (tab) {
                     0 -> DriverRoster(drivers, topology)

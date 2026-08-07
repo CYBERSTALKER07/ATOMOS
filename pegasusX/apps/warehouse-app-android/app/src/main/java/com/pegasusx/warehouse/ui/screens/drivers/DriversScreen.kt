@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.drivers
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -105,7 +107,7 @@ fun DriversScreen(
     ) { innerPadding ->
         when {
             loading && drivers.isEmpty() -> PegasusLoadingState(
-                title = "Loading drivers…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_drivers),
                 body = "Fleet driver roster",
                 modifier = Modifier.padding(innerPadding),
             )

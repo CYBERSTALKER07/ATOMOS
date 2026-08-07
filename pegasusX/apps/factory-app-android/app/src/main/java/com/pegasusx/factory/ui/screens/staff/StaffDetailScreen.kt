@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,7 +80,7 @@ fun StaffDetailScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading staff",
+                title = stringResource(R.string.mobile_factory_ui_loading_staff),
                 body = "Fetching operator profile.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
@@ -99,10 +101,10 @@ fun StaffDetailScreen(
             ) {
                 Text(staff!!.name, style = MaterialTheme.typography.headlineSmall)
                 Text(staff!!.role, style = MaterialTheme.typography.bodyLarge)
-                DetailRow(label = "Staff ID", value = staff!!.id)
-                DetailRow(label = "Phone", value = staff!!.phone.ifBlank { "—" })
-                DetailRow(label = "Status", value = staff!!.status.ifBlank { "ACTIVE" })
-                DetailRow(label = "Joined", value = staff!!.joinedAt.ifBlank { "—" })
+                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_staff_id), value = staff!!.id)
+                DetailRow(label = stringResource(R.string.common_field_phone), value = staff!!.phone.ifBlank { "—" })
+                DetailRow(label = stringResource(R.string.factory_portal_fleet_text_status), value = staff!!.status.ifBlank { "ACTIVE" })
+                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_joined), value = staff!!.joinedAt.ifBlank { "—" })
             }
         }
     }

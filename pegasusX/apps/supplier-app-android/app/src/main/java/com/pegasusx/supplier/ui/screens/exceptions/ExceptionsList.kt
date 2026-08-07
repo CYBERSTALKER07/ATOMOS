@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,10 +32,10 @@ fun ExceptionsList(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(row.orderId, style = MaterialTheme.typography.titleMedium)
-                    Text("${row.kind} · ${row.status}", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.mobile_supplier_ui_kind_status, row.kind, row.status), style = MaterialTheme.typography.bodyMedium)
                     row.note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     row.manifestId?.let {
-                        Text("Manifest $it", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_supplier_ui_manifest_it, it), style = MaterialTheme.typography.bodySmall)
                     }
                     if (row.kind.uppercase() in resolvableKinds) {
                         val key = "${row.kind}:${row.orderId}"

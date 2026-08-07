@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -242,14 +244,14 @@ fun LoginScreen(
                 )
 
                 Text(
-                    text = "Pegasus",
+                    text = stringResource(R.string.auth_login_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
-                    text = "Driver Terminal",
+                    text = stringResource(R.string.auth_login_driver_terminal),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -416,7 +418,7 @@ fun LoginScreen(
                 }
 
                 Text(
-                    text = "Contact your supplier admin for credentials",
+                    text = stringResource(R.string.mobile_driver_ui_contact_your_supplier_admin_for_credentials),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +29,7 @@ fun HandoffTimelineSection(
             .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
     ) {
-        WarehouseSectionTitle(title = "Handoff timeline")
+        WarehouseSectionTitle(title = stringResource(R.string.warehouse_portal_dispatch_text_handoff_timeline))
         val subtitle = when {
             loading && events.isEmpty() -> "Loading handoff chain…"
             events.isEmpty() -> "No preorder → dispatch → seal events in the recent pulse window."

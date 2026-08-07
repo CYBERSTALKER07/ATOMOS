@@ -8,7 +8,7 @@ struct ForecastConfidenceView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
             HStack {
-                Text("Forecast confidence")
+                Text("supplier_portal.forecast_confidence_card.text.forecast_confidence")
                     .font(.subheadline.bold())
                 Spacer()
                 if let baseline = confidence.baselineSource {
@@ -21,14 +21,14 @@ struct ForecastConfidenceView: View {
                 }
             }
             if confidence.isBlocked {
-                Text("Insufficient history — predictive forecast blocked")
+                Text("warehouse_portal.forecast_confidence_view.text.insufficient_history_predictive_forecast_blocked")
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.warning)
             } else {
-                Text("\(confidence.lowUnits ?? 0, format: .number) – \(confidence.highUnits ?? 0, format: .number) units")
+                Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", "\(confidence.lowUnits ?? 0, format: .number)", "\(confidence.highUnits ?? 0, format: .number)"))
                     .font(.title3.bold())
                 if let pct = confidence.confidencePct {
-                    Text("\(pct)% confidence")
+                    Text(L10n.format("mobile_supplier.ui.pct_confidence_2", "\(pct)"))
                         .font(.caption)
                         .foregroundStyle(confidence.confidenceTint)
                 }

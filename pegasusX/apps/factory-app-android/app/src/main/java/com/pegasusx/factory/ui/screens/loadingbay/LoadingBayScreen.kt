@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.loadingbay
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.layout.*
@@ -98,7 +100,7 @@ fun LoadingBayScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Loading Bay")
                         Text(
-                            text = "Approved, loading, and dispatched queues",
+                            text = stringResource(R.string.mobile_factory_ui_approved_loading_and_dispatched_queues),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -147,7 +149,7 @@ fun LoadingBayScreen(
     ) { innerPadding ->
         when {
             loading && transfers.isEmpty() -> PegasusLoadingState(
-                title = "Loading bay status",
+                title = stringResource(R.string.mobile_factory_ui_loading_bay_status),
                 body = "Fetching approved, loading, and dispatched transfer groups for the bay.",
                 modifier = Modifier
                     .fillMaxSize()

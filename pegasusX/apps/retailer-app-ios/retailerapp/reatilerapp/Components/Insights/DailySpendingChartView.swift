@@ -6,7 +6,7 @@ struct DailySpendingChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Daily Spending")
+            Text("mobile_retailer.ui.daily_spending")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
 

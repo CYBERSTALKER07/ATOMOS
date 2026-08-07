@@ -326,10 +326,18 @@ export interface UnifiedCheckoutResponse {
   status: string;
   invoice_id: string;
   total: number;
+  currency?: string;
   supplier_orders: SupplierOrderCheckoutResult[];
   backordered_item_count?: number;
   backorder_order_id?: string;
   stock_warnings?: StockWarning[];
+}
+
+/** GET /v1/order/currencies — flag-gated order currency picker (theatre #13 Wave 2+). */
+export interface OrderCurrencyOptions {
+  enabled: boolean;
+  operating_currency: Iso4217;
+  allowlist: Iso4217[];
 }
 
 export interface RetailerCatalogProductStock {
@@ -1028,6 +1036,8 @@ export interface SeasonalOverrideInput {
   start_date: string;
   end_date: string;
   name?: string;
+  /** Optional; clamped server-side to [0.5, 2.5]. Inherits builtin when template_id matches. */
+  multiplier?: number;
 }
 
 export interface SeasonalOverrideRow {
@@ -1038,11 +1048,39 @@ export interface SeasonalOverrideRow {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  multiplier: number;
+}
+
+export interface SeasonalBuiltinTemplate {
+  id: string;
+  name: string;
+  multiplier?: number;
+  start_month?: number;
+  start_day?: number;
+  end_month?: number;
+  end_day?: number;
+  confidence_floor?: number;
 }
 
 export interface SeasonalTemplatesResponse {
-  builtin_templates: Array<{ id: string; name: string }>;
+  builtin_templates: SeasonalBuiltinTemplate[];
   overrides: SeasonalOverrideRow[];
+}
+
+export interface SeasonalEstimateSuggestion {
+  template_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  multiplier: number;
+  basis: string;
+  sample_days?: number;
+  draft_override_id?: string;
+}
+
+export interface SeasonalEstimateResult {
+  suggestions: SeasonalEstimateSuggestion[];
+  persisted_drafts: number;
 }
 
 export interface PlanningSignalIngestInput {
@@ -2443,6 +2481,35 @@ export interface SettlementCurrencyTotal {
   amount_minor_total: number;
 }
 
+/** Theatre #13 FX rate row (admin/supplier list). */
+export interface FxRateRow {
+  rate_id: string;
+  base_currency: Iso4217;
+  quote_currency: Iso4217;
+  rate_scaled: number;
+  scale: number;
+  effective_at: string;
+  source: string;
+}
+
+export interface FxRatesListResponse {
+  rates: FxRateRow[];
+}
+
+export interface FxRateUpsertInput {
+  base_currency: Iso4217;
+  quote_currency: Iso4217;
+  rate_scaled: number;
+  scale?: number;
+  effective_at?: string;
+  source?: string;
+}
+
+export interface FxRateUpsertResponse {
+  ok: boolean;
+  rate: FxRateRow;
+}
+
 export interface SettlementAuthorityResponse {
   items: SettlementAuthorityRow[];
   count: number;
@@ -2450,6 +2517,10 @@ export interface SettlementAuthorityResponse {
   supplier_id: SupplierId | "";
   entry_count_total: number;
   totals_by_currency: SettlementCurrencyTotal[];
+  /** Theatre #13 Wave 2: display-only rollup in operating currency. */
+  operating_currency?: Iso4217;
+  operating_currency_total_minor?: number;
+  operating_conversion_partial?: boolean;
   filters?: {
     gateway?: string;
     entry_type?: string;

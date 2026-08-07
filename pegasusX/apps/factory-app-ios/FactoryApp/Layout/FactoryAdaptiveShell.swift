@@ -54,13 +54,13 @@ struct FactoryAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: FactorySection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: FactorySection.dashboard.icon) }
                 .tag(FactoryCompactTab.dashboard)
             sectionView(.loadingBay)
-                .tabItem { Label("Loading Bay", systemImage: FactorySection.loadingBay.icon) }
+                .tabItem { Label("portal.nav.loading_bay", systemImage: FactorySection.loadingBay.icon) }
                 .tag(FactoryCompactTab.loadingBay)
             sectionView(.transfers)
-                .tabItem { Label("Transfers", systemImage: FactorySection.transfers.icon) }
+                .tabItem { Label("portal.nav.transfers", systemImage: FactorySection.transfers.icon) }
                 .tag(FactoryCompactTab.transfers)
             NavigationStack {
                 FactoryMoreHubView { section in
@@ -68,7 +68,7 @@ struct FactoryAdaptiveShell: View {
                     compactTab = .dashboard
                 }
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_factory.ui.more", systemImage: "ellipsis.circle") }
             .tag(FactoryCompactTab.more)
         }
     }

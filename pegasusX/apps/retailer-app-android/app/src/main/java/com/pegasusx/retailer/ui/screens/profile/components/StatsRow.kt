@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,12 +18,12 @@ fun StatsRow(orderCount: Int, totalSpent: Long) {
         horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
     ) {
         RetailerMetricTile(
-            label = "Orders",
+            label = stringResource(R.string.portal_nav_orders),
             value = "$orderCount",
             modifier = Modifier.weight(1f),
         )
         RetailerMetricTile(
-            label = "Spent",
+            label = stringResource(R.string.mobile_retailer_ui_spent),
             value = spentDisplay,
             modifier = Modifier.weight(1f),
         )

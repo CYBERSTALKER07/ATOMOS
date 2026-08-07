@@ -17,11 +17,11 @@ struct SupplyRequestDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error, request == nil {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if let request {
                 ResponsiveGridContentWrapper {
@@ -42,7 +42,7 @@ struct SupplyRequestDetailView: View {
                     }
                     if request.state.uppercased() == "OPEN" {
                         Section {
-                            Button("Cancel request", role: .destructive) {
+                            Button("mobile_warehouse.ui.cancel_request", role: .destructive) {
                                 cancelRequest()
                             }
                             .disabled(busy)
@@ -50,13 +50,13 @@ struct SupplyRequestDetailView: View {
                     }
                 }
             } else {
-                ContentUnavailableView("Not found", systemImage: "tray", description: Text("Supply request not found"))
+                ContentUnavailableView("Not found", systemImage: "tray", description: Text("mobile_warehouse.ui.supply_request_not_found"))
             }
         }
-        .navigationTitle("Supply request")
+        .navigationTitle("mobile_warehouse.ui.supply_request")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task(id: requestId) { load() }

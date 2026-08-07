@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -138,7 +140,7 @@ fun ManifestDetailScreen(
     ) { innerPadding ->
         when {
             loading && detail == null -> PegasusLoadingState(
-                title = "Loading manifest",
+                title = stringResource(R.string.mobile_factory_ui_loading_manifest),
                 body = "Fetching manifest detail and lifecycle history.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
@@ -164,9 +166,8 @@ fun ManifestDetailScreen(
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                             Text(manifest.id, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)
-                            Text("State: ${manifest.state}", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Route ${detail!!.routeId.ifBlank { "—" }} · ${detail!!.orderCount} orders",
+                            Text(stringResource(R.string.mobile_factory_ui_state_state, manifest.state), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.mobile_factory_ui_route_ifblank_ordercount_orders, detail!!.routeId.ifBlank { "—" }, detail!!.orderCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -192,8 +193,7 @@ fun ManifestDetailScreen(
                         }
                     } else {
                         items(detail!!.transfers, key = { it.transferId }) { transfer ->
-                            Text(
-                                "${transfer.transferId} · ${transfer.state}",
+                            Text(stringResource(R.string.mobile_factory_ui_transferid_state, transfer.transferId, transfer.state),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                             )
@@ -208,8 +208,7 @@ fun ManifestDetailScreen(
                         }
                     } else {
                         items(detail!!.transitions, key = { "${it.action}-${it.at}" }) { transition ->
-                            Text(
-                                "${transition.action}: ${transition.fromState} → ${transition.toState}",
+                            Text(stringResource(R.string.mobile_factory_ui_action_fromstate_tostate, transition.action, transition.fromState, transition.toState),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }

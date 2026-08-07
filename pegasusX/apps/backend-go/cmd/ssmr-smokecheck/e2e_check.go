@@ -171,6 +171,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runPlan90E2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("plan90: %w", err)
 	}
+	if err := runSeasonalOverrideE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("seasonal override: %w", err)
+	}
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}
@@ -381,6 +384,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runFxRatesE2E(ctx, client, base, cookie, supplierID, retailerToken, h3Cell, cfg); err != nil {
 		return fmt.Errorf("fx rates: %w", err)
+	}
+	if err := runFxSettlementConvertE2E(ctx, client, base, cookie, supplierID, cfg); err != nil {
+		return fmt.Errorf("fx settlement convert: %w", err)
+	}
+	if err := runOrderCurrencyPickerE2E(ctx, client, base, retailerToken, cfg); err != nil {
+		return fmt.Errorf("order currency picker: %w", err)
 	}
 	if err := runCollectionsDunningE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
 		return fmt.Errorf("collections dunning: %w", err)

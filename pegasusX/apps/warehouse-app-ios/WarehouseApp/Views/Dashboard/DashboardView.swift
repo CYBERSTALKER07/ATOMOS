@@ -76,13 +76,13 @@ struct DashboardView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Dashboard")
+            .navigationTitle("portal.nav.dashboard")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                    Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                         tokenStore.clear()
                     }
                 }

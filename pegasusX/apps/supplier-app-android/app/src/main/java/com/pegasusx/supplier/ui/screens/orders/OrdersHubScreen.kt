@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -50,7 +52,7 @@ fun OrdersHubScreen(
                     actions = {
                         if (surface == OrdersHubSurface.Queue) {
                             IconButton(onClick = { viewModel.load() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                             }
                         }
                     },
@@ -121,7 +123,7 @@ private fun OrdersQueueContent(
 ) {
     when {
         showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> PegasusLoadingState(
-            title = "Loading orders…",
+            title = stringResource(R.string.mobile_supplier_ui_loading_orders),
             body = "Supplier order queue",
             modifier = modifier,
         )
@@ -242,7 +244,7 @@ private fun OrdersQueueContent(
                     )
                     Box {
                         IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(44.dp)) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Order actions")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.supplier_portal_orders_order_kebab_menu_text_order_actions))
                         }
                         DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(

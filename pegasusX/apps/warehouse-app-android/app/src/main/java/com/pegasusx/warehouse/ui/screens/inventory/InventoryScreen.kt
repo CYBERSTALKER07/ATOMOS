@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -87,7 +89,7 @@ fun InventoryScreen(
     ) { innerPadding ->
         when {
             loading && items.isEmpty() -> PegasusLoadingState(
-                title = "Loading inventory…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_inventory),
                 body = "Fetching latest stock quantities",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
@@ -234,7 +236,7 @@ private fun AdjustDialog(
             title = { Text("Confirm inventory change") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Text("Change $skuLabel from ${item.quantity} to $newQty? This affects retailer availability immediately.")
+                    Text(stringResource(R.string.mobile_warehouse_ui_change_skulabel_from_quantity_to_newqty_this_affects_retailer_availabili, skuLabel, item.quantity, newQty))
                     OutlinedTextField(
                         value = reason,
                         onValueChange = { reason = it },
@@ -261,7 +263,7 @@ private fun AdjustDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Adjust ${item.productName}") },
+        title = { Text(stringResource(R.string.mobile_warehouse_ui_adjust_productname, item.productName)) },
         text = {
             Column {
                 OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("New Quantity") }, singleLine = true, modifier = Modifier.fillMaxWidth())

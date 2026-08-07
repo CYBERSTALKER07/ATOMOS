@@ -23,6 +23,7 @@ import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.MediaUploadTicket
 import com.pegasusx.retailer.data.model.Order
+import com.pegasusx.retailer.data.model.OrderCurrencyOptions
 import com.pegasusx.retailer.data.model.OrderTimelineResponse
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
 import com.pegasusx.retailer.data.model.Product
@@ -454,6 +455,9 @@ interface PegasusApi {
     ): RetailerDetailedAnalytics
 
     // ── Checkout ──
+    @GET("/v1/order/currencies")
+    suspend fun getOrderCurrencies(): OrderCurrencyOptions
+
     @POST("/v1/checkout/preview")
     suspend fun checkoutPreview(@Body body: UnifiedCheckoutRequest): CheckoutPreviewResponse
 

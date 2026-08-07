@@ -13,15 +13,15 @@ struct ControlTowerView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Live counts for your shop — never demo charts.")
+                    Text("mobile_retailer.ui.live_counts_for_your_shop_never_demo_charts")
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(AppTheme.textSecondary)
                     if !generatedAt.isEmpty {
-                        Text("Updated \(generatedAt) · \(packs)")
+                        Text(L10n.format("mobile_retailer.ui.updated_generatedat_packs_2", "\(generatedAt)", "\(packs)"))
                             .font(.caption2)
                             .foregroundStyle(AppTheme.textTertiary)
                     }
-                    Button("Refresh") { Task { await load() } }
+                    Button("portal.page.orders.action.refresh") { Task { await load() } }
                 }
                 if let error {
                     Section { Text(error).foregroundStyle(.red) }
@@ -30,9 +30,9 @@ struct ControlTowerView: View {
                     Section { ProgressView() }
                 } else if empty && error == nil {
                     Section {
-                        Text("No live ops signals yet")
+                        Text("retailer_desktop.control_tower.text.no_live_ops_signals_yet")
                             .font(.headline)
-                        Text("Place orders, enable stock/POS, open a shift, or create an assist ticket. This stays empty until real activity exists.")
+                        Text("mobile_retailer.ui.place_orders_enable_stock_pos_open_a_shift_or_create_an_assist_t")
                             .font(.footnote)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
@@ -48,7 +48,7 @@ struct ControlTowerView: View {
                     }
                 }
             }
-            .navigationTitle("Ops pulse")
+            .navigationTitle("warehouse_portal.network_pulse_panel.text.ops_pulse")
             .navigationBarTitleDisplayMode(.inline)
             .task { await load() }
             .refreshable { await load() }

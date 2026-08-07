@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.controltower
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,7 +102,7 @@ fun ControlTowerScreen(
             color = Color.Gray,
         )
         if (generatedAt.isNotEmpty()) {
-            Text("Updated $generatedAt · $packs", style = MaterialTheme.typography.labelSmall, color = Color.DarkGray)
+            Text(stringResource(R.string.mobile_retailer_ui_updated_generatedat_packs_2, generatedAt, packs), style = MaterialTheme.typography.labelSmall, color = Color.DarkGray)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { load() }) { Text("Refresh") }

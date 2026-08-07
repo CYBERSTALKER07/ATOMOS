@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +27,7 @@ fun HandoffTimelineSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
     ) {
-        FactorySectionHeader(title = "Handoff timeline", count = events.size)
+        FactorySectionHeader(title = stringResource(R.string.warehouse_portal_dispatch_text_handoff_timeline), count = events.size)
         val subtitle = when {
             loading && events.isEmpty() -> "Loading handoff chain…"
             events.isEmpty() -> "No preorder → dispatch → seal events in the recent pulse window."

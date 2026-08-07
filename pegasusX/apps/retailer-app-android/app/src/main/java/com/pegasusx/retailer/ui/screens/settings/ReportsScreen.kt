@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -75,7 +77,7 @@ fun ReportsScreen(
                 title = { Text("Reports Pro") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -91,11 +93,11 @@ fun ReportsScreen(
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Last 7 days", style = MaterialTheme.typography.titleMedium)
-                        Text("Sales: ${salesMinor / 100.0}")
-                        Text("Sale count: $saleCount")
-                        Text("On-hand SKUs: $onHand")
-                        Text("Low stock bins: $lowStock")
-                        Text("Top SKU: $topLine")
+                        Text(stringResource(R.string.mobile_retailer_ui_sales_n_0, salesMinor / 100.0))
+                        Text(stringResource(R.string.mobile_retailer_ui_sale_count_salecount_2, saleCount))
+                        Text(stringResource(R.string.mobile_retailer_ui_on_hand_skus_onhand_2, onHand))
+                        Text(stringResource(R.string.mobile_retailer_ui_low_stock_bins_lowstock_2, lowStock))
+                        Text(stringResource(R.string.mobile_retailer_ui_top_sku_topline_2, topLine))
                     }
                 }
             }

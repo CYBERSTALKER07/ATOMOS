@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -148,7 +150,7 @@ fun OperationsScreen(
         AlertDialog(
             onDismissRequest = { if (!bypassing) showBypassConfirm = false },
             title = { Text("Issue payment bypass?") },
-            text = { Text("Order $orderId must be AWAITING_PAYMENT. Driver receives a one-time bypass token.") },
+            text = { Text(stringResource(R.string.mobile_supplier_ui_order_orderid_must_be_awaiting_payment_driver_receives_a_one_time_bypass, orderId)) },
             confirmButton = {
                 TextButton(onClick = { issueBypass() }, enabled = !bypassing) { Text("Issue") }
             },
@@ -164,7 +166,7 @@ fun OperationsScreen(
                 title = { Text("Operations") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )

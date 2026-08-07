@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -128,7 +130,7 @@ fun TransferDetailScreen(
     ) { innerPadding ->
         when {
             loading && transfer == null -> PegasusLoadingState(
-                title = "Loading transfer",
+                title = stringResource(R.string.mobile_factory_ui_loading_transfer),
                 body = "Fetching the latest manifest details and item breakdown.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -196,7 +198,7 @@ fun TransferDetailScreen(
                                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
                             ) {
                                 Text(
-                                    text = "No manual transition is available for the current state.",
+                                    text = stringResource(R.string.mobile_factory_ui_no_manual_transition_is_available_for_the_current_state),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(PegasusSpacing.lg),
@@ -295,7 +297,7 @@ private fun TransferOverviewCard(transfer: Transfer) {
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Transfer ${transfer.id.take(8)}",
+                    text = stringResource(R.string.mobile_factory_ui_transfer_take, transfer.id.take(8)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

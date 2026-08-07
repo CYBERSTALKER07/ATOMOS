@@ -21,11 +21,11 @@ struct MapButton: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Open Map")
+                    Text("mobile_driver.ui.open_map")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
 
-                    Text("\(pendingCount) deliveries waiting")
+                    Text(L10n.format("mobile_driver.ui.pendingcount_deliveries_waiting_3", "\(pendingCount)"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }

@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -57,6 +58,9 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 	summary := ImportApplySummary{
 		SessionID: sessionID,
 		Status:    "APPLIED",
+	}
+	if stocklots.LotsEnabled() {
+		return summary, fmt.Errorf("inventory import QoH apply forbidden when WMS_LOTS_ENABLED — use putaway / lot adjust instead of absolute SupplierInventoryV2 set")
 	}
 	affectedWarehouses := map[string]struct{}{}
 	affectedProducts := map[string]struct{}{}

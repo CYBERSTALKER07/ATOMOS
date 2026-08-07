@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -42,7 +44,7 @@ fun VehiclesList(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "${v.vehicleClass} · ${v.capacityVu} VU",
+                            stringResource(R.string.mobile_warehouse_ui_vehicleclass_capacityvu_vu, v.vehicleClass, v.capacityVu),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

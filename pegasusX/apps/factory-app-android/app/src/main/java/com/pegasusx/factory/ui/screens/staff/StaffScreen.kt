@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -78,7 +80,7 @@ fun StaffScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Staff")
                         Text(
-                            text = "Operator roster and shift status",
+                            text = stringResource(R.string.mobile_factory_ui_operator_roster_and_shift_status),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -96,7 +98,7 @@ fun StaffScreen(
     ) { innerPadding ->
         when {
             loading && staff.isEmpty() -> PegasusLoadingState(
-                title = "Loading staff",
+                title = stringResource(R.string.mobile_factory_ui_loading_staff),
                 body = "Fetching the current factory operator roster.",
                 modifier = Modifier
                     .fillMaxSize()

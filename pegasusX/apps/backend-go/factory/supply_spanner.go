@@ -12,6 +12,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"google.golang.org/api/iterator"
 )
@@ -364,7 +365,14 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 		}))
 		if initialTransferState == "RECEIVED" {
 			for _, line := range lines {
-				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, rec.SupplierID, rec.WarehouseID, line.ProductID, line.ShippedQuantity); err != nil {
+				if stocklots.LotsEnabled() {
+					if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+						ctx, txn, rec.SupplierID, rec.WarehouseID, line.ProductID,
+						stocklots.DefaultRecvLocationID, "RECV", line.ShippedQuantity,
+					); err != nil {
+						return err
+					}
+				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, rec.SupplierID, rec.WarehouseID, line.ProductID, line.ShippedQuantity); err != nil {
 					return err
 				}
 				muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{

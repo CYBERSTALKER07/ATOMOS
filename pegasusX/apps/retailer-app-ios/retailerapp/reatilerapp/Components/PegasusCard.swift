@@ -152,16 +152,16 @@ struct GradientHeaderCard<Content: View>: View {
     ScrollView {
         VStack(spacing: 16) {
             LabCard {
-                Text("Simple card content")
+                Text("mobile_retailer.ui.simple_card_content")
                     .padding()
             }
 
             LabCardWithHeader(title: "Orders", subtitle: "3 active", icon: "shippingbox") {
-                Text("Card content here")
+                Text("mobile_retailer.ui.card_content_here")
             }
 
             GradientHeaderCard(title: "AI Insights", subtitle: "Powered by ML", icon: "sparkles") {
-                Text("Gradient card content")
+                Text("mobile_retailer.ui.gradient_card_content")
             }
         }
         .padding()

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -79,7 +81,7 @@ fun VehiclesScreen(
     ) { innerPadding ->
         when {
             loading && vehicles.isEmpty() -> PegasusLoadingState(
-                title = "Loading trucks…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_trucks),
                 body = "Fleet vehicle roster",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -156,7 +158,7 @@ private fun CreateVehicleDialog(
                         FilterChip(
                             selected = selectedClass == cls,
                             onClick = { selectedClass = cls },
-                            label = { Text("$cls ($cap)") },
+                            label = { Text(stringResource(R.string.mobile_warehouse_ui_cls_cap, cls, cap)) },
                         )
                     }
                 }

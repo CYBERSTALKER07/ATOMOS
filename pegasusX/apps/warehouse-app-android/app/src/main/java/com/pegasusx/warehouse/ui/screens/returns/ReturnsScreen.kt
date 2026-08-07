@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.returns
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +50,6 @@ import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class ReturnsTab { Queue, History, Reverse }
@@ -132,11 +133,8 @@ fun ReturnsScreen(
                 val resp = api.scanInboundReturn(key, body)
                 if (!resp.isSuccessful) throw IllegalStateException("scan_failed")
                 barcode = ""
-                scannerEnabled = false
                 statusMessage = "Scan recorded"
                 load()
-                delay(1500)
-                scannerEnabled = true
             } catch (e: Exception) {
                 statusMessage = e.message
             } finally {
@@ -279,7 +277,7 @@ fun ReturnsScreen(
                                             statusMessage = e.message
                                         }
                                     }
-                                }) { Text("Restock (${selected.size})") }
+                                }) { Text(stringResource(R.string.mobile_warehouse_ui_restock_size, selected.size)) }
                                 TextButton(onClick = {
                                     scope.launch {
                                         try {
@@ -346,7 +344,7 @@ fun ReturnsScreen(
                                             Column(Modifier.weight(1f)) {
                                                 Text(task.taskId, style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    "Order ${task.orderId} · ${task.status}",
+                                                    stringResource(R.string.mobile_warehouse_ui_order_orderid_status, task.orderId, task.status),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )

@@ -143,6 +143,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 10
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.activityType = .automotiveNavigation
         ProfileService.shared.startPolling()
         Task { await loadEarningsAndHistory() }
     }
@@ -524,11 +526,36 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
+        photoLocalPath: String? = nil,
+        signatureLocalPath: String? = nil
+    ) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
+        let photoRemote = photoProofUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigRemote = signatureUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoLocal = photoLocalPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigLocal = signatureLocalPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !photoRemote.isEmpty || !photoLocal.isEmpty else {
+            deliveryEdgeError = "PoD photo required for credit leave"
+            return
+        }
+        guard !sigRemote.isEmpty || !sigLocal.isEmpty else {
+            deliveryEdgeError = "Signature required for credit leave"
+            return
+        }
         do {
-            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            guard !photoRemote.isEmpty else {
+                throw URLError(.notConnectedToInternet)
+            }
+            let resp = try await fleetService.markCreditDelivery(
+                orderId: orderId,
+                photoProofUrl: photoRemote,
+                signatureUrl: sigRemote.isEmpty ? nil : sigRemote
+            )
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {
@@ -536,7 +563,32 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             }
             await loadMissions()
         } catch {
-            deliveryEdgeError = error.localizedDescription
+            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) || photoRemote.isEmpty {
+                var body: [String: Any] = [
+                    "order_id": orderId,
+                    "client_timestamp": DriverOfflineActionCatalog.nowIso(),
+                ]
+                if !photoRemote.isEmpty { body["photo_proof_url"] = photoRemote }
+                if !sigRemote.isEmpty { body["signature_url"] = sigRemote }
+                if !photoLocal.isEmpty && photoRemote.isEmpty { body["photo_local_path"] = photoLocal }
+                if !sigLocal.isEmpty && sigRemote.isEmpty { body["signature_local_path"] = sigLocal }
+                if let loc = location {
+                    body["latitude"] = loc.latitude
+                    body["longitude"] = loc.longitude
+                }
+                DriverOfflineQueue.shared.enqueueJSONObject(
+                    endpoint: DriverOfflineActionCatalog.credit,
+                    body: body,
+                    idempotencyKey: DriverIdempotency.creditDelivery(orderId: orderId),
+                    orderId: orderId,
+                    capturedLat: location?.latitude,
+                    capturedLng: location?.longitude
+                )
+                deliveryEdgeMessage = "Offline — credit leave queued for sync"
+                await loadMissions()
+            } else {
+                deliveryEdgeError = error.localizedDescription
+            }
         }
     }
 

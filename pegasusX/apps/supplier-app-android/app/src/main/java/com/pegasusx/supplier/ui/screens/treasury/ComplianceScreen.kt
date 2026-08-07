@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -92,7 +94,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Compliance audit") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -129,10 +131,10 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                             ) {
                                 Text("Summary", style = MaterialTheme.typography.titleMedium)
-                                Text("Open fiscal: ${summary?.openFiscalCount ?: 0}")
-                                Text("Force-completes: ${summary?.forceCompleteCount ?: 0}")
-                                Text("Claim mismatches: ${summary?.claimMismatchCount ?: 0}")
-                                Text("Credit freezes: ${summary?.creditFreezeCount ?: 0}")
+                                Text(stringResource(R.string.mobile_supplier_ui_open_fiscal_openfiscalcount_0, summary?.openFiscalCount ?: 0))
+                                Text(stringResource(R.string.mobile_supplier_ui_force_completes_forcecompletecount_0, summary?.forceCompleteCount ?: 0))
+                                Text(stringResource(R.string.mobile_supplier_ui_claim_mismatches_claimmismatchcount_0, summary?.claimMismatchCount ?: 0))
+                                Text(stringResource(R.string.mobile_supplier_ui_credit_freezes_creditfreezecount_0, summary?.creditFreezeCount ?: 0))
                             }
                         }
                     }
@@ -143,8 +145,8 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.orderId, style = MaterialTheme.typography.titleSmall)
-                                Text("${row.status} · ${row.fiscalStatus}")
-                                Text("${row.totalMinor} ${row.currency}")
+                                Text(stringResource(R.string.mobile_supplier_ui_status_fiscalstatus, row.status, row.fiscalStatus))
+                                Text(stringResource(R.string.mobile_supplier_ui_totalminor_currency, row.totalMinor, row.currency))
                                 TextButton(onClick = { openReceipt(row.orderId) }) {
                                     Text("View receipt")
                                 }
@@ -158,7 +160,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.orderId, style = MaterialTheme.typography.titleSmall)
-                                Text("Reason ${row.reasonCode.ifBlank { "—" }} · Actor ${row.actorId.ifBlank { "—" }}")
+                                Text(stringResource(R.string.mobile_supplier_ui_reason_ifblank_actor_ifblank_2, row.reasonCode.ifBlank { "—" }, row.actorId.ifBlank { "—" }))
                                 Row {
                                     TextButton(onClick = { openReceipt(row.orderId) }) {
                                         Text("View receipt")
@@ -175,7 +177,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                             Column(modifier = Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.retailerId, style = MaterialTheme.typography.titleSmall)
                                 Text(row.status)
-                                Text("Balance ${row.currentBalanceMinor} / limit ${row.creditLimitMinor}")
+                                Text(stringResource(R.string.mobile_supplier_ui_balance_currentbalanceminor_limit_creditlimitminor, row.currentBalanceMinor, row.creditLimitMinor))
                             }
                         }
                     }
@@ -186,7 +188,7 @@ fun ComplianceScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(PegasusSpacing.md)) {
                                 Text(row.claimId, style = MaterialTheme.typography.titleSmall)
-                                Text("Order ${row.orderId}")
+                                Text(stringResource(R.string.mobile_supplier_ui_order_orderid_2, row.orderId))
                                 Text(row.mismatchReason)
                             }
                         }

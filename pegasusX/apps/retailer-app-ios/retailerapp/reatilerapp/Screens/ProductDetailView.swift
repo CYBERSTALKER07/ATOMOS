@@ -52,19 +52,19 @@ struct ProductDetailView: View {
             get: { pendingVariantTarget != nil || pendingProductEnable },
             set: { if !$0 { pendingVariantTarget = nil; pendingProductEnable = false } }
         ), actions: {
-            Button("Use History") {
+            Button("mobile_retailer.ui.use_history") {
                 Task { await confirmProductOrVariantEnable(useHistory: true) }
             }
-            Button("Start Fresh", role: .destructive) {
+            Button("mobile_retailer.ui.start_fresh", role: .destructive) {
                 Task { await confirmProductOrVariantEnable(useHistory: false) }
             }
-            Button("Cancel", role: .cancel) {
+            Button("common.action.cancel", role: .cancel) {
                 if pendingProductEnable { productAutoOrderEnabled = false }
                 pendingVariantTarget = nil
                 pendingProductEnable = false
             }
         }, message: {
-            Text("Enable auto-order using existing history, or start fresh? Starting fresh requires at least 2 orders before predictions begin.")
+            Text("mobile_retailer.ui.enable_auto_order_using_existing_history_or_start_fresh_starting")
         })
     }
 
@@ -134,7 +134,7 @@ struct ProductDetailView: View {
                             .font(.system(.title3, design: .rounded, weight: .bold))
                             .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.accent)
                         if variant.packCount > 1 {
-                            Text("/ \(variant.pack)")
+                            Text(L10n.format("mobile_retailer.ui.pack", "\(variant.pack)"))
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -172,7 +172,7 @@ struct ProductDetailView: View {
                             }
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("\(variant.size) — \(variant.pack)")
+                                Text(L10n.format("mobile_retailer.ui.size_pack", "\(variant.size)", "\(variant.pack)"))
                                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                                     .foregroundStyle(AppTheme.textPrimary)
                                 Text(variant.weightPerUnit)
@@ -207,11 +207,11 @@ struct ProductDetailView: View {
         LabCard {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Quantity")
+                    Text("warehouse_portal.inventory.inventory_stock_list.text.quantity")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     if let v = selectedVariant {
-                        Text("Total: \(Int(Double(quantity) * v.price).formatted())")
+                        Text(L10n.format("mobile_retailer.ui.total_formatted", "\(Int(Double(quantity) * v.price).formatted())"))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                             .contentTransition(.numericText())
@@ -252,10 +252,10 @@ struct ProductDetailView: View {
                             .foregroundStyle(productAutoOrderEnabled ? AppTheme.accent : AppTheme.textSecondary)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Auto-Order – This Product")
+                        Text("mobile_retailer.ui.auto_order_this_product")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Product-level override")
+                        Text("retailer_desktop.auto_order.auto_order_rules.text.product_level_override")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -280,7 +280,7 @@ struct ProductDetailView: View {
                     ForEach(product.variants) { variant in
                         HStack(spacing: AppTheme.spacingMD) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("\(variant.size) — \(variant.pack)")
+                                Text(L10n.format("mobile_retailer.ui.size_pack", "\(variant.size)", "\(variant.pack)"))
                                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                                     .foregroundStyle(AppTheme.textPrimary)
                                 Text(variant.weightPerUnit)
@@ -382,7 +382,7 @@ struct ProductDetailView: View {
 
             HStack(spacing: AppTheme.spacingLG) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Total")
+                    Text("retailer_desktop.pos.text.total")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                     if let variant = selectedVariant {

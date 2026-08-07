@@ -19,7 +19,7 @@ struct CreditProfileSection: View {
             HStack(spacing: 8) {
                 Image(systemName: "creditcard.fill")
                     .foregroundStyle(AppTheme.accent)
-                Text("Supplier credit")
+                Text("retailer_desktop.credit_profile_card.text.supplier_credit")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
@@ -38,12 +38,12 @@ struct CreditProfileSection: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Loading credit…")
+                    Text("mobile_retailer.ui.loading_credit")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             } else if missing {
-                Text("No credit line on file for this supplier relationship.")
+                Text("mobile_retailer.ui.no_credit_line_on_file_for_this_supplier_relationship")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             } else if let error {
@@ -83,7 +83,7 @@ struct CreditProfileSection: View {
                     .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
                     if let delinquency = profile.delinquencyCount, delinquency > 0 {
-                        Text("Delinquency \(delinquency)")
+                        Text(L10n.format("mobile_retailer.ui.delinquency_delinquency_2", "\(delinquency)"))
                             .font(.system(.caption2, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.error)
                     }

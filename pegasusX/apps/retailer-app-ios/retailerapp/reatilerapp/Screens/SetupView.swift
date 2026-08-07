@@ -28,11 +28,11 @@ struct SetupView: View {
                 .padding(AppTheme.spacingXL)
             }
             .background(AppTheme.background)
-            .navigationTitle("Company Profile")
+            .navigationTitle("mobile_retailer.ui.company_profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Sign Out") { auth.logout() }
+                    Button("common.action.sign_out") { auth.logout() }
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 }
             }
@@ -69,7 +69,7 @@ struct SetupView: View {
             Button {
                 _ = vm.advanceFromTax()
             } label: {
-                Text("Continue")
+                Text("supplier_portal.bulk_import_wizard.text.continue")
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -91,7 +91,7 @@ struct SetupView: View {
                 Button {
                     vm.step = .tax
                 } label: {
-                    Text("Back")
+                    Text("common.action.back")
                         .font(.system(.headline, design: .rounded, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -113,7 +113,7 @@ struct SetupView: View {
                         if vm.isSubmitting {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Complete Setup")
+                            Text("mobile_retailer.ui.complete_setup")
                                 .font(.system(.headline, design: .rounded, weight: .bold))
                         }
                     }

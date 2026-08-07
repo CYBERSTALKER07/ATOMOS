@@ -10,6 +10,7 @@ struct PlanningSettingsView: View {
     @State private var name = ""
     @State private var startDate = ""
     @State private var endDate = ""
+    @State private var multiplier = ""
 
     var body: some View {
         Form {
@@ -29,6 +30,7 @@ struct PlanningSettingsView: View {
                         name: $name,
                         startDate: $startDate,
                         endDate: $endDate,
+                        multiplier: $multiplier,
                         formError: formError,
                         saving: saving,
                         onSubmit: {
@@ -42,7 +44,7 @@ struct PlanningSettingsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Planning settings")
+        .navigationTitle("supplier_portal.settings.planning.text.planning_settings")
         .task { await load() }
         .refreshable { await load(silent: true) }
     }
@@ -70,12 +72,14 @@ struct PlanningSettingsView: View {
         defer { saving = false }
         do {
             let scope = await SupplierIdempotencyKeys.supplierScopeId()
+            let multVal = Double(multiplier.trimmingCharacters(in: .whitespacesAndNewlines))
             let row = try await SupplierOperationsService.createSeasonalOverride(
                 SeasonalOverrideInput(
                     templateId: templateId.isEmpty ? nil : templateId,
                     startDate: startDate,
                     endDate: endDate,
-                    name: name.isEmpty ? nil : name
+                    name: name.isEmpty ? nil : name,
+                    multiplier: multVal
                 ),
                 idempotencyKey: SupplierIdempotencyKeys.seasonalOverrideCreate(
                     scopeId: scope,
@@ -93,6 +97,7 @@ struct PlanningSettingsView: View {
             startDate = ""
             endDate = ""
             templateId = ""
+            multiplier = ""
         } catch {
             formError = error.localizedDescription
         }

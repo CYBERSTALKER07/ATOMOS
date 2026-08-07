@@ -14,10 +14,10 @@ struct ActiveOrderCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Order #\(order.id.suffix(3))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("\(order.itemCount) items · \(order.displayTotal)")
+                    Text(L10n.format("mobile_retailer.ui.itemcount_items_displaytotal", "\(order.itemCount)", "\(order.displayTotal)"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -54,7 +54,7 @@ struct ActiveOrderCard: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "doc.text").font(.system(size: 12, weight: .semibold))
-                        Text("Details").font(.system(.caption, design: .rounded, weight: .semibold))
+                        Text("mobile_retailer.ui.details").font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
                     .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)
@@ -69,7 +69,7 @@ struct ActiveOrderCard: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "qrcode").font(.system(size: 12, weight: .semibold))
-                            Text("Show QR").font(.system(.caption, design: .rounded, weight: .semibold))
+                            Text("mobile_retailer.ui.show_qr").font(.system(.caption, design: .rounded, weight: .semibold))
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)
@@ -79,7 +79,7 @@ struct ActiveOrderCard: View {
                 } else {
                     HStack(spacing: 4) {
                         Image(systemName: "qrcode").font(.system(size: 12, weight: .semibold))
-                        Text("Awaiting Dispatch").font(.system(.caption, design: .rounded, weight: .semibold))
+                        Text("mobile_retailer.ui.awaiting_dispatch").font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)

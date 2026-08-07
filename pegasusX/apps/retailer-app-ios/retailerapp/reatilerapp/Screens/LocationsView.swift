@@ -14,7 +14,7 @@ struct LocationsView: View {
     var body: some View {
         List {
             Section {
-                Text("Primary store is auto-created from your shop profile. Add branches for multi-location.")
+                Text("mobile_retailer.ui.primary_store_is_auto_created_from_your_shop_profile_add_branche")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -22,8 +22,8 @@ struct LocationsView: View {
                 Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
             }
             Section("Add branch") {
-                TextField("Name", text: $name)
-                TextField("Address", text: $address)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("factory_portal.residual.text.address", text: $address)
                 Button(busy ? "…" : "Create") { Task { await create() } }
                     .disabled(busy)
             }
@@ -34,23 +34,23 @@ struct LocationsView: View {
                         HStack {
                             Text(loc.name).font(.headline)
                             if loc.isPrimary {
-                                Text("Primary").font(.caption2).foregroundStyle(AppTheme.textTertiary)
+                                Text("mobile_retailer.ui.primary").font(.caption2).foregroundStyle(AppTheme.textTertiary)
                             }
                             if activeId == loc.locationId {
-                                Text("Active").font(.caption2).foregroundStyle(AppTheme.accent)
+                                Text("warehouse_portal.bins.text.active").font(.caption2).foregroundStyle(AppTheme.accent)
                             }
                         }
                         Text(loc.deliveryAddress ?? "No address")
                             .font(.caption)
                             .foregroundStyle(AppTheme.textSecondary)
                         if loc.isActive && activeId != loc.locationId {
-                            Button("Use for checkout") {
+                            Button("mobile_retailer.ui.use_for_checkout") {
                                 Task { await switchTo(loc.locationId) }
                             }
                             .font(.caption)
                         }
                         if loc.isActive && !loc.isPrimary {
-                            Button("Set primary") {
+                            Button("mobile_retailer.ui.set_primary") {
                                 Task { await setPrimary(loc.locationId) }
                             }
                             .font(.caption)
@@ -60,7 +60,7 @@ struct LocationsView: View {
                 }
             }
         }
-        .navigationTitle("Locations")
+        .navigationTitle("retailer_desktop.settings.locations.text.locations")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

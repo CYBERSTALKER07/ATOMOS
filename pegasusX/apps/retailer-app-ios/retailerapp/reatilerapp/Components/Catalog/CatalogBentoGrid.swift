@@ -87,7 +87,7 @@ struct CatalogBentoGrid: View {
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 if let count = cat.productCount {
-                    Text("\(count) items")
+                    Text(L10n.format("mobile_retailer.ui.count_items_2", "\(count)"))
                         .font(.system(.caption2, design: .rounded, weight: .medium)) // Medium weight
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -122,7 +122,7 @@ struct CatalogBentoGrid: View {
                         .font(.system(.headline, design: .rounded, weight: .bold)) // Bold title
                         .foregroundStyle(AppTheme.textPrimary)
                     if let count = cat.productCount {
-                        Text("\(count) items")
+                        Text(L10n.format("mobile_retailer.ui.count_items_2", "\(count)"))
                             .font(.system(.caption, design: .rounded, weight: .medium)) // Medium weight
                             .foregroundStyle(AppTheme.textTertiary)
                     }

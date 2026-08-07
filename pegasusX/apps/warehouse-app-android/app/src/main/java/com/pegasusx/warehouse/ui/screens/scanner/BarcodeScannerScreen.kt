@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.scanner
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -50,7 +52,7 @@ fun BarcodeScannerScreen(
                 ScannerState.PROCESSING -> {
                     CircularProgressIndicator(color = Color.White)
                     Text(
-                        "Processing $lastScannedBin...",
+                        stringResource(R.string.mobile_warehouse_ui_processing_lastscannedbin, lastScannedBin),
                         color = Color.White,
                         modifier = Modifier.padding(top = 64.dp)
                     )
@@ -58,7 +60,7 @@ fun BarcodeScannerScreen(
                 ScannerState.SUCCESS -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Successfully Scanned", color = Color.Green, style = MaterialTheme.typography.headlineMedium)
-                        Text("Bin: $lastScannedBin", color = Color.White, modifier = Modifier.padding(16.dp))
+                        Text(stringResource(R.string.mobile_warehouse_ui_bin_lastscannedbin, lastScannedBin), color = Color.White, modifier = Modifier.padding(16.dp))
                         Button(onClick = { viewModel.reset(); viewModel.startScanning() }) {
                             Text("Scan Another Bin")
                         }

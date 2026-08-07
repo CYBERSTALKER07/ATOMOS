@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.dispatch
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -255,7 +257,7 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     actionMessage = DispatchActionMessage(
-                        title = "Supply Request Submitted",
+                        title = stringResource(R.string.notification_supply_request_submitted_title),
                         message = "Request ${body.requestId.take(8)} is now ${body.state}.",
                     )
                     showCreateSupplyRequest = false
@@ -282,7 +284,7 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     actionMessage = DispatchActionMessage(
-                        title = "Supply Request Cancelled",
+                        title = stringResource(R.string.mobile_warehouse_ui_supply_request_cancelled),
                         message = "Request ${body.requestId.take(8)} moved to ${body.state}.",
                     )
                     requestPendingCancellation = null
@@ -308,7 +310,7 @@ fun DispatchScreen(
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
                         actionMessage = DispatchActionMessage(
-                            title = "Dispatch Locked",
+                            title = stringResource(R.string.mobile_warehouse_ui_dispatch_locked),
                             message = "${body.lockType} is now active for this warehouse scope.",
                         )
                         showAcquireDispatchLock = false
@@ -358,7 +360,7 @@ fun DispatchScreen(
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
-                                title = "Plan stale",
+                                title = stringResource(R.string.mobile_warehouse_ui_plan_stale),
                                 message = "Refresh preview and try smart dispatch again.",
                             )
                             load()
@@ -370,7 +372,7 @@ fun DispatchScreen(
                         }
                         "dispatched" -> {
                             actionMessage = DispatchActionMessage(
-                                title = "Dispatch Committed",
+                                title = stringResource(R.string.mobile_warehouse_ui_dispatch_committed),
                                 message = "Assigned ${result.ordersAssigned} order(s). Payloader loading gate is active.",
                             )
                             selectedOrderIds = emptySet()
@@ -417,7 +419,7 @@ fun DispatchScreen(
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
-                                title = "Plan stale",
+                                title = stringResource(R.string.mobile_warehouse_ui_plan_stale),
                                 message = "Refresh preview and try smart dispatch again.",
                             )
                             load()
@@ -432,7 +434,7 @@ fun DispatchScreen(
                                 " ${result.orphanOrderIds.size} order(s) could not be assigned."
                             } else ""
                             actionMessage = DispatchActionMessage(
-                                title = "Smart Dispatch Committed",
+                                title = stringResource(R.string.mobile_warehouse_ui_smart_dispatch_committed),
                                 message = "Assigned ${result.ordersAssigned} order(s).$orphanNote",
                             )
                             selectedOrderIds = emptySet()
@@ -465,7 +467,7 @@ fun DispatchScreen(
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
                         actionMessage = DispatchActionMessage(
-                            title = "Dispatch Lock Released",
+                            title = stringResource(R.string.notification_dispatch_lock_released_title),
                             message = "Lock ${body.lockId.take(8)} is now ${body.status}.",
                         )
                         lockPendingRelease = null
@@ -494,7 +496,7 @@ fun DispatchScreen(
         if (hadInFlight) {
             executing = false
             actionMessage = DispatchActionMessage(
-                title = "Connection restored",
+                title = stringResource(R.string.mobile_warehouse_ui_connection_restored),
                 message = WAREHOUSE_RECONNECT_RECOVERY_HINT,
             )
         }
@@ -664,7 +666,7 @@ fun DispatchScreen(
     ) { innerPadding ->
         when {
             loading && preview == null -> PegasusLoadingState(
-                title = "Loading dispatch…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_dispatch),
                 body = "Orders, drivers, supply, and locks",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -688,10 +690,10 @@ fun DispatchScreen(
                     loading = handoffLoading,
                 )
                 TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Orders (${preview!!.undispatchedOrders.size})") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Drivers (${preview!!.availableDrivers.size + preview!!.unavailableDrivers.size})") })
-                    Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Supply (${supplyRequests.size})") })
-                    Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text("Locks (${dispatchLocks.size})") })
+                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_orders_size, preview!!.undispatchedOrders.size)) })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_drivers_size, preview!!.availableDrivers.size + preview!!.unavailableDrivers.size)) })
+                    Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_supply_size, supplyRequests.size)) })
+                    Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_locks_size, dispatchLocks.size)) })
                 }
 
                 RealtimeStatusBanner(status = realtimeStatus)
@@ -775,7 +777,7 @@ fun DispatchScreen(
                                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                                 Text(request.requestId.take(8), style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    "${request.priority} · ${request.totalVolumeVu.toInt()} VU",
+                                                    stringResource(R.string.mobile_warehouse_ui_priority_toint_vu, request.priority, request.totalVolumeVu.toInt()),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1,
@@ -866,7 +868,7 @@ fun DispatchScreen(
         AlertDialog(
             onDismissRequest = { requestPendingCancellation = null },
             title = { Text("Cancel Supply Request") },
-            text = { Text("Cancel request ${requestPendingCancellation!!.requestId.take(8)}?") },
+            text = { Text(stringResource(R.string.mobile_warehouse_ui_cancel_request_take, requestPendingCancellation!!.requestId.take(8))) },
             confirmButton = {
                 Button(onClick = { cancelSupplyRequest(requestPendingCancellation!!) }) {
                     Text("Cancel Request")
@@ -880,7 +882,7 @@ fun DispatchScreen(
         AlertDialog(
             onDismissRequest = { lockPendingRelease = null },
             title = { Text("Release Dispatch Lock") },
-            text = { Text("Release ${lockPendingRelease!!.lockType} for this warehouse scope?") },
+            text = { Text(stringResource(R.string.mobile_warehouse_ui_release_locktype_for_this_warehouse_scope, lockPendingRelease!!.lockType)) },
             confirmButton = {
                 Button(onClick = { releaseDispatchLock(lockPendingRelease!!) }) {
                     Text("Release")
@@ -896,7 +898,7 @@ fun DispatchScreen(
             title = { Text("Run smart dispatch?") },
             text = {
                 val count = if (selectedOrderIds.isNotEmpty()) selectedOrderIds.size else preview?.undispatchedOrders?.size ?: 0
-                Text("Assign $count order(s) using the optimizer across available trucks.")
+                Text(stringResource(R.string.mobile_warehouse_ui_assign_count_order_s_using_the_optimizer_across_available_trucks, count))
             },
             confirmButton = {
                 Button(onClick = { runSmartDispatch() }) { Text("Smart Dispatch") }
@@ -920,20 +922,19 @@ fun DispatchScreen(
                     )
                     capacityWarnings.forEach { warning ->
                         Column(modifier = Modifier.padding(top = PegasusSpacing.sm)) {
-                            Text(
-                                "${"%.1f".format(warning.loadedVu)} VU loaded / ${"%.1f".format(warning.effectiveMaxVu)} VU max",
+                            Text(stringResource(R.string.mobile_warehouse_ui_format_vu_loaded_format_2_vu_max, "%.1f".format(warning.loadedVu), "%.1f".format(warning.effectiveMaxVu)),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                             if (warning.suggestedUnselectOrderIds.isNotEmpty()) {
                                 Text(
-                                    "Suggested unselect: ${warning.suggestedUnselectOrderIds.joinToString { it.take(8) }}",
+                                    stringResource(R.string.mobile_warehouse_ui_suggested_unselect_take, warning.suggestedUnselectOrderIds.joinToString { it.take(8) }),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             if (warning.suggestedDeferOrderIds.isNotEmpty()) {
                                 Text(
-                                    "Suggested defer: ${warning.suggestedDeferOrderIds.joinToString { it.take(8) }}",
+                                    stringResource(R.string.mobile_warehouse_ui_suggested_defer_take, warning.suggestedDeferOrderIds.joinToString { it.take(8) }),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

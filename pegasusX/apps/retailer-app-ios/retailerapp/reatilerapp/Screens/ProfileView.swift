@@ -50,7 +50,7 @@ struct ProfileView: View {
 
                 if !pricingRulesSummary.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Pricing rules")
+                        Text("mobile_retailer.ui.pricing_rules")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                         Text(pricingRulesSummary)
                             .font(.system(.caption, design: .rounded))
@@ -96,7 +96,7 @@ struct ProfileView: View {
                     SettingsItem(icon: "doc.text", title: "Terms of Service", subtitle: nil),
                 ]).slideIn(delay: 0.2)
 
-                Text("Pegasus Retailer v1.0.0")
+                Text("mobile_retailer.ui.pegasus_retailer_v1_0_0")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.top, AppTheme.spacingMD)
@@ -223,9 +223,9 @@ struct FamilyMembersView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                    Label("Migrate Family → Team", systemImage: "arrow.left.arrow.right")
+                    Label("mobile_retailer.ui.migrate_family_team", systemImage: "arrow.left.arrow.right")
                         .font(.headline)
-                    Text("Contacts with a phone become Team RECEIVER accounts. Temp passwords show once.")
+                    Text("mobile_retailer.ui.contacts_with_a_phone_become_team_receiver_accounts_temp_passwor")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     Button {
@@ -245,20 +245,20 @@ struct FamilyMembersView: View {
 
             if let migrateResult {
                 Section("Migration result") {
-                    Text("\(migrateResult.migrated.count) migrated · \(migrateResult.skipped.count) skipped · \(migrateResult.familyRemaining) remaining")
+                    Text(L10n.format("mobile_retailer.ui.count_migrated_count_2_skipped_familyremaining_remaining", "\(migrateResult.migrated.count)", "\(migrateResult.skipped.count)", "\(migrateResult.familyRemaining)"))
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     ForEach(migrateResult.migrated) { m in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(m.name).font(.body.weight(.semibold))
-                            Text("\(m.phone) · \(m.retailerRole)")
+                            Text(L10n.format("mobile_retailer.ui.phone_retailerrole", "\(m.phone)", "\(m.retailerRole)"))
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.textTertiary)
                             if let pw = m.tempPassword {
                                 HStack {
                                     Text(pw).font(.system(.caption, design: .monospaced))
                                     Spacer()
-                                    Button("Copy") {
+                                    Button("mobile_retailer.ui.copy") {
                                         UIPasteboard.general.string = pw
                                     }
                                     .font(.caption)
@@ -267,7 +267,7 @@ struct FamilyMembersView: View {
                         }
                     }
                     ForEach(migrateResult.skipped) { s in
-                        Text("\(s.phone ?? s.memberId): \(s.reason)")
+                        Text(L10n.format("mobile_retailer.ui.memberid_reason", "\(s.phone ?? s.memberId)", "\(s.reason)"))
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -318,12 +318,12 @@ struct FamilyMembersView: View {
                                 if let phone = member.phone, !phone.isEmpty {
                                     Text(phone).font(.caption).foregroundStyle(AppTheme.textTertiary)
                                 } else {
-                                    Text("No phone — skipped on migrate")
+                                    Text("retailer_desktop.settings.family.text.no_phone_skipped_on_migrate")
                                         .font(.caption)
                                         .foregroundStyle(.orange)
                                 }
                                 if let created = member.createdAt {
-                                    Text("Added \(created.prefix(10))")
+                                    Text(L10n.format("mobile_retailer.ui.added_prefix", "\(created.prefix(10))"))
                                         .font(.caption2)
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
@@ -353,7 +353,7 @@ struct FamilyMembersView: View {
                 }
             }
         }
-        .navigationTitle("Family Members")
+        .navigationTitle("retailer_desktop.settings.family.text.family_members")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -365,12 +365,12 @@ struct FamilyMembersView: View {
         .task { await loadMembers() }
         .refreshable { await loadMembers() }
         .confirmationDialog("Migrate to Team?", isPresented: $showMigrateConfirm, titleVisibility: .visible) {
-            Button("Migrate") {
+            Button("mobile_retailer.ui.migrate") {
                 Task { await migrateToTeam() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("common.action.cancel", role: .cancel) {}
         } message: {
-            Text("Temporary passwords appear once. Family add closes after migrate.")
+            Text("mobile_retailer.ui.temporary_passwords_appear_once_family_add_closes_after_migrate")
         }
         .sheet(isPresented: $showAddSheet) {
             NavigationStack {
@@ -449,17 +449,17 @@ struct AddFamilyMemberView: View {
     var body: some View {
         Form {
             Section("Details") {
-                TextField("Name", text: $name)
-                TextField("Phone (required for Team migrate)", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("retailer_desktop.settings.family.text.phone_required_for_team_migrate", text: $phone)
                     .keyboardType(.phonePad)
             }
         }
-        .navigationTitle("Add Member")
+        .navigationTitle("mobile_retailer.ui.add_member")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button("common.action.save") {
                     onAdd(FamilyMemberRequest(
                         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                         phone: phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

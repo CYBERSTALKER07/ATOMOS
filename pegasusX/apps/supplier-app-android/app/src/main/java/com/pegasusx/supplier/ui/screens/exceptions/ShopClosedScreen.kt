@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -92,7 +94,7 @@ fun ShopClosedScreen(
                 title = { Text("Shop closed") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -125,15 +127,15 @@ fun ShopClosedScreen(
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                             Text(row.orderId, style = MaterialTheme.typography.titleMedium)
-                            Text("Driver ${row.driverId} · Retailer ${row.retailerId}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_supplier_ui_driver_driverid_retailer_retailerid, row.driverId, row.retailerId), style = MaterialTheme.typography.bodySmall)
                             row.shopClosedReason?.takeIf { it.isNotBlank() }?.let {
-                                Text("Reason $it", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_reason_it, it), style = MaterialTheme.typography.labelSmall)
                             }
                             row.graceEndsAt?.takeIf { it.isNotBlank() }?.let {
-                                Text("Grace ends $it", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_grace_ends_it, it), style = MaterialTheme.typography.labelSmall)
                             }
                             row.shopClosedResolution?.takeIf { it.isNotBlank() }?.let {
-                                Text("Resolution $it", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_resolution_it, it), style = MaterialTheme.typography.labelSmall)
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                 TextButton(onClick = { resolve(row.attemptId, "WAIT") }, enabled = !busy) { Text("Wait") }

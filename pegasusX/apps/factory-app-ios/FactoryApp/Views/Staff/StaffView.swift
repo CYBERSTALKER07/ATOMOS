@@ -33,14 +33,14 @@ struct StaffView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Staff")
+            .navigationTitle("portal.nav.staff")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Staff", systemImage: "plus") { showCreate = true }
+                    Button("mobile_factory.ui.add_staff", systemImage: "plus") { showCreate = true }
                         .labelStyle(.iconOnly)
                 }
             }
@@ -95,21 +95,21 @@ private struct CreateStaffSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Role", text: $role)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("warehouse_portal.staff.text.role", text: $role)
                 if let error {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
                 }
             }
-            .navigationTitle("Add Staff")
+            .navigationTitle("mobile_factory.ui.add_staff")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button("mobile_factory.ui.create") { create() }
                         .disabled(submitting || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -305,10 +305,10 @@ struct SupplyRequestsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Supply Requests")
+            .navigationTitle("portal.nav.supply_requests")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(background: !requests.isEmpty) }
                     }
                     .labelStyle(.iconOnly)
@@ -351,7 +351,7 @@ struct SupplyRequestsView: View {
                 NavigationStack {
                     Form {
                         Section("Fulfill decision") {
-                            Text("\(item.options.warehouseName) · \(item.options.transferMode)")
+                            Text(L10n.format("mobile_factory.ui.warehousename_transfermode", "\(item.options.warehouseName)", "\(item.options.transferMode)"))
                             Text(item.options.outcomeInternal)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -359,18 +359,18 @@ struct SupplyRequestsView: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                             if let eta = item.options.linkedDriverETA {
-                                Text("Driver ETA: \(eta)")
+                                Text(L10n.format("mobile_factory.ui.driver_eta_eta_2", "\(eta)"))
                                     .font(.footnote)
                             }
                         }
                     }
-                    .navigationTitle("Confirm fulfill")
+                    .navigationTitle("factory_portal.supply_requests.text.confirm_fulfill")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { fulfillModal = nil }
+                            Button("common.action.cancel") { fulfillModal = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Confirm") {
+                            Button("mobile_factory.ui.confirm") {
                                 let request = item.request
                                 fulfillModal = nil
                                 Task { await runTransition(request: request, action: "FULFILL") }
@@ -453,9 +453,9 @@ private struct SupplySummaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Warehouse demand queue")
+            Text("mobile_factory.ui.warehouse_demand_queue")
                 .font(.title2.bold())
-            Text("\(visible) requests in view, \(total) total across the factory queue.")
+            Text(L10n.format("mobile_factory.ui.visible_requests_in_view_total_total_across_the_factory_queue_3", "\(visible)", "\(total)"))
                 .font(.body)
                 .foregroundStyle(.secondary)
             FactoryRuntimeBanner(tone: runtimeTone, message: runtimeStatus)
@@ -564,7 +564,7 @@ private struct SupplyRequestCard: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(requestLabel(request))
                         .font(.subheadline.bold())
-                    Text("Request \(request.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.request_prefix", "\(request.id.prefix(8))"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -592,7 +592,7 @@ private struct SupplyRequestCard: View {
 
             let actions = requestActions(for: request.state)
             if actions.isEmpty {
-                Text("No manual action is available for the current state.")
+                Text("mobile_factory.ui.no_manual_action_is_available_for_the_current_state")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {

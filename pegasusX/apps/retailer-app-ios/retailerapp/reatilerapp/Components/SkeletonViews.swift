@@ -21,18 +21,18 @@ struct SkeletonProductCard: View {
 
             // Text area
             VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                Text("Product name placeholder")
+                Text("mobile_retailer.ui.product_name_placeholder")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.separator)
 
-                Text("Short product description goes here")
+                Text("mobile_retailer.ui.short_product_description_goes_here")
                     .font(.caption)
                     .foregroundStyle(AppTheme.separator)
                     .lineLimit(2)
                     .frame(minHeight: 30, alignment: .top)
 
                 HStack(spacing: 6) {
-                    Text("500ml")
+                    Text("mobile_retailer.ui.500ml")
                         .font(.caption2)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -84,11 +84,11 @@ struct SkeletonOrderCard: View {
                     .frame(width: 42, height: 42)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Order #ABC")
+                    Text("mobile_retailer.ui.order_abc")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.separator)
 
-                    Text("3 items · $0.00")
+                    Text("mobile_retailer.ui.3_items_0_00")
                         .font(.caption)
                         .foregroundStyle(AppTheme.separator)
                 }

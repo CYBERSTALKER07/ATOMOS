@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -110,7 +112,7 @@ fun OrderDetailScreen(
                         enabled = reason.isNotBlank(),
                     ) { Text("Notify retailer") }
                 },
-                dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text("Back") } },
+                dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text(stringResource(R.string.common_action_back)) } },
             )
         } else {
             DatePickerDialog(
@@ -167,10 +169,10 @@ fun OrderDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Order ${orderId.take(8)}…") },
+                title = { Text(stringResource(R.string.mobile_supplier_ui_order_take, orderId.take(8))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -216,7 +218,7 @@ fun OrderDetailScreen(
                         ListItem(
                             headlineContent = { Text(item.productName ?: item.productId ?: "—") },
                             supportingContent = {
-                                Text("Qty ${item.quantity ?: 0} · Unit ${item.unitPrice ?: 0}")
+                                Text(stringResource(R.string.mobile_supplier_ui_qty_quantity_0_unit_unitprice_0, item.quantity ?: 0, item.unitPrice ?: 0))
                             },
                         )
                     }

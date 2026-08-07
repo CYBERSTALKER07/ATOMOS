@@ -19,10 +19,14 @@ import (
 )
 
 type shopClosedReportRequest struct {
+	OrderID  string          `json:"order_id,omitempty"`
 	Reason   string          `json:"reason"`
 	Note     string          `json:"note,omitempty"`
-	PhotoURL string          `json:"photoUrl,omitempty"`
+	PhotoURL string          `json:"photo_url,omitempty"`
+	PhotoURLCamel string     `json:"photoUrl,omitempty"`
 	Location DriverTelemetry `json:"location"`
+	Latitude  *float64       `json:"latitude,omitempty"`
+	Longitude *float64       `json:"longitude,omitempty"`
 }
 
 type driverEndpointResponse struct {
@@ -97,12 +101,39 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	}
 	orderID := chi.URLParam(r, "orderId")
 	if orderID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required in path"})
+		orderID = strings.TrimSpace(req.OrderID)
+	}
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	if err := req.Location.Validate(100.0); err != nil {
-		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+	photoURL := strings.TrimSpace(req.PhotoURL)
+	if photoURL == "" {
+		photoURL = strings.TrimSpace(req.PhotoURLCamel)
+	}
+	if photoURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_url_required"})
 		return
+	}
+	req.PhotoURL = photoURL
+	// Body lat/lng fallback when location object omitted (mobile clients).
+	if req.Location.Lat == 0 && req.Location.Lng == 0 {
+		if req.Latitude != nil {
+			req.Location.Lat = *req.Latitude
+		}
+		if req.Longitude != nil {
+			req.Location.Lng = *req.Longitude
+		}
+	}
+	if req.Location.RecordedAt.IsZero() {
+		req.Location.RecordedAt = s.now()
+	}
+	// Only enforce telemetry accuracy when a live GPS reading was provided.
+	if req.Location.Lat != 0 || req.Location.Lng != 0 {
+		if err := req.Location.Validate(100.0); err != nil {
+			writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+			return
+		}
 	}
 
 	reason := NormalizeShopClosedReason(req.Reason)

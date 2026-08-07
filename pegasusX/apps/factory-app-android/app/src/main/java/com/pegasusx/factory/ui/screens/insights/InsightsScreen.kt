@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.insights
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -87,7 +89,7 @@ fun InsightsScreen(
     ) { innerPadding ->
         when {
             loading && insights.isEmpty() -> PegasusLoadingState(
-                title = "Loading insights",
+                title = stringResource(R.string.mobile_factory_ui_loading_insights),
                 body = "Fetching replenishment pressure and restock signals for this factory.",
                 modifier = Modifier
                     .fillMaxSize()

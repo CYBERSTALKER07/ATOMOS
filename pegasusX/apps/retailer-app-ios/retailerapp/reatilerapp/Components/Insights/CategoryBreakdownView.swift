@@ -8,7 +8,7 @@ struct CategoryBreakdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Spending by Category")
+            Text("mobile_retailer.ui.spending_by_category")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.textPrimary)
 

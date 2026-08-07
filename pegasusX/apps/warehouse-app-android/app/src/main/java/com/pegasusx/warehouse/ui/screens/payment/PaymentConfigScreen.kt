@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.payment
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -51,7 +53,7 @@ fun PaymentConfigScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Payment config") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     TextButton(onClick = { load() }) { Text("Refresh") }
                 },
@@ -90,7 +92,7 @@ fun PaymentConfigScreen(
                 items(gateways, key = { it.gatewayName }) { gw ->
                     ListItem(
                         headlineContent = { Text(gw.gatewayName) },
-                        supportingContent = { Text("${gw.provider} · ${gw.mode}") },
+                        supportingContent = { Text(stringResource(R.string.mobile_warehouse_ui_provider_mode, gw.provider, gw.mode)) },
                         trailingContent = {
                             Icon(
                                 if (gw.isActive) Icons.Default.CheckCircle else Icons.Default.Cancel,

@@ -27,6 +27,9 @@ func ReleaseReservationsForOrderInTxn(ctx context.Context, txn *spanner.ReadWrit
 	if stocklots.LotsEnabled() && orderID != "" {
 		return stocklots.ReleaseLotReservationsInTxn(ctx, txn, supplierID, warehouseID, orderID)
 	}
+	if stocklots.LotsEnabled() && orderID == "" {
+		return fmt.Errorf("lot inventory release requires order_id when WMS_LOTS_ENABLED")
+	}
 	if len(lineItems) == 0 {
 		return nil
 	}

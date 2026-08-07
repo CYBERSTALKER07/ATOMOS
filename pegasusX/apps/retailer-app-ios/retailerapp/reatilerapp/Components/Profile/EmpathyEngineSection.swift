@@ -21,10 +21,10 @@ struct EmpathyEngineSection: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Auto-Order Everything")
+                        Text("mobile_retailer.ui.auto_order_everything")
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Auto-order all previously ordered products")
+                        Text("mobile_retailer.ui.auto_order_all_previously_ordered_products")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -53,7 +53,7 @@ struct EmpathyEngineSection: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 12))
                             .foregroundStyle(AppTheme.success)
-                        Text("Global auto-order is active. This overrides individual supplier and product settings.")
+                        Text("mobile_retailer.ui.global_auto_order_is_active_this_overrides_individual_supplier_a")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -65,17 +65,17 @@ struct EmpathyEngineSection: View {
         }
         .animation(AnimationConstants.express, value: globalAutoOrder)
         .alert("Use Previous Analytics?", isPresented: $showHistoryAlert, actions: {
-            Button("Use History") {
+            Button("mobile_retailer.ui.use_history") {
                 Task { await toggleAction(true, true) }
             }
-            Button("Start Fresh") {
+            Button("mobile_retailer.ui.start_fresh") {
                 Task { await toggleAction(true, false) }
             }
-            Button("Cancel", role: .cancel) {
+            Button("common.action.cancel", role: .cancel) {
                 globalAutoOrder = false
             }
         }, message: {
-            Text("Use existing order history for predictions, or start fresh? Starting fresh requires at least 2 orders per product.")
+            Text("mobile_retailer.ui.use_existing_order_history_for_predictions_or_start_fresh_starti")
         })
     }
 }

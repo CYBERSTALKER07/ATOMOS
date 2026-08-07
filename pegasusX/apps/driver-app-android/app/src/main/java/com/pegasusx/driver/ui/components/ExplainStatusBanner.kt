@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +40,7 @@ fun ExplainStatusBanner(
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
             explain?.nextSteps?.takeIf { it.isNotEmpty() }?.forEach { step ->
-                Text("• $step", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.mobile_driver_ui_step, step), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

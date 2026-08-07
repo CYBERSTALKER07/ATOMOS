@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.animateColorAsState
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.ExplainStatusBanner
@@ -76,7 +78,7 @@ fun TruckListPane(
             ) {
                 if (isExpanded) {
                     PayloadSectionTitle(
-                        title = "Vehicles",
+                        title = stringResource(R.string.supplier_portal_org_fleet_components_vehicle_form_text_vehicles),
                         subtitle = "Assigned loading vehicles",
                         modifier = Modifier.weight(1f),
                     )
@@ -119,7 +121,7 @@ fun TruckListPane(
                 ) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "$batchReadyCount trucks ready to finalize",
+                            stringResource(R.string.mobile_payload_ui_batchreadycount_trucks_ready_to_finalize, batchReadyCount),
                             style = MaterialTheme.typography.titleSmall,
                         )
                         Button(
@@ -135,8 +137,7 @@ fun TruckListPane(
                                     .fillMaxWidth()
                                     .padding(top = 4.dp),
                             ) {
-                                Text(
-                                    "${row.manifestId}: ${row.status}",
+                                Text(stringResource(R.string.mobile_payload_ui_manifestid_status, row.manifestId, row.status),
                                     style = MaterialTheme.typography.labelMedium,
                                 )
                                 row.explain?.let { explain ->
@@ -161,7 +162,7 @@ fun TruckListPane(
             }
             if (loading && trucks.isEmpty() && error == null) {
                 PegasusLoadingState(
-                    title = "Loading vehicles",
+                    title = stringResource(R.string.mobile_payload_ui_loading_vehicles),
                     body = "Refreshing supplier fleet availability for this shift.",
                 )
             } else if (!loading && trucks.isEmpty() && error == null) {

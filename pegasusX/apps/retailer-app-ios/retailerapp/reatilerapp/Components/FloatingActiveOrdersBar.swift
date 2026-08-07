@@ -27,7 +27,7 @@ struct FloatingActiveOrdersBar: View {
 
                     // Info
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("\(activeOrders.count) Active Order\(activeOrders.count == 1 ? "" : "s")")
+                        Text(L10n.format("mobile_retailer.ui.count_active_ordercount_1_s", "\(activeOrders.count)", "\(activeOrders.count == 1 ? "" : "s")"))
                             .font(.system(.caption, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.textPrimary)
 

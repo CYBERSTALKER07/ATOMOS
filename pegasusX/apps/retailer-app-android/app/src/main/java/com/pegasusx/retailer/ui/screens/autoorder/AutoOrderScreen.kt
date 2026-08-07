@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.autoorder
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -117,7 +119,7 @@ fun AutoOrderScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissEnableDialog,
             title = { Text("Use Previous Analytics?") },
-            text = { Text("Use existing order history for $entityLabel, or start fresh? Starting fresh requires at least 2 orders.") },
+            text = { Text(stringResource(R.string.mobile_retailer_ui_use_existing_order_history_for_entitylabel_or_start_fresh_starting_fresh, entityLabel)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmEnable(useHistory = true) }) {
                     Text("Use History")
@@ -249,7 +251,7 @@ fun AutoOrderScreen(
                     }
                     uiState.settings?.shadowStats?.let { st ->
                         Text(
-                            "30d WAPE ${(st.wape * 100).toInt()}% · accept ${(st.unmodifiedAcceptRate * 100).toInt()}% (${st.proposalCount} proposals)",
+                            stringResource(R.string.mobile_retailer_ui_30d_wape_toint_accept_toint_2_proposalcount_proposals, (st.wape * 100).toInt(), (st.unmodifiedAcceptRate * 100).toInt(), st.proposalCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -279,7 +281,7 @@ fun AutoOrderScreen(
                     } else {
                         uiState.shadowProposals.take(8).forEach { p ->
                             Text(
-                                "${p.sku} · qty ${p.proposedQty} · IP ${p.ip.toInt()} · ROP ${p.reorderPoint.toInt()}",
+                                stringResource(R.string.mobile_retailer_ui_sku_qty_proposedqty_ip_toint_rop_toint_2, p.sku, p.proposedQty, p.ip.toInt(), p.reorderPoint.toInt()),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -384,8 +386,7 @@ fun AutoOrderScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 val pBit = if (run.placedLines > 0) " p${run.placedLines}" else ""
-                                Text(
-                                    "${run.scheduleBucket ?: run.startedAt.take(10)} · ${run.mode} · d${run.draftLines}$pBit",
+                                Text(stringResource(R.string.mobile_retailer_ui_take_mode_ddraftlinespbit, run.scheduleBucket ?: run.startedAt.take(10), run.mode, run.draftLines, pBit),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 Text(
@@ -442,14 +443,13 @@ fun AutoOrderScreen(
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
-                                    "${row.sku} · qty ${row.suggestedQty}" +
+                                    stringResource(R.string.mobile_retailer_ui_sku_qty_suggestedqty, row.sku, row.suggestedQty) +
                                         if (row.currentStock > 0) " · stock ${row.currentStock}" else "",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 DemandSourceChips(sources = row.sources)
                                 if (row.sellThroughVelocity > 0) {
-                                    Text(
-                                        "POS vel ${"%.1f".format(row.sellThroughVelocity)}/d",
+                                    Text(stringResource(R.string.mobile_retailer_ui_pos_vel_format_d, "%.1f".format(row.sellThroughVelocity)),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

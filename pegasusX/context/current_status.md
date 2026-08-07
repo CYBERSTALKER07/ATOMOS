@@ -1,10 +1,18 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-06 (FX Wave 1 + partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
+*Last Updated: 2026-08-07 (Theatre #13 FX Wave 2+ order currency picker + Theatre #8 seasonality + Gate-0 CI + FX Wave 1+2 + partner OAuth + CoA + EDI DESADV SSCC + theatre leftovers + billing + P0-8 + §8.5)*
 
 ## 1. Code completeness (this closure)
 
-**Theatre #13 Multi-currency FX (Wave 1):** `FxRates` + `fxrates.ConvertMinor` (fail closed); payment `currency_mismatch` on checkout/chargeback/webhook; bootstrap UZS identity (+ optional `FX_SEED_USD_UZS_SCALED`); admin `GET/PUT /v1/admin/fx-rates`. Apply `20260806_fx_rates.ddl`. Docs: [`docs/FX_RATES.md`](../docs/FX_RATES.md). Markers: `PX_E2E_FX_RATE_SEEDED_OK` / `_SKIPPED`, `PX_E2E_CURRENCY_MISMATCH_DENIED` / `_SKIPPED`. Residual: multi-currency ledger, Airwallex FX, client pickers. Audit count corrected **19** Currency columns.
+**Theatre #13 FX Wave 2+:** Flag-gated `ORDER_CURRENCY_PICKER_ENABLED` + `ORDER_CURRENCY_ALLOWLIST`; `GET /v1/order/currencies`; Create/UnifiedCheckout stamp allowlisted currency (422 `currency_not_allowed`); desktop/Android/iOS picker when enabled. Marker `PX_E2E_ORDER_CURRENCY_PICKER_OK` / `_SKIPPED`. Residual: AR multi-currency ledger, Airwallex live FX. Docs: [`docs/FX_RATES.md`](../docs/FX_RATES.md).
+
+**Theatre #13 FX Wave 2:** Billing GMV `ConvertMinor` into operating currency (skip on missing rate); settlement authority `operating_currency_total_minor` + `operating_conversion_partial`; portal `/settings/fx-rates` + `GET /v1/supplier/fx-rates`; marker `PX_E2E_FX_SETTLEMENT_CONVERT_OK` / `_SKIPPED`.
+
+**Theatre #8 Seasonality:** `SeasonalTemplateOverrides.Multiplier` persisted (clamp [0.5, 2.5]; inherit builtin; else 1.2) — kills read-time 1.2 hardcode. Shared `seasonalcore` builtins for planning + replenishment; Spanner override reader on suggested qty. YoY/month estimate drafts via `POST /v1/supplier/planning/seasonal-estimate` + optional `planning-forecast` hook (`FORECAST_SEASONAL_ESTIMATE_ENABLED`, default off; inactive drafts only). Apply `20260806_seasonal_override_multiplier.ddl`. Portal/Android/iOS multiplier field. Marker: `PX_E2E_SEASONAL_OVERRIDE_OK` / `_SKIPPED`. Residual: full HW annual library / weather/POS.
+
+**Gate-0 CI:** Root workflows `pegasusx-ci.yml` (backend race/golangci/gitleaks/govulncheck + desktop) and `pegasusx-native-mobile-build.yml` (all 12 Android/iOS apps). Scripts: `scripts/ci_android_apps.sh`, `scripts/ci_ios_apps.sh`. Config: `.golangci.yml`, `.gitleaks.toml`. Docs: [`docs/GATE0_CI.md`](../docs/GATE0_CI.md). Fixed driver iOS `mobile-ios-kit` package path. Residual: ESLint a11y hard gate; SwiftLint/detekt.
+
+**Theatre #13 Multi-currency FX (Wave 1+2+):** `FxRates` + `fxrates.ConvertMinor` (fail closed); payment `currency_mismatch`; bootstrap UZS identity (+ optional `FX_SEED_USD_UZS_SCALED`); admin `GET/PUT /v1/admin/fx-rates` + supplier GET + portal `/settings/fx-rates`; billing GMV ConvertMinor → operating; settlement `operating_currency_total_minor`; flag-gated order currency picker (`ORDER_CURRENCY_PICKER_*`, `GET /v1/order/currencies`, desktop/Android/iOS). Apply `20260806_fx_rates.ddl`. Docs: [`docs/FX_RATES.md`](../docs/FX_RATES.md). Markers: `PX_E2E_FX_RATE_SEEDED_OK` / `_SKIPPED`, `PX_E2E_CURRENCY_MISMATCH_DENIED` / `_SKIPPED`, `PX_E2E_FX_SETTLEMENT_CONVERT_OK` / `_SKIPPED`, `PX_E2E_ORDER_CURRENCY_PICKER_OK` / `_SKIPPED`. Residual: multi-currency AR ledger, Airwallex FX.
 
 **§8.9 OAuth2 client_credentials:** `POST /partner/v1/oauth/token` reuses `PartnerApiKeys` as clients; short-lived HS256 JWT (`token_use=partner_access`); dual-accept with `pxk_` on `/partner/v1/*`; live revoke via key status. Env: `PARTNER_JWT_SECRET` (or derived from `JWT_SECRET`). Marker: `PX_E2E_PARTNER_OAUTH_OK` / `_SKIPPED`.
 
@@ -14,7 +22,7 @@
 
 **§8.9 AS2 transport:** `POST /partner/v1/as2` + outbound push over EDI-lite bytes; sync MDN; `PartnerAs2Configs`. Apply `20260806_partner_as2.ddl`. Flags: `PARTNER_AS2_ENABLED`, `PARTNER_AS2_INSECURE_PLAIN` (SSMR only). **Not Drummond-certified.** Docs: [`docs/PARTNER_AS2.md`](../docs/PARTNER_AS2.md). Markers: `PX_E2E_PARTNER_AS2_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_AS2_ORDRSP_OK` / `_SKIPPED`.
 
-**Theatre leftovers (honesty + promo):** AI confidence gate + touchless `MinConfidenceScore` already Gate-0 **WIRED** (audit/SUBSTANCE_GATE refreshed). Promo sandbox: caller `elasticity` (default 0.5) + `elasticity_used`; closed-loop actuals from `LineItemsJson.promotion_id` (units + line totals), empty promo → zeros. Cold chain / i18n / marketplace fee+invoice remain **partial residuals**.
+**Theatre leftovers (honesty + promo):** AI confidence gate + touchless `MinConfidenceScore` already Gate-0 **WIRED** (audit/SUBSTANCE_GATE refreshed). Promo sandbox: caller `elasticity` (default 0.5) + `elasticity_used`; closed-loop actuals from `LineItemsJson.promotion_id` (units + line totals), empty promo → zeros. Cold-chain breach auto-raise + band hydrate **wired** (Bluetooth/cumulative minutes residual). i18n / marketplace fee+invoice remain **partial residuals**.
 
 **Billing meter (§2.2):** Schema columns already matched Spanner; **FIXED** Kafka decode of live `ORDER_FINALIZED` (`amount_minor` / nested `total.amount`); non-positive amounts skipped; `Idx_BillingMeterEvents_ByOrderId`. Residual: fee schedule + invoices.
 
@@ -30,7 +38,7 @@
 
 **Forecast accuracy (§8.4):** `ForecastAccuracyDaily` + `planning/accuracy` nightly job + training-export SKU-day actuals + supplier `GET .../demand/accuracy` (WAPE/bias/TS); flag `FORECAST_ACCURACY_ENABLED`; migration `20260806_forecast_accuracy_daily.ddl`; marker `PX_E2E_FORECAST_ACCURACY_OK` / `_SKIPPED`.
 
-**Forecast algo (§8.1):** Croston SBA / SES / Holt–Winters → `DemandForecastBaseline` via `cmd/planning-forecast`; seasonal Multiplier; residual bands; predictive-push diverted when on; fake weather/POS stubs removed; docs [`docs/FORECAST_ALGO.md`](../docs/FORECAST_ALGO.md); flag `FORECAST_ALGO_ENABLED`; marker `PX_E2E_FORECAST_ALGO_OK` / `_SKIPPED`.
+**Forecast algo (§8.1):** Croston SBA / SES / Holt–Winters → `DemandForecastBaseline` via `cmd/planning-forecast`; seasonal Multiplier via `seasonalcore` + persisted overrides; residual bands; predictive-push diverted when on; fake weather/POS stubs removed; docs [`docs/FORECAST_ALGO.md`](../docs/FORECAST_ALGO.md); flags `FORECAST_ALGO_ENABLED`, `FORECAST_SEASONAL_ESTIMATE_ENABLED`; markers `PX_E2E_FORECAST_ALGO_OK` / `_SKIPPED`, `PX_E2E_SEASONAL_OVERRIDE_OK` / `_SKIPPED`.
 
 **Safety stock (§8.2):** Service-level `SS = z_α·√(L·σ_d² + d̄²·σ_L²)` + ROP; `ReceivedAt` on receive; `InTransitQty` populated; policy knobs GET/PATCH + supplier portal; MEIO/echelon share helper; retailer `ReorderSuggestions` batch uses same SS helper when flag on (else `demand·0.15`); 90-day fill-rate replay (`cmd/safety-stock-replay`, `POST /v1/admin/planning/safety-stock/replay`); docs [`docs/SAFETY_STOCK.md`](../docs/SAFETY_STOCK.md); flag `SAFETY_STOCK_V2_ENABLED`; migration `20260806_safety_stock_v2.ddl`; markers `PX_E2E_SAFETY_STOCK_OK` / `_SKIPPED`, `PX_E2E_SAFETY_STOCK_REPLAY_OK` / `_SKIPPED`.
 

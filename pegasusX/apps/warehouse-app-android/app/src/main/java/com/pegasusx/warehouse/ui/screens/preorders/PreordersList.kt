@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,10 +29,10 @@ fun PreordersList(
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(row.orderId, style = MaterialTheme.typography.titleSmall)
-                    Text("Status: ${row.status}")
-                    row.requestedDeliveryDate?.let { Text("Delivery: $it") }
-                    row.proposedDeliveryDate?.let { Text("Proposed: $it", color = MaterialTheme.colorScheme.primary) }
-                    row.deliveryProposalReason?.let { Text("Reason: $it", style = MaterialTheme.typography.bodySmall) }
+                    Text(stringResource(R.string.mobile_warehouse_ui_status_status, row.status))
+                    row.requestedDeliveryDate?.let { Text(stringResource(R.string.mobile_warehouse_ui_delivery_it, it)) }
+                    row.proposedDeliveryDate?.let { Text(stringResource(R.string.mobile_warehouse_ui_proposed_it, it), color = MaterialTheme.colorScheme.primary) }
+                    row.deliveryProposalReason?.let { Text(stringResource(R.string.mobile_warehouse_ui_reason_it, it), style = MaterialTheme.typography.bodySmall) }
                     if (row.confirmationStatus == "PENDING_WAREHOUSE" || row.preorderBadge == "REVIEW_DELIVERY") {
                         AssistChip(onClick = {}, label = { Text("Awaiting retailer review") })
                     }

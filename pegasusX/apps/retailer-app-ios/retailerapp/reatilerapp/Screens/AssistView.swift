@@ -14,7 +14,7 @@ struct AssistView: View {
             if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
             Section("New ticket") {
                 if sections.isEmpty {
-                    Text("Create a section first").foregroundStyle(AppTheme.textTertiary)
+                    Text("retailer_desktop.assist.text.create_a_section_first").foregroundStyle(AppTheme.textTertiary)
                 } else {
                     Picker("Section", selection: Binding(
                         get: { sectionId ?? sections.first?.id ?? "" },
@@ -25,23 +25,23 @@ struct AssistView: View {
                         }
                     }
                 }
-                TextField("Help note", text: $note)
+                TextField("mobile_retailer.ui.help_note", text: $note)
                 Button(busy ? "…" : "Open ticket") { Task { await create() } }
                     .disabled(busy || note.isEmpty || sectionId == nil)
             }
             Section("Queue") {
                 if tickets.isEmpty {
-                    Text("No tickets").foregroundStyle(AppTheme.textTertiary)
+                    Text("mobile_retailer.ui.no_tickets").foregroundStyle(AppTheme.textTertiary)
                 } else {
                     ForEach(tickets) { t in
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("\(t.status) · \(t.note)")
+                            Text(L10n.format("mobile_retailer.ui.status_note", "\(t.status)", "\(t.note)"))
                             HStack {
                                 if t.status == "OPEN" {
-                                    Button("Claim") { Task { await act(id: t.id, action: "claim") } }
+                                    Button("mobile_retailer.ui.claim") { Task { await act(id: t.id, action: "claim") } }
                                 }
                                 if t.status == "OPEN" || t.status == "CLAIMED" {
-                                    Button("Complete") { Task { await act(id: t.id, action: "complete") } }
+                                    Button("mobile_retailer.ui.complete") { Task { await act(id: t.id, action: "complete") } }
                                 }
                             }
                         }
@@ -49,7 +49,7 @@ struct AssistView: View {
                 }
             }
         }
-        .navigationTitle("Floor assist")
+        .navigationTitle("retailer_desktop.assist.text.floor_assist")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }
     }

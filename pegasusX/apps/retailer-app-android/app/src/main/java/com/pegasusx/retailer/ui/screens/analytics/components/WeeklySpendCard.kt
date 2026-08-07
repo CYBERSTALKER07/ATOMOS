@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.analytics.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -77,7 +79,7 @@ fun WeeklySpendCard(
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     Icons.Rounded.MoreVert,
-                    contentDescription = "More options",
+                    contentDescription = stringResource(R.string.retailer_desktop_orders_text_more_options),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -128,7 +130,7 @@ fun WeeklySpendCard(
             }
 
             Text(
-                "You stayed on budget $daysOnBudget days, and spent a total of ${formatAmount(totalWeek)}",
+                stringResource(R.string.mobile_retailer_ui_you_stayed_on_budget_daysonbudget_days_and_spent_a_total_of_formatamount, daysOnBudget, formatAmount(totalWeek)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -178,7 +180,7 @@ private fun HealthConnectBarChart(
         val ySteps = listOf(0L, maxValue / 3, maxValue * 2 / 3, maxValue)
         for (step in ySteps) {
             val y = chartBottom - (step.toFloat() / maxValue * chartHeight)
-            val label = "${step / 1_000}k"
+            val label = stringResource(R.string.mobile_retailer_ui_step_1_000k, step / 1_000)
             drawText(
                 textMeasurer = textMeasurer,
                 text = label,

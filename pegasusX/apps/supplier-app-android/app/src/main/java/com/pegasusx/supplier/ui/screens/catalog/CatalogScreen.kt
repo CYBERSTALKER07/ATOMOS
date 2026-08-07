@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -336,7 +338,7 @@ fun CatalogScreen(
                     loadCategories()
                 },
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add product")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_add_product))
             }
         },
     ) { padding ->

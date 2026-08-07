@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.returns
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -83,7 +85,7 @@ fun ReturnsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Returns") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -123,13 +125,13 @@ fun ReturnsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                             Text(row.productName, style = MaterialTheme.typography.titleMedium)
-                            Text("Qty ${row.quantity} · ${row.reason}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Physical: ${row.physicalStatus}", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.mobile_supplier_ui_qty_quantity_reason, row.quantity, row.reason), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.mobile_supplier_ui_physical_physicalstatus, row.physicalStatus), style = MaterialTheme.typography.labelMedium)
                             if (row.driverName.isNotBlank()) {
-                                Text("Driver: ${row.driverName}", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_driver_drivername, row.driverName), style = MaterialTheme.typography.bodySmall)
                             }
                             if (row.receivedQty > 0) {
-                                Text("Scanned: ${row.receivedQty}", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_scanned_receivedqty, row.receivedQty), style = MaterialTheme.typography.labelSmall)
                             }
                             if (resolvingId == row.returnId) {
                                 var expanded by remember { mutableStateOf(false) }

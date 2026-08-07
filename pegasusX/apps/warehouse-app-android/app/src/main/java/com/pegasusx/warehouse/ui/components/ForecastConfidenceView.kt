@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,8 +38,7 @@ fun ForecastConfidenceView(
             } else {
                 val low = confidence.lowUnits ?: 0L
                 val high = confidence.highUnits ?: low
-                Text(
-                    "${formatUnits(low)} – ${formatUnits(high)}",
+                Text(stringResource(R.string.mobile_warehouse_ui_formatunits_formatunits_2, formatUnits(low), formatUnits(high)),
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                 )
@@ -84,14 +85,14 @@ fun ForecastConfidenceView(
                 val low = confidence.lowUnits ?: 0L
                 val high = confidence.highUnits ?: low
                 Text(
-                    "${formatUnits(low)} – ${formatUnits(high)} units",
+                    stringResource(R.string.mobile_warehouse_ui_formatunits_formatunits_2_units, formatUnits(low), formatUnits(high)),
                     style = MaterialTheme.typography.titleSmall,
                     fontFamily = FontFamily.Monospace,
                 )
             }
             confidence.confidencePct?.takeIf { !confidence.blocked }?.let { pct ->
                 Text(
-                    "$pct% confidence",
+                    stringResource(R.string.mobile_warehouse_ui_pct_confidence_2, pct),
                     style = MaterialTheme.typography.bodySmall,
                     color = confidenceColor(pct),
                 )

@@ -13,9 +13,9 @@ struct TreasuryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("View", selection: $selectedSegment) {
-                    Text("Overview").tag(0)
-                    Text("Invoices").tag(1)
-                    Text("Payment").tag(2)
+                    Text("portal.nav.overview").tag(0)
+                    Text("warehouse_portal.treasury.text.invoices").tag(1)
+                    Text("mobile_warehouse.ui.payment").tag(2)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -63,10 +63,10 @@ struct TreasuryView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Treasury")
+            .navigationTitle("portal.nav.treasury")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,7 +30,7 @@ fun InventoryList(
         items(items, key = { it.sku }) { item ->
             ListItem(
                 headlineContent = { Text(item.productName) },
-                supportingContent = { Text("SKU ${item.sku} · qty ${item.quantity}") },
+                supportingContent = { Text(stringResource(R.string.mobile_supplier_ui_sku_sku_qty_quantity, item.sku, item.quantity)) },
                 modifier = Modifier.clickable { onShowAdjust(item.sku) },
             )
         }

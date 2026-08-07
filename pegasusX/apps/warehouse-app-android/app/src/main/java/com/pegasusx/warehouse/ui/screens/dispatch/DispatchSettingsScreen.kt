@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.dispatch
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -69,7 +71,7 @@ fun DispatchSettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Dispatch settings") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     TextButton(onClick = { load() }) { Text("Refresh") }
                 },

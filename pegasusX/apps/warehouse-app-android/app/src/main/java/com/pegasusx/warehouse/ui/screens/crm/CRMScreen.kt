@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.crm
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -59,7 +61,7 @@ fun CRMScreen(
     ) { innerPadding ->
         when {
             loading && retailers.isEmpty() -> PegasusLoadingState(
-                title = "Loading retailers…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_retailers),
                 body = "Fetching your retail partners",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
@@ -90,7 +92,7 @@ fun CRMScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(r.businessName, style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    "${r.totalOrders} orders · ${fmt.format(r.totalRevenue)} UZS",
+                                    stringResource(R.string.mobile_warehouse_ui_totalorders_orders_format_uzs, r.totalOrders, fmt.format(r.totalRevenue)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

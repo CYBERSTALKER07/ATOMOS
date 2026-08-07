@@ -18,7 +18,7 @@ struct DispatchPreviewMapView: View {
     var body: some View {
         Group {
             if routesWithGeometry.isEmpty {
-                Text("Route preview unavailable until optimizer proposes stops with coordinates.")
+                Text("supplier_portal.dispatch_preview_map.text.route_preview_unavailable_until_optimizer_proposes_stops_with_co")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

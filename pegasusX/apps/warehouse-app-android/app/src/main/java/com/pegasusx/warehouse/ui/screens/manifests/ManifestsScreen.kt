@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.manifests
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -76,7 +78,7 @@ fun ManifestsScreen(
                             Text(m.manifestId.take(8), style = MaterialTheme.typography.titleSmall)
                             Spacer(Modifier.height(PegasusSpacing.xs))
                             Text(
-                                "Driver: ${m.driverName} · Vehicle: ${m.vehicleLabel} · ${m.stopCount} stops",
+                                stringResource(R.string.mobile_warehouse_ui_driver_drivername_vehicle_vehiclelabel_stopcount_stops, m.driverName, m.vehicleLabel, m.stopCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

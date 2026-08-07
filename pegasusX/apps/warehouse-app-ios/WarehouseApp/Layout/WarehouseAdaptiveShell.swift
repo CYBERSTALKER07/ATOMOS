@@ -57,21 +57,21 @@ struct WarehouseAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: WarehouseSection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: WarehouseSection.dashboard.icon) }
                 .tag(WarehouseCompactTab.dashboard)
 
             sectionView(.orders)
-                .tabItem { Label("Orders", systemImage: WarehouseSection.orders.icon) }
+                .tabItem { Label("portal.nav.orders", systemImage: WarehouseSection.orders.icon) }
                 .tag(WarehouseCompactTab.orders)
 
             sectionView(.dispatch)
-                .tabItem { Label("Dispatch", systemImage: WarehouseSection.dispatch.icon) }
+                .tabItem { Label("portal.nav.dispatch", systemImage: WarehouseSection.dispatch.icon) }
                 .tag(WarehouseCompactTab.dispatch)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_warehouse.ui.more", systemImage: "ellipsis.circle") }
             .tag(WarehouseCompactTab.more)
         }
     }

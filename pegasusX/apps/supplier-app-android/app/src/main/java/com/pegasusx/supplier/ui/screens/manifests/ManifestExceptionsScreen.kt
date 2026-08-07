@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,7 +56,7 @@ fun ManifestExceptionsScreen(
                 title = { Text("Gate exceptions") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -95,8 +97,8 @@ fun ManifestExceptionsScreen(
                     ) {
                         Column(Modifier.padding(PegasusSpacing.lg)) {
                             Text(row.reason, style = MaterialTheme.typography.titleMedium)
-                            Text("Manifest ${row.manifestId.take(8)}…", style = MaterialTheme.typography.bodySmall)
-                            Text("Order ${row.orderId.take(8)}… · attempts ${row.attemptCount}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_supplier_ui_manifest_take, row.manifestId.take(8)), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_supplier_ui_order_take_attempts_attemptcount, row.orderId.take(8), row.attemptCount), style = MaterialTheme.typography.bodySmall)
                             if (row.escalated) Text("Escalated", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                         }
                     }

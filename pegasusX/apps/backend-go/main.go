@@ -346,6 +346,7 @@ func main() {
 	}
 	if app.FxRatesHandlers != nil {
 		fxrates.RegisterAdminRoutes(r, app.FxRatesHandlers)
+		fxrates.RegisterSupplierRoutes(r, app.FxRatesHandlers)
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -104,7 +106,7 @@ fun ShiftsScreen(
                 title = { Text("Shifts & time") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -208,9 +210,9 @@ fun ShiftsScreen(
             items(shifts) { row ->
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${row.status} · float ${row.openingFloatMinor / 100.0}")
+                        Text(stringResource(R.string.mobile_retailer_ui_status_float_n_0, row.status, row.openingFloatMinor / 100.0))
                         row.varianceMinor?.let {
-                            Text("Variance: ${it / 100.0}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_retailer_ui_variance_n_0, it / 100.0), style = MaterialTheme.typography.bodySmall)
                         }
                         if (row.status == "OPEN") {
                             OutlinedButton(enabled = !busy, onClick = {

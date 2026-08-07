@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +23,7 @@ fun ManifestLoadingView() {
         contentAlignment = Alignment.Center
     ) {
         DriverLoadingState(
-            title = "Loading routes",
+            title = stringResource(R.string.mobile_driver_ui_loading_routes),
             body = "Checking manifest state, sequence, and delivery assignments.",
             shimmerLines = true,
         )

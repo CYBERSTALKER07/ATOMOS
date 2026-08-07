@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,7 +39,7 @@ fun RegisterScreen(
                 title = { Text("Register supplier") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -51,7 +53,7 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
-                "Step ${state.step + 1} of 3 — ${stepLabels[state.step]}",
+                stringResource(R.string.mobile_supplier_ui_step_step_1_of_3_step, state.step + 1, stepLabels[state.step]),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )

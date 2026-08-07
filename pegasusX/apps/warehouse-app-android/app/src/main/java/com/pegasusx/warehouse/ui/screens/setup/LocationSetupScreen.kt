@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.setup
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -181,7 +183,7 @@ fun LocationSetupScreen(
                 geocodeApi = geocodeApi,
                 value = location,
                 onValueChange = { location = it },
-                label = "Depot address",
+                label = stringResource(R.string.factory_portal_settings_location_text_depot_address),
             )
             if (!error.isNullOrBlank()) {
                 Text(error!!, color = MaterialTheme.colorScheme.error)

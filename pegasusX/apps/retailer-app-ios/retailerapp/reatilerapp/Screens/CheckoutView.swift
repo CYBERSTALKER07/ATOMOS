@@ -33,6 +33,10 @@ struct CheckoutView: View {
     @State private var deliveryMode = "STANDARD"
     @State private var deliveryDate = ""
     @State private var expressPriority = false
+    @State private var currencyPickerEnabled = false
+    @State private var currencyAllowlist: [String] = []
+    @State private var operatingCurrency = "UZS"
+    @State private var orderCurrency = "UZS"
     @State private var showBackorderConfirm = false
     @State private var pendingBackorderPreview: CheckoutPreviewResponse?
     @State private var skipBackorderConfirm = false
@@ -68,7 +72,7 @@ struct CheckoutView: View {
                 }
             }
             .animation(AnimationConstants.fluid, value: showSuccess)
-            .navigationTitle("Checkout")
+            .navigationTitle("mobile_retailer.ui.checkout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -86,6 +90,7 @@ struct CheckoutView: View {
             }
             .task {
                 await fetchCards()
+                await fetchOrderCurrencies()
             }
             .sheet(isPresented: $showPaymentPicker) {
                 paymentPickerSheet
@@ -102,27 +107,27 @@ struct CheckoutView: View {
                 isPresented: $showSupplierClosedWarning,
                 titleVisibility: .visible
             ) {
-                Button("I Understand, Place Order") {
+                Button("mobile_retailer.ui.i_understand_place_order") {
                     Task { await submitOrder() }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
-                Text("This supplier is off-shift or outside business hours. Your order will be placed, but processing will not begin until they are back online.")
+                Text("mobile_retailer.ui.this_supplier_is_off_shift_or_outside_business_hours_your_order_")
             }
             .confirmationDialog(
                 "Partial backorder",
                 isPresented: $showBackorderConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Proceed") {
+                Button("mobile_retailer.ui.proceed") {
                     skipBackorderConfirm = true
                     Task { await submitOrder() }
                 }
-                Button("Cancel", role: .cancel) {
+                Button("common.action.cancel", role: .cancel) {
                     pendingBackorderPreview = nil
                 }
             } message: {
-                Text("Some items will be backordered. Delivery may be delayed. Proceed?")
+                Text("mobile_retailer.ui.some_items_will_be_backordered_delivery_may_be_delayed_proceed")
             }
             .task {
                 await fetchPreview()
@@ -196,7 +201,8 @@ struct CheckoutView: View {
             deliveryMode: deliveryMode,
             requestedDeliveryDate: requestedDate,
             deliveryPriority: expressPriority ? "EXPRESS" : "STANDARD",
-            checkoutPolicyToken: checkoutPolicyToken
+            checkoutPolicyToken: checkoutPolicyToken,
+            currency: currencyPickerEnabled ? orderCurrency : nil
         )
     }
 
@@ -209,7 +215,7 @@ struct CheckoutView: View {
                     if previewLoading {
                         HStack(spacing: AppTheme.spacingSM) {
                             ProgressView()
-                            Text("Refreshing stock availability…")
+                            Text("mobile_retailer.ui.refreshing_stock_availability")
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
@@ -239,14 +245,14 @@ struct CheckoutView: View {
     private var stockWarningsSection: some View {
         LabCard {
             VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                Label("Partial backorder", systemImage: "exclamationmark.triangle.fill")
+                Label("mobile_retailer.ui.partial_backorder", systemImage: "exclamationmark.triangle.fill")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.warning)
-                Text("Some items are out of stock but your warehouse accepts backorders.")
+                Text("mobile_retailer.ui.some_items_are_out_of_stock_but_your_warehouse_accepts_backorder")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
                 ForEach(stockWarnings, id: \.sku) { warning in
-                    Text("\(warning.sku): \(warning.backorderQty) of \(warning.requested) backordered")
+                    Text(L10n.format("mobile_retailer.ui.sku_backorderqty_of_requested_backordered", "\(warning.sku)", "\(warning.backorderQty)", "\(warning.requested)"))
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
@@ -258,7 +264,7 @@ struct CheckoutView: View {
     private var oosItemsSection: some View {
         LabCard {
             VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                Label("Out of stock", systemImage: "xmark.circle.fill")
+                Label("mobile_retailer.ui.out_of_stock", systemImage: "xmark.circle.fill")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.destructive)
                 ForEach(oosItems, id: \.self) { sku in
@@ -279,7 +285,7 @@ struct CheckoutView: View {
                     deliveryModeButton("Scheduled", mode: "SCHEDULED", subtitle: "T+\(preview?.preorderMinLeadDays ?? 3)")
                 }
                 if deliveryMode == "SCHEDULED" {
-                    TextField("YYYY-MM-DD", text: $deliveryDate)
+                    TextField("mobile_retailer.ui.yyyy_mm_dd", text: $deliveryDate)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.caption, design: .monospaced))
                     Text("Choose \(scheduledMinDate)\(scheduledMaxDate.map { " to \($0)" } ?? " or later")")
@@ -288,6 +294,30 @@ struct CheckoutView: View {
                 }
                 Toggle("Express priority (+fee)", isOn: $expressPriority)
                     .font(.system(.caption, design: .rounded))
+                if currencyPickerEnabled, !currencyAllowlist.isEmpty {
+                    Text("Order currency")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    HStack(spacing: AppTheme.spacingSM) {
+                        ForEach(currencyAllowlist, id: \.self) { code in
+                            Button {
+                                orderCurrency = code
+                            } label: {
+                                Text(code == operatingCurrency ? "\(code) (default)" : code)
+                                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(orderCurrency == code ? AppTheme.accentSoft.opacity(0.45) : AppTheme.surfaceElevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusSM))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                                            .stroke(orderCurrency == code ? AppTheme.accent : AppTheme.separator.opacity(0.4), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
                 if let fee = preview?.deliveryFeeMinor, fee > 0 {
                     Text("Delivery fee: \(Int(fee).formatted()) UZS\(preview?.deliveryDistanceKm.map { " · \(String(format: "%.1f", $0)) km" } ?? "")")
                         .font(.caption)
@@ -335,7 +365,7 @@ struct CheckoutView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(AppTheme.accent.opacity(0.5))
                     }
-                    Text("Your cart is empty")
+                    Text("mobile_retailer.ui.your_cart_is_empty")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -432,7 +462,7 @@ struct CheckoutView: View {
 
                     Spacer()
 
-                    Text("Change")
+                    Text("mobile_retailer.ui.change")
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.accent)
                 }
@@ -460,7 +490,7 @@ struct CheckoutView: View {
                     .frame(height: AppTheme.separatorHeight)
 
                 HStack {
-                    Text("Total")
+                    Text("retailer_desktop.pos.text.total")
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
@@ -527,6 +557,24 @@ struct CheckoutView: View {
         }
     }
 
+    private func fetchOrderCurrencies() async {
+        do {
+            let opts = try await api.getOrderCurrencies()
+            currencyPickerEnabled = opts.enabled
+            currencyAllowlist = opts.allowlist
+            operatingCurrency = opts.operatingCurrency.isEmpty ? "UZS" : opts.operatingCurrency
+            if opts.enabled, !opts.allowlist.isEmpty {
+                orderCurrency = opts.allowlist.contains(operatingCurrency)
+                    ? operatingCurrency
+                    : opts.allowlist[0]
+            } else {
+                orderCurrency = operatingCurrency
+            }
+        } catch {
+            currencyPickerEnabled = false
+        }
+    }
+
     private var paymentPickerSheet: some View {
         NavigationStack {
             ResponsiveGridContentWrapper {
@@ -557,7 +605,7 @@ struct CheckoutView: View {
                 }
                 }
             }
-            .navigationTitle("Payment Method")
+            .navigationTitle("mobile_retailer.ui.payment_method")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -592,7 +640,7 @@ struct CheckoutView: View {
             }
 
             VStack(spacing: AppTheme.spacingSM) {
-                Text("Order Placed! 🎉")
+                Text("mobile_retailer.ui.order_placed")
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 

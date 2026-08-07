@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,7 +95,7 @@ fun DriverNotificationInboxScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     DriverLoadingState(
-                        title = "Loading notifications",
+                        title = stringResource(R.string.mobile_driver_ui_loading_notifications),
                         body = "Checking route, payment, and dispatch updates.",
                         shimmerLines = true,
                     )

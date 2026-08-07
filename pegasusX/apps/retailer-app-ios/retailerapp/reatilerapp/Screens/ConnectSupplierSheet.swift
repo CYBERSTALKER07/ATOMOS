@@ -16,14 +16,14 @@ struct ConnectSupplierSheet: View {
         NavigationStack {
             List {
                 Section {
-                    TextField("Supplier name", text: $query)
+                    TextField("mobile_retailer.ui.supplier_name", text: $query)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .onChange(of: query) { _, newValue in
                             Task { await search(newValue) }
                         }
                 } footer: {
-                    Text("Search the supplier network and add vendors to your procurement list.")
+                    Text("mobile_retailer.ui.search_the_supplier_network_and_add_vendors_to_your_procurement_")
                 }
 
                 if isSearching {
@@ -36,7 +36,7 @@ struct ConnectSupplierSheet: View {
                     }
                 } else if query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2, results.isEmpty {
                     Section {
-                        Text("No new suppliers match that search.")
+                        Text("mobile_retailer.ui.no_new_suppliers_match_that_search")
                             .foregroundStyle(AppTheme.textSecondary)
                     }
                 } else {
@@ -53,7 +53,7 @@ struct ConnectSupplierSheet: View {
                                     }
                                 }
                                 Spacer()
-                                Button("Add") {
+                                Button("mobile_retailer.ui.add") {
                                     Task { await connect(supplier.id) }
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -70,10 +70,10 @@ struct ConnectSupplierSheet: View {
                     }
                 }
             }
-            .navigationTitle("Connect vendor")
+            .navigationTitle("mobile_retailer.ui.connect_vendor")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("common.action.close") { dismiss() }
                 }
             }
         }

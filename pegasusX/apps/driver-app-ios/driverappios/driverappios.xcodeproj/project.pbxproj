@@ -194,8 +194,10 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
+				ru,
+				uz,
 			);
 			mainGroup = 2E5380382F6B10CF00C3D5C6;
 			minimizedProjectReferenceProxies = 1;
@@ -302,7 +304,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../packages/mobile-ios-kit;
+			relativePath = ../../../packages/mobile-ios-kit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -470,7 +472,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -506,7 +507,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

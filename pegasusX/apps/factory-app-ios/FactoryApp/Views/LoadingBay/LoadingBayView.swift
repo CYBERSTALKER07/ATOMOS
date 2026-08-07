@@ -67,10 +67,10 @@ struct LoadingBayView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Loading Bay")
+            .navigationTitle("portal.nav.loading_bay")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)

@@ -64,11 +64,11 @@ struct LoginView: View {
                             }
                             .scaleEffect(logoScale)
 
-                            Text("Pegasus")
+                            Text("auth.login.title")
                                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
 
-                            Text("Retailer Portal")
+                            Text("mobile_retailer.ui.retailer_portal")
                                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -143,7 +143,7 @@ struct LoginView: View {
                                         HStack(spacing: 6) {
                                             Image(systemName: "map")
                                                 .font(.system(size: 14, weight: .medium))
-                                            Text("Open Map")
+                                            Text("mobile_retailer.ui.open_map")
                                                 .font(.system(.caption, design: .rounded, weight: .semibold))
                                         }
                                         .foregroundStyle(AppTheme.textPrimary)
@@ -201,7 +201,7 @@ struct LoginView: View {
                                 }
 
                                 if !locationLabel.isEmpty {
-                                    Text("Location: \(locationLabel)")
+                                    Text(L10n.format("mobile_retailer.ui.location_locationlabel_2", "\(locationLabel)"))
                                         .font(.system(.caption2, design: .rounded))
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
@@ -218,7 +218,7 @@ struct LoginView: View {
 
                                 // ── Logistics Details ──
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Receiving Window")
+                                    Text("mobile_retailer.ui.receiving_window_2")
                                         .font(.system(.caption, design: .rounded, weight: .medium))
                                         .foregroundStyle(AppTheme.textTertiary)
                                     HStack(spacing: 8) {
@@ -244,7 +244,7 @@ struct LoginView: View {
                                 }
 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Loading Access Type")
+                                    Text("mobile_retailer.ui.loading_access_type")
                                         .font(.system(.caption, design: .rounded, weight: .medium))
                                         .foregroundStyle(AppTheme.textTertiary)
                                     HStack(spacing: 6) {

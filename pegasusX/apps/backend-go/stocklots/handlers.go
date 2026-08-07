@@ -684,22 +684,26 @@ func (h *Handler) HandleTemperatureReadings(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusOK, map[string]any{"readings": rows})
 	case http.MethodPost:
 		var body struct {
-			ManifestID string  `json:"manifest_id"`
-			SensorID   string  `json:"sensor_id"`
-			TempC      float64 `json:"temp_c"`
-			Lat        float64 `json:"lat"`
-			Lng        float64 `json:"lng"`
-			MinC       float64 `json:"min_c"`
-			MaxC       float64 `json:"max_c"`
+			ManifestID string   `json:"manifest_id"`
+			SensorID   string   `json:"sensor_id"`
+			TempC      float64  `json:"temp_c"`
+			Lat        float64  `json:"lat"`
+			Lng        float64  `json:"lng"`
+			MinC       *float64 `json:"min_c"`
+			MaxC       *float64 `json:"max_c"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
+		var bandOverride *TempBand
+		if body.MinC != nil && body.MaxC != nil {
+			bandOverride = &TempBand{MinC: *body.MinC, MaxC: *body.MaxC}
+		}
 		var view *TemperatureReadingView
 		err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			var err error
-			view, err = IngestTemperatureInTxn(ctx, txn, body.ManifestID, body.SensorID, body.TempC, body.Lat, body.Lng, body.MinC, body.MaxC)
+			view, err = IngestTemperatureInTxn(ctx, txn, body.ManifestID, body.SensorID, body.TempC, body.Lat, body.Lng, bandOverride)
 			return err
 		})
 		if err != nil {

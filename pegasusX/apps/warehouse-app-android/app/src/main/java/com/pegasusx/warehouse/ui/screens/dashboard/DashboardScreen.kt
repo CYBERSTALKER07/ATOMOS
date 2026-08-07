@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -115,7 +117,7 @@ fun DashboardScreen(
     ) { innerPadding ->
         when {
             loading && !hasData -> PegasusLoadingState(
-                title = "Loading dashboard…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_dashboard),
                 body = "Warehouse KPIs and fleet snapshot",
                 modifier = Modifier.padding(innerPadding),
             )

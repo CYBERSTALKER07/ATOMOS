@@ -25,13 +25,13 @@ struct PosView: View {
     var body: some View {
         List {
             Section {
-                Text("Open till online. Cash sales work offline and sync on reconnect. Card requires network.")
+                Text("mobile_retailer.ui.open_till_online_cash_sales_work_offline_and_sync_on_reconnect_c")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
             if !isOnline {
                 Section {
-                    Text("Offline · cash queue" + (pending.isEmpty ? "" : " · \(pending.count) pending"))
+                    Text("mobile_retailer.ui.offline_cash_queue" + (pending.isEmpty ? "" : " · \(pending.count) pending"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                 }
@@ -46,11 +46,11 @@ struct PosView: View {
                     }
                     .disabled(busy || !isOnline)
                 } else {
-                    Text("Open: \(sessionId!.prefix(12))…")
-                    Button("Close session") { Task { await closeSession() } }
+                    Text(L10n.format("mobile_retailer.ui.open_prefix", "\(sessionId!.prefix(12))"))
+                    Button("mobile_retailer.ui.close_session") { Task { await closeSession() } }
                         .disabled(busy || !isOnline)
                     if !pending.isEmpty && isOnline {
-                        Button("Sync \(pending.count) offline sale(s)") {
+                        Button(L10n.format("mobile_retailer.ui.sync_count_offline_sale_s", "\(pending.count)")) {
                             Task { await syncPending() }
                         }
                         .disabled(busy)
@@ -60,7 +60,7 @@ struct PosView: View {
             if !pending.isEmpty {
                 Section("Offline queue") {
                     ForEach(pending) { p in
-                        Text("\(p.clientReceipt) · \(p.status)" + (p.lastError.map { " · \($0)" } ?? ""))
+                        Text(L10n.format("mobile_retailer.ui.clientreceipt_status", "\(p.clientReceipt)", "\(p.status)") + (p.lastError.map { " · \($0)" } ?? ""))
                             .font(.caption2)
                             .foregroundStyle(p.status == "FAILED" ? .red : AppTheme.textTertiary)
                     }
@@ -69,14 +69,14 @@ struct PosView: View {
             if sessionId != nil {
                 Section("Add line") {
                     TextField("SKU", text: $sku)
-                    TextField("Qty", text: $qty)
-                    TextField("Price (major)", text: $priceMajor)
-                    Button("Add to cart") { addLine() }
+                    TextField("retailer_desktop.pos.text.qty", text: $qty)
+                    TextField("mobile_retailer.ui.price_major", text: $priceMajor)
+                    Button("mobile_retailer.ui.add_to_cart") { addLine() }
                 }
                 Section("Cart") {
                     ForEach(cart) { line in
                         HStack {
-                            Text("\(line.sku) × \(line.qty)")
+                            Text(L10n.format("mobile_retailer.ui.sku_qty", "\(line.sku)", "\(line.qty)"))
                             Spacer()
                             Text(String(format: "%.2f", Double(line.qty * line.unitPriceMinor) / 100.0))
                         }
@@ -88,7 +88,7 @@ struct PosView: View {
                     }
                     .disabled(busy || cart.isEmpty)
                     if lastSaleId != nil && isOnline {
-                        Button("Void last sale", role: .destructive) { Task { await voidLast() } }
+                        Button("mobile_retailer.ui.void_last_sale", role: .destructive) { Task { await voidLast() } }
                     }
                 }
             }

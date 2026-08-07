@@ -84,7 +84,7 @@ export default function ReturnPolicySettingsPage() {
   return (
     <PageChrome
       title={t("portal.nav.return_policy")}
-      subtitle={t("supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_")}
+      description={t("supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_")}
     >
       {loading ? (
         <p className="text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.loading")}</p>

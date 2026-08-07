@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.tracking.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -60,7 +62,7 @@ fun TrackingMap(
     Box(modifier = modifier.fillMaxSize()) {
         if (isLoading && visibleOrders.isEmpty()) {
             PegasusLoadingState(
-                title = "Loading deliveries",
+                title = stringResource(R.string.mobile_retailer_ui_loading_deliveries),
                 body = "Fetching live driver positions and inbound orders…",
             )
         } else {
@@ -125,7 +127,7 @@ fun TrackingMap(
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "My location", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mobile_retailer_ui_my_location), modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -140,7 +142,7 @@ fun TrackingMap(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text(
-                            "$activeDeliveryCount active",
+                            stringResource(R.string.mobile_retailer_ui_activedeliverycount_active, activeDeliveryCount),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )

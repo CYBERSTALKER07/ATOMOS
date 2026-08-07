@@ -3,6 +3,7 @@ package stocklots
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -20,18 +21,59 @@ type TemperatureReadingView struct {
 	TempC      float64 `json:"temp_c"`
 	Lat        float64 `json:"lat,omitempty"`
 	Lng        float64 `json:"lng,omitempty"`
+	MinC       float64 `json:"min_c,omitempty"`
+	MaxC       float64 `json:"max_c,omitempty"`
 	Excursion  bool    `json:"excursion,omitempty"`
 }
 
-// IngestTemperatureInTxn stores a reading; on excursion quarantines AVAILABLE lots on the manifest's warehouse.
-func IngestTemperatureInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID, sensorID string, tempC, lat, lng float64, minC, maxC float64) (*TemperatureReadingView, error) {
+// TempBand is a closed Celsius interval for excursion detection.
+type TempBand struct {
+	MinC float64
+	MaxC float64
+}
+
+// TemperatureBreachArgs is passed to the registered system breach raiser.
+type TemperatureBreachArgs struct {
+	ManifestID string
+	ReadingID  string
+	TempC      float64
+	MinC       float64
+	MaxC       float64
+	OrderIDs   []string
+}
+
+// TemperatureBreachRaiser creates TEMPERATURE_BREACH condition reports in the same RW txn.
+type TemperatureBreachRaiser func(ctx context.Context, txn *spanner.ReadWriteTransaction, args TemperatureBreachArgs) error
+
+var temperatureBreachRaiser TemperatureBreachRaiser
+
+// SetTemperatureBreachRaiser wires order-system auto-raise (bootstrap / main).
+func SetTemperatureBreachRaiser(fn TemperatureBreachRaiser) {
+	temperatureBreachRaiser = fn
+}
+
+// IngestTemperatureInTxn stores a reading; on excursion quarantines AVAILABLE lots and auto-raises breaches.
+// bandOverride: when non-nil, use caller min/max; when nil, hydrate from Products then fallback [0,8].
+func IngestTemperatureInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	manifestID, sensorID string,
+	tempC, lat, lng float64,
+	bandOverride *TempBand,
+) (*TemperatureReadingView, error) {
 	manifestID = strings.TrimSpace(manifestID)
 	if manifestID == "" {
 		return nil, fmt.Errorf("manifest_id required")
 	}
-	if maxC == 0 && minC == 0 {
-		minC, maxC = 0, 8 // default chilled band
+
+	minC, maxC, err := resolveTempBand(ctx, txn, manifestID, bandOverride)
+	if err != nil {
+		return nil, err
 	}
+	if maxC < minC {
+		return nil, fmt.Errorf("invalid_temp_band")
+	}
+
 	excursion := tempC < minC || tempC > maxC
 	id := uuid.NewString()
 	now := time.Now().UTC()
@@ -56,11 +98,130 @@ func IngestTemperatureInTxn(ctx context.Context, txn *spanner.ReadWriteTransacti
 		if err := quarantineManifestLotsInTxn(ctx, txn, manifestID); err != nil {
 			return nil, err
 		}
+		orderIDs, err := loadManifestOrderIDs(ctx, txn, manifestID)
+		if err != nil {
+			return nil, err
+		}
+		if temperatureBreachRaiser != nil && len(orderIDs) > 0 {
+			if err := temperatureBreachRaiser(ctx, txn, TemperatureBreachArgs{
+				ManifestID: manifestID,
+				ReadingID:  id,
+				TempC:      tempC,
+				MinC:       minC,
+				MaxC:       maxC,
+				OrderIDs:   orderIDs,
+			}); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return &TemperatureReadingView{
 		ReadingID: id, ManifestID: manifestID, SensorID: strings.TrimSpace(sensorID),
-		RecordedAt: now.Format(time.RFC3339Nano), TempC: tempC, Lat: lat, Lng: lng, Excursion: excursion,
+		RecordedAt: now.Format(time.RFC3339Nano), TempC: tempC, Lat: lat, Lng: lng,
+		MinC: minC, MaxC: maxC, Excursion: excursion,
 	}, nil
+}
+
+func resolveTempBand(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string, override *TempBand) (float64, float64, error) {
+	if override != nil {
+		return override.MinC, override.MaxC, nil
+	}
+	minC, maxC, ok, err := hydrateBandFromProducts(ctx, txn, manifestID)
+	if err != nil {
+		return 0, 0, err
+	}
+	if ok {
+		return minC, maxC, nil
+	}
+	return 0, 8, nil // default chilled band
+}
+
+// hydrateBandFromProducts intersects StorageTemp bands for cold-required SKUs on the manifest.
+// Returns ok=false when no product bands are available.
+func hydrateBandFromProducts(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) (minC, maxC float64, ok bool, err error) {
+	orderIDs, err := loadManifestOrderIDs(ctx, txn, manifestID)
+	if err != nil {
+		return 0, 0, false, err
+	}
+	products := map[string]struct{}{}
+	for _, oid := range orderIDs {
+		lines, err := loadOrderLineQtys(ctx, txn, oid)
+		if err != nil {
+			continue
+		}
+		for _, l := range lines {
+			if strings.TrimSpace(l.SKU) != "" {
+				products[l.SKU] = struct{}{}
+			}
+		}
+	}
+	if len(products) == 0 {
+		return 0, 0, false, nil
+	}
+	ids := make([]string, 0, len(products))
+	for pid := range products {
+		ids = append(ids, pid)
+	}
+
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT ProductId, RequiresColdChain, StorageTempMinC, StorageTempMaxC
+		      FROM Products WHERE ProductId IN UNNEST(@ids)`,
+		Params: map[string]any{"ids": ids},
+	})
+	defer iter.Stop()
+
+	have := false
+	minC = math.Inf(-1)
+	maxC = math.Inf(1)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, 0, false, err
+		}
+		var pid string
+		var cold spanner.NullBool
+		var smin, smax spanner.NullFloat64
+		if err := row.Columns(&pid, &cold, &smin, &smax); err != nil {
+			return 0, 0, false, err
+		}
+		// Prefer cold-required products; also accept any SKU that declares a band.
+		if cold.Valid && !cold.Bool && !(smin.Valid || smax.Valid) {
+			continue
+		}
+		if !smin.Valid && !smax.Valid {
+			continue
+		}
+		lo := -40.0
+		hi := 40.0
+		if smin.Valid {
+			lo = smin.Float64
+		}
+		if smax.Valid {
+			hi = smax.Float64
+		}
+		if hi < lo {
+			continue
+		}
+		if !have {
+			minC, maxC = lo, hi
+			have = true
+			continue
+		}
+		// Intersection (tightest band).
+		if lo > minC {
+			minC = lo
+		}
+		if hi < maxC {
+			maxC = hi
+		}
+	}
+	if !have || maxC < minC {
+		return 0, 0, false, nil
+	}
+	return minC, maxC, true, nil
 }
 
 func quarantineManifestLotsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) error {
@@ -174,19 +335,19 @@ func ListTemperatureReadings(ctx context.Context, client *spanner.Client, manife
 
 // InventoryReconcileReport compares V2 vs lot sums.
 type InventoryReconcileReport struct {
-	WarehouseID string                   `json:"warehouse_id"`
-	SupplierID  string                   `json:"supplier_id"`
-	Matched     int                      `json:"matched"`
-	Mismatches  []InventoryReconcileRow  `json:"mismatches"`
+	WarehouseID string                  `json:"warehouse_id"`
+	SupplierID  string                  `json:"supplier_id"`
+	Matched     int                     `json:"matched"`
+	Mismatches  []InventoryReconcileRow `json:"mismatches"`
 }
 
 // InventoryReconcileRow is one SKU drift.
 type InventoryReconcileRow struct {
-	ProductID     string `json:"product_id"`
-	V2OnHand      int64  `json:"v2_on_hand"`
-	LotsOnHand    int64  `json:"lots_on_hand"`
-	V2Reserved    int64  `json:"v2_reserved"`
-	LotsReserved  int64  `json:"lots_reserved"`
+	ProductID    string `json:"product_id"`
+	V2OnHand     int64  `json:"v2_on_hand"`
+	LotsOnHand   int64  `json:"lots_on_hand"`
+	V2Reserved   int64  `json:"v2_reserved"`
+	LotsReserved int64  `json:"lots_reserved"`
 }
 
 // ReconcileInventoryV2 asserts SupplierInventoryV2 ≡ sum AVAILABLE lots.

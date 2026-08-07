@@ -40,7 +40,7 @@ struct CategorySuppliersView: View {
                             Text(category.name)
                                 .font(.system(.title3, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text("\(suppliers.count) suppliers available")
+                            Text(L10n.format("mobile_retailer.ui.count_suppliers_available", "\(suppliers.count)"))
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -138,7 +138,7 @@ struct CategorySuppliersView: View {
                     .clipShape(.capsule)
 
                 if mySupplierIds.contains(supplier.id) {
-                    Text("My Supplier")
+                    Text("mobile_retailer.ui.my_supplier")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.success)
                         .padding(.horizontal, 6).padding(.vertical, 3)
@@ -166,7 +166,7 @@ struct CategorySuppliersView: View {
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(3)
             Spacer()
-            Button("Retry") {
+            Button("common.action.retry") {
                 Task { await loadSuppliers() }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))
@@ -185,7 +185,7 @@ struct CategorySuppliersView: View {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
                 Image(systemName: category.icon).font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
             }
-            Text("No Suppliers")
+            Text("mobile_retailer.ui.no_suppliers")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(errorMessage ?? "No suppliers found for \(category.name)")

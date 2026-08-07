@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.exceptions.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +53,7 @@ fun ExceptionCard(
                         color = MaterialTheme.colorScheme.error,
                     ) {
                         Text(
-                            text = "Escalated",
+                            text = stringResource(R.string.factory_portal_residual_text_escalated),
                             modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onError,
@@ -60,7 +62,7 @@ fun ExceptionCard(
                 }
             }
             Text(
-                text = "Transfer ${shortId(exception.transferId)} · Manifest ${shortId(exception.manifestId)}",
+                text = stringResource(R.string.mobile_factory_ui_transfer_shortid_manifest_shortid_2, shortId(exception.transferId), shortId(exception.manifestId)),
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Monospace,
             )

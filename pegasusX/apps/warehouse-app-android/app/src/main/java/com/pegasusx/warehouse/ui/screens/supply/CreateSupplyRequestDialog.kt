@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -128,7 +130,7 @@ fun CreateSupplyRequestDialog(
                         ) {
                             itemsIndexed(forecast, key = { _, p -> p.productId }) { _, product ->
                                 Text(
-                                    "${product.productName.ifBlank { product.productId.take(8) }} · stock ${product.currentStock} · rec ${product.recommendedQty}",
+                                    stringResource(R.string.mobile_warehouse_ui_take_stock_currentstock_rec_recommendedqty, product.productName.ifBlank { product.productId.take(8) }, product.currentStock, product.recommendedQty),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
@@ -142,7 +144,7 @@ fun CreateSupplyRequestDialog(
                     ) {
                         Text("Manual items", style = MaterialTheme.typography.labelMedium)
                         IconButton(onClick = { manualItems = manualItems + ManualSupplyLine() }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add item")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_warehouse_ui_add_item))
                         }
                     }
                     manualItems.forEachIndexed { index, line ->
@@ -173,7 +175,7 @@ fun CreateSupplyRequestDialog(
                                 IconButton(onClick = {
                                     manualItems = manualItems.filterIndexed { i, _ -> i != index }
                                 }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.supplier_portal_demand_payday_calendar_text_remove))
                                 }
                             }
                         }

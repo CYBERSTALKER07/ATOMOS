@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +31,7 @@ fun SupplierPulseStrip(
 ) {
     if (loading && events.isEmpty()) {
         Text(
-            text = "Loading network pulse…",
+            text = stringResource(R.string.mobile_supplier_ui_loading_network_pulse),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier.padding(vertical = PegasusSpacing.sm),
@@ -40,7 +42,7 @@ fun SupplierPulseStrip(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Network pulse",
+            text = stringResource(R.string.factory_portal_app_text_network_pulse),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = PegasusSpacing.sm),

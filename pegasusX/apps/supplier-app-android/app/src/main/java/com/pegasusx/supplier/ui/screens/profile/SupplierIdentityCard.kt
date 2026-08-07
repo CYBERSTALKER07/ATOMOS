@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +18,7 @@ fun SupplierIdentityCard(p: SupplierProfile, modifier: Modifier = Modifier) {
         Text(p.contactName)
         Text(p.email)
         Text(p.phone)
-        Text("${p.country} · ${p.currency}")
-        Text("Configured: ${p.isConfigured}")
+        Text(stringResource(R.string.mobile_supplier_ui_country_currency, p.country, p.currency))
+        Text(stringResource(R.string.mobile_supplier_ui_configured_isconfigured, p.isConfigured))
     }
 }

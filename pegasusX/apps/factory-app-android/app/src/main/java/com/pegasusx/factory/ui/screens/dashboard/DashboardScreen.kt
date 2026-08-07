@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -156,7 +158,7 @@ fun DashboardScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Factory dashboard")
                         Text(
-                            text = "Dispatch, loading, fleet, and staffing status",
+                            text = stringResource(R.string.mobile_factory_ui_dispatch_loading_fleet_and_staffing_status),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -178,7 +180,7 @@ fun DashboardScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading dashboard",
+                title = stringResource(R.string.mobile_factory_ui_loading_dashboard),
                 body = "Fetching live factory metrics for loading, fleet, and staffing.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -227,7 +229,7 @@ fun DashboardScreen(
                     WorkflowLaunchCard(onNavigate = onNavigate)
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    FactorySectionTitle(title = "Operations at a glance")
+                    FactorySectionTitle(title = stringResource(R.string.mobile_factory_ui_operations_at_a_glance))
                 }
                 items(kpiCards, key = { it.label }) { card ->
                     val badge = when (card.label) {

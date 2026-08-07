@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -37,7 +39,7 @@ fun OrdersScreen(
                 title = { Text("Orders") },
                 actions = {
                     IconButton(onClick = { viewModel.load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -55,7 +57,7 @@ fun OrdersScreen(
             }
             when {
                 showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> PegasusLoadingState(
-                    title = "Loading orders…",
+                    title = stringResource(R.string.mobile_supplier_ui_loading_orders),
                     body = "Supplier order queue",
                 )
                 state.error != null -> PegasusStatePane(

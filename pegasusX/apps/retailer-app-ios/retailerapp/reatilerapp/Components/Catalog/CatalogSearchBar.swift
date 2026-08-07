@@ -10,7 +10,7 @@ struct CatalogSearchBar: View {
                 .font(.system(size: 15, weight: .bold)) // Bold icon
                 .foregroundStyle(AppTheme.accent)
 
-            TextField("Search products, suppliers, or categories", text: $searchText)
+            TextField("mobile_retailer.ui.search_products_suppliers_or_categories", text: $searchText)
                 .font(.system(.subheadline, design: .rounded, weight: .medium)) // Medium weight
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()

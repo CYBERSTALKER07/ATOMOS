@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,12 +53,12 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Pegasus Supplier",
+                text = stringResource(R.string.mobile_supplier_ui_pegasus_supplier),
                 style = MaterialTheme.typography.headlineLarge,
             )
             Spacer(Modifier.height(PegasusSpacing.sm))
             Text(
-                text = "Sign in to manage supplier operations",
+                text = stringResource(R.string.mobile_supplier_ui_sign_in_to_manage_supplier_operations),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -11,7 +11,7 @@ struct OrderDetailPanel: View {
 
     var body: some View {
         List {
-            Section("Order") {
+            Section("supplier_portal.chargebacks.claims.text.order") {
                 LabeledContent("ID", value: order.orderId)
                 LabeledContent("Retailer", value: warehouseDetail?.retailerName ?? order.retailerId)
                 LabeledContent("Status") {
@@ -29,7 +29,7 @@ struct OrderDetailPanel: View {
                     ForEach(items) { item in
                         VStack(alignment: .leading) {
                             Text(item.productName ?? item.productId ?? "—")
-                            Text("Qty \(item.quantity ?? 0)")
+                            Text(L10n.format("mobile_supplier.ui.qty_quantity_0", "\(item.quantity ?? 0)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -39,27 +39,27 @@ struct OrderDetailPanel: View {
 
             if vm.canWarehouseOps(for: order) {
                 Section("Warehouse admin") {
-                    Button("Reassign order") {
+                    Button("mobile_supplier.ui.reassign_order") {
                         Task { await vm.openReassignDialog(orderId: order.orderId) }
                     }
-                    Button("Delay delivery") { showProposeSheet = true }
-                    Button("Cancel order", role: .destructive) { showRejectDialog = true }
+                    Button("supplier_portal.orders.propose_delay_dialog.text.delay_delivery") { showProposeSheet = true }
+                    Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) { showRejectDialog = true }
                 }
             }
         }
-        .navigationTitle("Order")
+        .navigationTitle("supplier_portal.chargebacks.claims.text.order")
         .task { await loadWarehouseDetail() }
         .sheet(isPresented: $showProposeSheet) {
             NavigationStack {
                 Form {
                     DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
-                    TextField("Reason (required)", text: $opsReason, axis: .vertical)
+                    TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $opsReason, axis: .vertical)
                 }
-                .navigationTitle("Delay delivery")
+                .navigationTitle("supplier_portal.orders.propose_delay_dialog.text.delay_delivery")
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showProposeSheet = false } }
+                    ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { showProposeSheet = false } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Notify retailer") {
+                        Button("mobile_supplier.ui.notify_retailer") {
                             Task {
                                 await vm.proposeWarehouseOrder(
                                     order,
@@ -78,16 +78,16 @@ struct OrderDetailPanel: View {
             .presentationDetents([.medium])
         }
         .alert("Cancel order", isPresented: $showRejectDialog) {
-            Button("Reject", role: .destructive) {
+            Button("mobile_supplier.ui.reject", role: .destructive) {
                 Task {
                     await vm.rejectWarehouseOrder(order, reason: opsReason)
                     opsReason = ""
                     await loadWarehouseDetail()
                 }
             }
-            Button("Cancel", role: .cancel) { opsReason = "" }
+            Button("common.action.cancel", role: .cancel) { opsReason = "" }
         } message: {
-            Text("Reason is required for reject.")
+            Text("mobile_supplier.ui.reason_is_required_for_reject")
         }
         .sheet(
             isPresented: Binding(
@@ -99,7 +99,7 @@ struct OrderDetailPanel: View {
                 Group {
                     if let recs = vm.reassignRecommendations {
                         if recs.recommendations.isEmpty {
-                            ContentUnavailableView("No Trucks", systemImage: "car.fill", description: Text("No suitable trucks available."))
+                            ContentUnavailableView("No Trucks", systemImage: "car.fill", description: Text("mobile_supplier.ui.no_suitable_trucks_available"))
                         } else {
                             List {
                                 Section {
@@ -117,18 +117,18 @@ struct OrderDetailPanel: View {
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }
-                                            Text("\(rec.licensePlate) • \(rec.vehicleClass)")
+                                            Text(L10n.format("mobile_supplier.ui.licenseplate_vehicleclass", "\(rec.licensePlate)", "\(rec.vehicleClass)"))
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
                                             HStack {
                                                 Spacer()
-                                                Button("Partial") {
+                                                Button("mobile_supplier.ui.partial") {
                                                     Task { await vm.applyReassign(orderId: order.orderId, driverId: rec.driverId, isPartial: true) }
                                                 }
                                                 .buttonStyle(.bordered)
                                                 .disabled(vm.isReassigning)
                                                 
-                                                Button("Complete") {
+                                                Button("mobile_supplier.ui.complete") {
                                                     Task { await vm.applyReassign(orderId: order.orderId, driverId: rec.driverId, isPartial: false) }
                                                 }
                                                 .buttonStyle(.borderedProminent)
@@ -144,11 +144,11 @@ struct OrderDetailPanel: View {
                         ProgressView("Loading recommendations...")
                     }
                 }
-                .navigationTitle("Reassign Order")
+                .navigationTitle("supplier_portal.orders.re_dispatch_dialog.text.reassign_order")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") {
+                        Button("common.action.close") {
                             vm.closeReassignDialog()
                         }
                         .disabled(vm.isReassigning)

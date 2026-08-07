@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,13 +46,13 @@ fun FactorySupplyCard(onOpenSupplyTransfers: () -> Unit) {
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Supply transfers",
+                    text = stringResource(R.string.mobile_driver_ui_supply_transfers),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg,
                 )
                 Text(
-                    text = "$factoryLabel → warehouse legs",
+                    text = stringResource(R.string.mobile_driver_ui_factorylabel_warehouse_legs),
                     style = MaterialTheme.typography.bodySmall,
                     color = lab.fgTertiary,
                 )

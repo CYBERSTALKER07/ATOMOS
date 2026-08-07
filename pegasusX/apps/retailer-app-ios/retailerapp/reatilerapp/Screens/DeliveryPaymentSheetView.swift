@@ -52,12 +52,12 @@ struct DeliveryPaymentSheetView: View {
                 }
             }
             .background(AppTheme.background)
-            .navigationTitle("Payment Required")
+            .navigationTitle("mobile_retailer.ui.payment_required")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if phase == .choose || phase == .failed {
-                        Button("Close") { onDismiss() }
+                        Button("common.action.close") { onDismiss() }
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     }
                 }
@@ -98,7 +98,7 @@ struct DeliveryPaymentSheetView: View {
             }
 
             VStack(spacing: AppTheme.spacingSM) {
-                Text("Amount Due")
+                Text("mobile_retailer.ui.amount_due")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
 
@@ -117,12 +117,12 @@ struct DeliveryPaymentSheetView: View {
                             ? AppTheme.warning
                             : AppTheme.textPrimary
                     )
-                Text("Order #\(String(event.orderId.suffix(6)))")
+                Text(L10n.format("mobile_retailer.ui.order_suffix", "\(String(event.orderId.suffix(6)))"))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(AppTheme.textTertiary)
             }
 
-            Text("Choose Payment Method")
+            Text("mobile_retailer.ui.choose_payment_method")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.textSecondary)
 
@@ -146,7 +146,7 @@ struct DeliveryPaymentSheetView: View {
                     }
                 }
 
-                Button("Add payment method") {
+                Button("mobile_retailer.ui.add_payment_method") {
                     showSavedCards = true
                 }
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
@@ -175,7 +175,7 @@ struct DeliveryPaymentSheetView: View {
             }
 
             VStack(spacing: AppTheme.spacingSM) {
-                Text("Confirm Cash Handoff")
+                Text("mobile_retailer.ui.confirm_cash_handoff")
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 
@@ -183,7 +183,7 @@ struct DeliveryPaymentSheetView: View {
                     .font(.system(.title3, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.warning)
 
-                Text("Only confirm after the driver has physically received the cash.")
+                Text("mobile_retailer.ui.only_confirm_after_the_driver_has_physically_received_the_cash")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -193,7 +193,7 @@ struct DeliveryPaymentSheetView: View {
                 Button {
                     phase = .choose
                 } label: {
-                    Text("Back")
+                    Text("common.action.back")
                         .font(.system(.body, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -206,7 +206,7 @@ struct DeliveryPaymentSheetView: View {
                     phase = .processing
                     Task { await confirmCash() }
                 } label: {
-                    Text("Confirm Cash Received")
+                    Text("mobile_retailer.ui.confirm_cash_received")
                         .font(.system(.body, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -229,10 +229,10 @@ struct DeliveryPaymentSheetView: View {
             ProgressView()
                 .scaleEffect(1.5)
                 .tint(AppTheme.accent)
-            Text("Processing...")
+            Text("mobile_retailer.ui.processing")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Connecting to payment service")
+            Text("mobile_retailer.ui.connecting_to_payment_service")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
             Spacer()
@@ -254,7 +254,7 @@ struct DeliveryPaymentSheetView: View {
                     .foregroundStyle(AppTheme.warning)
             }
 
-            Text("Cash Collection Pending")
+            Text("mobile_retailer.ui.cash_collection_pending")
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -262,7 +262,7 @@ struct DeliveryPaymentSheetView: View {
                 .font(.system(.title3, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.warning)
 
-            Text("Please have the cash ready.\nThe driver will collect it shortly.")
+            Text("mobile_retailer.ui.please_have_the_cash_ready_nthe_driver_will_collect_it_shortly")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -270,7 +270,7 @@ struct DeliveryPaymentSheetView: View {
             HStack(spacing: AppTheme.spacingSM) {
                 ProgressView()
                     .scaleEffect(0.7)
-                Text("Waiting for driver confirmation")
+                Text("mobile_retailer.ui.waiting_for_driver_confirmation")
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -291,13 +291,13 @@ struct DeliveryPaymentSheetView: View {
             ProgressView()
                 .scaleEffect(1.5)
                 .tint(AppTheme.warning)
-            Text("Pending Fiscal Receipt")
+            Text("mobile_retailer.ui.pending_fiscal_receipt")
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
             Text(formattedAmount)
                 .font(.system(.title3, design: .rounded, weight: .semibold))
                 .foregroundStyle(AppTheme.warning)
-            Text("Payment is captured.\nOfficial fiscal document is being issued…")
+            Text("mobile_retailer.ui.payment_is_captured_nofficial_fiscal_document_is_being_issued")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -320,7 +320,7 @@ struct DeliveryPaymentSheetView: View {
                     .foregroundStyle(AppTheme.success)
             }
 
-            Text("Paid & Fiscalized")
+            Text("mobile_retailer.ui.paid_and_fiscalized")
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -333,7 +333,7 @@ struct DeliveryPaymentSheetView: View {
             Button {
                 onDismiss()
             } label: {
-                Text("Done")
+                Text("warehouse_portal.kpi_stat_card.text.done")
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -361,7 +361,7 @@ struct DeliveryPaymentSheetView: View {
                     .foregroundStyle(AppTheme.destructive)
             }
 
-            Text("Payment Failed")
+            Text("notification.payment_failed.title")
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -380,7 +380,7 @@ struct DeliveryPaymentSheetView: View {
                     phase = .choose
                     errorMessage = nil
                 } label: {
-                    Text("Try Again")
+                    Text("mobile_retailer.ui.try_again")
                         .font(.system(.body, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -392,7 +392,7 @@ struct DeliveryPaymentSheetView: View {
                 Button {
                     onDismiss()
                 } label: {
-                    Text("Cancel")
+                    Text("common.action.cancel")
                         .font(.system(.body, design: .rounded, weight: .semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                 }

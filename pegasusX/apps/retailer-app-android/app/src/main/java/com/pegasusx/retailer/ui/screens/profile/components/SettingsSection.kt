@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,34 +64,34 @@ fun SettingsSection(
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {
-            SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = "Language, preferences", onClick = { })
+            SettingsListItem(icon = Icons.Outlined.Settings, title = stringResource(R.string.mobile_retailer_ui_general_settings), subtitle = "Language, preferences", onClick = { })
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Business details & receiving hours", onClick = onAccountClick)
+            SettingsListItem(icon = Icons.Rounded.Person, title = stringResource(R.string.supplier_portal_auth_register_steps_account), subtitle = "Business details & receiving hours", onClick = onAccountClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.Layers, title = "Store capabilities", subtitle = "Team, stock, POS packs", onClick = onCapabilitiesClick)
+            SettingsListItem(icon = Icons.Outlined.Layers, title = stringResource(R.string.retailer_desktop_settings_capabilities_text_store_capabilities), subtitle = "Team, stock, POS packs", onClick = onCapabilitiesClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.LocationOn, title = "Locations", subtitle = "Branches and checkout store", onClick = onLocationsClick)
+            SettingsListItem(icon = Icons.Outlined.LocationOn, title = stringResource(R.string.retailer_desktop_settings_locations_text_locations), subtitle = "Branches and checkout store", onClick = onLocationsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.LocalMall, title = "Store stock", subtitle = "Receive, putaway, count", onClick = onStoreStockClick)
-            SettingsListItem(icon = Icons.Outlined.Category, title = "Local SKUs", subtitle = "Non-Pegasus POS goods", onClick = onLocalSkusClick)
+            SettingsListItem(icon = Icons.Outlined.LocalMall, title = stringResource(R.string.portal_nav_store_stock), subtitle = "Receive, putaway, count", onClick = onStoreStockClick)
+            SettingsListItem(icon = Icons.Outlined.Category, title = stringResource(R.string.portal_nav_local_skus), subtitle = "Non-Pegasus POS goods", onClick = onLocalSkusClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.ShoppingCart, title = "POS", subtitle = "Cashier sales and voids", onClick = onPosClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.Schedule, title = "Shifts", subtitle = "Clock in and cash recon", onClick = onShiftsClick)
+            SettingsListItem(icon = Icons.Outlined.Schedule, title = stringResource(R.string.portal_nav_shifts), subtitle = "Clock in and cash recon", onClick = onShiftsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.GridView, title = "Sections", subtitle = "Departments and SKU map", onClick = onSectionsClick)
+            SettingsListItem(icon = Icons.Outlined.GridView, title = stringResource(R.string.portal_nav_sections), subtitle = "Departments and SKU map", onClick = onSectionsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.Assessment, title = "Reports Pro", subtitle = "Sales and inventory digest", onClick = onReportsClick)
+            SettingsListItem(icon = Icons.Outlined.Assessment, title = stringResource(R.string.portal_nav_reports_pro), subtitle = "Sales and inventory digest", onClick = onReportsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.SupportAgent, title = "Floor assist", subtitle = "Section help tickets", onClick = onAssistClick)
+            SettingsListItem(icon = Icons.Outlined.SupportAgent, title = stringResource(R.string.retailer_desktop_assist_text_floor_assist), subtitle = "Section help tickets", onClick = onAssistClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.People, title = "Team", subtitle = "Staff roles and invites", onClick = onTeamClick)
+            SettingsListItem(icon = Icons.Outlined.People, title = stringResource(R.string.retailer_desktop_settings_team_text_team), subtitle = "Staff roles and invites", onClick = onTeamClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.CreditCard, title = "Saved Cards", subtitle = "Manage payment methods", onClick = onSavedCardsClick)
+            SettingsListItem(icon = Icons.Outlined.CreditCard, title = stringResource(R.string.retailer_desktop_settings_cards_text_saved_cards), subtitle = "Manage payment methods", onClick = onSavedCardsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.People, title = "Family contacts", subtitle = "Legacy name/phone list", onClick = onFamilyMembersClick)
+            SettingsListItem(icon = Icons.Outlined.People, title = stringResource(R.string.mobile_retailer_ui_family_contacts), subtitle = "Legacy name/phone list", onClick = onFamilyMembersClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.Notifications, title = "Notifications", subtitle = "Push, email, SMS", onClick = { })
+            SettingsListItem(icon = Icons.Outlined.Notifications, title = stringResource(R.string.portal_nav_notifications), subtitle = "Push, email, SMS", onClick = { })
         }
     }
 }

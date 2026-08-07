@@ -23,7 +23,7 @@ struct AiPlannedCard: View {
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
-                Text("Order by \(forecast.suggestedOrderDate)")
+                Text(L10n.format("mobile_retailer.ui.order_by_suggestedorderdate", "\(forecast.suggestedOrderDate)"))
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -31,7 +31,7 @@ struct AiPlannedCard: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(forecast.predictedQuantity) units")
+                Text(L10n.format("mobile_retailer.ui.predictedquantity_units", "\(forecast.predictedQuantity)"))
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 
@@ -39,7 +39,7 @@ struct AiPlannedCard: View {
                     Haptics.medium()
                     onPreorder()
                 } label: {
-                    Text("Pre-Order")
+                    Text("mobile_retailer.ui.pre_order")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10).padding(.vertical, 5)

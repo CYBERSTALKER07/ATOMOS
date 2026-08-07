@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -211,7 +213,7 @@ fun SidebarMenu(
                     Spacer(modifier = Modifier.height(16.dp))
                     SidebarMenuItem(
                         icon = Icons.AutoMirrored.Outlined.ExitToApp,
-                        label = "Log Out",
+                        label = stringResource(R.string.mobile_retailer_ui_log_out),
                         tint = StatusRed,
                         onClick = { onDismiss() },
                     )

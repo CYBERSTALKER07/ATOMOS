@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,8 +67,7 @@ fun FleetLiveMapSection(
             ) {
                 Column {
                     Text("Live fleet", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "${routes.size} active route${if (routes.size == 1) "" else "s"}",
+                    Text(stringResource(R.string.mobile_warehouse_ui_size_active_routeif_else_s, routes.size, if (routes.size == 1) "" else "s"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

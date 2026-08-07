@@ -50,7 +50,7 @@ struct ActiveOrderView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Order #\(order.id.suffix(3))")
+                        Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.id.suffix(3))"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.textPrimary)
                         Text(order.status.displayName)
@@ -76,7 +76,7 @@ struct ActiveOrderView: View {
                 // ETA
                 if let eta = order.estimatedDelivery {
                     VStack(spacing: AppTheme.spacingSM) {
-                        Text("IMPACT TIME") // Tactical label
+                        Text("mobile_retailer.ui.impact_time") // Tactical label
                             .font(.system(size: 10, weight: .black, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                             .tracking(1)
@@ -99,7 +99,7 @@ struct ActiveOrderView: View {
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textSecondary)
                             Spacer()
-                            Text("×\(item.quantity)")
+                            Text(L10n.format("mobile_retailer.ui.quantity", "\(item.quantity)"))
                                 .font(.system(.caption2, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textTertiary)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
@@ -114,11 +114,11 @@ struct ActiveOrderView: View {
                 // QR Code — JIT: only after dispatch
                 if order.status.hasDeliveryToken, let qrData = order.deliveryQRCodePayload {
                     VStack(spacing: AppTheme.spacingSM) {
-                        Text("QR Code for Driver")
+                        Text("mobile_retailer.ui.qr_code_for_driver")
                             .font(.system(.caption, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.textSecondary)
                         QRCodeView(data: qrData, size: 180)
-                        Text("Show this code for delivery confirmation")
+                        Text("mobile_retailer.ui.show_this_code_for_delivery_confirmation")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                             .multilineTextAlignment(.center)
@@ -129,10 +129,10 @@ struct ActiveOrderView: View {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 28))
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text("Awaiting Dispatch")
+                        Text("mobile_retailer.ui.awaiting_dispatch")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
                             .foregroundStyle(AppTheme.textSecondary)
-                        Text("QR code will appear when dispatched")
+                        Text("mobile_retailer.ui.qr_code_will_appear_when_dispatched")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -141,7 +141,7 @@ struct ActiveOrderView: View {
 
                 // Total
                 HStack {
-                    Text("Total")
+                    Text("retailer_desktop.pos.text.total")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
@@ -163,10 +163,10 @@ struct ActiveOrderView: View {
                 Circle().fill(AppTheme.accentSoft.opacity(0.3)).frame(width: 80, height: 80)
                 Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(AppTheme.accent.opacity(0.4))
             }
-            Text("No Active Orders")
+            Text("mobile_retailer.ui.no_active_orders")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Orders en route will appear here with QR codes")
+            Text("mobile_retailer.ui.orders_en_route_will_appear_here_with_qr_codes")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)

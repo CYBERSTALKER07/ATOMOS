@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -212,7 +214,7 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -222,7 +224,7 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
     ) { padding ->
         if (loading && templates.isEmpty()) {
             PegasusLoadingState(
-                title = "Loading operations",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_operations),
                 body = "Fetching broadcast templates and depot tools",
                 modifier = Modifier.padding(padding),
             )

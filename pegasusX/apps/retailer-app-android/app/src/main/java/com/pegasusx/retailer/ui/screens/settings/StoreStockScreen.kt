@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -224,7 +226,7 @@ fun StoreStockScreen(
                 )
                 preferredSku?.let {
                     Text(
-                        "Preferred SKU from stock: $it",
+                        stringResource(R.string.mobile_retailer_ui_preferred_sku_from_stock_it, it),
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
@@ -252,7 +254,7 @@ fun StoreStockScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(Modifier.fillMaxWidth()) {
-                                Text("#${order.id.takeLast(8)} · ${order.status.name.replace('_', ' ')}")
+                                Text(stringResource(R.string.mobile_retailer_ui_takelast_replace, order.id.takeLast(8), order.status.name.replace('_', ' ')))
                                 Text(order.id, style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -268,7 +270,7 @@ fun StoreStockScreen(
                 title = { Text("Store stock") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -399,7 +401,7 @@ fun StoreStockScreen(
                     ) {
                         Text(row.sku, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "${row.bin}: on hand ${row.onHand} · available ${row.available}",
+                            stringResource(R.string.mobile_retailer_ui_bin_on_hand_onhand_available_available, row.bin, row.onHand, row.available),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         TextButton(onClick = { openRequestReturn(row.sku) }) {

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.FloatingActionButton
@@ -20,6 +22,6 @@ fun CameraLockFab(
         containerColor = if (isCameraLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         contentColor = if (isCameraLocked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     ) {
-        Icon(Icons.Default.MyLocation, contentDescription = "Lock Camera")
+        Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mobile_driver_ui_lock_camera))
     }
 }

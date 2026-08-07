@@ -5,7 +5,7 @@ struct StatsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Earnings")
+            Text("portal.nav.earnings")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
                 .padding(.horizontal, LabTheme.s8)

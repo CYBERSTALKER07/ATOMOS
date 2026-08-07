@@ -13,7 +13,7 @@ struct CapabilitiesView: View {
     var body: some View {
         List {
             Section {
-                Text("Solo shops run on Core alone. Enable packs as you grow — hard dependencies are enforced.")
+                Text("mobile_retailer.ui.solo_shops_run_on_core_alone_enable_packs_as_you_grow_hard_depen")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -30,7 +30,7 @@ struct CapabilitiesView: View {
             if let errorText {
                 Section {
                     Text(errorText).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             }
             Section("Packs") {
@@ -46,16 +46,16 @@ struct CapabilitiesView: View {
                             }
                             Spacer()
                             if pack.alwaysOn == true {
-                                Text("Always on")
+                                Text("retailer_desktop.settings.capabilities.text.always_on")
                                     .font(.caption)
                                     .foregroundStyle(AppTheme.textTertiary)
                             } else if pack.enabled {
-                                Button("Disable") {
+                                Button("mobile_retailer.ui.disable") {
                                     Task { await disable(pack.id) }
                                 }
                                 .disabled(busyId == pack.id)
                             } else {
-                                Button("Enable") {
+                                Button("mobile_retailer.ui.enable") {
                                     Task { await enable(pack.id) }
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -66,7 +66,7 @@ struct CapabilitiesView: View {
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textSecondary)
                         if let hard = pack.hardDeps, !hard.isEmpty {
-                            Text("Requires: \(hard.joined(separator: ", "))")
+                            Text(L10n.format("mobile_retailer.ui.requires_joined", "\(hard.joined(separator: ", "))"))
                                 .font(.system(.caption2, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -75,7 +75,7 @@ struct CapabilitiesView: View {
                 }
             }
         }
-        .navigationTitle("Store capabilities")
+        .navigationTitle("retailer_desktop.settings.capabilities.text.store_capabilities")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

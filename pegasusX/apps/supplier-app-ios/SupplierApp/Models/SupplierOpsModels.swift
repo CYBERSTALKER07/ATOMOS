@@ -871,12 +871,14 @@ struct SeasonalOverrideInput: Encodable {
     let startDate: String
     let endDate: String
     let name: String?
+    let multiplier: Double?
 
     enum CodingKeys: String, CodingKey {
         case templateId = "template_id"
         case startDate = "start_date"
         case endDate = "end_date"
         case name
+        case multiplier
     }
 }
 
@@ -889,6 +891,7 @@ struct SeasonalOverrideRow: Decodable, Identifiable {
     let startDate: String
     let endDate: String
     let isActive: Bool
+    let multiplier: Double?
 
     enum CodingKeys: String, CodingKey {
         case overrideId = "override_id"
@@ -898,12 +901,14 @@ struct SeasonalOverrideRow: Decodable, Identifiable {
         case startDate = "start_date"
         case endDate = "end_date"
         case isActive = "is_active"
+        case multiplier
     }
 }
 
 struct SeasonalBuiltinTemplate: Decodable, Identifiable {
     var id: String
     let name: String
+    let multiplier: Double?
 }
 
 struct SeasonalTemplatesResponse: Decodable {

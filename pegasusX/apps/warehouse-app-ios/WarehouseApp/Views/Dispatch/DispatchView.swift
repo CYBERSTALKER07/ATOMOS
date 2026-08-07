@@ -93,19 +93,19 @@ struct DispatchView: View {
             }
         }
         .background(LabTheme.background)
-        .navigationTitle("Dispatch")
+        .navigationTitle("portal.nav.dispatch")
         .navigationDestination(item: $detailRoute) { route in
             OrderDetailView(orderId: route.id)
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if selectedSegment == 2 {
-                    Button("New Request", systemImage: "plus") { showCreateSupplyRequest = true }
+                    Button("mobile_warehouse.ui.new_request_2", systemImage: "plus") { showCreateSupplyRequest = true }
                 }
                 if selectedSegment == 3 && !hasActiveManualDispatchLock {
-                    Button("Lock", systemImage: "lock.fill") { showAcquireDispatchLock = true }
+                    Button("mobile_warehouse.ui.lock", systemImage: "lock.fill") { showAcquireDispatchLock = true }
                 }
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task {
@@ -142,7 +142,7 @@ struct DispatchView: View {
     private var dispatchDialogs: some View {
         dispatchBody
             .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
-                Button("Force dispatch", role: .destructive) {
+                Button("mobile_warehouse.ui.force_dispatch", role: .destructive) {
                     Task {
                         if capacityDialogAutoMode {
                             await runSmartDispatch(forceCapacity: true)
@@ -152,27 +152,27 @@ struct DispatchView: View {
                     }
                 }
                 if capacityDialogAutoMode {
-                    Button("Accept partial") {
+                    Button("mobile_warehouse.ui.accept_partial") {
                         Task { await runSmartDispatch(acceptPartial: true) }
                     }
                 }
                 if !capacityDialogAutoMode && !capacitySuggestedUnselect.isEmpty {
-                    Button("Apply suggestion") {
+                    Button("mobile_warehouse.ui.apply_suggestion") {
                         selectedOrderIds.subtract(capacitySuggestedUnselect)
                         showCapacityDialog = false
                     }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
                 Text(capacityExceededMessage)
             }
             .confirmationDialog("Run smart dispatch?", isPresented: $showSmartConfirm, titleVisibility: .visible) {
-                Button("Smart Dispatch") {
+                Button("mobile_warehouse.ui.smart_dispatch") {
                     Task { await runSmartDispatch() }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
-                Text("Assign orders using the optimizer across available trucks.")
+                Text("mobile_warehouse.ui.assign_orders_using_the_optimizer_across_available_trucks")
             }
             .sheet(isPresented: $showCreateSupplyRequest) {
                 CreateSupplyRequestSheet { form in
@@ -190,14 +190,14 @@ struct DispatchView: View {
                 ),
                 presenting: requestPendingCancellation
             ) { request in
-                Button("Keep", role: .cancel) {
+                Button("mobile_warehouse.ui.keep", role: .cancel) {
                     requestPendingCancellation = nil
                 }
-                Button("Cancel Request", role: .destructive) {
+                Button("notification.cancel_requested.title", role: .destructive) {
                     Task { await cancelSupplyRequest(request) }
                 }
             } message: { request in
-                Text("Cancel request \(request.requestId.prefix(8))? This keeps the warehouse and factory clients in sync.")
+                Text(L10n.format("mobile_warehouse.ui.cancel_request_prefix_this_keeps_the_warehouse_and_factory_clients_in_sy", "\(request.requestId.prefix(8))"))
             }
             .alert(
                 "Release Dispatch Lock?",
@@ -207,22 +207,22 @@ struct DispatchView: View {
                 ),
                 presenting: lockPendingRelease
             ) { lock in
-                Button("Keep", role: .cancel) {
+                Button("mobile_warehouse.ui.keep", role: .cancel) {
                     lockPendingRelease = nil
                 }
-                Button("Release", role: .destructive) {
+                Button("mobile_warehouse.ui.release", role: .destructive) {
                     Task { await releaseDispatchLock(lock) }
                 }
             } message: { lock in
-                Text("Release \(lock.lockType) for this warehouse scope?")
+                Text(L10n.format("mobile_warehouse.ui.release_locktype_for_this_warehouse_scope", "\(lock.lockType)"))
             }
             .confirmationDialog("Lock dispatch for manual override?", isPresented: $showAcquireDispatchLock, titleVisibility: .visible) {
-                Button("Acquire MANUAL_DISPATCH") {
+                Button("mobile_warehouse.ui.acquire_manual_dispatch") {
                     Task { await acquireDispatchLock() }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
-                Text("This freezes auto-dispatch changes until the lock is released.")
+                Text("mobile_warehouse.ui.this_freezes_auto_dispatch_changes_until_the_lock_is_released")
             }
             .sheet(item: Binding(
                 get: { proposeTarget.map { DispatchOrderDetailRoute(id: $0) } },
@@ -232,20 +232,20 @@ struct DispatchView: View {
                     Form {
                         DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                         Section {
-                            TextField("Reason", text: $opsReasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $opsReasonInput, axis: .vertical)
                                 .lineLimit(3...5)
                         } footer: {
-                            Text("The retailer is notified and can accept or reject the new date.")
+                            Text("mobile_warehouse.ui.the_retailer_is_notified_and_can_accept_or_reject_the_new_date")
                         }
                     }
-                    .navigationTitle("Propose new date")
+                    .navigationTitle("mobile_warehouse.ui.propose_new_date")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { proposeTarget = nil }
+                            Button("common.action.cancel") { proposeTarget = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Send") { Task { await submitDispatchPropose(orderId: target.id) } }
+                            Button("mobile_warehouse.ui.send") { Task { await submitDispatchPropose(orderId: target.id) } }
                                 .disabled(opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
@@ -256,20 +256,20 @@ struct DispatchView: View {
                 NavigationStack {
                     Form {
                         Section {
-                            TextField("Reason", text: $opsReasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $opsReasonInput, axis: .vertical)
                                 .lineLimit(3...5)
                         } footer: {
-                            Text("Cancels the order and notifies the retailer.")
+                            Text("mobile_warehouse.ui.cancels_the_order_and_notifies_the_retailer")
                         }
                     }
-                    .navigationTitle("Cancel order")
+                    .navigationTitle("warehouse_portal.dispatch.text.cancel_order")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Back") { rejectRoute = nil }
+                            Button("common.action.back") { rejectRoute = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Cancel order", role: .destructive) {
+                            Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) {
                                 Task { await submitDispatchReject(orderId: target.id) }
                             }
                             .disabled(opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -292,10 +292,10 @@ struct DispatchView: View {
                 .padding(.bottom, LabTheme.spacingSM)
 
             Picker("View", selection: $selectedSegment) {
-                Text("Orders (\(preview.undispatchedOrders.count))").tag(0)
-                Text("Drivers (\(preview.availableDrivers.count + preview.unavailableDrivers.count))").tag(1)
-                Text("Supply (\(supplyRequests.count))").tag(2)
-                Text("Locks (\(dispatchLocks.count))").tag(3)
+                Text(L10n.format("mobile_warehouse.ui.orders_count", "\(preview.undispatchedOrders.count)")).tag(0)
+                Text(L10n.format("mobile_warehouse.ui.drivers_count", "\(preview.availableDrivers.count + preview.unavailableDrivers.count)")).tag(1)
+                Text(L10n.format("mobile_warehouse.ui.supply_count", "\(supplyRequests.count)")).tag(2)
+                Text(L10n.format("mobile_warehouse.ui.locks_count", "\(dispatchLocks.count)")).tag(3)
             }
             .pickerStyle(.segmented)
             .padding()
@@ -390,7 +390,7 @@ struct DispatchView: View {
     @ViewBuilder
     private var supplySegment: some View {
         if supplyRequests.isEmpty {
-            ContentUnavailableView("No Supply Requests", systemImage: "shippingbox", description: Text("No active supply requests"))
+            ContentUnavailableView("No Supply Requests", systemImage: "shippingbox", description: Text("mobile_warehouse.ui.no_active_supply_requests"))
         } else {
             ResponsiveGridContentWrapper {
                 ForEach(supplyRequests) { request in
@@ -398,7 +398,7 @@ struct DispatchView: View {
                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                         Text(String(request.requestId.prefix(8)))
                             .font(.headline)
-                        Text("\(request.state) · \(request.priority) · \(Int(request.totalVolumeVu)) VU")
+                        Text(L10n.format("mobile_warehouse.ui.state_priority_totalvolumevu_vu", "\(request.state)", "\(request.priority)", "\(Int(request.totalVolumeVu))"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -407,7 +407,7 @@ struct DispatchView: View {
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     if cancellableSupplyStates.contains(request.state) {
-                        Button("Cancel", role: .destructive) {
+                        Button("common.action.cancel", role: .destructive) {
                             requestPendingCancellation = request
                         }
                     }
@@ -420,7 +420,7 @@ struct DispatchView: View {
     @ViewBuilder
     private var locksSegment: some View {
         if dispatchLocks.isEmpty {
-            ContentUnavailableView("No Dispatch Locks", systemImage: "lock.open", description: Text("Dispatch is currently unlocked"))
+            ContentUnavailableView("No Dispatch Locks", systemImage: "lock.open", description: Text("mobile_warehouse.ui.dispatch_is_currently_unlocked"))
         } else {
             ResponsiveGridContentWrapper {
                 ForEach(dispatchLocks) { lock in
@@ -436,7 +436,7 @@ struct DispatchView: View {
                     WarehouseStatusBadge(text: dispatchLockScope(lock))
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Release", role: .destructive) {
+                    Button("mobile_warehouse.ui.release", role: .destructive) {
                         lockPendingRelease = lock
                     }
                 }
@@ -874,7 +874,7 @@ private struct HandoffTimelineSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Handoff timeline")
+            Text("warehouse_portal.dispatch.text.handoff_timeline")
                 .font(.headline)
             Text(subtitle)
                 .font(.caption)

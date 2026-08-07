@@ -32,7 +32,7 @@ struct ReturnsList: View {
                     Text(item.productName.isEmpty ? item.returnId : item.productName)
                         .font(.headline)
                     if item.isClaimTicket {
-                        Text("Claim ticket")
+                        Text("mobile_warehouse.ui.claim_ticket")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -40,14 +40,14 @@ struct ReturnsList: View {
                             .clipShape(Capsule())
                     }
                 }
-                Text("Qty \(item.receivedQty)/\(item.expectedQty) · \(item.reason)")
+                Text(L10n.format("mobile_warehouse.ui.qty_receivedqty_expectedqty_reason", "\(item.receivedQty)", "\(item.expectedQty)", "\(item.reason)"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text(item.driverName.isEmpty ? (item.isClaimTicket ? "store return" : "—") : "Driver: \(item.driverName)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if !item.suggestedDisposition.isEmpty {
-                    Text("Suggested: \(item.suggestedDisposition)")
+                    Text(L10n.format("mobile_warehouse.ui.suggested_suggesteddisposition", "\(item.suggestedDisposition)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -57,7 +57,7 @@ struct ReturnsList: View {
                         .foregroundStyle(.secondary)
                 }
                 if let code = item.barcode, !code.isEmpty {
-                    Text("EAN \(code)")
+                    Text(L10n.format("mobile_warehouse.ui.ean_code_2", "\(code)"))
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }

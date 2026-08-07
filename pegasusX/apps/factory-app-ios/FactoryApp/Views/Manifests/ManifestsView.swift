@@ -46,14 +46,14 @@ struct ManifestsView: View {
                     }
                 }
             }
-            .navigationTitle("Manifests")
+            .navigationTitle("portal.nav.manifests")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close", systemImage: "xmark") { dismiss() }
+                    Button("common.action.close", systemImage: "xmark") { dismiss() }
                         .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
@@ -63,7 +63,7 @@ struct ManifestsView: View {
             if let selectedManifestID {
                 ManifestDetailView(manifestId: selectedManifestID)
             } else {
-                ContentUnavailableView("Select a Manifest", systemImage: "list.clipboard", description: Text("Choose a manifest to run the LEO lifecycle."))
+                ContentUnavailableView("Select a Manifest", systemImage: "list.clipboard", description: Text("mobile_factory.ui.choose_a_manifest_to_run_the_leo_lifecycle"))
             }
         }
         .task { await load() }
@@ -112,13 +112,13 @@ private struct ManifestRow: View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
             Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
                 .font(.subheadline.bold())
-            Text("Manifest \(manifest.id.prefix(8))")
+            Text(L10n.format("mobile_factory.ui.manifest_prefix", "\(manifest.id.prefix(8))"))
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
             HStack {
                 FactoryStatusBadge(text: manifest.state)
                 Spacer()
-                Text("\(Int(manifest.totalVolumeVU)) VU")
+                Text(L10n.format("mobile_factory.ui.totalvolumevu_vu", "\(Int(manifest.totalVolumeVU))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -53,4 +53,4 @@ Inventory list includes `lots_enabled`.
 - Cycle counts → **Wave 1C stub** — [`WMS_CYCLE_COUNTS.md`](./WMS_CYCLE_COUNTS.md); residual ABC + apply-on-approve
 - S-shape / LIFO load sequencing
 - Cold-chain temperature ingestion
-- Forbid direct `SupplierInventoryV2` writes outside roll-up when flag on
+- ~~Forbid direct `SupplierInventoryV2` writes outside roll-up when flag on~~ — **closed (2026-08-06):** `CreditSupplierInventoryV2InTxn` fail-closed when `WMS_LOTS_ENABLED`; factory/returns/credit-note/supplier restock use `stocklots.CreditViaDefaultPutawayInTxn`; absolute `UpdateInventoryQuantity` + import QoH apply + empty-order release rejected. Serial tracking still deferred.

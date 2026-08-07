@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,7 +72,7 @@ fun FamilyMembersScreen(
                 title = { Text("Family Members") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -87,7 +89,7 @@ fun FamilyMembersScreen(
         floatingActionButton = {
             if (!uiState.familyGone) {
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add Member")
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.mobile_retailer_ui_add_member))
                 }
             }
         },
@@ -194,7 +196,7 @@ fun FamilyMembersScreen(
                         Card {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    "Migration result: ${result.migrated.size} migrated · " +
+                                    stringResource(R.string.mobile_retailer_ui_migration_result_size_migrated, result.migrated.size) +
                                         "${result.skipped.size} skipped · ${result.familyRemaining} remaining",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
@@ -206,8 +208,7 @@ fun FamilyMembersScreen(
                                     ) {
                                         Column(Modifier.weight(1f)) {
                                             Text(m.name, style = MaterialTheme.typography.bodyMedium)
-                                            Text(
-                                                "${m.phone} · ${m.retailerRole}",
+                                            Text(stringResource(R.string.mobile_retailer_ui_phone_retailerrole, m.phone, m.retailerRole),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
@@ -223,8 +224,7 @@ fun FamilyMembersScreen(
                                     }
                                 }
                                 result.skipped.forEach { s ->
-                                    Text(
-                                        "${s.phone ?: s.memberId}: ${s.reason}",
+                                    Text(stringResource(R.string.mobile_retailer_ui_memberid_reason, s.phone ?: s.memberId, s.reason),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.error,
                                     )
@@ -290,7 +290,7 @@ fun FamilyMembersScreen(
                                 IconButton(onClick = { viewModel.deleteMember(member.id) }) {
                                     Icon(
                                         Icons.Rounded.Delete,
-                                        contentDescription = "Delete",
+                                        contentDescription = stringResource(R.string.mobile_retailer_ui_delete),
                                         tint = MaterialTheme.colorScheme.error,
                                     )
                                 }
@@ -329,7 +329,7 @@ fun FamilyMembersScreen(
         var phone by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("Add Member") },
+            title = { Text(stringResource(R.string.mobile_retailer_ui_add_member)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(

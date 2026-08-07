@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.dispatch
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -65,7 +67,7 @@ fun DispatchOrderList(
         // ── Fleet trucks grid ──
         if (fleetVehicles.isNotEmpty()) {
             WarehouseSectionTitle(
-                title = "Fleet trucks (${fleetVehicles.size})",
+                title = stringResource(R.string.mobile_warehouse_ui_fleet_trucks_size, fleetVehicles.size),
                 modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
             )
             LazyVerticalGrid(
@@ -166,8 +168,7 @@ fun DispatchOrderList(
                             preview.availableDrivers.forEach { driver ->
                                 DropdownMenuItem(
                                     text = {
-                                        Text(
-                                            "${driver.name} · ${driver.vehicleLabel.ifBlank { driver.truckStatus }}",
+                                        Text(stringResource(R.string.mobile_warehouse_ui_name_truckstatus, driver.name, driver.vehicleLabel.ifBlank { driver.truckStatus }),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -181,8 +182,7 @@ fun DispatchOrderList(
                         }
                     }
                     if (selectedDriver != null) {
-                        Text(
-                            "Loaded ${"%.1f".format(selectedVolume)} / ${"%.1f".format(effectiveMax)} VU effective",
+                        Text(stringResource(R.string.mobile_warehouse_ui_loaded_format_format_2_vu_effective, "%.1f".format(selectedVolume), "%.1f".format(effectiveMax)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -206,8 +206,7 @@ fun DispatchOrderList(
                     }
                     }
                     if (preview.fleetEffectiveCapacityVu > 0) {
-                        Text(
-                            "Fleet ${"%.1f".format(preview.fleetEffectiveCapacityVu)} VU effective",
+                        Text(stringResource(R.string.mobile_warehouse_ui_fleet_format_vu_effective, "%.1f".format(preview.fleetEffectiveCapacityVu)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -253,13 +252,13 @@ fun DispatchOrderList(
                             WarehouseSectionTitle("Smart suggest preview")
                             if (preview.windowConstrainedCount > 0) {
                                 Text(
-                                    "${preview.windowConstrainedCount} order(s) constrained by receiving window",
+                                    stringResource(R.string.mobile_warehouse_ui_windowconstrainedcount_order_s_constrained_by_receiving_window, preview.windowConstrainedCount),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.tertiary,
                                 )
                             }
                             preview.optimizerSource?.let { source ->
-                                Text("Source: $source", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.mobile_warehouse_ui_source_source_2, source), style = MaterialTheme.typography.bodySmall)
                             }
                             preview.optimizerWarnings.forEach { warning ->
                                 Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
@@ -284,8 +283,7 @@ fun DispatchOrderList(
                                     route.driverName ?: route.driverId ?: "Driver",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                Text(
-                                    "${route.stopCount ?: route.orderIds.size} stops · ${"%.1f".format(route.volumeVu ?: 0.0)} VU",
+                                Text(stringResource(R.string.mobile_warehouse_ui_size_stops_format_vu, route.stopCount ?: route.orderIds.size, "%.1f".format(route.volumeVu ?: 0.0)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

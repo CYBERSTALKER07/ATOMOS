@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -76,7 +78,7 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
                 title = { Text("Credit profiles") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -84,7 +86,7 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Retailer credit profiles",
                 modifier = Modifier.padding(padding),
             )
@@ -116,9 +118,9 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(row.retailerId, style = MaterialTheme.typography.labelMedium)
-                            Text("${row.status} · risk ${row.riskTier.ifBlank { "—" }}")
+                            Text(stringResource(R.string.mobile_supplier_ui_status_risk_ifblank, row.status, row.riskTier.ifBlank { "—" }))
                             Text(
-                                "Limit ${row.creditLimitMinor} · bal ${row.currentBalanceMinor} · avail ${row.availableCreditMinor}",
+                                stringResource(R.string.mobile_supplier_ui_limit_creditlimitminor_bal_currentbalanceminor_avail_availablecreditmino, row.creditLimitMinor, row.currentBalanceMinor, row.availableCreditMinor),
                             )
                             val busy = busyId == row.retailerId
                             Row(

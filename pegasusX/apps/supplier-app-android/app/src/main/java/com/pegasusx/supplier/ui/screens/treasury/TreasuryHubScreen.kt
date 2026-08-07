@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,7 +72,7 @@ fun TreasuryHubScreen(
                 title = { Text("Treasury hub") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -78,7 +80,7 @@ fun TreasuryHubScreen(
     ) { padding ->
         when {
             showFullScreenLoading(state.loading, state.earnings != null) -> PegasusLoadingState(
-                title = "Loading treasury…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_treasury),
                 body = "KPIs and links",
                 modifier = Modifier.padding(padding),
             )
@@ -99,13 +101,13 @@ fun TreasuryHubScreen(
                     val earnings = state.earnings
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                         SupplierKpiTile(
-                            label = "Month revenue",
+                            label = stringResource(R.string.mobile_supplier_ui_month_revenue),
                             value = formatMinorAmount(earnings?.monthMinor ?: 0, earnings?.currency.orEmpty()),
                             icon = Icons.Default.TrendingUp,
                             modifier = Modifier.weight(1f),
                         )
                         SupplierKpiTile(
-                            label = "Ledger entries",
+                            label = stringResource(R.string.mobile_supplier_ui_ledger_entries),
                             value = state.ledgerEntryCount.toString(),
                             icon = Icons.Default.Receipt,
                             modifier = Modifier.weight(1f),
@@ -114,7 +116,7 @@ fun TreasuryHubScreen(
                 }
                 item {
                     SupplierKpiTile(
-                        label = "Reconciliation mismatches",
+                        label = stringResource(R.string.supplier_portal_earnings_text_reconciliation_mismatches),
                         value = state.mismatchCount.toString(),
                         icon = Icons.Default.Warning,
                     )

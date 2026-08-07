@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -45,7 +47,7 @@ fun PaymentBypass(
             Text(if (bypassing) "Issuing…" else "Issue bypass token")
         }
         bypassToken?.let { token ->
-            Text("Driver token: $token", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.mobile_supplier_ui_driver_token_token, token), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

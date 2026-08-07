@@ -43,9 +43,9 @@ struct DashboardView: View {
 
                             if let meiSummary {
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                                    Text("MEIO network")
+                                    Text("supplier_portal.residual.text.meio_network")
                                         .font(.headline)
-                                    Text("\(meiSummary.warehousesScanned) warehouses · \(meiSummary.transferRecommendations) transfer recs · \(meiSummary.insightsGenerated) insights")
+                                    Text(L10n.format("mobile_supplier.ui.warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig", "\(meiSummary.warehousesScanned)", "\(meiSummary.transferRecommendations)", "\(meiSummary.insightsGenerated)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -89,7 +89,7 @@ struct DashboardView: View {
                                 )
                             }
 
-                            Text("Updated \(dashboard.updatedAt)")
+                            Text(L10n.format("mobile_supplier.ui.updated_updatedat", "\(dashboard.updatedAt)"))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
@@ -99,7 +99,7 @@ struct DashboardView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Dashboard")
+            .navigationTitle("portal.nav.dashboard")
             .toolbar {
                 signOutToolbar
                 ToolbarItem(placement: .topBarTrailing) {
@@ -110,7 +110,7 @@ struct DashboardView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(silent: true) }
                     }
                     .labelStyle(.iconOnly)
@@ -137,14 +137,14 @@ struct DashboardView: View {
         HStack(spacing: SupplierTheme.spacingMD) {
             Image(systemName: "creditcard")
             VStack(alignment: .leading, spacing: 4) {
-                Text("Billing incomplete")
+                Text("mobile_supplier.ui.billing_incomplete")
                     .font(.subheadline.bold())
-                Text("Finish setup to enable treasury and payouts.")
+                Text("mobile_supplier.ui.finish_setup_to_enable_treasury_and_payouts")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Setup") {
+            Button("mobile_supplier.ui.setup") {
                 tokenStore.showBillingGate()
             }
             .font(.caption.bold())
@@ -155,7 +155,7 @@ struct DashboardView: View {
     @ToolbarContentBuilder
     private var signOutToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+            Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                 tokenStore.clear()
             }
             .labelStyle(.iconOnly)

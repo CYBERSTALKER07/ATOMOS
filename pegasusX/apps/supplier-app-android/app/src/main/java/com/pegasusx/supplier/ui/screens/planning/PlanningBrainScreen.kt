@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -58,7 +60,7 @@ fun PlanningBrainScreen(
                 title = { Text("Planning sandbox") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -103,9 +105,9 @@ fun PlanningBrainScreen(
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                             Text("Scenario run", style = MaterialTheme.typography.titleSmall)
-                            Text("Factory downtime: ${downtimeHours.roundToInt()}h", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_supplier_ui_factory_downtime_roundtointh, downtimeHours.roundToInt()), style = MaterialTheme.typography.bodySmall)
                             Slider(value = downtimeHours, onValueChange = { downtimeHours = it }, valueRange = 0f..168f, steps = 167)
-                            Text("Demand delta: ${demandDeltaPct.roundToInt()}%", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_supplier_ui_demand_delta_roundtoint, demandDeltaPct.roundToInt()), style = MaterialTheme.typography.bodySmall)
                             Slider(value = demandDeltaPct, onValueChange = { demandDeltaPct = it }, valueRange = -50f..200f, steps = 50)
                             Button(
                                 enabled = !running,
@@ -140,7 +142,7 @@ fun PlanningBrainScreen(
                             }
                             scenario?.let { result ->
                                 Text(
-                                    "SLA risk ${result.slaRiskPct.roundToInt()}% · fleet ${result.fleetVolumeOrders} · stockouts ${result.stockoutSkus.size}",
+                                    stringResource(R.string.mobile_supplier_ui_sla_risk_roundtoint_fleet_fleetvolumeorders_stockouts_size, result.slaRiskPct.roundToInt(), result.fleetVolumeOrders, result.stockoutSkus.size),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

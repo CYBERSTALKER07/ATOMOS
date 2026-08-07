@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -158,7 +160,7 @@ fun CapabilitiesScreen(
                 title = { Text("Store capabilities") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -200,7 +202,7 @@ fun CapabilitiesScreen(
                             Text(pack.description, style = MaterialTheme.typography.bodySmall)
                             if (pack.hardDeps.isNotEmpty()) {
                                 Text(
-                                    "Requires: ${pack.hardDeps.joinToString()}",
+                                    stringResource(R.string.mobile_retailer_ui_requires_jointostring, pack.hardDeps.joinToString()),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

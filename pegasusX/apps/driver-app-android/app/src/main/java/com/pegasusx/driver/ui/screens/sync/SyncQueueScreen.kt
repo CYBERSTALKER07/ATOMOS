@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.sync
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +79,7 @@ fun SyncQueueScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${pending.size} pending · ${dead.size} dead-letter",
+                        stringResource(R.string.mobile_driver_ui_size_pending_size_2_dead_letter, pending.size, dead.size),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Button(onClick = { viewModel.flushNow() }, enabled = !flushing && pending.isNotEmpty()) {
@@ -131,14 +133,13 @@ private fun MutationCard(row: PendingMutationEntity, dead: Boolean = false) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.s16)) {
             Text(row.endpoint, style = MaterialTheme.typography.titleSmall)
-            Text(
-                "Order ${row.orderId.ifBlank { "—" }} · attempts ${row.attemptCount}",
+            Text(stringResource(R.string.mobile_driver_ui_order_ifblank_attempts_attemptcount, row.orderId.ifBlank { "—" }, row.attemptCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (row.clientTimestampIso.isNotBlank()) {
                 Text(
-                    "client_ts ${row.clientTimestampIso}",
+                    stringResource(R.string.mobile_driver_ui_client_ts_clienttimestampiso, row.clientTimestampIso),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

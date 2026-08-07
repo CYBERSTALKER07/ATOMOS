@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -163,7 +165,7 @@ fun ProfileScreen(
         uiState.pricingRulesSummary?.let { summary ->
             item {
                 Column(modifier = Modifier.padding(horizontal = PegasusSpacing.lg)) {
-                    RetailerSectionHeader(title = "Pricing rules")
+                    RetailerSectionHeader(title = stringResource(R.string.mobile_retailer_ui_pricing_rules))
                     Spacer(modifier = Modifier.height(PegasusSpacing.xs))
                     Text(
                         summary,

@@ -24,6 +24,7 @@ export function SeasonalOverridesTable({ overrides }: SeasonalOverridesTableProp
         <tr style={{ color: "var(--desk-text-secondary)" }}>
           <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</th>
           <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.settings.planning.seasonal_overrides_table.text.template")}</th>
+          <th className="md-typescale-label-medium p-3 text-left font-medium">×</th>
           <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.settings.planning.seasonal_overrides_table.text.window")}</th>
           <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.compliance.text.status")}</th>
         </tr>
@@ -33,6 +34,7 @@ export function SeasonalOverridesTable({ overrides }: SeasonalOverridesTableProp
           <tr key={row.override_id} style={{ borderTop: "1px solid var(--desk-border)" }}>
             <td className="p-3 md-typescale-body-medium">{row.name || "—"}</td>
             <td className="p-3 md-typescale-body-medium font-mono text-sm">{row.template_id}</td>
+            <td className="p-3 md-typescale-body-medium">{row.multiplier != null ? `×${row.multiplier}` : "—"}</td>
             <td className="p-3 md-typescale-body-medium">
               {row.start_date} → {row.end_date}
             </td>

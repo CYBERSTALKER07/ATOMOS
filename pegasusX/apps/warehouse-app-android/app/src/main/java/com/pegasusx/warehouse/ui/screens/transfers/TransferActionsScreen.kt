@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.transfers
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,11 +24,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.pegasus.barcode.DataWedgeBarcodeEffect
+import com.pegasus.barcode.EanBarcodeScannerPreview
+import com.pegasus.barcode.KeyboardWedgeBarcodeField
+import com.pegasusx.warehouse.R
 import com.pegasusx.warehouse.data.model.EmergencyTransferRequest
 import com.pegasusx.warehouse.data.model.ForceReceiveRequest
 import com.pegasusx.warehouse.data.model.PickTask
@@ -57,6 +64,7 @@ fun TransferActionsScreen(
     var putawayExpiry by remember { mutableStateOf("") }
     var pickManifestId by remember { mutableStateOf("") }
     var pickScan by remember { mutableStateOf("") }
+    var pickScannedQty by remember { mutableLongStateOf(0L) }
     var activeWave by remember { mutableStateOf<PickWave?>(null) }
     var busy by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -90,11 +98,74 @@ fun TransferActionsScreen(
         }
     }
 
+    fun matchPending(code: String): PickTask? {
+        val trimmed = code.trim()
+        if (trimmed.isEmpty()) return null
+        return activeWave?.tasks?.firstOrNull { t ->
+            t.status == "PENDING" && (
+                t.productId.equals(trimmed, ignoreCase = true) ||
+                    t.lotId.equals(trimmed, ignoreCase = true)
+                )
+        }
+    }
+
+    fun confirmPick(task: PickTask, qty: Long) {
+        val wave = activeWave ?: return
+        busy = true
+        scope.launch {
+            try {
+                val res = opsRepository.confirmPickTask(wave.waveId, task.taskId, qty)
+                if (res.isSuccessful) {
+                    activeWave = res.body()
+                    pickScan = ""
+                    pickScannedQty = 0L
+                    snackbarHostState.showSnackbar("Confirmed · ${activeWave?.status}")
+                } else {
+                    snackbarHostState.showSnackbar("Confirm failed (${res.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "Confirm failed")
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun onPickBarcode(code: String) {
+        val trimmed = code.trim()
+        if (trimmed.isEmpty() || busy) return
+        pickScan = trimmed
+        if (putawayProduct.isBlank()) {
+            putawayProduct = trimmed
+        }
+        val task = matchPending(trimmed) ?: return
+        val next = pickScannedQty + 1L
+        pickScannedQty = next
+        if (next >= task.quantityRequested) {
+            confirmPick(task, task.quantityRequested)
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("Scanned $next / ${task.quantityRequested}")
+            }
+        }
+    }
+
+    DataWedgeBarcodeEffect(onBarcode = ::onPickBarcode)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Transfer actions") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.common_action_back),
+                            )
+                        }
+                    }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -269,6 +340,7 @@ fun TransferActionsScreen(
                             val res = opsRepository.createPickWave(mid)
                             if (res.isSuccessful) {
                                 activeWave = res.body()
+                                pickScannedQty = 0L
                                 snackbarHostState.showSnackbar("Pick wave ${activeWave?.status ?: "created"}")
                             } else {
                                 snackbarHostState.showSnackbar("Create wave failed (${res.code()})")
@@ -293,6 +365,7 @@ fun TransferActionsScreen(
                             if (res.isSuccessful && wave != null) {
                                 val detail = opsRepository.getPickWave(wave.waveId)
                                 activeWave = detail.body() ?: wave
+                                pickScannedQty = 0L
                                 snackbarHostState.showSnackbar("Loaded ${activeWave?.tasks?.size ?: 0} tasks")
                             } else {
                                 snackbarHostState.showSnackbar("No pick waves")
@@ -307,6 +380,16 @@ fun TransferActionsScreen(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Load pick waves") }
+
+            EanBarcodeScannerPreview(
+                onBarcode = ::onPickBarcode,
+                enabled = !busy,
+                previewHeightDp = 180,
+            )
+            KeyboardWedgeBarcodeField(
+                onBarcode = ::onPickBarcode,
+                enabled = !busy,
+            )
             OutlinedTextField(
                 value = pickScan,
                 onValueChange = { pickScan = it },
@@ -324,37 +407,36 @@ fun TransferActionsScreen(
             }
             if (activeWave != null) {
                 Text(
-                    "Wave ${activeWave!!.waveId.take(8)}… · ${activeWave!!.status}",
+                    stringResource(
+                        R.string.mobile_warehouse_ui_wave_take_status,
+                        activeWave!!.waveId.take(8),
+                        activeWave!!.status,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 pending?.let { task ->
                     Text(
-                        "Next: ${task.productId} @ ${task.locationId} qty ${task.quantityRequested}",
+                        stringResource(
+                            R.string.mobile_warehouse_ui_next_productid_locationid_qty_quantityrequested,
+                            task.productId,
+                            task.locationId,
+                            task.quantityRequested,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "Scanned $pickScannedQty / ${task.quantityRequested}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Button(
                         onClick = {
-                            busy = true
-                            scope.launch {
-                                try {
-                                    val res = opsRepository.confirmPickTask(
-                                        activeWave!!.waveId,
-                                        task.taskId,
-                                        task.quantityRequested,
-                                    )
-                                    if (res.isSuccessful) {
-                                        activeWave = res.body()
-                                        pickScan = ""
-                                        snackbarHostState.showSnackbar("Confirmed · ${activeWave?.status}")
-                                    } else {
-                                        snackbarHostState.showSnackbar("Confirm failed (${res.code()})")
-                                    }
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar(e.message ?: "Confirm failed")
-                                } finally {
-                                    busy = false
-                                }
+                            val qty = if (pickScannedQty > 0L) {
+                                minOf(pickScannedQty, task.quantityRequested)
+                            } else {
+                                task.quantityRequested
                             }
+                            confirmPick(task, qty)
                         },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),

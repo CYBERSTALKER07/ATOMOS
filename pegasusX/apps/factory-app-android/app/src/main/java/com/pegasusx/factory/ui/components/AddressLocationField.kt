@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -183,14 +185,14 @@ fun AddressLocationField(
         when {
             GeocodeLocationSupport.hasValidCoordinates(value.lat, value.lng) -> {
                 Text(
-                    text = "Pinned for supply routing",
+                    text = stringResource(R.string.factory_portal_location_picker_text_pinned_for_supply_routing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             resolving -> {
                 Text(
-                    text = "Resolving address…",
+                    text = stringResource(R.string.factory_portal_location_picker_text_resolving_address),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

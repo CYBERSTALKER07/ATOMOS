@@ -96,26 +96,26 @@ struct DockView: View {
         .sheet(item: $activeQrOrder) { order in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
-                    Text("Driver Approaching")
+                    Text("mobile_retailer.ui.driver_approaching")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text("Order #\(order.orderId.suffix(8))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.orderId.suffix(8))"))
                         .font(.system(.title3, design: .rounded, weight: .bold))
                     if let qrData = order.deliveryQRCodePayload {
                         QRCodeView(data: qrData, size: 220)
                     }
-                    Text("Show this QR to the driver for delivery confirmation.")
+                    Text("mobile_retailer.ui.show_this_qr_to_the_driver_for_delivery_confirmation")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
                     Spacer()
                 }
                 .padding(AppTheme.spacingXL)
-                .navigationTitle("Delivery QR")
+                .navigationTitle("mobile_retailer.ui.delivery_qr")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Close") { activeQrOrder = nil }
+                        Button("common.action.close") { activeQrOrder = nil }
                     }
                 }
             }
@@ -164,7 +164,7 @@ struct DockView: View {
                             Text(group.supplierName)
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text("\(group.orders.count) orders · \(group.totalAmount.formatted()) UZS")
+                            Text(L10n.format("mobile_retailer.ui.count_orders_formatted_uzs", "\(group.orders.count)", "\(group.totalAmount.formatted())"))
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -196,9 +196,9 @@ struct DockView: View {
         VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Order #\(order.orderId.suffix(8))")
+                    Text(L10n.format("mobile_retailer.ui.order_suffix", "\(order.orderId.suffix(8))"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    Text("\(order.items.count) items · \(order.displayTotal) UZS")
+                    Text(L10n.format("mobile_retailer.ui.count_items_displaytotal_uzs", "\(order.items.count)", "\(order.displayTotal)"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
@@ -210,7 +210,7 @@ struct DockView: View {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "bell.badge.fill")
                         .foregroundStyle(AppTheme.warning)
-                    Text("Driver approaching your store")
+                    Text("mobile_retailer.ui.driver_approaching_your_store")
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                 }
                 .padding(AppTheme.spacingSM)
@@ -234,7 +234,7 @@ struct DockView: View {
                     .buttonStyle(.bordered)
 
                     if revealedTokenOrderIds.contains(order.orderId) {
-                        Button("Show Fullscreen") {
+                        Button("mobile_retailer.ui.show_fullscreen") {
                             activeQrOrder = order
                         }
                         .font(.system(.caption, design: .rounded, weight: .bold))

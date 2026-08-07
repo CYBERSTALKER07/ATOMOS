@@ -466,6 +466,10 @@ type CreditDeliveryEvent struct {
 	SupplierID string `json:"supplier_id"`
 	RetailerID string `json:"retailer_id"`
 	Status     string `json:"status,omitempty"`
+	// PhotoProofURL is required evidence for credit leave (PoD).
+	PhotoProofURL string `json:"photo_proof_url,omitempty"`
+	// SignatureURL is optional handwritten acknowledgment captured at handoff.
+	SignatureURL string `json:"signature_url,omitempty"`
 }
 
 // PreOrderEvent handles pre-order lifecycle.
@@ -522,6 +526,8 @@ type ConditionEvent struct {
 	BaseEvent
 	ReportID      string   `json:"report_id"`
 	OrderID       string   `json:"order_id"`
+	SupplierID    string   `json:"supplier_id,omitempty"`
+	RetailerID    string   `json:"retailer_id,omitempty"`
 	ReporterID    string   `json:"reporter_id"`
 	ReporterRole  string   `json:"reporter_role"`
 	ConditionType string   `json:"condition_type"`
