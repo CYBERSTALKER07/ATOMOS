@@ -2,6 +2,7 @@ package ar
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -13,6 +14,10 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
+
+// ErrInvoicesDisabled rejects credit leave-behind while AR invoicing is off:
+// a credit delivery without an AR open item is uncollectible revenue.
+var ErrInvoicesDisabled = errors.New("credit leave-behind rejected: AR_INVOICES_ENABLED is off")
 
 // InvoicesEnabled gates AR invoice persistence (SSMR).
 func InvoicesEnabled() bool {

@@ -16,6 +16,7 @@ type QuickAction = {
   id: string;
   emoji: string;
   label: string;
+  category: 'versus' | 'tech' | 'roles' | 'business' | 'action';
   prompt?: string;
   href?: string;
   dismiss?: boolean;
@@ -23,46 +24,99 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    id: 'expert',
-    emoji: '💬',
-    label: 'Talk to a logistics expert at Pegasus',
-    href: '/contact',
+    id: 'versus-giants',
+    emoji: '⚡',
+    label: 'Why Pegasus vs Amazon, o9 & Oracle?',
+    category: 'versus',
+    prompt: 'Compare Pegasus with tech giants & legacy ERPs (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). Why choose Pegasus?',
   },
   {
-    id: 'platform',
-    emoji: '📖',
-    label: 'Learn how Pegasus runs dispatch, fleet, and payments',
-    prompt: 'How does Pegasus run dispatch, fleet tracking, and payments across the six roles?',
+    id: 'tech-stack',
+    emoji: '⚙️',
+    label: 'Go Backend, Spanner & Outbox System',
+    category: 'tech',
+    prompt: 'Explain the technical architecture of Pegasus: Go microservices, Cloud Spanner transactions, Transactional Outbox pattern, Kafka, WebSockets, and offline mobile sync.',
   },
   {
-    id: 'demo',
+    id: 'six-roles',
+    emoji: '👥',
+    label: '6 Ecosystem Roles & Capabilities',
+    category: 'roles',
+    prompt: 'What are the 6 ecosystem roles in Pegasus (Supplier, Warehouse, Retailer, Driver, Factory, Payload/Gate) and their key capabilities?',
+  },
+  {
+    id: 'business-roi',
+    emoji: '💼',
+    label: 'Business Benefits & Operational ROI',
+    category: 'business',
+    prompt: 'What are the core business outcomes, ROI, and workflow improvements Pegasus delivers for supply chain leadership?',
+  },
+  {
+    id: 'demo-tour',
     emoji: '📺',
-    label: 'Watch a platform walkthrough',
+    label: 'Watch Platform Walkthrough',
+    category: 'action',
     href: '/demo',
   },
   {
-    id: 'tour',
-    emoji: '💻',
-    label: 'Take a platform tour',
-    prompt: 'Give me a short platform tour and the best pages to visit first.',
+    id: 'contact-expert',
+    emoji: '💬',
+    label: 'Talk to a Logistics Expert',
+    category: 'action',
+    href: '/contact',
   },
   {
-    id: 'careers',
+    id: 'join-careers',
     emoji: '👩‍💻',
-    label: 'Careers at Pegasus',
+    label: 'Careers & Schedule Demo',
+    category: 'action',
     href: '/join',
   },
   {
-    id: 'browse',
+    id: 'dismiss',
     emoji: '🙈',
     label: 'Just browsing',
+    category: 'action',
     dismiss: true,
+  },
+];
+
+const SIDEBAR_CATEGORIES = [
+  {
+    id: 'all',
+    title: 'Featured Prompts',
+    icon: '✨',
+    filter: () => true,
+  },
+  {
+    id: 'versus',
+    title: 'vs. Tech Giants',
+    icon: '⚡',
+    filter: (a: QuickAction) => a.category === 'versus',
+  },
+  {
+    id: 'tech',
+    title: 'Technical Stack',
+    icon: '⚙️',
+    filter: (a: QuickAction) => a.category === 'tech',
+  },
+  {
+    id: 'roles',
+    title: '6 Role Capabilities',
+    icon: '👥',
+    filter: (a: QuickAction) => a.category === 'roles',
+  },
+  {
+    id: 'business',
+    title: 'Business & ROI',
+    icon: '💼',
+    filter: (a: QuickAction) => a.category === 'business',
   },
 ];
 
 const HIDDEN_PREFIXES = ['/admin', '/resume'];
 const WELCOME =
-  'Thanks for visiting Pegasus! Ask about dispatch, roles, payments, or how the platform works — or pick a shortcut below.';
+  'Welcome to Pegasus! Ask me anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
 
 function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -73,6 +127,8 @@ export default function SiteAssistant() {
   const panelId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
   const [dismissed, setDismissed] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -141,112 +197,198 @@ export default function SiteAssistant() {
     void sendPrompt(input);
   }
 
+  function clearHistory() {
+    setMessages([{ id: newId(), role: 'assistant', content: WELCOME }]);
+    setError(null);
+  }
+
+  const currentCategoryObj = SIDEBAR_CATEGORIES.find((c) => c.id === activeCategory) || SIDEBAR_CATEGORIES[0];
+  const filteredQuickActions = QUICK_ACTIONS.filter(currentCategoryObj.filter);
+
   return (
-    <div className="site-assistant" data-open={open ? 'true' : 'false'}>
+    <div 
+      className={`site-assistant ${fullscreen ? 'site-assistant--fullscreen' : ''}`} 
+      data-open={open ? 'true' : 'false'}
+    >
       {open ? (
         <div
           id={panelId}
-          className="site-assistant__panel site-assistant__panel--chat"
+          className={`site-assistant__panel ${fullscreen ? 'site-assistant__panel--grok-modal' : 'site-assistant__panel--chat'}`}
           role="dialog"
           aria-label="Pegasus assistant"
         >
           <div className="site-assistant__chat-card">
-            <header className="site-assistant__chat-head">
-              <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
-              <div>
-                <p className="site-assistant__chat-title">Pegasus bot</p>
-                <p className="site-assistant__meta">Trained on Pegasus product & site data</p>
-              </div>
-            </header>
-
-            <div ref={listRef} className="site-assistant__messages" aria-live="polite">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`site-assistant__msg site-assistant__msg--${msg.role}`}
-                >
-                  {msg.content}
+            
+            {/* Grok Fullscreen Left Sidebar (Only visible in fullscreen) */}
+            {fullscreen ? (
+              <aside className="site-assistant__grok-sidebar">
+                <div className="site-assistant__sidebar-header">
+                  <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
+                  <span className="site-assistant__grok-logo-text">Pegasus Grok</span>
                 </div>
-              ))}
-              {loading ? <div className="site-assistant__msg site-assistant__msg--assistant">Thinking…</div> : null}
+
+                <div className="site-assistant__sidebar-section">
+                  <p className="site-assistant__sidebar-title">Explore Topics</p>
+                  <ul className="site-assistant__sidebar-menu">
+                    {SIDEBAR_CATEGORIES.map((cat) => (
+                      <li key={cat.id}>
+                        <button
+                          type="button"
+                          className={`site-assistant__sidebar-btn ${activeCategory === cat.id ? 'is-active' : ''}`}
+                          onClick={() => setActiveCategory(cat.id)}
+                        >
+                          <span className="site-assistant__sidebar-icon">{cat.icon}</span>
+                          <span>{cat.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="site-assistant__sidebar-footer">
+                  <button type="button" className="site-assistant__clear-btn" onClick={clearHistory}>
+                    <span>🗑️</span> Clear Chat History
+                  </button>
+                </div>
+              </aside>
+            ) : null}
+
+            {/* Main Chat Area */}
+            <div className="site-assistant__grok-main">
+              
+              {/* Header Bar */}
+              <header className="site-assistant__chat-head">
+                <div className="site-assistant__head-info">
+                  <img src="/pegasus.jpg" alt="" width={28} height={28} className="site-assistant__avatar" />
+                  <div>
+                    <p className="site-assistant__chat-title">
+                      Pegasus Bot <span className="site-assistant__grok-badge">Grok Mode</span>
+                    </p>
+                    <p className="site-assistant__meta">Trained on Architecture, Competitors & 6 Roles</p>
+                  </div>
+                </div>
+
+                <div className="site-assistant__head-actions">
+                  <button
+                    type="button"
+                    className="site-assistant__toggle-fullscreen"
+                    title={fullscreen ? 'Exit Fullscreen' : 'Expand Grok Layout'}
+                    onClick={() => setFullscreen((v) => !v)}
+                  >
+                    {fullscreen ? '↙ Compact' : '⤢ Fullscreen'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className="site-assistant__close-btn"
+                    title="Close Assistant"
+                    onClick={() => setOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </header>
+
+              {/* Message Stream */}
+              <div ref={listRef} className="site-assistant__messages" aria-live="polite">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`site-assistant__msg site-assistant__msg--${msg.role}`}
+                  >
+                    <div className="site-assistant__msg-header">
+                      {msg.role === 'assistant' ? '🤖 Pegasus AI' : '👤 You'}
+                    </div>
+                    <div className="site-assistant__msg-body">
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {loading ? (
+                  <div className="site-assistant__msg site-assistant__msg--assistant">
+                    <div className="site-assistant__msg-header">🤖 Pegasus AI</div>
+                    <div className="site-assistant__typing-dots">
+                      <span></span><span></span><span></span> Thinking...
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {error ? <p className="site-assistant__error">{error}</p> : null}
+
+              {/* Action Pills */}
+              <ul className="site-assistant__actions site-assistant__actions--inline">
+                {filteredQuickActions.map((action) => (
+                  <li key={action.id}>
+                    {action.dismiss ? (
+                      <button
+                        type="button"
+                        className="site-assistant__pill"
+                        onClick={() => {
+                          setOpen(false);
+                          setDismissed(true);
+                        }}
+                      >
+                        <span aria-hidden="true">{action.emoji}</span>
+                        <span>{action.label}</span>
+                      </button>
+                    ) : action.prompt ? (
+                      <button
+                        type="button"
+                        className="site-assistant__pill"
+                        disabled={loading}
+                        onClick={() => void sendPrompt(action.prompt!)}
+                      >
+                        <span aria-hidden="true">{action.emoji}</span>
+                        <span>{action.label}</span>
+                      </button>
+                    ) : (
+                      <Link href={action.href!} className="site-assistant__pill" onClick={() => setOpen(false)}>
+                        <span aria-hidden="true">{action.emoji}</span>
+                        <span>{action.label}</span>
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Message Composer */}
+              <form className="site-assistant__composer" onSubmit={onSubmit}>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask about architecture, competitors (Amazon/o9), 6 role capabilities..."
+                  maxLength={2000}
+                  disabled={loading}
+                  aria-label="Message"
+                />
+                <button type="submit" disabled={loading || !input.trim()}>
+                  Send
+                </button>
+              </form>
+
             </div>
-
-            {error ? <p className="site-assistant__error">{error}</p> : null}
-
-            <ul className="site-assistant__actions site-assistant__actions--inline">
-              {QUICK_ACTIONS.map((action) => (
-                <li key={action.id}>
-                  {action.dismiss ? (
-                    <button
-                      type="button"
-                      className="site-assistant__pill"
-                      onClick={() => {
-                        setOpen(false);
-                        setDismissed(true);
-                      }}
-                    >
-                      <span aria-hidden="true">{action.emoji}</span>
-                      <span>{action.label}</span>
-                    </button>
-                  ) : action.prompt ? (
-                    <button
-                      type="button"
-                      className="site-assistant__pill"
-                      disabled={loading}
-                      onClick={() => void sendPrompt(action.prompt!)}
-                    >
-                      <span aria-hidden="true">{action.emoji}</span>
-                      <span>{action.label}</span>
-                    </button>
-                  ) : (
-                    <Link href={action.href!} className="site-assistant__pill" onClick={() => setOpen(false)}>
-                      <span aria-hidden="true">{action.emoji}</span>
-                      <span>{action.label}</span>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-
-            <form className="site-assistant__composer" onSubmit={onSubmit}>
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about Pegasus…"
-                maxLength={2000}
-                disabled={loading}
-                aria-label="Message"
-              />
-              <button type="submit" disabled={loading || !input.trim()}>
-                Send
-              </button>
-            </form>
           </div>
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="site-assistant__launcher"
-        aria-expanded={open}
-        aria-controls={panelId}
-        aria-label={open ? 'Close assistant' : 'Open assistant'}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? (
-          <span className="site-assistant__launcher-x" aria-hidden="true">
-            ×
+      {/* Floating Action Button Launcher */}
+      {!open ? (
+        <button
+          type="button"
+          className="site-assistant__launcher"
+          aria-expanded={open}
+          aria-controls={panelId}
+          aria-label="Open assistant"
+          onClick={() => setOpen(true)}
+        >
+          <img src="/pegasus.jpg" alt="" width={40} height={40} className="site-assistant__launcher-logo" />
+          <span className="site-assistant__badge" aria-hidden="true">
+            1
           </span>
-        ) : (
-          <>
-            <img src="/pegasus.jpg" alt="" width={40} height={40} className="site-assistant__launcher-logo" />
-            <span className="site-assistant__badge" aria-hidden="true">
-              1
-            </span>
-          </>
-        )}
-      </button>
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 )
 
@@ -316,7 +317,10 @@ func TestMoneyPathGate_ShopClosedCreditDebtAlwaysRecorded(t *testing.T) {
 		t.Fatalf("insert shop-closed fixture: %v", err)
 	}
 
+	t.Setenv("AR_INVOICES_ENABLED", "1")
 	s := newMoneyPathGateService(client, nil)
+	arRepo := ar.NewSpannerRepository(client)
+	s.ar = ar.NewService(arRepo)
 	if err := s.processShopClosedTimeouts(ctx); err != nil {
 		t.Fatalf("processShopClosedTimeouts: %v", err)
 	}
@@ -364,5 +368,78 @@ func TestMoneyPathGate_ShopClosedCreditDebtAlwaysRecorded(t *testing.T) {
 	}
 	if legAmount != 10000 {
 		t.Fatalf("credit leg amount = %d, want 10000", legAmount)
+	}
+
+	// Credit leave must open the AR open item (collectible revenue).
+	inv, found, err := arRepo.GetByOrder(ctx, orderID)
+	if err != nil {
+		t.Fatalf("get AR invoice: %v", err)
+	}
+	if !found {
+		t.Fatal("no AR invoice opened for shop-closed credit leave")
+	}
+	if inv.BalanceMinor != 10000 || inv.Status != ar.StatusOpen {
+		t.Fatalf("AR invoice balance/status = %d/%s, want 10000/OPEN", inv.BalanceMinor, inv.Status)
+	}
+}
+
+// Rule: credit leave-behind is rejected when AR invoicing is off — the debt
+// would be uncollectible. The worker must fail closed and leave the order
+// SHOP_CLOSED_PENDING for the next tick instead of booking invisible debt.
+func TestMoneyPathGate_ShopClosedCreditLeaveRejectedWhenAROff(t *testing.T) {
+	ctx := context.Background()
+	client := newSpannerIntegrationClient(t, ctx)
+	defer client.Close()
+
+	t.Setenv("AR_INVOICES_ENABLED", "")
+
+	suffix := time.Now().UnixNano()
+	orderID := fmt.Sprintf("ord_gate_aroff_%d", suffix)
+	retailerID := fmt.Sprintf("ret-gate-aroff-%d", suffix)
+	supplierID := fmt.Sprintf("sup-gate-aroff-%d", suffix)
+	now := time.Now().UTC().Add(-2 * time.Minute)
+	past := now.Add(-10 * time.Minute)
+
+	_, err := client.Apply(ctx, []*spanner.Mutation{
+		spanner.Insert("Orders",
+			[]string{"OrderId", "RetailerId", "SupplierId", "Status", "OrderSource", "ConfirmationStatus", "LineItemsJson", "TotalMinor", "Currency", "Version", "ShopClosedGraceEndsAt", "CreatedAt", "UpdatedAt"},
+			[]any{orderID, retailerID, supplierID, string(StatusShopClosedPending), string(OrderSourceManual), string(ConfirmationStatusConfirmed), []byte("[]"), int64(10000), "UZS", int64(1), past, past, past},
+		),
+		spanner.Insert("RetailerCreditProfiles",
+			[]string{"RetailerId", "SupplierId", "CreditLimitMinor", "CurrentBalanceMinor", "AvailableCreditMinor", "Status", "RiskScore", "DelinquencyCount", "Version", "CreatedAt", "UpdatedAt"},
+			[]any{retailerID, supplierID, int64(100000), int64(0), int64(100000), string(credit.StatusActive), int64(800), int64(0), int64(1), past, past},
+		),
+	})
+	if err != nil {
+		t.Fatalf("insert fixture: %v", err)
+	}
+
+	s := newMoneyPathGateService(client, nil)
+	s.ar = ar.NewService(ar.NewSpannerRepository(client))
+	if err := s.resolveOneShopClosedTimeout(ctx, orderID); err == nil {
+		t.Fatal("credit leave with AR off must fail closed")
+	}
+
+	row, err := client.Single().ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Status"})
+	if err != nil {
+		t.Fatalf("read order: %v", err)
+	}
+	var status string
+	if err := row.Columns(&status); err != nil {
+		t.Fatalf("parse order: %v", err)
+	}
+	if status != string(StatusShopClosedPending) {
+		t.Fatalf("order status = %s, want SHOP_CLOSED_PENDING (no silent credit leave)", status)
+	}
+	prof, err := client.Single().ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID}, []string{"CurrentBalanceMinor"})
+	if err != nil {
+		t.Fatalf("read profile: %v", err)
+	}
+	var balance int64
+	if err := prof.Columns(&balance); err != nil {
+		t.Fatalf("parse profile: %v", err)
+	}
+	if balance != 0 {
+		t.Fatalf("credit balance = %d, want 0 (no debt booked while AR off)", balance)
 	}
 }

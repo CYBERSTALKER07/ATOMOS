@@ -6106,3 +6106,303 @@ a.editorial-card--interactive:hover .chamfer-btn *,
     max-width: calc(100vw - 1.5rem);
   }
 }
+
+/* ── Grok Full-Screen Modal & Layout Overrides ── */
+.site-assistant--fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(16px);
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.site-assistant--fullscreen .site-assistant__panel--grok-modal {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.site-assistant--fullscreen .site-assistant__chat-card {
+  width: 100%;
+  max-width: 1280px;
+  height: calc(100vh - 3rem);
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: row;
+  background: #09090b;
+  color: #f4f4f5;
+  border: 1px solid #27272a;
+  border-radius: 1.25rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+/* Grok Left Sidebar */
+.site-assistant__grok-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #18181b;
+  border-right: 1px solid #27272a;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem;
+  gap: 1.5rem;
+}
+
+.site-assistant__sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.site-assistant__grok-logo-text {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.site-assistant__sidebar-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.site-assistant__sidebar-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+  margin: 0;
+}
+
+.site-assistant__sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.site-assistant__sidebar-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.6rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a1a1aa;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.site-assistant__sidebar-btn:hover {
+  background: #27272a;
+  color: #ffffff;
+}
+
+.site-assistant__sidebar-btn.is-active {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.site-assistant__sidebar-footer {
+  border-top: 1px solid #27272a;
+  padding-top: 1rem;
+}
+
+.site-assistant__clear-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: 1px solid #27272a;
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.site-assistant__clear-btn:hover {
+  background: #27272a;
+  color: #ef4444;
+}
+
+/* Grok Main Content Window */
+.site-assistant__grok-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: #09090b;
+}
+
+.site-assistant__grok-main .site-assistant__chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #27272a;
+  background: #09090b;
+}
+
+.site-assistant__head-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.site-assistant__grok-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 0.4rem;
+}
+
+.site-assistant__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.site-assistant__toggle-fullscreen {
+  background: #27272a;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.site-assistant__toggle-fullscreen:hover {
+  background: #3f3f46;
+  color: #ffffff;
+}
+
+.site-assistant__close-btn {
+  background: transparent;
+  color: #71717a;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.35rem;
+}
+
+.site-assistant__close-btn:hover {
+  color: #ffffff;
+}
+
+.site-assistant__grok-main .site-assistant__messages {
+  background: #09090b;
+  padding: 1.25rem;
+  gap: 1rem;
+}
+
+.site-assistant__msg-header {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #71717a;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.site-assistant__msg-body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.site-assistant__grok-main .site-assistant__msg--assistant {
+  background: #18181b;
+  border: 1px solid #27272a;
+  color: #f4f4f5;
+  width: 100%;
+  max-width: 100%;
+}
+
+.site-assistant__grok-main .site-assistant__msg--user {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #ffffff;
+  max-width: 80%;
+  align-self: flex-end;
+}
+
+.site-assistant__typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #a1a1aa;
+  font-size: 0.85rem;
+}
+
+.site-assistant__grok-main .site-assistant__actions--inline {
+  border-top: 1px solid #27272a;
+  background: #09090b;
+  padding: 0.75rem 1.25rem;
+}
+
+.site-assistant__grok-main .site-assistant__pill {
+  background: #18181b;
+  border-color: #27272a;
+  color: #e4e4e7;
+}
+
+.site-assistant__grok-main .site-assistant__pill:hover {
+  background: #27272a;
+  color: #ffffff;
+}
+
+.site-assistant__grok-main .site-assistant__composer {
+  background: #09090b;
+  border-top: 1px solid #27272a;
+  padding: 1rem 1.25rem;
+}
+
+.site-assistant__grok-main .site-assistant__composer input {
+  background: #18181b;
+  border-color: #27272a;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.site-assistant__grok-main .site-assistant__composer input:focus {
+  border-color: #52525b;
+}
+
+@media (max-width: 768px) {
+  .site-assistant__grok-sidebar {
+    display: none;
+  }
+}

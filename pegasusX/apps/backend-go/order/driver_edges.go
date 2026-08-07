@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -261,6 +262,14 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Credit leave creates an AR open item. When AR invoicing is off the debt
+	// would be uncollectible, so the leave-behind is rejected rather than
+	// silently booked (plan Phase 1 rule).
+	if s.ar != nil && current.TotalMinor > 0 && !ar.InvoicesEnabled() {
+		s.writeOrderMutationError(w, "credit leave failed", orderID, ar.ErrInvoicesDisabled)
+		return
+	}
+
 	// Update status
 	current.Status = StatusDeliveredOnCredit
 	current.UpdatedAt = s.now().UTC()
@@ -293,7 +302,9 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 			Method:         MethodCredit,
 			AmountMinor:    current.TotalMinor,
 			Status:         PaymentStatusCaptured,
-			IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", orderID, s.newID()),
+			// Stable key: a retried credit leave must hit the unique index,
+			// not mint a second leg (mirrors the shop-closed worker key).
+			IdempotencyKey: "credit-leave-" + orderID,
 			CreatedAt:      s.now(),
 			CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 		}

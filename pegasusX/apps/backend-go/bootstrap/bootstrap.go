@@ -1251,7 +1251,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	arDunning.SetDelinquencyBump(func(ctx context.Context, supplierID, retailerID string) error {
 		return creditSvc.BumpDelinquency(ctx, retailerID, supplierID)
 	})
-	arDunning.SetNotify(func(ctx context.Context, inv ar.Invoice, prevStep, nextStep int64) error {
+	inAppNotify := func(ctx context.Context, inv ar.Invoice, prevStep, nextStep int64) error {
 		eventType, title, body := ar.NotifyMessage(inv, nextStep)
 		deep := "/credit/invoices/" + inv.InvoiceID
 		if notifSvc != nil {
@@ -1267,6 +1267,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			pushBridge.NotifyActor(ctx, inv.SupplierID, "ADMIN", data)
 		}
 		return nil
+	}
+	// Off-app dunning transports (SMS/email) — fail-closed construction: a
+	// selected provider with missing credentials stops bootstrap.
+	dunningTransports, err := ar.TransportsFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("dunning transports: %w", err)
+	}
+	offAppNotify := ar.MultiChannelNotify(log, ar.NewSpannerContactResolver(spannerClient), dunningTransports)
+	arDunning.SetNotify(func(ctx context.Context, inv ar.Invoice, prevStep, nextStep int64) error {
+		inAppErr := inAppNotify(ctx, inv, prevStep, nextStep)
+		offAppErr := offAppNotify(ctx, inv, prevStep, nextStep)
+		return errors.Join(inAppErr, offAppErr)
 	})
 
 	forecastAccuracy := &planning.AccuracyService{Client: spannerClient, Log: log}

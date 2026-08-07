@@ -82,6 +82,11 @@ configMapGenerator:
       - REQUIRE_INFRA_ADAPTERS=true
       - GLOBAL_PAY_ENV=staging
       - FISCAL_PROVIDER=PEGASUS
+      # Phase 1: AR active end-to-end on staging (credit leave -> invoice ->
+      # aging -> dunning -> hold -> payment -> release). Off-app channels stay
+      # off until provider creds land (DUNNING_SMS_PROVIDER/DUNNING_EMAIL_PROVIDER).
+      - AR_INVOICES_ENABLED=true
+      - AR_DUNNING_ENABLED=true
       - CLAIM_WINDOW_HOURS=48
       - CLAIM_AUTO_APPROVE_MAX_MINOR=0
       - CREDIT_NOTE_AUTO_FROM_CLAIM=false

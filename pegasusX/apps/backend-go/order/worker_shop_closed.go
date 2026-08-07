@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -83,6 +84,8 @@ func (s *Service) processShopClosedTimeouts(ctx context.Context) error {
 
 func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID string) error {
 	now := s.now().UTC()
+	var resolvedDecision TimeoutDecision
+	var resolvedOrder *Order
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		order, err := s.loadOrderForUpdate(ctx, txn, orderID)
@@ -111,6 +114,8 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 		}
 
 		decision := DecideShopClosedTimeout(order, profile, cfg)
+		resolvedDecision = decision
+		resolvedOrder = order
 
 		buf := &spannerTxnBuffer{}
 		var mutations []*spanner.Mutation
@@ -126,6 +131,11 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 		switch decision {
 		case DecisionCreditLeave:
+			// Credit leave books an AR open item; without AR invoicing the debt
+			// is uncollectible. Fail closed (retried next tick, alertable).
+			if s.ar != nil && order.TotalMinor > 0 && !ar.InvoicesEnabled() {
+				return fmt.Errorf("shop-closed credit leave %s: %w", order.OrderID, ar.ErrInvoicesDisabled)
+			}
 			// same credit-draw logic as driver CreditLeave endpoint
 			// mark order as delivering on credit
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
@@ -223,6 +233,14 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 	if err == nil {
 		s.invalidateOrderCache(ctx, orderID)
+		// Open the AR open item post-commit, mirroring the driver credit-leave
+		// path (idempotent per order via the OPEN ledger key).
+		if s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
+			if _, aerr := s.ar.OpenFromCreditLeave(ctx, resolvedOrder.SupplierID, resolvedOrder.RetailerID, orderID,
+				resolvedOrder.TotalMinor, 0, 0, now, time.Time{}); aerr != nil {
+				s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
+			}
+		}
 	}
 
 	return err
