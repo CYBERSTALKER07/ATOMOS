@@ -17,6 +17,7 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
 
+const LandingPageSidebar = dynamic(() => import('./components/LandingPageSidebar'));
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
@@ -26,6 +27,7 @@ const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
+const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
 const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
@@ -96,32 +98,51 @@ export default async function Home() {
         dangerouslySetInnerHTML={jsonLdGraphScript(structuredData)}
       />
 
-      <div>
+      <div className="relative">
         <SiteNav activeHref="/" />
+        <LandingPageSidebar />
 
-        <Hero />
+        <section id="section-overview">
+          <Hero />
+        </section>
+
         <LocalizedLaneDivider index="01" labelKey="home_lane_network" />
-        <About />
-        {/* <PlatformValue /> */}
-        <LocalizedLaneDivider index="02" labelKey="home_lane_signal" />
-        {/* <SignalFeatureCards /> */}
 
-        <DispatchVisualSection />
-        <PlatformFeatures />
-        <PromptDashboardSection />
-        <AskPromptSection />
-        <EcosystemStats />
-        <LogisticsWorkflow />
-        <OurApproach />
-        <LocalizedLaneDivider index="03" labelKey="home_lane_operations" />
-        <Skills />
-        <DevelopmentTools />
+        <section id="section-platform">
+          <About />
+          <DispatchVisualSection />
+        </section>
+
+        <LocalizedLaneDivider index="02" labelKey="home_lane_signal" />
+
+        <section id="section-telemetry">
+          <PlatformFeatures />
+          <PromptDashboardSection />
+          <AskPromptSection />
+        </section>
+
+        <section id="section-workflow">
+          <EcosystemStats />
+          <LogisticsWorkflow />
+          <OurApproach />
+          <LocalizedLaneDivider index="03" labelKey="home_lane_operations" />
+          <Skills />
+          <DevelopmentTools />
+        </section>
+
         <LocalizedLaneDivider index="04" labelKey="home_lane_proof" />
-        <PegasusTestimonialsSection />
-        <Projects />
-        <Companies />
-        <Licensing />
-        <Footer />
+
+        <section id="section-showcase">
+          <ShowcaseWall />
+          <PegasusTestimonialsSection />
+          <Projects />
+          <Companies />
+        </section>
+
+        <section id="section-deploy">
+          <Licensing />
+          <Footer />
+        </section>
       </div>
     </>
   );

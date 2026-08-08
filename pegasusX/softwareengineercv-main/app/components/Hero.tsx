@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
+import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
@@ -26,7 +27,6 @@ export default function Hero() {
     t('hero_type_3'),
     t('hero_type_4'),
   ];
-
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -125,12 +125,26 @@ export default function Hero() {
           {/* Content Side - Left */}
           <div ref={textRef} className="space-y-8 order-2 lg:order-1">
             <div>
-              <h1
-                ref={titleRef}
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
-              >
-                Pegasus
-              </h1>
+              <div ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 mb-2">
+                <ParticleText
+                  text="Pegasus"
+                  particleSize={2.2}
+                  density={4}
+                  color="#f8fafc"
+                  highlightColor="#10B981"
+                  scatter={160}
+                  gatherDuration={1500}
+                  stagger={350}
+                  pointerRepel={42}
+                  repelRadius={120}
+                  idleDrift={0.6}
+                  trigger="mount"
+                  fontSize="clamp(3.5rem, 10vw, 7.5rem)"
+                  fontWeight={800}
+                  textAlign="left"
+                  glow
+                />
+              </div>
 
               <div ref={subtitleRef} className="mb-6">
                 <TextType
@@ -148,7 +162,7 @@ export default function Hero() {
                 />
               </div>
 
-              <div className="w-90 h-[0.5px] bg-white mb-6" />
+              <div className="w-full max-w-xl h-[1px] bg-white/20 mb-6" />
 
               <p
                 ref={descRef}

@@ -26,7 +26,7 @@ export default function ChamferButton({
   'aria-label': ariaLabel,
 }: ChamferButtonProps) {
   const classes = cn(
-    'chamfer-btn',
+    'chamfer-btn cursor-target',
     variant === 'ghost' ? 'chamfer-btn--ghost' : 'chamfer-btn--fill',
     size === 'sm' && 'chamfer-btn--sm',
     size === 'icon' && 'chamfer-btn--icon',
