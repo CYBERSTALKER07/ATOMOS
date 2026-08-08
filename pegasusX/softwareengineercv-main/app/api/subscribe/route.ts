@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Basic email format validator regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function sendResendEmail({ to, replyTo, subject, html }: { to: string; replyTo: string; subject: string; html: string }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Pegasus Logistics <onboarding@resend.dev>',
+        to: [to],
+        replyTo,
+        subject,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('[SUBSCRIBE] Resend API error response:', errText);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[SUBSCRIBE] Failed to send email via Resend API fetch:', err);
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,33 +53,24 @@ export async function POST(request: NextRequest) {
     // Log subscription event internally
     console.log(`[SUBSCRIBE] New newsletter subscriber: ${cleanEmail} at ${new Date().toISOString()}`);
 
-    // If Resend API key is configured, send confirmation/notification email
-    let emailSent = false;
-    if (resend) {
-      try {
-        await resend.emails.send({
-          from: 'Pegasus Logistics <onboarding@resend.dev>',
-          to: [process.env.RECIPIENT_EMAIL || 'shsoliyev@aut-edu.uz'],
-          replyTo: cleanEmail,
-          subject: '⚡ New Pegasus Newsletter Subscription',
-          html: `
-            <div style="font-family: sans-serif; background: #0a0a0a; color: #fff; padding: 30px; border-radius: 12px; border: 1px solid #222;">
-              <h2 style="color: #10b981; margin-top: 0;">⚡ New Newsletter Subscriber</h2>
-              <p>A new user has subscribed to Pegasus logistics updates:</p>
-              <div style="background: #161616; padding: 16px; border-left: 4px solid #10b981; border-radius: 6px; font-family: monospace; font-size: 15px;">
-                ${cleanEmail}
-              </div>
-              <p style="color: #888; font-size: 12px; margin-top: 24px;">
-                Timestamp: ${new Date().toLocaleString()}
-              </p>
-            </div>
-          `,
-        });
-        emailSent = true;
-      } catch (emailErr) {
-        console.error('[SUBSCRIBE] Failed to send email via Resend:', emailErr);
-      }
-    }
+    const recipientEmail = process.env.RECIPIENT_EMAIL || 'shsoliyev@aut-edu.uz';
+    const emailSent = await sendResendEmail({
+      to: recipientEmail,
+      replyTo: cleanEmail,
+      subject: '⚡ New Pegasus Newsletter Subscription',
+      html: `
+        <div style="font-family: sans-serif; background: #0a0a0a; color: #fff; padding: 30px; border-radius: 12px; border: 1px solid #222;">
+          <h2 style="color: #10b981; margin-top: 0;">⚡ New Newsletter Subscriber</h2>
+          <p>A new user has subscribed to Pegasus logistics updates:</p>
+          <div style="background: #161616; padding: 16px; border-left: 4px solid #10b981; border-radius: 6px; font-family: monospace; font-size: 15px;">
+            ${cleanEmail}
+          </div>
+          <p style="color: #888; font-size: 12px; margin-top: 24px;">
+            Timestamp: ${new Date().toLocaleString()}
+          </p>
+        </div>
+      `,
+    });
 
     return NextResponse.json({
       success: true,

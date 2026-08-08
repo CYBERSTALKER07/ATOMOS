@@ -1,11 +1,68 @@
 'use client';
 
+import { useState, FormEvent } from 'react';
 import Link from 'next/link';
-import { Linkedin, Youtube, Instagram } from 'lucide-react';
+import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Footer() {
   const { t } = useLanguage();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [responseMsg, setResponseMsg] = useState('');
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setResponseMsg('');
+
+    if (!email || !EMAIL_REGEX.test(email.trim())) {
+      setStatus('error');
+      setResponseMsg(t('subscribe_invalid'));
+      return;
+    }
+
+    setStatus('loading');
+
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus('success');
+        setResponseMsg(t('subscribe_success'));
+        setEmail('');
+
+        // Store subscription record in local storage history
+        try {
+          const stored = localStorage.getItem('pegasus_subscriptions');
+          const list = stored ? JSON.parse(stored) : [];
+          list.unshift({ email: email.trim(), date: new Date().toISOString() });
+          localStorage.setItem('pegasus_subscriptions', JSON.stringify(list));
+        } catch (e) {
+          console.error('Failed to store subscription locally', e);
+        }
+
+        setTimeout(() => {
+          setStatus('idle');
+          setResponseMsg('');
+        }, 5000);
+      } else {
+        setStatus('error');
+        setResponseMsg(data.error || t('subscribe_error'));
+      }
+    } catch (err) {
+      console.error('[Footer] Subscription request failed:', err);
+      setStatus('error');
+      setResponseMsg(t('subscribe_error'));
+    }
+  };
 
   const platformLinks = [
     { name: t('nav_platform'), href: '/platform' },
@@ -34,22 +91,59 @@ export default function Footer() {
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1)_0%,transparent_70%)]" />
 
       {/* Top section with input */}
-      <div className="border-b border-white/5 flex justify-center py-20 relative z-10">
-        <div className="flex bg-[#1a1a1a] border border-white/10 rounded-sm overflow-hidden w-full max-w-[400px]">
-          <input
-            type="email"
-            placeholder={t('footer_email_placeholder')}
-            className="bg-transparent text-white/80 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono"
-          />
-          <button className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center gap-2 text-sm font-medium border-l border-white/10">
-            <span className="opacity-80">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            {t('footer_subscribe_btn')}
-          </button>
-        </div>
+      <div className="border-b border-white/5 flex flex-col items-center justify-center py-16 px-4 relative z-10">
+        <form onSubmit={handleSubmit} className="w-full max-w-[420px] flex flex-col gap-3">
+          <div className="flex bg-[#1a1a1a] border border-white/10 focus-within:border-white/30 rounded-sm overflow-hidden w-full transition-colors">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (status === 'error') {
+                  setStatus('idle');
+                  setResponseMsg('');
+                }
+              }}
+              placeholder={t('footer_email_placeholder')}
+              disabled={status === 'loading'}
+              required
+              aria-label={t('footer_subscribe')}
+              className="bg-transparent text-white/90 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center justify-center gap-2 text-sm font-medium border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
+            >
+              {status === 'loading' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white/80" />
+                  <span>{t('subscribe_submitting')}</span>
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4 opacity-80" />
+                  <span>{t('footer_subscribe_btn')}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Feedback Badges */}
+          {status === 'success' && (
+            <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>{responseMsg || t('subscribe_success')}</span>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="flex items-center gap-2 text-xs font-mono text-rose-400 bg-rose-950/50 border border-rose-500/30 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{responseMsg || t('subscribe_invalid')}</span>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* Main footer grid */}
