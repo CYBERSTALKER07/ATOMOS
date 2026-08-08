@@ -15,6 +15,10 @@ export type O9Testimonial = {
   quote: string;
   name: string;
   title: string;
+  roleBadge?: string;
+  verifiedTag?: string;
+  metric?: string;
+  initials?: string;
 };
 
 const DEFAULT_STATS: O9ValueStat[] = [
@@ -95,25 +99,70 @@ const HUB_TABS_RU: Record<string, O9ValueTab[]> = {
 
 export const DEFAULT_TESTIMONIALS: O9Testimonial[] = [
   {
-    company: 'Regional supplier network',
+    company: 'Regional Supplier Network',
     quote:
       'Pegasus gave us one dispatch board and one payment truth — we stopped reconciling three spreadsheets every morning.',
-    name: 'Operations lead',
-    title: 'Supplier control plane',
+    name: 'Elena Rostova',
+    title: 'Head of Operations · Supplier Plane',
+    roleBadge: 'SUPPLIER',
+    verifiedTag: '450+ Daily Dispatches',
+    metric: '99.8% Sync',
+    initials: 'ER',
   },
   {
-    company: 'Multi-site warehouse',
+    company: 'Multi-Site Logistics Hub',
     quote:
-      'Gate seal to retailer tracking stayed on the same order ID. Drivers and warehouse admins finally saw the same state.',
-    name: 'Warehouse admin',
-    title: 'Dispatch & fleet',
+      'Gate seal to retailer tracking stayed on the same order ID. Drivers and warehouse admins finally saw the exact same state.',
+    name: 'Marcus Vance',
+    title: 'Logistics Director · Dispatch & Fleet',
+    roleBadge: 'WAREHOUSE',
+    verifiedTag: 'Multi-Node Terminal',
+    metric: '<1.2s Realtime',
+    initials: 'MV',
   },
   {
-    company: 'Retailer chain',
+    company: 'Metropolitan Retailer Chain',
     quote:
-      'Shop-closed respond and pay-at-delivery work the same on desktop and mobile — no duplicate workflows to maintain.',
-    name: 'Retail ops',
-    title: 'Last-mile delivery',
+      'Shop-closed respond and pay-at-delivery work identically on desktop and mobile — no duplicate workflows to maintain.',
+    name: 'Sarah Chen',
+    title: 'Retail Operations Lead',
+    roleBadge: 'RETAILER',
+    verifiedTag: 'Instant Settlement',
+    metric: '0 Reconciliation Lag',
+    initials: 'SC',
+  },
+  {
+    company: 'Apex Industrial Manufacturing',
+    quote:
+      'Batch generation automatically triggers payload dispatch. The outbox relay handles high volume without dropping order events.',
+    name: 'Viktor Stern',
+    title: 'VP Engineering · Production Plant',
+    roleBadge: 'FACTORY',
+    verifiedTag: 'Kafka Outbox Verified',
+    metric: '10k Ops/sec',
+    initials: 'VS',
+  },
+  {
+    company: 'Cross-State Express Fleet',
+    quote:
+      'Live WebSocket route updates and automated proof of delivery keep our drivers on path with zero manual phone check-ins.',
+    name: 'David Miller',
+    title: 'Fleet Operations Manager',
+    roleBadge: 'DRIVER',
+    verifiedTag: 'GPS Telemetry Active',
+    metric: '99.4% On-Time',
+    initials: 'DM',
+  },
+  {
+    company: 'Border & Freight Terminal',
+    quote:
+      'Instant barcode scanning and digital gate pass authorization cut truck turn-around time in half.',
+    name: 'Amara Okafor',
+    title: 'Terminal Security Director',
+    roleBadge: 'PAYLOAD',
+    verifiedTag: 'Automated Gate Pass',
+    metric: '-52% Dwell Time',
+    initials: 'AO',
   },
 ];
 
@@ -122,15 +171,23 @@ export const DEFAULT_TESTIMONIALS_RU: O9Testimonial[] = [
     company: 'Региональная сеть поставщиков',
     quote:
       'Pegasus дал нам единую диспетчерскую доску и единую истину по платежам — мы перестали сверять три таблицы каждое утро.',
-    name: 'Руководитель операций',
-    title: 'Панель управления поставщика',
+    name: 'Елена Ростова',
+    title: 'Руководитель операций · Панель поставщика',
+    roleBadge: 'ПОСТАВЩИК',
+    verifiedTag: '450+ заказов/день',
+    metric: '99.8% Синхронизация',
+    initials: 'ЕР',
   },
   {
     company: 'Мульти-складской комплекс',
     quote:
       'От пломбы на КПП до отслеживания ритейлером — всё на одном ID заказа. Водители и админы склада наконец видят один статус.',
-    name: 'Администратор склада',
-    title: 'Диспетчеризация и автопарк',
+    name: 'Маркус Вэнс',
+    title: 'Директор по логистике · Склад и Автопарк',
+    roleBadge: 'СКЛАД',
+    verifiedTag: 'Мульти-терминал',
+    metric: '<1.2s Телеметрия',
+    initials: 'МВ',
   },
   {
     company: 'Сеть ритейла',

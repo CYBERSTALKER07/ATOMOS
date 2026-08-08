@@ -23,10 +23,15 @@ export const translations = {
     hero_scroll: 'SCROLL',
 
     // Testimonial / CTO Section
+    testimonials_badge: 'ECOSYSTEM PROOF',
+    testimonials_title: 'Trusted by operators across the supply chain',
+    testimonials_subtitle: 'Single dispatch board, real-time telemetry, and zero-friction settlement for every role.',
     cto_quote: '“We evaluated Omni and other BI tools, but the speed to insight with Pegasus is unmatched.”',
     cto_name: 'Shakhzod Soliyev',
-    cto_role: 'CTO · Pegasus',
+    cto_role: 'CTO · Pegasus Ecosystem',
     read_case_study: 'Read case study',
+    verified_node: 'VERIFIED NODE',
+    verified_status: 'Active Transaction Chain',
 
     // Contact Page & Section
     contact_title: "Let's Connect",
@@ -116,6 +121,9 @@ export const translations = {
     footer_subscribe: 'Subscribe to Logistics Updates',
     footer_email_placeholder: 'your.name@company.com',
     footer_subscribe_btn: 'Subscribe',
+    subscribe_success: 'Subscribed! Thank you.',
+    subscribe_invalid: 'Please enter a valid email address.',
+    subscribe_submitting: 'Subscribing...',
     footer_platform: 'Platform Overview',
     footer_platform_title: 'Platform',
     footer_order_lifecycle: 'Order lifecycle',
@@ -548,10 +556,15 @@ export const translations = {
     hero_scroll: 'ПРОКРУТКА',
 
     // Testimonial / CTO Section
+    testimonials_badge: 'ПРОВЕРЕНО НА ПРАКТИКЕ',
+    testimonials_title: 'Доверие операторов по всей цепочке поставок',
+    testimonials_subtitle: 'Единая диспетчерская доска, телеметрия в реальном времени и моментальные взаиморасчеты.',
     cto_quote: '«Мы анализировали Omni и другие BI-системы, но скорость получения аналитики и точность Pegasus не имеют аналогов.»',
     cto_name: 'Шахзод Солиев',
-    cto_role: 'CTO · Pegasus',
+    cto_role: 'CTO · Pegasus Ecosystem',
     read_case_study: 'Читать кейс',
+    verified_node: 'ПРОВЕРЕННЫЙ УЗЕЛ',
+    verified_status: 'Активная цепочка транзакций',
 
     // Contact Page & Section
     contact_title: 'Связаться с нами',
@@ -639,8 +652,11 @@ export const translations = {
     footer_tagline: 'Pegasus — Операционная система логистики для сетей поставщиков.',
     footer_rights: 'Все права защищены. Создано с максимальной точностью для международных цепей поставок.',
     footer_subscribe: 'Подписка на обновления логистики',
-    footer_email_placeholder: 'imya@company.ru',
+    footer_email_placeholder: 'your.name@company.com',
     footer_subscribe_btn: 'Подписаться',
+    subscribe_success: 'Вы успешно подписаны!',
+    subscribe_invalid: 'Введите корректный email адрес.',
+    subscribe_submitting: 'Подписка...',
     footer_platform: 'Обзор платформы',
     footer_platform_title: 'Платформа',
     footer_order_lifecycle: 'Жизненный цикл заказа',
