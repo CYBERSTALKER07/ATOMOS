@@ -1,6 +1,8 @@
 # Pegasus — logistics operating system
 
-> Supplier-led logistics platform: dispatch, fleet tracking, payments, and realtime coordination across six roles.
+> Pegasus is the logistics operating system for supplier-led networks. It unifies dispatch, fleet tracking, payments, and realtime coordination across six roles in one governed state machine.
+
+Languages: English (default) and Russian via `?lang=en` / `?lang=ru`.
 
 ## Primary pages
 
@@ -8,15 +10,23 @@
 - [Solutions](https://pegasus.io/solutions): Use cases by supplier, warehouse, retailer, finance, driver, factory, and gate.
 - [Roles](https://pegasus.io/roles): Feature map by business role.
 - [Platform](https://pegasus.io/platform): Core platform topics — order lifecycle, control plane, payments.
-- [Contact](https://pegasus.io/contact): Request a demo or ask about deployment.
-- [Join](https://pegasus.io/join): Careers and partner applications.
+- [Request Demo](https://pegasus.io/join): Book a live walkthrough of the Pegasus control plane.
+- [Contact](https://pegasus.io/contact): Sales and deployment questions.
 
 ## Client surfaces
 
-- [Desktop apps](https://pegasus.io/desktop-apps): desktop app clients for retailer, supplier, warehouse, and factory.
+- [Desktop apps](https://pegasus.io/desktop-apps): Desktop clients for retailer, supplier, warehouse, and factory.
 - [Web apps](https://pegasus.io/web-apps): Browser portals for operations teams.
 - [Mobile apps](https://pegasus.io/mobile-apps): Native Android and iOS apps per role.
 
 ## What Pegasus does
 
 Pegasus unifies supplier-led logistics in one governed state machine: orders are vetted, loaded, sealed, tracked in transit, reconciled at payment, and completed with audit trails across supplier, warehouse, retailer, driver, factory, and payload gate roles.
+
+## Direct answers
+
+**What is Pegasus?** A logistics operating system for supplier-led networks spanning dispatch, fleet, payments, and six operational roles.
+
+**Who is it for?** Supplier ops, warehouse dispatch, retailers, drivers, factory loading, and gate/returns teams that need one shared order status.
+
+**How do I get a demo?** Submit the form at `/join` or message via `/contact`.

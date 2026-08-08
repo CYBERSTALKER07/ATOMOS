@@ -10,6 +10,7 @@ import {
   organizationJsonLd,
   websiteJsonLd,
   softwareApplicationJsonLd,
+  faqPageJsonLd,
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
@@ -38,14 +39,54 @@ export async function generateMetadata(): Promise<Metadata> {
     title: dict.meta_home_title,
     description: dict.meta_home_desc,
     path: '/',
+    language: lang,
   });
 }
 
-export default function Home() {
+export default async function Home() {
+  const lang = await getServerLanguage();
+  const faqs =
+    lang === 'ru'
+      ? [
+          {
+            question: 'Что такое Pegasus?',
+            answer:
+              'Pegasus — операционная система логистики для сетей под управлением поставщика. Она объединяет диспетчеризацию, мониторинг автопарка, платежи и координацию шести ролей в одной системе состояний.',
+          },
+          {
+            question: 'Какие роли поддерживает платформа?',
+            answer:
+              'Поставщик, склад, ритейлер, водитель, завод и ворота — у каждой роли свои приложения с общей правдой статуса заказа.',
+          },
+          {
+            question: 'Как запросить демо?',
+            answer:
+              'Откройте страницу Request Demo (/join) или Contact и оставьте заявку — команда свяжется в течение рабочего дня.',
+          },
+        ]
+      : [
+          {
+            question: 'What is Pegasus?',
+            answer:
+              'Pegasus is the logistics operating system for supplier-led networks. It unifies dispatch, fleet tracking, payments, and coordination across six roles in one governed state machine.',
+          },
+          {
+            question: 'Which roles does the platform support?',
+            answer:
+              'Supplier, warehouse, retailer, driver, factory, and gate — each role gets purpose-built apps that share one order-status truth.',
+          },
+          {
+            question: 'How do I request a demo?',
+            answer:
+              'Open the Request Demo page (/join) or Contact and submit the form — the team typically responds within one business day.',
+          },
+        ];
+
   const structuredData = [
-    organizationJsonLd(),
-    websiteJsonLd(),
-    softwareApplicationJsonLd(),
+    organizationJsonLd(lang),
+    websiteJsonLd(lang),
+    softwareApplicationJsonLd(lang),
+    faqPageJsonLd(faqs, lang),
   ];
 
   return (

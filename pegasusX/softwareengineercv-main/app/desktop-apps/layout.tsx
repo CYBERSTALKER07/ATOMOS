@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Десктоп-приложения' : 'Desktop Apps',
     description: isRu ? 'Десктопные командные центры Pegasus для диспетчерских — мультимониторная диспетчеризация, казначейство и контроль сети.' : 'Pegasus desktop command centers for control-room teams — multi-monitor dispatch, treasury, and network oversight.',
     path: '/desktop-apps',
+    language: lang
   });
 }
 

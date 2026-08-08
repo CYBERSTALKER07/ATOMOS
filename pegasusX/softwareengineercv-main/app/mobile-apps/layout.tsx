@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Мобильные приложения' : 'Mobile Apps',
     description: isRu ? 'Нативные Android и iOS приложения Pegasus для водителей, ритейлеров, поставщиков, склада, завода и ворот.' : 'Pegasus native Android and iOS apps for drivers, retailers, suppliers, warehouse, factory, and payload gate teams.',
     path: '/mobile-apps',
+    language: lang
   });
 }
 

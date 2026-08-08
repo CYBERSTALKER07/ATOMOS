@@ -17,6 +17,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode, initialLang
   const [language, setLanguageState] = useState<Language>(initialLanguage);
 
   useEffect(() => {
+    // Prefer explicit ?lang= for hreflang / shareable language links
+    const params = new URLSearchParams(window.location.search);
+    const queryLang = params.get('lang');
+    if (queryLang === 'en' || queryLang === 'ru') {
+      setLanguageState(queryLang);
+      localStorage.setItem('pegasus_lang', queryLang);
+      document.cookie = `pegasus_lang=${queryLang}; path=/; max-age=31536000; SameSite=Lax`;
+      document.documentElement.lang = queryLang;
+      return;
+    }
+
     // Try to get from cookie first (as it's the source of truth for SSR)
     const cookies = document.cookie.split('; ');
     const langCookie = cookies.find(row => row.startsWith('pegasus_lang='));

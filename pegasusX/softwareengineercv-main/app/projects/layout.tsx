@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Модули' : 'Projects',
     description: isRu ? 'Модули Pegasus для логистики под управлением поставщика — диспетчеризация, платежи, автопарк и ролевые приложения.' : 'Explore Pegasus modules powering supplier-led logistics — dispatch, payments, fleet, and role apps.',
     path: '/projects',
+    language: lang
   });
 }
 

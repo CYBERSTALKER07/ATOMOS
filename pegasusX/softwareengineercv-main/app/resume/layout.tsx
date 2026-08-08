@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Обзор платформы' : 'Platform Overview',
     description: isRu ? 'Обзор платформы Pegasus — модули, возможности и сводка операционной системы логистики.' : 'Pegasus platform overview — modules, capabilities, and logistics operating system summary.',
     path: '/resume',
+    language: lang
   });
 }
 

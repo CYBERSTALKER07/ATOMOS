@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Веб-приложения' : 'Web Apps',
     description: isRu ? 'Веб-порталы Pegasus для поставщиков, складов, заводов и ритейлеров — диспетчеризация, казначейство и живые операции.' : 'Pegasus web portals for suppliers, warehouses, factories, and retailers — dispatch, treasury, and live ops.',
     path: '/web-apps',
+    language: lang
   });
 }
 

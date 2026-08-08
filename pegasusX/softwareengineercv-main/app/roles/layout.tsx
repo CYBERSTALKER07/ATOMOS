@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: isRu ? 'Роли' : 'Roles',
     description: isRu ? 'Шесть ролей Pegasus — поставщик, склад, завод, водитель, ритейлер и ворота — на одном общем учёте заказов.' : 'Six Pegasus roles — supplier, warehouse, factory, driver, retailer, and gate — on one shared order record.',
     path: '/roles',
+    language: lang
   });
 }
 

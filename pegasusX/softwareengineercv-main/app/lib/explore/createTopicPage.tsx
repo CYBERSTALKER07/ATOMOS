@@ -20,9 +20,10 @@ export function createCategoryHubPage(categoryId: ExploreCategoryId) {
 }
 
 export function createCategoryHubMetadata(categoryId: ExploreCategoryId) {
-  return function generateMetadata(): Metadata {
+  return async function generateMetadata(): Promise<Metadata> {
     const hub = getCategoryHub(categoryId);
     if (!hub) return { title: 'Explore' };
+    const lang = await getServerLanguage();
     const description =
       hub.promo?.body ??
       `Explore ${hub.label} on Pegasus — dispatch, fleet tracking, payments, and role-specific logistics software.`;
@@ -30,6 +31,7 @@ export function createCategoryHubMetadata(categoryId: ExploreCategoryId) {
       title: hub.label,
       description,
       path: `/${categoryId}`,
+      language: lang,
     });
   };
 }
@@ -74,6 +76,7 @@ export function createTopicMetadata(categoryId: ExploreCategoryId) {
       title: content.title,
       description: content.summary,
       path: topic.href,
+      language: lang,
     });
   };
 }

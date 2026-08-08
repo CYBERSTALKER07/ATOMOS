@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
-import { BRAND_LOGO, OG_IMAGE } from "@/app/lib/siteAssets";
-import { absoluteAsset, SITE_NAME, SITE_URL } from "@/app/lib/seo";
+import { BRAND_LOGO } from "@/app/lib/siteAssets";
+import { absoluteUrl, languageAlternates, SITE_NAME, SITE_URL } from "@/app/lib/seo";
 import { getServerLanguage } from "@/app/lib/i18n/server";
 import { translations } from "@/app/lib/i18n/translations";
 
@@ -71,20 +71,25 @@ export async function generateMetadata(): Promise<Metadata> {
       address: false,
       telephone: false,
     },
+    alternates: {
+      canonical: SITE_URL,
+      languages: languageAlternates(''),
+    },
     openGraph: {
       type: 'website',
       locale,
+      alternateLocale: [lang === 'ru' ? 'en_US' : 'ru_RU'],
       url: SITE_URL,
       title: `${SITE_NAME} | ${titleSuffix}`,
       description: ogDescription,
       siteName: SITE_NAME,
       images: [
         {
-          url: absoluteAsset(OG_IMAGE),
-          width: 512,
-          height: 512,
-          alt: 'Pegasus logo',
-          type: 'image/jpeg',
+          url: absoluteUrl('/opengraph-image'),
+          width: 1200,
+          height: 630,
+          alt: 'Pegasus — Logistics Operating System',
+          type: 'image/png',
         },
       ],
     },
@@ -93,7 +98,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: `${SITE_NAME} | ${titleSuffix}`,
       description: twitterDescription,
       creator: '@pegasus',
-      images: [absoluteAsset(OG_IMAGE)],
+      images: [absoluteUrl('/opengraph-image')],
     },
     robots: {
       index: true,

@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: lang === 'ru' ? 'Внутренняя админ-панель Pegasus.' : 'Internal Pegasus admin.',
     path: '/admin',
     noIndex: true,
+    language: lang
   });
 }
 

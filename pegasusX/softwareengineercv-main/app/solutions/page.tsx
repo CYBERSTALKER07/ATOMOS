@@ -11,6 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: dict.meta_solutions_title,
     description: dict.meta_solutions_desc,
     path: '/solutions',
+    language: lang
   });
 }
 
