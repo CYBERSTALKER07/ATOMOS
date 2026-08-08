@@ -17,7 +17,6 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
 
-const LandingPageSidebar = dynamic(() => import('./components/LandingPageSidebar'));
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
@@ -100,7 +99,6 @@ export default async function Home() {
 
       <div className="relative">
         <SiteNav activeHref="/" />
-        <LandingPageSidebar />
 
         <section id="section-overview">
           <Hero />

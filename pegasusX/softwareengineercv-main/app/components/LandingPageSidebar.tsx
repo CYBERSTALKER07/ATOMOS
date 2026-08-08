@@ -49,24 +49,24 @@ export default function LandingPageSidebar() {
   };
 
   return (
-    <aside className="fixed left-3 xl:left-6 top-1/2 -translate-y-1/2 z-[9999] hidden lg:block pointer-events-auto">
-      <div className="bg-black/80 backdrop-blur-xl border border-white/15 rounded-2xl p-4 xl:p-5 shadow-[0_0_40px_rgba(0,0,0,0.9)] transition-all hover:border-emerald-500/40">
+    <aside className="fixed left-4 xl:left-8 top-1/2 -translate-y-1/2 z-[9999] hidden lg:block pointer-events-auto">
+      <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] transition-all hover:border-emerald-500/30">
         <LineSidebar
           items={LANDING_SECTIONS.map((s) => s.label)}
           accentColor="#10B981"
-          textColor="#a1a1aa"
-          markerColor="#52525b"
+          textColor="#c4c4c4"
+          markerColor="#6c6c6c"
           showIndex
           showMarker
-          proximityRadius={110}
-          maxShift={24}
+          proximityRadius={100}
+          maxShift={30}
           falloff="smooth"
-          markerLength={50}
-          markerGap={4}
+          markerLength={60}
+          markerGap={0}
           tickScale={0.5}
           scaleTick
-          itemGap={18}
-          fontSize={0.88}
+          itemGap={20}
+          fontSize={1.1}
           smoothing={100}
           defaultActive={activeSectionIndex}
           onItemClick={handleItemClick}
