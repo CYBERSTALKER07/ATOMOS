@@ -1,5 +1,6 @@
 package com.pegasusx.factory.ui.screens.analytics
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -34,23 +35,23 @@ import kotlinx.coroutines.launch
 import com.pegasusx.factory.R
 
 private data class AnalyticsKpi(
-    val label: String,
+    @param:StringRes val labelRes: Int,
     val value: (FactoryAnalyticsOverview) -> String,
     val icon: ImageVector,
     val alert: (FactoryAnalyticsOverview) -> Boolean = { false },
 )
 
 private val analyticsKpis = listOf(
-    AnalyticsKpi("Transfers Total", { it.transfersTotal.toString() }, Icons.Default.LocalShipping),
-    AnalyticsKpi("Active Manifests", { it.manifestsActive.toString() }, Icons.Default.Analytics),
+    AnalyticsKpi(R.string.factory_portal_residual_text_transfers_total, { it.transfersTotal.toString() }, Icons.Default.LocalShipping),
+    AnalyticsKpi(R.string.factory_portal_residual_text_active_manifests, { it.manifestsActive.toString() }, Icons.Default.Analytics),
     AnalyticsKpi(
-        label = stringResource(R.string.mobile_factory_ui_exception_queue),
+        labelRes = R.string.mobile_factory_ui_exception_queue,
         value = { it.exceptionQueue.toString() },
         icon = Icons.Default.Warning,
         alert = { it.exceptionQueue > 0 },
     ),
     AnalyticsKpi(
-        label = stringResource(R.string.mobile_factory_ui_avg_lead_time_min),
+        labelRes = R.string.mobile_factory_ui_avg_lead_time_min,
         value = { String.format("%.1f", it.avgLeadTimeMins) },
         icon = Icons.Default.Schedule,
     ),
@@ -164,9 +165,9 @@ private fun AnalyticsContent(
                     .fillMaxWidth()
                     .heightIn(max = 520.dp),
             ) {
-                items(analyticsKpis, key = { it.label }) { kpi ->
+                items(analyticsKpis, key = { it.labelRes }) { kpi ->
                     FactoryKpiTile(
-                        label = kpi.label,
+                        label = stringResource(kpi.labelRes),
                         value = kpi.value(overview),
                         icon = kpi.icon,
                         badge = if (kpi.alert(overview)) FactoryKpiBadge.Alert else null,
