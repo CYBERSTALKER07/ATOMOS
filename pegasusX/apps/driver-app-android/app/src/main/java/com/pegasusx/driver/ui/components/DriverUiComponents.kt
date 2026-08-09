@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import java.util.Locale
+import com.pegasusx.driver.R
 
 object DriverSpacing {
     val xs = PegasusSpacing.s4

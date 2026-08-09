@@ -65,6 +65,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.retailer.R
 
 private val stateLabels = mapOf(
     "DISPATCHED" to "Dispatched",

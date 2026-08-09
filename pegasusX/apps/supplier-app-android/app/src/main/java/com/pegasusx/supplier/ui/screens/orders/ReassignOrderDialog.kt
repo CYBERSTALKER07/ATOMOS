@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.RecommendReassignResponse
+import com.pegasusx.supplier.R
 
 @Composable
 fun ReassignOrderDialog(

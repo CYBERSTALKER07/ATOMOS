@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 fun LazyGridScope.forecastChartPanel(
     critical: Int,

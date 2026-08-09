@@ -35,6 +35,7 @@ import com.pegasusx.retailer.ui.screens.profile.CreditProfileViewModel
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.retailer.R
 
 @Composable
 fun CreditProfileCard(

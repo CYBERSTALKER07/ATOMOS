@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.pegasusx.supplier.R
 
 private enum class ImportWizardStep { CREATE, INGEST, MAPPING, APPROVE, APPLY }
 

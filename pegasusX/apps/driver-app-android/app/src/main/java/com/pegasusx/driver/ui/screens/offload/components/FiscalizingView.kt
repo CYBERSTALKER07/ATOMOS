@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun FiscalizingView(amount: Long) {

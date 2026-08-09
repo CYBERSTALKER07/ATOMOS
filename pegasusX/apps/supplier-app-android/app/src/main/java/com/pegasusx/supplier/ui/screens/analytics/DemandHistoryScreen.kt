@@ -24,6 +24,7 @@ import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
 import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

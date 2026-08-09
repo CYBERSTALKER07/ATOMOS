@@ -114,6 +114,7 @@ import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.R
 
 /**
  * Master-detail home with Phase 4 loading workflow.

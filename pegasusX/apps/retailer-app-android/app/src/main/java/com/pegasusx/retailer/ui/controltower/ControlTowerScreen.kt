@@ -36,6 +36,7 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
 
 data class PulseTile(val label: String, val value: String)
 

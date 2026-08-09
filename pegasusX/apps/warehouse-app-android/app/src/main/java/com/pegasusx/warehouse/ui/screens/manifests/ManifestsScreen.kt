@@ -18,6 +18,7 @@ import com.pegasusx.warehouse.data.model.Manifest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 @Composable
 fun VehiclesList(

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
 import com.pegasusx.driver.ui.theme.MotionTokens
+import com.pegasusx.driver.R
 
 /**
  * Reusable shimmer modifier — M3-themed horizontal gradient sweep.

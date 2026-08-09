@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierExceptionRow
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 private val resolvableKinds = setOf("CASH_DISCREPANCY", "CREDIT_NOTE_DRAFT", "CREDIT_FREEZE")
 

@@ -41,6 +41,7 @@ import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
 import com.pegasusx.retailer.ui.theme.StatusTeal
 import com.pegasusx.retailer.ui.theme.StatusTealSoft
+import com.pegasusx.retailer.R
 
 /**
  * Order Card — B&W minimalist matching iOS activeOrderCard / pendingOrderCard.

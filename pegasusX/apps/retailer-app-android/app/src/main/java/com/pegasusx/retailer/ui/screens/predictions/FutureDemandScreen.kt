@@ -51,6 +51,7 @@ import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.screens.orders.OrdersViewModel
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -47,6 +47,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 data class PosCartLine(
     val sku: String,

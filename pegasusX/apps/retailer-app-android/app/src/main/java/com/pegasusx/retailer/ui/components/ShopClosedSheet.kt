@@ -44,6 +44,7 @@ import com.pegasusx.retailer.data.api.ShopClosedAlert
 import com.pegasusx.retailer.ui.theme.MotionTokens
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 private fun shopClosedOptionLabel(option: String): String = when (option) {
     "OPEN_NOW" -> "I am open now"

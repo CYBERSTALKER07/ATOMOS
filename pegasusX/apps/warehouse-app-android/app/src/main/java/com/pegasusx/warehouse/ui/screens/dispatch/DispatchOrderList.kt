@@ -23,6 +23,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.screens.vehicles.FleetTruckDispatchCard
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
+import com.pegasusx.warehouse.R
 
 private const val DISPATCH_TETRIS_BUFFER = 0.95
 

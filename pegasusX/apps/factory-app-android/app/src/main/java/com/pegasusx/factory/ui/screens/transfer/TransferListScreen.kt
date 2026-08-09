@@ -24,6 +24,7 @@ import com.pegasusx.factory.ui.screens.transfer.components.TransferFilters
 import com.pegasusx.factory.ui.screens.transfer.components.TransferList
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private val STATE_FILTERS = listOf("ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED")
 

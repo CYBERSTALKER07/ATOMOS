@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.pegasusx.warehouse.data.model.PulseEvent
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 @Composable
 fun HandoffTimelineSection(

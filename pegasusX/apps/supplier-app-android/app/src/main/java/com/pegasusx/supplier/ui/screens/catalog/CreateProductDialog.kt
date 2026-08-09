@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import com.pegasusx.supplier.data.model.CatalogCategory
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

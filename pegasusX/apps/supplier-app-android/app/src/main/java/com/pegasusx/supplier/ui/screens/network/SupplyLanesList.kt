@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierSupplyLaneRow
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlin.math.min
+import com.pegasusx.supplier.R
 
 @Composable
 fun SupplyLanesList(lanes: List<SupplierSupplyLaneRow>, modifier: Modifier = Modifier) {

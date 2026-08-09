@@ -42,6 +42,7 @@ import com.pegasusx.warehouse.data.model.WarehouseClaim
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private val STATUS_FILTERS = listOf("OPEN", "UNDER_REVIEW", "RESOLVED", "REJECTED", "")
 

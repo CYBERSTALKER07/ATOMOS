@@ -51,6 +51,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private enum class ReturnsTab { Queue, History, Reverse }
 

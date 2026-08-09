@@ -96,6 +96,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusTeal
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 private enum class OrderTab(
     val title: String,

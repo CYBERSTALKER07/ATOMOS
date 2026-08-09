@@ -58,6 +58,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusOrangeSoft
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
+import com.pegasusx.retailer.R
 
 enum class PaymentPhase {
     CHOOSE, CASH_CONFIRM, PROCESSING, CASH_PENDING, FISCALIZING, SUCCESS, FAILED

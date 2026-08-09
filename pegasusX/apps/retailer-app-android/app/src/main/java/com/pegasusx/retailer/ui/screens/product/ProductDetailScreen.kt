@@ -67,6 +67,7 @@ import com.pegasusx.retailer.data.model.Variant
 import com.pegasusx.retailer.ui.screens.autoorder.EnableTarget
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @Composable
 fun ProductDetailScreen(

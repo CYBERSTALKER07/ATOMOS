@@ -12,6 +12,7 @@ import com.pegasus.design.PegasusCollapsibleRail
 import com.pegasus.design.PegasusRailGroup
 import com.pegasus.design.PegasusRailItem
 import com.pegasusx.warehouse.ui.navigation.WarehouseSection
+import com.pegasusx.warehouse.R
 
 @Composable
 fun WarehouseNavigationDrawer(

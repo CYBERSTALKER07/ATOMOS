@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.formatBaselineSourceLabel
+import com.pegasusx.supplier.R
 
 @Composable
 fun ForecastConfidenceView(

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 private data class MoreDestination(
     val title: String,

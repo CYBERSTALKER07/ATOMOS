@@ -37,6 +37,7 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.R
 
 private val rescueReasons = listOf(
     "Engine Failure",

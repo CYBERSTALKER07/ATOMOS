@@ -16,6 +16,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryPolicyPicker
+import com.pegasusx.warehouse.R
 
 /**
  * Inventory stock list grid.

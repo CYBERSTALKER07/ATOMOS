@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.pegasusx.warehouse.R
 
 /** Portal-only surfaces — native apps hand off to warehouse-portal (port 3002). */
 enum class WarehousePortalFeature(

@@ -94,6 +94,7 @@ import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 private val timeRanges = listOf("Day", "Week", "Month")
 

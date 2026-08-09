@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.Supplier
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasusx.retailer.ui.theme.StatusGreen
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasusx.supplier.R
 
 /**
  * Quantity negotiation is product-disabled ecosystem-wide.

@@ -13,6 +13,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.data.model.FleetVehicle
 import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun VehicleRoster(vehicles: List<FleetVehicle>, topology: SupplierTopologyResponse?) {

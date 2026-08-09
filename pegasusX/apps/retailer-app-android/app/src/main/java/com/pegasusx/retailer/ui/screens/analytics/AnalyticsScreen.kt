@@ -92,6 +92,7 @@ import com.pegasusx.retailer.ui.screens.analytics.components.formatCompact
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasusx.retailer.ui.screens.orders.components.AiPlannedCard
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

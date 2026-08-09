@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @Composable
 fun ProfileHeader() {

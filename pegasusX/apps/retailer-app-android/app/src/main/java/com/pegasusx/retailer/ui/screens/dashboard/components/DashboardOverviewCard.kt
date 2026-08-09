@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
+import com.pegasusx.retailer.R
 
 @Composable
 fun DashboardOverviewCard(

@@ -20,6 +20,7 @@ import com.pegasusx.supplier.data.model.SupplierClaim
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 private val settlementModes = listOf(
     "LEDGER_ONLY" to "Ledger only",

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.data.model.PulseEvent
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @Composable
 fun PulseStrip(

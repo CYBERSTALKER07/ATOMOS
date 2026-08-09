@@ -48,6 +48,7 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun CashCollectionScreen(

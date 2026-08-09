@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun DeliveryZonesList(warehouses: List<SupplierTopologyWarehouse>, modifier: Modifier = Modifier) {

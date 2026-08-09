@@ -47,6 +47,7 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import java.util.concurrent.Executors
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

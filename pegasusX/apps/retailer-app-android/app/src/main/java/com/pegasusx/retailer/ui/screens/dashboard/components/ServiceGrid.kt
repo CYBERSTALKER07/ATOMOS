@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun ServiceGrid(

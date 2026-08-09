@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.util.ForecastConfidenceData
 import com.pegasusx.warehouse.util.formatSourceBadge
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 @Composable
 fun ForecastConfidenceView(

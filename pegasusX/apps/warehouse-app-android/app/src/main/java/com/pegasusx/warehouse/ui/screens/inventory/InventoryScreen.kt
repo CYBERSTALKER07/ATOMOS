@@ -29,6 +29,7 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.InventoryStockList
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

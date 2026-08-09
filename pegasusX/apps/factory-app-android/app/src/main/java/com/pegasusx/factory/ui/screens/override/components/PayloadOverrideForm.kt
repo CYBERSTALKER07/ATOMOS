@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun MoveTransferDialog(

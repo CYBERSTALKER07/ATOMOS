@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
 import com.pegasusx.warehouse.ui.portal.WarehousePortalLinks
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

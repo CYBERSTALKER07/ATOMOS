@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.PulseEvent
+import com.pegasus.payload.R
 
 @Composable
 fun PulseStrip(

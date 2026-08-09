@@ -35,6 +35,7 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import com.pegasusx.supplier.R
 
 private const val STYLE_URL = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 private val ROUTE_COLORS = listOf(

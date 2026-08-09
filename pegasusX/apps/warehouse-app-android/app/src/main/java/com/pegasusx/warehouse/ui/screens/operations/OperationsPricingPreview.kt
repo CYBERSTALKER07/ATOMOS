@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.R
 
 @Composable
 fun OperationsPricingPreview(

@@ -20,6 +20,7 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.ui.components.FactorySectionHeader
 import com.pegasusx.factory.ui.components.HandoffTimelineSection
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun LoadingBayGrid(

@@ -15,6 +15,7 @@ import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.ui.components.AddressLocationField
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun AddWarehouseDialog(

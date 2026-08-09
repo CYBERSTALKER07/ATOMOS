@@ -17,6 +17,7 @@ import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OnboardingViewModel
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

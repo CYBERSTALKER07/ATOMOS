@@ -39,6 +39,7 @@ import com.pegasusx.supplier.data.model.NotificationItem
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

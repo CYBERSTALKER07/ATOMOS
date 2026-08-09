@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.StatusRed
+import com.pegasusx.retailer.R
 
 enum class SidebarDestination(val label: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Outlined.GridView),

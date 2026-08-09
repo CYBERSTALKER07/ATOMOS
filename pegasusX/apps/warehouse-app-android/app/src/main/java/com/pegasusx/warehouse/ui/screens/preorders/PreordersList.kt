@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.WarehousePreorderRow
+import com.pegasusx.warehouse.R
 
 @Composable
 fun PreordersList(

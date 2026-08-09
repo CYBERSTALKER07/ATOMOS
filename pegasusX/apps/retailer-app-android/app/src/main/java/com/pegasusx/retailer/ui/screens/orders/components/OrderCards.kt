@@ -54,6 +54,7 @@ import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusTeal
+import com.pegasusx.retailer.R
 
 @Composable
 fun ActiveOrderCard(

@@ -62,6 +62,7 @@ import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.StatusBlue
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

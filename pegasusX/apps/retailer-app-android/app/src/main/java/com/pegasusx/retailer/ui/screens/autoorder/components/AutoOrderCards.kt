@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun HeaderCard(supplierCount: Int, categoryCount: Int, productCount: Int, predictionCount: Int) {

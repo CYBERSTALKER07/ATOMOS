@@ -32,6 +32,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
+import com.pegasus.payload.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

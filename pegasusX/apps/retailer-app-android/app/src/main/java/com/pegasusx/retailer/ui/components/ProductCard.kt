@@ -47,6 +47,7 @@ import com.pegasusx.retailer.ui.theme.StatusBlueSoft
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusGreenSoft
 import java.util.Locale
+import com.pegasusx.retailer.R
 
 @Composable
 fun ProductCard(

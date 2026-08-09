@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.HandoffCardMetadata
+import com.pegasus.payload.R
 
 @Composable
 fun HandoffInboxCard(

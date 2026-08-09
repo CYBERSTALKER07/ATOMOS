@@ -31,6 +31,7 @@ import com.pegasusx.driver.ui.components.StatusPill
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun HistorySection(historyRows: List<DriverHistoryRow>) {

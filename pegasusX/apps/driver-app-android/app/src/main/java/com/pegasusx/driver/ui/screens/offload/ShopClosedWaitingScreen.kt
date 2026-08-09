@@ -49,6 +49,7 @@ import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.Warning
 import kotlinx.coroutines.delay
+import com.pegasusx.driver.R
 
 @Composable
 fun ShopClosedWaitingScreen(

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun SettingsSection(

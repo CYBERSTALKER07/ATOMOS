@@ -58,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.barcode.EanBarcodeScannerPreview
 import com.pegasus.payload.util.PayloadIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasus.payload.R
 
 data class InboundRow(
     val returnId: String,

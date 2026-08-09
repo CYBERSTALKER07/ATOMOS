@@ -13,6 +13,7 @@ import com.pegasusx.factory.data.model.StaffMember
 import com.pegasusx.factory.ui.components.FactoryOpsListCard
 import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun StaffList(

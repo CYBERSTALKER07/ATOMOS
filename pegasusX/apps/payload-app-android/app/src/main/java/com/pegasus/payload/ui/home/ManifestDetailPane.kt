@@ -34,6 +34,7 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.ui.components.ExplainStatusBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
+import com.pegasus.payload.R
 
 @Composable
 fun ManifestDetailPane(

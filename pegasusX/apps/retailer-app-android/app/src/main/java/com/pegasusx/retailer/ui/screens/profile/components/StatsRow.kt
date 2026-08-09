@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
+import com.pegasusx.retailer.R
 
 @Composable
 fun StatsRow(orderCount: Int, totalSpent: Long) {

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.pegasusx.supplier.R
 
 /** Portal-only supplier surfaces — native apps hand off to supplier-portal. */
 enum class SupplierPortalFeature(

@@ -59,6 +59,7 @@ import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.driver.R
 
 private enum class LoginMode {
     Otp,

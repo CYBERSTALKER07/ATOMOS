@@ -28,6 +28,7 @@ import com.pegasusx.driver.ui.theme.StatusBlue
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
+import com.pegasusx.driver.R
 
 @Composable
 fun OffloadActionFooter(

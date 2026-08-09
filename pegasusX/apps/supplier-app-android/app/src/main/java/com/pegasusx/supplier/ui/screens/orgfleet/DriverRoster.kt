@@ -13,6 +13,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.data.model.FleetDriver
 import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun DriverRoster(drivers: List<FleetDriver>, topology: SupplierTopologyResponse?) {

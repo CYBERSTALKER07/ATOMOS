@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.screens.manifest.LineItemAudit
+import com.pegasusx.driver.R
 
 @Composable
 fun LineItemCard(

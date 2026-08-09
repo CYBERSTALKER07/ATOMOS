@@ -31,6 +31,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.model.TrackingOrder
+import com.pegasusx.retailer.R
 
 @Composable
 fun FiscalReceiptQROverlay(

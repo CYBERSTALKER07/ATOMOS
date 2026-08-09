@@ -30,6 +30,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.pegasusx.retailer.ui.theme.MotionTokens
+import com.pegasusx.retailer.R
 
 /**
  * Reusable shimmer modifier — M3-themed alpha-based pulse.

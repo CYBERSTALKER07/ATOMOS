@@ -27,6 +27,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.PayloadSpacing
+import com.pegasus.payload.R
 
 @Composable
 fun OrderChecklist(

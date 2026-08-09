@@ -39,6 +39,7 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.JsonObject
 import retrofit2.HttpException
 import javax.inject.Inject
+import com.pegasusx.retailer.R
 
 enum class CartLoadIssue {
     RESTRICTED,

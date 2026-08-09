@@ -48,6 +48,7 @@ import com.pegasus.payload.data.model.SealCompletedManifestResult
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusLoadingState
+import com.pegasus.payload.R
 
 @Composable
 fun TruckListPane(

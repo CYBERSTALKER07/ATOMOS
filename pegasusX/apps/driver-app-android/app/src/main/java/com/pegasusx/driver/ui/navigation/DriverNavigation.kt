@@ -83,6 +83,7 @@ import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
 import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.R
 
 object DriverRoutes {
     const val LOGIN = "login"

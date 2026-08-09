@@ -76,6 +76,7 @@ import com.pegasusx.retailer.ui.screens.autoorder.components.OverrideRow
 import com.pegasusx.retailer.ui.screens.autoorder.components.SectionHeader
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.OutlinedButton
+import com.pegasusx.retailer.R
 
 @Composable
 fun AutoOrderScreen(

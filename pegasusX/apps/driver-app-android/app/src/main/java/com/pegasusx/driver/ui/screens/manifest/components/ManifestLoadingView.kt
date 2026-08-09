@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.R
 
 @Composable
 fun ManifestLoadingView() {

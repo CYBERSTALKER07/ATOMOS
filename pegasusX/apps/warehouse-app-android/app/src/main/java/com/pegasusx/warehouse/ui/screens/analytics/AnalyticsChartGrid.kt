@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DailyMetric
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
+import com.pegasusx.warehouse.R
 
 @Composable
 fun AnalyticsChartGrid(

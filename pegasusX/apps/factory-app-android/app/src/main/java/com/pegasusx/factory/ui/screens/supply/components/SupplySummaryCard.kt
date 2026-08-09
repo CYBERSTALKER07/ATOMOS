@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun SupplySummaryCard(

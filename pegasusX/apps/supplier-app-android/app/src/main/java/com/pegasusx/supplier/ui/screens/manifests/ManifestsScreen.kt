@@ -19,6 +19,7 @@ import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

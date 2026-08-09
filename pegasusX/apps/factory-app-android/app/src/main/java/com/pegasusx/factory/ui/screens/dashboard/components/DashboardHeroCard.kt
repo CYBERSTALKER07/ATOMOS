@@ -13,6 +13,7 @@ import com.pegasusx.factory.data.model.DashboardStats
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.navigation.FactoryRoutes
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun DashboardHeroCard(

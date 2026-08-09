@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.ui.components.WsConnectionPill
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @Composable
 fun ManifestHeader(

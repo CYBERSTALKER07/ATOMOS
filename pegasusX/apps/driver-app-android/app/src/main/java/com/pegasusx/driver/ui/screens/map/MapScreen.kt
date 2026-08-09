@@ -94,6 +94,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import com.pegasusx.driver.R
 
 private fun locationFlow(context: android.content.Context): Flow<Location> = callbackFlow {
     val client = LocationServices.getFusedLocationProviderClient(context)

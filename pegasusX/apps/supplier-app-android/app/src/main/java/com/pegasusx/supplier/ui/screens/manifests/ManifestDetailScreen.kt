@@ -30,6 +30,7 @@ import com.pegasusx.supplier.ui.components.SupplierStatusChip
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

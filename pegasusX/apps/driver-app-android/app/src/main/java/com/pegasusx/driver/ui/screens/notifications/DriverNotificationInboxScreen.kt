@@ -51,6 +51,7 @@ import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
 import java.time.Duration
 import java.time.Instant
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

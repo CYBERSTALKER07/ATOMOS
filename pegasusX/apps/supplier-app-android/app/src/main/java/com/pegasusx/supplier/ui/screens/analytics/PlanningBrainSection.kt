@@ -37,6 +37,7 @@ import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.pegasusx.supplier.R
 
 @Composable
 fun PlanningBrainSection(ops: SupplierOperationsRepository) {

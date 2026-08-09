@@ -25,6 +25,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun StatsSection(earnings: DriverEarningsResponse?) {

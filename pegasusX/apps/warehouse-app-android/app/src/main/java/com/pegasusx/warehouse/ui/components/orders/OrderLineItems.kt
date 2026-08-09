@@ -21,6 +21,7 @@ import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 fun LazyGridScope.orderLineItems(
     order: Order,

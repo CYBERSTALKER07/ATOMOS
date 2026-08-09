@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.ui.components.DriverSectionTitle
 import com.pegasusx.driver.ui.screens.manifest.LineItemAudit
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

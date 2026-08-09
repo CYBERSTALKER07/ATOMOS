@@ -38,6 +38,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.supplier.R
 
 private data class AnalyticsKpi(
     val label: String,

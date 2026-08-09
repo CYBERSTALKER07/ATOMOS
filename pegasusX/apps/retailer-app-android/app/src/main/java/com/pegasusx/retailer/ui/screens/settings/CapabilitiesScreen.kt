@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import com.pegasusx.retailer.R
 
 data class CapabilityPackUi(
     val id: String,

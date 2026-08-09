@@ -16,6 +16,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @Composable
 fun FleetLiveMapSection(

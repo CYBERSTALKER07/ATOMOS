@@ -97,6 +97,7 @@ import com.pegasusx.driver.ui.screens.manifest.components.CorrectionFooter
 import com.pegasusx.driver.ui.screens.manifest.components.LineItemCard
 import com.pegasusx.driver.ui.screens.manifest.components.ModificationSheetContent
 import com.pegasusx.driver.ui.screens.manifest.components.formatAmount
+import com.pegasusx.driver.R
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DeliveryCorrectionScreen — Line-Item Reconciliation UI

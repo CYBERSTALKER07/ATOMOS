@@ -23,6 +23,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.TreasuryViewModel
+import com.pegasusx.supplier.R
 
 private data class TreasuryLink(
     val title: String,

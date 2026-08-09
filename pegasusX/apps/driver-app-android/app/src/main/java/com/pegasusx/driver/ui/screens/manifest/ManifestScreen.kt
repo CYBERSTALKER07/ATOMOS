@@ -72,6 +72,7 @@ import com.pegasusx.driver.ui.screens.manifest.components.ManifestEmptyView
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestHeader
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestLoadingView
 import com.pegasusx.driver.ui.screens.manifest.components.RideCard
+import com.pegasusx.driver.R
 
 /**
  * ManifestScreen — redesigned to match iOS RidesListView.

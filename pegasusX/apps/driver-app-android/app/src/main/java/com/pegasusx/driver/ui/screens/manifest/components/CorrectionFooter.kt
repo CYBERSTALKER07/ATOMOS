@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.screens.manifest.CorrectionUiState
+import com.pegasusx.driver.R
 
 @Composable
 fun CorrectionFooter(

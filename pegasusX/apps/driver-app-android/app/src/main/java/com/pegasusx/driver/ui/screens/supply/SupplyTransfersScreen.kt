@@ -43,6 +43,7 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
+import com.pegasusx.driver.R
 
 private val arriveableStates = setOf("IN_TRANSIT", "IN_TRANSIT_TO_WAREHOUSE", "DISPATCHED")
 

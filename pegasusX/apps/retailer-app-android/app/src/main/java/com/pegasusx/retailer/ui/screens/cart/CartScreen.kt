@@ -81,6 +81,7 @@ import com.pegasusx.retailer.ui.components.CheckoutSheet
 import com.pegasusx.retailer.ui.components.DefaultCheckoutPaymentOptions
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusRed
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

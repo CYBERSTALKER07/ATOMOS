@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementUiState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun SuggestionCard(

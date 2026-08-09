@@ -39,6 +39,7 @@ import com.pegasusx.factory.ui.screens.dashboard.components.DashboardHeroCard
 import com.pegasusx.factory.ui.screens.dashboard.components.WorkflowLaunchCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private data class KpiCard(
     val label: String,

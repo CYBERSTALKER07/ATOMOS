@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.Manifest
+import com.pegasus.payload.R
 
 /**
  * Tactical KPI header row — mirrors iOS ManifestWorkflow volume/stops/zone cards.

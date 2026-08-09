@@ -48,6 +48,7 @@ import com.pegasusx.retailer.ui.components.FileClaimHost
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
 
 data class StockRowUi(
     val sku: String,

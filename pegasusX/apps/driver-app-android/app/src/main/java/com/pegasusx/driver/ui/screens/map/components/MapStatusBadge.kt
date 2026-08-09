@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.screens.map.MapPhase
+import com.pegasusx.driver.R
 
 @Composable
 fun MapStatusBadge(

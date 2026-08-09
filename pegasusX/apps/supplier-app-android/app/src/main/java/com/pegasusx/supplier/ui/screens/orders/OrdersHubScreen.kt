@@ -30,6 +30,7 @@ import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.OrdersViewModel
+import com.pegasusx.supplier.R
 
 private enum class OrdersHubSurface { Queue, Dispatch }
 

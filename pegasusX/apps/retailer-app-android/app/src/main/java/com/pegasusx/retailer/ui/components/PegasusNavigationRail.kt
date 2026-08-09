@@ -26,6 +26,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import com.pegasusx.retailer.ui.theme.MotionTokens
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
+import com.pegasusx.retailer.R
 
 @Composable
 fun PegasusNavigationRail(

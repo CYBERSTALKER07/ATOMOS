@@ -20,6 +20,7 @@ import com.pegasusx.factory.data.model.ManifestException
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
+import com.pegasusx.factory.R
 
 @Composable
 fun ExceptionCard(

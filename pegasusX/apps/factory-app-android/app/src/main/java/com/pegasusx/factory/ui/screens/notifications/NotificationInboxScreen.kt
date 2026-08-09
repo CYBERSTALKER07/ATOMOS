@@ -50,6 +50,7 @@ import com.pegasusx.factory.data.model.NotificationItem
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

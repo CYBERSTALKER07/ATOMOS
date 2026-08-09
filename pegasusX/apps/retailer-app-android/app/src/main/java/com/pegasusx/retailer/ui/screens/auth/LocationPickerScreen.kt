@@ -60,6 +60,7 @@ import com.pegasusx.retailer.ui.theme.PillShape
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.retailer.R
 
 // Default: Tashkent city center
 private val TASHKENT = LatLng(41.2995, 69.2401)

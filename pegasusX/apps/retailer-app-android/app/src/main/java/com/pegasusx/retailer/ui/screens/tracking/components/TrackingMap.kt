@@ -43,6 +43,7 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.retailer.data.model.TrackingOrder
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @Composable
 fun TrackingMap(

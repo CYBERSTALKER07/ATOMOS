@@ -28,6 +28,7 @@ import com.pegasusx.driver.ui.screens.map.resolveMapPhase
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import com.pegasusx.driver.R
 
 @Composable
 fun OrderInfoCard(

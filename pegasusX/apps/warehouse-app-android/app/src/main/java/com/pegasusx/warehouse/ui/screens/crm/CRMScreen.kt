@@ -23,6 +23,7 @@ import com.pegasus.design.PegasusStatePane
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -72,6 +72,7 @@ import com.pegasusx.retailer.ui.screens.profile.components.ProfileHeaderCard
 import com.pegasusx.retailer.ui.screens.profile.components.StatsRow
 import com.pegasusx.retailer.ui.screens.profile.components.EmpathyEngineCard
 import com.pegasusx.retailer.ui.screens.profile.components.SettingsSection
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

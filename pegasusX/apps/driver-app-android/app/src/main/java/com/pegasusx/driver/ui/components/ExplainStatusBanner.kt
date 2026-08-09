@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.data.model.StatusExplain
+import com.pegasusx.driver.R
 
 @Composable
 fun ExplainStatusBanner(

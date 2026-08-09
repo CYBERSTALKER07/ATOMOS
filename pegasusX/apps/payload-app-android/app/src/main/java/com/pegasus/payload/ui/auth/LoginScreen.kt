@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.R
 
 /**
  * LoginScreen — Firebase phone OTP (primary) with PIN dev fallback.

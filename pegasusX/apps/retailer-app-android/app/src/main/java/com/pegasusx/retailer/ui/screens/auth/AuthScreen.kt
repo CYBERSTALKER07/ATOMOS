@@ -73,6 +73,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.retailer.ui.theme.StatusRed
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")

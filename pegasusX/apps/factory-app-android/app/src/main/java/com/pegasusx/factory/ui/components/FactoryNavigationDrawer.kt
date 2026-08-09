@@ -12,6 +12,7 @@ import com.pegasus.design.PegasusRailItem
 import com.pegasusx.factory.ui.navigation.FactorySection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.pegasusx.factory.R
 
 @Composable
 fun FactoryNavigationDrawer(

@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.pegasusx.warehouse.R
 
 data class SupplyRequestFormResult(
     val factoryId: String,

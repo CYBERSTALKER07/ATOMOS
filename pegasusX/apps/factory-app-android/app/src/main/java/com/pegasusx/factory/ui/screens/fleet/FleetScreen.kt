@@ -33,6 +33,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

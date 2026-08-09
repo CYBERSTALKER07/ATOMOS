@@ -54,6 +54,7 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

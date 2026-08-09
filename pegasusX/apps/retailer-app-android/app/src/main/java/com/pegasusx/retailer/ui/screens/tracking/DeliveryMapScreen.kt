@@ -97,6 +97,7 @@ import com.pegasusx.retailer.ui.screens.tracking.components.RecentReceiptsStrip
 import com.pegasusx.retailer.ui.screens.tracking.components.FiscalReceiptQROverlay
 import com.pegasusx.retailer.ui.screens.tracking.components.TrackingMap
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

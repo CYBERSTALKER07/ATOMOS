@@ -17,6 +17,7 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun TransferCard(transfer: Transfer, onClick: () -> Unit) {

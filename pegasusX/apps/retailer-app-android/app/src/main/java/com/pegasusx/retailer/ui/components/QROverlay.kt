@@ -43,6 +43,7 @@ import com.pegasusx.retailer.data.model.Order
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import org.json.JSONObject
+import com.pegasusx.retailer.R
 
 @Composable
 fun QROverlay(

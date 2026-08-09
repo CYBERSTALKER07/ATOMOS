@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

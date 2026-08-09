@@ -43,6 +43,7 @@ import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import org.json.JSONObject
+import com.pegasusx.retailer.R
 
 @Composable
 fun TrackingQROverlay(
