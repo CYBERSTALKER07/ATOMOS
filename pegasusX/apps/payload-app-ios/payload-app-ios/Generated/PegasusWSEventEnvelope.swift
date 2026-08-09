@@ -39,7 +39,7 @@ struct PegasusWSEventEnvelope: Codable {
     let chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
-    let sessionID: String?
+    let photoProofURL, signatureURL, sessionID: String?
     let baselineQty: Int?
     let baselineSource, blockedReason: String?
     let confidence: Double?
@@ -51,6 +51,7 @@ struct PegasusWSEventEnvelope: Codable {
     let overrideID, polygonGeojson, productID, signalID: String?
     let simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
+    let countryCode, name, phone: String?
     let available: Bool?
     let homeNodeID, homeNodeType: String?
     let onShift: Bool?
@@ -89,8 +90,7 @@ struct PegasusWSEventEnvelope: Codable {
     let delinquent: Bool?
     let profileID, riskTier: String?
     let priceMinor: Int?
-    let setBy, setByRole, countryCode, name: String?
-    let phone, assignedFactoryID: String?
+    let setBy, setByRole, assignedFactoryID: String?
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
@@ -175,6 +175,8 @@ struct PegasusWSEventEnvelope: Codable {
         case settlementMode = "settlement_mode"
         case source
         case commandID = "command_id"
+        case photoProofURL = "photo_proof_url"
+        case signatureURL = "signature_url"
         case sessionID = "session_id"
         case baselineQty = "baseline_qty"
         case baselineSource = "baseline_source"
@@ -193,7 +195,8 @@ struct PegasusWSEventEnvelope: Codable {
         case simulationID = "simulation_id"
         case transferRecommendations = "transfer_recommendations"
         case ttlSeconds = "ttl_seconds"
-        case available
+        case countryCode = "country_code"
+        case name, phone, available
         case homeNodeID = "home_node_id"
         case homeNodeType = "home_node_type"
         case onShift = "on_shift"
@@ -260,8 +263,6 @@ struct PegasusWSEventEnvelope: Codable {
         case priceMinor = "price_minor"
         case setBy = "set_by"
         case setByRole = "set_by_role"
-        case countryCode = "country_code"
-        case name, phone
         case assignedFactoryID = "assigned_factory_id"
         case categories, country
         case isConfigured = "is_configured"
@@ -375,6 +376,8 @@ extension PegasusWSEventEnvelope {
         settlementMode: String?? = nil,
         source: String?? = nil,
         commandID: String?? = nil,
+        photoProofURL: String?? = nil,
+        signatureURL: String?? = nil,
         sessionID: String?? = nil,
         baselineQty: Int?? = nil,
         baselineSource: String?? = nil,
@@ -393,6 +396,9 @@ extension PegasusWSEventEnvelope {
         simulationID: String?? = nil,
         transferRecommendations: Int?? = nil,
         ttlSeconds: Int?? = nil,
+        countryCode: String?? = nil,
+        name: String?? = nil,
+        phone: String?? = nil,
         available: Bool?? = nil,
         homeNodeID: String?? = nil,
         homeNodeType: String?? = nil,
@@ -462,9 +468,6 @@ extension PegasusWSEventEnvelope {
         priceMinor: Int?? = nil,
         setBy: String?? = nil,
         setByRole: String?? = nil,
-        countryCode: String?? = nil,
-        name: String?? = nil,
-        phone: String?? = nil,
         assignedFactoryID: String?? = nil,
         categories: [String]?? = nil,
         country: String?? = nil,
@@ -559,6 +562,8 @@ extension PegasusWSEventEnvelope {
             settlementMode: settlementMode ?? self.settlementMode,
             source: source ?? self.source,
             commandID: commandID ?? self.commandID,
+            photoProofURL: photoProofURL ?? self.photoProofURL,
+            signatureURL: signatureURL ?? self.signatureURL,
             sessionID: sessionID ?? self.sessionID,
             baselineQty: baselineQty ?? self.baselineQty,
             baselineSource: baselineSource ?? self.baselineSource,
@@ -577,6 +582,9 @@ extension PegasusWSEventEnvelope {
             simulationID: simulationID ?? self.simulationID,
             transferRecommendations: transferRecommendations ?? self.transferRecommendations,
             ttlSeconds: ttlSeconds ?? self.ttlSeconds,
+            countryCode: countryCode ?? self.countryCode,
+            name: name ?? self.name,
+            phone: phone ?? self.phone,
             available: available ?? self.available,
             homeNodeID: homeNodeID ?? self.homeNodeID,
             homeNodeType: homeNodeType ?? self.homeNodeType,
@@ -646,9 +654,6 @@ extension PegasusWSEventEnvelope {
             priceMinor: priceMinor ?? self.priceMinor,
             setBy: setBy ?? self.setBy,
             setByRole: setByRole ?? self.setByRole,
-            countryCode: countryCode ?? self.countryCode,
-            name: name ?? self.name,
-            phone: phone ?? self.phone,
             assignedFactoryID: assignedFactoryID ?? self.assignedFactoryID,
             categories: categories ?? self.categories,
             country: country ?? self.country,
@@ -728,6 +733,7 @@ enum TypeEnum: String, Codable {
     case deliveryDisputed = "DELIVERY_DISPUTED"
     case deliverySessionUpdated = "DELIVERY_SESSION_UPDATED"
     case demandBaselineUpdated = "DEMAND_BASELINE_UPDATED"
+    case demandSignal = "DEMAND_SIGNAL"
     case dispatchZoneOverride = "DISPATCH_ZONE_OVERRIDE"
     case driverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
     case driverCreated = "DRIVER_CREATED"
@@ -736,6 +742,7 @@ enum TypeEnum: String, Codable {
     case factoryCreated = "FACTORY_CREATED"
     case factoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
     case factorySupplyRequestUpdate = "FACTORY_SUPPLY_REQUEST_UPDATE"
+    case fiscalCorrectiveRequested = "FISCAL_CORRECTIVE_REQUESTED"
     case fiscalReceiptFailed = "FISCAL_RECEIPT_FAILED"
     case fiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
     case fiscalReceiptSucceeded = "FISCAL_RECEIPT_SUCCEEDED"
@@ -780,6 +787,10 @@ enum TypeEnum: String, Codable {
     case planningMeioRecommendationV1 = "planning.meio.recommendation.v1"
     case planningPromoSimulationReady = "PLANNING_PROMO_SIMULATION_READY"
     case planningSignalIngestV1 = "planning.signal.ingest.v1"
+    case posSaleCompleted = "POS_SALE_COMPLETED"
+    case posSaleVoided = "POS_SALE_VOIDED"
+    case posSessionClosed = "POS_SESSION_CLOSED"
+    case posSessionOpened = "POS_SESSION_OPENED"
     case preOrderAutoAccepted = "PRE_ORDER_AUTO_ACCEPTED"
     case preOrderCancelled = "PRE_ORDER_CANCELLED"
     case preOrderConfirmation = "PRE_ORDER_CONFIRMATION"
@@ -793,13 +804,36 @@ enum TypeEnum: String, Codable {
     case productHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
     case promotionChanged = "PROMOTION_CHANGED"
     case proximityUnlocked = "PROXIMITY_UNLOCKED"
+    case refundFailed = "REFUND_FAILED"
+    case refundRequested = "REFUND_REQUESTED"
+    case refundSucceeded = "REFUND_SUCCEEDED"
     case replenishmentAutoApproved = "REPLENISHMENT_AUTO_APPROVED"
     case replenishmentInsightCreated = "REPLENISHMENT_INSIGHT_CREATED"
+    case retailerAssistSlaBreached = "RETAILER_ASSIST_SLA_BREACHED"
+    case retailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
+    case retailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
+    case retailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
+    case retailerAssistTicketOpened = "RETAILER_ASSIST_TICKET_OPENED"
+    case retailerAutoOrderUpdated = "RETAILER_AUTO_ORDER_UPDATED"
+    case retailerCapabilityPackChanged = "RETAILER_CAPABILITY_PACK_CHANGED"
+    case retailerClockIn = "RETAILER_CLOCK_IN"
+    case retailerClockOut = "RETAILER_CLOCK_OUT"
     case retailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
     case retailerCreditProfileChanged = "RETAILER_CREDIT_PROFILE_CHANGED"
+    case retailerLocationCreated = "RETAILER_LOCATION_CREATED"
+    case retailerLocationUpdated = "RETAILER_LOCATION_UPDATED"
     case retailerPriceOverride = "RETAILER_PRICE_OVERRIDE"
     case retailerRegistered = "RETAILER_REGISTERED"
+    case retailerSectionCreated = "RETAILER_SECTION_CREATED"
+    case retailerSectionSkuMapped = "RETAILER_SECTION_SKU_MAPPED"
+    case retailerSectionUpdated = "RETAILER_SECTION_UPDATED"
     case retailerSegmentUpdated = "RETAILER_SEGMENT_UPDATED"
+    case retailerSellThroughUpdated = "RETAILER_SELL_THROUGH_UPDATED"
+    case retailerShiftCashVariance = "RETAILER_SHIFT_CASH_VARIANCE"
+    case retailerShiftClosed = "RETAILER_SHIFT_CLOSED"
+    case retailerShiftOpened = "RETAILER_SHIFT_OPENED"
+    case retailerStaffCreated = "RETAILER_STAFF_CREATED"
+    case retailerStaffSectionAssigned = "RETAILER_STAFF_SECTION_ASSIGNED"
     case returnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
     case reverseLogisticsRequired = "REVERSE_LOGISTICS_REQUIRED"
     case routeCreated = "ROUTE_CREATED"
@@ -815,6 +849,11 @@ enum TypeEnum: String, Codable {
     case skuClassUpdated = "SKU_CLASS_UPDATED"
     case splitPaymentCreated = "SPLIT_PAYMENT_CREATED"
     case splitShipmentCreated = "SPLIT_SHIPMENT_CREATED"
+    case storeStockAdjusted = "STORE_STOCK_ADJUSTED"
+    case storeStockClaimHold = "STORE_STOCK_CLAIM_HOLD"
+    case storeStockCounted = "STORE_STOCK_COUNTED"
+    case storeStockReceived = "STORE_STOCK_RECEIVED"
+    case storeStockTransferred = "STORE_STOCK_TRANSFERRED"
     case supplierBillingConfigured = "SUPPLIER_BILLING_CONFIGURED"
     case supplierBillingUpdated = "SUPPLIER_BILLING_UPDATED"
     case supplierCreated = "SUPPLIER_CREATED"

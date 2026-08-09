@@ -50,7 +50,7 @@ struct DispatchDriverList: View {
             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
                 WarehouseStatusBadge(text: driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
                 if driver.maxVolumeVu > 0 {
-                    Text(L10n.format("mobile_warehouse.ui.n_0f_vu", "\(driver.maxVolumeVu, specifier: "%.0f")"))
+                    Text(L10n.format("mobile_warehouse.ui.n_0f_vu", String(format: "%.0f", driver.maxVolumeVu)))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

@@ -388,7 +388,7 @@ fun OrderDetailSheetContent(
                     when {
                         claimElig?.eligible == true -> {
                             Text(
-                                stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left, formatClaimEndsAt(claimElig?.endsAt), claimElig?.hoursRemaining),
+                                stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left, formatClaimEndsAt(claimElig?.endsAt), claimElig?.hoursRemaining ?: 0),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                             )

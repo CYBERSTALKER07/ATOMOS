@@ -1,6 +1,5 @@
 package com.pegasusx.retailer.data.api
 
-import androidx.compose.ui.res.stringResource
 
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
@@ -26,7 +25,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-import com.pegasusx.retailer.R
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -151,12 +149,13 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
                     throw ProblemDetailException(
                         ProblemDetail(
                             type = "about:blank",
-                            title = stringResource(R.string.mobile_retailer_ui_too_many_requests),
+                            title = "Too Many Requests",
                             status = 429,
                             detail = "Too many requests. Please try again later.",
                             instance = null,
                             code = "rate_limit_exceeded",
-                            messageKey = null,
+                            // UI layer maps this key to mobile_retailer_ui_too_many_requests for display.
+                            messageKey = "mobile_retailer_ui_too_many_requests",
                             retryable = true,
                             action = null
                         )

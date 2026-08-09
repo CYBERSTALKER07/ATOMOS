@@ -48,6 +48,7 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class PosCartLine(
     val sku: String,
@@ -101,7 +102,7 @@ fun PosScreen(
         scope.launch {
             try {
                 val regs = viewModel.api.getRegisters().asJsonObject.getAsJsonArray("items")
-                if (regs != null && regs.size() > 0) {
+                if (regs != null && regs.size > 0) {
                     registerId = regs[0].asJsonObject.get("register_id")?.asString
                 } else {
                     val created = viewModel.api.createRegister(

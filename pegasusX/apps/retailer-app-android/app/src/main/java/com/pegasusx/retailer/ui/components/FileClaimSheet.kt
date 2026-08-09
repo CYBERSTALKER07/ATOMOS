@@ -167,7 +167,7 @@ fun FileClaimSheet(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                     )
                     eligibility?.eligible == true -> Text(
-                        stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left_amounts_use_order, formatClaimEndsAt(eligibility?.endsAt), eligibility?.hoursRemaining),
+                        stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left_amounts_use_order, formatClaimEndsAt(eligibility?.endsAt), eligibility?.hoursRemaining ?: 0),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                     )

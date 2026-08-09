@@ -44,7 +44,7 @@ fun PortalHandoffScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(feature.title) },
+                title = { Text(stringResource(feature.titleRes)) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {

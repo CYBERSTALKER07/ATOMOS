@@ -163,6 +163,8 @@ private fun HealthConnectBarChart(
 ) {
     val maxValue = (dailySpend.maxOf { it.amount } * 1.2f).toLong()
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val ySteps = listOf(0L, maxValue / 3, maxValue * 2 / 3, maxValue)
+    val yLabels = ySteps.map { stringResource(R.string.mobile_retailer_ui_step_1_000k, it / 1_000) }
 
     Canvas(modifier = modifier) {
         val chartLeft = 40.dp.toPx()
@@ -178,10 +180,9 @@ private fun HealthConnectBarChart(
         val cornerRadiusPx = 6.dp.toPx()
 
         // Y-axis labels
-        val ySteps = listOf(0L, maxValue / 3, maxValue * 2 / 3, maxValue)
-        for (step in ySteps) {
+        ySteps.forEachIndexed { index, step ->
             val y = chartBottom - (step.toFloat() / maxValue * chartHeight)
-            val label = stringResource(R.string.mobile_retailer_ui_step_1_000k, step / 1_000)
+            val label = yLabels[index]
             drawText(
                 textMeasurer = textMeasurer,
                 text = label,

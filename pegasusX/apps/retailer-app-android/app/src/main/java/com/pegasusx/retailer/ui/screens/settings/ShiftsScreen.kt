@@ -40,6 +40,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class ShiftRow(
     val shiftId: String,
@@ -89,7 +90,7 @@ fun ShiftsScreen(
                 }
                 if (registerId == null) {
                     val regs = viewModel.api.getRegisters().asJsonObject.getAsJsonArray("items")
-                    if (regs != null && regs.size() > 0) {
+                    if (regs != null && regs.size > 0) {
                         registerId = regs[0].asJsonObject.get("register_id")?.asString
                     }
                 }

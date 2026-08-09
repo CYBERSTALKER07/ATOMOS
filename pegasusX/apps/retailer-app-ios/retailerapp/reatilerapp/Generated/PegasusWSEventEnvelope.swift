@@ -39,7 +39,7 @@ struct PegasusWSEventEnvelope {
     let chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
-    let sessionID: String?
+    let photoProofURL, signatureURL, sessionID: String?
     let baselineQty: Int?
     let baselineSource, blockedReason: String?
     let confidence: Double?
@@ -51,6 +51,7 @@ struct PegasusWSEventEnvelope {
     let overrideID, polygonGeojson, productID, signalID: String?
     let simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
+    let countryCode, name, phone: String?
     let available: Bool?
     let homeNodeID, homeNodeType: String?
     let onShift: Bool?
@@ -89,8 +90,7 @@ struct PegasusWSEventEnvelope {
     let delinquent: Bool?
     let profileID, riskTier: String?
     let priceMinor: Int?
-    let setBy, setByRole, countryCode, name: String?
-    let phone, assignedFactoryID: String?
+    let setBy, setByRole, assignedFactoryID: String?
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
@@ -129,6 +129,7 @@ enum TypeEnum: String {
     case deliveryDisputed
     case deliverySessionUpdated
     case demandBaselineUpdated
+    case demandSignal
     case dispatchZoneOverride
     case driverAvailabilityChanged
     case driverCreated
@@ -137,6 +138,7 @@ enum TypeEnum: String {
     case factoryCreated
     case factoryLocationUpdated
     case factorySupplyRequestUpdate
+    case fiscalCorrectiveRequested
     case fiscalReceiptFailed
     case fiscalReceiptRequested
     case fiscalReceiptSucceeded
@@ -181,6 +183,10 @@ enum TypeEnum: String {
     case planningMeioRecommendationV1
     case planningPromoSimulationReady
     case planningSignalIngestV1
+    case posSaleCompleted
+    case posSaleVoided
+    case posSessionClosed
+    case posSessionOpened
     case preOrderAutoAccepted
     case preOrderCancelled
     case preOrderConfirmation
@@ -194,13 +200,36 @@ enum TypeEnum: String {
     case productHandlingUpdated
     case promotionChanged
     case proximityUnlocked
+    case refundFailed
+    case refundRequested
+    case refundSucceeded
     case replenishmentAutoApproved
     case replenishmentInsightCreated
+    case retailerAssistSlaBreached
+    case retailerAssistTicketCancelled
+    case retailerAssistTicketClaimed
+    case retailerAssistTicketCompleted
+    case retailerAssistTicketOpened
+    case retailerAutoOrderUpdated
+    case retailerCapabilityPackChanged
+    case retailerClockIn
+    case retailerClockOut
     case retailerCreditLimitBreached
     case retailerCreditProfileChanged
+    case retailerLocationCreated
+    case retailerLocationUpdated
     case retailerPriceOverride
     case retailerRegistered
+    case retailerSectionCreated
+    case retailerSectionSkuMapped
+    case retailerSectionUpdated
     case retailerSegmentUpdated
+    case retailerSellThroughUpdated
+    case retailerShiftCashVariance
+    case retailerShiftClosed
+    case retailerShiftOpened
+    case retailerStaffCreated
+    case retailerStaffSectionAssigned
     case returnReceivedAtWarehouse
     case reverseLogisticsRequired
     case routeCreated
@@ -216,6 +245,11 @@ enum TypeEnum: String {
     case skuClassUpdated
     case splitPaymentCreated
     case splitShipmentCreated
+    case storeStockAdjusted
+    case storeStockClaimHold
+    case storeStockCounted
+    case storeStockReceived
+    case storeStockTransferred
     case supplierBillingConfigured
     case supplierBillingUpdated
     case supplierCreated

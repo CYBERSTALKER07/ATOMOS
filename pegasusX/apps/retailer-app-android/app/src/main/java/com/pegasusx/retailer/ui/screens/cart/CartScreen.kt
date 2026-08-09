@@ -79,6 +79,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.CartItem
 import com.pegasusx.retailer.ui.components.CheckoutSheet
 import com.pegasusx.retailer.ui.components.DefaultCheckoutPaymentOptions
+import com.pegasusx.retailer.ui.components.checkoutPaymentLabel
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.R
@@ -215,7 +216,7 @@ fun CartScreen(
                 discount = uiState.displayDiscount,
                 total = uiState.displayTotal,
                 selectedPaymentGateway = uiState.selectedPaymentGateway,
-                paymentLabel = uiState.selectedPaymentLabel,
+                paymentLabel = checkoutPaymentLabel(uiState.selectedPaymentGateway, uiState.paymentOptions),
                 paymentOptions = uiState.paymentOptions.ifEmpty { DefaultCheckoutPaymentOptions },
                 stockWarnings = uiState.stockWarnings,
                 oosItems = uiState.oosItems,

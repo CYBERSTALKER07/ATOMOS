@@ -134,7 +134,7 @@ fun AuthScreen(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
-            Spacer(Modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.mobile_retailer_ui_your_phone_is_linked_to_more_than_one_retailer),
                 style = MaterialTheme.typography.bodyMedium,

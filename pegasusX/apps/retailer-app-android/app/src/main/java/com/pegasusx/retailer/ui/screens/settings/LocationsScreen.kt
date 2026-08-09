@@ -39,6 +39,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class LocationUi(
     val id: String,

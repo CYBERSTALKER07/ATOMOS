@@ -37,12 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import com.google.gson.JsonObject
+import kotlinx.serialization.json.JsonObject
 import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class TeamMemberUi(
     val userId: String,
@@ -79,7 +80,7 @@ fun TeamScreen(
             error = null
             try {
                 val el = viewModel.api.getOrgMembers()
-                val arr = el.asJsonObject.getAsJsonArray("items")
+                val arr = el.asJsonObject.getAsJsonArray("items").orEmpty()
                 members = arr.map { item ->
                     val o = item.asJsonObject
                     TeamMemberUi(

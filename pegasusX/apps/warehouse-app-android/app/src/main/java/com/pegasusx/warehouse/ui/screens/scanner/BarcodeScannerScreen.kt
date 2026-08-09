@@ -53,7 +53,7 @@ fun BarcodeScannerScreen(
                 ScannerState.PROCESSING -> {
                     CircularProgressIndicator(color = Color.White)
                     Text(
-                        stringResource(R.string.mobile_warehouse_ui_processing_lastscannedbin, lastScannedBin),
+                        stringResource(R.string.mobile_warehouse_ui_processing_lastscannedbin, lastScannedBin.orEmpty()),
                         color = Color.White,
                         modifier = Modifier.padding(top = 64.dp)
                     )
@@ -61,7 +61,7 @@ fun BarcodeScannerScreen(
                 ScannerState.SUCCESS -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Successfully Scanned", color = Color.Green, style = MaterialTheme.typography.headlineMedium)
-                        Text(stringResource(R.string.mobile_warehouse_ui_bin_lastscannedbin, lastScannedBin), color = Color.White, modifier = Modifier.padding(16.dp))
+                        Text(stringResource(R.string.mobile_warehouse_ui_bin_lastscannedbin, lastScannedBin.orEmpty()), color = Color.White, modifier = Modifier.padding(16.dp))
                         Button(onClick = { viewModel.reset(); viewModel.startScanning() }) {
                             Text("Scan Another Bin")
                         }

@@ -1,5 +1,6 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.animation.AnimatedContent
@@ -59,12 +60,29 @@ enum class CheckoutPhase { REVIEW, PROCESSING, COMPLETE }
 data class CheckoutPaymentOption(
     val gateway: String,
     val label: String,
+    @param:StringRes val labelRes: Int? = null,
 )
 
 val DefaultCheckoutPaymentOptions = listOf(
-    CheckoutPaymentOption(gateway = "CASH", label = stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)),
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = stringResource(R.string.mobile_retailer_ui_globalpay)),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery", labelRes = R.string.supplier_portal_billing_setup_gateway_cash_label),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay", labelRes = R.string.mobile_retailer_ui_globalpay),
 )
+
+/** Localized label for a payment option: known gateways resolve via [labelRes], dynamic cards use [label]. */
+@Composable
+fun CheckoutPaymentOption.displayLabel(): String =
+    labelRes?.let { stringResource(it) } ?: label
+
+/** Localized label for the selected gateway — composable counterpart of the former ViewModel helper. */
+@Composable
+fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
+    return options.find { it.gateway == gateway }?.displayLabel() ?: when (gateway.trim().uppercase()) {
+        "GLOBAL_PAY" -> stringResource(R.string.mobile_retailer_ui_globalpay)
+        "ADYEN" -> stringResource(R.string.supplier_portal_residual_text_adyen)
+        "CASH" -> stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)
+        else -> gateway
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -536,7 +554,7 @@ private fun ReviewContent(
             ) {
                 paymentOptions.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(option.label) },
+                        text = { Text(option.displayLabel()) },
                         onClick = {
                             paymentMenuExpanded = false
                             onSelectPayment(option.gateway)

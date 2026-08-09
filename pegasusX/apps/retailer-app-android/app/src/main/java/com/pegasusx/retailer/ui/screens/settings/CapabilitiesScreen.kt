@@ -37,7 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.gson.JsonObject
+import kotlinx.serialization.json.JsonObject
 import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -45,6 +45,7 @@ import javax.inject.Inject
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class CapabilityPackUi(
     val id: String,
@@ -80,7 +81,7 @@ fun CapabilitiesScreen(
             error = null
             try {
                 val el = viewModel.api.getCapabilities()
-                val arr = el.asJsonObject.getAsJsonArray("packs")
+                val arr = el.asJsonObject.getAsJsonArray("packs").orEmpty()
                 packs = arr.mapNotNull { item ->
                     val o = item.asJsonObject
                     CapabilityPackUi(

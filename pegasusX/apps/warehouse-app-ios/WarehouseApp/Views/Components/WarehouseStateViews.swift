@@ -42,7 +42,7 @@ struct WarehouseErrorView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("factory_portal.residual.text.unable_to_load", systemImage: "exclamationmark.triangle")
+            Label("warehouse_portal.residual.text.unable_to_load", systemImage: "exclamationmark.triangle")
         } description: {
             Text(message)
         } actions: {

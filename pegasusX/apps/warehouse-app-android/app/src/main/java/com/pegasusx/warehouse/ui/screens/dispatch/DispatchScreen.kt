@@ -1,5 +1,6 @@
 package com.pegasusx.warehouse.ui.screens.dispatch
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
@@ -258,16 +259,16 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     actionMessage = DispatchActionMessage(
-                        title = stringResource(R.string.notification_supply_request_submitted_title),
+                        titleRes = R.string.notification_supply_request_submitted_title,
                         message = "Request ${body.requestId.take(8)} is now ${body.state}.",
                     )
                     showCreateSupplyRequest = false
                     reloadSupplyRequests()
                 } else {
-                    actionMessage = DispatchActionMessage("Supply Request Failed", codeMessage(response.code()))
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_supply_request_failed, codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
-                actionMessage = DispatchActionMessage("Supply Request Failed", throwable.message ?: "Network error")
+                actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_supply_request_failed, throwable.message ?: "Network error")
             }
         }
     }
@@ -285,16 +286,16 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     actionMessage = DispatchActionMessage(
-                        title = stringResource(R.string.mobile_warehouse_ui_supply_request_cancelled),
+                        titleRes = R.string.mobile_warehouse_ui_supply_request_cancelled,
                         message = "Request ${body.requestId.take(8)} moved to ${body.state}.",
                     )
                     requestPendingCancellation = null
                     reloadSupplyRequests()
                 } else {
-                    actionMessage = DispatchActionMessage("Cancellation Failed", codeMessage(response.code()))
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_cancellation_failed, codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
-                actionMessage = DispatchActionMessage("Cancellation Failed", throwable.message ?: "Network error")
+                actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_cancellation_failed, throwable.message ?: "Network error")
             }
         }
     }
@@ -311,18 +312,18 @@ fun DispatchScreen(
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
                         actionMessage = DispatchActionMessage(
-                            title = stringResource(R.string.mobile_warehouse_ui_dispatch_locked),
+                            titleRes = R.string.mobile_warehouse_ui_dispatch_locked,
                             message = "${body.lockType} is now active for this warehouse scope.",
                         )
                         showAcquireDispatchLock = false
                         reloadDispatchLocks()
                         load()
                     } else {
-                        actionMessage = DispatchActionMessage("Lock Failed", codeMessage(response.code()))
+                        actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_lock_failed, codeMessage(response.code()))
                     }
                 }
                 .onFailure { throwable ->
-                    actionMessage = DispatchActionMessage("Lock Failed", throwable.message ?: "Network error")
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_lock_failed, throwable.message ?: "Network error")
                 }
         }
     }
@@ -361,7 +362,7 @@ fun DispatchScreen(
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
-                                title = stringResource(R.string.mobile_warehouse_ui_plan_stale),
+                                titleRes = R.string.mobile_warehouse_ui_plan_stale,
                                 message = "Refresh preview and try smart dispatch again.",
                             )
                             load()
@@ -373,7 +374,7 @@ fun DispatchScreen(
                         }
                         "dispatched" -> {
                             actionMessage = DispatchActionMessage(
-                                title = stringResource(R.string.mobile_warehouse_ui_dispatch_committed),
+                                titleRes = R.string.mobile_warehouse_ui_dispatch_committed,
                                 message = "Assigned ${result.ordersAssigned} order(s). Payloader loading gate is active.",
                             )
                             selectedOrderIds = emptySet()
@@ -381,14 +382,14 @@ fun DispatchScreen(
                         }
                         else -> {
                             val warning = result.warnings.firstOrNull() ?: "Dispatch did not commit."
-                            actionMessage = DispatchActionMessage("Dispatch Incomplete", warning)
+                            actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_dispatch_incomplete, warning)
                         }
                     }
                 } else {
-                    actionMessage = DispatchActionMessage("Dispatch Failed", codeMessage(response.code()))
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_dispatch_failed, codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
-                actionMessage = DispatchActionMessage("Dispatch Failed", throwable.message ?: "Network error")
+                actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_dispatch_failed, throwable.message ?: "Network error")
             }
             executing = false
         }
@@ -420,7 +421,7 @@ fun DispatchScreen(
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
-                                title = stringResource(R.string.mobile_warehouse_ui_plan_stale),
+                                titleRes = R.string.mobile_warehouse_ui_plan_stale,
                                 message = "Refresh preview and try smart dispatch again.",
                             )
                             load()
@@ -435,7 +436,7 @@ fun DispatchScreen(
                                 " ${result.orphanOrderIds.size} order(s) could not be assigned."
                             } else ""
                             actionMessage = DispatchActionMessage(
-                                title = stringResource(R.string.mobile_warehouse_ui_smart_dispatch_committed),
+                                titleRes = R.string.mobile_warehouse_ui_smart_dispatch_committed,
                                 message = "Assigned ${result.ordersAssigned} order(s).$orphanNote",
                             )
                             selectedOrderIds = emptySet()
@@ -443,14 +444,14 @@ fun DispatchScreen(
                         }
                         else -> {
                             val warning = result.warnings.firstOrNull() ?: "Smart dispatch did not commit."
-                            actionMessage = DispatchActionMessage("Smart Dispatch Incomplete", warning)
+                            actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_smart_dispatch_incomplete, warning)
                         }
                     }
                 } else {
-                    actionMessage = DispatchActionMessage("Smart Dispatch Failed", codeMessage(response.code()))
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_smart_dispatch_failed, codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
-                actionMessage = DispatchActionMessage("Smart Dispatch Failed", throwable.message ?: "Network error")
+                actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_smart_dispatch_failed, throwable.message ?: "Network error")
             }
             executing = false
         }
@@ -468,18 +469,18 @@ fun DispatchScreen(
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
                         actionMessage = DispatchActionMessage(
-                            title = stringResource(R.string.notification_dispatch_lock_released_title),
+                            titleRes = R.string.notification_dispatch_lock_released_title,
                             message = "Lock ${body.lockId.take(8)} is now ${body.status}.",
                         )
                         lockPendingRelease = null
                         reloadDispatchLocks()
                         load()
                     } else {
-                        actionMessage = DispatchActionMessage("Release Failed", codeMessage(response.code()))
+                        actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_release_failed, codeMessage(response.code()))
                     }
                 }
                 .onFailure { throwable ->
-                    actionMessage = DispatchActionMessage("Release Failed", throwable.message ?: "Network error")
+                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_release_failed, throwable.message ?: "Network error")
                 }
         }
     }
@@ -497,7 +498,7 @@ fun DispatchScreen(
         if (hadInFlight) {
             executing = false
             actionMessage = DispatchActionMessage(
-                title = stringResource(R.string.mobile_warehouse_ui_connection_restored),
+                titleRes = R.string.mobile_warehouse_ui_connection_restored,
                 message = WAREHOUSE_RECONNECT_RECOVERY_HINT,
             )
         }
@@ -570,7 +571,7 @@ fun DispatchScreen(
                                 try {
                                     val resp = opsRepository.proposeOrderDelivery(orderId, iso, opsReasonInput.trim())
                                     actionMessage = DispatchActionMessage(
-                                        title = if (resp.isSuccessful) "Date proposed" else "Propose failed",
+                                        titleRes = if (resp.isSuccessful) R.string.warehouse_dispatch_title_date_proposed else R.string.warehouse_dispatch_title_propose_failed,
                                         message = if (resp.isSuccessful) {
                                             "Retailer notified — they can accept or reject."
                                         } else {
@@ -581,7 +582,7 @@ fun DispatchScreen(
                                     opsReasonInput = ""
                                     load()
                                 } catch (e: Exception) {
-                                    actionMessage = DispatchActionMessage("Propose failed", e.message ?: "Error")
+                                    actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_propose_failed, e.message ?: "Error")
                                 } finally {
                                     opsActingId = null
                                 }
@@ -624,7 +625,7 @@ fun DispatchScreen(
                             try {
                                 val resp = opsRepository.rejectOrder(orderId, opsReasonInput.trim())
                                 actionMessage = DispatchActionMessage(
-                                    title = if (resp.isSuccessful) "Order cancelled" else "Cancel failed",
+                                    titleRes = if (resp.isSuccessful) R.string.warehouse_dispatch_title_order_cancelled else R.string.warehouse_dispatch_title_cancel_failed,
                                     message = if (resp.isSuccessful) {
                                         "Retailer notified."
                                     } else {
@@ -635,7 +636,7 @@ fun DispatchScreen(
                                 opsReasonInput = ""
                                 load()
                             } catch (e: Exception) {
-                                actionMessage = DispatchActionMessage("Cancel failed", e.message ?: "Error")
+                                actionMessage = DispatchActionMessage(titleRes = R.string.warehouse_dispatch_title_cancel_failed, e.message ?: "Error")
                             } finally {
                                 opsActingId = null
                             }
@@ -980,7 +981,7 @@ fun DispatchScreen(
     if (actionMessage != null) {
         AlertDialog(
             onDismissRequest = { actionMessage = null },
-            title = { Text(actionMessage!!.title) },
+            title = { Text(stringResource(actionMessage!!.titleRes)) },
             text = { Text(actionMessage!!.message) },
             confirmButton = { TextButton(onClick = { actionMessage = null }) { Text("OK") } },
         )
@@ -1013,6 +1014,6 @@ private fun RealtimeStatusBanner(status: WarehouseRealtimeStatus) {
 }
 
 private data class DispatchActionMessage(
-    val title: String,
+    @param:StringRes val titleRes: Int,
     val message: String,
 )

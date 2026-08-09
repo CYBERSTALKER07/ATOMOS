@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B237351B8441491EB54AB0BE /* ReturnPolicySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */; };
 		087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5693C9F4B187B5F6696EA133 /* LoginView.swift */; };
 		0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */; };
 		0A8F27FC313C8077D3F86874 /* WarehouseList.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8035EF21F86C4E8A385FC48 /* WarehouseList.swift */; };
@@ -83,6 +82,7 @@
 		8833928AF7175934C569A21B /* CatalogDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63DA2C0F3385B834F584716 /* CatalogDetailView.swift */; };
 		8AA4339C41B52953ACCD9A68 /* ManifestsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E66BFB0352474CA4CCE6240 /* ManifestsList.swift */; };
 		8C16E72DD1E90EEC9E0EF7BB /* AIRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B801537ED9FBA237CD2ACF1 /* AIRecommendationsView.swift */; };
+		8CE63524227295D81B9F0685 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D7A7797A305479C9C4457B /* L10n.swift */; };
 		90D40520A8DB30271873DC84 /* EditOrgMemberSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC76716112BF47DF47A860D0 /* EditOrgMemberSheet.swift */; };
 		918A51C8E1C37F5CBA8E1BE5 /* InventoryList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39CD3DBF7E4769D547ED5149 /* InventoryList.swift */; };
 		928352F6B00BB14B4BCB2CF0 /* ForecastConfidenceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A56E12BA68F58FEBC4534253 /* ForecastConfidenceSupport.swift */; };
@@ -110,6 +110,7 @@
 		BD5DE0E66FCEF95093F18E18 /* ComplianceAuditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6241E3F9AF6F39ACDA7E9ED /* ComplianceAuditView.swift */; };
 		BFE2B51C1D412F44807A88D9 /* SupplierPortalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55573AE3AFD23706DCEFB42 /* SupplierPortalFeature.swift */; };
 		C1769FFAE4E903832576B540 /* OrderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510C5442B8F95FBE6A6FC73 /* OrderRow.swift */; };
+		C2685EF9C848D41D6061A0C6 /* ReturnPolicySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF7215C11BF690810962FE0 /* ReturnPolicySettingsView.swift */; };
 		C4E21CE3F7EC1C4EE14C0430 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44633588E978A8558F6DB37D /* RegisterView.swift */; };
 		C70FAE4C984471734C1543ED /* SupplierTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29985CA974B8C463D2D934CF /* SupplierTheme.swift */; };
 		C82CDAED5117D8087C346FE2 /* PegasusMonochromeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4449FFB2CC8A8E3774B724 /* PegasusMonochromeTheme.swift */; };
@@ -173,6 +174,7 @@
 		17DD0A7A3484EA4793D1FF15 /* ProductPricingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductPricingDetailView.swift; sourceTree = "<group>"; };
 		185888218205F85055C0EC1B /* PegasusStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusStateViews.swift; sourceTree = "<group>"; };
 		18A6831C3558312E2AD70ABF /* RealtimeHubTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeHubTests.swift; sourceTree = "<group>"; };
+		19D7A7797A305479C9C4457B /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		1C0B8CB82C2E5FD2F2D0771A /* SupplierAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SupplierAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		201CDCE88BECA9435649F98C /* FactoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoriesView.swift; sourceTree = "<group>"; };
 		23C49A4BA65AD380AB8B9F35 /* CreateDriverSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateDriverSheet.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 		6F521DA9A3B145CF163C16C4 /* EnterpriseUpdateConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseUpdateConfig.swift; sourceTree = "<group>"; };
 		6FA0DFC74D424BD283276E0D /* TopologyNodeForms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopologyNodeForms.swift; sourceTree = "<group>"; };
 		70295F7AE76EAFC2311C0E1F /* ShopClosedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopClosedView.swift; sourceTree = "<group>"; };
+		74E237822F518694D8D4196C /* SupplierApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SupplierApp.entitlements; sourceTree = "<group>"; };
 		77CEE08326112BF4E5AEFD3A /* NetworkPulseStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPulseStrip.swift; sourceTree = "<group>"; };
 		79496B57AA981DE595569C3A /* PortalHandoffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalHandoffView.swift; sourceTree = "<group>"; };
 		7D85EA4AC006546E67C6F215 /* PlanningBrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningBrainView.swift; sourceTree = "<group>"; };
@@ -223,10 +226,10 @@
 		83639D37FFA83148517E6076 /* OrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersView.swift; sourceTree = "<group>"; };
 		849BADAB50C3E90C228AD244 /* ResponsiveGridContentWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsiveGridContentWrapper.swift; sourceTree = "<group>"; };
 		8E66BFB0352474CA4CCE6240 /* ManifestsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsList.swift; sourceTree = "<group>"; };
+		8FF7215C11BF690810962FE0 /* ReturnPolicySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnPolicySettingsView.swift; sourceTree = "<group>"; };
 		904A11698EBCBEBC619AF2D4 /* ExceptionsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionsList.swift; sourceTree = "<group>"; };
 		9325CEAB4AC498EF3BAD280F /* FinanceGapViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinanceGapViews.swift; sourceTree = "<group>"; };
 		963BEC019C5183B5152AEB2C /* NotificationPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreferencesView.swift; sourceTree = "<group>"; };
-		6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnPolicySettingsView.swift; sourceTree = "<group>"; };
 		964AB8865ABD9B9C839E97C3 /* OrderDetailPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailPanel.swift; sourceTree = "<group>"; };
 		9816A15765F282F275B61E77 /* FleetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetView.swift; sourceTree = "<group>"; };
 		986314CF8E99424F076D194A /* WarehousesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousesView.swift; sourceTree = "<group>"; };
@@ -372,8 +375,10 @@
 				9FFB54095A63B198144F1D80 /* Assets.xcassets */,
 				A2FA938FB49C2CA48584847C /* GoogleService-Info.plist */,
 				ABF27DC6D872DB5DBB36C189 /* Info.plist */,
+				19D7A7797A305479C9C4457B /* L10n.swift */,
 				02591163268547405B01AAA9 /* PegasusSupplierApp.swift */,
 				5592228C962DDC50FE72BC5B /* RootView.swift */,
+				74E237822F518694D8D4196C /* SupplierApp.entitlements */,
 				FBB72B6863C67816A6E3C59A /* Layout */,
 				0039015F36B6B1937B12F221 /* Models */,
 				CC7E172DEC752D3FF2C854C6 /* Services */,
@@ -429,7 +434,7 @@
 			isa = PBXGroup;
 			children = (
 				963BEC019C5183B5152AEB2C /* NotificationPreferencesView.swift */,
-				6E37E70E2C83423685D052F0 /* ReturnPolicySettingsView.swift */,
+				8FF7215C11BF690810962FE0 /* ReturnPolicySettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -945,6 +950,7 @@
 				84241F9A3BF5012A788A6273 /* InventoryViewModel.swift in Sources */,
 				751C540B49A8B75F7CA41892 /* KnowledgeGraphView.swift in Sources */,
 				8251A046CFFAE3841E09284B /* KpiTile.swift in Sources */,
+				8CE63524227295D81B9F0685 /* L10n.swift in Sources */,
 				9D28342DD36C7D2819CBD28F /* LedgerView.swift in Sources */,
 				087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */,
 				77A95DE89EB68E11A1B6D8B6 /* ManifestDetailView.swift in Sources */,
@@ -957,7 +963,6 @@
 				747C944551C4D83C7285CBB3 /* NetworkPulseStrip.swift in Sources */,
 				1FC6743CDD84CBB7B5BEA241 /* NotificationInboxView.swift in Sources */,
 				F7FC661A5C406CF3D41D352F /* NotificationPreferencesView.swift in Sources */,
-				B237351B8441491EB54AB0BE /* ReturnPolicySettingsView.swift in Sources */,
 				0A04D46039712486E655987F /* OnboardingViewModel.swift in Sources */,
 				5A1C621A2A44402CDBF0C1C6 /* OperationsView.swift in Sources */,
 				6156BFFB20322539EDBEDD8C /* OperatorBroadcastView.swift in Sources */,
@@ -990,6 +995,7 @@
 				3B8737C063FBDE7B9354FA05 /* ReplenishmentPoliciesView.swift in Sources */,
 				6B8B41719F253B67B5F395E5 /* ResponsiveGridContentWrapper.swift in Sources */,
 				1D0DC1DAAB4DC0CD76A5D3C5 /* RetailerOverridesView.swift in Sources */,
+				C2685EF9C848D41D6061A0C6 /* ReturnPolicySettingsView.swift in Sources */,
 				82E687746A449CCAECB14AA3 /* ReturnsView.swift in Sources */,
 				17FD10D25790FDF49EEE2F2C /* RootView.swift in Sources */,
 				EC036B767B499D3A63D741D6 /* SeasonalOverridesList.swift in Sources */,
@@ -1050,6 +1056,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SupplierApp/SupplierApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = SupplierApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1210,6 +1217,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SupplierApp/SupplierApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = SupplierApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

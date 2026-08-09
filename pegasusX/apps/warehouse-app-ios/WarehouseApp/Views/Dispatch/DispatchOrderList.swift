@@ -87,7 +87,7 @@ struct DispatchOrderList: View {
                         }
                     }
                     if selectedDriver != nil {
-                        Text(L10n.format("mobile_warehouse.ui.loaded_n_1f_n_1f_2_vu_effective", "\(selectedVolume, specifier: "%.1f")", "\(effectiveMax, specifier: "%.1f")"))
+                        Text(L10n.format("mobile_warehouse.ui.loaded_n_1f_n_1f_2_vu_effective", String(format: "%.1f", selectedVolume), String(format: "%.1f", effectiveMax)))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -113,7 +113,7 @@ struct DispatchOrderList: View {
                     .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
                     }
                     if preview.fleetEffectiveCapacityVu > 0 {
-                        Text(L10n.format("mobile_warehouse.ui.fleet_n_1f_vu_effective", "\(preview.fleetEffectiveCapacityVu, specifier: "%.1f")"))
+                        Text(L10n.format("mobile_warehouse.ui.fleet_n_1f_vu_effective", String(format: "%.1f", preview.fleetEffectiveCapacityVu)))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -138,7 +138,7 @@ struct DispatchOrderList: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
                                     .font(.headline)
-                                Text(L10n.format("mobile_warehouse.ui.formatted_uzs_n_1f_vu", "\(order.totalUzs.formatted())", "\(order.volumeVu, specifier: "%.1f")"))
+                                Text(L10n.format("mobile_warehouse.ui.formatted_uzs_n_1f_vu", "\(order.totalUzs.formatted())", String(format: "%.1f", order.volumeVu ?? 0)))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: LabTheme.spacingSM) {
@@ -196,7 +196,7 @@ struct DispatchOrderList: View {
                                     Text(route.driverName ?? route.driverId ?? "Driver")
                                         .font(.headline)
                                     Spacer()
-                                    Text(L10n.format("mobile_warehouse.ui.count_stops_n_1f_vu", "\(route.stopCount ?? route.orderIds.count)", "\((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f")"))
+                                    Text(L10n.format("mobile_warehouse.ui.count_stops_n_1f_vu", "\(route.stopCount ?? route.orderIds.count)", String(format: "%.1f", route.volumeVu ?? route.loadedVolume ?? 0)))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

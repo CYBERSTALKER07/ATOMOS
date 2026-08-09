@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.pegasusx.supplier.R
+import androidx.compose.ui.res.stringResource
 
 private const val TETRIS_BUFFER = 0.95
 

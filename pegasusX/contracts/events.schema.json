@@ -2325,6 +2325,25 @@
         {
           "properties": {
             "type": {
+              "const": "FISCAL_CORRECTIVE_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FiscalCorrectiveRequestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FiscalReceiptPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "FISCAL_RECEIPT_FAILED"
             }
           },
@@ -3437,6 +3456,63 @@
         }
       ],
       "title": "ProximityUnlockedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundRequestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_SUCCEEDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundSucceededEnvelope"
     },
     {
       "allOf": [
@@ -4780,6 +4856,7 @@
         "FACTORY_CREATED",
         "FACTORY_LOCATION_UPDATED",
         "FACTORY_SUPPLY_REQUEST_UPDATE",
+        "FISCAL_CORRECTIVE_REQUESTED",
         "FISCAL_RECEIPT_FAILED",
         "FISCAL_RECEIPT_REQUESTED",
         "FISCAL_RECEIPT_SUCCEEDED",
@@ -4839,6 +4916,9 @@
         "PRODUCT_HANDLING_UPDATED",
         "PROMOTION_CHANGED",
         "PROXIMITY_UNLOCKED",
+        "REFUND_FAILED",
+        "REFUND_REQUESTED",
+        "REFUND_SUCCEEDED",
         "REPLENISHMENT_AUTO_APPROVED",
         "REPLENISHMENT_INSIGHT_CREATED",
         "RETAILER_ASSIST_SLA_BREACHED",
@@ -4945,6 +5025,7 @@
     "FACTORY_CREATED": "FactoryPayload",
     "FACTORY_LOCATION_UPDATED": "FactoryPayload",
     "FACTORY_SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
+    "FISCAL_CORRECTIVE_REQUESTED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_FAILED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_REQUESTED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_SUCCEEDED": "FiscalReceiptPayload",
@@ -5004,6 +5085,9 @@
     "PRODUCT_HANDLING_UPDATED": "ProductPayload",
     "PROMOTION_CHANGED": "PromotionPayload",
     "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
+    "REFUND_FAILED": "FinancePayload",
+    "REFUND_REQUESTED": "FinancePayload",
+    "REFUND_SUCCEEDED": "FinancePayload",
     "REPLENISHMENT_AUTO_APPROVED": "PlanningPayload",
     "REPLENISHMENT_INSIGHT_CREATED": "PlanningPayload",
     "RETAILER_ASSIST_SLA_BREACHED": "RetailerPayload",

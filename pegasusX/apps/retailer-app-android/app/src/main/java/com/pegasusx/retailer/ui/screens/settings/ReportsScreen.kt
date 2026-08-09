@@ -34,6 +34,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 @HiltViewModel
 class ReportsViewModel @Inject constructor(val api: PegasusApi) : ViewModel()
@@ -61,7 +62,7 @@ fun ReportsScreen(
                 onHand = s.get("on_hand_sku_count")?.asInt ?: 0
                 lowStock = s.get("low_stock_count")?.asInt ?: 0
                 val top = s.getAsJsonArray("top_skus")
-                if (top != null && top.size() > 0) {
+                if (top != null && top.size > 0) {
                     val first = top[0].asJsonObject
                     topLine = "${first.get("sku")?.asString} · ${first.get("sales_minor")?.asLong?.div(100.0)}"
                 }

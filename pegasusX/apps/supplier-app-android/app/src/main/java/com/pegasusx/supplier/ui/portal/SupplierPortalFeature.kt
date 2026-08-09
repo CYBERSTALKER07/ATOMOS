@@ -1,7 +1,6 @@
 package com.pegasusx.supplier.ui.portal
 
-import androidx.compose.ui.res.stringResource
-
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Payments
@@ -13,35 +12,35 @@ import com.pegasusx.supplier.R
 /** Portal-only supplier surfaces — native apps hand off to supplier-portal. */
 enum class SupplierPortalFeature(
     val routeKey: String,
-    val title: String,
+    @param:StringRes val titleRes: Int,
     val subtitle: String,
     val portalPath: String,
     val icon: ImageVector,
 ) {
     REGISTER(
         routeKey = "register",
-        title = stringResource(R.string.mobile_supplier_ui_register_supplier),
+        titleRes = R.string.mobile_supplier_ui_register_supplier,
         subtitle = "Create a new supplier account",
         portalPath = "/auth/register",
         icon = Icons.Default.PersonAdd,
     ),
     BUSINESS_SETUP(
         routeKey = "business_setup",
-        title = stringResource(R.string.mobile_supplier_ui_business_setup),
+        titleRes = R.string.mobile_supplier_ui_business_setup,
         subtitle = "Tax ID, address, and company profile",
         portalPath = "/setup/business",
         icon = Icons.Default.Settings,
     ),
     CHARGEBACKS(
         routeKey = "chargebacks",
-        title = stringResource(R.string.portal_nav_chargebacks),
+        titleRes = R.string.portal_nav_chargebacks,
         subtitle = "Payment disputes and reversals",
         portalPath = "/payments",
         icon = Icons.Default.Payments,
     ),
     PAYMENT_BYPASS(
         routeKey = "payment_bypass",
-        title = stringResource(R.string.supplier_portal_operations_payment_bypass_text_payment_bypass),
+        titleRes = R.string.supplier_portal_operations_payment_bypass_text_payment_bypass,
         subtitle = "High-consequence operator actions",
         portalPath = "/operations",
         icon = Icons.Default.CreditCard,

@@ -25,7 +25,7 @@ struct ForecastConfidenceView: View {
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.warning)
             } else {
-                Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", "\(confidence.lowUnits ?? 0, format: .number)", "\(confidence.highUnits ?? 0, format: .number)"))
+                Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", "\(confidence.lowUnits ?? 0)", "\(confidence.highUnits ?? 0)"))
                     .font(.title3.bold())
                 if let pct = confidence.confidencePct {
                     Text(L10n.format("mobile_supplier.ui.pct_confidence_2", "\(pct)"))

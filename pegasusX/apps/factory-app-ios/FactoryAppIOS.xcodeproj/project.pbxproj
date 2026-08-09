@@ -26,6 +26,7 @@
 		3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */; };
 		40243DBF7537C30F6A47F0CF /* CreateTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B014D56219BFD89EA5B77D3A /* CreateTransferView.swift */; };
 		40CF2CF5A10151E919EEC804 /* LoadingBayOverviewCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5ED76FA14ED27DEC1DED38 /* LoadingBayOverviewCard.swift */; };
+		469C94A77371BF43A4E173E5 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508ED32543E169A94BE16715 /* L10n.swift */; };
 		47459729F677F92B3ACA5B83 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB755B322A726A294EEC85F /* APIClient.swift */; };
 		48A9E38AED4162425BD810AA /* StaffRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41BF71EA9248309A067F606E /* StaffRow.swift */; };
 		48ED56F565717162B979873D /* StaffDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1247BC5863AD5F90858FA13 /* StaffDetailView.swift */; };
@@ -118,6 +119,7 @@
 		4A9A1DCD8B62A8C0A6585ECF /* JwtPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JwtPayload.swift; sourceTree = "<group>"; };
 		4BFFF694A3FEC6403672F067 /* LocationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSettingsView.swift; sourceTree = "<group>"; };
 		4EC901AC9F9D63F0E2848E60 /* OverrideManifestCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideManifestCard.swift; sourceTree = "<group>"; };
+		508ED32543E169A94BE16715 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		5A0B1140D5798EB2516DB40F /* FactoryModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryModelsTests.swift; sourceTree = "<group>"; };
 		5E3A9BA40A75ADA7E48A09F3 /* DashboardHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardHeroCard.swift; sourceTree = "<group>"; };
 		61913D058CA383C53FA61DBA /* FactoryMoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryMoreHubView.swift; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 		DB95F15662A11A0F7871B6B3 /* FactoryUiComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryUiComponents.swift; sourceTree = "<group>"; };
 		E5104E434E2B1B78926A3710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E957C90194CA73C5A59D1DAB /* FactoryAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryAdaptiveShell.swift; sourceTree = "<group>"; };
+		EE4ACE5CF3B134F45A9BF58D /* FactoryApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FactoryApp.entitlements; sourceTree = "<group>"; };
 		EE8F94E4BF7F6819462D06DF /* SupplyRequestsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestsHubView.swift; sourceTree = "<group>"; };
 		EF95C7DDB4727D22C2ABFABD /* PayloadOverrideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayloadOverrideView.swift; sourceTree = "<group>"; };
 		F0F3142D413F648E09DB1FCD /* MoveTransferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveTransferSheet.swift; sourceTree = "<group>"; };
@@ -522,8 +525,10 @@
 			isa = PBXGroup;
 			children = (
 				65B6A7D0C790233CDAEDC888 /* Assets.xcassets */,
+				EE4ACE5CF3B134F45A9BF58D /* FactoryApp.entitlements */,
 				A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */,
 				E5104E434E2B1B78926A3710 /* Info.plist */,
+				508ED32543E169A94BE16715 /* L10n.swift */,
 				FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */,
 				7084A880E2936D26F7F2B4DC /* Preview Assets.xcassets */,
 				8E9D41DBEDB9C7FA0010A7F6 /* RootView.swift */,
@@ -690,6 +695,7 @@
 				8811E3713399727115D7D3F5 /* GeocodeService.swift in Sources */,
 				08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */,
 				E1A62D7ACC3E7EE121A6D75C /* JwtPayload.swift in Sources */,
+				469C94A77371BF43A4E173E5 /* L10n.swift in Sources */,
 				40CF2CF5A10151E919EEC804 /* LoadingBayOverviewCard.swift in Sources */,
 				7D095F0CD0E3535A6E8E066A /* LoadingBayView.swift in Sources */,
 				BDDF15D54A7D434E049338C8 /* LocationSettingsView.swift in Sources */,
@@ -754,6 +760,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = FactoryApp/FactoryApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = FactoryApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -787,6 +794,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = FactoryApp/FactoryApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = FactoryApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

@@ -41,6 +41,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class AssistTicketRow(val id: String, val note: String, val status: String)
 data class SectionPick(val id: String, val name: String)

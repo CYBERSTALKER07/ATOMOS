@@ -1,6 +1,5 @@
 package com.pegasusx.retailer.ui.screens.cart
 
-import androidx.compose.ui.res.stringResource
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -97,7 +96,6 @@ data class CartUiState(
     val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
     val displayTotal: String get() = "%,.0f".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
-    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
     val displayDeliveryFee: String
         get() = if (deliveryFeeMinor > 0) "%,.0f".format(deliveryFeeMinor.toDouble()) else "Free"
     val syncMessage: String?
@@ -109,24 +107,15 @@ data class CartUiState(
         }
 }
 
-private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
-    return options.find { it.gateway == gateway }?.label ?: when (gateway.trim().uppercase()) {
-        "GLOBAL_PAY" -> "GlobalPay"
-        "ADYEN" -> "Adyen"
-        "CASH" -> "Cash on Delivery"
-        else -> gateway
-    }
-}
-
 private fun com.pegasusx.retailer.data.model.CheckoutPreviewResponse.orderableCaps(): Map<String, Int> {
     val source = orderableQuantities.ifEmpty { maxQuantities }
     return source.mapValues { it.value.toInt() }
 }
 
 private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = stringResource(R.string.mobile_retailer_ui_globalpay_new)),
-    CheckoutPaymentOption(gateway = "ADYEN", label = stringResource(R.string.supplier_portal_residual_text_adyen)),
-    CheckoutPaymentOption(gateway = "CASH", label = stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay", labelRes = R.string.mobile_retailer_ui_globalpay_new),
+    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen", labelRes = R.string.supplier_portal_residual_text_adyen),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery", labelRes = R.string.supplier_portal_billing_setup_gateway_cash_label),
 )
 
 @HiltViewModel
