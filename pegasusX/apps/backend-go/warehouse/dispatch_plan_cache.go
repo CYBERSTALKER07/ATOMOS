@@ -158,7 +158,7 @@ func (s *Service) solveDispatchPreview(
 		Lat: s.fallbackDepotLat,
 		Lng: s.fallbackDepotLng,
 	})
-	sid := strings.TrimSpace(s.supplierID)
+	sid := strings.TrimSpace(s.seedSupplierID)
 	job := plan.BuildSolveJob(ctx, sid, warehouseID, depot, orders, fleet)
 	solve := plan.RunSolvePreview(ctx, s.optimizerClient, s.planCounters, job)
 

@@ -36,7 +36,8 @@ func runForecastAccuracyE2E(
 	defer spannerClient.Close()
 
 	warehouseID := strings.TrimSpace(envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"))
-	productID := strings.TrimSpace(envOr("SSMR_SMOKE_PRODUCT_ID", "SSMR-SKU-1"))
+	// Unique product so earlier e2e COMPLETED orders on SSMR-SKU-1 do not inflate ActualQty.
+	productID := fmt.Sprintf("SSMR-SKU-ACC-%s", uuid.NewString()[:8])
 	now := time.Now().UTC()
 	day := now.Truncate(24 * time.Hour)
 
@@ -60,7 +61,8 @@ func runForecastAccuracyE2E(
 	lineItems, _ := json.Marshal([]map[string]any{
 		{"sku": productID, "name": "SSMR accuracy SKU", "quantity": 10, "unit_price_minor": 100},
 	})
-	orderID := "ord-acc-" + uuid.NewString()
+	// Orders.OrderId is STRING(36); full uuid with prefix overflows.
+	orderID := fmt.Sprintf("ord-acc-%s", uuid.NewString()[:28])
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("Orders", map[string]any{
 			"OrderId":            orderID,
@@ -75,8 +77,8 @@ func runForecastAccuracyE2E(
 			"OriginalTotalMinor": int64(1000),
 			"Currency":           "UZS",
 			"Version":            int64(1),
-			"CreatedAt":          now,
-			"UpdatedAt":          now,
+			"CreatedAt":          spanner.CommitTimestamp,
+			"UpdatedAt":          spanner.CommitTimestamp,
 		}),
 	})
 	if err != nil {

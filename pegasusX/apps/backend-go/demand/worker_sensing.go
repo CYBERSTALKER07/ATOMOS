@@ -68,6 +68,7 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 			adj := DemandAdjustment{
 				RetailerId:   item.RetailerId,
 				Sku:          item.Sku,
+				SupplierId:   item.SupplierId,
 				Date:         time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC),
 				BaseVelocity: item.BaseVelocity,
 				Factors:      make(map[string]float64),
@@ -136,6 +137,7 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 				"RetailerId":     adj.RetailerId,
 				"Sku":            adj.Sku,
 				"Date":           spanner.NullDate{Valid: true, Date: civil.DateOf(today)},
+				"SupplierId":     adj.SupplierId,
 				"BaseVelocity":   adj.BaseVelocity,
 				"Adjustment":     adj.Adjustment,
 				"AdjustedDemand": adj.AdjustedDemand,
@@ -220,7 +222,7 @@ func (s *Service) flushMutations(ctx context.Context, mutations []*spanner.Mutat
 func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end time.Time) ([]DemandSignal, error) {
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy, SupplierId
 			FROM DemandSignals
 			WHERE StartAt <= @End AND EndAt >= @Start
 		`,
@@ -244,7 +246,8 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 		var sig DemandSignal
 		var sku spanner.NullString
 		var meta spanner.NullJSON
-		if err := row.Columns(&sig.SignalId, &sig.Type, &sig.Scope, &sku, &sig.StartAt, &sig.EndAt, &sig.Multiplier, &meta, &sig.CreatedAt, &sig.CreatedBy); err != nil {
+		var supplier spanner.NullString
+		if err := row.Columns(&sig.SignalId, &sig.Type, &sig.Scope, &sku, &sig.StartAt, &sig.EndAt, &sig.Multiplier, &meta, &sig.CreatedAt, &sig.CreatedBy, &supplier); err != nil {
 			return nil, err
 		}
 		if sku.Valid {
@@ -253,6 +256,9 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 		if meta.Valid {
 			sig.Meta = []byte(meta.Value.(string))
 		}
+		if supplier.Valid {
+			sig.SupplierId = supplier.StringVal
+		}
 		signals = append(signals, sig)
 	}
 	return signals, nil
@@ -260,6 +266,7 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 
 type retailerSkuVelocity struct {
 	RetailerId   string
+	SupplierId   string
 	Sku          string
 	BaseVelocity float64
 }
@@ -270,11 +277,11 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT o.RetailerId, l.Sku, SUM(l.DeliveredQty) / 28.0 as BaseVelocity
+			SELECT o.RetailerId, o.SupplierId, l.Sku, SUM(l.DeliveredQty) / 28.0 as BaseVelocity
 			FROM Orders o
 			JOIN OrderLines l ON o.OrderId = l.OrderId
 			WHERE o.Status = 'DELIVERED' AND o.CreatedAt >= @Start
-			GROUP BY o.RetailerId, l.Sku
+			GROUP BY o.RetailerId, o.SupplierId, l.Sku
 			HAVING SUM(l.DeliveredQty) > 0
 		`,
 		Params: map[string]interface{}{
@@ -284,7 +291,7 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	var results []retailerSkuVelocity
+	var out []retailerSkuVelocity
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -293,13 +300,13 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 		if err != nil {
 			return nil, err
 		}
-		var rsv retailerSkuVelocity
-		if err := row.Columns(&rsv.RetailerId, &rsv.Sku, &rsv.BaseVelocity); err != nil {
+		var v retailerSkuVelocity
+		if err := row.Columns(&v.RetailerId, &v.SupplierId, &v.Sku, &v.BaseVelocity); err != nil {
 			return nil, err
 		}
-		results = append(results, rsv)
+		out = append(out, v)
 	}
-	return results, nil
+	return out, nil
 }
 
 // dayOfWeekFactor returns a static demand multiplier for the given weekday.

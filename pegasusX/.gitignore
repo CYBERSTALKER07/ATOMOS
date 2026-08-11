@@ -15,6 +15,7 @@ vendor/
 # Local build artifact (never commit; ~59MB)
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*
+**/backend-go/backend-go
 # Compiled binaries must never be tracked
 apps/ai-worker/ai-worker
 apps/handoff-service/handoff-service
@@ -65,10 +66,17 @@ Pods/
 .expo-shared/
 web-build/
 
-# terraform
+# terraform — remote state only (infra/terraform/backend.gcs.tf)
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
+artifacts/tfstate-archive/**
+!artifacts/tfstate-archive/README.md
 **/.build/
 .ssmr/
+
+# junk / one-off patches
+*.bak
+*.orig
+/patch_*.sh

@@ -22,6 +22,8 @@ type traceIDContextKey struct{}
 
 // Event is the on-the-wire shape persisted to OutboxEvents and republished to
 // Kafka. Payload is opaque JSON serialized by EmitJSON.
+// SupplierID soft-partitions the outbox (Gate 5 Week 9). Always stamped;
+// PlatformSupplierID when the payload has no tenant.
 type Event struct {
 	EventID       string
 	AggregateType string
@@ -30,6 +32,22 @@ type Event struct {
 	Payload       []byte
 	CreatedAt     time.Time
 	PublishedAt   *time.Time
+	SupplierID    string
+}
+
+// PlatformSupplierID is stamped on OutboxEvents that are not tenant-scoped
+// (system/platform emits). Required once SupplierId is NOT NULL.
+const PlatformSupplierID = "_platform"
+
+// ResolveSupplierID returns an explicit supplier, payload-derived id, or PlatformSupplierID.
+func ResolveSupplierID(explicit string, payload []byte) string {
+	if sid := strings.TrimSpace(explicit); sid != "" {
+		return sid
+	}
+	if sid := SupplierIDFromPayload(payload); sid != "" {
+		return sid
+	}
+	return PlatformSupplierID
 }
 
 // TxnBuffer is implemented by any RW-transaction handle that can buffer a
@@ -118,7 +136,48 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		TopicName:     topic,
 		Payload:       raw,
 		CreatedAt:     time.Now().UTC(),
+		SupplierID:    ResolveSupplierID("", raw),
 	})
+}
+
+// SupplierIDFromPayload extracts supplier_id / SupplierId from JSON object payloads.
+func SupplierIDFromPayload(raw []byte) string {
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return ""
+	}
+	for _, key := range []string{"supplier_id", "SupplierId", "supplierId"} {
+		if v, ok := object[key]; ok {
+			if s, ok := v.(string); ok {
+				return strings.TrimSpace(s)
+			}
+		}
+	}
+	return ""
+}
+
+// EventRowMap builds an OutboxEvents InsertOrUpdateMap including required SupplierId.
+func EventRowMap(e Event) map[string]interface{} {
+	createdAt := e.CreatedAt.UTC()
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+	row := map[string]interface{}{
+		"EventId":       e.EventID,
+		"AggregateType": e.AggregateType,
+		"AggregateId":   e.AggregateID,
+		"TopicName":     e.TopicName,
+		"Payload":       e.Payload,
+		"CreatedAt":     createdAt,
+		"PublishedAt":   nil,
+		"ClaimedBy":     nil,
+		"ClaimedUntil":  nil,
+		"SupplierId":    ResolveSupplierID(e.SupplierID, e.Payload),
+	}
+	if e.PublishedAt != nil {
+		row["PublishedAt"] = e.PublishedAt.UTC()
+	}
+	return row
 }
 
 func injectTraceID(raw []byte, traceID string) ([]byte, error) {

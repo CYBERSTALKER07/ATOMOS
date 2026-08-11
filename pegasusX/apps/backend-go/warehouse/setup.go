@@ -72,7 +72,7 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 	now := s.now().UTC()
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	mutations := make([]*spanner.Mutation, 0, 2)

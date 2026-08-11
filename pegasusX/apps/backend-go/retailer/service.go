@@ -1,7 +1,6 @@
 // Package retailer owns the retailer-domain handlers, services and repository
-// boundaries. In pegasusX every retailer is scoped to the single seeded
-// supplier, so the registration handler does NOT accept a supplier_id from the
-// body — it resolves the seeded supplier id from the application context.
+// boundaries. Gate 5 Phase 1: registration stamps TenantContext when present,
+// otherwise the bootstrap seed (retailer multi-supplier cart is Phase 2).
 package retailer
 
 import (
@@ -213,6 +212,7 @@ type TrackingOrder struct {
 	OrderID               string                   `json:"order_id"`
 	SupplierID            string                   `json:"supplier_id"`
 	RetailerID            string                   `json:"retailer_id"`
+	ParentOrderID         string                   `json:"parent_order_id,omitempty"`
 	WarehouseID           string                   `json:"warehouse_id,omitempty"`
 	DriverID              string                   `json:"driver_id,omitempty"`
 	VehicleID             string                   `json:"vehicle_id,omitempty"`
@@ -307,7 +307,7 @@ type Service struct {
 	idem        idempotency.Store
 	proximity   *RetailerProximityService
 	locations   telemetry.LastLocationReader
-	supplierID  string
+	seedSupplierID  string
 	countryCode string
 	jwtSecret   string
 	jwtIssuer   string
@@ -400,6 +400,9 @@ type ServiceConfig struct {
 	Idem                 idempotency.Store
 	Proximity            *RetailerProximityService
 	Locations            telemetry.LastLocationReader
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID       string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID           string
 	CountryCode          string
 	JWTSecret            string
@@ -432,6 +435,10 @@ func NewService(c ServiceConfig) *Service {
 	if c.NewID == nil {
 		c.NewID = defaultRetailerID
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
 		repo:                c.Repo,
 		cartRepo:            c.CartRepo,
@@ -444,7 +451,7 @@ func NewService(c ServiceConfig) *Service {
 		idem:                c.Idem,
 		proximity:           c.Proximity,
 		locations:           c.Locations,
-		supplierID:          c.SupplierID,
+		seedSupplierID: seedID,
 		countryCode:         c.CountryCode,
 		jwtSecret:             c.JWTSecret,
 		jwtIssuer:             c.JWTIssuer,
@@ -489,6 +496,11 @@ func NewService(c ServiceConfig) *Service {
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
 	}
+}
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
 
 // SetOrderLifecycle wires the retailer-facing order aggregate after service construction.
@@ -596,7 +608,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 
 	r := Retailer{
 		RetailerID:           s.newID(),
-		SupplierID:           s.supplierID,
+		SupplierID:           s.resolveSupplierScope(ctx),
 		Phone:                req.Phone,
 		Name:                 req.Name,
 		CountryCode:          s.countryCode,
@@ -617,7 +629,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 			RetailerID:  r.RetailerID,
 			Phone:       r.Phone,
 			Name:        r.Name,
-			SupplierID:  s.supplierID,
+			SupplierID:  r.SupplierID,
 			Lat:         r.Lat,
 			Lng:         r.Lng,
 			H3Cell:      r.H3Cell,
@@ -639,7 +651,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 
 	s.log.Info("retailer registered",
 		"retailer_id", r.RetailerID,
-		"supplier_id", s.supplierID,
+		"supplier_id", r.SupplierID,
 		"h3_cell", r.H3Cell,
 	)
 	return RegisterResponse{

@@ -162,7 +162,7 @@ func (s *Service) loadPaymentConfigResponse(ctx context.Context, warehouseID str
 }
 
 func (s *Service) loadSupplierPaymentAcceptor(ctx context.Context) (string, []string, error) {
-	row, err := s.spannerClient.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{s.supplierID}, []string{
+	row, err := s.spannerClient.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{s.resolveSupplierScope(ctx)}, []string{
 		"PaymentAcceptor",
 		"SelectedGatewaysJson",
 	})
@@ -192,7 +192,7 @@ func (s *Service) loadWarehousePaymentConfig(ctx context.Context, warehouseID st
 			LIMIT 1`,
 		Params: map[string]any{
 			"warehouseId": warehouseID,
-			"supplierId":  s.supplierID,
+			"supplierId":  s.resolveSupplierScope(ctx),
 		},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
@@ -236,7 +236,7 @@ func (s *Service) upsertWarehousePaymentConfig(ctx context.Context, warehouseID 
 		mutations := []*spanner.Mutation{
 			spanner.InsertOrUpdateMap("PaymentConfigs", map[string]any{
 				"PaymentConfigId":      configID,
-				"SupplierId":           s.supplierID,
+				"SupplierId":           s.resolveSupplierScope(ctx),
 				"WarehouseId":          warehouseID,
 				"SelectedGatewaysJson": gatewaysJSON,
 				"CreatedAt":            now,
@@ -244,7 +244,7 @@ func (s *Service) upsertWarehousePaymentConfig(ctx context.Context, warehouseID 
 			}),
 			spanner.UpdateMap("Warehouses", map[string]any{
 				"WarehouseId":     warehouseID,
-				"SupplierId":      s.supplierID,
+				"SupplierId":      s.resolveSupplierScope(ctx),
 				"PaymentConfigId": configID,
 				"UpdatedAt":       spanner.CommitTimestamp,
 			}),

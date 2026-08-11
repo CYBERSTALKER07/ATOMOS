@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate phase1-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -23,8 +23,20 @@ help:
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
 	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  schema-drift-gate         EH0.3 fail if shop-closed Spanner columns/tables missing"
+	@echo "  money-path-gate           Phase-0 money-path + hygiene greps + gitleaks"
+	@echo "  kafka-ha-gate             Phase-0 Kafka HA contracts (Strimzi RF=3, Managed Kafka RF=3, DLQ)"
+	@echo "  repo-hygiene-gate         Phase-0 repo hygiene (no tracked tfstate/secrets/binaries)"
 	@echo "  phase1-gate               Phase-1 exit gate: AR/refund/payout/billing proofs + Soliq + GP simulator"
+	@echo "  phase2-gate               Phase-2 exit gate: partner master-data/EDI ACKs/DataMatrix/OpenAPI"
+	@echo "  phase3-gate               Phase-3 exit gate: platform admin/flags/WMS API/SLO stubs"
+	@echo "  phase4-gate               Phase-4 exit gate: optimizer replicas/partial alloc/S&OP/place flip"
+	@echo "  phase5-gate               Phase-5 progress gate: tenant freeze/spine/outbox/rate-limit foundations"
+	@echo "  phase5b-gate              Phase-5b progress gate: ParentOrders + multi-supplier checkout"
+	@echo "  phase5c-gate              Phase-5c progress gate: GlobalProducts master + match queue"
+	@echo "  analytics-tenancy-gate    RoutePerformanceAnalytics SupplierId + tenant list filter"
 	@echo "  apply-shop-closed-ddl     EH0.2 apply 20260729 shop-closed DDL + verify (SSMR default)"
+	@echo "  apply-parent-orders-ddl   Gate 5 Phase 2 apply 20260817 ParentOrders DDL + verify"
+	@echo "  apply-global-products-ddl Gate 5 Phase 3 apply 20260818 GlobalProducts DDL + verify"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
 	@echo "  load-cert-ssmr         SSMR stack up + load-cert smoke gate"
 	@echo "  load-cert-cloud        load cert against PUBLIC_BASE_URL (staging/prod SLOs)"
@@ -127,11 +139,44 @@ schema-drift-gate:
 money-path-gate:
 	bash scripts/money_path_gate.sh
 
+kafka-ha-gate:
+	bash scripts/ci_kafka_ha_gate.sh
+
+repo-hygiene-gate:
+	bash scripts/ci_repo_hygiene_gate.sh
+
 phase1-gate:
 	bash scripts/phase1_gate.sh
 
+phase2-gate:
+	bash scripts/phase2_gate.sh
+
+phase3-gate:
+	bash scripts/phase3_gate.sh
+
+phase4-gate:
+	bash scripts/phase4_gate.sh
+
+phase5-gate:
+	bash scripts/phase5_gate.sh
+
+phase5b-gate:
+	bash scripts/phase5b_gate.sh
+
+phase5c-gate:
+	bash scripts/phase5c_gate.sh
+
+analytics-tenancy-gate:
+	bash scripts/analytics_tenancy_gate.sh
+
 apply-shop-closed-ddl:
 	bash scripts/apply_shop_closed_ddl.sh
+
+apply-parent-orders-ddl:
+	bash scripts/apply_parent_orders_ddl.sh
+
+apply-global-products-ddl:
+	bash scripts/apply_global_products_ddl.sh
 
 load-cert:
 	PATH="/opt/homebrew/bin:/usr/local/bin:$$PATH" bash scripts/load/load_cert.sh
@@ -160,6 +205,14 @@ gen-contracts-gate:
 partner-openapi-gate:
 	@test -f contracts/partner.openapi.yaml || (echo "missing contracts/partner.openapi.yaml" && exit 1)
 	@grep -q '/partner/v1/orders' contracts/partner.openapi.yaml || (echo "partner.openapi.yaml missing /partner/v1/orders" && exit 1)
+	@grep -q '/partner/v1/catalog/products' contracts/partner.openapi.yaml || (echo "missing /partner/v1/catalog/products" && exit 1)
+	@grep -q '/partner/v1/catalog/prices' contracts/partner.openapi.yaml || (echo "missing /partner/v1/catalog/prices" && exit 1)
+	@grep -q '/partner/v1/inventory/stock' contracts/partner.openapi.yaml || (echo "missing /partner/v1/inventory/stock" && exit 1)
+	@grep -q '/partner/v1/demand/pos-feed' contracts/partner.openapi.yaml || (echo "missing /partner/v1/demand/pos-feed" && exit 1)
+	@grep -q 'rotate-secret' contracts/partner.openapi.yaml || (echo "missing webhook rotate-secret" && exit 1)
+	@grep -q 'catalog:write' contracts/partner.openapi.yaml || (echo "missing catalog:write scope" && exit 1)
+	@grep -q 'IdempotencyKey' contracts/partner.openapi.yaml || (echo "missing IdempotencyKey parameter" && exit 1)
+	@grep -c 'IdempotencyKey' contracts/partner.openapi.yaml | awk '$$1 < 4 { print "need IdempotencyKey on orders+products+prices+stock(+pos)"; exit 1 }'
 	@echo "partner-openapi-gate-ok"
 
 jwt-openapi-gate:

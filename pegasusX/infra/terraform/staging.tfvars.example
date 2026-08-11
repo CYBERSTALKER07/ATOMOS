@@ -15,12 +15,16 @@ monthly_budget_usd  = 1500
 billing_account_id  = "XXXXXX-XXXXXX-XXXXXX"
 budget_alert_emails = ["ops@example.com"]
 
-# Confluent Cloud (or compatible managed Kafka)
-kafka_bootstrap_servers = "pkc-xxxxx.asia-south1.gcp.confluent.cloud:9092"
+# Kafka — prefer GCP Managed (enable_managed_kafka=true) over Confluent for HA RF=3.
+enable_managed_kafka    = true
+kafka_bootstrap_servers = "" # filled from terraform output managed_kafka_bootstrap after apply
 kafka_topic_main        = "staging.events.orders"
+kafka_topic_main_dlq    = "staging.events.orders-dlq"
 kafka_topic_spatial     = "staging.events.spatial"
 kafka_topic_realtime    = "staging.events.realtime"
 kafka_topic_webhooks    = "staging.events.webhooks"
+kafka_topic_freeze_locks = "staging.events.freeze-locks"
+kafka_topic_inventory_import = "staging.events.inventory-import"
 
 # Firebase + Maps (seed GSM on apply — rotate in console after first boot)
 firebase_project_id   = "your-firebase-project-id"

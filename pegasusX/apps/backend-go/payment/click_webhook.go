@@ -115,7 +115,7 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 		Gateway:        "CLICK",
 		TransactionID:  transactionID,
 		OrderID:        strings.TrimSpace(req.MerchantTransID),
-		SupplierID:     s.supplierID,
+		SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(req.MerchantTransID)),
 		Status:         status,
 		AmountMinor:    amountMinor,
 		Currency:       s.currency,

@@ -270,9 +270,9 @@ func (s *Service) loadAnalyticsFleetUtilization(ctx context.Context, txn *spanne
 	driverSQL := `SELECT COUNT(*)
 	FROM Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode}
 	WHERE HomeNodeType = @homeType AND HomeNodeId = @warehouseId AND IsActive = TRUE`
-	if strings.TrimSpace(s.supplierID) != "" {
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
 		driverSQL += ` AND SupplierId = @supplierId`
-		driverParams["supplierId"] = s.supplierID
+		driverParams["supplierId"] = sid
 	}
 	var totalDrivers int64
 	if err := txn.Query(ctx, spanner.Statement{SQL: driverSQL, Params: driverParams}).Do(func(row *spanner.Row) error {

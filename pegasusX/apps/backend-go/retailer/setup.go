@@ -50,7 +50,7 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(ret.SupplierID) == "" {
-		ret.SupplierID = s.supplierID
+		ret.SupplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	if name := firstNonEmpty(rawString(req, "name"), rawString(req, "store_name"), rawString(req, "owner_name"), rawString(req, "company")); name != "" {

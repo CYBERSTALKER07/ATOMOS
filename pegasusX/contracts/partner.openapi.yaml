@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: PegasusX Partner API
-  version: "1.4.0"
+  version: "1.5.0"
   description: |
     Gate-3 machine integration surface (§8.9). Authenticate with a partner API key
     (`Authorization: Bearer pxk_…`) **or** a short-lived OAuth2 access token from
@@ -9,6 +9,8 @@ info:
     Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under `/v1/supplier/…`).
     Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite. Wave 2C: GS1. Journals + configurable CoA.
     AS2 transport over EDI-lite (not Drummond-certified).
+    Phase 2: master-data upsert (products/prices/stock), webhook secret rotation, POS demand feed,
+    CONTRL/APERAK + inbound ORDRSP/INVOIC, SFTP host-key pinning, GS1 DataMatrix AI scaffolding.
 servers:
   - url: https://api-ssmr.pegasusx.app
     description: SSMR
@@ -112,6 +114,48 @@ paths:
       responses:
         "200":
           description: Products
+  /partner/v1/catalog/products:
+    put:
+      summary: Batch upsert products by external_id (ProductId == external_id)
+      operationId: partnerUpsertProducts
+      security:
+        - PartnerApiKey: [catalog:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerProductUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/catalog/prices:
+    put:
+      summary: Batch upsert list prices by external_id
+      operationId: partnerUpsertPrices
+      security:
+        - PartnerApiKey: [catalog:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerPriceUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "422":
+          $ref: "#/components/responses/Problem"
   /partner/v1/inventory/availability:
     get:
       summary: On-hand minus reserved availability
@@ -135,6 +179,44 @@ paths:
       responses:
         "200":
           description: Availability rows
+  /partner/v1/inventory/stock:
+    put:
+      summary: Batch set absolute on-hand stock by external_id × warehouse
+      operationId: partnerUpsertStock
+      security:
+        - PartnerApiKey: [inventory:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerStockUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/demand/pos-feed:
+    post:
+      summary: Ingest POS sell-through demand signals (retail chain → planning)
+      operationId: partnerPOSDemandFeed
+      security:
+        - PartnerApiKey: [demand:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerPOSDemandFeedRequest"
+      responses:
+        "202":
+          description: Accepted
+        "422":
+          $ref: "#/components/responses/Problem"
   /partner/v1/webhooks:
     get:
       summary: List webhook subscriptions (secret omitted; secret_prefix only)
@@ -206,6 +288,23 @@ paths:
       responses:
         "200":
           description: Delivered
+  /partner/v1/webhooks/{subscriptionID}/rotate-secret:
+    post:
+      summary: Rotate HMAC signing secret (returned once)
+      operationId: partnerRotateWebhookSecret
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New signing_secret shown once
+        "404":
+          $ref: "#/components/responses/Problem"
   /partner/v1/webhooks/dead-letter:
     get:
       summary: List dead-letter delivery attempts
@@ -483,7 +582,10 @@ components:
             orders:read: Read orders
             orders:write: Create orders
             catalog:read: Read catalog
+            catalog:write: Upsert products and prices
             inventory:read: Read availability
+            inventory:write: Upsert stock levels
+            demand:write: Push POS demand feeds
             webhooks:manage: Manage webhooks
             exports:read: Exports, EDI, CoA
     BearerJWT:
@@ -749,6 +851,102 @@ components:
           type: string
         edi_enabled:
           type: boolean
+        host_key_sha256:
+          type: string
+          description: Base64 SHA-256 of SSH host key (pin); required when PARTNER_SFTP_STRICT_HOSTKEY=true
+    PartnerProductUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, name]
+            properties:
+              external_id:
+                type: string
+              name:
+                type: string
+              category_id:
+                type: string
+              price_minor:
+                type: integer
+              currency:
+                type: string
+              unit:
+                type: string
+              barcode:
+                type: string
+              description:
+                type: string
+              image_url:
+                type: string
+              is_active:
+                type: boolean
+              handling_class:
+                type: string
+    PartnerPriceUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, price_minor]
+            properties:
+              external_id:
+                type: string
+              price_minor:
+                type: integer
+              currency:
+                type: string
+              retailer_id:
+                type: string
+                nullable: true
+    PartnerStockUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, warehouse_id, quantity_on_hand]
+            properties:
+              external_id:
+                type: string
+              warehouse_id:
+                type: string
+              quantity_on_hand:
+                type: integer
+              reorder_threshold:
+                type: integer
+    PartnerPOSDemandFeedRequest:
+      type: object
+      required: [lines]
+      properties:
+        store_id:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            type: object
+            required: [external_id, quantity]
+            properties:
+              external_id:
+                type: string
+              quantity:
+                type: number
+              unit:
+                type: string
     PartnerEdiDocument:
       type: object
       properties:
@@ -759,7 +957,7 @@ components:
           enum: [IN, OUT]
         doc_type:
           type: string
-          enum: [ORDERS, ORDRSP, DESADV, INVOIC]
+          enum: [ORDERS, ORDRSP, DESADV, INVOIC, CONTRL, APERAK]
         external_doc_id:
           type: string
         order_id:

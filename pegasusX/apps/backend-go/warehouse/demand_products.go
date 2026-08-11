@@ -202,7 +202,7 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 	if s == nil || s.spannerClient == nil || strings.TrimSpace(warehouseID) == "" {
 		return nil, spanner.ErrRowNotFound
 	}
-	supplierID := strings.TrimSpace(s.supplierID)
+	supplierID := s.resolveSupplierScope(ctx)
 	if supplierID == "" {
 		return nil, spanner.ErrRowNotFound
 	}

@@ -127,7 +127,7 @@ func (s *Service) maybeWritePendingOrgSelect(w http.ResponseWriter, phone string
 		Role:        auth.RoleRetailer,
 		TokenUse:    auth.TokenUsePendingOrgSelect,
 		PhoneNumber: phone,
-		SupplierID:  s.supplierID,
+		SupplierID:  s.seedSupplierID,
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: ttl})
 	if err != nil {
@@ -421,7 +421,7 @@ func (s *Service) writeFullAuthForMembership(w http.ResponseWriter, ctx context.
 		RetailerID: m.RetailerID,
 		Phone:      m.Phone,
 		Name:       m.Name,
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(ctx),
 	}
 	if s.repo != nil {
 		if r, ok, err := s.repo.GetRetailer(ctx, m.RetailerID); err == nil && ok {

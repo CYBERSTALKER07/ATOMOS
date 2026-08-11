@@ -3,6 +3,7 @@ package edi
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestORDERSRoundTrip(t *testing.T) {
@@ -109,5 +110,51 @@ func TestBuildDESADV_NoShipUnitsOmitsPacking(t *testing.T) {
 	body := BuildDESADV(o, "")
 	if strings.Contains(body, "GIN+") || strings.Contains(body, "CPS+") {
 		t.Fatalf("unexpected packing segments:\n%s", body)
+	}
+}
+
+func TestBuildCONTRLAndAPERAK(t *testing.T) {
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
+	contrl, err := BuildCONTRL("our-gln", "their-gln", "PO-1", true, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(contrl, "CONTRL:D:96A:UN") || !strings.Contains(contrl, "UCI+") {
+		t.Fatalf("contrl=%s", contrl)
+	}
+	aperak, err := BuildAPERAK("our-gln", "their-gln", "PO-1", "bad_sku", false, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(aperak, "APERAK:D:96A:UN") || !strings.Contains(aperak, "FTX+") {
+		t.Fatalf("aperak=%s", aperak)
+	}
+}
+
+func TestParseORDRSPAndINVOIC(t *testing.T) {
+	o := OrderSnapshot{
+		OrderID: "o1", RetailerID: "ret-1", SupplierID: "sup-1",
+		Status: "CONFIRMED", Currency: "UZS", TotalMinor: 1000,
+		Lines: []Line{{SKU: "A", Qty: 1}},
+	}
+	raw := BuildORDRSP(o, "rsp-1")
+	msg, err := ParseORDRSP(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.ExternalDocID == "" || !msg.Accepted {
+		t.Fatalf("msg=%+v", msg)
+	}
+	inv := BuildINVOIC(o, &InvoiceSnapshot{InvoiceID: "inv-1", PrincipalMinor: 1000, Currency: "UZS"}, "inv-ext")
+	im, err := ParseINVOIC(inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if im.ExternalDocID == "" {
+		t.Fatalf("invoic=%+v", im)
+	}
+	dt, err := DetectDocType(raw)
+	if err != nil || dt != DocTypeORDRSP {
+		t.Fatalf("detect=%s err=%v", dt, err)
 	}
 }

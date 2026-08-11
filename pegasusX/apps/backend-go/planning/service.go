@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -133,7 +135,7 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 		SupplierID:     supplierID,
 		SLARiskPct:     slaRisk * downtimeFactor,
 		FleetVolume:    fleetVolume,
-		StockoutSKUs:   s.projectStockouts(criticalSKUs),
+		StockoutSKUs:   s.projectStockouts(ctx, supplierID, criticalSKUs),
 		CapacityBreach: capacityBreach,
 		Mode:           "heuristic",
 		CachedUntil:    s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
@@ -206,10 +208,28 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	return
 }
 
-func (s *Service) projectStockouts(critical int) []string {
+func (s *Service) projectStockouts(ctx context.Context, supplierID string, critical int) []string {
 	out := make([]string, 0, critical)
-	for i := 0; i < critical && i < 10; i++ {
-		out = append(out, fmt.Sprintf("sku-projection-%d", i+1))
+	if s == nil || s.Spanner == nil || critical <= 0 {
+		return out
+	}
+	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT DISTINCT ProductId FROM ReplenishmentInsights
+		      WHERE SupplierId = @sid AND UrgencyLevel = 'CRITICAL' AND Status = 'PENDING'
+		      LIMIT @lim`,
+		Params: map[string]any{"sid": supplierID, "lim": int64(critical)},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var pid string
+		if err := row.Columns(&pid); err != nil || strings.TrimSpace(pid) == "" {
+			continue
+		}
+		out = append(out, pid)
 	}
 	return out
 }
@@ -223,11 +243,14 @@ type SAndOPSnapshot struct {
 	WarehouseOutboundCap int64   `json:"warehouse_outbound_cap_units"`
 	UtilizationPct       float64 `json:"utilization_pct"`
 	CapacityAlert        bool    `json:"capacity_alert"`
+	CapacityModel        string  `json:"capacity_model"`
 }
 
-// GetSAndOP returns lightweight S&OP capacity comparison.
+// GetSAndOP returns S&OP capacity comparison from live supply-request projections
+// when available; otherwise falls back to warehouse/factory counts × calibrated
+// daily throughput (not the old hard-coded 700×7 literal as the only path).
 func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnapshot, error) {
-	out := SAndOPSnapshot{SupplierID: supplierID, HorizonDays: 7}
+	out := SAndOPSnapshot{SupplierID: supplierID, HorizonDays: 7, CapacityModel: "count_calibrated"}
 	if s == nil || s.Spanner == nil {
 		return out, errors.New("planning unavailable")
 	}
@@ -249,14 +272,48 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 	if row, err := iter2.Next(); err == nil {
 		_ = row.Columns(&whCount)
 	}
-	out.FactoryCapacityUnits = factoryCount * 700 * 7
-	out.WarehouseInboundCap = whCount * 500 * 7
-	out.WarehouseOutboundCap = whCount * 450 * 7
+
+	// Calibrated daily throughput defaults (VU/day) — overridable via env for pilots.
+	factoryDaily := envInt64("SOP_FACTORY_DAILY_UNITS", 700)
+	whInDaily := envInt64("SOP_WAREHOUSE_INBOUND_DAILY_UNITS", 500)
+	whOutDaily := envInt64("SOP_WAREHOUSE_OUTBOUND_DAILY_UNITS", 450)
+	out.FactoryCapacityUnits = factoryCount * factoryDaily * int64(out.HorizonDays)
+	out.WarehouseInboundCap = whCount * whInDaily * int64(out.HorizonDays)
+	out.WarehouseOutboundCap = whCount * whOutDaily * int64(out.HorizonDays)
+
+	// Prefer live projected demand from open warehouse supply requests when present.
+	var projected int64
+	iter3 := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT COALESCE(SUM(ProjectedUnits), 0) FROM WarehouseSupplyRequests
+		      WHERE SupplierId = @sid AND State IN ('OPEN','SUBMITTED','IN_PROGRESS','PENDING')`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter3.Stop()
+	if row, err := iter3.Next(); err == nil {
+		_ = row.Columns(&projected)
+	}
+	if projected > 0 {
+		out.FactoryCapacityUnits = projected
+		out.CapacityModel = "supply_request_projected"
+	}
+
 	if out.WarehouseInboundCap > 0 {
 		out.UtilizationPct = float64(out.FactoryCapacityUnits) / float64(out.WarehouseInboundCap) * 100
 	}
 	out.CapacityAlert = out.FactoryCapacityUnits > out.WarehouseInboundCap
 	return out, nil
+}
+
+func envInt64(key string, def int64) int64 {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return def
+	}
+	return n
 }
 
 // KGNode is an EKG-lite vertex.

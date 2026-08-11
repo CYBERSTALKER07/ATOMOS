@@ -156,6 +156,18 @@ func (r *MemoryWebhookRepository) DeactivateSubscription(_ context.Context, id, 
 	return nil
 }
 
+func (r *MemoryWebhookRepository) UpdateSubscriptionSecret(_ context.Context, id, tenantType, tenantID, secret string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.subs[id]
+	if !ok || s.TenantType != tenantType || s.TenantID != tenantID {
+		return errNotFound("subscription")
+	}
+	s.SigningSecret = secret
+	r.subs[id] = s
+	return nil
+}
+
 func (r *MemoryWebhookRepository) InsertAttempt(_ context.Context, a DeliveryAttempt) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

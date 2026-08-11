@@ -97,13 +97,56 @@ func TestResolveRegistrationSupplierIDRejectsAtCap(t *testing.T) {
 		},
 	}
 	svc := NewService(ServiceConfig{
-		Repo:           repo,
-		SupplierID:     "seed-1",
-		SeedSupplierID: "seed-1",
-		MaxSuppliers:   10,
+		Repo:                       repo,
+		SupplierID:                 "seed-1",
+		SeedSupplierID:             "seed-1",
+		MaxSuppliers:               10,
+		AllowMultiSupplierRegister: true,
 	})
 	_, err := svc.resolveRegistrationSupplierID(context.Background())
 	if !errors.Is(err, ErrSupplierCapReached) {
 		t.Fatalf("err=%v want supplier_cap_reached", err)
+	}
+}
+
+func TestResolveRegistrationSupplierIDFrozenByDefault(t *testing.T) {
+	repo := &countingSupplierRepo{
+		count: 1,
+		profiles: map[string]Profile{
+			"seed-1": {SupplierID: "seed-1", IsRegistered: true},
+		},
+	}
+	svc := NewService(ServiceConfig{
+		Repo:           repo,
+		SupplierID:     "seed-1",
+		SeedSupplierID: "seed-1",
+		MaxSuppliers:   10, // high cap must still freeze without AllowMultiSupplierRegister
+	})
+	_, err := svc.resolveRegistrationSupplierID(context.Background())
+	if !errors.Is(err, ErrSupplierCapReached) {
+		t.Fatalf("err=%v want supplier_cap_reached (registration freeze)", err)
+	}
+}
+
+func TestResolveRegistrationSupplierIDMintsWhenUnfrozen(t *testing.T) {
+	repo := &countingSupplierRepo{
+		count: 1,
+		profiles: map[string]Profile{
+			"seed-1": {SupplierID: "seed-1", IsRegistered: true},
+		},
+	}
+	svc := NewService(ServiceConfig{
+		Repo:                       repo,
+		SupplierID:                 "seed-1",
+		SeedSupplierID:             "seed-1",
+		MaxSuppliers:               10,
+		AllowMultiSupplierRegister: true,
+	})
+	id, err := svc.resolveRegistrationSupplierID(context.Background())
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if id == "" || id == "seed-1" {
+		t.Fatalf("id=%q want new uuid", id)
 	}
 }

@@ -132,7 +132,7 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 
 	supplierID := strings.TrimSpace(staff.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	isConfigured := false
@@ -304,7 +304,7 @@ func (s *Service) issueFactoryDemoToken(w http.ResponseWriter, phone string) {
 	claims := auth.Claims{
 		Subject:      "factory-staff-demo",
 		Role:         auth.RoleFactory,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.seedSupplierID,
 		SupplierRole: auth.RoleFactoryAdmin,
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,

@@ -32,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
+	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
@@ -43,6 +44,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
+	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
@@ -117,6 +120,8 @@ func main() {
 			Keys: app.PartnerKeys, JWTSecret: app.PartnerJWTSecret,
 		}))
 	}
+	r.Use(auth.AttachTenantFromClaims)
+	r.Use(auth.RequireTenant(cfg.TenantContextEnforced))
 
 	// Phase 1/2 Integration: Auth0 Identity Middleware
 	if os.Getenv("AUTH0_DOMAIN") != "" {
@@ -152,6 +157,8 @@ func main() {
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 	})
+	platformadmin.RegisterRoutes(r, app.PlatformAdminHandlers)
+	featureflags.RegisterRoutes(r, app.FeatureFlagHandlers)
 	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
 		Handlers:            app.PulseHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -336,6 +343,12 @@ func main() {
 
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{
 		Service:             app.CatalogService,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
+	globalproductsroutes.RegisterRoutes(r, globalproductsroutes.Deps{
+		Service:             app.GlobalProductsService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,

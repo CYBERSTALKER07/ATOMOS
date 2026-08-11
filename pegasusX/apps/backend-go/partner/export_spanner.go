@@ -194,19 +194,20 @@ func (r *SpannerSftpConfigRepository) Upsert(ctx context.Context, c SftpConfig) 
 	normalizeSftpDirs(&c)
 	_, err := r.client.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("PartnerSftpConfigs", map[string]any{
-			"TenantType":  c.TenantType,
-			"TenantId":    c.TenantID,
-			"Host":        c.Host,
-			"Port":        c.Port,
-			"Username":    c.Username,
-			"SecretRef":   c.SecretRef,
-			"RemoteDir":   c.RemoteDir,
-			"IsActive":    c.IsActive,
-			"InboundDir":  c.InboundDir,
-			"OutboundDir": c.OutboundDir,
-			"ArchiveDir":  c.ArchiveDir,
-			"EdiEnabled":  c.EdiEnabled,
-			"UpdatedAt":   spanner.CommitTimestamp,
+			"TenantType":    c.TenantType,
+			"TenantId":      c.TenantID,
+			"Host":          c.Host,
+			"Port":          c.Port,
+			"Username":      c.Username,
+			"SecretRef":     c.SecretRef,
+			"RemoteDir":     c.RemoteDir,
+			"IsActive":      c.IsActive,
+			"InboundDir":    c.InboundDir,
+			"OutboundDir":   c.OutboundDir,
+			"ArchiveDir":    c.ArchiveDir,
+			"EdiEnabled":    c.EdiEnabled,
+			"HostKeySha256": c.HostKeySHA256,
+			"UpdatedAt":     spanner.CommitTimestamp,
 		}),
 	})
 	return err
@@ -215,7 +216,7 @@ func (r *SpannerSftpConfigRepository) Upsert(ctx context.Context, c SftpConfig) 
 func (r *SpannerSftpConfigRepository) Get(ctx context.Context, tenantType, tenantID string) (SftpConfig, bool, error) {
 	row, err := r.client.Single().ReadRow(ctx, "PartnerSftpConfigs", spanner.Key{tenantType, tenantID},
 		[]string{"TenantType", "TenantId", "Host", "Port", "Username", "SecretRef", "RemoteDir", "IsActive",
-			"InboundDir", "OutboundDir", "ArchiveDir", "EdiEnabled", "UpdatedAt"})
+			"InboundDir", "OutboundDir", "ArchiveDir", "EdiEnabled", "HostKeySha256", "UpdatedAt"})
 	if err != nil {
 		if isSpannerNotFound(err) {
 			return SftpConfig{}, false, nil

@@ -290,9 +290,10 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 		}
 	}
 
+	supplierID := s.resolveSupplierID(ctx)
 	policy := NormalizeGatewayPolicy(PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT")
 	if s.policy != nil {
-		resolved, err := s.policy.Resolve(ctx, s.supplierID, warehouseID)
+		resolved, err := s.policy.Resolve(ctx, supplierID, warehouseID)
 		if err != nil {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
 		}
@@ -332,7 +333,7 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 	session := SessionRecord{
 		SessionID:   s.newID("psess"),
 		OrderID:     req.OrderID,
-		SupplierID:  s.supplierID,
+		SupplierID:  supplierID,
 		RetailerID:  req.RetailerID,
 		Gateway:     executionResult.ResolvedGateway,
 		Currency:    resolvedCurrency,

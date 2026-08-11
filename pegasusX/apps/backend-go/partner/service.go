@@ -10,7 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
 
@@ -26,6 +28,8 @@ type Service struct {
 	ediOut         *EdiOutboundWorker
 	orders         *order.Service
 	catalog        *catalog.Service
+	inventory      *inventory.Service
+	posFeedSink    func(context.Context, string, events.DemandSignalEvent) error
 	idem           idempotency.Store
 	log            *slog.Logger
 	now            func() time.Time
@@ -52,6 +56,14 @@ func (s *Service) SetIdempotencyStore(store idempotency.Store) {
 		return
 	}
 	s.idem = store
+}
+
+// SetInventoryService wires inventory upserts for partner master-data stock sync.
+func (s *Service) SetInventoryService(inv *inventory.Service) {
+	if s == nil {
+		return
+	}
+	s.inventory = inv
 }
 
 // IdempotencyStore exposes the configured store for handlers.
@@ -274,7 +286,16 @@ func (s *Service) CreateWebhookSubscription(ctx context.Context, p Principal, ur
 		return WebhookSubscription{}, "", err
 	}
 	if len(eventTypes) == 0 {
-		eventTypes = []string{"ORDER_CREATED", "ORDER_STATUS_CHANGED", "CLAIM_FILED"}
+		eventTypes = []string{"ORDER_CREATED", "ORDER_STATUS_CHANGED", "CLAIM_FILED", "PAYMENT_CLEARED"}
+	}
+	for _, et := range eventTypes {
+		et = strings.TrimSpace(et)
+		if et == "*" {
+			continue
+		}
+		if !IsPartnerWebhookable(et) {
+			return WebhookSubscription{}, "", fmt.Errorf("unsupported_event_type:%s", et)
+		}
 	}
 	sub := WebhookSubscription{
 		SubscriptionID: uuid.NewString(),
@@ -290,6 +311,31 @@ func (s *Service) CreateWebhookSubscription(ctx context.Context, p Principal, ur
 		return WebhookSubscription{}, "", err
 	}
 	return sub, secret, nil
+}
+
+// RotateWebhookSecret replaces the HMAC signing secret (returned once).
+func (s *Service) RotateWebhookSecret(ctx context.Context, p Principal, subscriptionID string) (string, error) {
+	if !HasScope(p.Scopes, ScopeWebhooksManage) && !HasScope(p.Scopes, "*") {
+		return "", fmt.Errorf("insufficient_scope")
+	}
+	if s.webhooks == nil {
+		return "", fmt.Errorf("webhooks_unavailable")
+	}
+	sub, ok, err := s.webhooks.GetSubscription(ctx, subscriptionID)
+	if err != nil {
+		return "", err
+	}
+	if !ok || sub.TenantType != p.TenantType || sub.TenantID != p.TenantID {
+		return "", fmt.Errorf("subscription_not_found")
+	}
+	secret, err := GenerateWebhookSecret()
+	if err != nil {
+		return "", err
+	}
+	if err := s.webhooks.UpdateSubscriptionSecret(ctx, subscriptionID, p.TenantType, p.TenantID, secret); err != nil {
+		return "", err
+	}
+	return secret, nil
 }
 
 // EnqueueEvent fan-outs an event to matching active subscriptions (idempotent per sub+event).

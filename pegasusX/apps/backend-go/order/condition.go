@@ -261,7 +261,7 @@ func (s *Service) ListConditionReports(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	current, found, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "list condition reports failed", "err", err, "order_id", orderID)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})

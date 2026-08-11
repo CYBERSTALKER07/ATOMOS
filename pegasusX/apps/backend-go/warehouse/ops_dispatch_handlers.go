@@ -31,13 +31,14 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		_ = json.Unmarshal(body, &previewBody)
 	}
 
+	sid := s.resolveSupplierScope(r.Context())
 	undispatched := make([]map[string]any, 0)
 	windowConstrained := 0
 	dispatchRows := make([]dispatch.DispatchableOrder, 0)
-	if s.spannerClient != nil && strings.TrimSpace(s.supplierID) != "" {
+	if s.spannerClient != nil && strings.TrimSpace(sid) != "" {
 		repo := dispatch.NewRepository(s.spannerClient)
 		rows, err := repo.FetchDispatchable(r.Context(), dispatch.FetchParams{
-			SupplierID:  s.supplierID,
+			SupplierID:  sid,
 			WarehouseID: whID,
 			Limit:       limit,
 			Offset:      offset,
@@ -64,7 +65,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			windowConstrained = preview.WindowConstrained
 			dispatchRows = allDispatchRows
 			var overrideMeta []map[string]any
-			dispatchRows, overrideMeta = s.applyZoneOverridesToDispatchRows(r.Context(), s.supplierID, dispatchRows)
+			dispatchRows, overrideMeta = s.applyZoneOverridesToDispatchRows(r.Context(), sid, dispatchRows)
 			if len(overrideMeta) > 0 {
 				_ = overrideMeta
 			}
@@ -102,7 +103,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	available := make([]map[string]any, 0)
 	unavailable := make([]map[string]any, 0)
 	var solveDrivers []PortalDriver
-	sid := s.resolveDispatchSupplierID(r.Context(), whID)
+	sid = s.resolveDispatchSupplierID(r.Context(), whID)
 	if s.opsDrivers != nil {
 		drivers, err := s.opsDrivers(r.Context(), whID)
 		if err == nil {
@@ -330,7 +331,7 @@ func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Reque
 				eventPayload := events.WarehouseEvent{
 					BaseEvent:   events.BaseEvent{Type: "WAREHOUSE_DISPATCH_SETTINGS_UPDATED"},
 					WarehouseID: whID,
-					SupplierID:  s.supplierID,
+					SupplierID:  s.resolveSupplierScope(r.Context()),
 				}
 				return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, eventPayload)
 			})

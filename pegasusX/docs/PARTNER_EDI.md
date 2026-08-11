@@ -11,11 +11,13 @@ Apply migration `20260806_partner_edi.ddl` (extends `PartnerSftpConfigs`, adds `
 | DocType | Direction | Trigger |
 |---------|-----------|---------|
 | ORDERS | IN | Drop file in inbound dir |
-| ORDRSP | OUT | `ORDER_CREATED`; status → CONFIRMED / CANCELLED / REJECTED / BACKORDERED / SCHEDULED / … |
+| ORDRSP | IN + OUT | Inbound: partner response recorded; Outbound: `ORDER_CREATED` / status transitions |
 | DESADV | OUT | Status → `LOADED` or `IN_TRANSIT` — includes **CPS/PAC/GIN SSCC** from `ManifestShipUnits` when sealed |
-| INVOIC | OUT | Status → `DELIVERED_ON_CREDIT`; also `PAYMENT_CLEARED` |
+| INVOIC | IN + OUT | Inbound: commercial invoice recorded; Outbound: `DELIVERED_ON_CREDIT` / `PAYMENT_CLEARED` |
+| CONTRL | OUT | Syntax ACK after inbound ORDERS/ORDRSP/INVOIC (action 7/4) |
+| APERAK | OUT | Application ACK after inbound processing (27/29 + optional FTX reason) |
 
-Inbound ORDERS maps to `order.Service.Create` with `order_source=PARTNER_EDI`. Geo from `LOC+DEL+lat:lng:h3` or retailer primary location.
+Inbound ORDERS maps to `order.Service.Create` with `order_source=PARTNER_EDI`. Geo from `LOC+DEL+lat:lng:h3` or retailer primary location. Successful/failed ORDERS emit CONTRL+APERAK via the outbound worker (local root or SFTP/AS2).
 
 ### DESADV SSCC packing (EDI-lite)
 
@@ -51,13 +53,15 @@ Live SFTP when `PARTNER_SFTP_ENABLED=true`. Local mode: `PARTNER_EDI_LOCAL_ROOT/
 |-----|---------|---------|
 | `PARTNER_EDI_ENABLED` | on | Gate EDI workers/APIs |
 | `PARTNER_EDI_LOCAL_ROOT` | empty | Local drop/pickup root |
-| `PARTNER_SFTP_ENABLED` | off | Live SFTP list/download/upload |
+| `PARTNER_SFTP_ENABLED` | off (SSMR on) | Live SFTP list/download/upload |
+| `PARTNER_SFTP_STRICT_HOSTKEY` | off (staging on) | Require `HostKeySHA256` pin |
+| `PARTNER_AS2_ENABLED` | off (SSMR/staging on) | AS2 receive/send |
 
 ## APIs
 
 - Partner key: `GET /partner/v1/edi/documents`, `GET …/{id}`, `POST …/{id}/replay` (`exports:read`)
 - Supplier JWT: `/v1/supplier/partner-edi/documents…`
-- SFTP PUT accepts `edi_enabled`, `inbound_dir`, `outbound_dir`, `archive_dir`
+- SFTP PUT accepts `edi_enabled`, `inbound_dir`, `outbound_dir`, `archive_dir`, `host_key_sha256`
 
 Portal: Settings → Integrations (EDI toggle + recent documents).
 
@@ -67,4 +71,4 @@ Portal: Settings → Integrations (EDI toggle + recent documents).
 
 ## Still open
 
-Full EDIFACT certification. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md). Certified 1C exchange package still open.
+Full EDIFACT certification. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). DataMatrix AI scaffolding — `gs1/datamatrix.go` (placeholder modules; ZPL `^BX` real). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md). CommerceML design — [`COMMERCEML_EXCHANGE.md`](./COMMERCEML_EXCHANGE.md). Certified 1C exchange package still open (Phase 6).

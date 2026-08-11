@@ -1,9 +1,10 @@
-// Package supplier owns the single-tenant supplier-portal handlers.
+// Package supplier owns the supplier-portal handlers.
 //
-// pegasusX runs as a single-supplier tenant: the Suppliers row is seeded at
-// bootstrap. Register and ConfigureBilling MUTATE that row — they do not
-// create new suppliers. The handlers also issue the supplier-portal session
-// JWT cookie consumed by the Next.js middleware (`is_configured` claim).
+// Gate 5 Phase 1 (MULTI_TENANCY_GATE5_PHASE1.md) freezes multi-supplier mint
+// until request-scoped TenantContext is proven: Register mutates the seeded
+// supplier when unregistered; additional UUID minting requires
+// ALLOW_MULTI_SUPPLIER_REGISTER=true. Handlers issue the supplier-portal
+// session JWT cookie consumed by the Next.js middleware (`is_configured` claim).
 package supplier
 
 import (
@@ -231,10 +232,11 @@ type Service struct {
 	dashboardQuery DashboardCountQuery
 	locations      telemetry.LastLocationReader
 	supplierID     string
-	seedSupplierID string
-	maxSuppliers   int
-	country        string
-	currency       string
+	seedSupplierID              string
+	maxSuppliers                int
+	allowMultiSupplierRegister  bool
+	country                     string
+	currency                    string
 	jwtSecret      string
 	jwtIssuer      string
 	jwtTTL         time.Duration
@@ -259,6 +261,8 @@ type Service struct {
 	fallbackDepotLng      float64
 	replenishmentEngine   *replenishment.Engine
 	controlTower          *controltower.Service
+	// OnRegistered is optional (platform admin tenant mint).
+	OnRegistered func(ctx context.Context, supplierID, legalName string) error
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute
@@ -272,17 +276,18 @@ type ServiceConfig struct {
 	DashboardQuery   DashboardCountQuery
 	Locations        telemetry.LastLocationReader
 	InventoryService InventoryServicer
-	SupplierID       string
-	SeedSupplierID   string
-	MaxSuppliers     int
-	Country          string
-	Currency         string
-	JWTSecret        string
-	JWTIssuer        string
-	JWTTTL           time.Duration
-	CookieSecure     bool
-	Log              *slog.Logger
-	Now              func() time.Time
+	SupplierID                   string
+	SeedSupplierID               string
+	MaxSuppliers                 int
+	AllowMultiSupplierRegister   bool
+	Country                      string
+	Currency                     string
+	JWTSecret                    string
+	JWTIssuer                    string
+	JWTTTL                       time.Duration
+	CookieSecure                 bool
+	Log                          *slog.Logger
+	Now                          func() time.Time
 }
 
 // NewService returns a configured Service.
@@ -298,24 +303,25 @@ func NewService(c ServiceConfig) *Service {
 	}
 	maxSuppliers := c.MaxSuppliers
 	if maxSuppliers <= 0 {
-		maxSuppliers = 10
+		maxSuppliers = 1
 	}
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
 		seedID = c.SupplierID
 	}
 	return &Service{
-		repo:           c.Repo,
-		cache:          c.Cache,
-		idem:           c.Idem,
-		earningsLookup: c.EarningsLookup,
-		dashboardQuery: c.DashboardQuery,
-		locations:      c.Locations,
-		supplierID:     c.SupplierID,
-		seedSupplierID: seedID,
-		maxSuppliers:   maxSuppliers,
-		country:        c.Country,
-		currency:       c.Currency,
+		repo:                       c.Repo,
+		cache:                      c.Cache,
+		idem:                       c.Idem,
+		earningsLookup:             c.EarningsLookup,
+		dashboardQuery:             c.DashboardQuery,
+		locations:                  c.Locations,
+		supplierID:                 c.SupplierID,
+		seedSupplierID:             seedID,
+		maxSuppliers:               maxSuppliers,
+		allowMultiSupplierRegister: c.AllowMultiSupplierRegister,
+		country:                    c.Country,
+		currency:                   c.Currency,
 		jwtSecret:      c.JWTSecret,
 		jwtIssuer:      c.JWTIssuer,
 		jwtTTL:         c.JWTTTL,
@@ -436,9 +442,9 @@ func (r LoginRequest) Validate() error {
 	return nil
 }
 
-// Register persists the wizard payload onto the seeded supplier row, emits a
-// SUPPLIER_UPDATED outbox event atomically, invalidates the supplier cache
-// post-commit, and returns the response shape the wizard expects.
+// resolveRegistrationSupplierID returns the supplier row to mutate on Register.
+// When the seed is unregistered, always reuse it. Otherwise Gate 5 Phase 1
+// freezes minting unless AllowMultiSupplierRegister is set (and under MaxSuppliers).
 func (s *Service) resolveRegistrationSupplierID(ctx context.Context) (string, error) {
 	count, err := s.repo.CountSuppliers(ctx)
 	if err != nil {
@@ -448,6 +454,9 @@ func (s *Service) resolveRegistrationSupplierID(ctx context.Context) (string, er
 		return "", fmt.Errorf("load seed supplier: %w", err)
 	} else if found && !seedProfile.IsRegistered {
 		return s.seedSupplierID, nil
+	}
+	if !s.allowMultiSupplierRegister {
+		return "", ErrSupplierCapReached
 	}
 	if int(count) >= s.maxSuppliers {
 		return "", ErrSupplierCapReached
@@ -547,6 +556,11 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		"legal_name", current.LegalName,
 		"country", current.Country,
 	)
+	if s.OnRegistered != nil {
+		if hookErr := s.OnRegistered(ctx, targetSupplierID, current.LegalName); hookErr != nil {
+			s.log.Warn("platform tenant mint failed", "supplier_id", targetSupplierID, "err", hookErr)
+		}
+	}
 	nextStep := "/setup/business"
 	if current.IsRegistered {
 		if current.IsConfigured {
@@ -999,7 +1013,13 @@ func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request)
 func supplierCacheKey(id string) string { return "supplier:" + id }
 
 func rootSupplierUserID(supplierID string) string {
-	return "root_" + supplierID
+	sid := strings.TrimSpace(supplierID)
+	if sid == "" {
+		return "root_supplier"
+	}
+	// SupplierUsers.UserId is STRING(36). "root_"+uuid is 41 chars — use a
+	// deterministic UUID instead so multi-supplier mint fits the column.
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte("supplier-root:"+sid)).String()
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

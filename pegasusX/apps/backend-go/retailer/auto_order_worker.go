@@ -893,8 +893,8 @@ func (s *Service) supplierIDForRetailerSKU(ctx context.Context, orgID, sku strin
 			}
 		}
 	}
-	// SSMR / single-supplier seed fallback
-	return strings.TrimSpace(s.supplierID)
+	// SSMR / single-supplier seed fallback (request TenantContext wins when present).
+	return s.resolveSupplierScope(ctx)
 }
 
 // autoOrderWorkerEnabled gates the background ticker (default off).

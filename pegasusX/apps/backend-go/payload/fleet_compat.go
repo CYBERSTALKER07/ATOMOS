@@ -68,7 +68,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if reassigned > 0 {
-		s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
+		s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 		s.broadcastPayloadEvent(r.Context(), "ORDER_REASSIGNED", map[string]any{
 			"new_route_id": req.NewRouteID,
 			"reassigned":   reassigned,

@@ -112,6 +112,24 @@ variable "kafka_topic_webhooks" {
   default     = "ssmr.events.webhooks"
 }
 
+variable "kafka_topic_main_dlq" {
+  description = "Kafka topic for main-topic consumer / outbox poison messages."
+  type        = string
+  default     = "ssmr.events.orders-dlq"
+}
+
+variable "kafka_topic_freeze_locks" {
+  description = "Kafka topic for freeze-lock fanout."
+  type        = string
+  default     = "pegasusx-freeze-locks"
+}
+
+variable "kafka_topic_inventory_import" {
+  description = "Kafka topic for inventory import jobs."
+  type        = string
+  default     = "pegasusx-inventory-import"
+}
+
 variable "firebase_project_id" {
   description = "Firebase project id for ID token verification."
   type        = string

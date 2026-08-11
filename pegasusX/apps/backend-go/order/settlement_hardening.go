@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -290,7 +291,7 @@ func (s *Service) latestCardPaymentLeg(ctx context.Context, orderID string) (Pay
 func bufferedOutboxMutations(buf *spannerTxnBuffer, _ time.Time) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+		row := map[string]any{
 			"EventId":       e.EventID,
 			"AggregateType": e.AggregateType,
 			"AggregateId":   e.AggregateID,
@@ -298,7 +299,15 @@ func bufferedOutboxMutations(buf *spannerTxnBuffer, _ time.Time) []*spanner.Muta
 			"Payload":       e.Payload,
 			"CreatedAt":     spanner.CommitTimestamp,
 			"PublishedAt":   nil,
-		}))
+		}
+		sid := strings.TrimSpace(e.SupplierID)
+		if sid == "" {
+			sid = outbox.SupplierIDFromPayload(e.Payload)
+		}
+		if sid != "" {
+			row["SupplierId"] = sid
+		}
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
 	}
 	return mutations
 }

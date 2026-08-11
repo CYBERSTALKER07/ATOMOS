@@ -270,6 +270,30 @@ func (r *SpannerWebhookRepository) DeactivateSubscription(ctx context.Context, i
 	return err
 }
 
+func (r *SpannerWebhookRepository) UpdateSubscriptionSecret(ctx context.Context, id, tenantType, tenantID, secret string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "WebhookSubscriptions", spanner.Key{id}, []string{"TenantType", "TenantId"})
+		if err != nil {
+			return errNotFound("subscription")
+		}
+		var tt, tid string
+		if err := row.Columns(&tt, &tid); err != nil {
+			return err
+		}
+		if tt != tenantType || tid != tenantID {
+			return errNotFound("subscription")
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("WebhookSubscriptions", map[string]any{
+				"SubscriptionId": id,
+				"SigningSecret":  secret,
+				"UpdatedAt":      spanner.CommitTimestamp,
+			}),
+		})
+	})
+	return err
+}
+
 func (r *SpannerWebhookRepository) InsertAttempt(ctx context.Context, a DeliveryAttempt) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner_unavailable")

@@ -109,6 +109,26 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"CreatedAt":    ts,
 				"UpdatedAt":    ts,
 			}),
+			// Mark seed registered so Gate 5 registration freeze cannot re-bind the
+			// demo phone to a second "first register" happy path.
+			spanner.InsertOrUpdateMap("SupplierProfiles", map[string]any{
+				"SupplierId":   supplierID,
+				"ContactName":  "SSMR Smoke Supplier Admin",
+				"Email":        "smoke-supplier@pegasusx.local",
+				"Phone":        phone,
+				"IsRegistered": true,
+				"RegisteredAt": ts,
+				"UpdatedAt":    ts,
+			}),
+			spanner.InsertOrUpdateMap("Suppliers", map[string]any{
+				"SupplierId":   supplierID,
+				"Name":         "SSMR Smoke Supplier",
+				"CountryCode":  seedSupplierCountry(),
+				"Currency":     seedSupplierCurrency(),
+				"IsConfigured": false,
+				"CreatedAt":    ts,
+				"UpdatedAt":    ts,
+			}),
 			spanner.InsertOrUpdateMap("SupplierUsers", map[string]any{
 				"UserId":            "ssmr-smoke-factory-admin",
 				"SupplierId":        supplierID,
@@ -287,6 +307,20 @@ func smokeBarcode() string {
 		return bc
 	}
 	return defaultSmokeBarcode
+}
+
+func seedSupplierCountry() string {
+	if c := strings.TrimSpace(os.Getenv("SEED_SUPPLIER_COUNTRY")); c != "" {
+		return c
+	}
+	return "UZ"
+}
+
+func seedSupplierCurrency() string {
+	if c := strings.TrimSpace(os.Getenv("SEED_SUPPLIER_CURRENCY")); c != "" {
+		return c
+	}
+	return "UZS"
 }
 
 func deliveryZoneCenter() (float64, float64) {

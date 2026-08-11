@@ -131,7 +131,7 @@ func (r *SpannerSftpConfigRepository) ListEdiEnabled(ctx context.Context, limit 
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT TenantType, TenantId, Host, Port, Username, SecretRef, RemoteDir, IsActive,
-			InboundDir, OutboundDir, ArchiveDir, EdiEnabled, UpdatedAt
+			InboundDir, OutboundDir, ArchiveDir, EdiEnabled, HostKeySha256, UpdatedAt
 			FROM PartnerSftpConfigs
 			WHERE IsActive=TRUE AND EdiEnabled=TRUE
 			LIMIT @lim`,
@@ -216,12 +216,12 @@ func nullableTime(t *time.Time) any {
 
 func scanSftpConfig(row *spanner.Row) (SftpConfig, error) {
 	var c SftpConfig
-	var inbound, outbound, archive spanner.NullString
+	var inbound, outbound, archive, hostKey spanner.NullString
 	var ediEnabled spanner.NullBool
 	var updated time.Time
 	if err := row.Columns(
 		&c.TenantType, &c.TenantID, &c.Host, &c.Port, &c.Username, &c.SecretRef, &c.RemoteDir, &c.IsActive,
-		&inbound, &outbound, &archive, &ediEnabled, &updated,
+		&inbound, &outbound, &archive, &ediEnabled, &hostKey, &updated,
 	); err != nil {
 		return SftpConfig{}, err
 	}
@@ -229,6 +229,7 @@ func scanSftpConfig(row *spanner.Row) (SftpConfig, error) {
 	c.OutboundDir = outbound.StringVal
 	c.ArchiveDir = archive.StringVal
 	c.EdiEnabled = ediEnabled.Valid && ediEnabled.Bool
+	c.HostKeySHA256 = hostKey.StringVal
 	c.UpdatedAt = updated.UTC()
 	normalizeSftpDirs(&c)
 	return c, nil

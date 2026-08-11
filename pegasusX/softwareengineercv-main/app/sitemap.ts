@@ -32,6 +32,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry('/mobile-apps', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/join', { changeFrequency: 'monthly', priority: 0.85 }),
     entry('/contact', { changeFrequency: 'monthly', priority: 0.8 }),
+    entry('/resume', { changeFrequency: 'monthly', priority: 0.8 }),
   ];
 
   const solutionPages: MetadataRoute.Sitemap = SOLUTIONS_ACCORDION_DATA.flatMap((sol) =>

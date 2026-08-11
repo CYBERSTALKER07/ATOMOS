@@ -3040,6 +3040,18 @@ export interface RetailerStockCountCommitRequest {
   force_reason?: string;
 }
 
+/** Response of POST /v1/retailer/stock/counts/commit (mirrors backend-go retailer/stock_count_commit.go). */
+export interface RetailerStockCountCommitResponse {
+  count_id: string;
+  location_id: string;
+  stock_bin: string;
+  status: string;
+  base_version: number;
+  server_version: number;
+  forced: boolean;
+  lines: { sku: string; system_qty: number; counted_qty: number; variance: number }[];
+}
+
 export interface RetailerStockCountVersionConflict {
   error: "COUNT_VERSION_CONFLICT";
   server_version: number;

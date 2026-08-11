@@ -63,7 +63,7 @@ const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 
 const resolveFontSize = (
   value: number | string,
-  container: HTMLDivElement,
+  container: HTMLElement,
   fontWeight: number | string,
   fontFamily: string
 ): number => {
@@ -129,7 +129,7 @@ const ParticleText = ({
     checkLowEnd();
   }, []);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLHeadingElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -485,7 +485,7 @@ const ParticleText = ({
   }
 
   return (
-    <div
+    <h1
       ref={containerRef}
       className={`relative block h-full min-h-[240px] w-full overflow-hidden touch-none ${className}`}
       style={style}
@@ -493,7 +493,7 @@ const ParticleText = ({
     >
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
       <span className="sr-only">{text}</span>
-    </div>
+    </h1>
   );
 };
 

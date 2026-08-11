@@ -70,6 +70,9 @@ func (s *SpannerStore) Append(ctx context.Context, events []Event) error {
 			if e.PublishedAt != nil {
 				row["PublishedAt"] = e.PublishedAt.UTC()
 			}
+			sid := ResolveSupplierID(e.SupplierID, e.Payload)
+			row["SupplierId"] = sid
+			e.SupplierID = sid
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
 		}
@@ -104,25 +107,32 @@ func (s *SpannerStore) Fetch(ctx context.Context, limit int) ([]Event, error) {
 	leaseUntil := now.Add(defaultOutboxLease)
 	var events []Event
 
+	fetchLimit := limit * 4
+	if fetchLimit < 100 {
+		fetchLimit = 100
+	}
+	if fetchLimit > 500 {
+		fetchLimit = 500
+	}
+
 	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `
-SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt
+SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt, SupplierId
 FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished}
 WHERE PublishedAt IS NULL
   AND (ClaimedUntil IS NULL OR ClaimedUntil < @now)
 ORDER BY CreatedAt
 LIMIT @limit`,
 			Params: map[string]interface{}{
-				"limit": int64(limit),
+				"limit": int64(fetchLimit),
 				"now":   now,
 			},
 		}
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 
-		claimed := make([]Event, 0, limit)
-		mutations := make([]*spanner.Mutation, 0, limit)
+		candidates := make([]Event, 0, fetchLimit)
 		for {
 			row, err := iter.Next()
 			if err == iterator.Done {
@@ -140,11 +150,16 @@ LIMIT @limit`,
 				payload       []byte
 				createdAt     time.Time
 				publishedAt   spanner.NullTime
+				supplierID    spanner.NullString
 			)
-			if err := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &publishedAt); err != nil {
+			if err := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &publishedAt, &supplierID); err != nil {
 				return fmt.Errorf("outbox spanner store: fetch scan: %w", err)
 			}
 
+			stored := ""
+			if supplierID.Valid {
+				stored = supplierID.StringVal
+			}
 			e := Event{
 				EventID:       eventID,
 				AggregateType: aggregateType,
@@ -152,14 +167,20 @@ LIMIT @limit`,
 				TopicName:     topicName,
 				Payload:       payload,
 				CreatedAt:     createdAt.UTC(),
+				SupplierID:    ResolveSupplierID(stored, payload),
 			}
 			if publishedAt.Valid {
 				ts := publishedAt.Time.UTC()
 				e.PublishedAt = &ts
 			}
-			claimed = append(claimed, e)
+			candidates = append(candidates, e)
+		}
+
+		claimed := FairInterleave(candidates, limit)
+		mutations := make([]*spanner.Mutation, 0, len(claimed))
+		for _, e := range claimed {
 			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
-				"EventId":      eventID,
+				"EventId":      e.EventID,
 				"ClaimedBy":    claimant,
 				"ClaimedUntil": leaseUntil,
 			}))

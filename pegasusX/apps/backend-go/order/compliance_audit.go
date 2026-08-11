@@ -98,7 +98,7 @@ func (s *Service) resolveComplianceSupplier(r *http.Request) (string, bool) {
 		supplierID = strings.TrimSpace(claims.SupplierID)
 	}
 	if supplierID == "" {
-		supplierID = strings.TrimSpace(s.supplierID)
+		supplierID = strings.TrimSpace(s.resolveSupplierScope(r.Context()))
 	}
 	return supplierID, supplierID != ""
 }

@@ -100,7 +100,7 @@ func runSafetyStockE2E(
 	lineItems, _ := json.Marshal([]map[string]any{
 		{"sku": productID, "name": "safety stock e2e", "quantity": 70, "unit_price_minor": 100},
 	})
-	orderID := "ord-ss-" + uuid.NewString()
+	orderID := fmt.Sprintf("ord-ss-%s", uuid.NewString()[:29])
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("Orders", map[string]any{
 			"OrderId":            orderID,
@@ -115,8 +115,9 @@ func runSafetyStockE2E(
 			"OriginalTotalMinor": int64(7000),
 			"Currency":           "UZS",
 			"Version":            int64(1),
-			"CreatedAt":          now.Add(-24 * time.Hour),
-			"UpdatedAt":          now.Add(-24 * time.Hour),
+			// Lag past wall-clock so emulator clock skew never rejects as future.
+			"CreatedAt": now.Add(-24*time.Hour - 2*time.Second),
+			"UpdatedAt": now.Add(-24*time.Hour - 2*time.Second),
 		}),
 	})
 	if err != nil {

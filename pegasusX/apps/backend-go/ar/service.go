@@ -336,6 +336,14 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 }
 
 func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error {
+	// Spanner (and especially the emulator) rejects client wall-clock values
+	// that are even slightly ahead of server time. Persist audit stamps via
+	// commit timestamp; clamp CreditLeaveAt a second into the past so a host
+	// clock that leads the emulator cannot fail the money-path open.
+	creditLeaveAt := inv.CreditLeaveAt.UTC()
+	if skew := time.Now().UTC().Add(-time.Second); creditLeaveAt.After(skew) {
+		creditLeaveAt = skew
+	}
 	_, err := r.client.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("ArInvoices", map[string]any{
 			"InvoiceId":       inv.InvoiceID,
@@ -346,15 +354,15 @@ func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error 
 			"PrincipalMinor":  inv.PrincipalMinor,
 			"BalanceMinor":    inv.BalanceMinor,
 			"Currency":        inv.Currency,
-			"CreditLeaveAt":   inv.CreditLeaveAt,
+			"CreditLeaveAt":   creditLeaveAt,
 			"DueAt":           inv.DueAt,
 			"TermsDays":       inv.TermsDays,
 			"GracePeriodDays": inv.GracePeriodDays,
 			"AgingBucket":     inv.AgingBucket,
 			"DunningStep":     inv.DunningStep,
 			"Version":         inv.Version,
-			"CreatedAt":       inv.CreatedAt,
-			"UpdatedAt":       inv.UpdatedAt,
+			"CreatedAt":       spanner.CommitTimestamp,
+			"UpdatedAt":       spanner.CommitTimestamp,
 		}),
 		spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
 			"EntryId":        inv.InvoiceID + ":OPEN",
@@ -365,7 +373,7 @@ func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error 
 			"AmountMinor":    inv.PrincipalMinor,
 			"IdempotencyKey": "open:" + inv.OrderID,
 			"RefOrderId":     inv.OrderID,
-			"CreatedAt":      inv.CreatedAt,
+			"CreatedAt":      spanner.CommitTimestamp,
 		}),
 	})
 	return err

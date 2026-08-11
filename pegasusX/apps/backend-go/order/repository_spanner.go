@@ -111,7 +111,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			}
 		}
 
-		mutations = append(mutations, spanner.InsertMap("Orders", map[string]any{
+		orderInsert := map[string]any{
 			"OrderId":                o.OrderID,
 			"SupplierId":             o.SupplierID,
 			"RetailerId":             o.RetailerID,
@@ -156,7 +156,11 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			"Version":                o.Version,
 			"CreatedAt":              o.CreatedAt.UTC(),
 			"UpdatedAt":              o.UpdatedAt.UTC(),
-		}))
+		}
+		if pid := strings.TrimSpace(o.ParentOrderID); pid != "" {
+			orderInsert["ParentOrderId"] = pid
+		}
+		mutations = append(mutations, spanner.InsertMap("Orders", orderInsert))
 
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
@@ -175,6 +179,13 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			}
 			if e.PublishedAt != nil {
 				row["PublishedAt"] = e.PublishedAt.UTC()
+			}
+			sid := strings.TrimSpace(e.SupplierID)
+			if sid == "" {
+				sid = outbox.SupplierIDFromPayload(e.Payload)
+			}
+			if sid != "" {
+				row["SupplierId"] = sid
 			}
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
@@ -535,6 +546,13 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}
 			if e.PublishedAt != nil {
 				row["PublishedAt"] = e.PublishedAt.UTC()
+			}
+			sid := strings.TrimSpace(e.SupplierID)
+			if sid == "" {
+				sid = outbox.SupplierIDFromPayload(e.Payload)
+			}
+			if sid != "" {
+				row["SupplierId"] = sid
 			}
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
@@ -1375,7 +1393,7 @@ func (r *SpannerRepository) CreateConditionReport(ctx context.Context, report Co
 			if createdAt.IsZero() {
 				createdAt = time.Now().UTC()
 			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+			row := map[string]any{
 				"EventId":       e.EventID,
 				"AggregateType": e.AggregateType,
 				"AggregateId":   e.AggregateID,
@@ -1383,7 +1401,15 @@ func (r *SpannerRepository) CreateConditionReport(ctx context.Context, report Co
 				"Payload":       e.Payload,
 				"CreatedAt":     createdAt,
 				"PublishedAt":   nil,
-			}))
+			}
+			sid := strings.TrimSpace(e.SupplierID)
+			if sid == "" {
+				sid = outbox.SupplierIDFromPayload(e.Payload)
+			}
+			if sid != "" {
+				row["SupplierId"] = sid
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
 		}
 
 		return txn.BufferWrite(mutations)
@@ -1848,6 +1874,13 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 			}
 			if e.PublishedAt != nil {
 				row["PublishedAt"] = e.PublishedAt.UTC()
+			}
+			sid := strings.TrimSpace(e.SupplierID)
+			if sid == "" {
+				sid = outbox.SupplierIDFromPayload(e.Payload)
+			}
+			if sid != "" {
+				row["SupplierId"] = sid
 			}
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))

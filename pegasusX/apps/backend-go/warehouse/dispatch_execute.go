@@ -37,7 +37,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	whID := strings.TrimSpace(req.WarehouseID)
 	sid := strings.TrimSpace(req.SupplierID)
 	if sid == "" {
-		sid = strings.TrimSpace(s.supplierID)
+		sid = s.resolveSupplierScope(ctx)
 	}
 
 	out := DispatchExecuteResult{
@@ -392,14 +392,19 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 }
 
 
-func (s *Service) resolveDispatchSupplierID(ctx context.Context, warehouseID string) string {
+func (s *Service) resolveDispatchSupplierID(ctx context.Context, _ string) string {
 	if ops := auth.GetWarehouseOps(ctx); ops != nil && strings.TrimSpace(ops.SupplierID) != "" {
 		return strings.TrimSpace(ops.SupplierID)
 	}
-	if sid, ok := auth.ResolveSupplierID(ctx); ok && strings.TrimSpace(sid) != "" {
-		return strings.TrimSpace(sid)
+	if t, ok := auth.TenantFromContext(ctx); ok {
+		return t.SupplierID
 	}
-	return strings.TrimSpace(s.supplierID)
+	return s.resolveSupplierScope(ctx)
+}
+
+// resolveSupplierScope is the Gate 5 request-scoped supplier for warehouse ops.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
 
 func (s *Service) loadDispatchDrivers(ctx context.Context, warehouseID string) ([]PortalDriver, error) {

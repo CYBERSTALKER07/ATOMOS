@@ -38,6 +38,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
+	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
@@ -58,6 +60,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
@@ -144,6 +147,10 @@ type Config struct {
 	ReliabilityEnabled  bool
 	AllowAuthBypass     bool
 	MaxSuppliers        int
+	// AllowMultiSupplierRegister gates UUID mint on Register (Gate 5 Week 0 freeze).
+	AllowMultiSupplierRegister bool
+	// TenantContextEnforced fail-closes authenticated routes missing TenantContext.
+	TenantContextEnforced bool
 
 	OptimizerBaseURL string
 	RoutingOSRMURL   string
@@ -171,6 +178,7 @@ type App struct {
 	Idempotency            idempotency.Store
 	Supplier               seed.Supplier
 	CatalogService         *catalog.Service
+	GlobalProductsService  *globalproducts.Service
 	PromotionService       *promotion.Service
 	PromotionAudience      *promotion.AudienceResolver
 	InventoryService       *inventory.Service
@@ -224,6 +232,10 @@ type App struct {
 	OutboundCircuits       *OutboundCircuits
 	PlatformService        *platform.Service
 	PlatformHandler        *platform.Handler
+	PlatformAdminService   *platformadmin.Service
+	PlatformAdminHandlers  *platformadmin.Handlers
+	FeatureFlagService     *featureflags.Service
+	FeatureFlagHandlers    *featureflags.Handlers
 	PulseHandlers          *pulse.Handlers
 	PushBridge             *notifications.PushBridge
 	Spanner                *spanner.Client
@@ -314,7 +326,9 @@ func LoadConfig() (*Config, error) {
 		AllowMemoryFallback:             envBool("ALLOW_MEMORY_FALLBACK", false),
 		ReliabilityEnabled:              envBool("RELIABILITY_MIDDLEWARE_ENABLED", true),
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
-		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 10),
+		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 1),
+		AllowMultiSupplierRegister:      envBool("ALLOW_MULTI_SUPPLIER_REGISTER", false),
+		TenantContextEnforced:           envBool("TENANT_CONTEXT_ENFORCED", strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")),
 		OptimizerBaseURL:                envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
 		RoutingOSRMURL:                  envOr("ROUTING_OSRM_URL", ""),
 		RoutingProvider:                 envOr("ROUTING_PROVIDER", "auto"),
@@ -571,10 +585,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	var catalogSvc *catalog.Service
+	var globalProductsSvc *globalproducts.Service
 	if spannerClient != nil {
 		catalogRepo := catalog.NewSpannerRepository(spannerClient)
 		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log, promotionSvc, catalog.NewStockEnricher(spannerClient))
 		log.Info("catalog service enabled", "backend", "spanner")
+		if globalproducts.Enabled() {
+			gpRepo := globalproducts.NewSpannerRepository(spannerClient)
+			globalProductsSvc = globalproducts.NewService(gpRepo, log)
+			if err := globalProductsSvc.EnsureBootstrap(context.Background()); err != nil {
+				log.Warn("global products uom seed failed", "err", err)
+			}
+			catalogSvc.SetGlobalProductHook(globalproducts.CatalogHook{Svc: globalProductsSvc})
+			go globalProductsSvc.StartMatchWorker(context.Background(), 2*time.Minute)
+			log.Info("global products service enabled")
+		}
 	}
 
 	var inventorySvc *inventory.Service
@@ -611,6 +636,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Locations:   driverLocations,
 		Proximity:   retailerProximity,
 		SupplierID:  supplierSeed.SupplierID,
+		SeedSupplierID: supplierSeed.SupplierID,
 		CountryCode: cfg.SeedSupplierCountry,
 		JWTSecret:   cfg.JWTSecret,
 		JWTIssuer:   cfg.JWTIssuer,
@@ -634,10 +660,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Locations:        driverLocations,
 		InventoryService: supplierInventory,
 		DashboardQuery:   dashboardQuery,
-		SupplierID:       supplierSeed.SupplierID,
-		SeedSupplierID:   supplierSeed.SupplierID,
-		MaxSuppliers:     cfg.MaxSuppliers,
-		Country:          cfg.SeedSupplierCountry,
+		SupplierID:                   supplierSeed.SupplierID,
+		SeedSupplierID:               supplierSeed.SupplierID,
+		MaxSuppliers:                 cfg.MaxSuppliers,
+		AllowMultiSupplierRegister:   cfg.AllowMultiSupplierRegister,
+		Country:                      cfg.SeedSupplierCountry,
 		Currency:         cfg.SeedSupplierCurrency,
 		JWTSecret:        cfg.JWTSecret,
 		JWTIssuer:        cfg.JWTIssuer,
@@ -744,7 +771,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		cashReconHandlers = &cashrecon.Handlers{Svc: cashReconSvc}
 		creditNoteRepo := creditnote.NewSpannerRepository(spannerClient)
 		creditNoteSvc = creditnote.NewService(creditNoteRepo)
-		creditNoteHandlers = &creditnote.Handlers{Svc: creditNoteSvc, SupplierID: func() string { return supplierSeed.SupplierID }}
+		creditNoteHandlers = &creditnote.Handlers{
+			Svc: creditNoteSvc,
+			// Last-resort seed only when PreferTenantSupplierID + claims are empty.
+			SupplierID: func() string { return supplierSeed.SupplierID },
+		}
 	}
 
 	orderSvc := order.NewService(order.ServiceConfig{
@@ -753,6 +784,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Warehouse:             orderWarehouseResolver,
 		Promotions:            promotionSvc,
 		Credit:                creditSvc,
+		SeedSupplierID:        supplierSeed.SupplierID,
 		SupplierID:            supplierSeed.SupplierID,
 		SupplierName:          cfg.SeedSupplierName,
 		Currency:              cfg.SeedSupplierCurrency,
@@ -830,7 +862,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		reorderSuggestionWorker = replenishment.NewReorderSuggestionWorker(spannerClient)
 		reorderSuggestionWorker.EchelonTargetsEnabled = replenishmentEngine.EchelonTargetsEnabled
 		routeAnalyticsWorker = analytics.NewRouteAnalyticsWorkerFromClient(spannerClient)
-		analyticsHandlers = &analytics.Handlers{Client: spannerClient, SupplierID: func() string { return supplierSeed.SupplierID }}
+		analyticsHandlers = &analytics.Handlers{
+			Client: spannerClient,
+			SupplierID: func(ctx context.Context) string {
+				return auth.PreferTenantSupplierID(ctx, supplierSeed.SupplierID)
+			},
+		}
 	}
 
 	supplierSvc.SetPortalOps(supplier.PortalOpsConfig{
@@ -907,6 +944,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Spanner:       spannerClient,
 		Locations:     driverLocations,
 		SupplierID:    supplierSeed.SupplierID,
+		SeedSupplierID: supplierSeed.SupplierID,
 		FactoryNodeID: factoryNodeID,
 		Currency:      cfg.SeedSupplierCurrency,
 		JWTSecret:     cfg.JWTSecret,
@@ -922,6 +960,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotifSvc:      notifSvc,
 		Log:           log,
 		SupplierID:    supplierSeed.SupplierID,
+		SeedSupplierID: supplierSeed.SupplierID,
 		Currency:      cfg.SeedSupplierCurrency,
 		JWTSecret:     cfg.JWTSecret,
 		JWTIssuer:     cfg.JWTIssuer,
@@ -1069,6 +1108,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			return factorySvc.ManifestDetailSnapshotForDriver(driverID, manifestID, date)
 		},
 		SupplierID: supplierSeed.SupplierID,
+		SeedSupplierID: supplierSeed.SupplierID,
 		Currency:   cfg.SeedSupplierCurrency,
 		JWTSecret:  cfg.JWTSecret,
 		JWTIssuer:  cfg.JWTIssuer,
@@ -1090,6 +1130,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Repo:                            paymentRepo,
 		Cache:                           cacheClient,
 		Idem:                            idemStore,
+		SeedSupplierID:                  supplierSeed.SupplierID,
 		SupplierID:                      supplierSeed.SupplierID,
 		Currency:                        cfg.SeedSupplierCurrency,
 		Execution:                       paymentExec,
@@ -1194,6 +1235,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		RetailerHub:          retailerHub,
 		Log:                  log,
 		SupplierID:           supplierSeed.SupplierID,
+		SeedSupplierID:       supplierSeed.SupplierID,
 		Currency:             cfg.SeedSupplierCurrency,
 		JWTSecret:            cfg.JWTSecret,
 		JWTIssuer:            cfg.JWTIssuer,
@@ -1242,6 +1284,27 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		DeviceTokens: tokenRepo,
 		Log:          log,
 	})
+	var platformAdminRepo platformadmin.Repository = platformadmin.NewMemoryRepository()
+	var featureFlagRepo featureflags.Repository = featureflags.NewMemoryRepository()
+	if spannerClient != nil {
+		platformAdminRepo = platformadmin.NewSpannerRepository(spannerClient)
+		featureFlagRepo = featureflags.NewSpannerRepository(spannerClient)
+	}
+	platformAdminSvc := platformadmin.NewService(platformAdminRepo)
+	platformAdminHandlers := &platformadmin.Handlers{Svc: platformAdminSvc}
+	featureFlagSvc := featureflags.NewService(featureFlagRepo)
+	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc}
+	supplierSvc.OnRegistered = func(ctx context.Context, supplierID, legalName string) error {
+		if err := platformAdminSvc.EnsurePending(ctx, platformadmin.TenantSupplier, supplierID, legalName); err != nil {
+			return err
+		}
+		// Seed / first tenant auto-approved so single-tenant SSMR keeps working.
+		if supplierID == supplierSeed.SupplierID {
+			_, err := platformAdminSvc.Transition(ctx, "system:bootstrap", platformadmin.TenantSupplier, supplierID, platformadmin.StatusApproved, "seed_auto_approve")
+			return err
+		}
+		return nil
+	}
 
 	var fcmClient *notifications.FCMClient
 	// Prefer real FCM when project id or credentials path is configured.
@@ -1330,6 +1393,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
 	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
 	partnerSvc.SetIdempotencyStore(idemStore)
+	partnerSvc.SetInventoryService(inventorySvc)
+	if spannerClient != nil {
+		partnerSvc.SetPOSFeedSink(partner.NewSpannerPOSFeedSink(spannerClient))
+	}
 	var partnerAs2 partner.As2ConfigRepository = partner.NewMemoryAs2ConfigRepository()
 	if spannerClient != nil {
 		partnerAs2 = partner.NewSpannerAs2ConfigRepository(spannerClient)
@@ -1347,6 +1414,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	partnerEdiOut.SetAs2Repository(partnerAs2)
 	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
 	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
+	partnerEdiIn.SetAckEnqueuer(partnerEdiOut)
 	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
 		loc, err := retailerSvc.EnsurePrimaryLocation(ctx, retailerID)
 		if err != nil {
@@ -1557,6 +1625,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	demandSvc := demand.NewService(spannerClient)
+	if demandSvc != nil {
+		demandSvc.SetSupplierID(func(ctx context.Context) string {
+			return auth.PreferTenantSupplierID(ctx, supplierSeed.SupplierID)
+		})
+	}
 	if demandSvc != nil && reorderSuggestionWorker != nil {
 		demandSvc.SetAfterSensingHook(func(ctx context.Context) error {
 			return reorderSuggestionWorker.RunBatchAllSuppliers(ctx)
@@ -1579,6 +1652,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Idempotency:            idemStore,
 		Supplier:               supplierSeed,
 		CatalogService:         catalogSvc,
+		GlobalProductsService:  globalProductsSvc,
 		PromotionService:       promotionSvc,
 		PromotionAudience:      promotionAudience,
 		InventoryService:       inventorySvc,
@@ -1631,6 +1705,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OutboundCircuits:       outboundCircuits,
 		PlatformService:        platformSvc,
 		PlatformHandler:        platformHandler,
+		PlatformAdminService:   platformAdminSvc,
+		PlatformAdminHandlers:  platformAdminHandlers,
+		FeatureFlagService:     featureFlagSvc,
+		FeatureFlagHandlers:    featureFlagHandlers,
 		PulseHandlers:          pulseHandlers,
 		PushBridge:             pushBridge,
 		Spanner:                spannerClient,

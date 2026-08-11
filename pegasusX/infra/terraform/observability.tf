@@ -242,3 +242,82 @@ resource "google_monitoring_dashboard" "ai_worker_launch" {
     }
   })
 }
+
+# Phase 3 SLO stubs — outbox lag, fiscal success, capture success.
+resource "google_monitoring_alert_policy" "outbox_lag_high" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Outbox lag p99 > 30s"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "outbox lag high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_lag_seconds/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 30
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "Outbox publish lag exceeded 30s for 5 minutes. Check Kafka brokers, relay leases, and DLQ depth. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "fiscal_success_low" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Fiscal success rate < 99%"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "fiscal success ratio low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_fiscal_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "Fiscal submit success rate below 99% over 1h. Check Soliq/OFD credentials and OrderFiscalReceipts failures."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "capture_success_low" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Capture success rate < 99%"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "capture success ratio low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_capture_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "Payment capture success rate below 99% over 1h. Check Global Pay connectivity and CAPTURE_PENDING stuck legs."
+    mime_type = "text/markdown"
+  }
+}

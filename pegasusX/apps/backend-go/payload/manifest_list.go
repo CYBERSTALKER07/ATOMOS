@@ -127,7 +127,7 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 
 	var wire []manifest.Wire
 	if usePortal && s.portalLister != nil {
-		rows, err := s.portalLister.ListPortalManifests(r.Context(), s.supplierID)
+		rows, err := s.portalLister.ListPortalManifests(r.Context(), s.resolveSupplierScope(r.Context()))
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_manifests_failed"})
 			return

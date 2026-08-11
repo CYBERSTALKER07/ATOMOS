@@ -234,7 +234,7 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		RetailerID: reg.RetailerID,
 		Phone:      reg.Phone,
 		Name:       name,
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 		Lat:        req.Latitude,
 		Lng:        req.Longitude,
 	}

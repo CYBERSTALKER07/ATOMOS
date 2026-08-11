@@ -154,6 +154,7 @@ CREATE TABLE Orders (
   OrderId          STRING(36)    NOT NULL,
   SupplierId       STRING(36)    NOT NULL,
   RetailerId       STRING(36)    NOT NULL,
+  ParentOrderId    STRING(36),
   WarehouseId      STRING(36),
   DriverId         STRING(36),
   VehicleId        STRING(36),
@@ -200,6 +201,21 @@ CREATE INDEX Idx_Orders_ByWarehouseRequestedDelivery ON Orders(WarehouseId, Requ
 CREATE INDEX Idx_Orders_ByConfirmationAutoConfirm ON Orders(ConfirmationStatus, AutoConfirmAt, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByDerivedSource ON Orders(DerivedFromOrderId, OrderSource, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByDriverCreated ON Orders(DriverId, CreatedAt DESC);
+CREATE INDEX Idx_Orders_ByParentOrder ON Orders(ParentOrderId, CreatedAt DESC);
+
+-- Gate 5 Phase 2: retailer-facing rollup for multi-supplier checkout.
+CREATE TABLE ParentOrders (
+  ParentOrderId  STRING(36)    NOT NULL,
+  RetailerId     STRING(36)    NOT NULL,
+  Status         STRING(32)    NOT NULL,
+  Currency       STRING(3)     NOT NULL,
+  TotalMinor     INT64         NOT NULL DEFAULT (0),
+  ChildCount     INT64         NOT NULL DEFAULT (0),
+  CreatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ParentOrderId);
+
+CREATE INDEX Idx_ParentOrders_ByRetailerCreated ON ParentOrders(RetailerId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
@@ -632,9 +648,12 @@ CREATE TABLE OutboxEvents (
   ClaimedBy        STRING(64),
   ClaimedUntil     TIMESTAMP,
   PublishAttempts  INT64         NOT NULL DEFAULT (0),
+  SupplierId       STRING(64)    NOT NULL,
 ) PRIMARY KEY (EventId);
 
 CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(PublishedAt, CreatedAt);
+CREATE NULL_FILTERED INDEX Idx_OutboxEvents_Unpublished_BySupplier
+  ON OutboxEvents(SupplierId, PublishedAt, CreatedAt);
 
 -- Dead-letter sink for events that exhaust publish attempts (20260816_outbox_dlq.ddl).
 CREATE TABLE OutboxDeadLetters (
@@ -1660,6 +1679,7 @@ CREATE TABLE DemandSignals (
   Type            STRING(32) NOT NULL,
   Scope           STRING(64) NOT NULL,
   Sku             STRING(64),
+  SupplierId      STRING(36),
   StartAt         TIMESTAMP NOT NULL,
   EndAt           TIMESTAMP NOT NULL,
   Multiplier      FLOAT64 NOT NULL,
@@ -1669,17 +1689,23 @@ CREATE TABLE DemandSignals (
 ) PRIMARY KEY (SignalId);
 
 CREATE INDEX DemandSignals_ByScopeTime ON DemandSignals (Scope, StartAt, EndAt);
+CREATE NULL_FILTERED INDEX Idx_DemandSignals_BySupplierCreated
+  ON DemandSignals(SupplierId, CreatedAt DESC);
 
 CREATE TABLE DemandAdjustments (
   RetailerId      STRING(36) NOT NULL,
   Sku             STRING(64) NOT NULL,
   Date            DATE NOT NULL,
+  SupplierId      STRING(36),
   BaseVelocity    FLOAT64 NOT NULL,
   Adjustment      FLOAT64 NOT NULL,
   AdjustedDemand  FLOAT64 NOT NULL,
   FactorsJson     JSON,
   ComputedAt      TIMESTAMP NOT NULL,
 ) PRIMARY KEY (RetailerId, Sku, Date);
+
+CREATE NULL_FILTERED INDEX Idx_DemandAdjustments_BySupplierDate
+  ON DemandAdjustments(SupplierId, Date DESC);
 -- Money movement ledger (append-only)
 CREATE TABLE OrderPaymentLegs (
   OrderId           STRING(36) NOT NULL,
@@ -1805,6 +1831,7 @@ CREATE TABLE RetailerCreditScores (
 
 CREATE TABLE RoutePerformanceAnalytics (
   RouteId STRING(36) NOT NULL,
+  SupplierId STRING(36),
   DriverId STRING(36),
   PlannedStops INT64,
   ActualStops INT64,
@@ -1813,6 +1840,9 @@ CREATE TABLE RoutePerformanceAnalytics (
   ReplanCount INT64,
   ComputedAt TIMESTAMP,
 ) PRIMARY KEY (RouteId);
+
+CREATE NULL_FILTERED INDEX Idx_RoutePerformanceAnalytics_BySupplierComputed
+  ON RoutePerformanceAnalytics(SupplierId, ComputedAt DESC);
 
 CREATE TABLE NotificationPreferences (
   PrincipalId STRING(36) NOT NULL,
@@ -2052,6 +2082,9 @@ CREATE INDEX Idx_RetailerAutoOrderShadow_ByRetailerBucket
 
 CREATE INDEX Idx_RetailerAutoOrderShadow_ByRetailerSkuBucket
   ON RetailerAutoOrderShadowProposals (RetailerId, Sku, BucketDate DESC);
+
+CREATE NULL_FILTERED INDEX Idx_RetailerAutoOrderShadow_BySupplierBucket
+  ON RetailerAutoOrderShadowProposals(SupplierId, BucketDate DESC);
 
 CREATE TABLE RetailerFavoriteSuppliers (
   RetailerId  STRING(36)  NOT NULL,
@@ -2716,3 +2749,66 @@ CREATE INDEX Idx_BillingFeeSchedules_BySupplier ON BillingFeeSchedules(SupplierI
 CREATE INDEX Idx_BillingFeeSchedules_ByTier ON BillingFeeSchedules(Tier);
 
 ALTER TABLE SupplierProfiles ADD COLUMN Tier STRING(32);
+
+-- Gate 5 / §8.10 Phase 3: GlobalProducts master + offers + match queue + UoM hierarchy.
+CREATE TABLE UnitsOfMeasure (
+  UomId          STRING(36)   NOT NULL,
+  Code           STRING(16)   NOT NULL,
+  Name           STRING(64)   NOT NULL,
+  FactorToBase   INT64        NOT NULL,
+  ParentUomId    STRING(36),
+  CreatedAt      TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (UomId);
+
+CREATE UNIQUE INDEX Idx_UnitsOfMeasure_ByCode ON UnitsOfMeasure(Code);
+
+CREATE TABLE GlobalProducts (
+  GlobalProductId  STRING(36)   NOT NULL,
+  Gtin             STRING(14),
+  Brand            STRING(128),
+  Manufacturer     STRING(128),
+  Name             STRING(255)  NOT NULL,
+  PackQty          INT64        NOT NULL DEFAULT (1),
+  BaseUomId        STRING(36)   NOT NULL,
+  NormalizedKey    STRING(512),
+  Version          INT64        NOT NULL DEFAULT (1),
+  CreatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (GlobalProductId);
+
+CREATE UNIQUE NULL_FILTERED INDEX Idx_GlobalProducts_ByGtin ON GlobalProducts(Gtin);
+CREATE INDEX Idx_GlobalProducts_ByNormalizedKey ON GlobalProducts(NormalizedKey);
+
+CREATE TABLE SupplierProductOffers (
+  SupplierId       STRING(36)   NOT NULL,
+  ProductId        STRING(36)   NOT NULL,
+  GlobalProductId  STRING(36)   NOT NULL,
+  PriceMinor       INT64        NOT NULL,
+  Currency         STRING(3)    NOT NULL,
+  Moq              INT64        NOT NULL DEFAULT (1),
+  LeadTimeDays     INT64        NOT NULL DEFAULT (0),
+  Status           STRING(16)   NOT NULL,
+  Version          INT64        NOT NULL DEFAULT (1),
+  CreatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, ProductId);
+
+CREATE INDEX Idx_Offers_ByGlobalProduct ON SupplierProductOffers(GlobalProductId, Status);
+CREATE INDEX Idx_Offers_ByProduct ON SupplierProductOffers(ProductId);
+
+CREATE TABLE ProductMatchQueue (
+  QueueId                   STRING(36)   NOT NULL,
+  SupplierId                STRING(36)   NOT NULL,
+  ProductId                 STRING(36)   NOT NULL,
+  CandidateGlobalProductId  STRING(36),
+  MatchMethod               STRING(16)   NOT NULL,
+  Score                     FLOAT64      NOT NULL DEFAULT (0),
+  Status                    STRING(16)   NOT NULL,
+  Reason                    STRING(512),
+  Version                   INT64        NOT NULL DEFAULT (1),
+  CreatedAt                 TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt                 TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (QueueId);
+
+CREATE INDEX Idx_MatchQueue_ByStatusCreated ON ProductMatchQueue(Status, CreatedAt);
+CREATE INDEX Idx_MatchQueue_BySupplierProduct ON ProductMatchQueue(SupplierId, ProductId, Status);

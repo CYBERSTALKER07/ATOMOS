@@ -79,6 +79,41 @@
         "PX_E2E_GAP_CLOSURE_OK"
       ]
     },
+    "multi_tenancy": {
+      "description": "Gate 5 Phase 1 request-scoped tenancy (register freeze, IDOR, outbox partition, tenant rate limits)",
+      "markers": [
+        "PX_E2E_TENANT_REGISTER_FROZEN_OK",
+        "PX_E2E_TENANT_REGISTER_FROZEN_SKIPPED",
+        "PX_E2E_TENANT_ORDER_ISOLATION_OK",
+        "PX_E2E_TENANT_ORDER_ISOLATION_SKIPPED",
+        "PX_E2E_OUTBOX_TENANT_PARTITION_OK",
+        "PX_E2E_OUTBOX_TENANT_PARTITION_SKIPPED",
+        "PX_E2E_TENANT_RATE_LIMIT_OK",
+        "PX_E2E_TENANT_RATE_LIMIT_SKIPPED"
+      ]
+    },
+    "parent_orders": {
+      "description": "Gate 5 Phase 2 multi-supplier cart / ParentOrders (register reopen + split + isolation)",
+      "markers": [
+        "PX_E2E_MULTI_SUPPLIER_REGISTER_OK",
+        "PX_E2E_MULTI_SUPPLIER_REGISTER_SKIPPED",
+        "PX_E2E_PARENT_ORDER_SPLIT_OK",
+        "PX_E2E_PARENT_ORDER_SPLIT_SKIPPED",
+        "PX_E2E_PARENT_ORDER_ISOLATION_OK",
+        "PX_E2E_PARENT_ORDER_ISOLATION_SKIPPED"
+      ]
+    },
+    "global_products": {
+      "description": "Gate 5 / §8.10 Phase 3 GlobalProducts master (GTIN link + fuzzy queue + offers compare)",
+      "markers": [
+        "PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_OK",
+        "PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_SKIPPED",
+        "PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_OK",
+        "PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_SKIPPED",
+        "PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_OK",
+        "PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_SKIPPED"
+      ]
+    },
     "multi_org": {
       "description": "Wave C1 multi-org auth (flag off default; picker/switch when MULTI_ORG_LOGIN_ENABLED)",
       "markers": [

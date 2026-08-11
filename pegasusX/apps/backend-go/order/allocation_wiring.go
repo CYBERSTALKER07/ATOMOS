@@ -140,6 +140,7 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 	}
 
 	warehouseLines := make(map[string][]LineItem)
+	allowPartial := allocation.PartialAllocationEnabled()
 	for idx, line := range order.LineItems {
 		sku := strings.TrimSpace(line.SKU)
 		if sku == "" || line.Quantity <= 0 {
@@ -147,9 +148,21 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 		}
 		wid, ok := result.Fulfillments[sku]
 		if !ok {
+			if allowPartial {
+				continue
+			}
 			return fmt.Errorf("partial allocation: sku %s not fulfilled", sku)
 		}
-		warehouseLines[wid] = append(warehouseLines[wid], line)
+		allocQty := line.Quantity
+		if dec, ok := decisionBySku[sku]; ok && dec.AllocatedQty > 0 && dec.AllocatedQty < line.Quantity {
+			if !allowPartial {
+				return fmt.Errorf("partial allocation: sku %s shortfall", sku)
+			}
+			allocQty = dec.AllocatedQty
+		}
+		adjusted := line
+		adjusted.Quantity = allocQty
+		warehouseLines[wid] = append(warehouseLines[wid], adjusted)
 
 		lineID := lineIDForIndex(sku, idx)
 		row := map[string]interface{}{
@@ -157,7 +170,7 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 			"OrderLineId": lineID,
 			"WarehouseId": wid,
 			"Sku":         sku,
-			"Qty":         line.Quantity,
+			"Qty":         allocQty,
 			"CreatedAt":   spanner.CommitTimestamp,
 		}
 		if dec, ok := decisionBySku[sku]; ok {
@@ -183,9 +196,9 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 				"RetailerId":      order.RetailerID,
 				"Sku":             sku,
 				"WarehouseId":     wid,
-				"Qty":             line.Quantity,
+				"Qty":             allocQty,
 				"RequestedQty":    line.Quantity,
-				"AllocatedQty":    line.Quantity,
+				"AllocatedQty":    allocQty,
 				"AllocationMode":  dec.AllocationMode,
 				"PriorityScore":   dec.PriorityScore,
 				"FairShareBps":    dec.FairShareBps,
@@ -272,14 +285,22 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 	}
 	var outboxMuts []*spanner.Mutation
 	for _, e := range buf.events {
-		outboxMuts = append(outboxMuts, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+		row := map[string]any{
 			"EventId":       e.EventID,
 			"AggregateType": e.AggregateType,
 			"AggregateId":   e.AggregateID,
 			"TopicName":     e.TopicName,
 			"Payload":       e.Payload,
 			"CreatedAt":     e.CreatedAt,
-		}))
+		}
+		sid := strings.TrimSpace(e.SupplierID)
+		if sid == "" {
+			sid = outbox.SupplierIDFromPayload(e.Payload)
+		}
+		if sid != "" {
+			row["SupplierId"] = sid
+		}
+		outboxMuts = append(outboxMuts, spanner.InsertOrUpdateMap("OutboxEvents", row))
 	}
 	return txn.BufferWrite(outboxMuts)
 }

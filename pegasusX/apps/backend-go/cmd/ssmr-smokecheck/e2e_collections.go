@@ -34,7 +34,9 @@ func runCollectionsDunningE2E(
 
 	invoiceID := fmt.Sprintf("ari-e2e-%s", uuid.NewString()[:20])
 	orderID := fmt.Sprintf("ord-dun-%s", uuid.NewString()[:18])
-	now := time.Now().UTC()
+	// Lag wall-clock for DueAt/CreditLeaveAt so the Spanner emulator never
+	// rejects them as "in the future" (emulator clock can trail the host).
+	now := time.Now().UTC().Add(-2 * time.Second)
 	dueAt := now.Add(-22 * 24 * time.Hour)
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("ArInvoices", map[string]any{
@@ -42,7 +44,9 @@ func runCollectionsDunningE2E(
 			"Status": "OPEN", "PrincipalMinor": int64(50_000), "BalanceMinor": int64(50_000), "Currency": "UZS",
 			"CreditLeaveAt": dueAt.Add(-30 * 24 * time.Hour), "DueAt": dueAt, "TermsDays": int64(30),
 			"GracePeriodDays": int64(0), "AgingBucket": "1_30", "DunningStep": int64(0), "Version": int64(1),
-			"CreatedAt": now, "UpdatedAt": now,
+			// CreatedAt/UpdatedAt allow_commit_timestamp — use commit time so the
+			// emulator never sees a host-ahead wall clock (SSMR flake).
+			"CreatedAt": spanner.CommitTimestamp, "UpdatedAt": spanner.CommitTimestamp,
 		}),
 	})
 	if err != nil {

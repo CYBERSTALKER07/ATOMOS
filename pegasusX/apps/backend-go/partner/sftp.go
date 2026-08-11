@@ -2,6 +2,8 @@ package partner
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -48,6 +50,44 @@ func LoadSecretRef(secretRef string) (string, error) {
 	return "", fmt.Errorf("secret_not_found")
 }
 
+// PartnerSFTPStrictHostKey returns true when host-key pinning is mandatory.
+func PartnerSFTPStrictHostKey() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("PARTNER_SFTP_STRICT_HOSTKEY")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
+func sftpHostKeyCallback(cfg SftpConfig) (ssh.HostKeyCallback, error) {
+	pin := strings.TrimSpace(cfg.HostKeySHA256)
+	pin = strings.TrimPrefix(pin, "SHA256:")
+	if pin != "" {
+		return func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			sum := sha256.Sum256(key.Marshal())
+			got := base64.RawStdEncoding.EncodeToString(sum[:])
+			alt := base64.StdEncoding.EncodeToString(sum[:])
+			hexGot := fmt.Sprintf("%x", sum[:])
+			if subtleConstEq(pin, got) || subtleConstEq(pin, alt) || subtleConstEq(strings.ToLower(pin), hexGot) {
+				return nil
+			}
+			return fmt.Errorf("sftp_host_key_mismatch")
+		}, nil
+	}
+	if PartnerSFTPStrictHostKey() {
+		return nil, fmt.Errorf("sftp_host_key_required")
+	}
+	return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec // allowed only when strict mode off and pin empty
+}
+
+func subtleConstEq(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	var v byte
+	for i := 0; i < len(a); i++ {
+		v |= a[i] ^ b[i]
+	}
+	return v == 0
+}
+
 // UploadSFTP pushes a local file to the configured remote directory.
 func UploadSFTP(ctx context.Context, cfg SftpConfig, secret, localPath, remoteName string) error {
 	if strings.TrimSpace(cfg.Host) == "" || strings.TrimSpace(cfg.Username) == "" {
@@ -61,10 +101,14 @@ func UploadSFTP(ctx context.Context, cfg SftpConfig, secret, localPath, remoteNa
 	if err != nil {
 		return err
 	}
+	hk, err := sftpHostKeyCallback(cfg)
+	if err != nil {
+		return err
+	}
 	sshCfg := &ssh.ClientConfig{
 		User:            cfg.Username,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // enterprise partners often use password/key; pin later
+		HostKeyCallback: hk,
 		Timeout:         20 * time.Second,
 	}
 	addr := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", port))
@@ -130,10 +174,14 @@ func dialSFTP(cfg SftpConfig, secret string) (*ssh.Client, *sftp.Client, error) 
 	if err != nil {
 		return nil, nil, err
 	}
+	hk, err := sftpHostKeyCallback(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
 	sshCfg := &ssh.ClientConfig{
 		User:            cfg.Username,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec
+		HostKeyCallback: hk,
 		Timeout:         20 * time.Second,
 	}
 	addr := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", port))

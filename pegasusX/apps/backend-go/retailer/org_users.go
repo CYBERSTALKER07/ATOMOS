@@ -143,7 +143,7 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 			RetailerID: u.RetailerID,
 			Phone:      u.Phone,
 			Name:       u.Name,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(ctx),
 			UserID:     u.UserID,
 		}); err != nil {
 			return err

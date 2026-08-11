@@ -70,9 +70,15 @@ func HasScope(scopes []string, need string) bool {
 func DefaultScopesForTenant(tenantType string) []string {
 	switch strings.ToUpper(strings.TrimSpace(tenantType)) {
 	case TenantSupplier:
-		return []string{ScopeOrdersRead, ScopeCatalogRead, ScopeInventoryRead, ScopeWebhooksManage, ScopeExportsRead}
+		return []string{
+			ScopeOrdersRead, ScopeCatalogRead, ScopeCatalogWrite,
+			ScopeInventoryRead, ScopeInventoryWrite, ScopeWebhooksManage, ScopeExportsRead, ScopeDemandWrite,
+		}
 	default:
-		return []string{ScopeOrdersRead, ScopeOrdersWrite, ScopeCatalogRead, ScopeInventoryRead, ScopeWebhooksManage, ScopeExportsRead}
+		return []string{
+			ScopeOrdersRead, ScopeOrdersWrite, ScopeCatalogRead, ScopeInventoryRead,
+			ScopeWebhooksManage, ScopeExportsRead, ScopeDemandWrite,
+		}
 	}
 }
 

@@ -109,6 +109,14 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("order create (checkout path): %w", err)
 	}
+	// Gate 5 tenant markers early — later role paths (payload/payloader) must not
+	// starve Phase 1 proof when an unrelated step times out.
+	if err := runTenantE2E(ctx, client, base, cfg, supplierID, cookie, orderID); err != nil {
+		return fmt.Errorf("tenant e2e: %w", err)
+	}
+	if err := runParentOrderE2E(ctx, client, base, cfg); err != nil {
+		return fmt.Errorf("parent-order e2e: %w", err)
+	}
 
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)

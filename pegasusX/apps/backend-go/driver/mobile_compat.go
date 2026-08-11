@@ -303,7 +303,7 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		DriverID:   driverID,
 		Available:  false,
 		OnShift:    false,
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 	})
 	s.log.InfoContext(r.Context(), "driver returned to depot",
 		"driver_id", driverID,

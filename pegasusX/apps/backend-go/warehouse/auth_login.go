@@ -111,7 +111,7 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 
 	supplierID := strings.TrimSpace(staff.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	isConfigured := false

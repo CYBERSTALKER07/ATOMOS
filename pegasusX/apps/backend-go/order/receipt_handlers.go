@@ -70,7 +70,7 @@ func (s *Service) orderForReceipt(r *http.Request, orderID string) (*Order, erro
 	if s == nil || s.repo == nil || strings.TrimSpace(orderID) == "" {
 		return nil, nil
 	}
-	o, ok, err := s.repo.GetOrder(r.Context(), orderID)
+	o, ok, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil || !ok {
 		return nil, err
 	}

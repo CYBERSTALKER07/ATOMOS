@@ -85,7 +85,7 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 		      ORDER BY sr.UpdatedAt DESC
 		      LIMIT 100`,
 		Params: map[string]any{
-			"supplierId": s.supplierID,
+			"supplierId": s.resolveSupplierScope(ctx),
 			"factoryId":  factoryID,
 		},
 	}
@@ -222,7 +222,7 @@ func (s *Service) transitionSupplyRequestSpanner(ctx context.Context, requestID,
 		if err := row.Columns(&id, &supplierID, &state); err != nil {
 			return err
 		}
-		if supplierID != s.supplierID {
+		if supplierID != s.resolveSupplierScope(ctx) {
 			return fmt.Errorf("forbidden")
 		}
 		muts := []*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{

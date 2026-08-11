@@ -17,9 +17,12 @@ const (
 	ScopeOrdersRead     = "orders:read"
 	ScopeOrdersWrite    = "orders:write"
 	ScopeCatalogRead    = "catalog:read"
+	ScopeCatalogWrite   = "catalog:write"
 	ScopeInventoryRead  = "inventory:read"
+	ScopeInventoryWrite = "inventory:write"
 	ScopeWebhooksManage = "webhooks:manage"
 	ScopeExportsRead    = "exports:read"
+	ScopeDemandWrite    = "demand:write"
 
 	DeliveryPending = "PENDING"
 	DeliverySuccess = "SUCCESS"
@@ -57,6 +60,8 @@ const (
 	EdiDocORDRSP = "ORDRSP"
 	EdiDocDESADV = "DESADV"
 	EdiDocINVOIC = "INVOIC"
+	EdiDocCONTRL = "CONTRL"
+	EdiDocAPERAK = "APERAK"
 
 	EdiStatusReceived  = "RECEIVED"
 	EdiStatusProcessed = "PROCESSED"
@@ -143,6 +148,7 @@ type WebhookRepository interface {
 	ListActiveByEvent(ctx context.Context, eventType string) ([]WebhookSubscription, error)
 	GetSubscription(ctx context.Context, id string) (WebhookSubscription, bool, error)
 	DeactivateSubscription(ctx context.Context, id, tenantType, tenantID string) error
+	UpdateSubscriptionSecret(ctx context.Context, id, tenantType, tenantID, secret string) error
 
 	InsertAttempt(ctx context.Context, a DeliveryAttempt) error
 	GetAttemptBySubEvent(ctx context.Context, subID, eventID string) (DeliveryAttempt, bool, error)
@@ -184,7 +190,12 @@ type SftpConfig struct {
 	OutboundDir string
 	ArchiveDir  string
 	EdiEnabled  bool
-	UpdatedAt   time.Time
+	// HostKeySHA256 is the base64 SHA256 fingerprint of the server host key
+	// (ssh-keygen -lf -E sha256 form without the "SHA256:" prefix). Required
+	// when PARTNER_SFTP_STRICT_HOSTKEY=true; empty allows legacy insecure dial
+	// only when strict mode is off (SSMR/dev).
+	HostKeySHA256 string
+	UpdatedAt     time.Time
 }
 
 // EdiDocument is one inbound or outbound EDI-lite file ledger row.

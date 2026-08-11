@@ -97,7 +97,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 
 	m := spanner.Insert("SupplierUsers",
 		[]string{"UserId", "SupplierId", "Name", "Phone", "PasswordHash", "SupplierRole", "AssignedFactoryId", "IsActive", "CreatedAt", "UpdatedAt"},
-		[]any{userID, s.supplierID, name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
+		[]any{userID, s.resolveSupplierScope(r.Context()), name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
 	)
 
 	if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
@@ -115,7 +115,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	jwtClaims := auth.Claims{
 		Subject:      userID,
 		Role:         auth.RoleFactory,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierScope(r.Context()),
 		SupplierRole: auth.RoleFactory,
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,

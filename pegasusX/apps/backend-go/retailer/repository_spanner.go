@@ -437,7 +437,8 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
 		             COALESCE(v.LicensePlate, ''),
-		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, ''),
+		             COALESCE(o.ParentOrderId, '')
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -492,7 +493,8 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
 		             COALESCE(v.LicensePlate, ''),
-		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, ''),
+		             COALESCE(o.ParentOrderId, '')
 		      FROM Orders o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -1310,6 +1312,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&licensePlate,
 		&fiscalStatus,
 		&latestFiscalReceipt,
+		&tracking.ParentOrderID,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}

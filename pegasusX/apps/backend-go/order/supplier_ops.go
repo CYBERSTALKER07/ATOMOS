@@ -84,7 +84,7 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 	ctx := r.Context()
 	now := s.now()
@@ -281,7 +281,7 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 
 	supplierID, _ := auth.ResolveSupplierID(ctx)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(ctx)
 	}
 	// Gate-0: early-complete must open fiscalization, never jump to COMPLETED.
 	approved := 0

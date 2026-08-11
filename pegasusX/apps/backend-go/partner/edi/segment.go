@@ -15,6 +15,8 @@ const (
 	DocTypeORDRSP = "ORDRSP"
 	DocTypeDESADV = "DESADV"
 	DocTypeINVOIC = "INVOIC"
+	DocTypeCONTRL = "CONTRL"
+	DocTypeAPERAK = "APERAK"
 )
 
 // Segment is one EDI segment (tag + elements).

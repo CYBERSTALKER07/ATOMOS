@@ -127,7 +127,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	if s.warehouse == nil {
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
-	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.supplierID, lat, lng)
+	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.resolveSupplierScope(ctx), lat, lng)
 	if err != nil {
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
 	}
@@ -207,7 +207,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		if warehouseDefault == "" {
 			warehouseDefault = outOfStockPolicyReject
 		}
-		maxQty, perSKUPolicy, err := loadAvailableQuantitiesAndPolicies(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems, warehouseDefault)
+		maxQty, perSKUPolicy, err := loadAvailableQuantitiesAndPolicies(ctx, s.spannerClient, s.resolveSupplierScope(ctx), warehouseID, lineItems, warehouseDefault)
 		if err == nil {
 			resp.MaxQuantities = maxQty
 			if policyErr == nil {
@@ -240,7 +240,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 			}
 		}
 		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
-		invPlan, err := PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems, policyOverride)
+		invPlan, err := PlanInventoryCheckout(ctx, s.spannerClient, s.resolveSupplierScope(ctx), warehouseID, lineItems, policyOverride)
 		if err != nil {
 			var ice *InventoryCheckoutError
 			if errors.As(err, &ice) {

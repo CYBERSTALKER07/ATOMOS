@@ -58,21 +58,67 @@ resource "google_managed_kafka_cluster" "events" {
   depends_on = [google_project_service.required_apis]
 }
 
-resource "google_managed_kafka_topic" "orders" {
-  count              = var.enable_managed_kafka ? 1 : 0
+locals {
+  managed_kafka_topics = var.enable_managed_kafka ? {
+    main = {
+      topic_id         = var.kafka_topic_main
+      partition_count  = 12
+      retention_ms     = "604800000"
+    }
+    main_dlq = {
+      topic_id         = var.kafka_topic_main_dlq
+      partition_count  = 6
+      retention_ms     = "1209600000"
+    }
+    spatial = {
+      topic_id         = var.kafka_topic_spatial
+      partition_count  = 6
+      retention_ms     = "604800000"
+    }
+    realtime = {
+      topic_id         = var.kafka_topic_realtime
+      partition_count  = 12
+      retention_ms     = "259200000"
+    }
+    webhooks = {
+      topic_id         = var.kafka_topic_webhooks
+      partition_count  = 6
+      retention_ms     = "604800000"
+    }
+    freeze_locks = {
+      topic_id         = var.kafka_topic_freeze_locks
+      partition_count  = 6
+      retention_ms     = "604800000"
+    }
+    inventory_import = {
+      topic_id         = var.kafka_topic_inventory_import
+      partition_count  = 6
+      retention_ms     = "604800000"
+    }
+  } : {}
+}
+
+resource "google_managed_kafka_topic" "events" {
+  for_each           = local.managed_kafka_topics
   cluster            = google_managed_kafka_cluster.events[0].cluster_id
   location           = var.region
-  topic_id           = var.kafka_topic_main
-  partition_count    = 12
+  topic_id           = each.value.topic_id
+  partition_count    = each.value.partition_count
   replication_factor = 3
 
   configs = {
     "min.insync.replicas" = "2"
     "cleanup.policy"      = "delete"
+    "retention.ms"        = each.value.retention_ms
   }
 }
 
 output "managed_kafka_bootstrap" {
   description = "Bootstrap host:port for the Managed Kafka cluster (empty when disabled)."
   value       = var.enable_managed_kafka ? "bootstrap.${google_managed_kafka_cluster.events[0].cluster_id}.${var.region}.managedkafka.${var.project_id}.cloud.goog:9092" : ""
+}
+
+output "managed_kafka_topics" {
+  description = "Topic IDs provisioned on Managed Kafka (empty map when disabled)."
+  value       = { for k, v in local.managed_kafka_topics : k => v.topic_id }
 }

@@ -104,7 +104,7 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 	claims := auth.Claims{
 		Subject:      workerID,
 		Role:         auth.RolePayload,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierScope(r.Context()),
 		SupplierRole: auth.RoleWarehouseAdmin,
 		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   warehouseID,
@@ -125,7 +125,7 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 		"token":          token,
 		"refresh_token":  refresh,
 		"worker_id":      workerID,
-		"supplier_id":    s.supplierID,
+		"supplier_id":    s.resolveSupplierScope(r.Context()),
 		"role":           string(auth.RolePayload),
 		"name":           "Demo Payloader",
 		"warehouse_id":   warehouseID,
@@ -136,7 +136,7 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 	if fbToken, err := auth.MintCustomToken(r.Context(), workerID, map[string]interface{}{
 		"role":        string(auth.RolePayload),
 		"worker_id":   workerID,
-		"supplier_id": s.supplierID,
+		"supplier_id": s.resolveSupplierScope(r.Context()),
 	}); err != nil {
 		s.log.Warn("firebase custom token mint failed", "err", err)
 	} else if fbToken != "" {

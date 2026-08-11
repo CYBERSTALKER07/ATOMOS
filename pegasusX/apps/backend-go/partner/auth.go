@@ -49,7 +49,7 @@ func AuthMiddlewareOpts(opts AuthOptions) func(http.Handler) http.Handler {
 				if !ok {
 					return
 				}
-				next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+				next.ServeHTTP(w, r.WithContext(withPartnerTenant(r.Context(), p)))
 				return
 			}
 			if looksLikeJWT(token) && strings.TrimSpace(opts.JWTSecret) != "" {
@@ -58,13 +58,21 @@ func AuthMiddlewareOpts(opts AuthOptions) func(http.Handler) http.Handler {
 					return
 				}
 				if p.KeyID != "" {
-					next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+					next.ServeHTTP(w, r.WithContext(withPartnerTenant(r.Context(), p)))
 					return
 				}
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func withPartnerTenant(ctx context.Context, p Principal) context.Context {
+	ctx = WithPrincipal(ctx, p)
+	if tid := strings.TrimSpace(p.TenantID); tid != "" {
+		ctx = auth.WithTenant(ctx, auth.TenantContext{SupplierID: tid, Source: "partner"})
+	}
+	return ctx
 }
 
 func authenticateAPIKey(ctx context.Context, keys KeyRepository, token string, w http.ResponseWriter) (Principal, bool) {

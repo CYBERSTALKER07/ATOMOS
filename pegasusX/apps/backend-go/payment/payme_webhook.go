@@ -90,7 +90,7 @@ func (s *Service) HandlePaymeWebhook(w http.ResponseWriter, r *http.Request) {
 		Gateway:        "PAYME",
 		TransactionID:  transactionID,
 		OrderID:        strings.TrimSpace(req.Params.OrderID),
-		SupplierID:     s.supplierID,
+		SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(req.Params.OrderID)),
 		Status:         status,
 		AmountMinor:    req.Params.Amount,
 		Currency:       s.currency,

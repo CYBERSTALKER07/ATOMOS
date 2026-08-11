@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestValidateProductionProfile_RejectsDisabledTenantEnforcement(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "false")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected TENANT_CONTEXT_ENFORCED=false to fail production profile")
+	}
+}
+
 func TestValidateProductionProfile_RejectsDevSecrets(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
 	cfg := testConfig()

@@ -109,7 +109,7 @@ struct SearchView: View {
             Text("mobile_retailer.ui.no_results")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("mobile_retailer.ui.no_products_match"\(searchText)\"")
+            Text(L10n.format("mobile_retailer.ui.no_products_found_in_name", searchText))
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()

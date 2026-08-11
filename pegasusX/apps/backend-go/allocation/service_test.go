@@ -61,6 +61,9 @@ func TestAllocateOrder(t *testing.T) {
 	client := newSpannerIntegrationClient(t, ctx)
 	defer client.Close()
 
+	// Hard-fail path must not inherit shell/SSMR PARTIAL_ALLOCATION_ENABLED=true.
+	t.Setenv("PARTIAL_ALLOCATION_ENABLED", "false")
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	supplierID := "S1-" + suffix
 	wh1 := "W1-" + suffix

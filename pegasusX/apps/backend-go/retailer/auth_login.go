@@ -112,10 +112,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 					if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
 						ret = shop
 					} else {
-						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 					}
 				} else {
-					ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+					ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 				}
 				sessionUser = &u
 				ok = true
@@ -144,10 +144,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 							if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
 								ret = shop
 							} else {
-								ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+								ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 							}
 						} else {
-							ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+							ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 						}
 						sessionUser = &u
 						ok = true
@@ -330,7 +330,7 @@ func (s *Service) resolveRetailerLogin(ctx context.Context, phone, secret string
 			RetailerID: reg.RetailerID,
 			Phone:      reg.Phone,
 			Name:       demoRetailerStoreName(),
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(ctx),
 		}, true, nil
 	}
 
@@ -425,7 +425,7 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 		ActiveLocationID: activeLoc,
 	}
 	if claims.SupplierID == "" {
-		claims.SupplierID = s.supplierID
+		claims.SupplierID = s.seedSupplierID
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {

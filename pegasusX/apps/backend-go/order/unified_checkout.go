@@ -19,9 +19,10 @@ const orderH3Resolution = 7
 
 // UnifiedCheckoutLineItem is one cart row from retailer clients.
 type UnifiedCheckoutLineItem struct {
-	SkuID     string `json:"sku_id"`
-	Quantity  int64  `json:"quantity"`
-	UnitPrice int64  `json:"unit_price"`
+	SkuID      string `json:"sku_id"`
+	Quantity   int64  `json:"quantity"`
+	UnitPrice  int64  `json:"unit_price"`
+	SupplierID string `json:"supplier_id,omitempty"`
 }
 
 // UnifiedCheckoutRequest is POST /v1/checkout/unified when the body carries cart items.
@@ -56,10 +57,12 @@ type UnifiedCheckoutResponse struct {
 	InvoiceID            string                `json:"invoice_id"`
 	Total                int64                 `json:"total"`
 	Currency             string                `json:"currency"`
+	ParentOrderID        string                `json:"parent_order_id,omitempty"`
 	SupplierOrders       []SupplierOrderResult `json:"supplier_orders"`
 	BackorderedItemCount int                   `json:"backordered_item_count,omitempty"`
 	StockWarnings        []StockWarning        `json:"stock_warnings,omitempty"`
 	BackorderOrderID     string                `json:"backorder_order_id,omitempty"`
+	SupplierErrors       []SupplierCheckoutFailure `json:"supplier_errors,omitempty"`
 }
 
 // CheckoutSnapshot returns order totals for payment initiation.
@@ -78,7 +81,7 @@ func (s *Service) CheckoutOrderContext(ctx context.Context, orderID, retailerID 
 	if orderID == "" || retailerID == "" {
 		return CheckoutOrderContext{}, errors.New("order_id and retailer_id required")
 	}
-	o, found, err := s.repo.GetOrder(ctx, orderID)
+	o, found, err := s.loadOrderForRequest(ctx, orderID)
 	if err != nil {
 		return CheckoutOrderContext{}, fmt.Errorf("load order %s: %w", orderID, err)
 	}
@@ -157,6 +160,14 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 	resp, err := s.UnifiedCheckout(r.Context(), claims.Subject, req)
 	if err != nil {
 		s.log.Warn("unified checkout failed", "retailer_id", claims.Subject, "err", err)
+		var multiErr *MultiSupplierCheckoutError
+		if errors.As(err, &multiErr) {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"error":           multiErr.Error(),
+				"supplier_errors": multiErr.Failures,
+			})
+			return
+		}
 		switch {
 		case errors.Is(err, ErrZoneMiss):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
@@ -181,7 +192,8 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 	writeJSONBytes(w, http.StatusCreated, respBytes)
 }
 
-// UnifiedCheckout creates one pegasusX-scoped order from the retailer cart.
+// UnifiedCheckout creates one or more supplier-scoped child orders from the retailer cart.
+// When MULTI_SUPPLIER_CHECKOUT_ENABLED, always creates a ParentOrders rollup (including N=1).
 func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req UnifiedCheckoutRequest) (UnifiedCheckoutResponse, error) {
 	if retailerID == "" {
 		return UnifiedCheckoutResponse{}, errors.New("retailer_id required from session")
@@ -197,6 +209,27 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 	h3Cell, err := h3CellFromLatLng(lat, lng)
 	if err != nil {
 		return UnifiedCheckoutResponse{}, fmt.Errorf("derive h3 cell: %w", err)
+	}
+
+	if MultiSupplierCheckoutEnabled() {
+		// Do not quote under the JWT trading-partner tenant for mixed carts —
+		// each Create leg re-quotes under that supplier's TenantContext.
+		draft := make([]LineItem, 0, len(req.Items))
+		for i, item := range req.Items {
+			sku := strings.TrimSpace(item.SkuID)
+			if sku == "" || item.Quantity <= 0 {
+				return UnifiedCheckoutResponse{}, fmt.Errorf("items[%d] requires sku_id and positive quantity", i)
+			}
+			if item.UnitPrice < 0 {
+				return UnifiedCheckoutResponse{}, fmt.Errorf("items[%d].unit_price must be >= 0", i)
+			}
+			draft = append(draft, LineItem{
+				SKU:       sku,
+				Quantity:  item.Quantity,
+				UnitPrice: item.UnitPrice,
+			})
+		}
+		return s.unifiedCheckoutMultiSupplier(ctx, retailerID, req, draft, h3Cell, lat, lng)
 	}
 
 	lineItems, err := s.authoritativeCheckoutLines(ctx, retailerID, req.Items)
@@ -234,7 +267,7 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		Currency:  created.Currency,
 		SupplierOrders: []SupplierOrderResult{{
 			OrderID:      created.OrderID,
-			SupplierID:   s.supplierID,
+			SupplierID:   s.resolveSupplierScope(ctx),
 			SupplierName: supplierName,
 			Total:        created.TotalMinor,
 			Currency:     created.Currency,
@@ -243,6 +276,122 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		BackorderedItemCount: created.BackorderedItemCount,
 		StockWarnings:        created.StockWarnings,
 		BackorderOrderID:     created.BackorderOrderID,
+	}, nil
+}
+
+func (s *Service) unifiedCheckoutMultiSupplier(
+	ctx context.Context,
+	retailerID string,
+	req UnifiedCheckoutRequest,
+	lineItems []LineItem,
+	h3Cell string,
+	lat, lng float64,
+) (UnifiedCheckoutResponse, error) {
+	groups, err := s.groupCheckoutLinesBySupplier(ctx, req.Items, lineItems)
+	if err != nil {
+		return UnifiedCheckoutResponse{}, err
+	}
+	if len(groups) == 0 {
+		return UnifiedCheckoutResponse{}, errors.New("items must not be empty")
+	}
+
+	parentID := strings.Replace(s.newID(), "ord_", "par_", 1)
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" {
+		currency = s.currency
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if err := s.insertParentOrder(ctx, parentID, retailerID, currency, len(groups)); err != nil {
+		return UnifiedCheckoutResponse{}, err
+	}
+
+	supplierName := strings.TrimSpace(s.supplierName)
+	if supplierName == "" {
+		supplierName = "Supplier"
+	}
+
+	createdOrders := make([]Order, 0, len(groups))
+	supplierOrders := make([]SupplierOrderResult, 0, len(groups))
+	var (
+		totalMinor           int64
+		backorderedItemCount int
+		stockWarnings        []StockWarning
+		backorderOrderID     string
+		failures             []SupplierCheckoutFailure
+	)
+
+	for _, g := range groups {
+		legCtx := createCtxForSupplier(ctx, g.SupplierID)
+		created, createErr := s.Create(legCtx, retailerID, CreateRequest{
+			LineItems:             g.Lines,
+			H3Cell:                h3Cell,
+			Lat:                   lat,
+			Lng:                   lng,
+			DeliveryMode:          req.DeliveryMode,
+			RequestedDeliveryDate: req.RequestedDeliveryDate,
+			DeliverBefore:         req.DeliverBefore,
+			DeliveryPriority:      req.DeliveryPriority,
+			CheckoutPolicyToken:   req.CheckoutPolicyToken,
+			Currency:              req.Currency,
+			SupplierID:            g.SupplierID,
+			ParentOrderID:         parentID,
+		})
+		if createErr != nil {
+			failures = append(failures, SupplierCheckoutFailure{
+				SupplierID: g.SupplierID,
+				Error:      createErr.Error(),
+			})
+			s.compensateParentCheckout(ctx, parentID, createdOrders)
+			return UnifiedCheckoutResponse{}, &MultiSupplierCheckoutError{
+				Failures: failures,
+				Message:  fmt.Sprintf("multi_supplier_checkout_failed: supplier %s: %v", g.SupplierID, createErr),
+			}
+		}
+		createdOrders = append(createdOrders, Order{
+			OrderID:       created.OrderID,
+			SupplierID:    g.SupplierID,
+			RetailerID:    retailerID,
+			ParentOrderID: parentID,
+			Status:        created.Status,
+			TotalMinor:    created.TotalMinor,
+			Currency:      created.Currency,
+		})
+		supplierOrders = append(supplierOrders, SupplierOrderResult{
+			OrderID:      created.OrderID,
+			SupplierID:   g.SupplierID,
+			SupplierName: supplierName,
+			Total:        created.TotalMinor,
+			Currency:     created.Currency,
+			ItemCount:    g.ItemCount,
+		})
+		totalMinor += created.TotalMinor
+		if created.Currency != "" {
+			currency = created.Currency
+		}
+		backorderedItemCount += created.BackorderedItemCount
+		stockWarnings = append(stockWarnings, created.StockWarnings...)
+		if backorderOrderID == "" {
+			backorderOrderID = created.BackorderOrderID
+		}
+	}
+
+	if err := s.updateParentOrderTotals(ctx, parentID, parentStatusPending, currency, totalMinor, len(supplierOrders)); err != nil {
+		s.log.Warn("parent order confirm update failed", "parent_order_id", parentID, "err", err)
+	}
+
+	invoiceID := strings.Replace(s.newID(), "ord_", "inv_", 1)
+	return UnifiedCheckoutResponse{
+		Status:               "ok",
+		InvoiceID:            invoiceID,
+		Total:                totalMinor,
+		Currency:             currency,
+		ParentOrderID:        parentID,
+		SupplierOrders:       supplierOrders,
+		BackorderedItemCount: backorderedItemCount,
+		StockWarnings:        stockWarnings,
+		BackorderOrderID:     backorderOrderID,
 	}, nil
 }
 
@@ -333,7 +482,7 @@ func (s *Service) authoritativeCheckoutLines(
 				Currency:  s.currency,
 			})
 		}
-		quote, err := s.promotions.QuoteCheckout(ctx, s.supplierID, retailerID, inputs)
+		quote, err := s.promotions.QuoteCheckout(ctx, s.resolveSupplierScope(ctx), retailerID, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +522,7 @@ func (s *Service) applyPromotionsToLines(ctx context.Context, retailerID string,
 			Currency:  s.currency,
 		})
 	}
-	quote, err := s.promotions.QuoteCheckout(ctx, s.supplierID, retailerID, inputs)
+	quote, err := s.promotions.QuoteCheckout(ctx, s.resolveSupplierScope(ctx), retailerID, inputs)
 	if err != nil {
 		return nil, err
 	}

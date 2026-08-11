@@ -111,7 +111,7 @@ type Service struct {
 	fleetBroadcast FleetAvailabilityBroadcaster
 	idem           idempotency.Store
 
-	supplierID string
+	seedSupplierID string
 	currency   string
 	jwtSecret  string
 	jwtIssuer  string
@@ -150,6 +150,9 @@ type ServiceConfig struct {
 	AvailabilityReader           AvailabilityReader
 	DispatchPlanInvalidate       func(ctx context.Context, warehouseID string)
 	FleetAvailabilityBroadcaster FleetAvailabilityBroadcaster
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID                   string
 	Currency                     string
 	JWTSecret                    string
@@ -273,6 +276,10 @@ func NewService(c ServiceConfig) *Service {
 	if strings.TrimSpace(c.Currency) == "" {
 		c.Currency = "UZS"
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
 		availability:       make(map[string]bool),
 		history:            make(map[string][]HistoryRow),
@@ -301,7 +308,7 @@ func NewService(c ServiceConfig) *Service {
 		availReader:        c.AvailabilityReader,
 		planInvalidate:     c.DispatchPlanInvalidate,
 		fleetBroadcast:     c.FleetAvailabilityBroadcaster,
-		supplierID:         c.SupplierID,
+		seedSupplierID: seedID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
 		jwtIssuer:          strings.TrimSpace(c.JWTIssuer),
@@ -310,6 +317,12 @@ func NewService(c ServiceConfig) *Service {
 		idem:               c.Idem,
 	}
 }
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
 
 type availabilityPatchRequest struct {
 	OnShift bool   `json:"on_shift"`
@@ -569,7 +582,7 @@ func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request
 		OnShift:      req.OnShift,
 		Reason:       reason,
 		Note:         note,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierScope(r.Context()),
 		HomeNodeType: homeNodeType,
 		HomeNodeID:   homeNodeID,
 	}
@@ -888,7 +901,7 @@ func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, pay
 	if s.driverHub != nil && driverID != "" {
 		s.driverHub.Broadcast(ctx, "driver:"+driverID, raw)
 	}
-	if s.supplierHub != nil && s.supplierID != "" {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, raw)
+	if s.supplierHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), raw)
 	}
 }

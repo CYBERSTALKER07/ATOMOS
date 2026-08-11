@@ -25,10 +25,10 @@ patches:
     patch: |-
       - op: replace
         path: /spec/replicas
-        value: 0
+        value: 1
 
 # Backend OPTIMIZER_BASE_URL is owned by the Step 9 / base ConfigMap deploy
-# (http://optimizer-core:8082). Heuristic fallback until replicas ≥ 1.
+# (http://optimizer-core:8082). Phase 4: replicas ≥ 1 on SSMR (heuristic fallback remains if image unhealthy).
 
 images:
   # Remap local tag to SSMR Artifact Registry path (ops publishes real digest/tag).

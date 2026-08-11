@@ -300,6 +300,25 @@ func reliabilityActorKey(r *http.Request) string {
 	if r == nil {
 		return "anonymous"
 	}
+	// Gate 5 Week 10: primary key is tenant; partner class keys remain secondary.
+	if t, ok := auth.TenantFromContext(r.Context()); ok && strings.TrimSpace(t.SupplierID) != "" {
+		tenantKey := "tenant:" + strings.TrimSpace(t.SupplierID)
+		if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+			return tenantKey + ":partner:" + p.KeyID
+		}
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			subject := strings.TrimSpace(claims.Subject)
+			if subject != "" {
+				// Secondary subject segment for single-actor abuse — same tenant shares budget
+				// when TENANT_RATE_LIMIT_SHARED=1 (default on).
+				if tenantRateLimitShared() {
+					return tenantKey
+				}
+				return tenantKey + ":sub:" + subject
+			}
+		}
+		return tenantKey
+	}
 	if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
 		return "partner:" + p.KeyID
 	}
@@ -328,6 +347,19 @@ func reliabilityActorKey(r *http.Request) string {
 		return "ip:" + strings.TrimSpace(r.RemoteAddr)
 	}
 	return "anonymous"
+}
+
+func tenantRateLimitShared() bool {
+	v := strings.TrimSpace(os.Getenv("TENANT_RATE_LIMIT_SHARED"))
+	if v == "" {
+		return true
+	}
+	switch strings.ToLower(v) {
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 func reliabilityClientIPKey(r *http.Request) string {

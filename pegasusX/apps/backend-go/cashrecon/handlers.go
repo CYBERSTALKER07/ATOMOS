@@ -152,7 +152,7 @@ func (h *Handlers) HandleSupplierList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	supplierID := strings.TrimSpace(claims.SupplierID)
+	supplierID := auth.PreferTenantSupplierID(r.Context(), strings.TrimSpace(claims.SupplierID))
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
 		return

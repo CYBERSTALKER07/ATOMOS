@@ -156,6 +156,17 @@ struct VariantOverride: Codable, Identifiable, Hashable {
         skuLabel = try c.decodeIfPresent(String.self, forKey: .skuLabel)
         analyticsStartDate = try c.decodeIfPresent(String.self, forKey: .analyticsStartDate)
     }
+
+    // CodingKeys contains the decode-only alias `skuIDAlt`, so Encodable cannot be synthesized.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(skuID, forKey: .skuID)
+        try c.encodeIfPresent(productID, forKey: .productID)
+        try c.encode(enabled, forKey: .enabled)
+        try c.encode(hasHistory, forKey: .hasHistory)
+        try c.encodeIfPresent(skuLabel, forKey: .skuLabel)
+        try c.encodeIfPresent(analyticsStartDate, forKey: .analyticsStartDate)
+    }
 }
 
 // MARK: - Auto-Order View
@@ -396,7 +407,7 @@ struct AutoOrderView: View {
             }
         }
         .padding(AppTheme.spacingMD)
-        .background(AppTheme.surface)
+        .background(AppTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -416,7 +427,7 @@ struct AutoOrderView: View {
             }
         }
         .padding(AppTheme.spacingMD)
-        .background(AppTheme.surface)
+        .background(AppTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -526,7 +537,7 @@ struct AutoOrderView: View {
             }
         }
         .padding(AppTheme.spacingMD)
-        .background(AppTheme.surface)
+        .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
     }
 
@@ -559,7 +570,7 @@ struct AutoOrderView: View {
             }
         }
         .padding(AppTheme.spacingMD)
-        .background(AppTheme.surface)
+        .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusLG))
     }
 

@@ -36,15 +36,21 @@ type RetailerGeo struct {
 	H3Cell string
 }
 
-// EdiInboundWorker polls SFTP/local inbound for ORDERS files.
+// EdiAckEnqueuer queues CONTRL/APERAK after inbound processing.
+type EdiAckEnqueuer interface {
+	EnqueueFunctionalAck(ctx context.Context, tenantType, tenantID, refDocID, orderID string, accepted bool, reason string)
+}
+
+// EdiInboundWorker polls SFTP/local inbound for ORDERS/ORDRSP/INVOIC files.
 type EdiInboundWorker struct {
 	ediDocs EdiDocumentRepository
 	sftp    SftpConfigRepository
 	svc     *Service
+	acks    EdiAckEnqueuer
 	log     *slog.Logger
 	now     func() time.Time
 	// ResolveGeo optional; when nil, ORDERS must include LOC.
-	ResolveGeo func(ctx context.Context, retailerID string) (RetailerGeo, error)
+	ResolveGeo   func(ctx context.Context, retailerID string) (RetailerGeo, error)
 	SecretLoader func(secretRef string) (string, error)
 }
 
@@ -56,6 +62,13 @@ func NewEdiInboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, 
 		ediDocs: docs, sftp: sftp, svc: svc, log: log,
 		now:          func() time.Time { return time.Now().UTC() },
 		SecretLoader: LoadSecretRef,
+	}
+}
+
+// SetAckEnqueuer wires CONTRL/APERAK emission (typically the outbound worker).
+func (w *EdiInboundWorker) SetAckEnqueuer(acks EdiAckEnqueuer) {
+	if w != nil {
+		w.acks = acks
 	}
 }
 
@@ -133,7 +146,7 @@ func (w *EdiInboundWorker) processLocalRoot(ctx context.Context, root string) (i
 				continue
 			}
 			for _, f := range files {
-				if f.IsDir() || !isOrdersFilename(f.Name()) {
+				if f.IsDir() || !isInboundEDIFilename(f.Name()) {
 					continue
 				}
 				path := filepath.Join(inDir, f.Name())
@@ -141,7 +154,7 @@ func (w *EdiInboundWorker) processLocalRoot(ctx context.Context, root string) (i
 				if err != nil {
 					continue
 				}
-				if err := w.ingestORDERS(ctx, cfg, f.Name(), body); err != nil {
+				if err := w.ingestInboundBytes(ctx, cfg, f.Name(), body); err != nil {
 					w.log.Warn("edi local ingest", "file", f.Name(), "err", err)
 					continue
 				}
@@ -175,7 +188,7 @@ func (w *EdiInboundWorker) processTenant(ctx context.Context, cfg SftpConfig) (i
 	}
 	n := 0
 	for _, f := range files {
-		if !isOrdersFilename(f.Name) {
+		if !isInboundEDIFilename(f.Name) {
 			continue
 		}
 		remotePath := joinRemote(remoteIn, f.Name)
@@ -184,7 +197,7 @@ func (w *EdiInboundWorker) processTenant(ctx context.Context, cfg SftpConfig) (i
 			w.log.Warn("edi download", "file", f.Name, "err", err)
 			continue
 		}
-		if err := w.ingestORDERS(ctx, cfg, f.Name, body); err != nil {
+		if err := w.ingestInboundBytes(ctx, cfg, f.Name, body); err != nil {
 			w.log.Warn("edi ingest", "file", f.Name, "err", err)
 			continue
 		}
@@ -201,6 +214,19 @@ func isOrdersFilename(name string) bool {
 		(strings.Contains(n, "ORDERS") && (strings.HasSuffix(n, ".EDI") || strings.HasSuffix(n, ".TXT")))
 }
 
+func isInboundEDIFilename(name string) bool {
+	n := strings.ToUpper(name)
+	if isOrdersFilename(name) {
+		return true
+	}
+	for _, tok := range []string{"ORDRSP", "INVOIC", "CONTRL", "APERAK"} {
+		if strings.Contains(n, tok) && (strings.HasSuffix(n, ".EDI") || strings.HasSuffix(n, ".TXT") || strings.HasPrefix(n, tok+"_")) {
+			return true
+		}
+	}
+	return strings.HasSuffix(n, ".EDI") || strings.HasSuffix(n, ".TXT")
+}
+
 // IngestORDERSBytes is the AS2/SFTP transport boundary into ORDERS ingest (codecs unchanged).
 func (w *EdiInboundWorker) IngestORDERSBytes(ctx context.Context, tenantType, tenantID, remoteName string, body []byte) error {
 	if w == nil {
@@ -211,7 +237,43 @@ func (w *EdiInboundWorker) IngestORDERSBytes(ctx context.Context, tenantType, te
 	if remoteName == "" {
 		remoteName = "as2:ORDERS.edi"
 	}
-	return w.ingestORDERS(ctx, cfg, remoteName, body)
+	return w.ingestInboundBytes(ctx, cfg, remoteName, body)
+}
+
+func (w *EdiInboundWorker) ingestInboundBytes(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
+	docType, err := edi.DetectDocType(string(body))
+	if err != nil {
+		// Filename heuristic when UNA parse fails early.
+		n := strings.ToUpper(remoteName)
+		switch {
+		case strings.Contains(n, "ORDRSP"):
+			docType = EdiDocORDRSP
+		case strings.Contains(n, "INVOIC"):
+			docType = EdiDocINVOIC
+		default:
+			docType = EdiDocORDERS
+		}
+	}
+	switch strings.ToUpper(docType) {
+	case EdiDocORDERS:
+		return w.ingestORDERS(ctx, cfg, remoteName, body)
+	case EdiDocORDRSP:
+		return w.ingestORDRSP(ctx, cfg, remoteName, body)
+	case EdiDocINVOIC:
+		return w.ingestINVOIC(ctx, cfg, remoteName, body)
+	case EdiDocCONTRL, EdiDocAPERAK:
+		// Partner ACKs of our outbound — record only.
+		return w.ingestAckRecord(ctx, cfg, remoteName, body, strings.ToUpper(docType))
+	default:
+		return fmt.Errorf("unsupported_inbound_doc_type:%s", docType)
+	}
+}
+
+func (w *EdiInboundWorker) emitAcks(ctx context.Context, cfg SftpConfig, refDocID, orderID string, accepted bool, reason string) {
+	if w == nil || w.acks == nil {
+		return
+	}
+	w.acks.EnqueueFunctionalAck(ctx, cfg.TenantType, cfg.TenantID, refDocID, orderID, accepted, reason)
 }
 
 func (w *EdiInboundWorker) ingestORDERS(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
@@ -220,6 +282,7 @@ func (w *EdiInboundWorker) ingestORDERS(ctx context.Context, cfg SftpConfig, rem
 	}
 	msg, err := edi.ParseORDERS(string(body))
 	if err != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, err.Error())
 		return err
 	}
 	hash := sha256.Sum256(body)
@@ -266,10 +329,12 @@ func (w *EdiInboundWorker) ingestORDERS(ctx context.Context, cfg SftpConfig, rem
 
 	p, retailerID, req, err := w.mapOrdersToCreate(ctx, cfg, msg)
 	if err != nil {
+		w.emitAcks(ctx, cfg, msg.ExternalDocID, "", false, err.Error())
 		return w.failDoc(ctx, doc, err.Error())
 	}
 	resp, err := w.svc.CreateOrder(ctx, p, retailerID, req)
 	if err != nil {
+		w.emitAcks(ctx, cfg, msg.ExternalDocID, "", false, err.Error())
 		return w.failDoc(ctx, doc, err.Error())
 	}
 	now := w.now()
@@ -277,7 +342,137 @@ func (w *EdiInboundWorker) ingestORDERS(ctx context.Context, cfg SftpConfig, rem
 	doc.OrderID = resp.OrderID
 	doc.FinishedAt = &now
 	doc.Error = ""
-	return w.ediDocs.Update(ctx, doc)
+	if err := w.ediDocs.Update(ctx, doc); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, msg.ExternalDocID, resp.OrderID, true, "")
+	return nil
+}
+
+func (w *EdiInboundWorker) ingestORDRSP(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	msg, err := edi.ParseORDRSP(string(body))
+	if err != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, err.Error())
+		return err
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	existing, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, EdiDocORDRSP, msg.ExternalDocID)
+	if err != nil {
+		return err
+	}
+	if ok && existing.Status == EdiStatusProcessed {
+		return nil
+	}
+	doc := EdiDocument{
+		DocumentID:    uuid.NewString(),
+		TenantType:    cfg.TenantType,
+		TenantID:      cfg.TenantID,
+		Direction:     EdiDirectionIn,
+		DocType:       EdiDocORDRSP,
+		ExternalDocID: msg.ExternalDocID,
+		OrderID:       msg.RefOrderID,
+		Status:        EdiStatusProcessed,
+		RemoteName:    remoteName,
+		PayloadHash:   hashHex,
+		CreatedAt:     w.now(),
+	}
+	now := w.now()
+	doc.FinishedAt = &now
+	if !msg.Accepted {
+		doc.Status = EdiStatusFailed
+		doc.Error = "ordrsp_rejected:" + msg.ResponseCode
+	}
+	if ok {
+		doc.DocumentID = existing.DocumentID
+		doc.CreatedAt = existing.CreatedAt
+		if err := w.ediDocs.Update(ctx, doc); err != nil {
+			return err
+		}
+	} else if err := w.ediDocs.Insert(ctx, doc); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, msg.ExternalDocID, msg.RefOrderID, msg.Accepted, doc.Error)
+	return nil
+}
+
+func (w *EdiInboundWorker) ingestINVOIC(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	msg, err := edi.ParseINVOIC(string(body))
+	if err != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, err.Error())
+		return err
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	existing, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, EdiDocINVOIC, msg.ExternalDocID)
+	if err != nil {
+		return err
+	}
+	if ok && existing.Status == EdiStatusProcessed {
+		return nil
+	}
+	now := w.now()
+	doc := EdiDocument{
+		DocumentID:    uuid.NewString(),
+		TenantType:    cfg.TenantType,
+		TenantID:      cfg.TenantID,
+		Direction:     EdiDirectionIn,
+		DocType:       EdiDocINVOIC,
+		ExternalDocID: msg.ExternalDocID,
+		OrderID:       msg.RefOrderID,
+		Status:        EdiStatusProcessed,
+		RemoteName:    remoteName,
+		PayloadHash:   hashHex,
+		CreatedAt:     now,
+		FinishedAt:    &now,
+	}
+	if ok {
+		doc.DocumentID = existing.DocumentID
+		doc.CreatedAt = existing.CreatedAt
+		if err := w.ediDocs.Update(ctx, doc); err != nil {
+			return err
+		}
+	} else if err := w.ediDocs.Insert(ctx, doc); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, msg.ExternalDocID, msg.RefOrderID, true, "")
+	return nil
+}
+
+func (w *EdiInboundWorker) ingestAckRecord(ctx context.Context, cfg SftpConfig, remoteName string, body []byte, docType string) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	ext := remoteName + ":" + hashHex[:12]
+	_, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, docType, ext)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+	now := w.now()
+	return w.ediDocs.Insert(ctx, EdiDocument{
+		DocumentID:    uuid.NewString(),
+		TenantType:    cfg.TenantType,
+		TenantID:      cfg.TenantID,
+		Direction:     EdiDirectionIn,
+		DocType:       docType,
+		ExternalDocID: ext,
+		Status:        EdiStatusProcessed,
+		RemoteName:    remoteName,
+		PayloadHash:   hashHex,
+		CreatedAt:     now,
+		FinishedAt:    &now,
+	})
 }
 
 func (w *EdiInboundWorker) failDoc(ctx context.Context, doc EdiDocument, msg string) error {

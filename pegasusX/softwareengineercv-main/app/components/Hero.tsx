@@ -123,9 +123,10 @@ export default function Hero() {
       <div className="page-shell py-12 sm:py-16 lg:py-20 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
           {/* Content Side - Left */}
-          <div ref={textRef} className="space-y-8 order-2 lg:order-1">
+          <div ref={textRef} className="space-y-8 order-1">
             <div>
-              <div ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 mb-2">
+              <h1 ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 mb-2">
+                <span className="sr-only">{t('hero_title')}</span>
                 <ParticleText
                   text="Pegasus"
                   particleSize={2.2}
@@ -144,7 +145,7 @@ export default function Hero() {
                   textAlign="left"
                   glow
                 />
-              </div>
+              </h1>
 
               <div ref={subtitleRef} className="mb-6">
                 <TextType
@@ -183,16 +184,16 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Visual Side — break out to viewport with 70px side gutters on small screens */}
+          {/* Visual Side — break out to viewport with 16px side gutters on small screens, 70px on sm */}
           <div
             ref={visualRef}
-            className="relative order-1 lg:order-2 w-[calc(100vw-140px)] max-w-[calc(100vw-140px)] ml-[calc(50%-50vw+70px)] lg:ml-0 lg:w-full lg:max-w-none"
+            className="relative order-2 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] ml-[calc(50%-50vw+16px)] sm:w-[calc(100vw-140px)] sm:max-w-[calc(100vw-140px)] sm:ml-[calc(50%-50vw+70px)] lg:ml-0 lg:w-full lg:max-w-none"
           >
             <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[120px] sm:rounded-tl-[160px] lg:rounded-tl-[200px] rounded-br-[60px] sm:rounded-br-[80px] lg:rounded-br-[100px] border-none">
               <div className="absolute inset-0">
                 <img
                   src="/EbszSCwA.jpeg"
-                  alt="Pegasus Logistics"
+                  alt="Pegasus Logistics Platform Dashboard Interface"
                   className="h-full w-full object-cover"
                 />
               </div>

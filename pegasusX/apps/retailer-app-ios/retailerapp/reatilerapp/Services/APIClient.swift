@@ -766,7 +766,7 @@ final class APIClient {
         if let token = authToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let data = try await dataForRequestWithFallback(request)
+        let (data, _) = try await dataForRequestWithFallback(request)
         return try JSONDecoder().decode(RetailerOrgMembersResponse.self, from: data)
     }
 

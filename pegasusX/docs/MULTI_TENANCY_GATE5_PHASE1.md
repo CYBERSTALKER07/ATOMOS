@@ -1,7 +1,7 @@
 # ADR: Gate 5 / §8.10 Phase 1 — Request-scoped multi-tenancy
 
-**Status:** Accepted (program plan) — **not implemented** (runtime still single-supplier)  
-**Date:** 2026-08-07  
+**Status:** Accepted — Phase 1 **Wired (Done)** (2026-08-11 live `tenant` smokecheck green); Outbox `SupplierId` NOT NULL closed; RoutePerformanceAnalytics column tenancy Wired
+**Date:** 2026-08-07 (Done 2026-08-11)  
 **Deciders:** Platform engineering  
 **Related:** [PLATFORM_AUDIT.md](../PLATFORM_AUDIT.md) §8.10 + Gate 5; [privacy-multi-tenant.md](./big-platform-baseline/regulatory/privacy-multi-tenant.md); original Pegasus claim-scoped tenancy  
 

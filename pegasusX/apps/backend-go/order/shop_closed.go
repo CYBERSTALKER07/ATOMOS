@@ -832,6 +832,13 @@ func outboxMutation(e outbox.Event) *spanner.Mutation {
 	if e.PublishedAt != nil {
 		row["PublishedAt"] = e.PublishedAt.UTC()
 	}
+	sid := strings.TrimSpace(e.SupplierID)
+	if sid == "" {
+		sid = outbox.SupplierIDFromPayload(e.Payload)
+	}
+	if sid != "" {
+		row["SupplierId"] = sid
+	}
 	return spanner.InsertOrUpdateMap("OutboxEvents", row)
 }
 

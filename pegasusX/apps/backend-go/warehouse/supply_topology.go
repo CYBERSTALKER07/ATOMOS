@@ -22,7 +22,7 @@ func (s *Service) resolveWarehouseSupplyContext(ctx context.Context, warehouseID
 	}
 	if s.spannerClient == nil {
 		return warehouseSupplyContext{
-			FactoryID:    strings.TrimSpace(s.supplierID),
+			FactoryID:    strings.TrimSpace(s.seedSupplierID),
 			TransferMode: supplier.TransferModeTruck,
 		}, nil
 	}

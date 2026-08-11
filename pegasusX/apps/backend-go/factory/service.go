@@ -48,7 +48,7 @@ type Service struct {
 	idem          idempotency.Store
 	locations     telemetry.LastLocationReader
 
-	supplierID       string
+	seedSupplierID       string
 	factoryNodeID    string
 	currency         string
 	jwtSecret        string
@@ -81,6 +81,9 @@ type ServiceConfig struct {
 	Spanner     *spanner.Client
 	Locations   telemetry.LastLocationReader
 
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID       string
 	FactoryNodeID    string
 	Currency         string
@@ -249,8 +252,12 @@ func NewService(c ServiceConfig) *Service {
 		c.Currency = "UZS"
 	}
 	factoryNodeID := strings.TrimSpace(c.FactoryNodeID)
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	if factoryNodeID == "" {
-		factoryNodeID = c.SupplierID
+		factoryNodeID = seedID
 	}
 	return &Service{
 		repo:                  c.Repo,
@@ -258,7 +265,7 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:           c.SupplierHub,
 		factoryHub:            c.FactoryHub,
 		log:                   c.Log,
-		supplierID:            c.SupplierID,
+		seedSupplierID: seedID,
 		factoryNodeID:         factoryNodeID,
 		currency:              c.Currency,
 		jwtSecret:             c.JWTSecret,
@@ -273,6 +280,12 @@ func NewService(c ServiceConfig) *Service {
 		manifestReassignments: make(map[string][]ManifestReassignment),
 	}
 }
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
 
 type transferCreateRequest struct {
 	OrderID   string `json:"order_id"`
@@ -697,7 +710,7 @@ func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, d
 		return
 	}
 	if s.supplierHub != nil {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, payload)
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), payload)
 	}
 	if s.factoryHub != nil {
 		s.factoryHub.Broadcast(ctx, "factory:"+s.factoryNodeID, payload)
@@ -716,11 +729,11 @@ func (s *Service) broadcastFactorySupplyEvent(ctx context.Context, envelope map[
 	s.broadcastFactoryEvent(ctx, eventType, data)
 }
 
-func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) events.ManifestEvent {
+func (s *Service) manifestOutboxFields(ctx context.Context, manifest ManifestRow, eventType string) events.ManifestEvent {
 	return events.ManifestEvent{
 		BaseEvent:     events.BaseEvent{Type: eventType},
 		ManifestID:    manifest.ManifestID,
-		SupplierID:    s.supplierID,
+		SupplierID:    s.resolveSupplierScope(ctx),
 		FactoryID:     s.factoryNodeID,
 		State:         manifest.State,
 		DriverID:      manifest.DriverID,
@@ -802,7 +815,7 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
-	resp := s.iosDashboardLocked()
+	resp := s.iosDashboardLocked(s.resolveSupplierScope(r.Context()))
 	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -816,7 +829,7 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"factory_id":   s.factoryNodeID,
 		"factory_name": "PegasusX Demo Factory",
-		"supplier_id":  s.supplierID,
+		"supplier_id":  s.resolveSupplierScope(r.Context()),
 		"currency":     s.currency,
 		"updated_at":   s.now().Format(time.RFC3339Nano),
 	})
@@ -898,7 +911,7 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_create_failed"})
 			return
 		}
-		s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.supplierID))
+		s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 		idemCommitted = true
 		s.writeIdempotentJSON(w, r, body, http.StatusCreated, row)
 	default:
@@ -1039,7 +1052,7 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		if eventType == "" {
 			return nil
 		}
-		payload := s.manifestOutboxFields(manifest, eventType)
+		payload := s.manifestOutboxFields(r.Context(), manifest, eventType)
 		payload.Reason = strings.TrimSpace(req.Reason)
 		payload.Action = action
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, payload)
@@ -1057,7 +1070,7 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(manifest.ManifestID), factoryManifestListKey(s.supplierID), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(manifest.ManifestID), factoryManifestListKey(s.resolveSupplierScope(r.Context())), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	if eventType != "" {
 		s.broadcastFactoryEvent(r.Context(), eventType, map[string]any{
 			"manifest_id": manifest.ManifestID,
@@ -1293,7 +1306,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, events.ManifestEvent{
 			BaseEvent:     events.BaseEvent{Type: events.EventManifestDraftCreated},
 			ManifestID:    manifest.ManifestID,
-			SupplierID:    s.supplierID,
+			SupplierID:    s.resolveSupplierScope(r.Context()),
 			FactoryID:     s.factoryNodeID,
 			RouteID:       routeIDForManifest(manifest),
 			TransferCount: manifest.TransferCnt,
@@ -1307,7 +1320,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(manifest.ManifestID), factoryManifestListKey(s.supplierID), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(manifest.ManifestID), factoryManifestListKey(s.resolveSupplierScope(r.Context())), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastFactoryEvent(r.Context(), events.EventManifestDraftCreated, map[string]any{
 		"manifest_id":       manifest.ManifestID,
 		"transfer_count":    manifest.TransferCnt,
@@ -1466,7 +1479,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 			BaseEvent:     events.BaseEvent{Type: events.EventManifestRebalanced},
 			ManifestID:    req.ManifestID,
 			TransferID:    req.TransferID,
-			SupplierID:    s.supplierID,
+			SupplierID:    s.resolveSupplierScope(r.Context()),
 			FactoryID:     s.factoryNodeID,
 			FromDriverID:  reassign.FromDriverID,
 			ToDriverID:    reassign.ToDriverID,
@@ -1508,7 +1521,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.supplierID), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.resolveSupplierScope(r.Context())), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastFactoryEvent(r.Context(), events.EventManifestRebalanced, map[string]any{
 		"manifest_id":            req.ManifestID,
 		"transfer_id":            req.TransferID,
@@ -1625,7 +1638,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException},
 			ManifestID:   req.ManifestID,
 			TransferID:   req.TransferID,
-			SupplierID:   s.supplierID,
+			SupplierID:   s.resolveSupplierScope(r.Context()),
 			FactoryID:    s.factoryNodeID,
 			Reason:       exception.Reason,
 			AttemptCount: exception.AttemptCount,
@@ -1638,7 +1651,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation},
 				ManifestID:   req.ManifestID,
 				TransferID:   req.TransferID,
-				SupplierID:   s.supplierID,
+				SupplierID:   s.resolveSupplierScope(r.Context()),
 				FactoryID:    s.factoryNodeID,
 				Reason:       exception.Reason,
 				AttemptCount: exception.AttemptCount,
@@ -1666,7 +1679,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.supplierID), factoryTransferListKey(s.supplierID), factoryExceptionListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.resolveSupplierScope(r.Context())), factoryTransferListKey(s.resolveSupplierScope(r.Context())), factoryExceptionListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastFactoryEvent(r.Context(), events.EventManifestOrderException, map[string]any{
 		"manifest_id":   req.ManifestID,
 		"transfer_id":   req.TransferID,
@@ -1765,7 +1778,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventManifestCancelled},
 			ManifestID: req.ManifestID,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(r.Context()),
 			FactoryID:  s.factoryNodeID,
 			Reason:     strings.TrimSpace(req.Reason),
 		})
@@ -1787,7 +1800,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.supplierID), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryManifestKey(req.ManifestID), factoryManifestListKey(s.resolveSupplierScope(r.Context())), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastFactoryEvent(r.Context(), events.EventManifestCancelled, map[string]any{
 		"manifest_id": req.ManifestID,
 		"reason":      strings.TrimSpace(req.Reason),
@@ -1919,7 +1932,7 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 			"request_id":              row.RequestID,
 			"warehouse_id":            row.WarehouseID,
 			"factory_id":              s.factoryNodeID,
-			"supplier_id":             s.supplierID,
+			"supplier_id":             s.resolveSupplierScope(r.Context()),
 			"state":                   row.Status,
 			"priority":                row.Priority,
 			"notes":                   row.Notes,
@@ -2040,7 +2053,7 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 			BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestAccepted, Timestamp: nowTS},
 			RequestID:   requestID,
 			WarehouseID: req.WarehouseID,
-			SupplierID:  s.supplierID,
+			SupplierID:  s.resolveSupplierScope(r.Context()),
 			FactoryID:   s.factoryNodeID,
 			Status:      nextState,
 		})

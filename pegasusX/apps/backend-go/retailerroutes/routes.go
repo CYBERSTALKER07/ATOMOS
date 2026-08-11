@@ -163,6 +163,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/retailer/cart/sync", d.Service.HandleCartSync)
 		rr.Post("/v1/retailer/cart/sync", d.Service.HandleCartSync)
+		rr.Delete("/v1/retailer/cart", d.Service.HandleCartClear)
+		rr.Post("/v1/retailer/cart/clear", d.Service.HandleCartClear)
 		if d.PromotionService != nil {
 			rr.Post("/v1/retailer/checkout/quote", d.PromotionService.HandleCheckoutQuote)
 			rr.Post("/v1/retailer/promotions/watch", d.PromotionService.HandleWatchSupplierPromotions)

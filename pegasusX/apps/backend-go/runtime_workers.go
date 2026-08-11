@@ -8,6 +8,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -16,6 +17,12 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.OutboxRelay != nil {
 		go app.OutboxRelay.Start(ctx)
 		slog.Info("outbox relay started")
+	}
+	if app.Spanner != nil {
+		go outbox.StartSupplierIDBackfill(ctx, app.Spanner, slog.Default())
+		if outbox.SupplierBackfillEnabled() {
+			slog.Info("outbox supplier_id backfill worker started")
+		}
 	}
 	if app.Cache != nil {
 		go app.Cache.StartInvalidationSubscriber(ctx)

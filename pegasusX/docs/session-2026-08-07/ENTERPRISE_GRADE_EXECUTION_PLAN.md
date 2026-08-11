@@ -6,19 +6,19 @@ todos:
     status: pending
   - id: "phase-1"
     content: "Phase 1: Money and law complete (fiscal flip-readiness, AR activation + off-app dunning, refunds/payouts, fee schedule)"
-    status: pending
+    status: completed
   - id: "phase-2"
     content: "Phase 2: Enterprise integration (master-data API, webhook coverage, EDI ACKs, AS2/SFTP enablement, DataMatrix, SDK)"
-    status: pending
+    status: completed
   - id: "phase-3"
     content: "Phase 3: Operational truth (admin console, flag service, WMS mobile execution, client parity, SLO observability)"
-    status: pending
+    status: completed
   - id: "phase-4"
     content: "Phase 4: Autonomy on evidence (optimizer deploy, shadow soak, place flip criteria, partial allocation, real S&OP)"
-    status: pending
+    status: completed
   - id: "phase-5"
     content: "Phase 5: Runtime multi-tenancy Phase 1 per ADR (tenant context, fail-closed middleware, outbox partition, IDOR proof)"
-    status: pending
+    status: completed
   - id: "phase-6"
     content: "Phase 6: Marketplace and enterprise scale (decision-gated on evidence: product master, certified EDI/1C, BI sink)"
     status: pending

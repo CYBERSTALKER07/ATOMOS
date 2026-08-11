@@ -437,15 +437,16 @@ func (h *Handlers) HandlePutSftp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Host        string `json:"host"`
-		Port        int64  `json:"port"`
-		Username    string `json:"username"`
-		SecretRef   string `json:"secret_ref"`
-		RemoteDir   string `json:"remote_dir"`
-		InboundDir  string `json:"inbound_dir"`
-		OutboundDir string `json:"outbound_dir"`
-		ArchiveDir  string `json:"archive_dir"`
-		EdiEnabled  *bool  `json:"edi_enabled"`
+		Host          string `json:"host"`
+		Port          int64  `json:"port"`
+		Username      string `json:"username"`
+		SecretRef     string `json:"secret_ref"`
+		RemoteDir     string `json:"remote_dir"`
+		InboundDir    string `json:"inbound_dir"`
+		OutboundDir   string `json:"outbound_dir"`
+		ArchiveDir    string `json:"archive_dir"`
+		EdiEnabled    *bool  `json:"edi_enabled"`
+		HostKeySHA256 string `json:"host_key_sha256"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writePartnerError(w, http.StatusBadRequest, "invalid_json")
@@ -455,6 +456,7 @@ func (h *Handlers) HandlePutSftp(w http.ResponseWriter, r *http.Request) {
 		Host: req.Host, Port: req.Port, Username: req.Username,
 		SecretRef: req.SecretRef, RemoteDir: req.RemoteDir,
 		InboundDir: req.InboundDir, OutboundDir: req.OutboundDir, ArchiveDir: req.ArchiveDir,
+		HostKeySHA256: strings.TrimSpace(req.HostKeySHA256),
 	}
 	if req.EdiEnabled != nil {
 		cfg.EdiEnabled = *req.EdiEnabled

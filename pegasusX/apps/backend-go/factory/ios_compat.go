@@ -13,7 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
-func (s *Service) iosDashboardLocked() map[string]any {
+func (s *Service) iosDashboardLocked(supplierID string) map[string]any {
 	pending := int64(0)
 	loading := int64(0)
 	activeManifests := int64(len(s.manifests))
@@ -63,7 +63,7 @@ func (s *Service) iosDashboardLocked() map[string]any {
 		"vehicles_available": vehiclesAvailable,
 		"staff_on_shift":     onShift,
 		"critical_insights":  int64(len(s.manifestExceptions)),
-		"supplier_id":        s.supplierID,
+		"supplier_id":        supplierID,
 		"factory_id":         s.factoryNodeID,
 		"updated_at":         s.now().Format(time.RFC3339Nano),
 	}
@@ -290,7 +290,7 @@ func (s *Service) HandleTransferTransition(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_transition_failed"})
 		return
 	}
-	s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	idemCommitted = true
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, s.iosTransferPayload(row))
 }

@@ -136,7 +136,7 @@ func (s *Service) loadGs1CompanyPrefix(ctx context.Context) (string, error) {
 	if client == nil {
 		return "", nil
 	}
-	sid := strings.TrimSpace(s.supplierID)
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
 	if sid == "" {
 		return "", nil
 	}
@@ -304,7 +304,7 @@ func (s *Service) labelGLNs(ctx context.Context, manifestID string) (fromGLN, to
 	if client == nil {
 		return "", ""
 	}
-	sid := strings.TrimSpace(s.supplierID)
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
 	if sid != "" {
 		row, err := client.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{sid}, []string{"Gln"})
 		if err == nil {

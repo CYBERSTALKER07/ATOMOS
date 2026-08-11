@@ -213,9 +213,10 @@ type Service struct {
 	repo       Repository
 	cache      *cache.Cache
 	idem       idempotency.Store
-	supplierID string
-	currency   string
-	execution  *ProviderExecutionRouter
+	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierID.
+	seedSupplierID string
+	currency       string
+	execution      *ProviderExecutionRouter
 
 	cartCheckout    CartCheckoutHandler
 	checkoutPreview CheckoutPreviewHandler
@@ -244,6 +245,9 @@ type ServiceConfig struct {
 	Repo                            Repository
 	Cache                           *cache.Cache
 	Idem                            idempotency.Store
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID                  string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID                      string
 	Currency                        string
 	Execution                       *ProviderExecutionRouter
@@ -372,11 +376,15 @@ func NewService(c ServiceConfig) *Service {
 			GlobalPayPassword:               c.GlobalPayPassword,
 		})
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
 		repo:                   c.Repo,
 		cache:                  c.Cache,
 		idem:                   c.Idem,
-		supplierID:             c.SupplierID,
+		seedSupplierID:         seedID,
 		currency:               c.Currency,
 		execution:              c.Execution,
 		globalPayEnv:           c.GlobalPayEnv,
@@ -507,7 +515,7 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 	rec := ChargebackRecord{
 		ChargebackID: s.newID("chargeback"),
 		OrderID:      strings.TrimSpace(req.OrderID),
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierID(r.Context()),
 		RetailerID:   strings.TrimSpace(req.RetailerID),
 		Gateway:      executionResult.ResolvedGateway,
 		AmountMinor:  amount,
@@ -614,7 +622,7 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 	rev := ReversalRecord{
 		ReversalID:  s.newID("reversal"),
 		SessionID:   strings.TrimSpace(req.SessionID),
-		SupplierID:  s.supplierID,
+		SupplierID:  s.resolveSupplierID(r.Context()),
 		Gateway:     executionResult.ResolvedGateway,
 		AmountMinor: 0,
 		Currency:    s.currency,
@@ -781,7 +789,7 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 	}
 	supplierID := strings.TrimSpace(in.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierID(ctx)
 	}
 	now := s.now()
 	gateway := "INTERNAL"
@@ -904,7 +912,7 @@ func (s *Service) HandleClaimChargebacks(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusServiceUnavailable, "ledger_repository_unavailable", "Ledger repository is unavailable", endpoint, false, "")
 		return
 	}
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -959,7 +967,7 @@ func (s *Service) HandleLedger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -1030,7 +1038,7 @@ func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -1130,7 +1138,7 @@ func (s *Service) HandleReconciliationMismatches(w http.ResponseWriter, r *http.
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -1442,13 +1450,7 @@ func (s *Service) persistIdempotencyRecord(ctx context.Context, key, bodyHash st
 }
 
 func resolvePaymentSupplierScope(w http.ResponseWriter, r *http.Request, fallbackSupplierID string, endpoint string) (string, bool) {
-	supplierID := strings.TrimSpace(fallbackSupplierID)
-	if scopedSupplierID, ok := auth.ResolveSupplierID(r.Context()); ok {
-		scopedSupplierID = strings.TrimSpace(scopedSupplierID)
-		if scopedSupplierID != "" {
-			supplierID = scopedSupplierID
-		}
-	}
+	supplierID := auth.PreferTenantSupplierID(r.Context(), fallbackSupplierID)
 
 	requestedSupplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
 	if requestedSupplierID != "" {
@@ -1460,6 +1462,23 @@ func resolvePaymentSupplierScope(w http.ResponseWriter, r *http.Request, fallbac
 	}
 
 	return supplierID, true
+}
+
+// resolveSupplierID prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierID(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
+// resolveWebhookSupplierID prefers payment-session tenant, then seed (webhooks lack JWT).
+func (s *Service) resolveWebhookSupplierID(ctx context.Context, orderID string) string {
+	if oid := strings.TrimSpace(orderID); oid != "" && s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, oid); err == nil && ok {
+			if sid := strings.TrimSpace(session.SupplierID); sid != "" {
+				return sid
+			}
+		}
+	}
+	return strings.TrimSpace(s.seedSupplierID)
 }
 
 func parseBoundedIntQuery(raw string, defaultValue int, minValue int, maxValue int) (int, error) {

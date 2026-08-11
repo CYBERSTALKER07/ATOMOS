@@ -109,9 +109,10 @@ func (w *EdiOutboundWorker) EnqueueOutbound(ctx context.Context, tenantType, ten
 		return err
 	}
 	if !found || !cfg.EdiEnabled {
-		// Still allow enqueue for supplier mirror when retailer events carry supplier_id —
-		// caller should pass supplier tenant. Skip when EDI off.
-		return nil
+		// Local-root mode still queues docs (CONTRL/APERAK + business messages).
+		if partnerEDILocalRoot() == "" {
+			return nil
+		}
 	}
 	d := EdiDocument{
 		DocumentID:    uuid.NewString(),
@@ -127,26 +128,89 @@ func (w *EdiOutboundWorker) EnqueueOutbound(ctx context.Context, tenantType, ten
 	return w.ediDocs.Insert(ctx, d)
 }
 
+// EnqueueFunctionalAck queues CONTRL (syntax) and APERAK (application) for an inbound doc.
+// External IDs are `{ref}:CONTRL:OK|REJ` and `{ref}:APERAK:OK|REJ`.
+func (w *EdiOutboundWorker) EnqueueFunctionalAck(ctx context.Context, tenantType, tenantID, refDocID, orderID string, accepted bool, reason string) {
+	if w == nil || strings.TrimSpace(refDocID) == "" {
+		return
+	}
+	suffix := "OK"
+	if !accepted {
+		suffix = "REJ"
+	}
+	_ = w.EnqueueOutbound(ctx, tenantType, tenantID, EdiDocCONTRL, refDocID+":CONTRL:"+suffix, orderID)
+	aperakExt := refDocID + ":APERAK:" + suffix
+	if !accepted && strings.TrimSpace(reason) != "" {
+		// Encode reject reason in ExternalDocID tail (EDI-lite; truncated).
+		r := sanitizeName(reason)
+		if len(r) > 40 {
+			r = r[:40]
+		}
+		aperakExt = refDocID + ":APERAK:" + suffix + ":" + r
+	}
+	_ = w.EnqueueOutbound(ctx, tenantType, tenantID, EdiDocAPERAK, aperakExt, orderID)
+}
+
+func ackAcceptedFromExternal(ext string) bool {
+	u := strings.ToUpper(ext)
+	return strings.Contains(u, ":OK") && !strings.Contains(u, ":REJ")
+}
+
+func ackRefFromExternal(ext string) string {
+	// `{ref}:CONTRL:OK` or `{ref}:APERAK:REJ:reason`
+	parts := strings.Split(ext, ":")
+	if len(parts) >= 1 {
+		return parts[0]
+	}
+	return ext
+}
+
 func (w *EdiOutboundWorker) emit(ctx context.Context, d EdiDocument) error {
 	cfg, ok, err := w.sftp.Get(ctx, d.TenantType, d.TenantID)
-	if err != nil || !ok || !cfg.EdiEnabled {
+	if err != nil {
 		return w.fail(ctx, d, "edi_not_configured")
+	}
+	if !ok || !cfg.EdiEnabled {
+		if partnerEDILocalRoot() == "" {
+			return w.fail(ctx, d, "edi_not_configured")
+		}
+		cfg = SftpConfig{TenantType: d.TenantType, TenantID: d.TenantID, EdiEnabled: true, IsActive: true}
 	}
 	normalizeSftpDirs(&cfg)
 
-	snap, err := w.loadSnapshot(ctx, d.OrderID)
-	if err != nil {
-		return w.fail(ctx, d, err.Error())
-	}
-
 	var body string
 	switch d.DocType {
-	case EdiDocORDRSP:
-		body = edi.BuildORDRSP(snap, d.ExternalDocID)
-	case EdiDocDESADV:
-		body = edi.BuildDESADV(snap, d.ExternalDocID)
-	case EdiDocINVOIC:
-		body = edi.BuildINVOIC(snap, nil, d.ExternalDocID)
+	case EdiDocCONTRL:
+		ref := ackRefFromExternal(d.ExternalDocID)
+		b, err := edi.BuildCONTRL(d.TenantID, "PARTNER", ref, ackAcceptedFromExternal(d.ExternalDocID), w.now())
+		if err != nil {
+			return w.fail(ctx, d, err.Error())
+		}
+		body = b
+	case EdiDocAPERAK:
+		ref := ackRefFromExternal(d.ExternalDocID)
+		reason := ""
+		if parts := strings.SplitN(d.ExternalDocID, ":APERAK:REJ:", 2); len(parts) == 2 {
+			reason = parts[1]
+		}
+		b, err := edi.BuildAPERAK(d.TenantID, "PARTNER", ref, reason, ackAcceptedFromExternal(d.ExternalDocID), w.now())
+		if err != nil {
+			return w.fail(ctx, d, err.Error())
+		}
+		body = b
+	case EdiDocORDRSP, EdiDocDESADV, EdiDocINVOIC:
+		snap, err := w.loadSnapshot(ctx, d.OrderID)
+		if err != nil {
+			return w.fail(ctx, d, err.Error())
+		}
+		switch d.DocType {
+		case EdiDocORDRSP:
+			body = edi.BuildORDRSP(snap, d.ExternalDocID)
+		case EdiDocDESADV:
+			body = edi.BuildDESADV(snap, d.ExternalDocID)
+		case EdiDocINVOIC:
+			body = edi.BuildINVOIC(snap, nil, d.ExternalDocID)
+		}
 	default:
 		return w.fail(ctx, d, "unknown_doc_type")
 	}

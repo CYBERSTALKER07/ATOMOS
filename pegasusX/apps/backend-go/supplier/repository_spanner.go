@@ -121,49 +121,72 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	var billingLat, billingLng spanner.NullFloat64
 	var fleetVehicleCount, fleetMaxVU, factoryCount spanner.NullInt64
 	var categoriesJSON, selectedGatewaysJSON []byte
-	var configuredAt spanner.NullTime
+	var configuredAt, registeredAt spanner.NullTime
+	var contactName, email, phone spanner.NullString
+	var warehouseName, warehouseAddress, billingAddress spanner.NullString
+	var taxID, companyRegNumber spanner.NullString
+	var bankName, accountHolder, accountNumber, swiftBic, iban spanner.NullString
 	var paymentAcceptor, gln, gs1Prefix spanner.NullString
 
 	if err := profileRow.Columns(
 		new(string),
-		&p.ContactName,
-		&p.Email,
-		&p.Phone,
-		&p.WarehouseName,
-		&p.WarehouseAddress,
+		&contactName,
+		&email,
+		&phone,
+		&warehouseName,
+		&warehouseAddress,
 		&warehouseLat,
 		&warehouseLng,
 		&p.BillingSameAsWh,
-		&p.BillingAddress,
+		&billingAddress,
 		&billingLat,
 		&billingLng,
-		&p.TaxID,
-		&p.CompanyRegNumber,
+		&taxID,
+		&companyRegNumber,
 		&fleetVehicleCount,
 		&fleetMaxVU,
 		&factoryCount,
 		&categoriesJSON,
 		&p.IsRegistered,
-		&p.BankName,
-		&p.AccountHolder,
-		&p.AccountNumber,
-		&p.SwiftBic,
-		&p.IBAN,
+		&bankName,
+		&accountHolder,
+		&accountNumber,
+		&swiftBic,
+		&iban,
 		&selectedGatewaysJSON,
 		&paymentAcceptor,
 		&gln,
 		&gs1Prefix,
-		&p.RegisteredAt,
+		&registeredAt,
 		&configuredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier profile %s: %w", supplierID, err)
+	}
+	p.ContactName = contactName.StringVal
+	p.Email = email.StringVal
+	p.Phone = phone.StringVal
+	p.WarehouseName = warehouseName.StringVal
+	p.WarehouseAddress = warehouseAddress.StringVal
+	p.BillingAddress = billingAddress.StringVal
+	p.TaxID = taxID.StringVal
+	p.CompanyRegNumber = companyRegNumber.StringVal
+	p.BankName = bankName.StringVal
+	p.AccountHolder = accountHolder.StringVal
+	p.AccountNumber = accountNumber.StringVal
+	p.SwiftBic = swiftBic.StringVal
+	p.IBAN = iban.StringVal
+	if paymentAcceptor.Valid {
+		p.PaymentAcceptor = paymentAcceptor.StringVal
 	}
 	if gln.Valid {
 		p.Gln = gln.StringVal
 	}
 	if gs1Prefix.Valid {
 		p.Gs1CompanyPrefix = gs1Prefix.StringVal
+	}
+	if registeredAt.Valid {
+		p.RegisteredAt = registeredAt.Time
 	}
 
 	if warehouseLat.Valid {

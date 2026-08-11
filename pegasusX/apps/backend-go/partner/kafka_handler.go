@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -23,12 +22,7 @@ func NewEventConsumer(svc *Service, log *slog.Logger) *EventConsumer {
 	return &EventConsumer{svc: svc, log: log}
 }
 
-var allowlistedWebhookEvents = map[string]bool{
-	events.EventOrderCreated:       true,
-	events.EventOrderStatusChanged: true,
-	events.EventClaimFiled:         true,
-	events.EventPaymentCleared:     true,
-}
+var allowlistedWebhookEvents = PartnerWebhookableEvents
 
 // HandleEvent is a kafka.EventHandler.
 func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) error {

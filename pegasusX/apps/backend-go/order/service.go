@@ -3,9 +3,8 @@
 // inside a Repository.* method that wraps a ReadWriteTransaction so the row
 // mutation and the OutboxEvents row commit atomically.
 //
-// In pegasusX every order is scoped to the single seeded supplier; the
-// supplier id is bound at Service construction and never read from request
-// bodies.
+// Gate 5: request paths resolve supplier via TenantContext
+// (resolveSupplierScope); bootstrap SeedSupplierID is fixtures/fallback only.
 package order
 
 import (
@@ -146,6 +145,7 @@ type Order struct {
 	OrderID                string
 	SupplierID             string
 	RetailerID             string
+	ParentOrderID          string
 	WarehouseID            string
 	DriverID               string
 	VehicleID              string
@@ -352,7 +352,8 @@ type Service struct {
 	ar              *ar.Service
 	replanner       RouteReplanner
 
-	supplierID         string
+	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierScope.
+	seedSupplierID     string
 	supplierName       string
 	currency           string
 	retailerHub        *ws.Hub
@@ -401,6 +402,9 @@ type ServiceConfig struct {
 	Promotions      *promotion.Service
 	Credit          *credit.Service
 	Replanner       RouteReplanner
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11). Prefer TenantContext.
+	SeedSupplierID  string
+	// SupplierID is deprecated; use SeedSupplierID. Kept for bootstrap/test call sites.
 	SupplierID      string
 	SupplierName    string
 	Currency        string
@@ -446,13 +450,17 @@ func NewService(c ServiceConfig) *Service {
 	if len(allow) == 0 {
 		allow = ParseCurrencyAllowlist("", c.Currency)
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	svc := &Service{
 		repo:                  c.Repo,
 		cache:                 c.Cache,
 		warehouse:             c.Warehouse,
 		promotions:            c.Promotions,
 		replanner:             c.Replanner,
-		supplierID:            c.SupplierID,
+		seedSupplierID:        seedID,
 		supplierName:          strings.TrimSpace(c.SupplierName),
 		currency:              c.Currency,
 		retailerHub:           c.RetailerHub,
@@ -540,12 +548,60 @@ func (s *Service) SetAllocationRequired(req bool) {
 	s.allocationRequired = req
 }
 
-// GetOrder returns a single order payload.pshot by ID (used by claims and other domains).
+// GetOrder returns a single order payload snapshot by ID (used by claims and other domains).
 func (s *Service) GetOrder(ctx context.Context, orderID string) (Order, bool, error) {
 	if s == nil || s.repo == nil {
 		return Order{}, false, fmt.Errorf("order service unavailable")
 	}
 	return s.repo.GetOrder(ctx, strings.TrimSpace(orderID))
+}
+
+// GetOrderForTenant returns an order only when it belongs to the request TenantContext.
+// Cross-tenant IDs fail closed as not found (IDOR-safe).
+func (s *Service) GetOrderForTenant(ctx context.Context, orderID string) (Order, bool, error) {
+	o, ok, err := s.GetOrder(ctx, orderID)
+	if err != nil || !ok {
+		return o, ok, err
+	}
+	if t, tok := auth.TenantFromContext(ctx); tok {
+		if strings.TrimSpace(o.SupplierID) != strings.TrimSpace(t.SupplierID) {
+			return Order{}, false, nil
+		}
+	}
+	return o, true, nil
+}
+
+// loadOrderForRequest loads an order with tenant IDOR when TenantContext is present.
+func (s *Service) loadOrderForRequest(ctx context.Context, orderID string) (Order, bool, error) {
+	if _, ok := auth.TenantFromContext(ctx); ok {
+		return s.GetOrderForTenant(ctx, orderID)
+	}
+	return s.GetOrder(ctx, orderID)
+}
+
+// resolveSupplierScope is the Gate 5 request-scoped supplier (seed = fixtures only).
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
+// resolveSupplierIDForCreate prefers TenantContext over body/seed.
+func (s *Service) resolveSupplierIDForCreate(ctx context.Context, reqSupplier string) (string, error) {
+	reqSupplier = strings.TrimSpace(reqSupplier)
+	if t, ok := auth.TenantFromContext(ctx); ok {
+		tid := strings.TrimSpace(t.SupplierID)
+		if reqSupplier != "" && reqSupplier != tid {
+			return "", fmt.Errorf("%w: supplier_id mismatch with tenant", ErrOrderForbidden)
+		}
+		return tid, nil
+	}
+	if reqSupplier != "" {
+		return reqSupplier, nil
+	}
+	sid := s.resolveSupplierScope(ctx)
+	if sid == "" {
+		return "", fmt.Errorf("%w: tenant required", ErrOrderForbidden)
+	}
+	return sid, nil
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.
@@ -565,6 +621,8 @@ type CreateRequest struct {
 	LocationID string `json:"location_id,omitempty"`
 	// SupplierID overrides the service default supplier (auto-order multi-supplier place).
 	SupplierID string `json:"supplier_id,omitempty"`
+	// ParentOrderID links a child order to a Gate 5 Phase 2 ParentOrders rollup row.
+	ParentOrderID string `json:"parent_order_id,omitempty"`
 	// Source forces order provenance when set (e.g. AUTO_ORDER from auto-order place).
 	// When empty, ClassifyDelivery assigns MANUAL / preorder sources.
 	Source OrderSource `json:"order_source,omitempty"`
@@ -1049,11 +1107,18 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 			} else {
 				effectiveDate = s.now()
 			}
-			p, err := s.pricingSvc.ResolvePrice(ctx, s.supplierID, sku, effectiveDate)
+			p, err := s.pricingSvc.ResolvePrice(ctx, s.resolveSupplierScope(ctx), sku, effectiveDate)
 			if err != nil {
-				return nil, 0, fmt.Errorf("line_items[%d].sku %s failed to resolve price: %w", i, sku, err)
+				// Fall back to Products.PriceMinor when PriceLists miss (multi-supplier
+				// seed/smoke paths and catalog-only SKUs).
+				if sp, ok := prices[sku]; ok {
+					serverPrice = sp
+				} else {
+					return nil, 0, fmt.Errorf("line_items[%d].sku %s failed to resolve price: %w", i, sku, err)
+				}
+			} else {
+				serverPrice = p
 			}
-			serverPrice = p
 		} else {
 			sp, ok := prices[sku]
 			if !ok {
@@ -1160,9 +1225,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, err
 	}
 
-	supplierID := strings.TrimSpace(req.SupplierID)
-	if supplierID == "" {
-		supplierID = s.supplierID
+	supplierID, err := s.resolveSupplierIDForCreate(ctx, req.SupplierID)
+	if err != nil {
+		return CreateResponse{}, err
 	}
 
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
@@ -1300,6 +1365,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		OrderID:               s.newID(),
 		SupplierID:            supplierID,
 		RetailerID:            retailerID,
+		ParentOrderID:         strings.TrimSpace(req.ParentOrderID),
 		WarehouseID:           warehouseID,
 		Status:                status,
 		Source:                source,
@@ -1449,7 +1515,7 @@ func (s *Service) createBackorderOrder(
 	}
 	bo := Order{
 		OrderID:            s.newID(),
-		SupplierID:         s.supplierID,
+		SupplierID:         parent.SupplierID,
 		RetailerID:         retailerID,
 		WarehouseID:        warehouseID,
 		Status:             StatusBackordered,
@@ -2552,7 +2618,7 @@ func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	current, found, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "get order for qr payload failed", "err", err, "order_id", orderID)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -3221,7 +3287,7 @@ func (s *Service) emitCreditLimitBreached(ctx context.Context, retailerID string
 			BaseEvent:        events.BaseEvent{Type: events.EventRetailerCreditLimitBreached, Timestamp: s.now().Format(time.RFC3339Nano)},
 			OrderID:          "", // unknown at this pre-order stage; consumers key on retailer_id
 			RetailerID:       retailerID,
-			SupplierID:       s.supplierID,
+			SupplierID:       s.resolveSupplierScope(ctx),
 			RequestedAmount:  requestedAmount,
 			CreditLimitMinor: check.CreditLimitMinor,
 			CurrentBalance:   check.CurrentBalance,
@@ -3230,14 +3296,7 @@ func (s *Service) emitCreditLimitBreached(ctx context.Context, retailerID string
 		}
 		var mutations []*spanner.Mutation
 		for _, e := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     e.CreatedAt,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		return txn.BufferWrite(mutations)
 	})

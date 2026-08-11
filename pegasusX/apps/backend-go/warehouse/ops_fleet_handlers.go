@@ -88,7 +88,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 				Name:        strings.TrimSpace(req.Name),
 				Phone:       strings.TrimSpace(req.Phone),
 				PinHash:     string(pinHash),
-				SupplierID:  strings.TrimSpace(s.supplierID),
+				SupplierID:  s.resolveSupplierScope(r.Context()),
 				WarehouseID: whID,
 				CreatedAt:   now,
 			}); err != nil {
@@ -197,7 +197,7 @@ func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseI
 	if s.spannerClient == nil {
 		return fmt.Errorf("spanner_not_configured")
 	}
-	sid := strings.TrimSpace(s.supplierID)
+	sid := s.resolveSupplierScope(ctx)
 	now := s.now().UTC()
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		state, err := readDriverAssignmentState(ctx, txn, sid, warehouseID, driverID)
@@ -354,7 +354,7 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 				LicensePlate: strings.TrimSpace(req.LicensePlate),
 				VehicleClass: strings.TrimSpace(req.VehicleClass),
 				MaxVolumeVU:  maxVU,
-				SupplierID:   strings.TrimSpace(s.supplierID),
+				SupplierID:   s.resolveSupplierScope(r.Context()),
 				WarehouseID:  whID,
 				CreatedAt:    now,
 			}); err != nil {
@@ -498,7 +498,7 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		if err := s.patchOpsVehicleSpanner(r.Context(), opsVehiclePatchParams{
 			VehicleID:         vehicleID,
 			WarehouseID:       whID,
-			SupplierID:        s.supplierID,
+			SupplierID:        s.resolveSupplierScope(r.Context()),
 			IsActive:          req.IsActive,
 			UnavailableReason: req.UnavailableReason,
 			UnavailableNote:   req.UnavailableNote,

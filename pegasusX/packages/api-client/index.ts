@@ -1251,7 +1251,7 @@ export class ApiClient {
     return this.request<SupplierReplenishmentPolicy>(
       "/v1/supplier/replenishment/policies",
       "PATCH",
-      patch,
+      { body: patch },
     );
   }
 

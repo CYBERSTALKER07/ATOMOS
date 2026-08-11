@@ -306,7 +306,11 @@ func (s *Service) applySellThroughDemandFactor(ctx context.Context, retailerID, 
 		adj = sumF
 		adjusted = base + adj
 		raw, _ := json.Marshal(factors)
-		m := spanner.InsertOrUpdateMap("DemandAdjustments", map[string]any{
+		supplierID := ""
+		if prow, perr := txn.ReadRow(ctx, "Products", spanner.Key{sku}, []string{"SupplierId"}); perr == nil {
+			_ = prow.Column(0, &supplierID)
+		}
+		cols := map[string]any{
 			"RetailerId":     retailerID,
 			"Sku":            sku,
 			"Date":           dayTime,
@@ -315,7 +319,11 @@ func (s *Service) applySellThroughDemandFactor(ctx context.Context, retailerID, 
 			"AdjustedDemand": adjusted,
 			"FactorsJson":    string(raw),
 			"ComputedAt":     spanner.CommitTimestamp,
-		})
+		}
+		if strings.TrimSpace(supplierID) != "" {
+			cols["SupplierId"] = supplierID
+		}
+		m := spanner.InsertOrUpdateMap("DemandAdjustments", cols)
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
 	return err

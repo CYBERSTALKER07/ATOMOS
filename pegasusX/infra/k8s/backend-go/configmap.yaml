@@ -45,6 +45,13 @@ data:
   # AR / collections — enable on SSMR after credit policy soak; prod flip is ops-owned.
   AR_INVOICES_ENABLED: "false"
   AR_DUNNING_ENABLED: "false"
+  # Phase 2 partner integration — EDI on; SFTP/AS2 off until tenant configs + host keys land.
+  # Staging overlay flips SFTP/AS2 on. SSMR compose uses .env.ssmr.example.
+  PARTNER_EDI_ENABLED: "true"
+  PARTNER_SFTP_ENABLED: "false"
+  PARTNER_SFTP_STRICT_HOSTKEY: "true"
+  PARTNER_AS2_ENABLED: "false"
+  PARTNER_AS2_INSECURE_PLAIN: "false"
   # §8.4 forecast accuracy — enable after ForecastAccuracyDaily migration + soak.
   FORECAST_ACCURACY_ENABLED: "false"
   # §8.1 Croston/SES/HW — enable after backtest gate soak on real history.

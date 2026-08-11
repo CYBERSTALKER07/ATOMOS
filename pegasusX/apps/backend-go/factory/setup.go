@@ -62,7 +62,7 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 	factoryID := strings.TrimSpace(claims.HomeNodeID)
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	mutations := make([]*spanner.Mutation, 0, 2)

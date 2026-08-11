@@ -110,7 +110,7 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 		TransactionID:  req.TransactionID,
 		SessionID:      req.SessionID,
 		OrderID:        strings.TrimSpace(req.OrderID),
-		SupplierID:     s.supplierID,
+		SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(req.OrderID)),
 		Status:         req.Status,
 		AmountMinor:    amount,
 		Currency:       currency,

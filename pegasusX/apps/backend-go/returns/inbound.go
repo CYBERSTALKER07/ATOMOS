@@ -159,10 +159,7 @@ func (s *Service) HandleBarcodeLookup(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	supplierID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		supplierID = strings.TrimSpace(claims.SupplierID)
-	}
+	supplierID := auth.PreferTenantSupplierID(r.Context(), "")
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
@@ -642,11 +639,9 @@ func (s *Service) HandleReturnsHistory(w http.ResponseWriter, r *http.Request) {
 	if whID, ok := s.resolveGateWarehouseID(r); ok && whID != "" {
 		sql += " AND sr.WarehouseId = @warehouse_id"
 		params["warehouse_id"] = whID
-	} else if claims, ok := auth.FromContext(r.Context()); ok {
-		if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
-			sql += " AND o.SupplierId = @supplier_id"
-			params["supplier_id"] = supplierID
-		}
+	} else if supplierID := auth.PreferTenantSupplierID(r.Context(), ""); supplierID != "" {
+		sql += " AND o.SupplierId = @supplier_id"
+		params["supplier_id"] = supplierID
 	}
 	sql += fmt.Sprintf(" ORDER BY sr.ReceivedAt DESC LIMIT %d OFFSET %d", limit+1, offset)
 

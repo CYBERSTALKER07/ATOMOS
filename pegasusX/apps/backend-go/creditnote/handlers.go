@@ -57,9 +57,16 @@ func (h *Handlers) HandleList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	supplierID := strings.TrimSpace(claims.SupplierID)
-	if supplierID == "" && h.SupplierID != nil {
-		supplierID = strings.TrimSpace(h.SupplierID())
+	seed := ""
+	if h.SupplierID != nil {
+		seed = strings.TrimSpace(h.SupplierID())
+	}
+	// PreferTenant already fail-closes when enforced + authenticated with no tenant;
+	// do not undo that with an unconditional seed fallback.
+	supplierID := auth.PreferTenantSupplierID(r.Context(), seed)
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required", "code": "TENANT_REQUIRED"})
+		return
 	}
 	status := CreditNoteStatus(strings.TrimSpace(r.URL.Query().Get("status")))
 	limit := 50

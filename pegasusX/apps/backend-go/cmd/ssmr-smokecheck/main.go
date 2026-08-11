@@ -24,7 +24,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|negotiation-isolation|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|tenant|parent-order|global-products|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|negotiation-isolation|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -43,6 +43,12 @@ func main() {
 		timeout = loadTokensTimeout()
 	case "e2e":
 		timeout = e2eTimeout()
+	case "tenant":
+		timeout = 2 * time.Minute
+	case "parent-order":
+		timeout = 3 * time.Minute
+	case "global-products":
+		timeout = 2 * time.Minute
 	case "gap-closure":
 		timeout = 3 * time.Minute
 	case "lifecycle-vertical":
@@ -80,6 +86,12 @@ func main() {
 		checkErr = runSpatialCheck(ctx, cfg)
 	case "e2e":
 		checkErr = runE2ECheck(ctx, cfg)
+	case "tenant":
+		checkErr = runTenantSmokeCheck(ctx, cfg)
+	case "parent-order":
+		checkErr = runParentOrderSmokeCheck(ctx, cfg)
+	case "global-products":
+		checkErr = runGlobalProductsSmokeCheck(ctx, cfg)
 	case "gap-closure":
 		checkErr = runGapClosureSmokeCheck(ctx, cfg)
 	case "lifecycle-vertical":

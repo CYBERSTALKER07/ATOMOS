@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // ValidateProductionProfile rejects dev-default webhook secrets when
@@ -11,6 +13,9 @@ import (
 func (c *Config) ValidateProductionProfile() error {
 	if c == nil || !isProductionEnv() {
 		return nil
+	}
+	if !auth.TenantContextEnforced() {
+		return fmt.Errorf("TENANT_CONTEXT_ENFORCED must be true when PEGASUSX_ENV=production (or unset to use production default)")
 	}
 	if !c.RequireInfraAdapters {
 		return fmt.Errorf("REQUIRE_INFRA_ADAPTERS must be true when PEGASUSX_ENV=production")

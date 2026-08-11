@@ -163,7 +163,7 @@ func (s *Service) HandleGetOrderTimeline(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	o, found, err := s.repo.GetOrder(r.Context(), orderID)
+	o, found, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return

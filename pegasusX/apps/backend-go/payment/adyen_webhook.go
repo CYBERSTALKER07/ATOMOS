@@ -160,7 +160,7 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			TransactionID:  transactionID,
 			SessionID:      sessionID,
 			OrderID:        strings.TrimSpace(item.MerchantReference),
-			SupplierID:     s.supplierID,
+			SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(item.MerchantReference)),
 			Status:         status,
 			AmountMinor:    item.Amount.Value,
 			Currency:       currency,

@@ -183,7 +183,7 @@ func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) 
 		backfilled++
 	}
 	if backfilled > 0 && s.cache != nil {
-		s.cache.Invalidate(ctx, "catalog:products:"+s.supplierID)
+		s.cache.Invalidate(ctx, "catalog:products:"+s.resolveSupplierScope(ctx))
 	}
 	return backfilled, nil
 }

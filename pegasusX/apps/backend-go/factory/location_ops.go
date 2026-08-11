@@ -103,7 +103,7 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 	address := strings.TrimSpace(req.Address)
 	placeID := strings.TrimSpace(req.PlaceID)
 	h3Cell := proximity.H3CellFromLatLng(req.Lat, req.Lng)
-	supplierID := strings.TrimSpace(s.supplierID)
+	supplierID := strings.TrimSpace(s.resolveSupplierScope(r.Context()))
 
 	update := map[string]any{
 		"FactoryId": factoryID,
@@ -190,7 +190,7 @@ func (s *Service) scopedFactoryID(r *http.Request) (string, bool) {
 }
 
 func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (factoryLocationResponse, error) {
-	supplierID := strings.TrimSpace(s.supplierID)
+	supplierID := strings.TrimSpace(s.resolveSupplierScope(ctx))
 	sql := `SELECT FactoryId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0), UpdatedAt
 		      FROM Factories WHERE FactoryId = @fid`
 	params := map[string]any{"fid": factoryID}

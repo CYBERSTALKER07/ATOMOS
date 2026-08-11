@@ -56,7 +56,7 @@ type Service struct {
 	log         *slog.Logger
 	idem        idempotency.Store
 
-	supplierID       string
+	seedSupplierID       string
 	currency         string
 	jwtSecret        string
 	jwtIssuer        string
@@ -91,6 +91,9 @@ type ServiceConfig struct {
 	NotifSvc    *notifications.Service
 	Log         *slog.Logger
 
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID       string
 	Currency         string
 	JWTSecret        string
@@ -224,6 +227,10 @@ func NewService(c ServiceConfig) *Service {
 	if c.Currency == "" {
 		c.Currency = "UZS"
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
 		repo:             c.Repo,
 		cache:            c.Cache,
@@ -233,7 +240,7 @@ func NewService(c ServiceConfig) *Service {
 		notifSvc:         c.NotifSvc,
 		log:              c.Log,
 		idem:             c.Idem,
-		supplierID:       c.SupplierID,
+		seedSupplierID: seedID,
 		currency:         c.Currency,
 		jwtSecret:        c.JWTSecret,
 		jwtIssuer:        c.JWTIssuer,
@@ -245,6 +252,12 @@ func NewService(c ServiceConfig) *Service {
 		overflowCount:    make(map[string]int64),
 	}
 }
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
 
 type recommendReassignRequest struct {
 	OrderID string `json:"order_id"`
@@ -481,19 +494,19 @@ func (s *Service) broadcastPayloadEvent(ctx context.Context, eventType string, d
 		"timestamp": ts,
 		"data":      data,
 	})
-	if s.payloadHub != nil && s.supplierID != "" {
-		s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, syncFrame)
+	if s.payloadHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.payloadHub.Broadcast(ctx, "payload:"+s.resolveSupplierScope(ctx), syncFrame)
 		if notifyErr == nil {
-			s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, notifyFrame)
+			s.payloadHub.Broadcast(ctx, "payload:"+s.resolveSupplierScope(ctx), notifyFrame)
 		}
 	}
-	if s.supplierHub != nil && s.supplierID != "" {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, syncFrame)
+	if s.supplierHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), syncFrame)
 		if notifyErr == nil {
-			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, notifyFrame)
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), notifyFrame)
 		}
 		if legacyErr == nil {
-			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, legacyEnvelope)
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), legacyEnvelope)
 		}
 	}
 }
@@ -745,7 +758,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
 			ManifestID: manifestID,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(r.Context()),
 			State:      payloadManifestStateLoading,
 		})
 	})
@@ -763,7 +776,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestLoadingStarted, map[string]any{
 		"manifest_id": manifestID,
 		"state":       payloadManifestStateLoading,
@@ -872,7 +885,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 			BaseEvent:     events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
 			ManifestID:    manifestID,
 			OrderID:       req.OrderID,
-			SupplierID:    s.supplierID,
+			SupplierID:    s.resolveSupplierScope(r.Context()),
 			TotalVolumeVU: manifest.TotalVolumeVU,
 			StopCount:     int64(manifest.StopCount),
 		})
@@ -897,7 +910,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestOrderInjected, map[string]any{
 		"manifest_id":     manifestID,
 		"order_id":        req.OrderID,
@@ -1026,7 +1039,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
 			ManifestID:   req.ManifestID,
 			OrderID:      req.OrderID,
-			SupplierID:   s.supplierID,
+			SupplierID:   s.resolveSupplierScope(r.Context()),
 			Reason:       req.Reason,
 			AttemptCount: exception.AttemptCount,
 			Escalated:    exception.Escalated,
@@ -1038,7 +1051,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
 				ManifestID:   req.ManifestID,
 				OrderID:      req.OrderID,
-				SupplierID:   s.supplierID,
+				SupplierID:   s.resolveSupplierScope(r.Context()),
 				Reason:       req.Reason,
 				AttemptCount: exception.AttemptCount,
 			})
@@ -1062,7 +1075,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID), payloadExceptionListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())), payloadExceptionListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestOrderException, map[string]any{
 		"manifest_id":   req.ManifestID,
 		"order_id":      req.OrderID,
@@ -1480,7 +1493,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			FromManifestID: reassignment.FromManifestID,
 			ToManifestID:   reassignment.ManifestID,
 			OrderID:        req.OrderID,
-			SupplierID:     s.supplierID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
 			FromRouteID:    reassignment.FromRouteID,
 			ToRouteID:      reassignment.ToRouteID,
 			ToDriverID:     reassignment.ToDriverID,
@@ -1529,7 +1542,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	keys := []string{payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID)}
+	keys := []string{payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context()))}
 	if reassignment.FromManifestID != "" {
 		keys = append(keys, payloadManifestKey(reassignment.FromManifestID))
 	}
@@ -1618,7 +1631,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 				ManifestID: manifestID,
-				SupplierID: s.supplierID,
+				SupplierID: s.resolveSupplierScope(r.Context()),
 				State:      payloadManifestStateSealed,
 				RouteID:    routeIDForManifest(manifest),
 				DriverID:   manifest.DriverID,
@@ -1647,7 +1660,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 						"manifest_id", manifestID, "err", geomErr)
 				}
 			}
-			s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+			s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 				"manifest_id": manifestID,
 				"state":       payloadManifestStateSealed,
@@ -1724,7 +1737,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 			ManifestID: manifestID,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(r.Context()),
 			State:      payloadManifestStateSealed,
 			RouteID:    routeIDForManifest(manifest),
 			DriverID:   manifest.DriverID,
@@ -1752,7 +1765,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 		"manifest_id": manifestID,
 		"state":       payloadManifestStateSealed,
@@ -1836,7 +1849,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 				ManifestID: req.ManifestID,
-				SupplierID: s.supplierID,
+				SupplierID: s.resolveSupplierScope(r.Context()),
 				State:      payloadManifestStateSealed,
 				RouteID:    routeIDForManifest(manifest),
 				DriverID:   manifest.DriverID,
@@ -1865,7 +1878,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+		s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 		s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 			"manifest_id": req.ManifestID,
 			"state":       payloadManifestStateSealed,
@@ -1919,7 +1932,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	if sealedOrderManifestID != "" {
 		s.afterSealAssignSSCC(r.Context(), sealedOrderManifestID)
 	}
-	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), "ORDER_DISPATCHED", map[string]any{"order_id": req.OrderID})
 	resp := map[string]any{
 		"status":        "PAYLOAD_SEALED_AND_DISPATCHED",
@@ -2020,7 +2033,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
 				ManifestID: manifestID,
-				SupplierID: s.supplierID,
+				SupplierID: s.resolveSupplierScope(r.Context()),
 				State:      payloadManifestStateSealed,
 				RouteID:    routeIDForManifest(sealed),
 				DriverID:   sealed.DriverID,
@@ -2051,8 +2064,8 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			}
 			s.invalidatePayloadKeys(r.Context(),
 				payloadManifestKey(manifestID),
-				payloadManifestListKey(s.supplierID),
-				payloadOrderListKey(s.supplierID),
+				payloadManifestListKey(s.resolveSupplierScope(r.Context())),
+				payloadOrderListKey(s.resolveSupplierScope(r.Context())),
 			)
 			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 				"manifest_id": manifestID,

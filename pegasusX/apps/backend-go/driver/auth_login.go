@@ -98,7 +98,7 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 	claims := auth.Claims{
 		Subject:      driverID,
 		Role:         auth.RoleDriver,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierScope(r.Context()),
 		HomeNodeType: auth.HomeNodeType(homeNodeType),
 		HomeNodeID:   homeNodeID,
 	}
@@ -116,7 +116,7 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 		"name":           "PegasusX Demo Driver",
 		"vehicle_type":   "VAN",
 		"license_plate":  "01D777AA",
-		"supplier_id":    s.supplierID,
+		"supplier_id":    s.resolveSupplierScope(r.Context()),
 		"vehicle_id":     "veh_factory_1",
 		"vehicle_class":  "MEDIUM",
 		"max_volume_vu":  120.0,
@@ -135,7 +135,7 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 	if fbToken, err := auth.MintCustomToken(r.Context(), driverID, map[string]interface{}{
 		"role":           string(auth.RoleDriver),
 		"driver_id":      driverID,
-		"supplier_id":    s.supplierID,
+		"supplier_id":    s.resolveSupplierScope(r.Context()),
 		"home_node_type": homeNodeType,
 		"home_node_id":   homeNodeID,
 	}); err == nil && fbToken != "" {

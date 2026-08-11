@@ -154,7 +154,7 @@ export default function Footer() {
 
         {/* Logo col */}
         <div className="p-16 flex flex-col items-center justify-center max-md:border-b border-white/5">
-          <img src="/pegasus.jpg" width={100} height={100} alt="" />
+          <img src="/pegasus.jpg" width={100} height={100} alt="Pegasus Logistics Platform Logo" loading="lazy" />
           <span className="mt-6 text-xl font-black tracking-widest text-white uppercase">Pegasus</span>
         </div>
 

@@ -2,8 +2,8 @@
 // middleware. All scope (supplier_id, factory_id, warehouse_id, home_node_id)
 // MUST be resolved from the authenticated session — never from request bodies.
 //
-// In pegasusX (single-supplier tenant) ResolveSupplierID returns the seeded
-// SupplierId for every authenticated caller regardless of role.
+// Gate 5 Phase 1: prefer TenantFromContext (request-scoped SupplierId). ResolveSupplierID
+// remains for claim fallback during migration.
 package auth
 
 import (
@@ -17,6 +17,7 @@ type Role string
 
 const (
 	RoleAdmin          Role = "ADMIN" // Supplier portal session (single-tenant)
+	RolePlatformAdmin  Role = "PLATFORM_ADMIN" // Break-glass platform governance
 	RoleRetailer       Role = "RETAILER"
 	RoleDriver         Role = "DRIVER"
 	RolePayload        Role = "PAYLOAD"

@@ -24,8 +24,10 @@ type CartItem struct {
 // CartRepository defines cart data access.
 type CartRepository interface {
 	ListByRetailer(ctx context.Context, retailerID, supplierID string) ([]CartItem, error)
+	ListByRetailerAll(ctx context.Context, retailerID string) ([]CartItem, error)
 	UpsertItems(ctx context.Context, items []CartItem) error
 	ClearCart(ctx context.Context, retailerID, supplierID string) error
+	ClearCartAll(ctx context.Context, retailerID string) error
 }
 
 // SpannerCartRepository implements CartRepository backed by Cloud Spanner.
@@ -55,6 +57,36 @@ func (r *SpannerCartRepository) ListByRetailer(ctx context.Context, retailerID, 
 		}
 		if err != nil {
 			return nil, fmt.Errorf("list cart items for retailer %s: %w", retailerID, err)
+		}
+		var ci CartItem
+		if err := row.Columns(&ci.CartItemID, &ci.RetailerID, &ci.SupplierID, &ci.ProductID,
+			&ci.Quantity, &ci.PriceSnapshot, &ci.Currency, &ci.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan cart item: %w", err)
+		}
+		items = append(items, ci)
+	}
+	return items, nil
+}
+
+// ListByRetailerAll returns cart items across all suppliers for a retailer.
+func (r *SpannerCartRepository) ListByRetailerAll(ctx context.Context, retailerID string) ([]CartItem, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT CartItemId, RetailerId, SupplierId, ProductId, Quantity, PriceSnapshot, Currency, UpdatedAt
+		      FROM CartItems WHERE RetailerId = @rid
+		      ORDER BY UpdatedAt DESC`,
+		Params: map[string]any{"rid": retailerID},
+	}
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+
+	var items []CartItem
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list all cart items for retailer %s: %w", retailerID, err)
 		}
 		var ci CartItem
 		if err := row.Columns(&ci.CartItemID, &ci.RetailerID, &ci.SupplierID, &ci.ProductID,
@@ -123,6 +155,42 @@ func (r *SpannerCartRepository) ClearCart(ctx context.Context, retailerID, suppl
 	})
 	if err != nil {
 		return fmt.Errorf("clear cart for retailer %s: %w", retailerID, err)
+	}
+	return nil
+}
+
+// ClearCartAll deletes all cart items for a retailer across suppliers.
+func (r *SpannerCartRepository) ClearCartAll(ctx context.Context, retailerID string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		stmt := spanner.Statement{
+			SQL:    "SELECT CartItemId FROM CartItems WHERE RetailerId = @rid",
+			Params: map[string]any{"rid": retailerID},
+		}
+		iter := txn.Query(ctx, stmt)
+		defer iter.Stop()
+
+		var mutations []*spanner.Mutation
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("list cart items for delete-all: %w", err)
+			}
+			var cartItemID string
+			if err := row.Columns(&cartItemID); err != nil {
+				return fmt.Errorf("scan cart item id: %w", err)
+			}
+			mutations = append(mutations, spanner.Delete("CartItems", spanner.Key{cartItemID}))
+		}
+		if len(mutations) > 0 {
+			return txn.BufferWrite(mutations)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("clear all cart items for retailer %s: %w", retailerID, err)
 	}
 	return nil
 }

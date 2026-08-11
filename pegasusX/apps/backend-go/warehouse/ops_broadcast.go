@@ -325,7 +325,7 @@ func (row customBroadcastTemplateRow) toWire() BroadcastTemplateWire {
 
 func (s *Service) resolveWarehouseSupplierID(ctx context.Context, warehouseID string) (string, error) {
 	if s.spannerClient == nil {
-		return strings.TrimSpace(s.supplierID), nil
+		return strings.TrimSpace(s.seedSupplierID), nil
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
 	if err != nil {

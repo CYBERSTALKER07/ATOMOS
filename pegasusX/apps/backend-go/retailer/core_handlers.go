@@ -100,7 +100,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request, retai
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "retailer_not_found"})
 		return
 	}
-	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.supplierID))
+	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 }
 
 func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
@@ -181,7 +181,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		return
 	}
 	if strings.TrimSpace(ret.SupplierID) == "" {
-		ret.SupplierID = s.supplierID
+		ret.SupplierID = s.resolveSupplierScope(r.Context())
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
@@ -251,7 +251,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone), "retailer:id:"+ret.RetailerID)
 	}
-	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.supplierID))
+	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_profile_failed"})
 		return
@@ -335,12 +335,12 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	if err != nil {
 		s.log.Warn("favorite suppliers load failed", "err", err)
 	}
-	favorite := prefs != nil && prefs[s.supplierID]
+	favorite := prefs != nil && prefs[s.resolveSupplierScope(ctx)]
 
 	var pricing *retailerPricingSummary
-	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.resolveSupplierScope(ctx))
 	if err != nil {
-		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.supplierID, "err", err)
+		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.resolveSupplierScope(ctx), "err", err)
 	} else if found {
 		summary := retailerPricingSummary{
 			BaseMarkupBps:       rule.BaseMarkupBps,
@@ -356,7 +356,7 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	}
 
 	return json.Marshal([]supplierPreference{{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(ctx),
 		Name:       "pegasusX Supplier",
 		IsFavorite: favorite,
 		Pricing:    pricing,
@@ -412,14 +412,14 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.resolveSupplierScope(r.Context()))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_pricing_rule_failed"})
 		return
 	}
 
 	resp := retailerPricingRuleResponse{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 		Configured: found,
 		Pricing: retailerPricingSummary{
 			BaseMarkupBps:       0,
@@ -446,6 +446,8 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCartSync supports GET/POST /v1/retailer/cart/sync.
+// GET ?scope=all|all=1 returns cart lines across suppliers (Phase 2).
+// POST preserves an explicit per-line supplier_id; otherwise stamps active trading partner.
 func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	rid, err := retailerIDFromRequest(r)
 	if err != nil {
@@ -458,7 +460,15 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
 			return
 		}
-		items, listErr := s.cartRepo.ListByRetailer(r.Context(), rid, s.supplierID)
+		var (
+			items   []CartItem
+			listErr error
+		)
+		if cartScopeAll(r) {
+			items, listErr = s.cartRepo.ListByRetailerAll(r.Context(), rid)
+		} else {
+			items, listErr = s.cartRepo.ListByRetailer(r.Context(), rid, s.resolveSupplierScope(r.Context()))
+		}
 		if listErr != nil {
 			s.log.ErrorContext(r.Context(), "cart list failed", "err", listErr, "retailer_id", rid)
 			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
@@ -478,12 +488,16 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		if s.cartRepo != nil {
+			fallbackSupplier := s.resolveSupplierScope(r.Context())
 			for i := range payload.Items {
 				if payload.Items[i].CartItemID == "" {
 					payload.Items[i].CartItemID = s.newID()
 				}
 				payload.Items[i].RetailerID = rid
-				payload.Items[i].SupplierID = s.supplierID
+				// Preserve explicit line SupplierId (mixed-cart / SSMR). Default UI still stamps active partner.
+				if strings.TrimSpace(payload.Items[i].SupplierID) == "" {
+					payload.Items[i].SupplierID = fallbackSupplier
+				}
 			}
 			if err := s.cartRepo.UpsertItems(r.Context(), payload.Items); err != nil {
 				s.log.ErrorContext(r.Context(), "cart sync failed", "err", err, "retailer_id", rid)
@@ -498,6 +512,50 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandleCartClear supports DELETE /v1/retailer/cart (or POST /v1/retailer/cart/clear).
+// ?scope=all clears every supplier; otherwise clears the active trading-partner cart.
+func (s *Service) HandleCartClear(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	rid, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.cartRepo == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+		return
+	}
+	if cartScopeAll(r) {
+		if err := s.cartRepo.ClearCartAll(r.Context(), rid); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear-all failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	} else {
+		if err := s.cartRepo.ClearCart(r.Context(), rid, s.resolveSupplierScope(r.Context())); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), "retailer:cart:"+rid)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+}
+
+func cartScopeAll(r *http.Request) bool {
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
+	if scope == "all" {
+		return true
+	}
+	all := strings.TrimSpace(r.URL.Query().Get("all"))
+	return all == "1" || strings.EqualFold(all, "true")
 }
 
 // HandleOrders returns orders scoped to a retailer.

@@ -593,7 +593,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			now := s.now().UTC()
 			m := spanner.Insert("SupplierUsers",
 				[]string{"UserId", "SupplierId", "Phone", "Name", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
-				[]any{staffID, s.supplierID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), "password_hash", strings.TrimSpace(req.Role), warehouseIDFromRequest(r), true, now, now},
+				[]any{staffID, s.resolveSupplierScope(r.Context()), strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), "password_hash", strings.TrimSpace(req.Role), warehouseIDFromRequest(r), true, now, now},
 			)
 			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create staff", "err", err)
@@ -868,7 +868,7 @@ func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request
 				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: nowTS},
 				RequestID:   id,
 				WarehouseID: warehouseID,
-				SupplierID:  s.supplierID,
+				SupplierID:  s.resolveSupplierScope(r.Context()),
 				FactoryID:   target.FactoryID,
 				Status:      "CANCELLED",
 			})
@@ -879,10 +879,10 @@ func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request
 		}
 
 		if s.cache != nil {
-			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.resolveSupplierScope(r.Context()), warehouseID))
 		}
 		s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, target)
-		s.log.Info("warehouse supply request cancelled", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "request_id", id)
+		s.log.Info("warehouse supply request cancelled", "supplier_id", s.resolveSupplierScope(r.Context()), "warehouse_id", warehouseID, "request_id", id)
 		writeJSON(w, http.StatusOK, map[string]any{"request_id": id, "state": "CANCELLED"})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})

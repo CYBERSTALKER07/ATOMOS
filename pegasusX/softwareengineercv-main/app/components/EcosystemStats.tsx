@@ -187,7 +187,7 @@ export default function EcosystemStats() {
                 <div className="text-sm text-white/40 mb-8">{localizedData.card1.subtitle}</div>
 
                 <div className="flex-1 flex items-center justify-center relative">
-                  <svg width="220" height="220" className="-rotate-90 drop-shadow-xl">
+                  <svg viewBox="0 0 220 220" className="w-full max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
                     <circle cx="110" cy="110" r="85" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
                     {/* ticks */}
                     <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
@@ -265,7 +265,7 @@ export default function EcosystemStats() {
                 <div className="text-sm text-white/40 mb-8">{localizedData.card3.subtitle}</div>
 
                 <div className="flex-1 flex flex-col items-center justify-end relative pt-4 pb-4">
-                  <svg width="320" height="170" className="overflow-visible drop-shadow-xl absolute top-4">
+                  <svg viewBox="0 0 320 170" className="w-full max-w-[320px] h-auto overflow-visible drop-shadow-xl absolute top-4">
                     <g className="text-white/15" strokeWidth="1.5">
                       {[...Array(35)].map((_, i) => (
                         <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
