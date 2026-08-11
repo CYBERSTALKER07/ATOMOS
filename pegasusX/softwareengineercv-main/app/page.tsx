@@ -18,6 +18,7 @@ import { translations } from '@/app/lib/i18n/translations';
 
 
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
+const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const LastMileSection = dynamic(() => import('./components/LastMileSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
@@ -109,6 +110,7 @@ export default async function Home() {
 
         <section id="section-platform">
           <About />
+          <OrderCycleVisualSection />
           <DispatchVisualSection />
         </section>
 

@@ -3,20 +3,24 @@
 import DriftWall, { DriftWallItem } from './DriftWall';
 import { useLanguage } from '../context/LanguageContext';
 import PageSection from './layout/PageSection';
+import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
 const DRIFT_ITEMS: DriftWallItem[] = [
-  { image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80', title: 'Smart Dispatch Hub', href: '/platform' },
-  { image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80', title: 'Telemetry Engine', href: '/capabilities' },
-  { image: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80', title: 'Fleet Tracking', href: '/capabilities/live-fleet-tracking' },
-  { image: 'https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&w=800&q=80', title: 'Warehouse Controls', href: '/roles/warehouse' },
-  { image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80', title: 'Supplier Network', href: '/roles/supplier' },
-  { image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80', title: 'Real-time Analytics', href: '/operations' },
-  { image: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=80', title: 'Fulfillment Control', href: '/platform' },
-  { image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80', title: 'Payment Confidence', href: '/capabilities/payment-confidence' },
-  { image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80', title: 'Global Operations', href: '/projects' },
-  { image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80', title: 'Encrypted State Machine', href: '/technology' },
-  { image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80', title: 'Factory Dispatch Gate', href: '/roles/payload-gate' },
-  { image: 'https://images.unsplash.com/photo-1512758017271-d7b84c2113f1?auto=format&fit=crop&w=800&q=80', title: 'Retailer Dashboard', href: '/demo/retailer' },
+  { image: SITE_IMAGES.truckTerminal, title: 'Smart Dispatch Hub', href: '/platform' },
+  { image: SITE_IMAGES.logisticsPlatformUi, title: 'Operations Board', href: '/capabilities' },
+  { image: SITE_IMAGES.multimodalHub, title: 'Fleet Tracking', href: '/capabilities/live-fleet-tracking' },
+  { image: SITE_IMAGES.warehouseAutomation, title: 'Warehouse Controls', href: '/roles/warehouse' },
+  { image: SITE_IMAGES.pegasusContainer, title: 'Supplier Network', href: '/roles/supplier' },
+  { image: SITE_IMAGES.operationsTeam, title: 'Live Analytics', href: '/operations' },
+  { image: SITE_IMAGES.warehouseWireframe, title: 'Fulfillment Control', href: '/platform' },
+  { image: SITE_IMAGES.deliveryDrone, title: 'Payment Confidence', href: '/capabilities/payment-confidence' },
+  { image: SITE_IMAGES.containerShip, title: 'Global Operations', href: '/projects' },
+  { image: SITE_IMAGES.terminalArchitecture, title: 'Secure Platform', href: '/technology' },
+  { image: SITE_IMAGES.portCraneScene, title: 'Factory Dispatch Gate', href: '/roles/payload-gate' },
+  { image: SITE_IMAGES.lastMileDelivery, title: 'Retailer Dashboard', href: '/demo/retailer' },
+  { image: SITE_IMAGES.fleekHeroNew, title: 'Network Overview', href: '/platform' },
+  { image: SITE_IMAGES.truckTerminal, title: 'Gate-ready Fleet', href: '/capabilities/live-fleet-tracking' },
+  { image: SITE_IMAGES.warehouseAutomation, title: 'Yard Flow', href: '/roles/warehouse' },
 ];
 
 export default function ShowcaseWall() {

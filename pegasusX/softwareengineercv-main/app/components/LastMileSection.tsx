@@ -72,13 +72,13 @@ export default function LastMileSection() {
             {t('last_mile_eyebrow', 'Last mile')}
           </p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-white">
-            {t('last_mile_title', 'Delivery that feels personal')}
+            {t('last_mile_title', 'Track every single order')}
           </h2>
           <div className="w-20 h-px bg-white" />
           <p className="text-base md:text-lg font-extralight text-white/70 leading-relaxed">
             {t(
               'last_mile_desc',
-              'From live tracking to pay-at-delivery, every stop stays clear for the driver and the store — so handoffs happen without phone calls or guesswork.',
+              'Built for retailers and suppliers — on every OS they use. Live status from warehouse to door so both sides see the same stop, without phone calls or guesswork.',
             )}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
 export interface DriftWallItem {
   image: string;
@@ -39,14 +40,27 @@ interface ColumnMeta {
   copies: number;
 }
 
-const DEFAULT_ITEMS: DriftWallItem[] = Array.from({ length: 15 }, (_, i) => {
-  const ids = [1015, 1025, 1039, 1043, 1044, 1050, 1062, 1069, 1074, 1080, 1084, 106, 110, 133, 164];
-  return {
-    image: `https://picsum.photos/id/${ids[i % ids.length]}/600/400`,
-    title: `Tile ${i + 1}`,
-    href: undefined
-  };
-});
+const FALLBACK_IMAGES = [
+  SITE_IMAGES.truckTerminal,
+  SITE_IMAGES.logisticsPlatformUi,
+  SITE_IMAGES.multimodalHub,
+  SITE_IMAGES.warehouseAutomation,
+  SITE_IMAGES.pegasusContainer,
+  SITE_IMAGES.operationsTeam,
+  SITE_IMAGES.warehouseWireframe,
+  SITE_IMAGES.deliveryDrone,
+  SITE_IMAGES.containerShip,
+  SITE_IMAGES.terminalArchitecture,
+  SITE_IMAGES.portCraneScene,
+  SITE_IMAGES.lastMileDelivery,
+  SITE_IMAGES.fleekHeroNew,
+] as const;
+
+const DEFAULT_ITEMS: DriftWallItem[] = FALLBACK_IMAGES.map((image, i) => ({
+  image,
+  title: `Tile ${i + 1}`,
+  href: undefined,
+}));
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
 

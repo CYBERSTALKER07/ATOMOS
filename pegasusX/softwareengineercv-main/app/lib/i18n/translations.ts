@@ -280,9 +280,9 @@ export const translations = {
 
     // Home — last-mile delivery section
     last_mile_eyebrow: 'Last mile',
-    last_mile_title: 'Delivery that feels personal',
+    last_mile_title: 'Track every single order',
     last_mile_desc:
-      'From live tracking to pay-at-delivery, every stop stays clear for the driver and the store — so handoffs happen without phone calls or guesswork.',
+      'Built for retailers and suppliers — on every OS they use. Live status from warehouse to door so both sides see the same stop, without phone calls or guesswork.',
     last_mile_cta_primary: 'See live tracking',
     last_mile_cta_secondary: 'Retailer experience',
     last_mile_image_alt: 'Driver handing Pegasus packages to a retailer at the door',
@@ -824,9 +824,9 @@ export const translations = {
 
     // Home — last-mile delivery section
     last_mile_eyebrow: 'Последняя миля',
-    last_mile_title: 'Доставка, которая чувствуется лично',
+    last_mile_title: 'Отслеживайте каждый заказ',
     last_mile_desc:
-      'От живого трекинга до оплаты при вручении — каждая остановка понятна водителю и магазину, без звонков и догадок.',
+      'Сделано для ритейлеров и поставщиков — на каждой ОС, которой они пользуются. Живой статус от склада до двери: обе стороны видят одну и ту же остановку, без звонков и догадок.',
     last_mile_cta_primary: 'Смотреть трекинг',
     last_mile_cta_secondary: 'Опыт ритейлера',
     last_mile_image_alt: 'Водитель передаёт посылки Pegasus ритейлеру у двери',

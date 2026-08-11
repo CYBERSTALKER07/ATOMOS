@@ -48,7 +48,7 @@ function useElementWidth<T extends HTMLElement>(ref: React.RefObject<T | null>):
 
 const CompanyCard = ({ company }: { company: Company }) => (
   <div className="inline-block mx-4">
-    <div className="bg-white text-black border-2 border-black rounded-2xl p-6 min-w-[350px] transition-all duration-300 group company-card hover-orange">
+    <div className="bg-white text-black border-2 border-black rounded-2xl p-6 min-w-[350px] transition-all duration-300 group company-card hover-green">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
