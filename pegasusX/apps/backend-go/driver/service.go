@@ -60,6 +60,10 @@ type DriverOrderView struct {
 	SplitGroupID    string                `json:"split_group_id,omitempty"`
 	CreatedAt       string                `json:"created_at"`
 	UpdatedAt       string                `json:"updated_at"`
+
+	// AssignedDriverID is the order's assigned driver, used for the fail-closed
+	// ownership check in HandleOrderGet. Never serialized to clients.
+	AssignedDriverID string `json:"-"`
 }
 
 // DriverOrderQuery lists active orders assigned to a driver from Spanner.

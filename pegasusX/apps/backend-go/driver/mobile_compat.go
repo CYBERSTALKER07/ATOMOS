@@ -533,6 +533,17 @@ func (s *Service) HandleOrderGet(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			s.log.ErrorContext(r.Context(), "order get failed", "err", err, "order_id", orderID)
 		} else if found {
+			// Fail-closed ownership check: a driver may only read an order
+			// assigned to them. Other roles (admin/warehouse/factory) that reach
+			// this mobile-compat route retain prior behaviour.
+			if claims, ok := auth.FromContext(r.Context()); ok && claims.Role == auth.RoleDriver {
+				caller := strings.TrimSpace(claims.Subject)
+				assigned := strings.TrimSpace(order.AssignedDriverID)
+				if caller == "" || assigned == "" || caller != assigned {
+					writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+					return
+				}
+			}
 			writeJSON(w, http.StatusOK, order)
 			return
 		} else {

@@ -1899,7 +1899,8 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 			             o.TotalMinor, o.DeliveryFeeMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
 			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
 			             COALESCE(mo.SequenceIndex, 0),
-			             CASE WHEN (SELECT COUNT(DISTINCT ManifestId) FROM ManifestOrders WHERE OrderId = o.OrderId) > 1 THEN o.OrderId ELSE "" END
+			             CASE WHEN (SELECT COUNT(DISTINCT ManifestId) FROM ManifestOrders WHERE OrderId = o.OrderId) > 1 THEN o.OrderId ELSE "" END,
+			             COALESCE(o.DriverId, '')
 			      FROM Orders o
 			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
 			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
@@ -1922,6 +1923,7 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 		if err := row.Columns(
 			&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor, &o.DeliveryFeeMinor,
 			&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex, &o.SplitGroupID,
+			&o.AssignedDriverID,
 		); err != nil {
 			return driver.DriverOrderView{}, false, fmt.Errorf("driver order get scan: %w", err)
 		}
