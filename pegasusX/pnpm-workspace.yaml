@@ -1,5 +1,6 @@
 packages:
   - "apps/supplier-portal"
+  - "apps/admin-portal"
   - "apps/retailer-app-desktop"
   - "apps/warehouse-portal"
   - "apps/factory-portal"

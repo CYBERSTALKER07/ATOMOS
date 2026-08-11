@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS FeatureFlagOverrides (
   UpdatedBy    STRING(128) NOT NULL,
   UpdatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   Reason       STRING(512),
+  Status       STRING(16) NOT NULL DEFAULT ('ACTIVE'), -- ACTIVE | PENDING (money flags await 2nd approver)
+  ApprovedBy   STRING(128),
+  ApprovedAt   TIMESTAMP,
 ) PRIMARY KEY (FlagKey, TenantType, TenantId);
 
 CREATE INDEX IF NOT EXISTS Idx_FeatureFlagOverrides_ByTenant

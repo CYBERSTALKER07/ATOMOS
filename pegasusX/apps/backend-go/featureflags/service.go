@@ -28,7 +28,16 @@ type Override struct {
 	UpdatedBy  string
 	UpdatedAt  time.Time
 	Reason     string
+	// Dual-control (money flags): PENDING until a second PLATFORM_ADMIN approves.
+	Status     string // StatusActive | StatusPending
+	ApprovedBy string
+	ApprovedAt time.Time
 }
+
+const (
+	StatusActive  = "ACTIVE"
+	StatusPending = "PENDING"
+)
 
 // Repository stores overrides.
 type Repository interface {
@@ -63,6 +72,9 @@ func (r *MemoryRepository) Upsert(_ context.Context, o Override) error {
 	defer r.mu.Unlock()
 	o.FlagKey = strings.ToUpper(strings.TrimSpace(o.FlagKey))
 	o.TenantType = strings.ToUpper(strings.TrimSpace(o.TenantType))
+	if o.Status == "" {
+		o.Status = StatusActive
+	}
 	r.rows[ovKey(o.FlagKey, o.TenantType, o.TenantID)] = o
 	return nil
 }
@@ -107,14 +119,19 @@ func (s *Service) Evaluate(ctx context.Context, flagKey, tenantType, tenantID st
 		if err != nil {
 			return false, source, err
 		}
-		if ok {
+		// Only ACTIVE overrides take effect; PENDING money-flag overrides await
+		// a second approver and must not change runtime behavior yet.
+		if ok && ov.Status == StatusActive {
 			return ov.Enabled, "tenant_override", nil
 		}
 	}
 	return envVal, source, nil
 }
 
-// SetOverride writes a tenant override. Money-affecting flags require reason.
+// SetOverride writes a tenant override. Money-affecting flags require a reason
+// AND dual control: the override is stored PENDING and only takes effect after
+// a different PLATFORM_ADMIN approves it via ApproveOverride. Non-money flags
+// apply immediately (ACTIVE).
 func (s *Service) SetOverride(ctx context.Context, o Override) error {
 	if s == nil || s.repo == nil {
 		return fmt.Errorf("featureflags_unavailable")
@@ -125,11 +142,49 @@ func (s *Service) SetOverride(ctx context.Context, o Override) error {
 	if o.FlagKey == "" || o.TenantType == "" || o.TenantID == "" {
 		return fmt.Errorf("flag_tenant_required")
 	}
-	if MoneyAffectingFlags[o.FlagKey] && strings.TrimSpace(o.Reason) == "" {
-		return fmt.Errorf("reason_required_for_money_flag")
+	if MoneyAffectingFlags[o.FlagKey] {
+		if strings.TrimSpace(o.Reason) == "" {
+			return fmt.Errorf("reason_required_for_money_flag")
+		}
+		o.Status = StatusPending
+		o.ApprovedBy = ""
+		o.ApprovedAt = time.Time{}
+	} else {
+		o.Status = StatusActive
 	}
 	if o.UpdatedAt.IsZero() {
 		o.UpdatedAt = time.Now().UTC()
 	}
 	return s.repo.Upsert(ctx, o)
+}
+
+// ApproveOverride activates a PENDING money-flag override. The approver must
+// differ from the actor who set it (dual control) — the same person cannot
+// both request and approve a money-affecting change.
+func (s *Service) ApproveOverride(ctx context.Context, flagKey, tenantType, tenantID, approver string) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("featureflags_unavailable")
+	}
+	flagKey = strings.ToUpper(strings.TrimSpace(flagKey))
+	approver = strings.TrimSpace(approver)
+	ov, ok, err := s.repo.Get(ctx, flagKey, strings.ToUpper(strings.TrimSpace(tenantType)), strings.TrimSpace(tenantID))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("override_not_found")
+	}
+	if !MoneyAffectingFlags[ov.FlagKey] {
+		return fmt.Errorf("not_a_money_flag")
+	}
+	if ov.Status != StatusPending {
+		return fmt.Errorf("override_not_pending")
+	}
+	if strings.EqualFold(ov.UpdatedBy, approver) {
+		return fmt.Errorf("approver_must_differ_from_setter")
+	}
+	ov.Status = StatusActive
+	ov.ApprovedBy = approver
+	ov.ApprovedAt = time.Now().UTC()
+	return s.repo.Upsert(ctx, ov)
 }

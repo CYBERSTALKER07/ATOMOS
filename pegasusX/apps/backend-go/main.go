@@ -150,6 +150,13 @@ func main() {
 	}
 
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
+	// SLO metrics (void_outbox_lag_seconds, void_fiscal_success_ratio,
+	// void_capture_success_ratio) polled from Spanner into the default
+	// Prometheus registry; scraped at /metrics (mounted by infraroutes).
+	if app.Spanner != nil {
+		slo := telemetry.NewSLOCollector(app.Spanner, nil, slog.Default())
+		go slo.Start(ctx, 60*time.Second)
+	}
 	geocodeSvc := geolocation.NewService(cfg.GoogleMapsAPIKey, app.Cache)
 	platformroutes.RegisterRoutes(r, platformroutes.Deps{
 		Handler:        app.PlatformHandler,

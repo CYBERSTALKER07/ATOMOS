@@ -2813,3 +2813,51 @@ CREATE TABLE ProductMatchQueue (
 
 CREATE INDEX Idx_MatchQueue_ByStatusCreated ON ProductMatchQueue(Status, CreatedAt);
 CREATE INDEX Idx_MatchQueue_BySupplierProduct ON ProductMatchQueue(SupplierId, ProductId, Status);
+
+-- Phase 3: platform tenant lifecycle + feature-flag overrides + admin audit.
+-- (Mirror of migrations/20260811_platform_admin_flags.ddl +
+--  20260811_feature_flag_dual_control.ddl so fresh emulators get the tables.)
+CREATE TABLE PlatformTenants (
+  TenantType   STRING(32) NOT NULL,
+  TenantId     STRING(64) NOT NULL,
+  Status       STRING(32) NOT NULL,
+  DisplayName  STRING(255),
+  KybNotes     STRING(MAX),
+  CreatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ApprovedAt   TIMESTAMP,
+  SuspendedAt  TIMESTAMP,
+  OffboardedAt TIMESTAMP,
+) PRIMARY KEY (TenantType, TenantId);
+
+CREATE INDEX Idx_PlatformTenants_ByStatus
+  ON PlatformTenants(Status, UpdatedAt DESC);
+
+CREATE TABLE PlatformAdminAudit (
+  AuditId      STRING(36) NOT NULL,
+  ActorSubject STRING(128) NOT NULL,
+  Action       STRING(64) NOT NULL,
+  TenantType   STRING(32),
+  TenantId     STRING(64),
+  DetailJson   STRING(MAX),
+  CreatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AuditId);
+
+CREATE INDEX Idx_PlatformAdminAudit_ByCreated
+  ON PlatformAdminAudit(CreatedAt DESC);
+
+CREATE TABLE FeatureFlagOverrides (
+  FlagKey      STRING(128) NOT NULL,
+  TenantType   STRING(32) NOT NULL,
+  TenantId     STRING(64) NOT NULL,
+  Enabled      BOOL NOT NULL,
+  UpdatedBy    STRING(128) NOT NULL,
+  UpdatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  Reason       STRING(512),
+  Status       STRING(16) NOT NULL DEFAULT ('ACTIVE'), -- ACTIVE | PENDING (money flags await 2nd approver)
+  ApprovedBy   STRING(128),
+  ApprovedAt   TIMESTAMP,
+) PRIMARY KEY (FlagKey, TenantType, TenantId);
+
+CREATE INDEX Idx_FeatureFlagOverrides_ByTenant
+  ON FeatureFlagOverrides(TenantType, TenantId);

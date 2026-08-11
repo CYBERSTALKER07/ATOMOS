@@ -76,7 +76,44 @@ func (h *Handlers) HandleSetOverride(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	status := StatusActive
+	if MoneyAffectingFlags[strings.ToUpper(flag)] {
+		status = StatusPending
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": status})
+}
+
+// HandleApproveOverride POST /v1/platform-admin/flags/{flagKey}/approve
+// Dual control: a different PLATFORM_ADMIN activates a PENDING money flag.
+func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request) {
+	flag := chi.URLParam(r, "flagKey")
+	var req struct {
+		TenantType string `json:"tenant_type"`
+		TenantID   string `json:"tenant_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	approver := "unknown"
+	if c, ok := auth.FromContext(r.Context()); ok {
+		approver = c.Subject
+		if approver == "" {
+			approver = string(c.Role)
+		}
+	}
+	if err := h.Svc.ApproveOverride(r.Context(), flag, req.TenantType, req.TenantID, approver); err != nil {
+		status := http.StatusUnprocessableEntity
+		switch err.Error() {
+		case "override_not_found":
+			status = http.StatusNotFound
+		case "approver_must_differ_from_setter", "override_not_pending", "not_a_money_flag":
+			status = http.StatusConflict
+		}
+		writeErr(w, status, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": StatusActive})
 }
 
 // RegisterRoutes mounts flag routes under an already PLATFORM_ADMIN-gated router group
@@ -89,5 +126,6 @@ func RegisterRoutes(r chi.Router, h *Handlers) {
 		fr.Use(auth.RequireRole(auth.RolePlatformAdmin))
 		fr.Get("/{flagKey}", h.HandleEvaluate)
 		fr.Put("/{flagKey}", h.HandleSetOverride)
+		fr.Post("/{flagKey}/approve", h.HandleApproveOverride)
 	})
 }
