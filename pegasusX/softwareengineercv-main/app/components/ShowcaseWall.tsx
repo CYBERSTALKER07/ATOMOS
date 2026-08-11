@@ -34,10 +34,10 @@ export default function ShowcaseWall() {
           ECOSYSTEM VISUAL MATRIX
         </div>
         <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white mb-4">
-          {t('showcase_title', '3D Interactive Ecosystem Wall')}
+          {t('showcase_title', 'Interactive Ecosystem Wall')}
         </h2>
         <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto font-light">
-          {t('showcase_subtitle', 'Explore real-time telemetry, dispatch boards, and multi-role operations floating in 3D parallax.')}
+          {t('showcase_subtitle', 'Explore live tracking, dispatch boards, and multi-role operations in motion.')}
         </p>
       </div>
 
