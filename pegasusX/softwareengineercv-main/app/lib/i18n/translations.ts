@@ -276,6 +276,16 @@ export const translations = {
     home_lane_signal: 'Signal',
     home_lane_operations: 'Operations',
     home_lane_proof: 'Proof',
+    home_lane_last_mile: 'Last mile',
+
+    // Home — last-mile delivery section
+    last_mile_eyebrow: 'Last mile',
+    last_mile_title: 'Delivery that feels personal',
+    last_mile_desc:
+      'From live tracking to pay-at-delivery, every stop stays clear for the driver and the store — so handoffs happen without phone calls or guesswork.',
+    last_mile_cta_primary: 'See live tracking',
+    last_mile_cta_secondary: 'Retailer experience',
+    last_mile_image_alt: 'Driver handing Pegasus packages to a retailer at the door',
 
     // ContentCard & Licensing Hover
     content_read_more: 'READ MORE',
@@ -810,6 +820,16 @@ export const translations = {
     home_lane_signal: 'Сигналы',
     home_lane_operations: 'Операции',
     home_lane_proof: 'Доказательства',
+    home_lane_last_mile: 'Последняя миля',
+
+    // Home — last-mile delivery section
+    last_mile_eyebrow: 'Последняя миля',
+    last_mile_title: 'Доставка, которая чувствуется лично',
+    last_mile_desc:
+      'От живого трекинга до оплаты при вручении — каждая остановка понятна водителю и магазину, без звонков и догадок.',
+    last_mile_cta_primary: 'Смотреть трекинг',
+    last_mile_cta_secondary: 'Опыт ритейлера',
+    last_mile_image_alt: 'Водитель передаёт посылки Pegasus ритейлеру у двери',
 
     // ContentCard & Licensing Hover
     content_read_more: 'ПОДРОБНЕЕ',

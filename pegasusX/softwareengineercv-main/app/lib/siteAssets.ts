@@ -12,6 +12,8 @@ export const SITE_IMAGES = {
   operationsTeam: '/Gemini_Generated_Image_xvlgisxvlgisxvlg.png',
   warehouseWireframe: '/Gemini_Generated_Image_y7jkmqy7jkmqy7jk.png',
   fleekHeroNew: '/Gemini_Generated_Image_un3te4un3te4un3t.png',
+  /** Driver → storefront handoff (stipple). */
+  lastMileDelivery: '/Unknown-11.jpg',
 } as const;
 
 /** Rotating editorial cards — supplier, warehouse, retailer, fleet, finance, etc. */

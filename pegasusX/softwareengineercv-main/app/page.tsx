@@ -19,6 +19,7 @@ import { translations } from '@/app/lib/i18n/translations';
 
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
+const LastMileSection = dynamic(() => import('./components/LastMileSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
 const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPromptSection'));
@@ -111,7 +112,13 @@ export default async function Home() {
           <DispatchVisualSection />
         </section>
 
-        <LocalizedLaneDivider index="02" labelKey="home_lane_signal" />
+        <LocalizedLaneDivider index="02" labelKey="home_lane_last_mile" />
+
+        <section id="section-last-mile">
+          <LastMileSection />
+        </section>
+
+        <LocalizedLaneDivider index="03" labelKey="home_lane_signal" />
 
         <section id="section-telemetry">
           <PlatformFeatures />
@@ -123,12 +130,12 @@ export default async function Home() {
           <EcosystemStats />
           <LogisticsWorkflow />
           <OurApproach />
-          <LocalizedLaneDivider index="03" labelKey="home_lane_operations" />
+          <LocalizedLaneDivider index="04" labelKey="home_lane_operations" />
           <Skills />
           <DevelopmentTools />
         </section>
 
-        <LocalizedLaneDivider index="04" labelKey="home_lane_proof" />
+        <LocalizedLaneDivider index="05" labelKey="home_lane_proof" />
 
         <section id="section-showcase">
           <ShowcaseWall />
