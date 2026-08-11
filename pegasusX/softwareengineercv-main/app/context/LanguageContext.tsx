@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { translations, TranslationKey } from '../lib/i18n/translations';
 
 export type Language = 'en' | 'ru';
@@ -13,7 +13,10 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode, initialLanguage?: Language }> = ({ children, initialLanguage = 'en' }) => {
+export const LanguageProvider: React.FC<{ children: React.ReactNode; initialLanguage?: Language }> = ({
+  children,
+  initialLanguage = 'en',
+}) => {
   const [language, setLanguageState] = useState<Language>(initialLanguage);
 
   useEffect(() => {
@@ -30,15 +33,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode, initialLang
 
     // Try to get from cookie first (as it's the source of truth for SSR)
     const cookies = document.cookie.split('; ');
-    const langCookie = cookies.find(row => row.startsWith('pegasus_lang='));
-    let storedLang = langCookie ? langCookie.split('=')[1] as Language : null;
-    
+    const langCookie = cookies.find((row) => row.startsWith('pegasus_lang='));
+    let storedLang = langCookie ? (langCookie.split('=')[1] as Language) : null;
+
     // Fallback to localStorage if cookie isn't there (e.g. migration)
     if (!storedLang) {
       storedLang = localStorage.getItem('pegasus_lang') as Language;
       if (storedLang === 'en' || storedLang === 'ru') {
-         // Sync cookie from local storage
-         document.cookie = `pegasus_lang=${storedLang}; path=/; max-age=31536000; SameSite=Lax`;
+        // Sync cookie from local storage
+        document.cookie = `pegasus_lang=${storedLang}; path=/; max-age=31536000; SameSite=Lax`;
       }
     }
 
@@ -56,32 +59,30 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode, initialLang
     }
   }, [initialLanguage]);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('pegasus_lang', lang);
     document.cookie = `pegasus_lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
     document.documentElement.lang = lang;
-  };
+  }, []);
 
-  const t = (key: TranslationKey | string, fallback?: string): string => {
-    const langDict = translations[language] || translations['en'];
+  const t = useCallback((key: TranslationKey | string, fallback?: string): string => {
+    const langDict = translations[language] || translations.en;
     const value = (langDict as Record<string, string>)[key];
     if (value) return value;
-    const enValue = (translations['en'] as Record<string, string>)[key];
+    const enValue = (translations.en as Record<string, string>)[key];
     if (enValue) return enValue;
     return fallback || key;
-  };
+  }, [language]);
 
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t]);
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 };
 
-export const useLanguage = (): LanguageContextType => {
+export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useLanguage must be used within a LanguageProvider');
   }
   return context;

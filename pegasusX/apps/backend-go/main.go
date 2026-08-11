@@ -35,6 +35,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
@@ -373,6 +374,7 @@ func main() {
 	if app.PayoutService != nil {
 		payout.RegisterRoutes(r, &payout.Handlers{Svc: app.PayoutService})
 	}
+	planning.RegisterAccuracyRoutes(r, app.ForecastAccuracy)
 	if app.BillingInvoiceWorker != nil {
 		billing.RegisterRoutes(r, &billing.Handlers{Worker: app.BillingInvoiceWorker})
 	}

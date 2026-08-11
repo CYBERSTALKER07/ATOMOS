@@ -1,14 +1,20 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import FleekNav from './FleekNav';
-import Footer from '@/app/components/Footer';
+
+const Footer = dynamic(() => import('@/app/components/Footer'), { ssr: false });
 
 type FleekPageShellProps = {
   activeHref?: string;
   children: ReactNode;
 };
 
+/**
+ * Page chrome stays mounted independently of form state in `children`.
+ * FleekNav is memoized so focus/typing in forms won't restart nav GSAP.
+ */
 export default function FleekPageShell({ activeHref, children }: FleekPageShellProps) {
   return (
     <main className="fleek-docs min-h-screen bg-black text-white">

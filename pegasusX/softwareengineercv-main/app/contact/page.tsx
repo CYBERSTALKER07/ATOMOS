@@ -52,7 +52,7 @@ export default function ContactPage() {
 
       const stored = localStorage.getItem('customer_messages');
       const messages = stored ? JSON.parse(stored) : [];
-      messages.unshift(data.message);
+      messages.unshift(data.message ?? data.inquiry);
       localStorage.setItem('customer_messages', JSON.stringify(messages));
 
       setSubmitStatus('success');

@@ -1,24 +1,29 @@
 'use client';
 
-import PillNav from '@/app/components/PillNav';
+import { memo, useMemo } from 'react';
+import PillNav, { type PillNavItem } from '@/app/components/PillNav';
 import { getMegaNavCategories } from '@/app/data/megaNavigation';
 import { useLanguage } from '@/app/context/LanguageContext';
-
 
 type SiteNavProps = {
   activeHref?: string;
 };
 
-export default function SiteNav({ activeHref }: SiteNavProps) {
-  const { t } = useLanguage();
+const EMPTY_ITEMS: PillNavItem[] = [];
+
+function SiteNav({ activeHref }: SiteNavProps) {
+  const { t, language } = useLanguage();
+
+  // Rebuild only when language changes (t is stable per language via context).
+  const categories = useMemo(() => getMegaNavCategories(t), [language, t]);
 
   return (
     <PillNav
       logo=""
       logoAlt="Pegasus Logo"
       showMenuButton={true}
-      categories={getMegaNavCategories(t)}
-      items={[]}
+      categories={categories}
+      items={EMPTY_ITEMS}
       activeHref={activeHref}
       baseColor="#000000"
       pillColor="#ffffff"
@@ -27,3 +32,5 @@ export default function SiteNav({ activeHref }: SiteNavProps) {
     />
   );
 }
+
+export default memo(SiteNav);
