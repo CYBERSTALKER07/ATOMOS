@@ -1067,6 +1067,32 @@ export interface SeasonalTemplatesResponse {
   overrides: SeasonalOverrideRow[];
 }
 
+/** One persisted ForecastAccuracyDaily row (admin accuracy surface). */
+export interface ForecastAccuracyDailyRow {
+  SupplierId: string;
+  ForecastDate: string;
+  WarehouseId: string;
+  ProductId: string;
+  ForecastQty: number;
+  ActualQty: number;
+  AbsError: number;
+  SignedError: number;
+  Wape7: number;
+  Wape28: number;
+  Bias7: number;
+  Bias28: number;
+  TrackingSignal: number;
+  SampleDays7: number;
+  SampleDays28: number;
+  AlertTs: boolean;
+  ComputedAt: string;
+}
+
+export interface ForecastAccuracyResponse {
+  items: ForecastAccuracyDailyRow[];
+  days: number;
+}
+
 export interface SeasonalEstimateSuggestion {
   template_id: string;
   name: string;

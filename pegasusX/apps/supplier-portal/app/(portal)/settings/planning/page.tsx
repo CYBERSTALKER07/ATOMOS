@@ -11,7 +11,7 @@ import { supplierSeasonalOverrideCreateKey } from "@pegasusx/api-client/idempote
 import type { SeasonalOverrideInput, SeasonalTemplatesResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import SignalIngestOpsPanel from "@/components/SignalIngestOpsPanel";
-import { CreateOverrideForm, SeasonalOverridesTable, type OverrideForm } from "@/components/settings/planning";
+import { CreateOverrideForm, SeasonalOverridesTable, ForecastAccuracyPanel, type OverrideForm } from "@/components/settings/planning";
 
 const api = createSupplierApi();
 
@@ -111,6 +111,8 @@ export default function PlanningSettingsPage() {
       }
     >
       <SignalIngestOpsPanel />
+
+      <ForecastAccuracyPanel />
 
       <section className="desk-card p-6 mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

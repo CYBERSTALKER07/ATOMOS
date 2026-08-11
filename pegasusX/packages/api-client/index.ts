@@ -151,6 +151,7 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SeasonalOverrideRow,
   SeasonalEstimateResult,
   SeasonalTemplatesResponse,
+  ForecastAccuracyResponse,
   PlanningSignalIngestInput,
   SparsityGateResult,
   PromoSimulateInput,
@@ -1579,6 +1580,23 @@ export class ApiClient {
 
   async getSeasonalOverrides(): Promise<SeasonalTemplatesResponse> {
     return this.request<SeasonalTemplatesResponse>("/v1/supplier/planning/seasonal-overrides", "GET");
+  }
+
+  async getForecastAccuracy(opts: {
+    supplierId: string;
+    days?: number;
+    warehouseId?: string;
+    productId?: string;
+  }): Promise<ForecastAccuracyResponse> {
+    return this.request<ForecastAccuracyResponse>(
+      appendQuery("/v1/admin/planning/accuracy", {
+        supplier_id: opts.supplierId,
+        days: opts.days ?? 28,
+        warehouse_id: opts.warehouseId || undefined,
+        product_id: opts.productId || undefined,
+      }),
+      "GET",
+    );
   }
 
   async createSeasonalOverride(

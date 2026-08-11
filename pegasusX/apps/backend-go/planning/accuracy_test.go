@@ -2,9 +2,13 @@ package planning
 
 import (
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"cloud.google.com/go/civil"
+	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestComputeSeriesMetricsWapeBias(t *testing.T) {
@@ -66,4 +70,52 @@ func TestConfidencePctFromWape(t *testing.T) {
 	if !ok || pct != 0 {
 		t.Fatalf("got pct=%d ok=%v want 0 true", pct, ok)
 	}
+}
+
+func TestHandleListAccuracyMethodNotAllowed(t *testing.T) {
+	svc := &AccuracyService{}
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/planning/accuracy", nil)
+	rec := httptest.NewRecorder()
+	svc.HandleListAccuracy(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("got %d want 405", rec.Code)
+	}
+}
+
+func TestHandleListAccuracyForbidden(t *testing.T) {
+	svc := &AccuracyService{}
+	// No claims.
+	rec := httptest.NewRecorder()
+	svc.HandleListAccuracy(rec, httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy", nil))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("no-claims: got %d want 403", rec.Code)
+	}
+	// Non-admin role.
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Subject: "u1", Role: auth.RoleRetailer}))
+	rec = httptest.NewRecorder()
+	svc.HandleListAccuracy(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin: got %d want 403", rec.Code)
+	}
+}
+
+func TestHandleListAccuracyRequiresSupplier(t *testing.T) {
+	svc := &AccuracyService{}
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Subject: "u1", Role: auth.RoleAdmin}))
+	rec := httptest.NewRecorder()
+	svc.HandleListAccuracy(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d want 400 (missing supplier_id)", rec.Code)
+	}
+}
+
+func TestRegisterAccuracyRoutesNilSafe(t *testing.T) {
+	// Must not panic on nil service.
+	RegisterAccuracyRoutes(newTestRouter(), nil)
+}
+
+func newTestRouter() *chi.Mux {
+	return chi.NewRouter()
 }
