@@ -357,6 +357,7 @@ type Service struct {
 	// Place mode
 	orderCreator          OrderCreator
 	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED
+	soakGateDisabled      bool // test seam: bypass the soak-evidence gate
 	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
 	autoOrderBucket map[string]string
 	// Local POS catalog (memory fallback)

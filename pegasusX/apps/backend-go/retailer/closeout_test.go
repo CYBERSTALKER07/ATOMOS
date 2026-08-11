@@ -292,6 +292,8 @@ func (m *mockOrderCreator) Create(_ context.Context, retailerID string, req orde
 
 func TestAutoOrderWorkerPlaceMode(t *testing.T) {
 	t.Parallel()
+	// This test exercises place mechanics directly; bypass the soak-evidence gate
+	// via the test seam (gate behavior is covered by auto_order_soak_gate_test.go).
 	n := 0
 	mock := &mockOrderCreator{}
 	svc := NewService(ServiceConfig{
@@ -300,6 +302,7 @@ func TestAutoOrderWorkerPlaceMode(t *testing.T) {
 		OrderCreator:          mock,
 		AutoOrderPlaceEnabled: true,
 	})
+	svc.soakGateDisabled = true
 	_ = svc.saveAutoOrderDurable(t.Context(), "ret-place", "o", AutoOrderSettings{GlobalEnabled: true})
 	svc.SeedReorderSuggestions("ret-place", []RetailerReorderSuggestion{
 		{SKU: "SKU-A", SuggestedQty: 2, Sources: []string{"STORE_POS"}, Status: "OPEN"},

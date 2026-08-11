@@ -470,7 +470,7 @@ func (s *Service) markBucket(key, value string) {
 
 // runAutoOrderPlace groups candidates by supplier and creates real orders via OrderCreator.
 func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, cands []AutoOrderCandidate, run *AutoOrderRun) {
-	if s.orderCreator == nil || !s.autoOrderPlaceEnabled {
+	if s.orderCreator == nil || !s.placeAllowedForRetailer(ctx, orgID) {
 		// Soft fall-through: still draft so operators are not stuck
 		for _, c := range cands {
 			run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "place_unavailable"})
@@ -478,7 +478,7 @@ func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, c
 		if s.orderCreator == nil {
 			run.Message = "place_unavailable_no_order_creator"
 		} else {
-			run.Message = "place_disabled_set_AUTO_ORDER_PLACE_ENABLED"
+			run.Message = "place_blocked_by_soak_gate_or_flag"
 		}
 		// Draft fallback for ops continuity
 		now := s.now().UTC()
@@ -935,7 +935,7 @@ func (s *Service) sweepAutoOrderEnabled(ctx context.Context) {
 		if mode == AutoOrderModeOff {
 			continue
 		}
-		if mode == AutoOrderModePlace && !s.autoOrderPlaceEnabled {
+		if mode == AutoOrderModePlace && !s.placeAllowedForRetailer(ctx, rid) {
 			mode = AutoOrderModeDraft
 		}
 		_ = s.RunAutoOrderForRetailer(ctx, rid, mode)

@@ -32,9 +32,16 @@ type RetailerReorderSuggestion = {
   suggested_qty: number;
   adjusted_demand_per_day?: number;
   current_stock?: number;
+  safety_stock?: number;
   sources?: string[];
   sell_through_velocity?: number;
   status?: string;
+};
+
+type SoakGate = {
+  decision?: { allowed: boolean; reasons?: string[]; stats?: AutoOrderSettings["shadow_stats"] };
+  thresholds?: { min_proposals?: number; max_wape?: number; min_unmodified?: number; gate_disabled?: boolean };
+  place_flag_enabled?: boolean;
 };
 
 export default function AutoOrderPage() {
@@ -67,6 +74,7 @@ export default function AutoOrderPage() {
     AutoOrderShadowProposal[]
   >([]);
   const [placeConfirmOpen, setPlaceConfirmOpen] = useState(false);
+  const [soakGate, setSoakGate] = useState<SoakGate | null>(null);
 
   const retailerId = getRetailerId();
   const executionMode: AutoOrderExecutionMode = (() => {
@@ -139,6 +147,35 @@ export default function AutoOrderPage() {
     }
   }, []);
 
+  const fetchSoakGate = useCallback(async () => {
+    try {
+      const res = await apiFetch("/v1/retailer/settings/auto-order/soak-gate");
+      if (!res.ok) {
+        setSoakGate(null);
+        return;
+      }
+      setSoakGate((await res.json()) as SoakGate);
+    } catch {
+      setSoakGate(null);
+    }
+  }, []);
+
+  const downloadSoakArtifact = useCallback(async () => {
+    try {
+      const res = await apiFetch("/v1/retailer/settings/auto-order/soak-artifact");
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auto-order-soak-${retailerId || "retailer"}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* best effort */
+    }
+  }, [retailerId]);
+
   useEffect(() => {
     void fetchPredictions();
   }, [fetchPredictions]);
@@ -155,6 +192,10 @@ export default function AutoOrderPage() {
     void fetchShadowProposals();
   }, [fetchShadowProposals]);
 
+  useEffect(() => {
+    void fetchSoakGate();
+  }, [fetchSoakGate]);
+
   const refreshAll = useCallback(() => {
     setSyncMessage(null);
     void mutateSettings();
@@ -162,12 +203,14 @@ export default function AutoOrderPage() {
     void fetchRuns();
     void fetchReorderSuggestions();
     void fetchShadowProposals();
+    void fetchSoakGate();
   }, [
     mutateSettings,
     fetchPredictions,
     fetchRuns,
     fetchReorderSuggestions,
     fetchShadowProposals,
+    fetchSoakGate,
   ]);
 
   const runAutoOrder = async (mode: "shadow" | "draft" | "place") => {
@@ -511,6 +554,61 @@ export default function AutoOrderPage() {
           </p>
         </div>
 
+        {soakGate && (
+          <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
+                Place readiness (30-day shadow soak)
+              </h3>
+              <button
+                type="button"
+                onClick={() => void downloadSoakArtifact()}
+                className="portal-btn portal-btn--ghost h-9 px-4 rounded-xl text-xs font-light"
+              >
+                Download evidence (JSON)
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
+                  soakGate.decision?.allowed
+                    ? "bg-emerald-500/10 text-emerald-700"
+                    : "bg-amber-500/10 text-amber-700"
+                }`}
+              >
+                {soakGate.decision?.allowed
+                  ? "Soak passed — place permitted"
+                  : "Soak gate blocking place"}
+              </span>
+              {soakGate.place_flag_enabled === false && (
+                <span className="text-xs px-3 py-1.5 rounded-lg bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]">
+                  AUTO_ORDER_PLACE_ENABLED off
+                </span>
+              )}
+            </div>
+            {soakGate.decision?.stats && (
+              <p className="text-xs text-[var(--desk-text-secondary)] mb-2">
+                {soakGate.decision.stats.proposal_count} proposals ·{" "}
+                {soakGate.decision.stats.matched_orders} matched · WAPE{" "}
+                {((soakGate.decision.stats.wape ?? 0) * 100).toFixed(0)}% · unmodified{" "}
+                {((soakGate.decision.stats.unmodified_accept_rate ?? 0) * 100).toFixed(0)}%
+              </p>
+            )}
+            {soakGate.thresholds && (
+              <p className="text-xs text-[var(--desk-text-tertiary)] mb-2">
+                Thresholds: ≥{soakGate.thresholds.min_proposals} proposals · WAPE ≤
+                {((soakGate.thresholds.max_wape ?? 0) * 100).toFixed(0)}% · unmodified ≥
+                {((soakGate.thresholds.min_unmodified ?? 0) * 100).toFixed(0)}%
+              </p>
+            )}
+            {(soakGate.decision?.reasons?.length ?? 0) > 0 && (
+              <p className="text-xs text-[var(--desk-text-tertiary)]">
+                {soakGate.decision!.reasons!.join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
@@ -571,6 +669,7 @@ export default function AutoOrderPage() {
                     <p className="text-sm font-light text-[var(--desk-text-primary)]">
                       {row.sku} · qty {row.suggested_qty}
                       {row.current_stock != null ? ` · stock ${row.current_stock}` : ""}
+                      {row.safety_stock != null ? ` · SS ${row.safety_stock.toFixed(0)}` : ""}
                     </p>
                     <div className="mt-1">
                       <DemandSourceChips sources={row.sources} />

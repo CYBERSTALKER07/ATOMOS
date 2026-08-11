@@ -199,6 +199,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/settings/auto-order/runs", d.Service.HandleAutoOrderRuns)
 		rr.Get("/v1/retailer/settings/auto-order/shadow-proposals", d.Service.HandleAutoOrderShadowProposals)
 		rr.Get("/v1/retailer/settings/auto-order/shadow-stats", d.Service.HandleAutoOrderShadowStats)
+		rr.Get("/v1/retailer/settings/auto-order/soak-gate", d.Service.HandleAutoOrderSoakGate)
+		rr.Get("/v1/retailer/settings/auto-order/soak-artifact", d.Service.HandleAutoOrderSoakArtifact)
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)
