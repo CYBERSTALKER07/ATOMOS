@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import ChamferButton from './ChamferButton';
-import { ORDER_LIFECYCLE_GEMINI_SHARE } from '@/app/lib/lifecycleAssets';
 
 const OrderLifecycleVideo = dynamic(() => import('./lifecycle/OrderLifecycleVideo'), {
   ssr: false,
@@ -20,9 +19,6 @@ export default function OrderCycleVisualSection() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <ChamferButton href="/platform/order-lifecycle" variant="fill">
                 View lifecycle
-              </ChamferButton>
-              <ChamferButton href={ORDER_LIFECYCLE_GEMINI_SHARE} variant="ghost">
-                Gemini source ↗
               </ChamferButton>
             </div>
           </div>
