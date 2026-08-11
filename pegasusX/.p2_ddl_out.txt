@@ -1,0 +1,8 @@
+bash scripts/apply_parent_orders_ddl.sh
+==> emulator host=localhost:9110
+==> apply via go run ./cmd/apply-migration
+{"time":"2026-08-11T17:51:02.7703+05:00","level":"INFO","msg":"schema migration already applied (checksum match)","version":"20260817_parent_orders","ddl_file":"/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/migrations/20260817_parent_orders.ddl"}
+==> verify ParentOrders + Orders.ParentOrderId
+{"time":"2026-08-11T17:51:03.875985+05:00","level":"INFO","msg":"schema migration already applied (checksum match)","version":"20260817_parent_orders","ddl_file":"/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/migrations/20260817_parent_orders.ddl"}
+parent-orders-ddl-ok
+EXIT:0

@@ -17,7 +17,8 @@ Primary Value Proposition:
 - Zero-Blind-Spot Visibility: Real-time GPS telemetry, geofenced automated arrival events, and digital Proof of Delivery (ePOD).
 - Microsecond State Convergence: Single source of truth across web portals, native mobile apps, and gate desktop terminals.
 - Floor Continuity Guarantee: Dispatch optimization rules guarantee floor operations never freeze or stall.
-Primary Site Paths: /platform, /roles, /solutions, /capabilities, /demo, /join, /contact.`);
+Primary Site Paths: /platform, /roles, /solutions, /capabilities, /cloud-ecosystem, /technology, /demo, /join, /contact.
+Cloud Ecosystem page (/cloud-ecosystem): bento grid of Google Cloud, Spanner, Kafka, Redis, GKE, Firebase, BigQuery, Terraform, GitHub Actions, Netlify, and client stacks.`);
 
   // Section 2: Technical Architecture & Best Practices
   parts.push(`# Pegasus Technical Architecture & Engineering Best Practices

@@ -80,6 +80,7 @@ export default function Footer() {
 
   const policiesLinks = [
     { name: t('nav_tour'), href: '/platform' },
+    { name: t('cloud_eco_nav', 'Cloud ecosystem'), href: '/cloud-ecosystem' },
     { name: t('footer_apps_deploy'), href: '/apps-deploy' },
   ];
 

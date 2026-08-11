@@ -30,6 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry('/desktop-apps', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/web-apps', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/mobile-apps', { changeFrequency: 'monthly', priority: 0.8 }),
+    entry('/cloud-ecosystem', { changeFrequency: 'monthly', priority: 0.85 }),
     entry('/join', { changeFrequency: 'monthly', priority: 0.85 }),
     entry('/contact', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/resume', { changeFrequency: 'monthly', priority: 0.8 }),

@@ -1,0 +1,11 @@
+NAME                               IMAGE                                           COMMAND                  SERVICE            CREATED              STATUS                          PORTS
+pegasusx-ssmr-ai-worker-1          golang:1.25-bookworm                            "/bin/sh -lc '/usr/l…"   ai-worker          About a minute ago   Created                         
+pegasusx-ssmr-backend-go-1         golang:1.25-bookworm                            "/bin/sh -lc '/usr/l…"   backend-go         About a minute ago   Created                         
+pegasusx-ssmr-backend-setup-1      golang:1.25-bookworm                            "/bin/sh -lc 'for at…"   backend-setup      About a minute ago   Exited (1) 13 seconds ago       
+pegasusx-ssmr-kafka-1              confluentinc/cp-kafka:7.5.0                     "/etc/confluent/dock…"   kafka              About an hour ago    Up About a minute (healthy)     0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp
+pegasusx-ssmr-kafka-init-1         confluentinc/cp-kafka:7.5.0                     "/bin/bash -lc 'kafk…"   kafka-init         About a minute ago   Exited (0) About a minute ago   
+pegasusx-ssmr-kafka-ui-1           provectuslabs/kafka-ui:v0.7.2                   "/bin/sh -c 'java --…"   kafka-ui           About an hour ago    Up About a minute               0.0.0.0:8083->8080/tcp, [::]:8083->8080/tcp
+pegasusx-ssmr-optimizer-core-1     pegasusx-ssmr-optimizer-core                    "python http_main.py"    optimizer-core     About an hour ago    Up About a minute (healthy)     0.0.0.0:8182->8082/tcp, [::]:8182->8082/tcp
+pegasusx-ssmr-redis-1              redis:7-alpine                                  "docker-entrypoint.s…"   redis              About an hour ago    Up About a minute (healthy)     0.0.0.0:6389->6379/tcp, [::]:6389->6379/tcp
+pegasusx-ssmr-spanner-emulator-1   gcr.io/cloud-spanner-emulator/emulator:latest   "./gateway_main --ho…"   spanner-emulator   About an hour ago    Up About a minute               0.0.0.0:9110->9010/tcp, [::]:9110->9010/tcp, 0.0.0.0:9120->9020/tcp, [::]:9120->9020/tcp
+pegasusx-ssmr-zookeeper-1          confluentinc/cp-zookeeper:7.5.0                 "/etc/confluent/dock…"   zookeeper          About an hour ago    Up About a minute (healthy)     0.0.0.0:22181->2181/tcp, [::]:22181->2181/tcp

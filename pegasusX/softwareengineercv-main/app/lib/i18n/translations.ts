@@ -521,6 +521,19 @@ export const translations = {
     feat_data_title: 'Data Mining',
     feat_data_desc:
       "Transform raw fleet information into actionable intelligence. We build the pipelines and vector stores that power your organization's future.",
+    cloud_eco_eyebrow: 'Cloud ecosystem',
+    cloud_eco_title: 'Fully backed by the best of Google Cloud',
+    cloud_eco_desc:
+      'Databases, servers, messaging, and delivery — Spanner, Kafka, Redis, GKE, and the GCP services that keep every role online.',
+    cloud_eco_cta_page: 'Explore full stack',
+    cloud_eco_cta_tech: 'Technology hub',
+    cloud_eco_page_title: 'Every layer of the cloud, mapped',
+    cloud_eco_page_desc:
+      'Pegasus runs on Google Cloud with Spanner as the system of record, Kafka for live events, Redis for hot cache, GKE for servers, and the delivery stack that ships every role app.',
+    cloud_eco_filter_all: 'All',
+    cloud_eco_nav: 'Cloud ecosystem',
+    home_lane_cloud: 'Cloud',
+
     tools_eyebrow: 'Under the hood',
     tools_title: 'Built to run at network scale',
     tools_desc:
@@ -1068,6 +1081,19 @@ export const translations = {
     feat_data_title: 'Добыча данных',
     feat_data_desc:
       'Превращаем сырые данные автопарка в практическую аналитику. Строим пайплайны и векторные хранилища, которые питают развитие организации.',
+    cloud_eco_eyebrow: 'Облачная экосистема',
+    cloud_eco_title: 'На лучшем стеке Google Cloud',
+    cloud_eco_desc:
+      'Базы, серверы, события и доставка — Spanner, Kafka, Redis, GKE и сервисы GCP, которые держат каждую роль онлайн.',
+    cloud_eco_cta_page: 'Весь стек',
+    cloud_eco_cta_tech: 'Хаб технологий',
+    cloud_eco_page_title: 'Каждый слой облака — на карте',
+    cloud_eco_page_desc:
+      'Pegasus работает на Google Cloud: Spanner как система записи, Kafka для живых событий, Redis для горячего кэша, GKE для серверов и delivery-стек для всех ролевых приложений.',
+    cloud_eco_filter_all: 'Все',
+    cloud_eco_nav: 'Облачная экосистема',
+    home_lane_cloud: 'Облако',
+
     tools_eyebrow: 'Под капотом',
     tools_title: 'Построено для масштаба сети',
     tools_desc:
