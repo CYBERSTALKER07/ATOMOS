@@ -1,6 +1,6 @@
 //
 //  RetailerSessionReconcile.swift
-//  reatilerapp
+//  retailerapp
 //
 //  Refetch server-authoritative retailer snapshots after transport reconnect.
 //

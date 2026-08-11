@@ -1,6 +1,6 @@
 //
 //  RetailerIdempotency.swift
-//  reatilerapp
+//  retailerapp
 //
 //  Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
 //

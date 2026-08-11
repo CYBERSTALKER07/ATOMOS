@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import reatilerapp
+@testable import retailerapp
 
 /// Retailer iOS — APIClient endpoint paths, WebSocket message parsing, auth flow validation
 struct RetailerServiceTests {

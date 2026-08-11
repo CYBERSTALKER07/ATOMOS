@@ -1,6 +1,6 @@
 //
 //  FirebaseAuthHelper.swift
-//  reatilerapp
+//  retailerapp
 //
 //  Firebase custom-token exchange for dual-mode auth with backend JWT.
 //

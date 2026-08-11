@@ -1,6 +1,6 @@
 //
 //  InsightsView.swift
-//  reatilerapp
+//  retailerapp
 //
 //  Expense Analytics Dashboard — Swift Charts
 //

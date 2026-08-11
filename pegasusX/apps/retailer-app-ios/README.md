@@ -19,7 +19,7 @@ Demo login: `+998901000077` / `1234`
 
 ```bash
 cd pegasusX/apps/retailer-app-ios/retailerapp
-xcodebuild -scheme reatilerapp build
+xcodebuild -scheme retailerapp build
 ```
 
 WebSocket path: `/v1/ws`

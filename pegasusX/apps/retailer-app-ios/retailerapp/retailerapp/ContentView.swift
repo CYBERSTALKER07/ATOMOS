@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  reatilerapp
+//  retailerapp
 //
 //  Created by Shakhzod on 3/17/26.
 //

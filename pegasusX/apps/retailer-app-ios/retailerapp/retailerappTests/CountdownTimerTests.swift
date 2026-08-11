@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import reatilerapp
+@testable import retailerapp
 
 struct CountdownTimerTests {
 

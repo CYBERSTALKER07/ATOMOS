@@ -12,37 +12,37 @@
 			containerPortal = 2E6B77662F689E6000F2D3D7 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2E6B776D2F689E6000F2D3D7;
-			remoteInfo = reatilerapp;
+			remoteInfo = retailerapp;
 		};
 		2E6B778B2F689E6100F2D3D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2E6B77662F689E6000F2D3D7 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2E6B776D2F689E6000F2D3D7;
-			remoteInfo = reatilerapp;
+			remoteInfo = retailerapp;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2E6B776E2F689E6000F2D3D7 /* reatilerapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = reatilerapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E6B77802F689E6100F2D3D7 /* reatilerappTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = reatilerappTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E6B778A2F689E6100F2D3D7 /* reatilerappUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = reatilerappUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E6B776E2F689E6000F2D3D7 /* retailerapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = retailerapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E6B77802F689E6100F2D3D7 /* retailerappTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = retailerappTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E6B778A2F689E6100F2D3D7 /* retailerappUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = retailerappUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		2E6B77702F689E6000F2D3D7 /* reatilerapp */ = {
+		2E6B77702F689E6000F2D3D7 /* retailerapp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = reatilerapp;
+			path = retailerapp;
 			sourceTree = "<group>";
 		};
-		2E6B77832F689E6100F2D3D7 /* reatilerappTests */ = {
+		2E6B77832F689E6100F2D3D7 /* retailerappTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = reatilerappTests;
+			path = retailerappTests;
 			sourceTree = "<group>";
 		};
-		2E6B778D2F689E6100F2D3D7 /* reatilerappUITests */ = {
+		2E6B778D2F689E6100F2D3D7 /* retailerappUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = reatilerappUITests;
+			path = retailerappUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		2E6B77652F689E6000F2D3D7 = {
 			isa = PBXGroup;
 			children = (
-				2E6B77702F689E6000F2D3D7 /* reatilerapp */,
-				2E6B77832F689E6100F2D3D7 /* reatilerappTests */,
-				2E6B778D2F689E6100F2D3D7 /* reatilerappUITests */,
+				2E6B77702F689E6000F2D3D7 /* retailerapp */,
+				2E6B77832F689E6100F2D3D7 /* retailerappTests */,
+				2E6B778D2F689E6100F2D3D7 /* retailerappUITests */,
 				2E6B776F2F689E6000F2D3D7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		2E6B776F2F689E6000F2D3D7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2E6B776E2F689E6000F2D3D7 /* reatilerapp.app */,
-				2E6B77802F689E6100F2D3D7 /* reatilerappTests.xctest */,
-				2E6B778A2F689E6100F2D3D7 /* reatilerappUITests.xctest */,
+				2E6B776E2F689E6000F2D3D7 /* retailerapp.app */,
+				2E6B77802F689E6100F2D3D7 /* retailerappTests.xctest */,
+				2E6B778A2F689E6100F2D3D7 /* retailerappUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2E6B776D2F689E6000F2D3D7 /* reatilerapp */ = {
+		2E6B776D2F689E6000F2D3D7 /* retailerapp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerapp" */;
+			buildConfigurationList = 2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerapp" */;
 			buildPhases = (
 				9A8C7E6D5B4A392817160001 /* Generate Native Event Contracts */,
 				2E6B776A2F689E6000F2D3D7 /* Sources */,
@@ -109,20 +109,20 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				2E6B77702F689E6000F2D3D7 /* reatilerapp */,
+				2E6B77702F689E6000F2D3D7 /* retailerapp */,
 			);
-			name = reatilerapp;
+			name = retailerapp;
 			packageProductDependencies = (
 				RT11FB000000000000000002 /* FirebaseAuth */,
 				RT11FB000000000000000003 /* FirebaseCore */,
 			);
-			productName = reatilerapp;
-			productReference = 2E6B776E2F689E6000F2D3D7 /* reatilerapp.app */;
+			productName = retailerapp;
+			productReference = 2E6B776E2F689E6000F2D3D7 /* retailerapp.app */;
 			productType = "com.apple.product-type.application";
 		};
-		2E6B777F2F689E6100F2D3D7 /* reatilerappTests */ = {
+		2E6B777F2F689E6100F2D3D7 /* retailerappTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E6B77972F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerappTests" */;
+			buildConfigurationList = 2E6B77972F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerappTests" */;
 			buildPhases = (
 				2E6B777C2F689E6100F2D3D7 /* Sources */,
 				2E6B777D2F689E6100F2D3D7 /* Frameworks */,
@@ -134,18 +134,18 @@
 				2E6B77822F689E6100F2D3D7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				2E6B77832F689E6100F2D3D7 /* reatilerappTests */,
+				2E6B77832F689E6100F2D3D7 /* retailerappTests */,
 			);
-			name = reatilerappTests;
+			name = retailerappTests;
 			packageProductDependencies = (
 			);
-			productName = reatilerappTests;
-			productReference = 2E6B77802F689E6100F2D3D7 /* reatilerappTests.xctest */;
+			productName = retailerappTests;
+			productReference = 2E6B77802F689E6100F2D3D7 /* retailerappTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		2E6B77892F689E6100F2D3D7 /* reatilerappUITests */ = {
+		2E6B77892F689E6100F2D3D7 /* retailerappUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2E6B779A2F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerappUITests" */;
+			buildConfigurationList = 2E6B779A2F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerappUITests" */;
 			buildPhases = (
 				2E6B77862F689E6100F2D3D7 /* Sources */,
 				2E6B77872F689E6100F2D3D7 /* Frameworks */,
@@ -157,13 +157,13 @@
 				2E6B778C2F689E6100F2D3D7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				2E6B778D2F689E6100F2D3D7 /* reatilerappUITests */,
+				2E6B778D2F689E6100F2D3D7 /* retailerappUITests */,
 			);
-			name = reatilerappUITests;
+			name = retailerappUITests;
 			packageProductDependencies = (
 			);
-			productName = reatilerappUITests;
-			productReference = 2E6B778A2F689E6100F2D3D7 /* reatilerappUITests.xctest */;
+			productName = retailerappUITests;
+			productReference = 2E6B778A2F689E6100F2D3D7 /* retailerappUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -189,7 +189,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2E6B77692F689E6000F2D3D7 /* Build configuration list for PBXProject "reatilerapp" */;
+			buildConfigurationList = 2E6B77692F689E6000F2D3D7 /* Build configuration list for PBXProject "retailerapp" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -208,9 +208,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2E6B776D2F689E6000F2D3D7 /* reatilerapp */,
-				2E6B777F2F689E6100F2D3D7 /* reatilerappTests */,
-				2E6B77892F689E6100F2D3D7 /* reatilerappUITests */,
+				2E6B776D2F689E6000F2D3D7 /* retailerapp */,
+				2E6B777F2F689E6100F2D3D7 /* retailerappTests */,
+				2E6B77892F689E6100F2D3D7 /* retailerappUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -278,23 +278,23 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(SRCROOT)/reatilerapp/Generated/PegasusWSEventEnvelope.swift",
+				"$(SRCROOT)/retailerapp/Generated/PegasusWSEventEnvelope.swift",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/reatilerapp/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/reatilerapp/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true -strict=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/retailerapp/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/retailerapp/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true -strict=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		2E6B77822F689E6100F2D3D7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2E6B776D2F689E6000F2D3D7 /* reatilerapp */;
+			target = 2E6B776D2F689E6000F2D3D7 /* retailerapp */;
 			targetProxy = 2E6B77812F689E6100F2D3D7 /* PBXContainerItemProxy */;
 		};
 		2E6B778C2F689E6100F2D3D7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2E6B776D2F689E6000F2D3D7 /* reatilerapp */;
+			target = 2E6B776D2F689E6000F2D3D7 /* retailerapp */;
 			targetProxy = 2E6B778B2F689E6100F2D3D7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -498,7 +498,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/reatilerapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/reatilerapp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/retailerapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/retailerapp";
 			};
 			name = Debug;
 		};
@@ -519,7 +519,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/reatilerapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/reatilerapp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/retailerapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/retailerapp";
 			};
 			name = Release;
 		};
@@ -538,7 +538,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = reatilerapp;
+				TEST_TARGET_NAME = retailerapp;
 			};
 			name = Debug;
 		};
@@ -557,14 +557,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = reatilerapp;
+				TEST_TARGET_NAME = retailerapp;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2E6B77692F689E6000F2D3D7 /* Build configuration list for PBXProject "reatilerapp" */ = {
+		2E6B77692F689E6000F2D3D7 /* Build configuration list for PBXProject "retailerapp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E6B77922F689E6100F2D3D7 /* Debug */,
@@ -573,7 +573,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerapp" */ = {
+		2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerapp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E6B77952F689E6100F2D3D7 /* Debug */,
@@ -582,7 +582,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E6B77972F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerappTests" */ = {
+		2E6B77972F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerappTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E6B77982F689E6100F2D3D7 /* Debug */,
@@ -591,7 +591,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2E6B779A2F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerappUITests" */ = {
+		2E6B779A2F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "retailerappUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2E6B779B2F689E6100F2D3D7 /* Debug */,

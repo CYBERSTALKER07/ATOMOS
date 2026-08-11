@@ -1,5 +1,5 @@
 import Testing
-@testable import reatilerapp
+@testable import retailerapp
 
 struct OrderStatusTests {
 

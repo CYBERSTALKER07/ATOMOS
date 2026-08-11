@@ -1,6 +1,6 @@
 //
 //  SkeletonViews.swift
-//  reatilerapp
+//  retailerapp
 //
 
 import SwiftUI
