@@ -67,7 +67,12 @@ func SignerFromEnv(envName string) (EDSSigner, error) {
 		}
 		return NewDevHMACSigner([]byte(key))
 	case "pkcs12", "eimzo", "e-imzo":
-		return nil, fmt.Errorf("FISCAL_MY_SOLIQ_SIGNER=%s selected but E-IMZO/PKCS#12 signing is not provisioned yet (owner task: Soliq EDS key procurement)", kind)
+		file := strings.TrimSpace(os.Getenv("FISCAL_MY_SOLIQ_PKCS12_FILE"))
+		password := os.Getenv("FISCAL_MY_SOLIQ_PKCS12_PASSWORD")
+		if file == "" {
+			return nil, fmt.Errorf("FISCAL_MY_SOLIQ_PKCS12_FILE required for FISCAL_MY_SOLIQ_SIGNER=%s (path to the E-IMZO .p12 container)", kind)
+		}
+		return NewPKCS12SignerFromFile(file, password)
 	case "":
 		return nil, fmt.Errorf("FISCAL_MY_SOLIQ_SIGNER required when FISCAL_PROVIDER=MY_SOLIQ (dev-hmac for non-prod, pkcs12 once EDS key is procured)")
 	default:

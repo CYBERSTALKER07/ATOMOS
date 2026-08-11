@@ -2719,8 +2719,9 @@ CREATE TABLE PayoutBatches (
   CommissionMinor    INT64       NOT NULL,
   NetPayoutMinor     INT64       NOT NULL,
   Currency           STRING(8)   NOT NULL,
-  Status             STRING(16)  NOT NULL,  -- DRAFT | EXPORTED | PAID
+  Status             STRING(16)  NOT NULL,  -- DRAFT | EXPORTED | SUBMITTED | PAID
   ExportFileUri      STRING(MAX),
+  RailReference      STRING(128),           -- live-rail settlement reference (webhook reconcile)
   IdempotencyKey     STRING(128) NOT NULL,
   CreatedBy          STRING(64)  NOT NULL,
   CreatedAt          TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),

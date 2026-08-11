@@ -22,9 +22,10 @@ import (
 // existing batch; money never double-pays.
 
 const (
-	StatusDraft    = "DRAFT"
-	StatusExported = "EXPORTED"
-	StatusPaid     = "PAID"
+	StatusDraft     = "DRAFT"
+	StatusExported  = "EXPORTED"
+	StatusSubmitted = "SUBMITTED" // dispatched to a live rail, awaiting settlement webhook
+	StatusPaid      = "PAID"
 )
 
 var (
@@ -45,6 +46,7 @@ type Batch struct {
 	Currency           string
 	Status             string
 	ExportFileURI      string
+	RailReference      string
 	IdempotencyKey     string
 	CreatedBy          string
 	CreatedAt          time.Time
@@ -67,6 +69,7 @@ func (zeroCommission) CommissionMinor(context.Context, string, int64, string) (i
 type Service struct {
 	repo       *Repository
 	commission CommissionResolver
+	rail       Rail
 	now        func() time.Time
 	newID      func() string
 }
@@ -75,8 +78,17 @@ func NewService(repo *Repository) *Service {
 	return &Service{
 		repo:       repo,
 		commission: zeroCommission{},
+		rail:       BankFileRail{},
 		now:        func() time.Time { return time.Now().UTC() },
 		newID:      func() string { return fmt.Sprintf("po-%d", time.Now().UnixNano()) },
+	}
+}
+
+// SetRail swaps the settlement transport (default BankFileRail). Live rails
+// are wired here once a bank/payment-rail integration lands.
+func (s *Service) SetRail(r Rail) {
+	if r != nil {
+		s.rail = r
 	}
 }
 

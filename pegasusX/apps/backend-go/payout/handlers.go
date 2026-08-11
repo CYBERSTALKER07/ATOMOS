@@ -1,9 +1,11 @@
 package payout
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -22,7 +24,11 @@ func RegisterRoutes(r chi.Router, h *Handlers) {
 	}
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches", h.HandleGenerate)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/export", h.HandleExport)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/dispatch", h.HandleDispatch)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/mark-paid", h.HandleMarkPaid)
+	// Settlement webhook from a live rail. Authenticated by the rail's shared
+	// secret header, not a user role (machine-to-machine).
+	r.Post("/v1/webhooks/payouts/settlement", h.HandleSettlementWebhook)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -98,4 +104,69 @@ func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": StatusPaid})
+}
+
+// HandleDispatch submits a batch to the configured rail. Default is the
+// bank-file dry-run; a live rail requires live=true and dispatches funds.
+func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
+	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
+	var body struct {
+		Live bool `json:"live"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body) // empty body => dry-run
+	b, err := h.Svc.SubmitForDispatch(r.Context(), batchID, body.Live)
+	if err != nil {
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, ErrBatchNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, ErrBankDetailsMissing):
+			status = http.StatusConflict
+		case strings.Contains(err.Error(), "not dispatchable"):
+			status = http.StatusConflict
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, b)
+}
+
+// HandleSettlementWebhook receives a rail's settlement confirmation and flips
+// the batch to PAID. Machine-to-machine; verify the rail's shared secret.
+func (h *Handlers) HandleSettlementWebhook(w http.ResponseWriter, r *http.Request) {
+	if !verifyRailSecret(r) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid rail secret"})
+		return
+	}
+	var body struct {
+		BatchID string `json:"batch_id"`
+		RailRef string `json:"rail_reference"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
+	if err := h.Svc.ConfirmSettlement(r.Context(), body.BatchID, body.RailRef); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrBatchNotFound) {
+			status = http.StatusNotFound
+		} else if strings.Contains(err.Error(), "must be SUBMITTED") {
+			status = http.StatusConflict
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": StatusPaid})
+}
+
+// verifyRailSecret checks the shared-secret header. When no secret is
+// configured the endpoint is disabled (fail-closed) — a settlement webhook
+// must never be reachable unauthenticated.
+func verifyRailSecret(r *http.Request) bool {
+	want := strings.TrimSpace(os.Getenv("PAYOUT_RAIL_WEBHOOK_SECRET"))
+	if want == "" {
+		return false
+	}
+	got := strings.TrimSpace(r.Header.Get("X-Payout-Rail-Secret"))
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }

@@ -78,6 +78,12 @@ func (r *Repository) findOne(ctx context.Context, sql string, params map[string]
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, batchID, status, exportURI string) error {
+	return r.UpdateStatusRef(ctx, batchID, status, exportURI, "")
+}
+
+// UpdateStatusRef updates status, optional export URI, and optional rail
+// reference (set when a live rail dispatches or confirms settlement).
+func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, exportURI, railRef string) error {
 	m := map[string]any{
 		"BatchId":   batchID,
 		"Status":    status,
@@ -85,6 +91,9 @@ func (r *Repository) UpdateStatus(ctx context.Context, batchID, status, exportUR
 	}
 	if strings.TrimSpace(exportURI) != "" {
 		m["ExportFileUri"] = spanner.NullString{StringVal: exportURI, Valid: true}
+	}
+	if strings.TrimSpace(railRef) != "" {
+		m["RailReference"] = spanner.NullString{StringVal: railRef, Valid: true}
 	}
 	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.UpdateMap("PayoutBatches", m)})
 	return err
@@ -120,24 +129,25 @@ func (r *Repository) SupplierBankDetails(ctx context.Context, supplierID string)
 func batchColumns() []string {
 	return []string{"BatchId", "SupplierId", "PeriodStart", "PeriodEnd", "GrossCapturedMinor",
 		"RefundedMinor", "CommissionMinor", "NetPayoutMinor", "Currency", "Status",
-		"ExportFileUri", "IdempotencyKey", "CreatedBy", "CreatedAt", "UpdatedAt"}
+		"ExportFileUri", "RailReference", "IdempotencyKey", "CreatedBy", "CreatedAt", "UpdatedAt"}
 }
 
 func batchColumnList() string { return strings.Join(batchColumns(), ", ") }
 
 func scanBatch(row *spanner.Row) (Batch, error) {
 	var b Batch
-	var exportURI spanner.NullString
+	var exportURI, railRef spanner.NullString
 	var start, end civil.Date
 	err := row.Columns(&b.BatchID, &b.SupplierID, &start, &end, &b.GrossCapturedMinor,
 		&b.RefundedMinor, &b.CommissionMinor, &b.NetPayoutMinor, &b.Currency, &b.Status,
-		&exportURI, &b.IdempotencyKey, &b.CreatedBy, &b.CreatedAt, &b.UpdatedAt)
+		&exportURI, &railRef, &b.IdempotencyKey, &b.CreatedBy, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		return Batch{}, err
 	}
 	b.PeriodStart = time.Date(start.Year, start.Month, start.Day, 0, 0, 0, 0, time.UTC)
 	b.PeriodEnd = time.Date(end.Year, end.Month, end.Day, 0, 0, 0, 0, time.UTC)
 	b.ExportFileURI = exportURI.StringVal
+	b.RailReference = railRef.StringVal
 	return b, nil
 }
 
