@@ -46,50 +46,50 @@ func BuildAIElementString(in AIDataMatrixInput) (string, error) {
 }
 
 // EncodeDataMatrixModules returns a square boolean module matrix for a GS1 AI
-// string. This is a deterministic placeholder ECC200-compatible layout used for
-// ZPL/tests until a vetted ECC200 library is vendored — it is NOT a certified
-// GS1 DataMatrix encoder. Production marking must swap in a certified library
-// behind the same API (see docs/GS1_LABELS.md).
+// element string using a real ISO/IEC 16022 (ECC200) encoder — ASCII encodation,
+// Reed–Solomon error correction, and the standard module-placement algorithm —
+// for square symbols up to 44x44 (144 data codewords). Larger payloads must use
+// the ZPL ^BX path (AIDataMatrixZPL), which offloads ECC200 to printer firmware.
+//
+// The input may embed the 0xF1 byte to mark an FNC1 (GS1 group separator); use
+// BuildAIElementStringFNC1 to produce a correctly-separated element string.
 func EncodeDataMatrixModules(aiString string) ([][]bool, error) {
-	aiString = strings.TrimSpace(aiString)
-	if aiString == "" {
-		return nil, fmt.Errorf("empty_ai_string")
+	return encodeECC200(aiString)
+}
+
+// BuildAIElementStringFNC1 returns the AI element string with FNC1 (0xF1)
+// separators after variable-length AIs (10, 21) when more AIs follow — the form
+// ECC200 encoders need for unambiguous parsing. (01) GTIN is fixed-length and
+// takes no separator.
+func BuildAIElementStringFNC1(in AIDataMatrixInput) (string, error) {
+	gtin, err := NormalizeGTIN(in.GTIN)
+	if err != nil {
+		return "", err
 	}
-	// Size: next even >= 10 from payload length heuristic.
-	n := len(aiString)
-	size := 10
-	for size*size/8 < n+4 {
-		size += 2
-		if size > 144 {
-			return nil, fmt.Errorf("payload_too_large")
+	lot := strings.TrimSpace(in.Lot)
+	serial := strings.TrimSpace(in.Serial)
+	var b strings.Builder
+	b.WriteString("(01)")
+	b.WriteString(gtin)
+	b.WriteByte(0xF1) // FNC1 after GTIN when more AIs follow
+	if lot != "" {
+		if len(lot) > 20 {
+			return "", fmt.Errorf("lot_too_long")
+		}
+		b.WriteString("(10)")
+		b.WriteString(lot)
+		if serial != "" {
+			b.WriteByte(0xF1) // (10) is variable-length
 		}
 	}
-	m := make([][]bool, size)
-	for i := range m {
-		m[i] = make([]bool, size)
-	}
-	// Finder-like border (L pattern) for visual/ZPL scaffolding.
-	for i := 0; i < size; i++ {
-		m[0][i] = true
-		m[i][0] = true
-		m[size-1][i] = i%2 == 0
-		m[i][size-1] = i%2 == 0
-	}
-	// Scatter payload bits interior.
-	bit := 0
-	payload := []byte(aiString)
-	for y := 1; y < size-1; y++ {
-		for x := 1; x < size-1; x++ {
-			byteIdx := bit / 8
-			if byteIdx >= len(payload) {
-				m[y][x] = (x+y)%3 == 0
-			} else {
-				m[y][x] = (payload[byteIdx]>>(7-(bit%8)))&1 == 1
-			}
-			bit++
+	if serial != "" {
+		if len(serial) > 20 {
+			return "", fmt.Errorf("serial_too_long")
 		}
+		b.WriteString("(21)")
+		b.WriteString(serial)
 	}
-	return m, nil
+	return b.String(), nil
 }
 
 // AIDataMatrixZPL emits a ZPL ^BX DataMatrix field from an AI element string.

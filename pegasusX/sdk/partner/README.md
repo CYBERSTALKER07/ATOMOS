@@ -14,10 +14,10 @@ bash scripts/gen_partner_sdk.sh ts
 bash scripts/gen_partner_sdk.sh go
 ```
 
-Outputs land in:
+Outputs land in (and are committed at):
 
-- `sdk/partner/typescript/`
-- `sdk/partner/go/`
+- `sdk/partner/ts/` — TypeScript (fetch) client (`@pegasusx/partner-sdk`)
+- `sdk/partner/go/` — Go client (`github.com/CYBERSTALKER07/ATOMOS/sdk/partner/go`)
 
 Requires Docker (uses `openapitools/openapi-generator-cli`). Human JWT core
 remains on the hand client until `contracts/jwt-core.openapi.yaml` coverage

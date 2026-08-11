@@ -12,7 +12,7 @@ fi
 
 case "$LANG" in
   ts|typescript)
-    OUT="$ROOT_DIR/sdk/partner/typescript"
+    OUT="$ROOT_DIR/sdk/partner/ts"
     GEN=typescript-fetch
     ;;
   go|golang)
@@ -29,7 +29,7 @@ mkdir -p "$OUT"
 docker run --rm -v "$ROOT_DIR:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
   -i /local/contracts/partner.openapi.yaml \
   -g "$GEN" \
-  -o "/local/sdk/partner/${LANG}" \
+  -o "/local/sdk/partner/$(basename "$OUT")" \
   --additional-properties=supportsES6=true,withInterfaces=true,packageName=partnerclient
 
 echo "generated $OUT"
