@@ -16,11 +16,11 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 
 | Dir | Status (from code/package.json) |
 |-----|----------------------------------|
-| `supplier-portal` | Live Next.js + Tauri supplier/ADMIN UI |
+| `supplier-portal` | Live Next.js + Tauri 2 supplier/ADMIN UI (web + desktop shell) |
 | `supplier-app-android` / `supplier-app-ios` | Live |
-| `supplier-app-desktop` | Redirect stub → supplier-portal |
-| `admin-portal` | Deprecated stub → supplier-portal |
-| `retailer-app-desktop` / `-android` / `-ios` | Live |
+| `supplier-app-desktop` | **Does not exist** — desktop = `supplier-portal` Tauri |
+| `admin-portal` | Live thin Next **PLATFORM_ADMIN** console (tenants / flags / audit) — not a redirect |
+| `retailer-app-desktop` / `-android` / `-ios` | Live (desktop = Next 15 + Tauri 2) |
 | `warehouse-portal` / `-android` / `-ios` | Live |
 | `factory-portal` / `-android` / `-ios` | Live |
 | `payload-terminal` / `-android` / `-ios` | Live |

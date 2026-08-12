@@ -12,6 +12,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 
+from void_deep_agents.findings import FINDING_JSON_HINT, PANEL_NAMES
 from void_deep_agents.paths import (
     deep_agents_root,
     default_memory_paths,
@@ -19,6 +20,7 @@ from void_deep_agents.paths import (
     pegasusx_root,
     surfaces_registry_path,
 )
+from void_deep_agents.subagents import build_subagents, panel_names
 
 # Load .env from the deep-agents service root first, then cwd/parents.
 load_dotenv(deep_agents_root() / ".env")
@@ -40,18 +42,28 @@ Laws:
 When auditing, load skills as needed and consult surfaces.yaml + gap register.
 """
 
-ECOSYSTEM_SYSTEM_PROMPT = """You are the PegasusX Ecosystem Auditor.
+ECOSYSTEM_SYSTEM_PROMPT = f"""You are the Chief Orchestrator of the PegasusX
+multi-agent ecosystem audit orchestra.
 
-Mission: track whole-ecosystem quality — backend, apps, Spanner, Redis, Kafka,
-WebSockets, ai-worker, optimizer, cloud, contracts — so features are Class A
-wired, not islands.
+Mission: track whole-ecosystem quality — business logic, feature gaps, role
+parity, code quality, architecture, money/fiscal, data-flow, security, cloud —
+so features are Class A wired, not islands.
+
+You have specialist subagents (panels). Delegate via the task tool:
+{', '.join(PANEL_NAMES)}.
 
 Method:
 1. Map blast radius (roles, routes, events, clients, cloud flags).
-2. Verify coverage rule with file evidence.
-3. Report gaps as P0/P1/P2/P3; note if already in ECOSYSTEM_GAP_REGISTER.
-4. Propose minimal change set that closes emit + consumer + clients together.
-5. Never claim done without naming all three: mutation, bus, client.
+2. Fan out to relevant panels (all panels when the user asks for a full audit).
+3. Merge panel reports into one scorecard. Deduplicate; keep highest severity.
+4. Never invent wired status. Never reopen surfaces.yaml resolved_gap_ids
+   without regression evidence.
+5. Propose minimal change sets that close emit + consumer + clients together.
+
+Output:
+1. Markdown scorecard (P0→P3 sections, panel attribution).
+2. A JSON findings array at the end (fenced ```json) matching the finding schema.
+{FINDING_JSON_HINT}
 
 Desktop stack: keep Next.js + Tauri 2 (do not push Electron rewrites).
 Tree: pegasusX is SoT; pegasus is legacy.
@@ -108,7 +120,16 @@ def _repo_hint_tools() -> list[Callable[..., Any]]:
         """List available Deep Agent skill directories."""
         return "\n".join(default_skill_paths()) or "(no skills found)"
 
-    return [get_pegasusx_root, get_surfaces_registry, list_ecosystem_skills]
+    def list_audit_panels() -> str:
+        """List specialist audit panel names in the orchestra."""
+        return "\n".join(panel_names())
+
+    return [
+        get_pegasusx_root,
+        get_surfaces_registry,
+        list_ecosystem_skills,
+        list_audit_panels,
+    ]
 
 
 def create_void_deep_agent(
@@ -120,6 +141,7 @@ def create_void_deep_agent(
     memory: list[str] | None = None,
     name: str | None = "void-deep-agent",
     include_ecosystem_defaults: bool = True,
+    subagents: list[dict[str, Any]] | None = None,
     **kwargs: Any,
 ) -> CompiledStateGraph:
     """Create a Deep Agent configured for this monorepo.
@@ -141,6 +163,8 @@ def create_void_deep_agent(
         Agent name for tracing.
     include_ecosystem_defaults:
         When True, attach default skills, memory, and orientation tools.
+    subagents:
+        Optional Deep Agents subagent specs (forwarded to create_deep_agent).
     **kwargs:
         Forwarded to ``deepagents.create_deep_agent``.
     """
@@ -161,6 +185,10 @@ def create_void_deep_agent(
             resolved_memory = default_memory_paths() or None
         tool_list = _repo_hint_tools() + tool_list
 
+    create_kwargs: dict[str, Any] = dict(kwargs)
+    if subagents is not None:
+        create_kwargs["subagents"] = subagents
+
     return create_deep_agent(
         model=resolved_model,
         tools=tool_list or None,
@@ -168,7 +196,7 @@ def create_void_deep_agent(
         skills=resolved_skills,
         memory=resolved_memory,
         name=name,
-        **kwargs,
+        **create_kwargs,
     )
 
 
@@ -176,14 +204,22 @@ def create_ecosystem_auditor(
     *,
     model: str | BaseChatModel | None = None,
     tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    panels: list[str] | None = None,
     **kwargs: Any,
 ) -> CompiledStateGraph:
-    """Deep Agent tuned for whole-ecosystem quality audits."""
+    """Deep Agent orchestrator with specialist audit panels as subagents.
+
+    Parameters
+    ----------
+    panels:
+        Subset of panel names to attach. ``None`` = all 12 panels.
+    """
     return create_void_deep_agent(
         model=model,
         tools=tools,
         system_prompt=ECOSYSTEM_SYSTEM_PROMPT,
         name="pegasusx-ecosystem-auditor",
         include_ecosystem_defaults=True,
+        subagents=build_subagents(panels),
         **kwargs,
     )

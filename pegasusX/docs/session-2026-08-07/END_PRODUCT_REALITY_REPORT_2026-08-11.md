@@ -1,5 +1,11 @@
 # PegasusX — End-Product Reality Report
 
+> **STALE (2026-08-12):** Gap sections and several §5 claims below are **one day out of date**.  
+> **Current SoT for gaps + data-flow + role×platform:**  
+> - [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md)  
+> - [`MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md)  
+> Do not use this report alone for planning. Keep it for historical evidence of the 2026-08-11 gate session.
+
 **Evidence base:** live source tree `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` as of **2026-08-11**. Every claim below traces to code, schema, or configuration. File:line references are given so findings can be re-checked. Deleted documentation is not used.
 
 Enterprise program status (proved by gates this session): Phase 0 money-path, Phase 1 money/law, Phase 2 integration, Phase 3 ops truth, Phase 4 autonomy foundations, Phase 5 runtime tenancy — all `*-gate-ok` on Spanner emulator. Analytics column tenancy wired (`analytics-tenancy-gate-ok`). This report states what is **wired and live** vs **present but decorative/blocked** and what is still **absent**.
