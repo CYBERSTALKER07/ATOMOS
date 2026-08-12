@@ -68,8 +68,12 @@ cp .env.example .env   # set XAI_API_KEY from https://console.x.ai/
 
 ```bash
 ./scripts/smoke.sh
-void-ecosystem-audit --dry-run   # lists memory, 12+ skills, 12 panels
+void-ecosystem-audit --dry-run   # lists memory, skills, 12 panels + fs_probe_ok
 ```
+
+Filesystem: audits use `CompositeBackend` (pegasusX at `/`, skills at `/skills/`)
+with virtual paths like `/apps/backend-go/...`. Prefer narrow greps; do not glob `/`.
+Do not remove the backend wiring in `factory.py` / `paths.py`.
 
 ## When to run
 

@@ -22,6 +22,7 @@ CLI: `void-ecosystem-audit --full` | `--panel money_fiscal,role_parity` | `--jso
 4. **Money is int64 minor units.** Never float for currency.
 5. **Single tree:** plan and audit `pegasusX` only unless the user names `pegasus`.
 6. **Business + technical + regulatory:** panels must track (a) per-role business duties and doorstep/order edge cases, (b) gov/trade APIs (Soliq OFD/EHF, GS1, AS2/EDI, payout rails), (c) role feature ↔ app parity — merge into one scorecard with Business/edges · Regulatory · Role parity sections.
+7. **Filesystem:** agent tools use composite virtual paths — code at `/apps/...` `/docs/...`, skills at `/skills/...`. Always `read_file` / `grep` with narrow paths — never stop at `surfaces.yaml` alone; never glob `/`.
 
 ## Kernel data plane
 

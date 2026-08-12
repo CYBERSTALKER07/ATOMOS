@@ -11,12 +11,14 @@ void-ecosystem-audit --dry-run
 
 echo "== import =="
 python -c "
-from void_deep_agents import create_ecosystem_auditor, create_void_deep_agent
 from void_deep_agents.subagents import build_subagents, panel_names
+from void_deep_agents.paths import probe_filesystem_backend
 assert len(panel_names()) == 12, panel_names()
 assert len(build_subagents()) == 12
 assert len(build_subagents(['money_fiscal','role_parity'])) == 2
-print('imports_ok panels=', len(panel_names()))
+probe = probe_filesystem_backend()
+assert all(v == 'ok' for k, v in probe.items() if k != 'root'), probe
+print('imports_ok panels=', len(panel_names()), 'fs_probe_ok')
 "
 
 # Load .env without exporting placeholder blindly into live call

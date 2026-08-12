@@ -14,6 +14,7 @@ from void_deep_agents.paths import (
     default_skill_paths,
     gap_register_glob,
     pegasusx_root,
+    probe_filesystem_backend,
     surfaces_registry_path,
 )
 from void_deep_agents.subagents import panel_names
@@ -79,13 +80,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         print("pegasusx_root:", pegasusx_root())
+        print("fs_backend: CompositeBackend(default=pegasusX, routes=/skills/)")
+        print("fs_virtual_code: /apps /docs /.agents")
+        print("fs_virtual_skills: /skills/")
         print("surfaces:", surfaces_registry_path())
         print("gap_docs:", gap_register_glob())
         print("memory:")
-        for m in default_memory_paths():
+        for m in default_memory_paths(virtual=True):
             print(" -", m)
         print("skills:")
-        for s in default_skill_paths():
+        for s in default_skill_paths(virtual=True):
             print(" -", s)
         print("panels:")
         active = panels if panels is not None else panel_names()
@@ -93,6 +97,15 @@ def main(argv: list[str] | None = None) -> int:
             print(" -", p)
         if panels is not None:
             print("panels_filter:", ",".join(panels))
+        print("fs_probe:")
+        probe = probe_filesystem_backend()
+        for k, v in probe.items():
+            print(f" - {k}: {v}")
+        bad = [k for k, v in probe.items() if k not in {"pegasusx_root", "skills_route"} and v != "ok"]
+        if bad:
+            print("fs_probe_FAILED:", ",".join(bad))
+            return 1
+        print("fs_probe_ok: true")
         return 0
 
     message = args.message

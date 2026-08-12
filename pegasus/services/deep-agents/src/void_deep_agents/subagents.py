@@ -10,10 +10,13 @@ from void_deep_agents.findings import FINDING_JSON_HINT, PANEL_NAMES, PanelName
 _COMMON = f"""
 You are a specialist panel in the PegasusX multi-agent audit orchestra.
 Tree SoT: pegasusX/ (pegasus/ is legacy). Prefer path/package evidence.
+Filesystem: `/apps/...`, `/docs/...`, `/.agents/...`, skills at `/skills/...`.
+Use narrow read/grep paths (e.g. `/apps/backend-go/order`). Do not glob `/`.
+Do not stop at surfaces.yaml — open code and SoT docs. Writes are denied.
 {FINDING_JSON_HINT}
 Money: int64 minor units only. Desktop stack: Next.js + Tauri 2 (no Electron push).
-Consult pegasusX/.agents/deep-agents/MEMORY.md, surfaces.yaml, and
-docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md.
+Consult `/.agents/deep-agents/MEMORY.md`, surfaces.yaml, and
+`/docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md`.
 """.strip()
 
 # name -> (description, system_prompt, skill_hint)

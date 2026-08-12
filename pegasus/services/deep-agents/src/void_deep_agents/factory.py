@@ -7,6 +7,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from deepagents import create_deep_agent
+from deepagents.backends.protocol import BackendProtocol
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
@@ -14,11 +15,14 @@ from langgraph.graph.state import CompiledStateGraph
 
 from void_deep_agents.findings import FINDING_JSON_HINT, PANEL_NAMES
 from void_deep_agents.paths import (
+    audit_filesystem_permissions,
     deep_agents_root,
+    default_filesystem_backend,
     default_memory_paths,
     default_skill_paths,
     pegasusx_root,
     surfaces_registry_path,
+    to_virtual_path,
 )
 from void_deep_agents.subagents import build_subagents, panel_names
 
@@ -28,10 +32,21 @@ load_dotenv()
 
 DEFAULT_MODEL_NAME = os.getenv("DEEP_AGENTS_MODEL", "grok-4.5")
 
-DEFAULT_SYSTEM_PROMPT = """You are a PegasusX ecosystem quality assistant (Deep Agents).
+_FS_HINT = """
+Filesystem: composite virtual root.
+- Code/docs: `/apps/...`, `/docs/...`, `/.agents/...` (pegasusX)
+- Skills: `/skills/<name>/SKILL.md`
+Prefer `read_file` / `grep` with a narrow `path` (e.g. `/apps/backend-go/order`).
+Do NOT glob `/` or entire `/apps` — too large; use package dirs.
+Writes denied. Never invent file contents.
+""".strip()
+
+DEFAULT_SYSTEM_PROMPT = f"""You are a PegasusX ecosystem quality assistant (Deep Agents).
 
 Scope: pegasusX monorepo — backend-go, Spanner, Kafka, Redis, WS hubs, role apps,
 cloud (k8s/terraform), contracts. Prefer evidence (paths, packages) over prose.
+
+{_FS_HINT}
 
 Laws:
 - Coverage rule: Spanner mutation → same-txn outbox → consumer → clients.
@@ -50,6 +65,8 @@ cases, gov/regulatory APIs (Soliq OFD/EHF, GS1, AS2), role feature/app parity,
 money/fiscal, data-flow, code quality, architecture, security, cloud —
 so features are Class A wired, not islands.
 
+{_FS_HINT}
+
 You have specialist subagents (panels). Delegate via the task tool:
 {', '.join(PANEL_NAMES)}.
 
@@ -61,11 +78,13 @@ Always cover when relevant (especially on --full):
 Method:
 1. Map blast radius (roles, routes, events, clients, cloud flags, gov rails).
 2. Fan out to relevant panels (all panels when the user asks for a full audit).
-3. Merge panel reports into one scorecard. Deduplicate; keep highest severity.
-4. Never invent wired status. Never reopen surfaces.yaml resolved_gap_ids
+3. Subagents MUST read `/apps/**` and `/docs/**` via filesystem tools —
+   do not stop at surfaces.yaml alone. Use narrow paths (e.g. `/apps/backend-go/order`).
+4. Merge panel reports into one scorecard. Deduplicate; keep highest severity.
+5. Never invent wired status. Never reopen surfaces.yaml resolved_gap_ids
    without regression evidence.
-5. Propose minimal change sets that close emit + consumer + clients together.
-6. Scorecard sections should include: Business/edges · Regulatory · Role parity.
+6. Propose minimal change sets that close emit + consumer + clients together.
+7. Scorecard sections should include: Business/edges · Regulatory · Role parity.
 
 Output:
 1. Markdown scorecard (P0→P3 sections, panel attribution).
@@ -109,8 +128,16 @@ def _repo_hint_tools() -> list[Callable[..., Any]]:
     """Small tools so the agent can orient without hallucinating paths."""
 
     def get_pegasusx_root() -> str:
-        """Absolute path to the pegasusX tree (source of truth)."""
-        return str(pegasusx_root())
+        """Virtual + host paths for the pegasusX tree (source of truth)."""
+        return (
+            f"virtual_root=/\n"
+            f"code_examples=/apps/backend-go /docs /.agents\n"
+            f"skills_route=/skills/\n"
+            f"host={pegasusx_root()}\n"
+            "Use filesystem tools with paths like "
+            "/apps/backend-go/order/state_machine.go "
+            "and /skills/business-logic/SKILL.md"
+        )
 
     def get_surfaces_registry() -> str:
         """Return path + short summary of the ecosystem surface registry."""
@@ -118,14 +145,14 @@ def _repo_hint_tools() -> list[Callable[..., Any]]:
         if not p:
             return "surfaces.yaml not found under pegasusX/.agents/deep-agents/"
         text = p.read_text(encoding="utf-8")
-        # Keep tool result bounded
+        vpath = to_virtual_path(p)
         if len(text) > 8000:
-            return f"path={p}\n\n{text[:8000]}\n...[truncated]"
-        return f"path={p}\n\n{text}"
+            return f"virtual={vpath}\nhost={p}\n\n{text[:8000]}\n...[truncated]"
+        return f"virtual={vpath}\nhost={p}\n\n{text}"
 
     def list_ecosystem_skills() -> str:
-        """List available Deep Agent skill directories."""
-        return "\n".join(default_skill_paths()) or "(no skills found)"
+        """List available Deep Agent skill directories (virtual paths)."""
+        return "\n".join(default_skill_paths(virtual=True)) or "(no skills found)"
 
     def list_audit_panels() -> str:
         """List specialist audit panel names in the orchestra."""
@@ -149,6 +176,8 @@ def create_void_deep_agent(
     name: str | None = "void-deep-agent",
     include_ecosystem_defaults: bool = True,
     subagents: list[dict[str, Any]] | None = None,
+    backend: BackendProtocol | None = None,
+    read_only: bool = True,
     **kwargs: Any,
 ) -> CompiledStateGraph:
     """Create a Deep Agent configured for this monorepo.
@@ -162,16 +191,20 @@ def create_void_deep_agent(
     system_prompt:
         Override default system prompt.
     skills:
-        Skill directories; default = all under ``skills/`` when
-        ``include_ecosystem_defaults``.
+        Skill directories (virtual paths under VOID_ROOT preferred).
     memory:
-        Memory files; default = pegasusX MEMORY.md + AGENTS.md.
+        Memory files (virtual paths under VOID_ROOT preferred).
     name:
         Agent name for tracing.
     include_ecosystem_defaults:
-        When True, attach default skills, memory, and orientation tools.
+        When True, attach default skills, memory, orientation tools, and
+        ``FilesystemBackend(root_dir=VOID_ROOT)``.
     subagents:
         Optional Deep Agents subagent specs (forwarded to create_deep_agent).
+    backend:
+        Override filesystem backend. Default: host FS at VOID_ROOT (virtual).
+    read_only:
+        When True (default), deny write tools and block ``.env`` / credential reads.
     **kwargs:
         Forwarded to ``deepagents.create_deep_agent``.
     """
@@ -187,14 +220,25 @@ def create_void_deep_agent(
 
     if include_ecosystem_defaults:
         if resolved_skills is None:
-            resolved_skills = default_skill_paths() or None
+            resolved_skills = default_skill_paths(virtual=True) or None
         if resolved_memory is None:
-            resolved_memory = default_memory_paths() or None
+            resolved_memory = default_memory_paths(virtual=True) or None
         tool_list = _repo_hint_tools() + tool_list
 
     create_kwargs: dict[str, Any] = dict(kwargs)
     if subagents is not None:
         create_kwargs["subagents"] = subagents
+
+    # Default was StateBackend (ephemeral) — that blocked all monorepo reads.
+    if "backend" not in create_kwargs:
+        create_kwargs["backend"] = (
+            backend if backend is not None else default_filesystem_backend()
+        )
+    elif backend is not None:
+        create_kwargs["backend"] = backend
+
+    if read_only and "permissions" not in create_kwargs:
+        create_kwargs["permissions"] = audit_filesystem_permissions()
 
     return create_deep_agent(
         model=resolved_model,
@@ -228,5 +272,6 @@ def create_ecosystem_auditor(
         name="pegasusx-ecosystem-auditor",
         include_ecosystem_defaults=True,
         subagents=build_subagents(panels),
+        read_only=True,
         **kwargs,
     )
