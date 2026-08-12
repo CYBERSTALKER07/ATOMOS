@@ -9,6 +9,8 @@ import (
 type LabelData struct {
 	SSCC         string
 	GTIN         string
+	Lot          string // optional AI (10) for DataMatrix
+	Serial       string // optional AI (21) for DataMatrix
 	ShipFromGLN  string
 	ShipToGLN    string
 	OrderID      string
@@ -55,7 +57,8 @@ func AICode128ZPL(d LabelData) (string, error) {
 	return b.String(), nil
 }
 
-// MultiLabelZPL concatenates multiple labels.
+// MultiLabelZPL concatenates GS1-128 SSCC labels and, when GTIN is present,
+// a GS1 DataMatrix (FNC1) symbol on a following label for the same unit.
 func MultiLabelZPL(labels []LabelData) (string, error) {
 	var b strings.Builder
 	for i, d := range labels {
@@ -64,6 +67,13 @@ func MultiLabelZPL(labels []LabelData) (string, error) {
 			return "", fmt.Errorf("label_%d: %w", i, err)
 		}
 		b.WriteString(zpl)
+		if strings.TrimSpace(d.GTIN) != "" {
+			dm, err := LabelDataMatrixZPL(d, 5)
+			if err != nil {
+				return "", fmt.Errorf("label_%d_datamatrix: %w", i, err)
+			}
+			b.WriteString(dm)
+		}
 	}
 	if b.Len() == 0 {
 		return "", fmt.Errorf("no_labels")

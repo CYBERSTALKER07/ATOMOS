@@ -5,6 +5,8 @@ resources:
   - ../../base
   - ../../external-secrets/backend-go-externalsecret.yaml
   - ../../planning_training_export_cronjob.yaml
+  - ../../planning_forecast_cronjob.yaml
+  - ../../planning_accuracy_cronjob.yaml
   - ../../predictive_push_cronjob.yaml
   - ../../ai-worker/configmap.yaml
   - ../../ai-worker/deployment.yaml
@@ -33,28 +35,37 @@ images:
   - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker
     newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/ai-worker
     digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
-  # optimizer-core image not yet published to AR — keep deployment but pin tag away from :local
+  # Real optimizer-core image path (never remap to backend-go — that crash-loops Python pods).
+  # Keep replicas 0 until this AR image is published; then bump replicas ≥ 1.
   - name: pegasusx-optimizer-core
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
-    digest: sha256:a5b31a6bd963757780aa675e9778989ac75cd25329b785f4e202cd82c5e4a181
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/optimizer-core
+    newTag: ssmr
 
+# Autonomy soak path (shadow + forecast accuracy). Place stays off until flip evidence.
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - FORECAST_ACCURACY_ENABLED=true
+      - FORECAST_ALGO_ENABLED=true
+      - FORECAST_ALGO_REQUIRE_GATE=true
+      - AUTO_ORDER_SHADOW_ENABLED=true
+      - AUTO_ORDER_WORKER_ENABLED=true
+      - AUTO_ORDER_PLACE_ENABLED=false
+      - SAFETY_STOCK_V2_ENABLED=false
+      - OPTIMIZER_BASE_URL=http://optimizer-core:8082
 # Production Kafka = GCP Managed Service for Apache Kafka (same as staging).
 # ACTIVATION (owner-controlled, one-time):
 #   1. terraform apply -var="enable_managed_kafka=true" -var="environment=prod"
 #   2. Grant the prod backend GSA roles/managedkafka.client on the cluster.
-#   3. Uncomment the configMapGenerator block below, replacing CLUSTER_ID with
-#      the cluster_id from `terraform output managed_kafka_bootstrap`.
-#   4. kubectl apply -k infra/k8s/overlays/prod (standard prod promotion).
-# configMapGenerator:
-#   - name: backend-go-config
-#     behavior: merge
-#     literals:
-#       - KAFKA_BROKERS=bootstrap.CLUSTER_ID.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
-#       - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
-#       - KAFKA_SASL_USERNAME=prod-backend@pegasus-503013.iam.gserviceaccount.com
-#       - KAFKA_TOPIC_MAIN_DLQ=prod.events.orders-dlq
-#       - KAFKA_TOPIC_DUAL_WRITE=false
-#       - KAFKA_TOPIC_CONSUME_DOMAIN=false
+#   3. Merge into configMapGenerator above:
+#        KAFKA_BROKERS=bootstrap.CLUSTER_ID.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
+#        KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
+#        KAFKA_SASL_USERNAME=prod-backend@pegasus-503013.iam.gserviceaccount.com
+#        KAFKA_TOPIC_MAIN_DLQ=prod.events.orders-dlq
+#        KAFKA_TOPIC_DUAL_WRITE=false
+#        KAFKA_TOPIC_CONSUME_DOMAIN=false
+#   4. kubectl apply -k infra/k8s/overlays/prod
 
 patches:
   - path: ingress-managed-cert-patch.yaml

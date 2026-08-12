@@ -1,7 +1,9 @@
 package as2
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -72,6 +74,80 @@ func TestSyncMDNContainsMIC(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "processed") {
 		t.Fatalf("body missing processed")
+	}
+}
+
+func TestParseAndVerifyMDN(t *testing.T) {
+	edi := []byte("UNA:+.? 'UNH+1+ORDERS'")
+	mic := MICSHA256(edi)
+	ct, body, err := BuildSyncMDN(MessageHeaders{
+		AS2From: "P", AS2To: "U", MessageID: "<m@x>",
+	}, mic, MDNProcessed, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mdn, err := ParseSyncMDN(ct, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyMDN(mic, mdn); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyMDN(MICSHA256([]byte("other")), mdn); err == nil {
+		t.Fatal("expected mic mismatch")
+	}
+	bad := mdn
+	bad.Disposition = string(MDNFailed)
+	if err := VerifyMDN(mic, bad); err == nil {
+		t.Fatal("expected failed disposition")
+	}
+}
+
+func TestSendVerifiesMDN(t *testing.T) {
+	edi := []byte("UNA:+.? 'UNH+1+DESADV'")
+	mic := MICSHA256(edi)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ct, body, err := BuildSyncMDN(MessageHeaders{
+			AS2From: "PARTNER", AS2To: "US", MessageID: r.Header.Get(HeaderMessageID),
+		}, mic, MDNProcessed, "")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("Content-Type", ct)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
+	defer ts.Close()
+
+	c := NewClient()
+	res, err := c.Send(context.Background(), SendRequest{
+		URL: ts.URL, From: "US", To: "PARTNER", EDI: edi, Plain: true, RequestMDN: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.MDN.ReceivedContentMIC == "" {
+		t.Fatal("missing parsed MIC")
+	}
+
+	tsBad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ct, body, err := BuildSyncMDN(MessageHeaders{
+			AS2From: "PARTNER", AS2To: "US", MessageID: "<x>",
+		}, MICSHA256([]byte("tampered")), MDNProcessed, "")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("Content-Type", ct)
+		_, _ = w.Write(body)
+	}))
+	defer tsBad.Close()
+	_, err = c.Send(context.Background(), SendRequest{
+		URL: tsBad.URL, From: "US", To: "PARTNER", EDI: edi, Plain: true, RequestMDN: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "mic_mismatch") {
+		t.Fatalf("want mic_mismatch, got %v", err)
 	}
 }
 

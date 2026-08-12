@@ -79,7 +79,8 @@ const (
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
 	OrderSourceBackorder      OrderSource = "BACKORDER"
 	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER"  // L3.5 place mode
-	OrderSourcePartnerEDI     OrderSource = "PARTNER_EDI" // Gate-3 Wave 2B EDI-lite ORDERS
+	OrderSourcePartnerEDI     OrderSource = "PARTNER_EDI"     // Gate-3 Wave 2B EDI-lite ORDERS
+	OrderSourcePartnerSandbox OrderSource = "PARTNER_SANDBOX" // partner sandbox API key orders
 )
 
 // ConfirmationStatus captures whether a future-dated order still needs a

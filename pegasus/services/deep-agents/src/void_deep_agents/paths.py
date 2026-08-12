@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from deepagents.backends import CompositeBackend, FilesystemBackend
+from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
 from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware.filesystem import FilesystemPermission
 
@@ -107,14 +107,8 @@ def default_filesystem_backend() -> CompositeBackend:
     )
 
 
-def audit_filesystem_permissions() -> list[FilesystemPermission]:
-    """Read-mostly permissions: block writes + secret-looking paths."""
+def _secret_read_denies() -> list[FilesystemPermission]:
     return [
-        FilesystemPermission(
-            operations=["write"],
-            paths=["/**"],
-            mode="deny",
-        ),
         FilesystemPermission(
             operations=["read"],
             paths=[
@@ -126,6 +120,68 @@ def audit_filesystem_permissions() -> list[FilesystemPermission]:
             mode="deny",
         ),
     ]
+
+
+def audit_filesystem_permissions() -> list[FilesystemPermission]:
+    """Read-mostly permissions: block writes + secret-looking paths."""
+    return [
+        FilesystemPermission(
+            operations=["write"],
+            paths=["/**"],
+            mode="deny",
+        ),
+        *_secret_read_denies(),
+    ]
+
+
+def fleet_filesystem_backend() -> CompositeBackend:
+    """Code + skills + thread-local writable ``/fleet/`` for confirmation reports.
+
+    Implementation edits still go through host FS under pegasusX; ``/fleet/``
+    stays in ``StateBackend`` so report loops do not litter the tree unless
+    the operator opts into a host fleet dir via ``FLEET_HOST_DIR``.
+    """
+    code = FilesystemBackend(root_dir=pegasusx_root(), virtual_mode=True)
+    skills = FilesystemBackend(
+        root_dir=deep_agents_root() / "skills",
+        virtual_mode=True,
+    )
+    fleet_host = os.getenv("FLEET_HOST_DIR", "").strip()
+    fleet: BackendProtocol
+    if fleet_host:
+        host = Path(fleet_host).expanduser().resolve()
+        host.mkdir(parents=True, exist_ok=True)
+        fleet = FilesystemBackend(root_dir=host, virtual_mode=True)
+    else:
+        fleet = StateBackend()
+    return CompositeBackend(
+        default=code,
+        routes={
+            "/skills/": skills,
+            "/fleet/": fleet,
+        },
+    )
+
+
+def fleet_filesystem_permissions(*, allow_code_writes: bool = True) -> list[FilesystemPermission]:
+    """Fleet permissions: always allow ``/fleet/**`` writes; optionally code writes."""
+    rules: list[FilesystemPermission] = [
+        FilesystemPermission(
+            operations=["read", "write"],
+            paths=["/fleet/**"],
+            mode="allow",
+        ),
+        *_secret_read_denies(),
+    ]
+    if not allow_code_writes:
+        rules.append(
+            FilesystemPermission(
+                operations=["write"],
+                paths=["/**"],
+                mode="deny",
+            )
+        )
+    return rules
 
 
 def probe_filesystem_backend(backend: BackendProtocol | None = None) -> dict[str, str]:

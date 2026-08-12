@@ -17,6 +17,14 @@ const (
 	DocTypeINVOIC = "INVOIC"
 	DocTypeCONTRL = "CONTRL"
 	DocTypeAPERAK = "APERAK"
+	// Extended EDI-lite (P2-20) — still not certified EDIFACT.
+	DocTypePRICAT = "PRICAT"
+	DocTypeINVRPT = "INVRPT"
+	DocTypeSLSRPT = "SLSRPT"
+	DocTypeRECADV = "RECADV"
+	DocTypeORDCHG = "ORDCHG"
+	DocTypeDELFOR = "DELFOR"
+	DocTypeREMADV = "REMADV"
 )
 
 // Segment is one EDI segment (tag + elements).

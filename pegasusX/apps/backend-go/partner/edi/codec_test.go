@@ -158,3 +158,57 @@ func TestParseORDRSPAndINVOIC(t *testing.T) {
 		t.Fatalf("detect=%s err=%v", dt, err)
 	}
 }
+
+func TestEDIBreadthRoundTrip(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"PRICAT", BuildPRICAT(PricatMessage{ExternalDocID: "PC-1", SellerRef: "sup-1", Lines: []CatalogLine{{SKU: "A", Name: "Item", PriceMinor: 100, Currency: "UZS"}}}), DocTypePRICAT},
+		{"INVRPT", BuildINVRPT(InvrptMessage{ExternalDocID: "IV-1", SellerRef: "sup-1", Lines: []StockLine{{SKU: "A", QtyOnHand: 5, Warehouse: "wh-1"}}}), DocTypeINVRPT},
+		{"SLSRPT", BuildSLSRPT(SlsrptMessage{ExternalDocID: "SL-1", BuyerRef: "ret-1", SellerRef: "sup-1", ReportDate: "2026-08-01", Lines: []SalesLine{{SKU: "A", Qty: 2}}}), DocTypeSLSRPT},
+		{"RECADV", BuildRECADV(RecadvMessage{ExternalDocID: "RA-1", RefOrderID: "o1", BuyerRef: "ret-1", AcceptedQty: 3}), DocTypeRECADV},
+		{"ORDCHG", BuildORDCHG(OrdchgMessage{ExternalDocID: "OC-1", RefOrderID: "o1", BuyerRef: "ret-1", Lines: []Line{{SKU: "A", Qty: 4}}}), DocTypeORDCHG},
+		{"DELFOR", BuildDELFOR(DelforMessage{ExternalDocID: "DF-1", BuyerRef: "ret-1", DeliveryDate: "2026-09-01", Lines: []Line{{SKU: "A", Qty: 10}}}), DocTypeDELFOR},
+		{"REMADV", BuildREMADV(RemadvMessage{ExternalDocID: "RM-1", RefInvoiceID: "inv-1", PaidMinor: 500, Currency: "UZS"}), DocTypeREMADV},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dt, err := DetectDocType(tc.body)
+			if err != nil || dt != tc.want {
+				t.Fatalf("detect=%s err=%v", dt, err)
+			}
+			switch tc.want {
+			case DocTypePRICAT:
+				if _, err := ParsePRICAT(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeINVRPT:
+				if _, err := ParseINVRPT(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeSLSRPT:
+				if _, err := ParseSLSRPT(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeRECADV:
+				if _, err := ParseRECADV(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeORDCHG:
+				if _, err := ParseORDCHG(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeDELFOR:
+				if _, err := ParseDELFOR(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			case DocTypeREMADV:
+				if _, err := ParseREMADV(tc.body); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}

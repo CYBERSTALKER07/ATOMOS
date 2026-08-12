@@ -203,3 +203,19 @@ func (s *Service) ListAudit(ctx context.Context, limit int) ([]AuditRow, error) 
 	}
 	return s.repo.ListAudit(ctx, limit)
 }
+
+// RecordFlagAudit implements featureflags.FlagAuditor for dual-control place-flip trail.
+func (s *Service) RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("platformadmin_unavailable")
+	}
+	return s.repo.InsertAudit(ctx, AuditRow{
+		AuditID:      uuid.NewString(),
+		ActorSubject: actor,
+		Action:       action,
+		TenantType:   tenantType,
+		TenantID:     tenantID,
+		DetailJSON:   detailJSON,
+		CreatedAt:    time.Now().UTC(),
+	})
+}

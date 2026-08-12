@@ -46,7 +46,7 @@ flowchart LR
 | TopicOrders | pegasusx-orders | Dual-write / domain consume |
 | TopicDispatch | pegasusx-dispatch | Dispatch/manifest |
 | TopicRealtime | pegasusx-realtime | Telemetry fan-in |
-| TopicWebhooks | pegasusx-webhooks | **Defined; payment emits use TopicMain** |
+| TopicWebhooks | pegasusx-webhooks | **Retired (W1)** — do not emit; payment/partner use TopicMain/Orders |
 | TopicExceptions | logistics.exceptions.v1 | Claims / reverse logistics |
 | TopicFreezeLocks | pegasusx-freeze-locks | Emit; AI worker |
 | TopicInventoryImportEvents | pegasusx-inventory-import | Emit; import worker |
@@ -62,7 +62,7 @@ Env: `KAFKA_TOPIC_DUAL_WRITE`, `KAFKA_TOPIC_CONSUME_DOMAIN`.
 | Warehouse mutator | yes | **Only** SUPPLY_REQUEST_ACCEPTED |
 | Returns reverse | yes | TopicExceptions |
 | Billing tier | yes | ORDER_FINALIZED |
-| Twin EventConsumer | **no** | Code only |
+| Twin EventConsumer | **yes (W1)** | Route/location/order status → route twin |
 
 When Kafka unavailable: `loggingOutboxPublisher` acks without publish (bootstrap).
 
@@ -139,7 +139,9 @@ JWT roles + scope from claims (`auth/claims.go`). `PendingOrgSelect` blocks busi
 - [ ] Credit convert/release → non-nil emit + profile WS
 - [ ] Consumer for `ORDER_ALLOCATED` (or stop emitting)
 - [ ] Start twin consumer in bootstrap **or** delete dead path
-- [ ] Decide TopicWebhooks: emit there or remove const
+- [x] Decide TopicWebhooks: **retired** (W1) — keep const for infra; no producers
+- [x] Start twin consumer (W1)
+- [x] Search decision: Spanner LIKE ([`SEARCH_DECISION.md`](./SEARCH_DECISION.md))
 - [ ] Unify claim reverse-logistics open (sync vs Kafka dual)
 
 **Config gaps (deployable):**

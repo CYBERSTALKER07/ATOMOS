@@ -1,8 +1,10 @@
 # PegasusX — Master Alignment: Docs ↔ Code ↔ Data Flow
 
+> **Prod goal SoT:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) — what “prod ready” means. This file is docs↔code↔data-flow truth + remaining Class A loops.
+
 **Date:** 2026-08-12  
 **Trees:** `pegasusX` = source of truth · `pegasus` = legacy/secondary (do not plan from it alone)  
-**Companions:** [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DATA_FLOW_AS_IMPLEMENTED.md`](../DATA_FLOW_AS_IMPLEMENTED.md) · [`../FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md)
+**Companions:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DATA_FLOW_AS_IMPLEMENTED.md`](../DATA_FLOW_AS_IMPLEMENTED.md) · [`../FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md)
 
 This document answers: *What is actually true in the codebase, where docs lie, what “perfect data flow” means here, and what remains so every role/platform feature is enterprise-wired end-to-end.*
 
@@ -45,7 +47,7 @@ Client (role app)
 | Reality report §5 | DataMatrix “placeholder” only | Partial: ECC200 exists; **GS1 element string still non-conformant** (parens/FNC1) — see gap P1-13 |
 | Reality report §5 | SDK README-only | Still weak; partner OpenAPI + gen script exist; package path/module issues remain (P1-15) |
 | Reality report §2 | Optimizer prod replicas 0 | Still a **P1 deploy** problem; ssmr/staging have intent; prod image remap risk remains (P1-1) |
-| Reality report §4/§6 | AR/payout silent / bank-file only | **AR + payout now emit outbox** (P0-4/5 resolved). Live bank rail still pending (P0-2 partial: fail-closed without live rail) |
+| Reality report §4/§6 | AR/payout silent / bank-file only | **AR + payout now emit outbox** (P0-4/5 resolved). **Bank-file is permanent settlement** ([`PAYOUT_RAIL_DECISION.md`](../PAYOUT_RAIL_DECISION.md)); live rail deferred |
 | Gap register P0-1…6 | Money/tenancy/routing P0s | **Resolved** in tree (re-verify AR/payout emits, admin portal real) |
 | `FEATURES_BY_APP_ROLE.md` | admin-portal deprecated stub | **Stale** — update that section to match admin console + dual-control flags |
 | `OPTIMIZER_AND_ROUTING_RUNTIME.md` | SSMR optimizer replicas 0 | **Stale** — ssmr overlay sets replicas ≥1 intent |
@@ -65,11 +67,11 @@ Client (role app)
 | WS hubs | **7:** retailer, supplier, driver, payload, warehouse, factory, telemetry |
 | AR / payout outbox | **Emitting** (not silent) |
 | Driver location bus | Throttled `DRIVER_LOCATION_UPDATED` → TopicRealtime outbox |
-| Twin Kafka consumer | **Code exists, not started** (dead path) |
-| TopicWebhooks | Const only; payment uses TopicMain |
-| Search | **No engine** — SQL `LIKE` only |
+| Twin Kafka consumer | **Started** (W1) — group `void-digital-twin` |
+| TopicWebhooks | **Retired** — do not emit; payment/partner use TopicMain/Orders |
+| Search | Spanner LIKE — deferred engine ([`../SEARCH_DECISION.md`](../SEARCH_DECISION.md)) |
 | Fiscal legal OFD | **Blocked on EDS / E-IMZO** (dev-HMAC not legal) |
-| Live payout rail | Fail-closed without live rail; bank-file path still the practical settlement |
+| Live payout rail | **Decided:** bank-file permanent for prod bar; fail-closed if `live=true` without a real rail |
 
 Order lifecycle core (create → reserve → dispatch → seal → depart → arrive → pay/fiscal → complete → claim) is the **strongest** end-to-end path. Finance, planning autonomy, partner cert, and client parity are where loops break.
 
@@ -106,13 +108,10 @@ Classify every feature into one of four classes. Only **Class A** is shippable e
 
 | Loop | Gap |
 |------|-----|
-| Factory loading bay → payload terminal | Payload clients call supplier/payloader manifests; factory manifests poorly integrated (P1-18) |
-| Retailer AR / HQ multi-store | Desktop live; **Android/iOS missing** (P1-17) |
-| Supplier planning S&OP/scenarios | **Mobile yes, web portal missing** (P2-26) |
 | Cold-chain temps + twin routes | APIs, **no client consumer** (P2-23) |
-| Warehouse pick-waves / bins / cycle | Partial / buried in transfer actions (P2-24) |
-| Admin product-match, partner keys, AS2/SFTP, dunning, billing UI | Backend-heavy; admin console too thin (P1-16) |
-| Auto-order place | Shadow only; soak artifact + dual-control not runtime-true (P1-2…5) |
+| Auto-order place | Dual-control Evaluate + soak gate + `FLAG_AUTO_ORDER_PLACE` audit wired; place env remains false until flip evidence (P1-2…5 ✅) |
+
+**W2 Class A loops closed 2026-08-12:** factory↔payload (P1-18), retailer AR/HQ mobile (P1-17), supplier planning web (P2-26), warehouse WMS screens (P2-24), admin match/partner/dunning (P1-16).
 
 ---
 
@@ -126,22 +125,22 @@ AR pay-down on cash collect · payout fail-closed without live rail · platform-
 
 **P1 structural**
 
-1. Prod optimizer image/replicas + don’t point optimizer at backend-go digest  
-2. Auto-order place dual-control + soak artifact + schema name alignment (80% doc vs 60% code)  
-3. Forecast/accuracy CronJobs on real overlays; autonomy flags on in prod if soak desired  
-4. Fiscal sandbox live sign→submit→poll; procure EDS  
-5. JWT revocation/denylist  
-6. Spanner.ddl vs migrations drift  
-7. GS1 DataMatrix FNC1 conformance + label path  
-8. AS2 MDN/MIC verify  
-9. Partner Go SDK module path / go.work  
-10. Admin UI depth for match queue + partner rails  
-11. Retailer AR/HQ mobile parity  
-12. Factory → payload client loop  
+1. ~~Prod optimizer image remap~~ ✅ W4 (replicas 0 until AR publish)  
+2. ~~Auto-order place dual-control + soak artifact + 80% alignment~~ ✅ W4  
+3. ~~Forecast/accuracy CronJobs + prod soak flags (place off)~~ ✅ W4  
+4. ~~Fiscal sign→submit→poll contract~~ ✅ W3 (live EDS still needs E-IMZO procurement)  
+5. ~~JWT revocation/denylist~~ ✅ W0  
+6. ~~Spanner.ddl vs migrations drift~~ ✅ 2026-08-12 (P1-12)  
+7. ~~GS1 DataMatrix FNC1 conformance + label path~~ ✅ W5  
+8. ~~AS2 MDN/MIC verify~~ ✅ W5  
+9. ~~Partner Go SDK module path / go.work~~ ✅ W5  
+10. ~~Admin UI depth for match queue + partner rails~~ ✅ W2  
+11. ~~Retailer AR/HQ mobile parity~~ ✅ W2  
+12. ~~Factory → payload client loop~~ ✅ W2 
 
 **P2 enterprise**
 
-Search engine · TopicWebhooks decide/delete · start twin consumer or delete · demand-sensing producers · multi-currency AR · MFA · CI gates for multi-tenancy · SLO on relay/DLQ · EDIFACT breadth · partner sandbox · warehouse dedicated WMS screens · payload native depth · supplier planning on web.
+Demand-sensing producers · multi-currency AR · MFA · CI gates for multi-tenancy · SLO on relay/DLQ · ~~EDIFACT breadth~~ ✅ W5 · ~~partner sandbox~~ ✅ W5 · ~~warehouse dedicated WMS screens~~ ✅ W2 · payload native depth · ~~supplier planning on web~~ ✅ W2.
 
 **Security initiative (separate track)**
 
@@ -186,11 +185,11 @@ Detail IDORs (`HandleGetDriver/Vehicle/Warehouse/Factory`, payers list, credit-n
 | Wave | Goal | Why |
 |------|------|-----|
 | **W0** | Security IDOR sweep + JWT revocation design | Trust before scale |
-| **W1** | Data-flow hygiene: twin start-or-delete, TopicWebhooks, search decision, remaining silent domains | Makes system predictable |
-| **W2** | Cross-role Class A: factory↔payload, retailer AR/HQ mobile, supplier planning web, warehouse WMS screens | Product loops close |
-| **W3** | Money legality: EDS fiscal + live payout rail decision + Global Pay refund proof | Revenue/law |
-| **W4** | Autonomy: soak artifact, dual-control place flip, prod optimizer | Field-agent reduction |
-| **W5** | Enterprise partner: GS1 cert, AS2 MDN, SDK publish, EDIFACT breadth, admin partner UI | Big-supplier adoption |
+| **W1** | Data-flow hygiene — **closed 2026-08-12** (twin started, TopicWebhooks retired, search decision, atomic DEMAND_SIGNAL) | Predictable bus |
+| **W2** | Cross-role Class A — **closed 2026-08-12** (factory↔payload, retailer AR/HQ mobile, supplier planning web, warehouse WMS, admin match/partner/dunning) | Product loops close |
+| **W3** | Money legality — **closed 2026-08-12** (EDS sign→submit→poll contract; bank-file payout decision; Global Pay RF simulator proof) | Revenue/law |
+| **W4** | Autonomy — **closed 2026-08-12** (optimizer image remap fixed; soak artifact + flip-check aligned; CronJobs on overlays; shadow flags on; dual-control Evaluate + `FLAG_AUTO_ORDER_PLACE` audit) | Field-agent reduction |
+| **W5** | Enterprise partner: GS1 FNC1+label, AS2 MDN verify, SDK go.work, EDI-lite breadth, sandbox keys — **closed 2026-08-12** | Big-supplier adoption (Drummond/cert EDIFACT still open) |
 
 ---
 

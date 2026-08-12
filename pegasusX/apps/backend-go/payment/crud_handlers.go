@@ -111,6 +111,12 @@ func (s *Service) HandleUpdatePayer(w http.ResponseWriter, r *http.Request) {
 
 // HandleListPayers serves GET /v1/payers
 func (s *Service) HandleListPayers(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	limit := 100
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
@@ -123,6 +129,22 @@ func (s *Service) HandleListPayers(w http.ResponseWriter, r *http.Request) {
 		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
 			offset = parsed
 		}
+	}
+
+	// Retailers (and non-platform roles) may only see their own payer profile.
+	// Platform admin may list globally; supplier ADMIN is not a global payers desk.
+	if claims.Role != auth.RolePlatformAdmin {
+		if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin {
+			web.JSONError(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		p, err := s.repo.GetPayer(r.Context(), claims.Subject)
+		if err != nil {
+			web.JSONResponse(w, http.StatusOK, []Payer{})
+			return
+		}
+		web.JSONResponse(w, http.StatusOK, []Payer{p})
+		return
 	}
 
 	payers, err := s.repo.ListPayers(r.Context(), limit, offset)

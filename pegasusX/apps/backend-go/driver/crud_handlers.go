@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -76,9 +77,26 @@ func (s *Service) HandleGetDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	d, err := s.repo.GetDriver(r.Context(), driverID)
 	if err != nil {
 		web.JSONError(w, "failed to get driver: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Fail-closed: drivers may only read themselves; others must match tenant supplier.
+	if claims.Role == auth.RoleDriver {
+		if strings.TrimSpace(claims.Subject) == "" || strings.TrimSpace(claims.Subject) != strings.TrimSpace(driverID) {
+			web.JSONError(w, "driver_not_found", http.StatusNotFound)
+			return
+		}
+	} else if !auth.EntitySupplierAllowed(r.Context(), d.SupplierID) {
+		web.JSONError(w, "driver_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -237,9 +255,19 @@ func (s *Service) HandleGetVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	v, err := s.repo.GetVehicle(r.Context(), vehicleID)
 	if err != nil {
 		web.JSONError(w, "failed to get vehicle: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !auth.EntitySupplierAllowed(r.Context(), v.SupplierID) {
+		web.JSONError(w, "vehicle_not_found", http.StatusNotFound)
 		return
 	}
 

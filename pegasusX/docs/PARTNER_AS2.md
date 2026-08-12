@@ -10,7 +10,7 @@ Apply migration `apps/backend-go/schema/migrations/20260806_partner_as2.ddl` (`P
 |-----------|----------|
 | Inbound | `POST /partner/v1/as2` receives AS2 MIME; unwraps PKCS#7 (or plain when insecure); feeds EDI bytes into existing `IngestORDERSBytes` |
 | Outbound | After local write (+ optional SFTP), posts the same body to `PartnerUrl` when AS2 is enabled |
-| MDN | Sync multipart/report MDN with `Received-Content-MIC` (SHA-256) |
+| MDN | Sync multipart/report MDN with `Received-Content-MIC` (SHA-256). **Outbound verify:** disposition must contain `processed` and MIC must match EDI body (fail-closed). |
 
 Codecs in `partner/edi/` are unchanged. SFTP / `PARTNER_EDI_LOCAL_ROOT` remain supported.
 

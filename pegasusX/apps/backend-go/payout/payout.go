@@ -13,9 +13,10 @@ import (
 
 // Supplier payout batches: NetPayout = Σcaptured − Σrefunds − commission,
 // computed over provider-confirmed payment legs in the period. The batch is
-// executed via bank-file export (CSV payment instruction) until a payout rail
-// exists — the ledger rows are the source of truth, the file is just the
-// transport to the bank.
+// executed via bank-file export (CSV payment instruction). Prod-bar decision:
+// bank-file is the permanent settlement transport — see docs/PAYOUT_RAIL_DECISION.md.
+// Live rails remain pluggable via Rail + IsLive fail-closed; ledger rows are
+// the source of truth, the file is the bank transport.
 //
 // Idempotency: one batch per (supplier, period) — unique index — plus a
 // caller-supplied idempotency key. Re-generating a period returns the

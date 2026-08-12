@@ -47,9 +47,8 @@ func (s *Service) recordSellThroughSale(ctx context.Context, retailerID, locatio
 		if IsLocalSKU(sku) {
 			continue
 		}
-		_ = s.upsertSellThroughDelta(ctx, retailerID, locationID, sku, day, l.Qty, 0)
+		_ = s.upsertSellThroughDelta(ctx, retailerID, locationID, sku, day, l.Qty, 0, "sale")
 		_ = s.applySellThroughDemandFactor(ctx, retailerID, sku, day, float64(l.Qty))
-		s.emitDemandSignal(ctx, retailerID, locationID, sku, day, "sale", l.Qty)
 	}
 	_ = s.emitPosEvent(ctx, retailerID, events.EventRetailerSellThroughUpdated, map[string]any{
 		"location_id": locationID,
@@ -70,9 +69,8 @@ func (s *Service) recordSellThroughVoid(ctx context.Context, retailerID, locatio
 		if IsLocalSKU(sku) {
 			continue
 		}
-		_ = s.upsertSellThroughDelta(ctx, retailerID, locationID, sku, day, 0, l.Qty)
+		_ = s.upsertSellThroughDelta(ctx, retailerID, locationID, sku, day, 0, l.Qty, "void")
 		_ = s.applySellThroughDemandFactor(ctx, retailerID, sku, day, -float64(l.Qty))
-		s.emitDemandSignal(ctx, retailerID, locationID, sku, day, "void", -l.Qty)
 	}
 	_ = s.emitPosEvent(ctx, retailerID, events.EventRetailerSellThroughUpdated, map[string]any{
 		"location_id": locationID,
@@ -82,9 +80,9 @@ func (s *Service) recordSellThroughVoid(ctx context.Context, retailerID, locatio
 	})
 }
 
-// emitDemandSignal publishes DEMAND_SIGNAL for supplier flywheel consumers.
-// Stored on TopicMain; dual-write to TopicDemand when KAFKA_TOPIC_DUAL_WRITE=true.
-// Skips local: (caller must already filter). qtyDelta is signed (void negative).
+// emitDemandSignal records an in-memory DEMAND_SIGNAL for tests and, when no
+// Spanner client is configured, returns. Spanner path emits inside
+// upsertSellThroughDelta (same txn as the sell-through row — P2-12).
 func (s *Service) emitDemandSignal(ctx context.Context, retailerID, locationID, sku, day, kind string, qtyDelta int64) {
 	if qtyDelta == 0 || IsLocalSKU(sku) {
 		return
@@ -107,65 +105,130 @@ func (s *Service) emitDemandSignal(ctx context.Context, retailerID, locationID, 
 	}
 	s.mu.Lock()
 	s.demandSignalsEmitted = append(s.demandSignalsEmitted, ev)
-	// Cap memory ring for long-running tests
 	if len(s.demandSignalsEmitted) > 500 {
 		s.demandSignalsEmitted = s.demandSignalsEmitted[len(s.demandSignalsEmitted)-250:]
 	}
 	s.mu.Unlock()
+}
+
+func (s *Service) upsertSellThroughDelta(ctx context.Context, retailerID, locationID, sku, day string, soldDelta, voidDelta int64, kind string) error {
+	onHand, _ := s.SumOnHandForSKU(ctx, retailerID, sku)
+	qtyDelta := soldDelta - voidDelta
 
 	if s.spannerClient == nil {
-		return
+		s.mu.Lock()
+		if s.sellThroughDaily == nil {
+			s.sellThroughDaily = map[sellThroughKey]SellThroughDayDTO{}
+		}
+		k := sellThroughKey{RetailerID: retailerID, LocationID: locationID, SkuID: sku, Day: day}
+		row := s.sellThroughDaily[k]
+		row.RetailerID = retailerID
+		row.LocationID = locationID
+		row.SkuID = sku
+		row.Day = day
+		row.QtySold += soldDelta
+		row.QtyVoided += voidDelta
+		row.NetSold = row.QtySold - row.QtyVoided
+		row.Source = "STORE_POS"
+		if onHand >= 0 {
+			v := onHand
+			row.QtyOnHandEod = &v
+		}
+		s.sellThroughDaily[k] = row
+		s.mu.Unlock()
+		s.emitDemandSignal(ctx, retailerID, locationID, sku, day, kind, qtyDelta)
+		return nil
 	}
-	// Aggregate key partitions by retailer|sku|day for consumer ordering.
-	aggID := retailerID + "|" + sku + "|" + day
-	signalID := s.newID()
-	if strings.TrimSpace(signalID) == "" {
-		signalID = aggID + "|" + ev.Timestamp
-	}
-	payload := map[string]any{
-		"type":        events.EventDemandSignal,
-		"timestamp":   ev.Timestamp,
-		"retailer_id": ev.RetailerID,
-		"location_id": ev.LocationID,
-		"sku":         ev.SKU,
-		"day":         ev.Day,
-		"qty_delta":   ev.QtyDelta,
-		"net_sold":    ev.NetSold,
-		"source":      ev.Source,
-		"kind":        ev.Kind,
-		"signal_id":   signalID,
-	}
-	if ev.SupplierID != "" {
-		payload["supplier_id"] = ev.SupplierID
-	}
+
 	dayTime, err := time.Parse("2006-01-02", day)
 	if err != nil {
 		dayTime = s.now().UTC()
 	}
-	// Outbox first (Kafka DEMAND_SIGNAL).
-	_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateDemandSignal, aggID, events.TopicMain, payload); err != nil {
-			return err
+	supplierID := s.supplierIDForRetailerSKU(ctx, retailerID, sku)
+	signalID := s.newID()
+	aggID := retailerID + "|" + sku + "|" + day
+	if strings.TrimSpace(signalID) == "" {
+		signalID = aggID + "|" + s.now().UTC().Format(time.RFC3339Nano)
+	}
+	ts := s.now().UTC().Format(time.RFC3339Nano)
+
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var sold, voided int64
+		row, err := txn.ReadRow(ctx, "RetailerSellThroughDaily",
+			spanner.Key{retailerID, locationID, sku, dayTime},
+			[]string{"QtySold", "QtyVoided"})
+		if err == nil {
+			_ = row.Columns(&sold, &voided)
 		}
-		return buf.Flush(txn)
+		sold += soldDelta
+		voided += voidDelta
+		net := sold - voided
+		muts := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("RetailerSellThroughDaily", map[string]any{
+				"RetailerId":   retailerID,
+				"LocationId":   locationID,
+				"SkuId":        sku,
+				"Day":          dayTime,
+				"QtySold":      sold,
+				"QtyVoided":    voided,
+				"QtyOnHandEod": onHand,
+				"UpdatedAt":    spanner.CommitTimestamp,
+			}),
+		}
+		if qtyDelta != 0 && kind != "" {
+			payload := map[string]any{
+				"type":        events.EventDemandSignal,
+				"timestamp":   ts,
+				"retailer_id": retailerID,
+				"location_id": locationID,
+				"sku":         sku,
+				"day":         day,
+				"qty_delta":   qtyDelta,
+				"net_sold":    net,
+				"source":      "STORE_POS",
+				"kind":        kind,
+				"signal_id":   signalID,
+			}
+			if supplierID != "" {
+				payload["supplier_id"] = supplierID
+			}
+			buf := &spannerTxnBuffer{}
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateDemandSignal, aggID, events.TopicMain, payload); err != nil {
+				return err
+			}
+			if err := buf.Flush(txn); err != nil {
+				return err
+			}
+		}
+		return txn.BufferWrite(muts)
 	})
-	// B4.4 durable supplier feed — separate apply so missing DDL cannot roll back outbox.
-	_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("FlywheelDemandFeed", map[string]any{
-			"SignalId":   signalID,
-			"SupplierId": nullableStr(ev.SupplierID),
-			"RetailerId": retailerID,
-			"LocationId": nullableStr(locationID),
-			"SkuId":      sku,
-			"Day":        dayTime,
-			"QtyDelta":   qtyDelta,
-			"NetSold":    net,
-			"Kind":       kind,
-			"Source":     "STORE_POS",
-			"CreatedAt":  spanner.CommitTimestamp,
-		}),
-	})
+	if err != nil {
+		return err
+	}
+
+	// Mirror into memory ring for tests / diagnostics (post-commit).
+	s.emitDemandSignal(ctx, retailerID, locationID, sku, day, kind, qtyDelta)
+
+	// Flywheel feed stays best-effort separate so missing DDL cannot roll back
+	// the sell-through + outbox commit (coverage rule satisfied by outbox).
+	if qtyDelta != 0 && kind != "" {
+		_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("FlywheelDemandFeed", map[string]any{
+				"SignalId":   signalID,
+				"SupplierId": nullableStr(supplierID),
+				"RetailerId": retailerID,
+				"LocationId": nullableStr(locationID),
+				"SkuId":      sku,
+				"Day":        dayTime,
+				"QtyDelta":   qtyDelta,
+				"NetSold":    s.dayNetSold(ctx, retailerID, locationID, sku, day),
+				"Kind":       kind,
+				"Source":     "STORE_POS",
+				"CreatedAt":  spanner.CommitTimestamp,
+			}),
+		})
+	}
+	return nil
 }
 
 // dayNetSold returns cumulative net sold for the day (memory or Spanner).
@@ -206,64 +269,6 @@ func (s *Service) EmittedDemandSignals() []events.DemandSignalEvent {
 	out := make([]events.DemandSignalEvent, len(s.demandSignalsEmitted))
 	copy(out, s.demandSignalsEmitted)
 	return out
-}
-
-func (s *Service) upsertSellThroughDelta(ctx context.Context, retailerID, locationID, sku, day string, soldDelta, voidDelta int64) error {
-	onHand, _ := s.SumOnHandForSKU(ctx, retailerID, sku)
-
-	if s.spannerClient == nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if s.sellThroughDaily == nil {
-			s.sellThroughDaily = map[sellThroughKey]SellThroughDayDTO{}
-		}
-		k := sellThroughKey{RetailerID: retailerID, LocationID: locationID, SkuID: sku, Day: day}
-		row := s.sellThroughDaily[k]
-		row.RetailerID = retailerID
-		row.LocationID = locationID
-		row.SkuID = sku
-		row.Day = day
-		row.QtySold += soldDelta
-		row.QtyVoided += voidDelta
-		row.NetSold = row.QtySold - row.QtyVoided
-		row.Source = "STORE_POS"
-		if onHand >= 0 {
-			v := onHand
-			row.QtyOnHandEod = &v
-		}
-		s.sellThroughDaily[k] = row
-		return nil
-	}
-
-	dayTime, err := time.Parse("2006-01-02", day)
-	if err != nil {
-		dayTime = s.now().UTC()
-	}
-	// Spanner: read-modify-write in a single transaction.
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		var sold, voided int64
-		row, err := txn.ReadRow(ctx, "RetailerSellThroughDaily",
-			spanner.Key{retailerID, locationID, sku, dayTime},
-			[]string{"QtySold", "QtyVoided"})
-		if err == nil {
-			_ = row.Columns(&sold, &voided)
-		}
-		// Not found → zeros
-		sold += soldDelta
-		voided += voidDelta
-		m := spanner.InsertOrUpdateMap("RetailerSellThroughDaily", map[string]any{
-			"RetailerId":   retailerID,
-			"LocationId":   locationID,
-			"SkuId":        sku,
-			"Day":          dayTime,
-			"QtySold":      sold,
-			"QtyVoided":    voided,
-			"QtyOnHandEod": onHand,
-			"UpdatedAt":    spanner.CommitTimestamp,
-		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
-	})
-	return err
 }
 
 // applySellThroughDemandFactor merges SELL_THROUGH into DemandAdjustments.FactorsJson for the day.

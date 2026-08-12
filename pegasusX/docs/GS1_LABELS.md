@@ -10,8 +10,9 @@ Logistics identifiers and Zebra ZPL without EDI/AS2.
 | `Gs1CompanyPrefix` on supplier profile | Wired (7–10 digits) |
 | SSCC-18 on `ManifestShipUnits` at payload seal | Wired (one SSCC per manifest order) |
 | ZPL `text/plain` GS1-128 `(00)` SSCC | Wired |
+| ZPL GS1 DataMatrix `^BX` (FNC1, no HRI parens) when GTIN present | Wired (W5) |
 | EDI DESADV SSCC segments (CPS/PAC/GIN+BJ) | **Wired** (from `ManifestShipUnits` at emit) |
-| AS2 / certified EDIFACT / 1C / registry sync | AS2 transport Wired (not Drummond); certified EDIFACT / 1C package still open |
+| AS2 / certified EDIFACT / 1C / registry sync | AS2 MDN/MIC verified (not Drummond); EDI-lite breadth expanded; certified EDIFACT / 1C package still open |
 
 Migration: `apps/backend-go/schema/migrations/20260806_gs1_labels.ddl`.
 
@@ -32,7 +33,7 @@ Migration: `apps/backend-go/schema/migrations/20260806_gs1_labels.ddl`.
 | GET | `/v1/{payloader\|payload\|warehouse\|supplier}/manifests/{id}/ship-units` | List SSCC rows |
 | POST | `…/manifests/{id}/labels` | Optional `{order_id}` → ZPL attachment |
 
-Shared helpers: `apps/backend-go/gs1/` (`NormalizeGTIN/GLN/SSCC`, `GenerateSSCC`, `AICode128ZPL`).
+Shared helpers: `apps/backend-go/gs1/` (`NormalizeGTIN/GLN/SSCC`, `GenerateSSCC`, `AICode128ZPL`, `BuildAIElementStringFNC1`, `LabelDataMatrixZPL`).
 
 ## Seal behavior
 

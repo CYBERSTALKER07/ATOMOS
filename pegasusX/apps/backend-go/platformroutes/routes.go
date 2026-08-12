@@ -35,5 +35,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 	if d.JWTSecret != "" {
 		r.Post("/v1/auth/refresh", auth.HandleTokenRefresh(d.JWTSecret, d.JWTIssuer))
+		r.Post("/v1/auth/logout", auth.HandleLogout(d.JWTSecret))
 	}
 }

@@ -92,6 +92,8 @@ struct ContentView: View {
     @State private var showInsights = false
     @State private var showProcurement = false
     @State private var showControlTower = false
+    @State private var showCredit = false
+    @State private var showHq = false
     @State private var showNotificationInbox = false
     @State private var notificationCount = 0
     @State private var cartBounce = false
@@ -225,6 +227,34 @@ struct ContentView: View {
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("warehouse_portal.kpi_stat_card.text.done") { showControlTower = false }
+                                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+                        }
+                    }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCompactAdaptation(.sheet)
+        }
+        .sheet(isPresented: $showCredit) {
+            NavigationStack {
+                CreditPartnersView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showCredit = false }
+                                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+                        }
+                    }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCompactAdaptation(.sheet)
+        }
+        .sheet(isPresented: $showHq) {
+            NavigationStack {
+                HqView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("warehouse_portal.kpi_stat_card.text.done") { showHq = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -716,6 +746,8 @@ struct ContentView: View {
         case .profile: selectedTab = .profile
         case .insights: showInsights = true
         case .controlTower: showControlTower = true
+        case .credit: showCredit = true
+        case .hq: showHq = true
         case .settings: selectedTab = .profile
         case .logout: auth.logout()
         }

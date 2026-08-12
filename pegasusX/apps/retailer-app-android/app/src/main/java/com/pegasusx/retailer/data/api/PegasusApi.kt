@@ -200,6 +200,24 @@ interface PegasusApi {
     @GET("/v1/retailer/credit-profile")
     suspend fun getCreditProfile(): CreditProfile
 
+    @GET("/v1/retailer/credit-relationships")
+    suspend fun getCreditRelationships(): JsonElement
+
+    @GET("/v1/retailer/ar/invoices")
+    suspend fun getArInvoices(
+        @Query("status") status: String = "OPEN",
+        @Query("limit") limit: Int = 50,
+    ): JsonElement
+
+    @GET("/v1/retailer/hq/summary")
+    suspend fun getHqSummary(@Query("day") day: String): JsonElement
+
+    @GET("/v1/retailer/hq/sales-by-location")
+    suspend fun getHqSalesByLocation(@Query("day") day: String): JsonElement
+
+    @GET("/v1/retailer/hq/sales-by-sku")
+    suspend fun getHqSalesBySku(@Query("day") day: String): JsonElement
+
     @PUT("/v1/retailer/profile")
     suspend fun updateRetailerProfile(
         @Body body: Map<String, String>,

@@ -70,7 +70,7 @@ func SignerFromEnv(envName string) (EDSSigner, error) {
 		file := strings.TrimSpace(os.Getenv("FISCAL_MY_SOLIQ_PKCS12_FILE"))
 		password := os.Getenv("FISCAL_MY_SOLIQ_PKCS12_PASSWORD")
 		if file == "" {
-			return nil, fmt.Errorf("FISCAL_MY_SOLIQ_PKCS12_FILE required for FISCAL_MY_SOLIQ_SIGNER=%s (path to the E-IMZO .p12 container)", kind)
+			return nil, fmt.Errorf("FISCAL_MY_SOLIQ_PKCS12_FILE required for FISCAL_MY_SOLIQ_SIGNER=%s (path to the E-IMZO .p12 container — EDS key procurement owner task)", kind)
 		}
 		return NewPKCS12SignerFromFile(file, password)
 	case "":

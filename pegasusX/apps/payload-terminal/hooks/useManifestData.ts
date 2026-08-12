@@ -63,6 +63,7 @@ export function useManifestData({
 
   // LEO: Manifest Loading Gate state
   const [manifestId, setManifestId] = useState<string | null>(null);
+  const [manifestSource, setManifestSource] = useState<'payloader' | 'factory'>('payloader');
   const [manifestState, setManifestState] = useState<string>(''); // DRAFT | LOADING | SEALED
   const [manifestVolume, setManifestVolume] = useState(0);
   const [manifestMaxVolume, setManifestMaxVolume] = useState(0);
@@ -165,6 +166,7 @@ export function useManifestData({
   const handleTruckSelect = (truckId: string) => {
     setActiveTruck(truckId);
     setManifestId(null);
+    setManifestSource('payloader');
     setManifestState('');
     setManifestVolume(0);
     setManifestMaxVolume(0);
@@ -178,27 +180,37 @@ export function useManifestData({
   const fetchTruckManifest = useCallback(async () => {
     if (!token || !activeTruck) return;
     try {
+      const matchesTruck = (m: { truck_id?: string; vehicle_id?: string }) =>
+        m.truck_id === activeTruck || m.vehicle_id === activeTruck;
+
       const fetchManifestForState = async (state: 'DRAFT' | 'LOADING') => {
-        const data = await PayloadTerminalApi.getSupplierManifests(token, state);
-        return (data.manifests || []).find((m: any) => m.truck_id === activeTruck) ?? null;
+        const data = await PayloadTerminalApi.listLoadingBayManifests(token, state);
+        return (data.manifests || []).find(matchesTruck) ?? null;
       };
 
       const m = await fetchManifestForState('DRAFT') ?? await fetchManifestForState('LOADING');
       if (m) {
         setManifestId(m.manifest_id);
-        setManifestState(m.state);
+        setManifestSource(m.source);
+        setManifestState(m.state || '');
         setManifestVolume(m.total_volume_vu || 0);
         setManifestMaxVolume(m.max_volume_vu || 0);
         setManifestStopCount(m.stop_count || 0);
         setManifestRegionCode(m.region_code || '');
         try {
-          const detailRes = await authFetch(`/v1/payloader/manifests/${encodeURIComponent(m.manifest_id)}`);
+          const detailPath = m.source === 'factory'
+            ? `/v1/factory/manifests/${encodeURIComponent(m.manifest_id)}`
+            : `/v1/payloader/manifests/${encodeURIComponent(m.manifest_id)}`;
+          const detailRes = await authFetch(detailPath);
           if (detailRes.ok) {
             const detail = await detailRes.json();
             const labels: Record<string, string> = {};
-            for (const row of detail.orders ?? []) {
+            const orderRows = detail.orders ?? detail.transfers ?? [];
+            for (const row of orderRows) {
+              const orderId = row.order_id;
+              if (!orderId) continue;
               const label = row.delivery_expectation?.target_label || row.delivery_expectation?.badge_label;
-              if (label) labels[row.order_id] = label;
+              if (label) labels[orderId] = label;
             }
             setDeliveryLabelsByOrder(labels);
             const lat = typeof detail.driver_lat === 'number' ? detail.driver_lat : null;
@@ -220,15 +232,15 @@ export function useManifestData({
   const refreshBatchReadyManifests = useCallback(async () => {
     if (!token || !activeTruck) return;
     try {
-      const data = await PayloadTerminalApi.getSupplierManifests(token, 'LOADING');
-      const loadingManifests: Array<{ manifest_id: string; truck_id?: string }> = data.manifests || [];
+      const data = await PayloadTerminalApi.listLoadingBayManifests(token, 'LOADING');
+      const loadingManifests = data.manifests || [];
       const sealedByTruck = { ...sealedOrdersByTruck };
       if (sealedOrderIds.size > 0) {
         sealedByTruck[activeTruck] = Array.from(sealedOrderIds);
       }
       const ready: string[] = [];
       for (const m of loadingManifests) {
-        const truckId = m.truck_id;
+        const truckId = m.truck_id || m.vehicle_id;
         if (!truckId) continue;
         let truckOrders: LiveOrder[];
         if (truckId === activeTruck) {
@@ -403,6 +415,7 @@ export function useManifestData({
     setPostSealOrderId,
     countdownRef,
     manifestId,
+    manifestSource,
     manifestState,
     setManifestState,
     manifestVolume,

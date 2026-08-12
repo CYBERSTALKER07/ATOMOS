@@ -8,10 +8,105 @@ export const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
  * Payload Terminal API
  * Gap-hunter pass endpoints. Authenticated calls use authFetch (401 → refresh).
  */
+export type LoadingBayManifestSource = 'payloader' | 'factory';
+
+export type LoadingBayManifest = {
+    manifest_id: string;
+    state?: string;
+    truck_id?: string;
+    vehicle_id?: string;
+    total_volume_vu?: number;
+    max_volume_vu?: number;
+    stop_count?: number;
+    region_code?: string;
+    source: LoadingBayManifestSource;
+};
+
+function normalizeManifests(
+    raw: unknown,
+    source: LoadingBayManifestSource,
+): LoadingBayManifest[] {
+    const list = Array.isArray((raw as { manifests?: unknown })?.manifests)
+        ? ((raw as { manifests: Record<string, unknown>[] }).manifests)
+        : [];
+    return list.map((m) => ({
+        manifest_id: String(m.manifest_id ?? ''),
+        state: typeof m.state === 'string' ? m.state : undefined,
+        truck_id: typeof m.truck_id === 'string' ? m.truck_id : undefined,
+        vehicle_id: typeof m.vehicle_id === 'string' ? m.vehicle_id : undefined,
+        total_volume_vu: typeof m.total_volume_vu === 'number' ? m.total_volume_vu : undefined,
+        max_volume_vu: typeof m.max_volume_vu === 'number' ? m.max_volume_vu : undefined,
+        stop_count: typeof m.stop_count === 'number' ? m.stop_count : undefined,
+        region_code: typeof m.region_code === 'string' ? m.region_code : undefined,
+        source,
+    })).filter((m) => m.manifest_id);
+}
+
 export const PayloadTerminalApi = {
     getSupplierManifests: async (_token: string, state: string = 'DRAFT') => {
         const res = await authFetch(`/v1/supplier/manifests?state=${state}`);
         if (!res.ok) throw new Error('Failed to fetch supplier manifests');
+        return res.json();
+    },
+
+    /** Payloader + factory loading-bay manifests (P1-18 Class A bridge). */
+    listLoadingBayManifests: async (
+        _token: string,
+        state: string = 'DRAFT',
+    ): Promise<{ manifests: LoadingBayManifest[] }> => {
+        const q = `state=${encodeURIComponent(state)}`;
+        const [payloaderRes, factoryRes] = await Promise.all([
+            authFetch(`/v1/payloader/manifests?${q}`),
+            authFetch(`/v1/factory/manifests?${q}`),
+        ]);
+        const out: LoadingBayManifest[] = [];
+        const seen = new Set<string>();
+        if (payloaderRes.ok) {
+            for (const m of normalizeManifests(await payloaderRes.json(), 'payloader')) {
+                if (seen.has(m.manifest_id)) continue;
+                seen.add(m.manifest_id);
+                out.push(m);
+            }
+        } else {
+            // Legacy alias still mounted for PAYLOAD on payloaderroutes.
+            const supplierRes = await authFetch(`/v1/supplier/manifests?${q}`);
+            if (supplierRes.ok) {
+                for (const m of normalizeManifests(await supplierRes.json(), 'payloader')) {
+                    if (seen.has(m.manifest_id)) continue;
+                    seen.add(m.manifest_id);
+                    out.push(m);
+                }
+            }
+        }
+        if (factoryRes.ok) {
+            for (const m of normalizeManifests(await factoryRes.json(), 'factory')) {
+                if (seen.has(m.manifest_id)) continue;
+                seen.add(m.manifest_id);
+                out.push(m);
+            }
+        }
+        return { manifests: out };
+    },
+
+    factoryStartLoading: async (_token: string, manifestId: string, idempotencyKey?: string) => {
+        const headers: Record<string, string> = {};
+        if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+        const res = await authFetch(`/v1/factory/manifests/${encodeURIComponent(manifestId)}/start-loading`, {
+            method: 'POST',
+            headers,
+        });
+        if (!res.ok) throw new Error('Failed to start loading factory manifest');
+        return res.json();
+    },
+
+    factorySealManifest: async (_token: string, manifestId: string, idempotencyKey?: string) => {
+        const headers: Record<string, string> = {};
+        if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+        const res = await authFetch(`/v1/factory/manifests/${encodeURIComponent(manifestId)}/seal`, {
+            method: 'POST',
+            headers,
+        });
+        if (!res.ok) throw await readApiError(res);
         return res.json();
     },
 

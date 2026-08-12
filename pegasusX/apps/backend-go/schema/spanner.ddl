@@ -2861,3 +2861,202 @@ CREATE TABLE FeatureFlagOverrides (
 
 CREATE INDEX Idx_FeatureFlagOverrides_ByTenant
   ON FeatureFlagOverrides(TenantType, TenantId);
+
+-- =============================================================================
+-- P1-12 (2026-08-12): tables previously only in migrations — greenfield parity
+-- =============================================================================
+
+-- 20260731_digital_twin.ddl
+CREATE TABLE RouteTwins (
+  RouteId             STRING(36) NOT NULL,
+  DriverId            STRING(36) NOT NULL,
+  Status              STRING(32) NOT NULL,
+  CurrentLat          FLOAT64,
+  CurrentLng          FLOAT64,
+  CurrentH3           STRING(16),
+  LocationAt          TIMESTAMP,
+  RemainingStops      INT64 NOT NULL,
+  CapacityUsedWeight  FLOAT64,
+  CapacityUsedVolume  FLOAT64,
+  LastEventAt         TIMESTAMP NOT NULL,
+  UpdatedAt           TIMESTAMP NOT NULL,
+) PRIMARY KEY (RouteId);
+
+CREATE TABLE StopTwins (
+  RouteId             STRING(36) NOT NULL,
+  StopId              STRING(36) NOT NULL,
+  Sequence            INT64 NOT NULL,
+  Status              STRING(32) NOT NULL,
+  PredictedArrival    TIMESTAMP,
+  WindowStart         TIMESTAMP,
+  WindowEnd           TIMESTAMP,
+  DeliveredGrossMinor INT64,
+  RemainingGrossMinor INT64,
+  UpdatedAt           TIMESTAMP NOT NULL,
+) PRIMARY KEY (RouteId, StopId),
+  INTERLEAVE IN PARENT RouteTwins ON DELETE CASCADE;
+
+CREATE TABLE VehicleInventory (
+  RouteId             STRING(36) NOT NULL,
+  Sku                 STRING(64) NOT NULL,
+  QtyOnVehicle        INT64 NOT NULL,
+  UpdatedAt           TIMESTAMP NOT NULL,
+) PRIMARY KEY (RouteId, Sku),
+  INTERLEAVE IN PARENT RouteTwins ON DELETE CASCADE;
+
+-- 20260802_labor_capacity.ddl
+CREATE TABLE DriverScores (
+  DriverId          STRING(36) NOT NULL,
+  Score             FLOAT64 NOT NULL,
+  OnTimeRate        FLOAT64 NOT NULL,
+  CompletionRate    FLOAT64 NOT NULL,
+  DamageRate        FLOAT64 NOT NULL,
+  ShopClosedRate    FLOAT64 NOT NULL,
+  FeedbackScore     FLOAT64 NOT NULL,
+  StopsPerHour      FLOAT64 NOT NULL,
+  WindowStart       DATE NOT NULL,
+  WindowEnd         DATE NOT NULL,
+  ComputedAt        TIMESTAMP NOT NULL,
+) PRIMARY KEY (DriverId);
+
+CREATE TABLE DriverAvailability (
+  DriverId          STRING(36) NOT NULL,
+  Date              DATE NOT NULL,
+  AvailableHours    FLOAT64 NOT NULL,
+  ZoneH3            STRING(16),
+  Status            STRING(16) NOT NULL,
+  UpdatedAt         TIMESTAMP NOT NULL,
+) PRIMARY KEY (DriverId, Date);
+
+CREATE TABLE ZoneCapacity (
+  ZoneH3            STRING(16) NOT NULL,
+  Date              DATE NOT NULL,
+  TotalCapacity     FLOAT64 NOT NULL,
+  UsedCapacity      FLOAT64 NOT NULL,
+  ComputedAt        TIMESTAMP NOT NULL,
+) PRIMARY KEY (ZoneH3, Date);
+
+-- 20260802_predictive_etas.ddl
+CREATE TABLE RouteETAs (
+  RouteId           STRING(36) NOT NULL,
+  StopId            STRING(36) NOT NULL,
+  Sequence          INT64 NOT NULL,
+  PredictedArrival  TIMESTAMP NOT NULL,
+  WindowStart       TIMESTAMP NOT NULL,
+  WindowEnd         TIMESTAMP NOT NULL,
+  Confidence        FLOAT64 NOT NULL,
+  ComputedAt        TIMESTAMP NOT NULL,
+  FactorsJson       JSON,
+) PRIMARY KEY (RouteId, StopId);
+
+CREATE INDEX RouteETAs_ByOrder ON RouteETAs (StopId);
+
+-- 20260802_retail_os_sell_through.ddl
+CREATE TABLE RetailerSellThroughDaily (
+  RetailerId   STRING(36)  NOT NULL,
+  LocationId   STRING(36)  NOT NULL,
+  SkuId        STRING(64)  NOT NULL,
+  Day          DATE        NOT NULL,
+  QtySold      INT64       NOT NULL,
+  QtyVoided    INT64       NOT NULL,
+  QtyOnHandEod INT64,
+  UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, LocationId, SkuId, Day);
+
+CREATE INDEX Idx_RetailerSellThroughDaily_ByRetailerDay
+  ON RetailerSellThroughDaily(RetailerId, Day DESC);
+
+-- 20260802_retail_os_auto_order_bucket.ddl
+CREATE TABLE RetailerAutoOrderBucket (
+  RetailerId STRING(64) NOT NULL,
+  Day        STRING(10) NOT NULL,
+  Mode       STRING(16) NOT NULL,
+  Sku        STRING(128) NOT NULL,
+  RunId      STRING(64),
+  OrderId    STRING(64),
+  CreatedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, Day, Mode, Sku);
+
+-- 20260809_retailer_auto_order_runs.ddl
+CREATE TABLE RetailerAutoOrderRuns (
+  RunId            STRING(64)  NOT NULL,
+  RetailerId       STRING(64)  NOT NULL,
+  Mode             STRING(16)  NOT NULL,
+  Status           STRING(32)  NOT NULL,
+  Message          STRING(512),
+  ScheduleBucket   STRING(10)  NOT NULL,
+  CandidateSource  STRING(32),
+  SuggestionsSeen  INT64       NOT NULL DEFAULT (0),
+  DraftLines       INT64       NOT NULL DEFAULT (0),
+  PlacedLines      INT64       NOT NULL DEFAULT (0),
+  SkippedJson      BYTES(MAX),
+  PlacedOrdersJson BYTES(MAX),
+  StartedAt        TIMESTAMP   NOT NULL,
+  FinishedAt       TIMESTAMP,
+  CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RunId);
+
+CREATE INDEX Idx_RetailerAutoOrderRuns_ByRetailerCreated
+  ON RetailerAutoOrderRuns (RetailerId, CreatedAt DESC);
+
+-- 20260809_retailer_local_catalog.ddl
+CREATE TABLE RetailerLocalCatalog (
+  RetailerId         STRING(64) NOT NULL,
+  LocalSkuId         STRING(128) NOT NULL,
+  Barcode            STRING(64),
+  Name               STRING(256) NOT NULL,
+  Unit               STRING(32),
+  DefaultPriceMinor  INT64 NOT NULL DEFAULT (0),
+  Currency           STRING(8),
+  SectionId          STRING(64),
+  IsActive           BOOL NOT NULL DEFAULT (true),
+  CreatedAt          TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt          TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, LocalSkuId);
+
+CREATE INDEX Idx_RetailerLocalCatalog_Barcode
+  ON RetailerLocalCatalog (RetailerId, Barcode);
+
+-- 20260809_retailer_org_flags.ddl
+CREATE TABLE RetailerOrgFlags (
+  RetailerId STRING(64) NOT NULL,
+  FlagKey    STRING(64) NOT NULL,
+  FlagValue  STRING(256),
+  UpdatedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RetailerId, FlagKey);
+
+-- 20260809_flywheel_demand_feed.ddl
+CREATE TABLE FlywheelDemandFeed (
+  SignalId    STRING(64) NOT NULL,
+  SupplierId  STRING(64),
+  RetailerId  STRING(64) NOT NULL,
+  LocationId  STRING(64),
+  SkuId       STRING(128) NOT NULL,
+  Day         DATE NOT NULL,
+  QtyDelta    INT64 NOT NULL,
+  NetSold     INT64 NOT NULL,
+  Kind        STRING(16) NOT NULL,
+  Source      STRING(32) NOT NULL,
+  CreatedAt   TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (SignalId);
+
+CREATE NULL_FILTERED INDEX Idx_FlywheelDemandFeed_SupplierCreated
+  ON FlywheelDemandFeed (SupplierId, CreatedAt DESC);
+
+CREATE INDEX Idx_FlywheelDemandFeed_SkuDay
+  ON FlywheelDemandFeed (SkuId, Day DESC);
+
+-- 20260813_wave_c_offline_count.ddl (RetailerStockLocationVersions already present)
+CREATE TABLE RetailerStockCountForceAudits (
+  AuditId       STRING(36) NOT NULL,
+  CountId       STRING(36) NOT NULL,
+  RetailerId    STRING(36) NOT NULL,
+  LocationId    STRING(36) NOT NULL,
+  StockBin      STRING(16) NOT NULL,
+  BaseVersion   INT64       NOT NULL,
+  ServerVersion INT64       NOT NULL,
+  ActorUserId   STRING(36) NOT NULL,
+  ActorRole     STRING(32) NOT NULL,
+  LinesJson     JSON        NOT NULL,
+  CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AuditId);

@@ -44,7 +44,7 @@ func AuthMiddlewareOpts(opts AuthOptions) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if strings.HasPrefix(token, "pxk_") {
+			if strings.HasPrefix(token, "pxk_") || strings.HasPrefix(token, "pxs_") {
 				p, ok := authenticateAPIKey(r.Context(), opts.Keys, token, w)
 				if !ok {
 					return
@@ -99,7 +99,10 @@ func authenticateAPIKey(ctx context.Context, keys KeyRepository, token string, w
 		return Principal{}, false
 	}
 	_ = keys.TouchLastUsed(ctx, k.KeyID)
-	return Principal{KeyID: k.KeyID, TenantType: k.TenantType, TenantID: k.TenantID, Scopes: k.Scopes}, true
+	return Principal{
+		KeyID: k.KeyID, TenantType: k.TenantType, TenantID: k.TenantID, Scopes: k.Scopes,
+		Sandbox: IsSandboxKey(token) || IsSandboxRateClass(k.RateLimitClass),
+	}, true
 }
 
 func authenticateAccessToken(ctx context.Context, keys KeyRepository, secret, token string, w http.ResponseWriter) (Principal, bool) {

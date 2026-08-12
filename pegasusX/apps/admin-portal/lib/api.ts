@@ -31,6 +31,26 @@ export interface FlagEval {
   money_affecting: boolean;
 }
 
+export interface MatchQueueItem {
+  queue_id: string;
+  supplier_id: string;
+  product_id: string;
+  candidate_global_product_id?: string;
+  match_method: string;
+  score: number;
+  status: string;
+  reason?: string;
+}
+
+export interface PartnerKey {
+  key_id: string;
+  tenant_type: string;
+  tenant_id: string;
+  key_prefix: string;
+  scopes: string[];
+  status: string;
+}
+
 const base = () =>
   (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
 
@@ -80,4 +100,43 @@ export const api = {
       tenant_type: tenantType,
       tenant_id: tenantId,
     }),
+  listMatchQueue: (token: string, status = "PENDING", limit = 100) =>
+    req<{ items: MatchQueueItem[] }>(
+      token,
+      "GET",
+      `/v1/admin/product-match-queue?status=${encodeURIComponent(status)}&limit=${limit}`,
+    ),
+  resolveMatch: (token: string, id: string, decision: string, globalProductId = "") =>
+    req<{ status: string }>(token, "POST", `/v1/admin/product-match-queue/${encodeURIComponent(id)}/resolve`, {
+      decision,
+      global_product_id: globalProductId,
+    }),
+  listPartnerKeys: (token: string, tenantType: string, tenantId: string) =>
+    req<{ keys: PartnerKey[] }>(
+      token,
+      "GET",
+      `/v1/admin/partner-keys?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
+    ),
+  revokePartnerKey: (token: string, keyId: string) =>
+    req<{ status?: string }>(token, "POST", `/v1/admin/partner-keys/${encodeURIComponent(keyId)}/revoke`, {}),
+  getPartnerAs2: (token: string, tenantType: string, tenantId: string) =>
+    req<Record<string, unknown>>(
+      token,
+      "GET",
+      `/v1/admin/partner-as2?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
+    ),
+  getPartnerSftp: (token: string, tenantType: string, tenantId: string) =>
+    req<Record<string, unknown>>(
+      token,
+      "GET",
+      `/v1/admin/partner-sftp?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
+    ),
+  getPartnerCoa: (token: string, tenantType: string, tenantId: string) =>
+    req<Record<string, unknown>>(
+      token,
+      "GET",
+      `/v1/admin/partner-coa?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
+    ),
+  runDunningOnce: (token: string) =>
+    req<Record<string, unknown>>(token, "POST", `/v1/admin/ar/dunning/run-once`, {}),
 };

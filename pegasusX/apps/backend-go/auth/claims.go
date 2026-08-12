@@ -10,6 +10,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Role enumerates every JWT role string. Mirrors packages/types Role union.
@@ -64,6 +65,10 @@ type Claims struct {
 	IsConfigured bool // supplier completed billing setup
 	PhoneNumber  string
 	TraceID      string
+	// JTI is the unique token id used for session revocation (denylist).
+	JTI string
+	// ExpiresAt is the JWT exp instant (UTC); used to size denylist TTL on logout.
+	ExpiresAt time.Time
 
 	// TokenUse is empty for full tokens; PendingOrgSelect for multi-org intermediate.
 	TokenUse string

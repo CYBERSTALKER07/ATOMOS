@@ -41,6 +41,8 @@ Coverage rule (same as §2 below): Spanner mutation → same-txn outbox → cons
 
 # pegasusX ecosystem alignment (required on every change)
 
+> **Prod goal SoT:** [`docs/PROD_ECOSYSTEM_GOAL.md`](../docs/PROD_ECOSYSTEM_GOAL.md) — north star, pillars, coverage rule, wave order for production.
+
 > [!NOTE]
 > **Current Project State:** GCP Migration (Phase 2)
 > *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.

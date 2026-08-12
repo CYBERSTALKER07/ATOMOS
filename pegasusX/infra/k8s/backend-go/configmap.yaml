@@ -53,12 +53,17 @@ data:
   PARTNER_AS2_ENABLED: "false"
   PARTNER_AS2_INSECURE_PLAIN: "false"
   # §8.4 forecast accuracy — enable after ForecastAccuracyDaily migration + soak.
+  # Prod overlay merges FORECAST_ACCURACY_ENABLED=true for soak evidence (W4).
   FORECAST_ACCURACY_ENABLED: "false"
   # §8.1 Croston/SES/HW — enable after backtest gate soak on real history.
   FORECAST_ALGO_ENABLED: "false"
   FORECAST_ALGO_REQUIRE_GATE: "false"
   # §8.2 service-level safety stock — enable after ReceivedAt history + policy soak.
   SAFETY_STOCK_V2_ENABLED: "false"
+  # Auto-order shadow worker (place stays off until dual-control flip).
+  AUTO_ORDER_SHADOW_ENABLED: "false"
+  AUTO_ORDER_WORKER_ENABLED: "false"
+  AUTO_ORDER_PLACE_ENABLED: "false"
   CLAIM_EVIDENCE_MAX_BYTES: "10485760"
   # PEGASUSX_RUN_MODE: api | worker | all (default all). Worker Deployment sets worker.
   PEGASUSX_RUN_MODE: "api"

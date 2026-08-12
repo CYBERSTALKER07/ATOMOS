@@ -1,5 +1,7 @@
 # PegasusX — Consolidated Ecosystem Gap Register & Data-Flow Blueprint
 
+> **Prod goal SoT:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) — north star, pillars, coverage rule, and wave order. This register is the evidence backlog, not the goal.
+
 **Date:** 2026-08-12 · **Evidence base:** live source tree, re-verified by six parallel audits (money/fiscal, autonomy/planning, integration, tenancy/ops, role client apps, data-flow plumbing). This supersedes the gap sections of `END_PRODUCT_REALITY_REPORT_2026-08-11.md` — every claim below was checked against code, not docs.
 
 Legend severity: **P0** breaks revenue/legality/security or strands state · **P1** structural product truth / cross-role loop broken · **P2** enterprise-grade completeness · **P3** polish.
@@ -45,7 +47,7 @@ Spanner (source of truth, single schema, 167 tables)
 | # | Gap | Domain | Evidence |
 |---|-----|--------|----------|
 | P0-1 ✅ | **RESOLVED (commit 9f8d8787).** Added `ar.Service.RecordPayment` / `RecordPaymentForOrder` / `GetByID` / `GetByOrder`; wired pay-down into `order.CollectCash` so credit invoices settle on cash collection. Tests in `ar/service_test.go`. | Money | `ar/service.go`, `order/service.go` |
-| P0-2 ✅ | **RESOLVED (commit 9f8d8787).** `Rail.IsLive()` added; `SubmitForDispatch(live=true)` fails closed with `ErrNoLiveRail` on a non-live rail — a batch can no longer strand in SUBMITTED with an empty rail ref. Live rail still pending a real bank integration (separate scope). | Money | `payout/rail.go` |
+| P0-2 ✅ | **RESOLVED (commit 9f8d8787 + W3 decision 2026-08-12).** `Rail.IsLive()` fail-closed; **bank-file is permanent settlement for this prod bar** — [`PAYOUT_RAIL_DECISION.md`](../PAYOUT_RAIL_DECISION.md). Live bank/GP payout deferred. | Money | `payout/rail.go`, `docs/PAYOUT_RAIL_DECISION.md` |
 | P0-3 ✅ | **RESOLVED (commit 9f8d8787).** `RequireTenant` now exempts `RolePlatformAdmin` (cross-tenant break-glass role has no SupplierID) so the admin console works when tenancy is enforced. | Tenancy | `auth/tenant.go:95` |
 | P0-4 ✅ | **RESOLVED (commit 9f8d8787).** Payout `Insert`/`UpdateStatusRef` now emit `PAYOUT_BATCH_GENERATED/EXPORTED/DISPATCHED/PAID` via `outbox.SpannerTxnBuffer` in the same txn. | Data-flow | `payout/store.go`, `outbox/spanner_txn_buffer.go` |
 | P0-5 ✅ | **RESOLVED (commit 9f8d8787).** AR `OpenInvoice`/`ApplyPayment`/`UpdateDunning` now emit `AR_INVOICE_OPENED/PAYMENT/SETTLED/DUNNED` atomically in the same Spanner txn. | Data-flow | `ar/service.go` |
@@ -55,24 +57,24 @@ Spanner (source of truth, single schema, 167 tables)
 
 | # | Gap | Domain | Evidence |
 |---|-----|--------|----------|
-| P1-1 | Optimizer absent in prod AND prod image remap points optimizer-core at the backend-go digest (crash-loop if scaled) | Planning | `infra/k8s/overlays/prod/kustomization.yaml:36-39,62-69` |
-| P1-2 | 30-day soak artifact never auto-generated; `artifacts/forecast-shadow/` absent; flip-check schema (`unmodified_acceptance_rate`) ≠ runtime (`unmodified_accept_rate`); doc threshold 80% vs code default 60% | Planning | `scripts/auto_order_place_flip_check.sh:8-23` vs `retailer/auto_order_soak_gate.go:30-36` |
-| P1-3 | Forecast + accuracy CronJobs orphaned manifests — referenced by no overlay; nightly pass never scheduled | Planning | `infra/k8s/planning_forecast_cronjob.yaml`, `planning_accuracy_cronjob.yaml` |
-| P1-4 | Prod autonomy flags all off (FORECAST_ALGO/ACCURACY, SAFETY_STOCK_V2, AUTO_ORDER_WORKER unset) → 30-day soak can never run in prod | Planning | `infra/k8s/backend-go/configmap.yaml:55-61` |
-| P1-5 | Dual-control place-flip never executes at runtime: `featureflags.Evaluate` has no production caller; place flag read once at bootstrap; `FLAG_AUTO_ORDER_PLACE` audit action doesn't exist | Planning | `featureflags/service.go`; `bootstrap.go:892` |
+| P1-1 ✅ | **RESOLVED (W4 2026-08-12).** Prod optimizer-core remaps to `…/optimizer-core:ssmr` (not backend-go); replicas stay 0 until AR publish; CI gate fails if optimizer image is backend-go. | Planning | `infra/k8s/overlays/prod/kustomization.yaml`; `scripts/ci_fail_placeholder_images.sh` |
+| P1-2 ✅ | **RESOLVED (W4 2026-08-12).** Soak artifact generator + `artifacts/forecast-shadow/`; flip-check accepts both rate keys; runtime default unmodified rate **0.80** aligned with flip policy. | Planning | `scripts/generate_auto_order_soak_artifact.sh`; `auto_order_place_flip_check.sh`; `retailer/auto_order_soak_gate.go` |
+| P1-3 ✅ | **RESOLVED (W4 2026-08-12).** Forecast + accuracy CronJobs included in prod + SSMR overlays (image remap via existing backend-go digest pins). | Planning | `overlays/prod|ssmr/kustomization.yaml` |
+| P1-4 ✅ | **RESOLVED (W4 2026-08-12).** Prod configMap merge enables shadow worker + forecast accuracy/algo(require-gate); **place stays false**. | Planning | `overlays/prod/kustomization.yaml` configMapGenerator |
+| P1-5 ✅ | **RESOLVED (W4 2026-08-12).** `placeAllowedForRetailer` calls `featureflags.Evaluate` at runtime; dual-control approve writes `FLAG_AUTO_ORDER_PLACE` audit. | Planning | `retailer/auto_order_soak_gate.go`; `featureflags/handlers.go`; `platformadmin.RecordFlagAudit` |
 | P1-6 ✅ | **RESOLVED.** ADR-009 still completes on OFD submit success. Parallel EHF track now works: MySoliq SUCCESS stamps `BuyerAcceptanceStatus=PENDING` + 10-day deadline (was never set → poller was dead); poller emits `BUYER_ACCEPTANCE_*` outbox events; auto credit-note on REJECT defaults ON (`CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=false` to opt out). Poller moved onto App + worker tier (cancelable ctx). | Money | `order/fiscal.go`, `order/buyer_acceptance_poller.go` |
-| P1-7 | Fiscal sandbox proof = env-presence only; no live sign→submit→poll round-trip; E-IMZO key not yet procured | Money | `cmd/ssmr-smokecheck/e2e_soliq.go`; `fiscal/signer_env.go` |
+| P1-7 ✅ | **RESOLVED (W3 2026-08-12).** Sign→submit→poll proven in CI (`TestMySoliqContract_SignSubmitPoll`) + SSMR `PX_E2E_SOLIQ_CONTRACT_OK`. Live sandbox is opt-in (`FISCAL_MY_SOLIQ_LIVE_PROOF=1`); prod EDS still needs E-IMZO PKCS#12 procurement. See [`FISCAL_EDS_PROOF.md`](../FISCAL_EDS_PROOF.md). | Money | `order/fiscal_soliq_contract_test.go`; `cmd/ssmr-smokecheck/e2e_soliq.go` |
 | P1-8 ✅ | **RESOLVED.** Constructed `payment.WebhookReconciler` in bootstrap and started it every 5m from the worker tier (30s startup jitter). Skips stub gateway refs; only advances sessions stuck >15min. `PAYMENT_RECONCILE_DISABLED=1` to turn off. | Money | `bootstrap/bootstrap.go`, `runtime_workers.go`, `payment/reconciliation.go` |
 | P1-9 ✅ | **RESOLVED (commit 3b739a5f).** Worker-liveness gate: worker tier publishes a Redis heartbeat (`bootstrap.StartWorkerHeartbeat`); an api-only tier starts the notification consumer (FCM push + inbox) only when no live worker heartbeat exists (`startNotificationConsumerIfNoWorker`). Restores push/inbox for single-tier api deploys without double-firing alongside a worker; fails open when Redis is down. | Data-flow | `bootstrap/worker_heartbeat.go`, `main.go`, `runtime_workers.go` |
 | P1-10 ✅ | **RESOLVED (commit 3b0b9b33).** Driver location now emits a throttled (5s/driver) `DRIVER_LOCATION_UPDATED` to the outbox (`TopicRealtime`) via `telemetryroutes.SpannerLocationBusEmitter`, lighting up dispatcher + twin consumers; `route_id` injected when resolvable. Full fidelity stays on WS/Redis. | Data-flow | `telemetryroutes/bus_emitter.go`, `routes.go`, `main.go` |
-| P1-11 | No JWT session revocation/denylist; refresh extends any non-expired token | Tenancy | `auth/refresh.go:27-46` |
-| P1-12 | Schema drift: 14 tables in migrations absent from `spanner.ddl` (fresh-emulator parity broken); drift gate only checks shop-closed schema | Tenancy | migrations vs `spanner.ddl`; `cmd/schema-drift/main.go:50` |
-| P1-13 | GS1 DataMatrix payload non-conformant: encodes literal `(01)` parens, no leading FNC1 → won't scan as GS1 element string; not wired into label path (GS1-128 used) | Integration | `gs1/datamatrix.go:23-46`; `payload/ship_units.go:291` |
-| P1-14 | AS2 outbound MDN never verified (no MIC comparison, 2xx = success) | Integration | `partner/as2/client.go:94-104` |
-| P1-15 | Go SDK module path `github.com/CYBERSTALKER07/ATOMOS/...` ≠ repo module; excluded from go.work; stale 2021 deps | Integration | `sdk/partner/go/go.mod:1`; `go.work:3-10` |
-| P1-16 | Admin portal missing UI for product-match queue, partner-keys/AS2/SFTP/COA, dunning, billing, platform analytics | Client apps | `apps/admin-portal/app/page.tsx` vs `platformadmin/handlers.go` |
-| P1-17 | Retailer AR-invoices + HQ multi-store views desktop-only (absent on Android/iOS) | Client apps | `retailer-app-desktop/app/(dashboard)/credit|hq` |
-| P1-18 | Factory loading bay → payload terminal loop broken (payload calls only supplier/payloader manifests, not factory manifests) | Client apps | `payload-terminal` API calls |
+| P1-11 ✅ | **RESOLVED (W0 2026-08-12).** JWT `jti` issued; Redis/memory denylist; `POST /v1/auth/logout`; refresh rejects revoked tokens. Legacy tokens without `jti` still accepted until expiry. | Tenancy | `auth/jwt.go`, `auth/refresh.go`, `auth/revoke*.go` |
+| P1-12 ✅ | **RESOLVED (2026-08-12).** Mirrored 14 migration-only tables into `schema/spanner.ddl`. Offline migration↔DDL parity gate + live required-table assert (beyond shop-closed). `go run ./cmd/schema-drift -offline`. | Tenancy | `schema/spanner.ddl`; `schemadrift/parity.go`; `cmd/schema-drift` |
+| P1-13 ✅ | **RESOLVED (W5 2026-08-12).** `BuildAIElementStringFNC1` emits leading FNC1 + AI digits (no HRI parens); `MultiLabelZPL` appends GS1 DataMatrix `^BX`/`^FH_` when GTIN present. HRI form remains in `BuildAIElementString`. | Integration | `gs1/datamatrix.go`, `gs1/zpl.go` |
+| P1-14 ✅ | **RESOLVED (W5 2026-08-12).** Outbound AS2 `Send` fail-closes unless sync MDN disposition is processed and `Received-Content-MIC` matches SHA-256 MIC of EDI body. | Integration | `partner/as2/client.go`, `partner/as2/mdn.go` |
+| P1-15 ✅ | **RESOLVED (W5 2026-08-12).** Partner Go SDK module `github.com/pegasusx/pegasusx/sdk/partner/go`; included in `go.work`; gen script pins modulePath; deps current. | Integration | `sdk/partner/go/go.mod`, `go.work`, `scripts/gen_partner_sdk.sh` |
+| P1-16 ✅ | **RESOLVED (W2 2026-08-12).** Admin console tabs for product-match queue + partner keys/AS2/SFTP/COA + dunning run-once; `PLATFORM_ADMIN` allowed on those admin routes with `tenant_id` query for partner scope. Billing/platform analytics remain thin (follow-on). | Client apps | `apps/admin-portal` + partner/globalproducts/credit routes |
+| P1-17 ✅ | **RESOLVED (W2 2026-08-12).** Retailer Credit & AR + HQ multi-store screens on Android and iOS (sidebar entry + same APIs as desktop). | Client apps | `retailer-app-android` / `retailer-app-ios` |
+| P1-18 ✅ | **RESOLVED (W2 2026-08-12).** Payload terminal lists/start-loads/seals factory loading-bay manifests (`RolePayload` on factory loading-bay routes; merge payloader+factory). | Client apps | `factoryroutes`, `payload-terminal` |
 
 ### P2 — enterprise-grade completeness
 
@@ -87,31 +89,44 @@ Spanner (source of truth, single schema, 167 tables)
 | P2-7 | Soak-gate break-glass bypass unaudited, not in money-flag set | Planning |
 | P2-8 | Multi-currency AR unsupported (Currency hardcoded "UZS") | Money |
 | P2-9 | Dev-default webhook secrets in `payment.NewService` (only bootstrap validation protects prod) | Money |
-| P2-10 | Global Pay refund action `RF` unverified against live gateway | Money |
-| P2-11 | `pegasusx-realtime`/`pegasusx-webhooks` topics declared but unwired; `twin` consumer never instantiated; non-Spanner fallback drops events | Data-flow |
-| P2-12 | DEMAND_SIGNAL outbox write not atomic with sell-through mutation (separate txn) | Data-flow |
-| P2-13 | No search infra (one SQL-LIKE endpoint; everything else point/list) | Data-flow |
+| P2-10 ✅ | **RESOLVED (W3 2026-08-12).** Global Pay refund `action=RF` proven against in-repo simulator (auth→perform). Live merchant confirm remains ops checklist. See [`GLOBAL_PAY_REFUND_PROOF.md`](../GLOBAL_PAY_REFUND_PROOF.md). | Money | `payment/gp_simulator_refund_test.go`; `simulator/global_pay.go` |
+| P2-11 ✅ | **RESOLVED (W1 2026-08-12).** Twin Kafka consumer started (`void-digital-twin` on TwinConsumerTopics); telemetry envelope parsing fixed. TopicWebhooks **retired** (payment/partner stay on TopicMain/Orders; const kept for infra compat, no producers). | Data-flow |
+| P2-12 ✅ | **RESOLVED (W1 2026-08-12).** Sell-through row + DEMAND_SIGNAL outbox emit in the same Spanner RW txn; FlywheelDemandFeed remains best-effort post-commit. | Data-flow |
+| P2-13 ✅ | **DECIDED deferred (W1 2026-08-12).** Keep Spanner LIKE/prefix search; no ES/OpenSearch until scale/SLO evidence. See [`SEARCH_DECISION.md`](../SEARCH_DECISION.md). | Data-flow |
 | P2-14 | Partner webhook subscription URLs: no scheme/host allowlist / SSRF validation | Data-flow |
 | P2-15 | Admin portal REST-only (no WS hub, no push) | Data-flow |
 | P2-16 | Flag approvals not written to PlatformAdminAudit; platform-admin actor degrades to "unknown" on empty Subject | Tenancy |
 | P2-17 | No MFA anywhere (TOTP for PLATFORM_ADMIN at minimum); hand-rolled HS256 JWT | Tenancy |
 | P2-18 | Phase 2–5c gates + analytics-tenancy gate local-only, not in CI; admin-portal no CI job | Tenancy |
 | P2-19 | SLO alerts missing for relay restarts / DLQ depth / partner-webhook success | Tenancy |
-| P2-20 | EDIFACT breadth: only 6 types (EDI-lite); missing PRICAT/INVRPT/SLSRPT/RECADV/ORDCHG/DELFOR/REMADV | Integration |
-| P2-21 | No partner sandbox / test-key mode; no self-serve onboarding (admin-issued keys only) | Integration |
+| P2-20 ✅ | **RESOLVED (W5 2026-08-12).** EDI-lite breadth: PRICAT/INVRPT/SLSRPT/RECADV/ORDCHG/DELFOR/REMADV build+parse; PRICAT→price upsert, INVRPT→stock upsert; others ledger+ACK. Still not certified EDIFACT/Drummond. | Integration | `partner/edi/breadth.go`, `partner/edi_inbound.go` |
+| P2-21 ✅ | **RESOLVED (W5 2026-08-12).** Sandbox keys `pxs_*` (`environment=SANDBOX`, `RateLimitClass=partner_sandbox`); retailer/supplier self-serve key routes; sandbox orders tagged `PARTNER_SANDBOX`. | Integration | `partner/keys.go`, `partner/routes.go`, `partner/service.go` |
 | P2-22 | OpenAPI incomplete vs routes (missing `/v1/supplier/partner-*` aliases, key revoke, SFTP-config path) | Integration |
 | P2-23 | Cold-chain temperature readings + labor capacity + twin routes APIs have no client UI anywhere | Client apps |
-| P2-24 | Warehouse pick-waves/bins/cycle-counts only partial (inside TransferActions), no dedicated screens | Client apps |
+| P2-24 ✅ | **RESOLVED (W2 2026-08-12, already shipped).** Dedicated warehouse portal screens + nav for pick-waves, bins, cycle-counts (not TransferActions-only). | Client apps |
 | P2-25 | Payload native apps (Android 3 screens / iOS 5 views) are stubs; Expo terminal is the real app | Client apps |
-| P2-26 | Supplier planning S&OP/scenarios/replenishment on mobile only, absent from web | Client apps |
+| P2-26 ✅ | **RESOLVED (W2 2026-08-12).** Supplier web `/planning` page with PlanningBrainPanel (S&OP + scenarios) + analytics-section nav; settings/planning remains overrides. | Client apps |
 
 ### P3 — polish / acknowledged-by-design
 
-WhatsApp dunning channel absent (SMS/email only) · WS JWT in URL query param (non-Firebase path) · ECC200 ASCII-only, square ≤44×44 (comment says 52) · control-tower scenariosData hardcoded empty · Pulse/reports-export/POS-holds desktop-only · quantity negotiation intentionally disabled · stale docs (`PARTNER_EDI.md:74` "placeholder", `OPTIMIZER_AND_ROUTING_RUNTIME.md` replica counts) · dead `optimizationjobs/` package · `payment.HandleListPayers` + ~9 detail-IDORs from the tenant audit still open (see below).
+WhatsApp dunning channel absent (SMS/email only) · WS JWT in URL query param (non-Firebase path) · ECC200 ASCII-only, square ≤44×44 (comment says 52) · control-tower scenariosData hardcoded empty · Pulse/reports-export/POS-holds desktop-only · quantity negotiation intentionally disabled · stale docs (`PARTNER_EDI.md:74` "placeholder", `OPTIMIZER_AND_ROUTING_RUNTIME.md` replica counts) · dead `optimizationjobs/` package.
 
-### Security follow-through (from Domain 6.2 audit, re-verified 2026-08-12)
+### Security follow-through (from Domain 6.2 audit, re-verified 2026-08-12 · **W0 closed 2026-08-12**)
 
-`driver.HandleOrderGet` **FIXED** (fail-closed ownership). Still **OPEN**: `payment.HandleListPayers` (cross-tenant list, no filter), `driver.HandleGetDriver` / `HandleGetVehicle`, `warehouse.HandleGetWarehouse`, `factory.HandleGetFactory` (path-param IDORs), `creditnote.HandleOrderLines` / `HandleListReverseTasks`, `supplier.HandleAIRecommendations` (seed-supplier fallback), and the systemic root causes (`scopedSupplierID` seed fallback, `?supplier_id=` honored when scope empty, admin-bypass idiom, `demandroutes` mounted with no auth). Middleware masks most list gaps in ssmr/prod but not detail-IDORs reachable with a valid tenant claim. **This is a dedicated security initiative, ~9 detail endpoints + 7 root causes.**
+`driver.HandleOrderGet` was already FIXED (fail-closed ownership). **W0 Trust (2026-08-12) closed the remaining detail IDORs + JWT revocation:**
+
+| Item | Status |
+|------|--------|
+| `payment.HandleListPayers` | Fixed — auth required; retailer/admin scoped to self; platform-admin may list |
+| `driver.HandleGetDriver` / `HandleGetVehicle` | Fixed — tenant supplier match (driver self-only for RoleDriver) |
+| `warehouse.HandleGetWarehouse` / `factory.HandleGetFactory` | Fixed — tenant supplier or home-node match |
+| `creditnote.HandleOrderLines` / `HandleListReverseTasks` | Fixed — order owned-by-supplier; warehouse home-node required |
+| `supplier.HandleAIRecommendations` | Fixed — `scopedSupplierID` / PreferTenantSupplierID (no seed fallback) |
+| `scopedSupplierID` seed fallback | Fixed — uses PreferTenantSupplierID |
+| `demandroutes` unauthenticated | Fixed — RequireRole on all demand routes |
+| P1-11 JWT revocation | Fixed — `jti` on Issue/Parse; Redis/memory denylist; `POST /v1/auth/logout`; refresh rejects revoked |
+
+Helpers: `auth/entity_scope.go`, `auth/revoke.go`, `auth/revoke_redis.go`. Bootstrap installs Redis denylist when Redis is up.
 
 ---
 
@@ -125,7 +140,7 @@ WhatsApp dunning channel absent (SMS/email only) · WS JWT in URL query param (n
 | `AUTO_ORDER_PLACE_FLIP.md` + reality report | flip needs 30-day ≥80% artifact, `FLAG_AUTO_ORDER_PLACE` audit | Runtime default is 60%; artifact never generated; audit action doesn't exist |
 | `DOMAIN2_AUTONOMY_PROGRESS.md:60-62` | dual-control governs AUTO_ORDER_* flags | Not wired — no production caller of `featureflags.Evaluate` |
 | `PHASE4_COMPLETION.md:13` | "optimizer replicas ≥1 SSMR+staging OK" | Gate greps YAML text; proves intent not a running optimizer |
-| `PARTNER_EDI.md:74` | datamatrix.go "placeholder modules" | Stale — real ECC200 now (but GS1 layer non-conformant, P1-13) |
+| `PARTNER_EDI.md` | datamatrix / breadth notes | Updated W5 — FNC1 DataMatrix + PRICAT…REMADV |
 | `END_PRODUCT_REALITY_REPORT` §5 | "no admin console UI", "SDK README-only", "datamatrix placeholder", "reatilerapp typo", "App.tsx 2.5k monolith", "redirect stubs" | All fixed since the report (Domains 2-6) — report is now 1 day stale |
 
 ---
@@ -138,9 +153,9 @@ To reach the consistent data flow you described, the closing condition is a sing
 
 Concretely that means, in order:
 1. Put AR + Payout on the outbox (P0-4/5) and wire AR invoice pay-down (P0-1).
-2. Fix the P0 tenant + routing breaks (P0-3, P0-6) and the live payout rail (P0-2).
+2. Fix the P0 tenant + routing breaks (P0-3, P0-6); payout live-rail remainder **decided bank-file** (P0-2 ✅).
 3. Run-mode parity so `api` doesn't silently lose push/inbox (P1-9); put driver location on the bus (P1-10).
-4. Close the broken cross-role client loops (P1-18, P2-23/24/26).
+4. Close the broken cross-role client loops (P1-18 ✅, P2-24 ✅, P2-26 ✅; P2-23 still open).
 5. Then the security backlog and certification items.
 
 ---
@@ -155,7 +170,12 @@ Re-verify notes (2026-08-12 afternoon):
 
 - AR/payout outbox emits **confirmed** in live `ar/service.go` + `payout/store.go`.
 - Admin portal is a **real** Tenants/Flags/Audit console (not a stub).
-- Twin consumer still **not** started; TopicWebhooks still **unused**; search still **SQL LIKE only**.
+- Twin consumer **started** (W1); TopicWebhooks **retired** (unused); search **Spanner LIKE by decision** — [`SEARCH_DECISION.md`](../SEARCH_DECISION.md).
+- **W2 Class A loops closed 2026-08-12:** factory↔payload (P1-18), admin match/partner/dunning (P1-16), retailer AR/HQ mobile (P1-17), warehouse WMS screens (P2-24), supplier planning web (P2-26).
+- **W3 money legality closed 2026-08-12:** EDS sign→submit→poll contract ([`FISCAL_EDS_PROOF.md`](../FISCAL_EDS_PROOF.md)); payout bank-file decision ([`PAYOUT_RAIL_DECISION.md`](../PAYOUT_RAIL_DECISION.md)); Global Pay `RF` simulator proof ([`GLOBAL_PAY_REFUND_PROOF.md`](../GLOBAL_PAY_REFUND_PROOF.md)).
+- **W4 autonomy closed 2026-08-12:** optimizer-core no longer remapped to backend-go; soak artifact path + 80% threshold aligned; forecast/accuracy CronJobs on prod/SSMR; shadow soak flags on (place off); dual-control `Evaluate` + `FLAG_AUTO_ORDER_PLACE` audit. See [`AUTO_ORDER_PLACE_FLIP.md`](../AUTO_ORDER_PLACE_FLIP.md).
+- **W5 partner cert closed 2026-08-12:** GS1 FNC1 DataMatrix + label path; AS2 MDN/MIC verify; SDK in go.work; EDI-lite breadth; sandbox keys.
+- **P1-12 schema drift closed 2026-08-12:** 14 migration-only tables mirrored into `spanner.ddl`; offline + live schema-drift gate broadened.
 - Desktop stack recommendation: **keep Next.js + Tauri 2** (no Electron migration).
 
 *Generated by consolidated audit, 2026-08-12; Part 5 appended after live re-verify.*

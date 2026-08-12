@@ -105,19 +105,25 @@ func (s *Service) handleAIRecommendationsGet(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	supplierID := strings.TrimSpace(s.scopedSupplierID(r))
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required"})
+		return
+	}
+
 	query := AIRecommendationQuery{
 		Status: strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("status"))),
 		Limit:  parseRecommendationLimit(r.URL.Query().Get("limit")),
 	}
-	items, err := repo.ListAIRecommendations(r.Context(), s.supplierID, query)
+	items, err := repo.ListAIRecommendations(r.Context(), supplierID, query)
 	if err != nil {
-		s.log.Warn("supplier ai recommendations load failed", "supplier_id", s.supplierID, "err", err)
+		s.log.Warn("supplier ai recommendations load failed", "supplier_id", supplierID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_ai_recommendations_failed"})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, supplierAIRecommendationsResponse{
-		SupplierID: s.supplierID,
+		SupplierID: supplierID,
 		Items:      items,
 		Count:      len(items),
 		Limit:      query.Limit,
@@ -130,6 +136,11 @@ func (s *Service) handleAIRecommendationsPost(w http.ResponseWriter, r *http.Req
 	repo, ok := s.repo.(aiRecommendationRepository)
 	if !ok {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "ai_recommendations_unavailable"})
+		return
+	}
+	supplierID := strings.TrimSpace(s.scopedSupplierID(r))
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required"})
 		return
 	}
 	body, bodyOK := readMutationBody(w, r, 32*1024)
@@ -162,10 +173,10 @@ func (s *Service) handleAIRecommendationsPost(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	recommendation, err := repo.RecordAIRecommendationDecision(r.Context(), s.supplierID, decision, func(txn outbox.TxnBuffer, recommendation AIRecommendation) error {
+	recommendation, err := repo.RecordAIRecommendationDecision(r.Context(), supplierID, decision, func(txn outbox.TxnBuffer, recommendation AIRecommendation) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateAIRecommendation, decision.RecommendationID, events.TopicMain, events.AIRecommendationEvent{
 			BaseEvent:        events.BaseEvent{Type: events.EventAIRecommendationDecided, Timestamp: decision.DecidedAt.Format(time.RFC3339Nano)},
-			SupplierID:       s.supplierID,
+			SupplierID:       supplierID,
 			RecommendationID: decision.RecommendationID,
 			AggregateID:      recommendation.AggregateID,
 			AggregateType:    recommendation.AggregateType,
@@ -180,7 +191,7 @@ func (s *Service) handleAIRecommendationsPost(w http.ResponseWriter, r *http.Req
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "ai_recommendation_not_found"})
 			return
 		}
-		s.log.Warn("supplier ai recommendation decision failed", "supplier_id", s.supplierID, "recommendation_id", decision.RecommendationID, "err", err)
+		s.log.Warn("supplier ai recommendation decision failed", "supplier_id", supplierID, "recommendation_id", decision.RecommendationID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "record_ai_recommendation_decision_failed"})
 		return
 	}

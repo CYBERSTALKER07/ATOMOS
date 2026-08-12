@@ -3,6 +3,8 @@ package as2
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -84,4 +86,96 @@ func WriteSyncMDN(w http.ResponseWriter, ourAS2ID, partnerAS2ID string, original
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(body)
 	return err
+}
+
+// ParsedMDN is the disposition-notification fields we verify on outbound send.
+type ParsedMDN struct {
+	Disposition       string
+	ReceivedContentMIC string
+	OriginalMessageID string
+}
+
+// ParseSyncMDN extracts Disposition + Received-Content-MIC from a sync MDN body.
+func ParseSyncMDN(contentType string, body []byte) (ParsedMDN, error) {
+	media, params, err := mime.ParseMediaType(strings.TrimSpace(contentType))
+	if err != nil {
+		// Some partners omit parameters on Content-Type; sniff multipart boundary.
+		media = strings.ToLower(strings.TrimSpace(contentType))
+		params = map[string]string{}
+	}
+	var out ParsedMDN
+	if !strings.HasPrefix(media, "multipart/") {
+		// Flat disposition-notification body (rare).
+		parseDispositionNotification(string(body), &out)
+		if out.Disposition == "" && out.ReceivedContentMIC == "" {
+			return out, fmt.Errorf("as2_mdn_not_multipart")
+		}
+		return out, nil
+	}
+	boundary := params["boundary"]
+	if boundary == "" {
+		return out, fmt.Errorf("as2_mdn_boundary_missing")
+	}
+	r := multipart.NewReader(bytes.NewReader(body), boundary)
+	for {
+		part, err := r.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return out, fmt.Errorf("as2_mdn_part: %w", err)
+		}
+		ct := strings.ToLower(part.Header.Get("Content-Type"))
+		raw, _ := io.ReadAll(io.LimitReader(part, 1<<20))
+		_ = part.Close()
+		if strings.Contains(ct, "disposition-notification") {
+			parseDispositionNotification(string(raw), &out)
+		}
+	}
+	if out.Disposition == "" {
+		return out, fmt.Errorf("as2_mdn_disposition_missing")
+	}
+	return out, nil
+}
+
+func parseDispositionNotification(raw string, out *ParsedMDN) {
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		lower := strings.ToLower(line)
+		switch {
+		case strings.HasPrefix(lower, "disposition:"):
+			out.Disposition = strings.TrimSpace(line[len("Disposition:"):])
+		case strings.HasPrefix(lower, "received-content-mic:"):
+			out.ReceivedContentMIC = strings.TrimSpace(line[len("Received-Content-MIC:"):])
+		case strings.HasPrefix(lower, "original-message-id:"):
+			out.OriginalMessageID = strings.TrimSpace(line[len("Original-Message-ID:"):])
+		}
+	}
+}
+
+// VerifyMDN fails closed unless disposition is processed and MIC matches expected.
+func VerifyMDN(expectedMIC string, mdn ParsedMDN) error {
+	disp := strings.ToLower(mdn.Disposition)
+	if !strings.Contains(disp, "processed") || strings.Contains(disp, "failed") || strings.Contains(disp, "error") {
+		return fmt.Errorf("as2_mdn_not_processed")
+	}
+	want := normalizeMIC(expectedMIC)
+	got := normalizeMIC(mdn.ReceivedContentMIC)
+	if want == "" || got == "" {
+		return fmt.Errorf("as2_mdn_mic_missing")
+	}
+	if !strings.EqualFold(want, got) {
+		return fmt.Errorf("as2_mdn_mic_mismatch")
+	}
+	return nil
+}
+
+func normalizeMIC(s string) string {
+	s = strings.TrimSpace(s)
+	// "base64…, sha-256" — compare digest + alg case-insensitively, collapse spaces.
+	parts := strings.Split(s, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return strings.ToLower(strings.Join(parts, ", "))
 }

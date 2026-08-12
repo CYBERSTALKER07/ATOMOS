@@ -356,7 +356,8 @@ type Service struct {
 	reorderSuggestionSeed map[string][]RetailerReorderSuggestion
 	// Place mode
 	orderCreator          OrderCreator
-	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED
+	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED (fallback when flags unset)
+	placeFlags            PlaceFlagEvaluator
 	soakGateDisabled      bool // test seam: bypass the soak-evidence gate
 	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
 	autoOrderBucket map[string]string
@@ -527,6 +528,20 @@ func (s *Service) SetAutoOrderPlaceEnabled(enabled bool) {
 		return
 	}
 	s.autoOrderPlaceEnabled = enabled
+}
+
+// PlaceFlagEvaluator is the dual-control flag surface used at place time
+// (featureflags.Evaluate). Empty/nil falls back to the process-wide env bit.
+type PlaceFlagEvaluator interface {
+	Evaluate(ctx context.Context, flagKey, tenantType, tenantID string) (bool, string, error)
+}
+
+// SetPlaceFlagEvaluator wires runtime dual-control evaluation for AUTO_ORDER_PLACE_ENABLED.
+func (s *Service) SetPlaceFlagEvaluator(eval PlaceFlagEvaluator) {
+	if s == nil {
+		return
+	}
+	s.placeFlags = eval
 }
 
 // RegisterRequest is the wire shape for POST /v1/auth/retailer/register.

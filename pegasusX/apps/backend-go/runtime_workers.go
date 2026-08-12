@@ -142,6 +142,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.PartnerEventConsumer.Start(ctx)
 		slog.Info("partner webhook event consumer started")
 	}
+	if app.TwinEventConsumer != nil {
+		go app.TwinEventConsumer.Start(ctx)
+		slog.Info("digital twin event consumer started")
+	}
 	if app.PartnerWebhookDelivery != nil {
 		go app.PartnerWebhookDelivery.Start(ctx, 15*time.Second)
 		slog.Info("partner webhook delivery worker started")

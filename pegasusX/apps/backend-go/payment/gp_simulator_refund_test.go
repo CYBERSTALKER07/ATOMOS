@@ -2,9 +2,12 @@ package payment
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -14,12 +17,26 @@ import (
 // Phase-1 exit gate: refund happy path proven against the Global Pay
 // simulator's mirrored URL surface (auth -> backoffice perform RF).
 func TestGlobalPayRefundAgainstSimulator(t *testing.T) {
+	var sawAction string
 	r := chi.NewRouter()
 	sim := simulator.NewHandler("whsec-test", "", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	r.Route("/sim/globalpay", func(r chi.Router) {
 		simulator.RegisterRoutes(r, sim)
 	})
-	ts := httptest.NewServer(r)
+	// Wrap perform to assert RF wire format without replacing the simulator.
+	inner := r
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if strings.Contains(req.URL.Path, "/perform") && req.Method == http.MethodPost {
+			body, _ := io.ReadAll(req.Body)
+			req.Body = io.NopCloser(strings.NewReader(string(body)))
+			var payload map[string]any
+			_ = json.Unmarshal(body, &payload)
+			if a, ok := payload["action"].(string); ok {
+				sawAction = a
+			}
+		}
+		inner.ServeHTTP(w, req)
+	}))
 	defer ts.Close()
 
 	exec := newGlobalPayProviderExecutorWithSimulator("dev", "svc-1", "user", "pass", ts.URL)
@@ -39,6 +56,9 @@ func TestGlobalPayRefundAgainstSimulator(t *testing.T) {
 	}
 	if res.ResolvedGateway != "GLOBAL_PAY" {
 		t.Fatalf("resolved gateway = %q", res.ResolvedGateway)
+	}
+	if sawAction != "RF" {
+		t.Fatalf("perform action = %q, want RF (override via GLOBAL_PAY_REFUND_ACTION)", sawAction)
 	}
 }
 

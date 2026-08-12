@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -14,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // CookieName is the canonical session cookie. The supplier-portal middleware
@@ -41,6 +44,7 @@ type jwtPayload struct {
 	Iss          string `json:"iss,omitempty"`
 	Exp          int64  `json:"exp"`
 	Iat          int64  `json:"iat"`
+	JTI          string `json:"jti,omitempty"`
 	Role         string `json:"role"`
 	SupplierID   string `json:"supplier_id"`
 	SupplierRole string `json:"supplier_role,omitempty"`
@@ -72,12 +76,17 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		opts.Now = func() time.Time { return time.Now().UTC() }
 	}
 	now := opts.Now()
+	jti := strings.TrimSpace(c.JTI)
+	if jti == "" {
+		jti = uuid.NewString()
+	}
 	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT"})
 	p, _ := json.Marshal(jwtPayload{
 		Sub:              c.Subject,
 		Iss:              opts.Issuer,
 		Iat:              now.Unix(),
 		Exp:              now.Add(opts.TTL).Unix(),
+		JTI:              jti,
 		Role:             string(c.Role),
 		SupplierID:       c.SupplierID,
 		SupplierRole:     string(c.SupplierRole),
@@ -120,6 +129,10 @@ func Parse(token, secret string) (Claims, error) {
 	if p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
+	var expAt time.Time
+	if p.Exp > 0 {
+		expAt = time.Unix(p.Exp, 0).UTC()
+	}
 	return Claims{
 		Subject:          p.Sub,
 		Role:             Role(p.Role),
@@ -131,6 +144,8 @@ func Parse(token, secret string) (Claims, error) {
 		IsConfigured:     p.IsConfigured,
 		PhoneNumber:      p.PhoneNumber,
 		TokenUse:         p.TokenUse,
+		JTI:              p.JTI,
+		ExpiresAt:        expAt,
 		RetailerOrgID:    p.RetailerOrgID,
 		RetailerRole:     p.RetailerRole,
 		RetailerUserID:   p.RetailerUserID,
@@ -179,16 +194,31 @@ func SessionAuth(secret string) func(http.Handler) http.Handler {
 
 func attachSessionClaims(r *http.Request, secret string) *http.Request {
 	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
-		if claims, err := Parse(c.Value, secret); err == nil {
+		if claims, err := Parse(c.Value, secret); err == nil && !tokenRevoked(r.Context(), claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}
 	if token := BearerToken(r); token != "" {
-		if claims, err := Parse(token, secret); err == nil {
+		if claims, err := Parse(token, secret); err == nil && !tokenRevoked(r.Context(), claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}
 	return r
+}
+
+func tokenRevoked(ctx context.Context, claims Claims) bool {
+	jti := strings.TrimSpace(claims.JTI)
+	if jti == "" {
+		// Legacy tokens without jti cannot be denylisted; still accept until they expire.
+		return false
+	}
+	revoked, err := GetRevocationStore().IsRevoked(ctx, jti)
+	if err != nil {
+		// Fail open on store errors so Redis blips do not mass-logout; logout still
+		// works when Redis is healthy. Tighten to fail-closed once dual-store lands.
+		return false
+	}
+	return revoked
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

@@ -31,6 +31,7 @@ import com.pegasusx.retailer.ui.theme.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.GridView
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.DeviceHub
+import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +73,8 @@ enum class SidebarDestination(val label: String, val icon: ImageVector) {
     AUTO_ORDER("Auto-Order", Icons.Outlined.AutoAwesome),
     AI_PREDICTIONS("Reorder suggestions", Icons.Outlined.AutoAwesome),
     CONTROL_TOWER("Control Tower", Icons.Outlined.DeviceHub),
+    CREDIT("Credit & AR", Icons.Outlined.AccountBalance),
+    HQ("HQ multi-store", Icons.Outlined.Store),
     DOCK("Dock Queue", Icons.Outlined.LocalShipping),
     INBOX("Inbox", Icons.Outlined.Inbox),
     PROFILE("Profile", Icons.Outlined.Person),

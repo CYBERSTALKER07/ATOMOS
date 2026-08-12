@@ -5,8 +5,10 @@ import { useAdminToken } from "@/lib/session";
 import TenantsPanel from "@/components/TenantsPanel";
 import FlagsPanel from "@/components/FlagsPanel";
 import AuditPanel from "@/components/AuditPanel";
+import MatchQueuePanel from "@/components/MatchQueuePanel";
+import PartnerPanel from "@/components/PartnerPanel";
 
-type Tab = "tenants" | "flags" | "audit";
+type Tab = "tenants" | "flags" | "audit" | "match" | "partner";
 
 export default function Home() {
   const { token, setToken } = useAdminToken();
@@ -35,8 +37,8 @@ export default function Home() {
           Sign out
         </button>
       </header>
-      <nav className="mb-4 flex gap-2 border-b">
-        {(["tenants", "flags", "audit"] as Tab[]).map((t) => (
+      <nav className="mb-4 flex flex-wrap gap-2 border-b">
+        {(["tenants", "flags", "audit", "match", "partner"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -44,13 +46,15 @@ export default function Home() {
               tab === t ? "border-b-2 border-indigo-600 text-indigo-700" : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t}
+            {t === "match" ? "Match queue" : t === "partner" ? "Partner / dunning" : t}
           </button>
         ))}
       </nav>
       {tab === "tenants" && <TenantsPanel token={token} />}
       {tab === "flags" && <FlagsPanel token={token} />}
       {tab === "audit" && <AuditPanel token={token} />}
+      {tab === "match" && <MatchQueuePanel token={token} />}
+      {tab === "partner" && <PartnerPanel token={token} />}
     </main>
   );
 }

@@ -74,9 +74,21 @@ func (s *Service) HandleGetFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	f, err := s.repo.GetFactory(r.Context(), factoryID)
 	if err != nil {
 		web.JSONError(w, "failed to get factory: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	allowed := auth.EntitySupplierAllowed(r.Context(), f.SupplierID) ||
+		auth.HomeNodeMatches(r.Context(), factoryID, auth.HomeNodeFactory)
+	if !allowed {
+		web.JSONError(w, "factory_not_found", http.StatusNotFound)
 		return
 	}
 

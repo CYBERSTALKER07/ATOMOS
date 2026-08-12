@@ -529,6 +529,20 @@ fun RetailerNavigation(
                 composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
                 composable("CONTROL_TOWER") { Box(Modifier.fillMaxSize()) { ControlTowerScreen() } }
+                composable("CREDIT") {
+                    Box(Modifier.fillMaxSize()) {
+                        com.pegasusx.retailer.ui.screens.credit.CreditScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                        )
+                    }
+                }
+                composable("HQ") {
+                    Box(Modifier.fillMaxSize()) {
+                        com.pegasusx.retailer.ui.screens.hq.HqScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                        )
+                    }
+                }
                 composable("FUTURE_DEMAND") {
                     Box(Modifier.fillMaxSize()) {
                         FutureDemandScreen(onBack = { navController.popBackStack() })
@@ -673,6 +687,18 @@ fun RetailerNavigation(
                         }
                         com.pegasusx.retailer.ui.components.SidebarDestination.CONTROL_TOWER -> {
                             navController.navigate("CONTROL_TOWER") {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        }
+                        com.pegasusx.retailer.ui.components.SidebarDestination.CREDIT -> {
+                            navController.navigate("CREDIT") {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        }
+                        com.pegasusx.retailer.ui.components.SidebarDestination.HQ -> {
+                            navController.navigate("HQ") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }

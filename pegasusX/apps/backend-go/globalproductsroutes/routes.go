@@ -28,9 +28,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/global-products/{id}/offers", d.Service.HandleListOffers)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).
 			Post("/v1/supplier/products/{productId}/link-global", d.Service.HandleLinkProduct)
-		gr.With(auth.RequireRole(auth.RoleAdmin)).
+		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).
 			Get("/v1/admin/product-match-queue", d.Service.HandleListMatchQueue)
-		gr.With(auth.RequireRole(auth.RoleAdmin)).
+		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).
 			Post("/v1/admin/product-match-queue/{id}/resolve", d.Service.HandleResolveMatch)
 	})
 }

@@ -52,7 +52,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/invoices", d.ARService.HandleListSupplierInvoices)
 		}
 		if d.DunningWorker != nil {
-			gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
 		}
 	}
 

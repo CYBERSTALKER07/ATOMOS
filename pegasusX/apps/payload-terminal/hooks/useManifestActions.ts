@@ -51,6 +51,7 @@ export function useManifestActions({
     setIsInjecting,
     isOnline,
     manifestId,
+    manifestSource,
     orders,
     sealedOrderIds,
     selectedManifest,
@@ -90,11 +91,16 @@ export function useManifestActions({
     if (!manifestId || !token) return;
     setIsStartingLoad(true);
     try {
-      await PayloadTerminalApi.supplierStartLoading(
-        token,
-        manifestId,
-        payloadSupplierStartLoadingKey(manifestId),
-      );
+      const key = payloadSupplierStartLoadingKey(manifestId);
+      if (manifestSource === 'factory') {
+        await PayloadTerminalApi.factoryStartLoading(token, manifestId, key);
+      } else {
+        try {
+          await PayloadTerminalApi.supplierStartLoading(token, manifestId, key);
+        } catch {
+          await PayloadTerminalApi.factoryStartLoading(token, manifestId, key);
+        }
+      }
       setManifestState('LOADING');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: unknown) {
@@ -144,6 +150,18 @@ export function useManifestActions({
     setIsSealingManifest(true);
     setSealExplain(null);
     try {
+      if (manifestSource === 'factory') {
+        await PayloadTerminalApi.factorySealManifest(
+          token,
+          manifestId,
+          payloadSealCompletedKey([manifestId]),
+        );
+        setManifestState('SEALED');
+        setAllSealed(true);
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast(tx('payload.alert.manifest_sealed_title'), 'Factory manifest sealed. Route finalized.', 'success', 3600);
+        return;
+      }
       const data = await PayloadTerminalApi.sealCompletedManifests(
         token,
         [manifestId],
@@ -164,6 +182,22 @@ export function useManifestActions({
         3600
       );
     } catch (e: unknown) {
+      if (manifestSource !== 'factory') {
+        try {
+          await PayloadTerminalApi.factorySealManifest(
+            token,
+            manifestId,
+            payloadSealCompletedKey([manifestId]),
+          );
+          setManifestState('SEALED');
+          setAllSealed(true);
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showToast(tx('payload.alert.manifest_sealed_title'), 'Factory manifest sealed. Route finalized.', 'success', 3600);
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
       if (e instanceof ApiExplainError) {
         setSealExplain(e.explain);
         showToast(tx('payload.alert.seal_failed'), e.message, 'error');

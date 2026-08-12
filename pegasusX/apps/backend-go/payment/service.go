@@ -1454,11 +1454,17 @@ func resolvePaymentSupplierScope(w http.ResponseWriter, r *http.Request, fallbac
 
 	requestedSupplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
 	if requestedSupplierID != "" {
-		if supplierID != "" && requestedSupplierID != supplierID {
+		if auth.IsPlatformAdmin(r.Context()) {
+			return requestedSupplierID, true
+		}
+		if supplierID == "" {
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized", "tenant_required", endpoint, false, "")
+			return "", false
+		}
+		if requestedSupplierID != supplierID {
 			writeJSONError(w, http.StatusForbidden, "forbidden", "supplier scope mismatch", endpoint, false, "")
 			return "", false
 		}
-		supplierID = requestedSupplierID
 	}
 
 	return supplierID, true

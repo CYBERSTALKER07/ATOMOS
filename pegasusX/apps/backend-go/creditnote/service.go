@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -211,6 +212,16 @@ func (s *Service) ReceiveReverseTask(ctx context.Context, taskID, warehouseID st
 
 func (s *Service) OrderLinesForCredit(ctx context.Context, orderID string) ([]CreditNoteLine, error) {
 	return s.repo.GetDeliveredOrderLines(ctx, orderID)
+}
+
+// OrderOwnedBySupplier reports whether orderID belongs to supplierID (IDOR guard).
+func (s *Service) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error) {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return false, nil
+	}
+	return s.repo.OrderOwnedBySupplier(ctx, orderID, supplierID)
 }
 
 func (s *Service) ListReverseTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {

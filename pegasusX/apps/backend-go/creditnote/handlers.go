@@ -162,6 +162,26 @@ func (h *Handlers) HandleOrderLines(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if t, ok := auth.TenantFromContext(r.Context()); ok {
+		supplierID = t.SupplierID
+	}
+	if supplierID == "" && h.SupplierID != nil {
+		supplierID = strings.TrimSpace(h.SupplierID())
+	}
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required"})
+		return
+	}
+	owned, err := h.Svc.OrderOwnedBySupplier(r.Context(), orderID, supplierID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "ownership_check_failed"})
+		return
+	}
+	if !owned {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
 	lines, err := h.Svc.OrderLinesForCredit(r.Context(), orderID)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -195,6 +215,17 @@ func (h *Handlers) HandleListReverseTasks(w http.ResponseWriter, r *http.Request
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if status == "" {
 		status = "OPEN"
+	}
+	if warehouseID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
+		return
+	}
+	// Fail-closed: warehouse staff may only list tasks for their home node.
+	if claims.HomeNodeType != auth.HomeNodeWarehouse ||
+		strings.TrimSpace(claims.HomeNodeID) == "" ||
+		strings.TrimSpace(claims.HomeNodeID) != warehouseID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_violation"})
+		return
 	}
 	tasks, err := h.Svc.ListReverseTasks(r.Context(), warehouseID, status, 50)
 	if err != nil {

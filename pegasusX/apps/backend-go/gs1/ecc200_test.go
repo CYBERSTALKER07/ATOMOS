@@ -129,11 +129,11 @@ func TestBuildAIElementStringFNC1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// FNC1 (0xF1) after GTIN and after the variable-length lot.
-	if !strings.Contains(s, "(01)01234567890128\xf1(10)L1\xf1(21)S9") {
-		t.Fatalf("got %q", s)
+	// Leading FNC1, no HRI parens; FNC1 only after variable-length lot.
+	want := "\xf1010123456789012810L1\xf121S9"
+	if s != want {
+		t.Fatalf("got %q want %q", s, want)
 	}
-	// Must encode without error.
 	if _, err := EncodeDataMatrixModules(s); err != nil {
 		t.Fatalf("encode FNC1 string: %v", err)
 	}

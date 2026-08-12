@@ -84,23 +84,32 @@ After `pip install -e .`:
 
 # Smoke / general
 void-deep-agent "Summarize what Deep Agents provides"
+void-deep-agent --langchain "What is 2+2?"   # plain LangChain create_agent
 
 # Ecosystem auditor (loads pegasusX MEMORY + AGENTS + all skills)
 void-deep-agent --dry-run --ecosystem
 void-ecosystem-audit "Verify twin consumer start path and TopicWebhooks usage"
 void-ecosystem-audit "Role-row parity gaps for retailer AR/HQ"
+
+# E2E fleet — specialists live in the codebase and loop until all CONFIRMED
+void-e2e-fleet --dry-run
+void-e2e-fleet --read-only-fleet "Map order-create coverage end-to-end"
+void-e2e-fleet --full "Wire feature X; do not stop until FLEET_GATE: PASS"
 ```
 
-Programmatic auditor:
+Programmatic:
 
 ```python
-from void_deep_agents import create_ecosystem_auditor
+from void_deep_agents import (
+    create_void_deep_agent,
+    create_void_langchain_agent,
+    create_ecosystem_auditor,
+    create_e2e_fleet_agent,
+)
 
-agent = create_ecosystem_auditor()
-result = agent.invoke({
-    "messages": [{"role": "user", "content": "Audit factory→payload Class A gaps"}]
-})
-print(result["messages"][-1].content)
+auditor = create_ecosystem_auditor()
+fleet = create_e2e_fleet_agent(allow_code_writes=False)  # reports under /fleet/
+lc = create_void_langchain_agent(tools=[...])            # no FS harness
 ```
 
 ## Skills (ecosystem)
@@ -126,6 +135,10 @@ Defaults auto-attach when `include_ecosystem_defaults=True` (default).
 
 Orchestra panels (subagents): see `void_deep_agents.subagents.panel_names()` /
 `void-ecosystem-audit --dry-run`.
+
+E2E fleet agents: `architect`, `implementer`, `wiring`, `business`, `technical`,
+`verifier` — see `void_deep_agents.fleet.fleet_names()` / `void-e2e-fleet --dry-run`.
+Each panel/fleet agent now loads progressive `/skills/<name>/` paths (not prompt-only).
 
 ## Models
 

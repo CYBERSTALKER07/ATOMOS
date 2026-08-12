@@ -728,6 +728,18 @@ func (h *Handlers) jwtTenant(w http.ResponseWriter, r *http.Request) (tenantType
 	if claims.Role == auth.RoleRetailer {
 		return TenantRetailer, auth.ResolveRetailerOrgID(claims), true
 	}
+	if claims.Role == auth.RolePlatformAdmin {
+		tt := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("tenant_type")))
+		tid := strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+		if tt == "" {
+			tt = TenantSupplier
+		}
+		if tid == "" {
+			writePartnerError(w, http.StatusBadRequest, "tenant_id_required")
+			return "", "", false
+		}
+		return tt, tid, true
+	}
 	if claims.SupplierID == "" && claims.Role != auth.RoleAdmin {
 		writePartnerError(w, http.StatusForbidden, "forbidden")
 		return "", "", false
@@ -749,9 +761,10 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		TenantType string   `json:"tenant_type"`
-		TenantID   string   `json:"tenant_id"`
-		Scopes     []string `json:"scopes"`
+		TenantType  string   `json:"tenant_type"`
+		TenantID    string   `json:"tenant_id"`
+		Scopes      []string `json:"scopes"`
+		Environment string   `json:"environment"` // LIVE (default) | SANDBOX
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writePartnerError(w, http.StatusBadRequest, "invalid_json")
@@ -767,6 +780,14 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 		}
 		if tenantID == "" {
 			tenantID = claims.SupplierID
+		}
+	case auth.RolePlatformAdmin:
+		if tenantType == "" {
+			tenantType = TenantSupplier
+		}
+		if tenantID == "" {
+			writePartnerError(w, http.StatusBadRequest, "tenant_id_required")
+			return
 		}
 	case auth.RoleRetailer:
 		tenantType = TenantRetailer
@@ -792,7 +813,11 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	issued, err := h.Svc.IssueKey(r.Context(), tenantType, tenantID, claims.Subject, req.Scopes)
+	env := strings.ToUpper(strings.TrimSpace(req.Environment))
+	if env == "" {
+		env = KeyEnvLive
+	}
+	issued, err := h.Svc.IssueKeyEnv(r.Context(), tenantType, tenantID, claims.Subject, req.Scopes, env)
 	if err != nil {
 		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
 		return
@@ -812,6 +837,16 @@ func (h *Handlers) HandleListKeys(w http.ResponseWriter, r *http.Request) {
 	if claims.Role == auth.RoleRetailer {
 		tenantType = TenantRetailer
 		tenantID = auth.ResolveRetailerOrgID(claims)
+	}
+	if claims.Role == auth.RolePlatformAdmin {
+		if q := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("tenant_type"))); q != "" {
+			tenantType = q
+		}
+		tenantID = strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+		if tenantID == "" {
+			writePartnerError(w, http.StatusBadRequest, "tenant_id_required")
+			return
+		}
 	}
 	keys, err := h.Svc.ListKeys(r.Context(), tenantType, tenantID)
 	if err != nil {

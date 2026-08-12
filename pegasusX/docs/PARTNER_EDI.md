@@ -16,6 +16,13 @@ Apply migration `20260806_partner_edi.ddl` (extends `PartnerSftpConfigs`, adds `
 | INVOIC | IN + OUT | Inbound: commercial invoice recorded; Outbound: `DELIVERED_ON_CREDIT` / `PAYMENT_CLEARED` |
 | CONTRL | OUT | Syntax ACK after inbound ORDERS/ORDRSP/INVOIC (action 7/4) |
 | APERAK | OUT | Application ACK after inbound processing (27/29 + optional FTX reason) |
+| PRICAT | IN | Price catalog → partner price upsert |
+| INVRPT | IN | Inventory report → partner stock upsert |
+| SLSRPT | IN | Sales report — ledger + ACK |
+| RECADV | IN | Receiving advice — ledger + ACK |
+| ORDCHG | IN | Order change — ledger + ACK |
+| DELFOR | IN | Delivery forecast — ledger + ACK |
+| REMADV | IN | Remittance advice — ledger + ACK |
 
 Inbound ORDERS maps to `order.Service.Create` with `order_source=PARTNER_EDI`. Geo from `LOC+DEL+lat:lng:h3` or retailer primary location. Successful/failed ORDERS emit CONTRL+APERAK via the outbound worker (local root or SFTP/AS2).
 
@@ -71,4 +78,4 @@ Portal: Settings → Integrations (EDI toggle + recent documents).
 
 ## Still open
 
-Full EDIFACT certification. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). GLN/SSCC/ZPL and DESADV GIN+BJ are wired — see [`GS1_LABELS.md`](./GS1_LABELS.md). DataMatrix AI scaffolding — `gs1/datamatrix.go` (placeholder modules; ZPL `^BX` real). 1C journals — see [`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md). CommerceML design — [`COMMERCEML_EXCHANGE.md`](./COMMERCEML_EXCHANGE.md). Certified 1C exchange package still open (Phase 6).
+Full EDIFACT / Drummond certification and certified 1C CommerceML package (Phase 6). EDI-lite breadth (PRICAT…REMADV) and AS2 MDN/MIC verify are Wired (W5).

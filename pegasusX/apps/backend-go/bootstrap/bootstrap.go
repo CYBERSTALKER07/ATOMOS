@@ -75,6 +75,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
@@ -268,6 +269,7 @@ type App struct {
 	PartnerEdiInbound       *partner.EdiInboundWorker
 	PartnerEdiOutbound      *partner.EdiOutboundWorker
 	PartnerEventConsumer    *kafka.Consumer
+	TwinEventConsumer       *kafka.Consumer
 	ARDunningWorker         *ar.DunningWorker
 	PayoutService           *payout.Service
 	BillingInvoiceWorker    *billing.InvoiceWorker
@@ -1309,7 +1311,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	platformAdminSvc := platformadmin.NewService(platformAdminRepo)
 	platformAdminHandlers := &platformadmin.Handlers{Svc: platformAdminSvc}
 	featureFlagSvc := featureflags.NewService(featureFlagRepo)
-	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc}
+	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc, Audit: platformAdminSvc}
+	retailerSvc.SetPlaceFlagEvaluator(featureFlagSvc)
 	supplierSvc.OnRegistered = func(ctx context.Context, supplierID, legalName string) error {
 		if err := platformAdminSvc.EnsurePending(ctx, platformadmin.TenantSupplier, supplierID, legalName); err != nil {
 			return err
@@ -1393,6 +1396,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var returnsEventConsumer *kafka.Consumer
 	var billingTierConsumer *kafka.Consumer
 	var partnerEventConsumer *kafka.Consumer
+	var twinEventConsumer *kafka.Consumer
 
 	var partnerKeys partner.KeyRepository = partner.NewMemoryKeyRepository()
 	var partnerWebhooks partner.WebhookRepository = partner.NewMemoryWebhookRepository()
@@ -1538,6 +1542,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				DLQWriter: dlqWriter,
 				Auth:      kafkaAuth,
 			})
+			if spannerClient != nil {
+				const twinConsumerGroup = "void-digital-twin"
+				twinSvc := twin.NewService(twin.ServiceConfig{
+					Repo: twin.NewSpannerRepository(spannerClient),
+					Log:  log,
+				})
+				twinHandler := kafka.WithEventDedup(kafkaEventDedup, twinConsumerGroup, twin.NewEventConsumer(twinSvc, log).HandleEvent)
+				twinEventConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
+					Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+					GroupID:   twinConsumerGroup,
+					Topics:    events.TwinConsumerTopics(),
+					Handler:   twinHandler,
+					DLQWriter: dlqWriter,
+					Auth:      kafkaAuth,
+				})
+			}
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {
 					log.Warn("notification consumer close failed", "err", err)
@@ -1548,6 +1568,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				if partnerEventConsumer != nil {
 					if err := partnerEventConsumer.Close(); err != nil {
 						log.Warn("partner webhook consumer close failed", "err", err)
+					}
+				}
+				if twinEventConsumer != nil {
+					if err := twinEventConsumer.Close(); err != nil {
+						log.Warn("twin event consumer close failed", "err", err)
 					}
 				}
 				if err := warehouseEventConsumer.Close(); err != nil {
@@ -1577,6 +1602,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				"dual_write", events.DualWriteDomainTopics(),
 				"billing_tier", billingTierConsumer != nil,
 				"returns_reverse", returnsEventConsumer != nil,
+				"digital_twin", twinEventConsumer != nil,
 			)
 		}
 	}
@@ -1660,6 +1686,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			SupplierID: supplierSeed.SupplierID,
 			Now:        func() time.Time { return time.Now().UTC() },
 		}
+	}
+
+	if rc := redisClientOrNil(redisAdapter); rc != nil {
+		auth.SetRevocationStore(auth.NewRedisRevocationStore(rc))
+	} else {
+		auth.SetRevocationStore(auth.NewMemoryRevocationStore())
 	}
 
 	return &App{
@@ -1750,6 +1782,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PartnerEdiInbound:       partnerEdiIn,
 		PartnerEdiOutbound:      partnerEdiOut,
 		PartnerEventConsumer:    partnerEventConsumer,
+		TwinEventConsumer:       twinEventConsumer,
 		ARDunningWorker:         arDunning,
 		PayoutService:           payoutSvc,
 		BillingInvoiceWorker:    billingInvoiceWorker,

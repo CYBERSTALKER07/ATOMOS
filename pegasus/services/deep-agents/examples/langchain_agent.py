@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plain LangChain agent (without Deep Agents harness) for comparison.
+"""Plain LangChain agent via create_void_langchain_agent.
 
 Usage:
 
@@ -10,18 +10,13 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dotenv import load_dotenv
-from langchain.agents import create_agent
-from langchain_xai import ChatXAI
-
-load_dotenv()
+from void_deep_agents import create_void_langchain_agent  # noqa: E402
 
 
 def add(a: int, b: int) -> int:
@@ -30,17 +25,7 @@ def add(a: int, b: int) -> int:
 
 
 def main() -> None:
-    api_key = os.getenv("XAI_API_KEY")
-    if not api_key:
-        raise SystemExit("Set XAI_API_KEY first (see .env.example)")
-
-    model = ChatXAI(
-        model=os.getenv("DEEP_AGENTS_MODEL", "grok-4.5"),
-        api_key=api_key,
-        temperature=0,
-    )
-    agent = create_agent(
-        model=model,
+    agent = create_void_langchain_agent(
         tools=[add],
         system_prompt="You are a concise math helper. Use tools for arithmetic.",
     )

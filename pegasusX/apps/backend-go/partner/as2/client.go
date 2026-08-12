@@ -32,15 +32,15 @@ func NewClient() *Client {
 
 // SendRequest is an outbound AS2 POST.
 type SendRequest struct {
-	URL            string
-	From           string
-	To             string
-	EDI            []byte
-	Filename       string
-	Plain          bool
-	Signer         Material
-	RecipientCert  []byte // PEM
-	RequestMDN     bool
+	URL           string
+	From          string
+	To            string
+	EDI           []byte
+	Filename      string
+	Plain         bool
+	Signer        Material
+	RecipientCert []byte // PEM
+	RequestMDN    bool
 }
 
 // SendResult captures partner MDN response basics.
@@ -48,9 +48,13 @@ type SendResult struct {
 	StatusCode int
 	MessageID  string
 	Body       []byte
+	MDN        ParsedMDN
+	ExpectedMIC string
 }
 
 // Send posts the EDI payload to the partner AS2 URL.
+// When RequestMDN is true, a sync MDN is required: disposition must be
+// "processed" and Received-Content-MIC must match SHA-256 MIC of the EDI body.
 func (c *Client) Send(ctx context.Context, req SendRequest) (SendResult, error) {
 	if c == nil {
 		c = NewClient()
@@ -63,6 +67,7 @@ func (c *Client) Send(ctx context.Context, req SendRequest) (SendResult, error) 
 		filename = "message.edi"
 	}
 	msgID := NewMessageID("pegasusx.local")
+	expectedMIC := MICSHA256(req.EDI)
 
 	var (
 		ct   string
@@ -97,9 +102,25 @@ func (c *Client) Send(ctx context.Context, req SendRequest) (SendResult, error) 
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	out := SendResult{StatusCode: resp.StatusCode, MessageID: msgID, Body: respBody}
+	out := SendResult{
+		StatusCode:  resp.StatusCode,
+		MessageID:   msgID,
+		Body:        respBody,
+		ExpectedMIC: expectedMIC,
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return out, fmt.Errorf("as2_http_%d", resp.StatusCode)
+	}
+	if !req.RequestMDN {
+		return out, nil
+	}
+	mdn, err := ParseSyncMDN(resp.Header.Get("Content-Type"), respBody)
+	if err != nil {
+		return out, fmt.Errorf("as2_mdn_parse: %w", err)
+	}
+	out.MDN = mdn
+	if err := VerifyMDN(expectedMIC, mdn); err != nil {
+		return out, err
 	}
 	return out, nil
 }

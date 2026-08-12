@@ -14,6 +14,9 @@ resources:
   - ../../optimizer-core/configmap.yaml
   - ../../optimizer-core/deployment.yaml
   - ../../optimizer-core/service.yaml
+  - ../../planning_forecast_cronjob.yaml
+  - ../../planning_accuracy_cronjob.yaml
+  - ../../planning_training_export_cronjob.yaml
 
 # REST Service BackendConfig/NEG annotations are applied live with kubectl
 # (Service is owned by the Step 9 deploy, not this overlay).

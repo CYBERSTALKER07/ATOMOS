@@ -122,6 +122,11 @@ func (s *Service) SetEdiRepos(docs EdiDocumentRepository, out *EdiOutboundWorker
 
 // IssueKey creates a partner API key for a tenant (secret returned once).
 func (s *Service) IssueKey(ctx context.Context, tenantType, tenantID, createdBy string, scopes []string) (IssuedKey, error) {
+	return s.IssueKeyEnv(ctx, tenantType, tenantID, createdBy, scopes, KeyEnvLive)
+}
+
+// IssueKeyEnv creates a LIVE or SANDBOX partner API key.
+func (s *Service) IssueKeyEnv(ctx context.Context, tenantType, tenantID, createdBy string, scopes []string, env string) (IssuedKey, error) {
 	tenantType = strings.ToUpper(strings.TrimSpace(tenantType))
 	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" || (tenantType != TenantRetailer && tenantType != TenantSupplier) {
@@ -130,7 +135,22 @@ func (s *Service) IssueKey(ctx context.Context, tenantType, tenantID, createdBy 
 	if len(scopes) == 0 {
 		scopes = DefaultScopesForTenant(tenantType)
 	}
-	plain, prefix, hash, err := GenerateAPIKey()
+	env = strings.ToUpper(strings.TrimSpace(env))
+	if env == "" {
+		env = KeyEnvLive
+	}
+	if env != KeyEnvLive && env != KeyEnvSandbox {
+		return IssuedKey{}, fmt.Errorf("invalid_environment")
+	}
+	var plain, prefix, hash string
+	var err error
+	rateClass := "partner_default"
+	if env == KeyEnvSandbox {
+		plain, prefix, hash, err = GenerateSandboxAPIKey()
+		rateClass = RateLimitSandbox
+	} else {
+		plain, prefix, hash, err = GenerateAPIKey()
+	}
 	if err != nil {
 		return IssuedKey{}, err
 	}
@@ -142,7 +162,7 @@ func (s *Service) IssueKey(ctx context.Context, tenantType, tenantID, createdBy 
 		KeyPrefix:      prefix,
 		KeyHash:        hash,
 		Scopes:         scopes,
-		RateLimitClass: "partner_default",
+		RateLimitClass: rateClass,
 		Status:         KeyStatusActive,
 		CreatedBy:      createdBy,
 		CreatedAt:      s.now(),
@@ -152,7 +172,7 @@ func (s *Service) IssueKey(ctx context.Context, tenantType, tenantID, createdBy 
 	}
 	return IssuedKey{
 		KeyID: id, TenantType: tenantType, TenantID: tenantID,
-		Scopes: scopes, Prefix: prefix, Secret: plain,
+		Scopes: scopes, Prefix: prefix, Secret: plain, Environment: env,
 	}, nil
 }
 
@@ -187,7 +207,11 @@ func (s *Service) CreateOrder(ctx context.Context, p Principal, retailerID strin
 		return order.CreateResponse{}, fmt.Errorf("invalid_tenant")
 	}
 	if req.Source == "" {
-		req.Source = order.OrderSourceManual
+		if p.Sandbox {
+			req.Source = order.OrderSourcePartnerSandbox
+		} else {
+			req.Source = order.OrderSourceManual
+		}
 	}
 	return s.orders.Create(ctx, retailerID, req)
 }

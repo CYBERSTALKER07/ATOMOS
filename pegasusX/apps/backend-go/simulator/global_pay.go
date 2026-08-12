@@ -436,10 +436,29 @@ func (h *Handler) handlePaymentPerform(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "payment_id_required"})
 		return
 	}
+	var body struct {
+		Action      string `json:"action"`
+		AmountMinor int64  `json:"amount_minor"`
+		Currency    string `json:"currency"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	action := strings.ToUpper(strings.TrimSpace(body.Action))
+	if action == "" {
+		action = "CP" // capture default (legacy clients)
+	}
+	switch action {
+	case "CP", "RF":
+		// CP = capture, RF = refund — both success on the simulator mirror.
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unsupported_action", "action": action})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"paymentId":    paymentID,
 		"status":       "SUCCESS",
-		"paid":         true,
+		"paid":         action == "CP",
+		"refunded":     action == "RF",
+		"action":       action,
 		"isSuccessful": true,
 	})
 }

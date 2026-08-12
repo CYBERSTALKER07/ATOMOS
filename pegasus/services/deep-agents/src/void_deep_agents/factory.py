@@ -1,4 +1,4 @@
-"""Factory helpers for LangChain Deep Agents in this monorepo."""
+"""Factory helpers for LangChain + Deep Agents in this monorepo."""
 
 from __future__ import annotations
 
@@ -9,17 +9,21 @@ from typing import Any
 from deepagents import create_deep_agent
 from deepagents.backends.protocol import BackendProtocol
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 
 from void_deep_agents.findings import FINDING_JSON_HINT, PANEL_NAMES
+from void_deep_agents.fleet import SUPERVISOR_PROMPT, build_fleet_subagents, fleet_names
 from void_deep_agents.paths import (
     audit_filesystem_permissions,
     deep_agents_root,
     default_filesystem_backend,
     default_memory_paths,
     default_skill_paths,
+    fleet_filesystem_backend,
+    fleet_filesystem_permissions,
     pegasusx_root,
     surfaces_registry_path,
     to_virtual_path,
@@ -38,7 +42,7 @@ Filesystem: composite virtual root.
 - Skills: `/skills/<name>/SKILL.md`
 Prefer `read_file` / `grep` with a narrow `path` (e.g. `/apps/backend-go/order`).
 Do NOT glob `/` or entire `/apps` — too large; use package dirs.
-Writes denied. Never invent file contents.
+Writes denied (auditor). Never invent file contents.
 """.strip()
 
 DEFAULT_SYSTEM_PROMPT = f"""You are a PegasusX ecosystem quality assistant (Deep Agents).
@@ -95,6 +99,31 @@ Desktop stack: keep Next.js + Tauri 2 (do not push Electron rewrites).
 Tree: pegasusX is SoT; pegasus is legacy.
 """
 
+LANGCHAIN_SYSTEM_PROMPT = """You are a PegasusX LangChain agent (no Deep Agents FS harness).
+Prefer concise, evidence-backed answers. Use tools when they exist.
+Do not invent monorepo paths or wired status.
+"""
+
+
+def resolve_model(
+    model: str | BaseChatModel | None = None,
+    *,
+    temperature: float = 0.2,
+) -> str | BaseChatModel:
+    """Resolve a chat model for agents.
+
+    - ``None`` → default xAI Grok (``ChatXAI``, needs ``XAI_API_KEY``)
+    - ``"provider:model"`` string → passed through to LangChain / Deep Agents
+    - ``BaseChatModel`` instance → used as-is
+    """
+    if isinstance(model, BaseChatModel):
+        return model
+    if isinstance(model, str) and ":" in model:
+        # Provider strings (openai:..., anthropic:..., google_genai:...) —
+        # let create_agent / create_deep_agent resolve via init_chat_model.
+        return model
+    return default_model(model_name=model, temperature=temperature)
+
 
 def default_model(
     model_name: str | None = None,
@@ -109,6 +138,18 @@ def default_model(
     from langchain_xai import ChatXAI
 
     name = model_name or DEFAULT_MODEL_NAME
+    if ":" in name:
+        # Accidental provider string into ChatXAI — strip if xai:, else error hint.
+        provider, _, rest = name.partition(":")
+        if provider in {"xai", "grok"}:
+            name = rest
+        else:
+            raise RuntimeError(
+                f"default_model() expects an xAI model id, got {model_name!r}. "
+                "Pass provider strings via create_void_deep_agent(model=...) "
+                "or create_void_langchain_agent(model=...)."
+            )
+
     api_key = os.getenv("XAI_API_KEY")
     if not api_key or api_key.strip() in {"", "xai-your-key-here"}:
         raise RuntimeError(
@@ -124,6 +165,28 @@ def default_model(
     )
 
 
+def default_resilience_middleware() -> list[Any]:
+    """Retries / fallbacks / call limits for enterprise-ish agent runs."""
+    middleware: list[Any] = []
+    try:
+        from langchain.agents.middleware import (
+            ModelCallLimitMiddleware,
+            ModelFallbackMiddleware,
+            ToolRetryMiddleware,
+        )
+
+        middleware.append(ToolRetryMiddleware(max_retries=2))
+        middleware.append(ModelCallLimitMiddleware(run_limit=80))
+        # Optional secondary provider if configured.
+        fallback = os.getenv("DEEP_AGENTS_FALLBACK_MODEL", "").strip()
+        if fallback:
+            middleware.append(ModelFallbackMiddleware(fallback))
+    except Exception:
+        # Older langchain — skip silently; agents still run.
+        return []
+    return middleware
+
+
 def _repo_hint_tools() -> list[Callable[..., Any]]:
     """Small tools so the agent can orient without hallucinating paths."""
 
@@ -133,6 +196,7 @@ def _repo_hint_tools() -> list[Callable[..., Any]]:
             f"virtual_root=/\n"
             f"code_examples=/apps/backend-go /docs /.agents\n"
             f"skills_route=/skills/\n"
+            f"fleet_route=/fleet/ (E2E confirmation reports)\n"
             f"host={pegasusx_root()}\n"
             "Use filesystem tools with paths like "
             "/apps/backend-go/order/state_machine.go "
@@ -158,12 +222,54 @@ def _repo_hint_tools() -> list[Callable[..., Any]]:
         """List specialist audit panel names in the orchestra."""
         return "\n".join(panel_names())
 
+    def list_fleet_agents() -> str:
+        """List E2E fleet specialist agent names."""
+        return "\n".join(fleet_names())
+
     return [
         get_pegasusx_root,
         get_surfaces_registry,
         list_ecosystem_skills,
         list_audit_panels,
+        list_fleet_agents,
     ]
+
+
+def create_void_langchain_agent(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    system_prompt: str | None = None,
+    middleware: list[Any] | None = None,
+    checkpointer: Any | None = None,
+    name: str | None = "void-langchain-agent",
+    resilient: bool = True,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Plain LangChain ``create_agent`` (no Deep Agents FS / task harness).
+
+    Use for short tool loops. Escalate to ``create_void_deep_agent`` when you
+    need filesystem tools, skills, or subagent delegation.
+    """
+    resolved = resolve_model(model)
+    tool_list: list[Any] = list(tools or [])
+    mw = list(middleware or [])
+    if resilient:
+        mw = default_resilience_middleware() + mw
+
+    create_kwargs: dict[str, Any] = dict(kwargs)
+    if checkpointer is not None:
+        create_kwargs["checkpointer"] = checkpointer
+    if name is not None:
+        create_kwargs["name"] = name
+
+    return create_agent(
+        model=resolved,
+        tools=tool_list or None,
+        system_prompt=system_prompt or LANGCHAIN_SYSTEM_PROMPT,
+        middleware=mw,
+        **create_kwargs,
+    )
 
 
 def create_void_deep_agent(
@@ -178,6 +284,8 @@ def create_void_deep_agent(
     subagents: list[dict[str, Any]] | None = None,
     backend: BackendProtocol | None = None,
     read_only: bool = True,
+    resilient: bool = True,
+    middleware: list[Any] | None = None,
     **kwargs: Any,
 ) -> CompiledStateGraph:
     """Create a Deep Agent configured for this monorepo.
@@ -198,21 +306,21 @@ def create_void_deep_agent(
         Agent name for tracing.
     include_ecosystem_defaults:
         When True, attach default skills, memory, orientation tools, and
-        ``FilesystemBackend(root_dir=VOID_ROOT)``.
+        filesystem backend rooted at pegasusX + ``/skills/``.
     subagents:
         Optional Deep Agents subagent specs (forwarded to create_deep_agent).
     backend:
-        Override filesystem backend. Default: host FS at VOID_ROOT (virtual).
+        Override filesystem backend. Default: host FS at pegasusX (virtual).
     read_only:
         When True (default), deny write tools and block ``.env`` / credential reads.
+    resilient:
+        When True, prepend tool-retry + call-limit middleware.
+    middleware:
+        Extra middleware (appended after resilience defaults).
     **kwargs:
         Forwarded to ``deepagents.create_deep_agent``.
     """
-    resolved_model: str | BaseChatModel
-    if model is None:
-        resolved_model = default_model()
-    else:
-        resolved_model = model
+    resolved_model = resolve_model(model)
 
     resolved_skills = skills
     resolved_memory = memory
@@ -228,6 +336,12 @@ def create_void_deep_agent(
     create_kwargs: dict[str, Any] = dict(kwargs)
     if subagents is not None:
         create_kwargs["subagents"] = subagents
+
+    mw = list(middleware or [])
+    if resilient:
+        mw = default_resilience_middleware() + mw
+    if mw:
+        create_kwargs["middleware"] = mw + list(create_kwargs.get("middleware") or [])
 
     # Default was StateBackend (ephemeral) — that blocked all monorepo reads.
     if "backend" not in create_kwargs:
@@ -273,5 +387,34 @@ def create_ecosystem_auditor(
         include_ecosystem_defaults=True,
         subagents=build_subagents(panels),
         read_only=True,
+        **kwargs,
+    )
+
+
+def create_e2e_fleet_agent(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    agents: list[str] | None = None,
+    allow_code_writes: bool = True,
+    system_prompt: str | None = None,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Deep Agent E2E delivery fleet — loop until all specialists CONFIRM.
+
+    Specialists: architect, implementer, wiring, business, technical, verifier.
+    Reports live under ``/fleet/`` (StateBackend by default, or ``FLEET_HOST_DIR``).
+    """
+    return create_void_deep_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt or SUPERVISOR_PROMPT,
+        name="pegasusx-e2e-fleet",
+        include_ecosystem_defaults=True,
+        subagents=build_fleet_subagents(agents),
+        backend=kwargs.pop("backend", None) or fleet_filesystem_backend(),
+        read_only=False,
+        permissions=kwargs.pop("permissions", None)
+        or fleet_filesystem_permissions(allow_code_writes=allow_code_writes),
         **kwargs,
     )

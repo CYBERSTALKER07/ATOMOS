@@ -72,6 +72,7 @@ const NAV: NavSection[] = [
       { href: "/demand/payday-calendar", icon: "campaign", labelKey: "portal.nav.payday_calendar" },
       { href: "/analytics/knowledge-graph", icon: "topology", labelKey: "portal.nav.knowledge_graph" },
       { href: "/ai/recommendations", icon: "overview", labelKey: "portal.nav.ai_recommendations" },
+      { href: "/planning", icon: "overview", labelKey: "portal.nav.planning" },
     ],
   },
   {

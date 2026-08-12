@@ -62,11 +62,22 @@ const (
 	EdiDocINVOIC = "INVOIC"
 	EdiDocCONTRL = "CONTRL"
 	EdiDocAPERAK = "APERAK"
+	EdiDocPRICAT = "PRICAT"
+	EdiDocINVRPT = "INVRPT"
+	EdiDocSLSRPT = "SLSRPT"
+	EdiDocRECADV = "RECADV"
+	EdiDocORDCHG = "ORDCHG"
+	EdiDocDELFOR = "DELFOR"
+	EdiDocREMADV = "REMADV"
 
 	EdiStatusReceived  = "RECEIVED"
 	EdiStatusProcessed = "PROCESSED"
 	EdiStatusFailed    = "FAILED"
 	EdiStatusEmitted   = "EMITTED"
+
+	KeyEnvLive    = "LIVE"
+	KeyEnvSandbox = "SANDBOX"
+	RateLimitSandbox = "partner_sandbox"
 )
 
 // Principal is the authenticated partner key context (request-scoped tenancy).
@@ -75,6 +86,7 @@ type Principal struct {
 	TenantType string
 	TenantID   string
 	Scopes     []string
+	Sandbox    bool // true for pxs_* / partner_sandbox keys
 }
 
 // ApiKey is the persisted key row (never includes plaintext secret).
@@ -95,13 +107,14 @@ type ApiKey struct {
 
 // IssuedKey is returned once on create.
 type IssuedKey struct {
-	KeyID      string   `json:"key_id"`
-	TenantType string   `json:"tenant_type"`
-	TenantID   string   `json:"tenant_id"`
-	Scopes     []string `json:"scopes"`
-	Prefix     string   `json:"key_prefix"`
-	Secret     string   `json:"secret"` // shown once: pxk_<prefix>_<secret>
-	ExpiresAt  *string  `json:"expires_at,omitempty"`
+	KeyID       string   `json:"key_id"`
+	TenantType  string   `json:"tenant_type"`
+	TenantID    string   `json:"tenant_id"`
+	Scopes      []string `json:"scopes"`
+	Prefix      string   `json:"key_prefix"`
+	Secret      string   `json:"secret"` // shown once: pxk_|pxs_<prefix>_<secret>
+	Environment string   `json:"environment"` // LIVE|SANDBOX
+	ExpiresAt   *string  `json:"expires_at,omitempty"`
 }
 
 // WebhookSubscription is a tenant outbound hook.

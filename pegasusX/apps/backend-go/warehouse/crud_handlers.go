@@ -82,9 +82,21 @@ func (s *Service) HandleGetWarehouse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	wh, err := s.repo.GetWarehouse(r.Context(), warehouseID)
 	if err != nil {
 		web.JSONError(w, "failed to get warehouse: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	allowed := auth.EntitySupplierAllowed(r.Context(), wh.SupplierID) ||
+		auth.HomeNodeMatches(r.Context(), warehouseID, auth.HomeNodeWarehouse)
+	if !allowed {
+		web.JSONError(w, "warehouse_not_found", http.StatusNotFound)
 		return
 	}
 

@@ -14,8 +14,17 @@ import (
 
 const keyPrefixLen = 8
 
-// GenerateAPIKey creates a plaintext key pxk_<prefix>_<secret> and bcrypt hash.
+// GenerateAPIKey creates a plaintext live key pxk_<prefix>_<secret> and bcrypt hash.
 func GenerateAPIKey() (plaintext, prefix, hash string, err error) {
+	return generateAPIKeyWithScheme("pxk_")
+}
+
+// GenerateSandboxAPIKey creates a plaintext sandbox key pxs_<prefix>_<secret>.
+func GenerateSandboxAPIKey() (plaintext, prefix, hash string, err error) {
+	return generateAPIKeyWithScheme("pxs_")
+}
+
+func generateAPIKeyWithScheme(scheme string) (plaintext, prefix, hash string, err error) {
 	prefixBytes := make([]byte, 6)
 	secretBytes := make([]byte, 24)
 	if _, err = rand.Read(prefixBytes); err != nil {
@@ -26,7 +35,7 @@ func GenerateAPIKey() (plaintext, prefix, hash string, err error) {
 	}
 	prefix = hex.EncodeToString(prefixBytes)[:keyPrefixLen]
 	secret := base64.RawURLEncoding.EncodeToString(secretBytes)
-	plaintext = "pxk_" + prefix + "_" + secret
+	plaintext = scheme + prefix + "_" + secret
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
 	if err != nil {
 		return "", "", "", err
@@ -34,19 +43,34 @@ func GenerateAPIKey() (plaintext, prefix, hash string, err error) {
 	return plaintext, prefix, string(hashBytes), nil
 }
 
-// ParseBearerKey extracts prefix from pxk_<prefix>_<rest>.
+// ParseBearerKey extracts prefix from pxk_<prefix>_<rest> or pxs_<prefix>_<rest>.
 func ParseBearerKey(token string) (prefix string, ok bool) {
 	token = strings.TrimSpace(token)
-	if !strings.HasPrefix(token, "pxk_") {
+	var rest string
+	switch {
+	case strings.HasPrefix(token, "pxk_"):
+		rest = strings.TrimPrefix(token, "pxk_")
+	case strings.HasPrefix(token, "pxs_"):
+		rest = strings.TrimPrefix(token, "pxs_")
+	default:
 		return "", false
 	}
-	rest := strings.TrimPrefix(token, "pxk_")
 	idx := strings.IndexByte(rest, '_')
 	if idx < 4 {
 		return "", false
 	}
 	prefix = rest[:idx]
 	return prefix, true
+}
+
+// IsSandboxKey reports whether the plaintext uses the sandbox scheme.
+func IsSandboxKey(token string) bool {
+	return strings.HasPrefix(strings.TrimSpace(token), "pxs_")
+}
+
+// IsSandboxRateClass reports sandbox via RateLimitClass (persisted marker).
+func IsSandboxRateClass(class string) bool {
+	return strings.EqualFold(strings.TrimSpace(class), RateLimitSandbox)
 }
 
 // VerifyAPIKey checks plaintext against bcrypt hash.

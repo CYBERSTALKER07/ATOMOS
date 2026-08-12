@@ -13,7 +13,9 @@ var (
 	TopicDispatch = topicFromEnv("KAFKA_TOPIC_DISPATCH", "pegasusx-dispatch")
 	// TopicRealtime carries driver location and live telemetry fan-out.
 	TopicRealtime = topicFromEnv("KAFKA_TOPIC_REALTIME", "pegasusx-realtime")
-	// TopicWebhooks carries payment gateway settlement events.
+	// TopicWebhooks is RETIRED (W1 2026-08-12). Payment settlement and partner
+	// webhook delivery consume TopicMain / TopicOrders. The Kafka topic may still
+	// exist in infra for compatibility; producers must not emit to it.
 	TopicWebhooks = topicFromEnv("KAFKA_TOPIC_WEBHOOKS", "pegasusx-webhooks")
 	// TopicExceptions carries logistics claims / OS&D / reverse-logistics.
 	TopicExceptions = topicFromEnv("KAFKA_TOPIC_EXCEPTIONS", "logistics.exceptions.v1")
@@ -69,6 +71,29 @@ func DispatchConsumerTopic() string {
 		return TopicDispatch
 	}
 	return TopicMain
+}
+
+// TwinConsumerTopics returns Kafka topics for the digital-twin projector.
+// Always includes TopicMain; when domain consume is on, also fans in orders,
+// dispatch (route created), and realtime (driver location).
+func TwinConsumerTopics() []string {
+	if !ConsumeDomainTopics() {
+		return []string{TopicMain}
+	}
+	seen := make(map[string]struct{}, 4)
+	out := make([]string, 0, 4)
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
 }
 
 // DomainTopicForEventType maps an event type to its domain topic, or "" when

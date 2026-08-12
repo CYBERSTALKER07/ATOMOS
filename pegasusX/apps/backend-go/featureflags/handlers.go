@@ -1,6 +1,7 @@
 package featureflags
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,9 +10,19 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
+// AuditActionAutoOrderPlace is written to PlatformAdminAudit when
+// AUTO_ORDER_PLACE_ENABLED is dual-control approved (place-flip evidence trail).
+const AuditActionAutoOrderPlace = "FLAG_AUTO_ORDER_PLACE"
+
+// FlagAuditor records dual-control flag approvals for money-affecting flags.
+type FlagAuditor interface {
+	RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error
+}
+
 // Handlers expose flag evaluate/override APIs.
 type Handlers struct {
-	Svc *Service
+	Svc   *Service
+	Audit FlagAuditor
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -112,6 +123,19 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 		}
 		writeErr(w, status, err.Error())
 		return
+	}
+	if h.Audit != nil {
+		action := "FLAG_OVERRIDE_APPROVE"
+		if strings.EqualFold(flag, "AUTO_ORDER_PLACE_ENABLED") {
+			action = AuditActionAutoOrderPlace
+		}
+		detail, _ := json.Marshal(map[string]any{
+			"flag_key":    strings.ToUpper(flag),
+			"tenant_type": req.TenantType,
+			"tenant_id":   req.TenantID,
+			"approver":    approver,
+		})
+		_ = h.Audit.RecordFlagAudit(r.Context(), approver, action, req.TenantType, req.TenantID, string(detail))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": StatusActive})
 }

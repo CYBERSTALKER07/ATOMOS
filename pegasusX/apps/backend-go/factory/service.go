@@ -118,6 +118,10 @@ type ManifestRow struct {
 	MaxVolumeVU        int64  `json:"max_volume_vu"`
 	DriverID           string `json:"driver_id,omitempty"`
 	VehicleID          string `json:"vehicle_id,omitempty"`
+	// TruckID mirrors vehicle_id for payload-terminal / Wire compatibility (P1-18).
+	TruckID            string `json:"truck_id,omitempty"`
+	StopCount          int    `json:"stop_count,omitempty"`
+	RegionCode         string `json:"region_code,omitempty"`
 	ReassignmentDepth  int    `json:"reassignment_depth,omitempty"`
 	CreatedAt          string `json:"created_at"`
 	UpdatedAt          string `json:"updated_at"`
@@ -940,6 +944,11 @@ func (s *Service) HandleManifests(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rows = filtered
+	}
+	for i := range rows {
+		if rows[i].TruckID == "" {
+			rows[i].TruckID = rows[i].VehicleID
+		}
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
 	writeJSON(w, http.StatusOK, map[string]any{"manifests": rows})

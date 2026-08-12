@@ -206,6 +206,8 @@ enum SidebarDestination: String, CaseIterable {
     case profile
     case settings
     case controlTower
+    case credit
+    case hq
     case logout
 
     /// Menu items shown in the scrollable list (excludes logout)
@@ -225,6 +227,8 @@ enum SidebarDestination: String, CaseIterable {
         case .profile: "Profile"
         case .settings: "Settings"
         case .controlTower: "Control Tower"
+        case .credit: "Credit & AR"
+        case .hq: "HQ multi-store"
         case .logout: "Log Out"
         }
     }
@@ -241,6 +245,8 @@ enum SidebarDestination: String, CaseIterable {
         case .profile: "person"
         case .settings: "gearshape"
         case .controlTower: "network"
+        case .credit: "creditcard"
+        case .hq: "building.2"
         case .logout: "rectangle.portrait.and.arrow.right"
         }
     }

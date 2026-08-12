@@ -23,6 +23,20 @@ if echo "$rendered" | grep -E "$pattern" >/dev/null; then
   fail=1
 fi
 
+# P1-1: optimizer-core must never be remapped onto the backend-go image.
+if echo "$rendered" | awk '
+  /kind: Deployment/ {d=0}
+  /name: optimizer-core/ {d=1}
+  d && /image:/ {
+    if ($0 ~ /backend-go/) { print; found=1 }
+  }
+  END { exit found ? 0 : 1 }
+' >/dev/null; then
+  echo "FAIL: optimizer-core Deployment image remapped to backend-go (crash-loop risk)" >&2
+  echo "$rendered" | awk '/kind: Deployment/{d=0} /name: optimizer-core/{d=1} d && /image:/' | head -5 >&2
+  fail=1
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi

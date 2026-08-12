@@ -219,7 +219,7 @@ func isInboundEDIFilename(name string) bool {
 	if isOrdersFilename(name) {
 		return true
 	}
-	for _, tok := range []string{"ORDRSP", "INVOIC", "CONTRL", "APERAK"} {
+	for _, tok := range []string{"ORDRSP", "INVOIC", "CONTRL", "APERAK", "PRICAT", "INVRPT", "SLSRPT", "RECADV", "ORDCHG", "DELFOR", "REMADV"} {
 		if strings.Contains(n, tok) && (strings.HasSuffix(n, ".EDI") || strings.HasSuffix(n, ".TXT") || strings.HasPrefix(n, tok+"_")) {
 			return true
 		}
@@ -261,6 +261,13 @@ func (w *EdiInboundWorker) ingestInboundBytes(ctx context.Context, cfg SftpConfi
 		return w.ingestORDRSP(ctx, cfg, remoteName, body)
 	case EdiDocINVOIC:
 		return w.ingestINVOIC(ctx, cfg, remoteName, body)
+	case EdiDocPRICAT:
+		return w.ingestPRICAT(ctx, cfg, remoteName, body)
+	case EdiDocINVRPT:
+		return w.ingestINVRPT(ctx, cfg, remoteName, body)
+	case EdiDocSLSRPT, EdiDocRECADV, EdiDocORDCHG, EdiDocDELFOR, EdiDocREMADV:
+		// Parse for validity, then ledger-record (application side-effects follow-on).
+		return w.ingestLedgerOnly(ctx, cfg, remoteName, body, strings.ToUpper(docType))
 	case EdiDocCONTRL, EdiDocAPERAK:
 		// Partner ACKs of our outbound — record only.
 		return w.ingestAckRecord(ctx, cfg, remoteName, body, strings.ToUpper(docType))
@@ -443,6 +450,189 @@ func (w *EdiInboundWorker) ingestINVOIC(ctx context.Context, cfg SftpConfig, rem
 	}
 	w.emitAcks(ctx, cfg, msg.ExternalDocID, msg.RefOrderID, true, "")
 	return nil
+}
+
+func (w *EdiInboundWorker) ingestPRICAT(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	msg, err := edi.ParsePRICAT(string(body))
+	if err != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, err.Error())
+		return err
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	existing, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, EdiDocPRICAT, msg.ExternalDocID)
+	if err != nil {
+		return err
+	}
+	if ok && existing.Status == EdiStatusProcessed {
+		return nil
+	}
+	now := w.now()
+	doc := EdiDocument{
+		DocumentID: uuid.NewString(), TenantType: cfg.TenantType, TenantID: cfg.TenantID,
+		Direction: EdiDirectionIn, DocType: EdiDocPRICAT, ExternalDocID: msg.ExternalDocID,
+		Status: EdiStatusReceived, RemoteName: remoteName, PayloadHash: hashHex, CreatedAt: now,
+	}
+	if ok {
+		doc.DocumentID = existing.DocumentID
+		doc.CreatedAt = existing.CreatedAt
+	}
+	if w.svc != nil && cfg.TenantType == TenantSupplier {
+		items := make([]PriceUpsertItem, 0, len(msg.Lines))
+		for _, ln := range msg.Lines {
+			cur := ln.Currency
+			if cur == "" {
+				cur = "UZS"
+			}
+			items = append(items, PriceUpsertItem{
+				ExternalID: ln.SKU, PriceMinor: ln.PriceMinor, Currency: cur,
+			})
+		}
+		p := Principal{TenantType: cfg.TenantType, TenantID: cfg.TenantID, Scopes: []string{"*"}}
+		if _, uErr := w.svc.UpsertPrices(ctx, p, items); uErr != nil {
+			doc.Status = EdiStatusFailed
+			doc.Error = uErr.Error()
+			doc.FinishedAt = &now
+			_ = w.upsertDoc(ctx, doc, ok)
+			w.emitAcks(ctx, cfg, msg.ExternalDocID, "", false, uErr.Error())
+			return uErr
+		}
+	}
+	doc.Status = EdiStatusProcessed
+	doc.FinishedAt = &now
+	if err := w.upsertDoc(ctx, doc, ok); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, msg.ExternalDocID, "", true, "")
+	return nil
+}
+
+func (w *EdiInboundWorker) ingestINVRPT(ctx context.Context, cfg SftpConfig, remoteName string, body []byte) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	msg, err := edi.ParseINVRPT(string(body))
+	if err != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, err.Error())
+		return err
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	existing, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, EdiDocINVRPT, msg.ExternalDocID)
+	if err != nil {
+		return err
+	}
+	if ok && existing.Status == EdiStatusProcessed {
+		return nil
+	}
+	now := w.now()
+	doc := EdiDocument{
+		DocumentID: uuid.NewString(), TenantType: cfg.TenantType, TenantID: cfg.TenantID,
+		Direction: EdiDirectionIn, DocType: EdiDocINVRPT, ExternalDocID: msg.ExternalDocID,
+		Status: EdiStatusReceived, RemoteName: remoteName, PayloadHash: hashHex, CreatedAt: now,
+	}
+	if ok {
+		doc.DocumentID = existing.DocumentID
+		doc.CreatedAt = existing.CreatedAt
+	}
+	if w.svc != nil && cfg.TenantType == TenantSupplier {
+		items := make([]StockUpsertItem, 0, len(msg.Lines))
+		for _, ln := range msg.Lines {
+			items = append(items, StockUpsertItem{
+				ExternalID: ln.SKU, WarehouseID: ln.Warehouse, QuantityOnHand: ln.QtyOnHand,
+			})
+		}
+		p := Principal{TenantType: cfg.TenantType, TenantID: cfg.TenantID, Scopes: []string{"*"}}
+		if _, uErr := w.svc.UpsertStock(ctx, p, items); uErr != nil {
+			doc.Status = EdiStatusFailed
+			doc.Error = uErr.Error()
+			doc.FinishedAt = &now
+			_ = w.upsertDoc(ctx, doc, ok)
+			w.emitAcks(ctx, cfg, msg.ExternalDocID, "", false, uErr.Error())
+			return uErr
+		}
+	}
+	doc.Status = EdiStatusProcessed
+	doc.FinishedAt = &now
+	if err := w.upsertDoc(ctx, doc, ok); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, msg.ExternalDocID, "", true, "")
+	return nil
+}
+
+func (w *EdiInboundWorker) ingestLedgerOnly(ctx context.Context, cfg SftpConfig, remoteName string, body []byte, docType string) error {
+	if w.ediDocs == nil {
+		return fmt.Errorf("edi_unavailable")
+	}
+	var extID string
+	var parseErr error
+	switch docType {
+	case EdiDocSLSRPT:
+		var m edi.SlsrptMessage
+		m, parseErr = edi.ParseSLSRPT(string(body))
+		extID = m.ExternalDocID
+	case EdiDocRECADV:
+		var m edi.RecadvMessage
+		m, parseErr = edi.ParseRECADV(string(body))
+		extID = m.ExternalDocID
+	case EdiDocORDCHG:
+		var m edi.OrdchgMessage
+		m, parseErr = edi.ParseORDCHG(string(body))
+		extID = m.ExternalDocID
+	case EdiDocDELFOR:
+		var m edi.DelforMessage
+		m, parseErr = edi.ParseDELFOR(string(body))
+		extID = m.ExternalDocID
+	case EdiDocREMADV:
+		var m edi.RemadvMessage
+		m, parseErr = edi.ParseREMADV(string(body))
+		extID = m.ExternalDocID
+	default:
+		parseErr = fmt.Errorf("unsupported_inbound_doc_type:%s", docType)
+	}
+	if parseErr != nil {
+		w.emitAcks(ctx, cfg, remoteName, "", false, parseErr.Error())
+		return parseErr
+	}
+	if extID == "" {
+		extID = remoteName
+	}
+	hash := sha256.Sum256(body)
+	hashHex := hex.EncodeToString(hash[:])
+	existing, ok, err := w.ediDocs.GetByExternal(ctx, cfg.TenantType, cfg.TenantID, EdiDirectionIn, docType, extID)
+	if err != nil {
+		return err
+	}
+	if ok && existing.Status == EdiStatusProcessed {
+		return nil
+	}
+	now := w.now()
+	doc := EdiDocument{
+		DocumentID: uuid.NewString(), TenantType: cfg.TenantType, TenantID: cfg.TenantID,
+		Direction: EdiDirectionIn, DocType: docType, ExternalDocID: extID,
+		Status: EdiStatusProcessed, RemoteName: remoteName, PayloadHash: hashHex,
+		CreatedAt: now, FinishedAt: &now,
+	}
+	if ok {
+		doc.DocumentID = existing.DocumentID
+		doc.CreatedAt = existing.CreatedAt
+	}
+	if err := w.upsertDoc(ctx, doc, ok); err != nil {
+		return err
+	}
+	w.emitAcks(ctx, cfg, extID, "", true, "")
+	return nil
+}
+
+func (w *EdiInboundWorker) upsertDoc(ctx context.Context, doc EdiDocument, existed bool) error {
+	if existed {
+		return w.ediDocs.Update(ctx, doc)
+	}
+	return w.ediDocs.Insert(ctx, doc)
 }
 
 func (w *EdiInboundWorker) ingestAckRecord(ctx context.Context, cfg SftpConfig, remoteName string, body []byte, docType string) error {

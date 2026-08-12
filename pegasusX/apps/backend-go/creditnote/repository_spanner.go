@@ -230,6 +230,27 @@ func (r *SpannerRepository) listLines(ctx context.Context, creditNoteID string) 
 	return lines, nil
 }
 
+func (r *SpannerRepository) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error) {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return false, nil
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT 1 FROM Orders WHERE OrderId = @orderId AND SupplierId = @supplierId LIMIT 1`,
+		Params: map[string]interface{}{"orderId": orderID, "supplierId": supplierID},
+	})
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *SpannerRepository) GetDeliveredOrderLines(ctx context.Context, orderId string) ([]CreditNoteLine, error) {
 	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT LineItemsJson FROM Orders WHERE OrderId = @orderId`,

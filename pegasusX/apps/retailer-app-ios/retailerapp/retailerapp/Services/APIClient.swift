@@ -406,6 +406,25 @@ final class APIClient {
     func getCreditProfile() async throws -> CreditProfile {
         try await get(path: "/v1/retailer/credit-profile")
     }
+
+    func getCreditRelationships() async throws -> [CreditRelationshipWire] {
+        let resp: CreditRelationshipsResponse = try await get(path: "/v1/retailer/credit-relationships")
+        return resp.relationships ?? []
+    }
+
+    func getArInvoices(status: String = "OPEN") async throws -> [ArInvoiceWire] {
+        let resp: ArInvoicesResponse = try await get(path: "/v1/retailer/ar/invoices?status=\(status)")
+        return resp.invoices ?? []
+    }
+
+    func getHqSummary(day: String) async throws -> HqSummaryWire {
+        try await get(path: "/v1/retailer/hq/summary?day=\(day)")
+    }
+
+    func getHqSalesByLocation(day: String) async throws -> [HqLocationWire] {
+        let resp: HqLocationsResponse = try await get(path: "/v1/retailer/hq/sales-by-location?day=\(day)")
+        return resp.items ?? []
+    }
     
     func updateProfile(request: RetailerProfileRequest, idempotencyKey: String) async throws {
         let _: APIResponse<String> = try await put(

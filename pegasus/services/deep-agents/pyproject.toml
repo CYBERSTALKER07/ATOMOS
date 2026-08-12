@@ -21,6 +21,7 @@ dev = [
 [project.scripts]
 void-deep-agent = "void_deep_agents.cli:main"
 void-ecosystem-audit = "void_deep_agents.ecosystem_audit:main"
+void-e2e-fleet = "void_deep_agents.fleet_cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

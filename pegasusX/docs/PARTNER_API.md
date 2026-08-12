@@ -141,4 +141,4 @@ Markers: `PX_E2E_PARTNER_AS2_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_AS2_ORDRSP
 
 ## Still open
 
-Certified EDIFACT, certified 1C exchange package. **AS2 transport Wired** (not Drummond) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). OAuth2 `client_credentials` is WIRED. Configurable CoA for journals is WIRED ([`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)). DESADV SSCC (CPS/PAC/GIN+BJ) is WIRED. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.
+Certified EDIFACT / Drummond AS2, certified 1C exchange package. **AS2 MDN/MIC verified** (W5) — [`PARTNER_AS2.md`](./PARTNER_AS2.md). Partner sandbox keys (`pxs_*`, `environment=SANDBOX`) + retailer/supplier self-serve issue routes are WIRED. OAuth2 `client_credentials` is WIRED. Configurable CoA for journals is WIRED ([`PARTNER_JOURNALS_1C.md`](./PARTNER_JOURNALS_1C.md)). DESADV SSCC (CPS/PAC/GIN+BJ) is WIRED. JWT **core** OpenAPI is WIRED ([`jwt-core.openapi.yaml`](../contracts/jwt-core.openapi.yaml)); residual is full-platform coverage + SDK replace of `@pegasusx/api-client`.

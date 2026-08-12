@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/fiscal"
-	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
 
 // Record/replay contract tests for the MY_SOLIQ EHF adapter. The replay server
@@ -27,11 +26,10 @@ func newSoliqContractProvider(t *testing.T, baseURL string) *MySoliqProvider {
 	if err != nil {
 		t.Fatalf("signer: %v", err)
 	}
-	p := &MySoliqProvider{
-		TIN:         "300000000",
-		soliqClient: soliq.NewClient(soliq.SoliqConfig{BaseURL: baseURL, APIKey: "contract-api-key", TIN: "300000000"}),
+	p, err := NewMySoliqProvider(baseURL, "contract-api-key", "300000000", signer)
+	if err != nil {
+		t.Fatalf("provider: %v", err)
 	}
-	p.SetSigner(signer)
 	return p
 }
 
@@ -221,6 +219,54 @@ func TestMySoliqContract_CorrectiveRequiresOriginal(t *testing.T) {
 	}
 }
 
+// Sign → submit → poll is the legal OFD chain. Contract server mirrors Soliq
+// submit + status so CI proves the round-trip without live sandbox credentials.
+func TestMySoliqContract_SignSubmitPoll(t *testing.T) {
+	var submitCount, statusCount int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/ehf/submit":
+			submitCount++
+			body, _ := io.ReadAll(r.Body)
+			var submitted map[string]any
+			if err := json.Unmarshal(body, &submitted); err != nil {
+				t.Errorf("submit body: %v", err)
+			}
+			sig, _ := submitted["signature"].(string)
+			if !strings.HasPrefix(sig, "DEVHMAC.") {
+				t.Errorf("unsigned submit: %q", sig)
+			}
+			_, _ = w.Write([]byte(`{"success":true,"data":{"ehf_id":"EHF-POLL-1"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/ehf/EHF-POLL-1/status":
+			statusCount++
+			_, _ = w.Write([]byte(`{"success":true,"data":{"status":"ACCEPTED"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	p := newSoliqContractProvider(t, ts.URL)
+	res, err := p.CreateReceipt(context.Background(), soliqContractRequest())
+	if err != nil {
+		t.Fatalf("CreateReceipt: %v", err)
+	}
+	if res.FiscalReceiptID != "EHF-POLL-1" {
+		t.Fatalf("receipt = %q", res.FiscalReceiptID)
+	}
+	st, err := p.GetSoliqClient().CheckStatus(context.Background(), res.FiscalReceiptID)
+	if err != nil {
+		t.Fatalf("CheckStatus: %v", err)
+	}
+	if st.Status != "ACCEPTED" {
+		t.Fatalf("status = %q, want ACCEPTED", st.Status)
+	}
+	if submitCount != 1 || statusCount != 1 {
+		t.Fatalf("submit=%d status=%d, want 1/1", submitCount, statusCount)
+	}
+}
+
 func TestSoliqSignerFromEnv_FailClosed(t *testing.T) {
 	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "")
 	if _, err := fiscal.SignerFromEnv("dev"); err == nil {
@@ -237,7 +283,8 @@ func TestSoliqSignerFromEnv_FailClosed(t *testing.T) {
 	}
 
 	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "pkcs12")
+	t.Setenv("FISCAL_MY_SOLIQ_PKCS12_FILE", "")
 	if _, err := fiscal.SignerFromEnv("production"); err == nil || !strings.Contains(err.Error(), "procurement") {
-		t.Fatalf("pkcs12 must surface the procurement owner task, got %v", err)
+		t.Fatalf("pkcs12 without key must surface the procurement owner task, got %v", err)
 	}
 }

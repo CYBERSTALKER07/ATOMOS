@@ -1,6 +1,7 @@
 package partner
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -19,6 +20,23 @@ func TestGenerateAndVerifyAPIKey(t *testing.T) {
 	}
 	if VerifyAPIKey(plain+"x", hash) {
 		t.Fatal("expected mismatch")
+	}
+}
+
+func TestGenerateSandboxAPIKey(t *testing.T) {
+	plain, prefix, hash, err := GenerateSandboxAPIKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(plain, "pxs_") {
+		t.Fatalf("want pxs_ prefix, got %s", plain)
+	}
+	if !IsSandboxKey(plain) {
+		t.Fatal("expected sandbox")
+	}
+	got, ok := ParseBearerKey(plain)
+	if !ok || got != prefix || !VerifyAPIKey(plain, hash) {
+		t.Fatalf("parse/verify failed got=%q", got)
 	}
 }
 

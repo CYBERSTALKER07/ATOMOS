@@ -165,12 +165,21 @@ def build_subagents(panels: list[str] | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for name in wanted:
         description, system_prompt, skill = _PANEL_SPECS[name]
+        # Attach progressive skills so panels load SKILL.md on demand
+        # (not only via prompt hint).
+        skill_dirs = [skill]
+        if name == "business_logic":
+            skill_dirs = ["business-logic", "regulatory-gov"]
+        elif name == "money_fiscal":
+            skill_dirs = ["money-fiscal", "regulatory-gov"]
+        elif name == "role_parity":
+            skill_dirs = ["role-row-clients"]
         out.append(
             {
                 "name": name,
                 "description": description,
-                "system_prompt": system_prompt.strip()
-                + f"\nLoad skill directory named `{skill}` when available.",
+                "system_prompt": system_prompt.strip(),
+                "skills": [f"/skills/{s}/" for s in skill_dirs],
             }
         )
     return out

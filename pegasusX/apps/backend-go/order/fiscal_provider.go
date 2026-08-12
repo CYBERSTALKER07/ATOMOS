@@ -129,6 +129,30 @@ type MySoliqProvider struct {
 	signer      fiscal.EDSSigner
 }
 
+// NewMySoliqProvider builds a MY_SOLIQ adapter with an explicit signer and Soliq client.
+// Prefer NewMySoliqProviderFromEnv in production; this constructor is for SSMR/contract
+// harnesses that inject a mock BaseURL + DevHMACSigner.
+func NewMySoliqProvider(baseURL, apiKey, tin string, signer fiscal.EDSSigner) (*MySoliqProvider, error) {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	apiKey = strings.TrimSpace(apiKey)
+	tin = strings.TrimSpace(tin)
+	if baseURL == "" || apiKey == "" || tin == "" {
+		return nil, fmt.Errorf("mysoliq: baseURL, apiKey, and tin required")
+	}
+	if signer == nil {
+		return nil, fmt.Errorf("mysoliq: EDSSigner required")
+	}
+	return &MySoliqProvider{
+		TIN: tin,
+		soliqClient: soliq.NewClient(soliq.SoliqConfig{
+			BaseURL: baseURL,
+			APIKey:  apiKey,
+			TIN:     tin,
+		}),
+		signer: signer,
+	}, nil
+}
+
 // NewMySoliqProviderFromEnv builds a provider from env; errors if required vars missing.
 func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 	base := strings.TrimRight(strings.TrimSpace(os.Getenv(envMySoliqBaseURL)), "/")

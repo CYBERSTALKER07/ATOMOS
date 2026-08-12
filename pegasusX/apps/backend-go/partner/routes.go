@@ -53,13 +53,17 @@ func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) 
 
 // RegisterAdminKeyRoutes mounts JWT-gated key issuance for humans.
 func RegisterAdminKeyRoutes(r chi.Router, h *Handlers) {
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Post("/v1/admin/partner-keys", h.HandleIssueKey)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-keys", h.HandleListKeys)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Post("/v1/admin/partner-keys", h.HandleIssueKey)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-keys", h.HandleListKeys)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
 	// Supplier portal convenience alias (ADMIN role is supplier portal session).
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-keys", h.HandleIssueKey)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-keys", h.HandleListKeys)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+	// Retailer self-serve partner keys (incl. environment=SANDBOX).
+	r.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/retailer/partner-keys", h.HandleIssueKey)
+	r.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/retailer/partner-keys", h.HandleListKeys)
+	r.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/retailer/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
 
 	// Wave 2A: webhook ops + SFTP + exports via supplier JWT
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-webhooks", h.HandleListWebhooks)
@@ -82,12 +86,12 @@ func RegisterAdminKeyRoutes(r chi.Router, h *Handlers) {
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-as2", h.HandleGetAs2)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-as2", h.HandlePutAs2)
 
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-sftp", h.HandleGetSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Put("/v1/admin/partner-sftp", h.HandlePutSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-coa", h.HandleGetCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Put("/v1/admin/partner-coa", h.HandlePutCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Get("/v1/admin/partner-as2", h.HandleGetAs2)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Put("/v1/admin/partner-as2", h.HandlePutAs2)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-sftp", h.HandleGetSftp)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-sftp", h.HandlePutSftp)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-coa", h.HandleGetCoa)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-coa", h.HandlePutCoa)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-as2", h.HandleGetAs2)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-as2", h.HandlePutAs2)
 }
 
 // PartnerRateLimitKey returns a limiter key for reliability middleware (KeyId).
