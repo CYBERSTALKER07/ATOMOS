@@ -267,10 +267,25 @@ export function useManifestData({
   useEffect(() => {
     if (!token) return;
     fetchNotifications();
-    const wsUrl = `${API_BASE.replace(/^http/, 'ws')}/v1/ws?token=${encodeURIComponent(token)}`;
     let reconnectTimer: ReturnType<typeof setTimeout>;
     let reconnectAttempt = 0;
-    const connect = () => {
+    const connect = async () => {
+      let wsTicket = '';
+      try {
+        const sessionRes = await authFetch('/v1/payload/ws-session');
+        const sessionBody = (await sessionRes.json().catch(() => null)) as { token?: string } | null;
+        if (!sessionRes.ok || typeof sessionBody?.token !== 'string' || !sessionBody.token) {
+          throw new Error('ws-session failed');
+        }
+        wsTicket = sessionBody.token;
+      } catch {
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(() => {
+          void connect();
+        }, reconnectDelayMs(reconnectAttempt));
+        return;
+      }
+      const wsUrl = `${API_BASE.replace(/^http/, 'ws')}/v1/ws?token=${encodeURIComponent(wsTicket)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
@@ -320,11 +335,11 @@ export function useManifestData({
         setIsOnline(false);
         const delay = reconnectDelayMs(reconnectAttempt);
         reconnectAttempt += 1;
-        reconnectTimer = setTimeout(connect, delay);
+        reconnectTimer = setTimeout(() => { void connect(); }, delay);
       };
       ws.onerror = () => { setIsOnline(false); ws.close(); };
     };
-    connect();
+    void connect();
     return () => {
       clearTimeout(reconnectTimer);
       wsRef.current?.close();

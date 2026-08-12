@@ -120,6 +120,30 @@ jobs:
           SPANNER_EMULATOR_HOST: localhost:9010
         run: bash scripts/phase1_gate.sh
 
+  # P2-18: Phase 2–5c + analytics-tenancy were local-only; keep them green in CI.
+  # Depends on backend-spanner so Phase-0/1 already passed; nested Phase-1 is skipped.
+  enterprise-gates:
+    needs: backend-spanner
+    runs-on: ubuntu-latest
+    services:
+      spanner-emulator:
+        image: gcr.io/cloud-spanner-emulator/emulator:latest
+        ports:
+          - 9010:9010
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Enterprise gates (phase2→5c + analytics-tenancy)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+          PHASE2_SKIP_REGRESSION: "1"
+        run: bash scripts/ci_enterprise_gates.sh
+
   ai-worker:
     runs-on: ubuntu-latest
     steps:
@@ -250,3 +274,21 @@ jobs:
         env:
           ALLOW_DEV_UPDATER_PUBKEY: "1"
         run: bash scripts/validate_desktop_updater.sh
+
+  # P2-18: admin-portal had no CI job.
+  admin-portal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile || pnpm install
+      - name: Typecheck admin-portal
+        run: pnpm --filter @pegasusx/admin-portal typecheck
+      - name: Build admin-portal
+        run: pnpm --filter @pegasusx/admin-portal build

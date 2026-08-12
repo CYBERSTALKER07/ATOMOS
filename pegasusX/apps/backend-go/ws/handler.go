@@ -33,13 +33,13 @@ type RegisterConfig struct {
 // handler extracts auth.Claims from context to determine identity and rooms.
 func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
 	platformSvc *platform.Service,
-	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub *Hub,
+	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub, platformAdminHub *Hub,
 	cfg RegisterConfig,
 ) {
 	if log == nil {
 		log = slog.Default()
 	}
-	hubs := roleHubs{retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub}
+	hubs := roleHubs{retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub, platformAdminHub}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ident, ok := claimsFromRequest(req, jwtSecret)
@@ -89,25 +89,46 @@ func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) 
 	if ident, ok := auth.FromContext(req.Context()); ok {
 		return ident, true
 	}
+	if strings.TrimSpace(jwtSecret) == "" {
+		return auth.Claims{}, false
+	}
+	// Native clients (Android/iOS) send Authorization: Bearer with a session JWT.
+	if ident, ok := auth.ParseBearerClaims(req, jwtSecret); ok {
+		if auth.IsPendingOrgSelect(ident) {
+			return auth.Claims{}, false
+		}
+		return ident, true
+	}
+	// Browsers cannot set Authorization on WebSocket(); short-lived tickets only.
 	token := strings.TrimSpace(req.URL.Query().Get("token"))
-	if token == "" || strings.TrimSpace(jwtSecret) == "" {
+	if token == "" {
 		return auth.Claims{}, false
 	}
 	ident, err := auth.Parse(token, jwtSecret)
 	if err != nil {
 		return auth.Claims{}, false
 	}
+	if !auth.IsWSTicket(ident) {
+		return auth.Claims{}, false
+	}
+	jti := strings.TrimSpace(ident.JTI)
+	if jti != "" {
+		if revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti); err == nil && revoked {
+			return auth.Claims{}, false
+		}
+	}
 	return ident, true
 }
 
 type roleHubs struct {
-	retailer  *Hub
-	supplier  *Hub
-	driver    *Hub
-	payload   *Hub
-	warehouse *Hub
-	factory   *Hub
-	telemetry *Hub
+	retailer      *Hub
+	supplier      *Hub
+	driver        *Hub
+	payload       *Hub
+	warehouse     *Hub
+	factory       *Hub
+	telemetry     *Hub
+	platformAdmin *Hub
 }
 
 func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs, cfg RegisterConfig) ([]func(), bool) {
@@ -125,9 +146,18 @@ func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs, c
 		return subscribeWarehouseAdminRooms(ident, conn, hubs, unsubscribes), true
 	case auth.RoleFactoryAdmin, auth.RoleFactory:
 		return subscribeFactoryAdminRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RolePlatformAdmin:
+		return subscribePlatformAdminRooms(ident, conn, hubs, unsubscribes), true
 	default:
 		return nil, false
 	}
+}
+
+func subscribePlatformAdminRooms(_ auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.platformAdmin != nil {
+		unsubscribes = append(unsubscribes, hubs.platformAdmin.Subscribe(PlatformAdminRoom(), conn))
+	}
+	return unsubscribes
 }
 
 func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func(), cfg RegisterConfig) []func() {
@@ -246,6 +276,8 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 		return []*Hub{hubs.warehouse, hubs.supplier, hubs.telemetry}
 	case auth.RoleFactoryAdmin, auth.RoleFactory:
 		return []*Hub{hubs.factory, hubs.supplier, hubs.telemetry}
+	case auth.RolePlatformAdmin:
+		return []*Hub{hubs.platformAdmin}
 	default:
 		return nil
 	}

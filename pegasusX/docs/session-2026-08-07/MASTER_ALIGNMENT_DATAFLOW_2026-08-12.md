@@ -22,15 +22,15 @@ Client (role app)
   → Spanner domain write + OutboxEvents (same transaction)
   → Relay (worker tier) → Kafka
   → Consumers (NotificationDispatcher, order mutator, warehouse mutator, returns, billing, …)
-  → WS hubs (7) + inbox + FCM + partner webhooks
+  → WS hubs (8) + inbox + FCM + partner webhooks
   → other roles’ clients react
 ```
 
-**Why it feels unmaintainable:** not “wrong architecture,” but **uneven coverage**:
+**Why it felt unmaintainable:** not “wrong architecture,” but **uneven coverage** (now largely closed in Part 2 of the gap register):
 
-1. Some domains emit outbox events; a few still mutate quietly or dual-write poorly.
-2. Behavior changes by run mode (`api` vs `worker` vs `all`) without always documenting it.
-3. Cross-role product loops often stop at “API exists” or “one platform has UI.”
+1. Some domains emit outbox events; a few still dual-write or best-effort post-commit (AR/payout now emit).
+2. Behavior changes by run mode (`api` vs `worker` vs `all`) — mitigated by worker heartbeat + api notif consumer (P1-9).
+3. Cross-role product loops that stopped at “API exists” — W2 Class A loops closed; residuals are flag/cert/scale.
 
 **Coverage rule (definition of done for any feature):**
 
@@ -44,14 +44,14 @@ Client (role app)
 |--------|-------|--------------------------------|
 | Reality report §5 | Admin portal is redirect stub | **False now** — real Next console: Tenants / Flags / Audit (`apps/admin-portal`) |
 | Reality report §5 | supplier-app-desktop redirect stub | **Path gone** — supplier desktop **is** `supplier-portal` (Next + Tauri 2) |
-| Reality report §5 | DataMatrix “placeholder” only | Partial: ECC200 exists; **GS1 element string still non-conformant** (parens/FNC1) — see gap P1-13 |
-| Reality report §5 | SDK README-only | Still weak; partner OpenAPI + gen script exist; package path/module issues remain (P1-15) |
-| Reality report §2 | Optimizer prod replicas 0 | Still a **P1 deploy** problem; ssmr/staging have intent; prod image remap risk remains (P1-1) |
+| Reality report §5 | DataMatrix “placeholder” only | **False now** — real ECC200 + **FNC1 GS1 element string + ZPL `^BX`** (P1-13 ✅ W5); square in-process encoder caps at 44×44 |
+| Reality report §5 | SDK README-only | **False now** — partner Go SDK in `go.work` (P1-15 ✅ W5) |
+| Reality report §2 | Optimizer prod replicas 0 | Prod still **replicas 0** until AR (P1-1 ✅ remap); **SSMR overlay patches replicas 1** |
 | Reality report §4/§6 | AR/payout silent / bank-file only | **AR + payout now emit outbox** (P0-4/5 resolved). **Bank-file is permanent settlement** ([`PAYOUT_RAIL_DECISION.md`](../PAYOUT_RAIL_DECISION.md)); live rail deferred |
 | Gap register P0-1…6 | Money/tenancy/routing P0s | **Resolved** in tree (re-verify AR/payout emits, admin portal real) |
-| `FEATURES_BY_APP_ROLE.md` | admin-portal deprecated stub | **Stale** — update that section to match admin console + dual-control flags |
-| `OPTIMIZER_AND_ROUTING_RUNTIME.md` | SSMR optimizer replicas 0 | **Stale** — ssmr overlay sets replicas ≥1 intent |
-| `PARTNER_EDI.md` | datamatrix placeholder modules | **Stale wording** — real codec, GS1 conformance still open |
+| `FEATURES_BY_APP_ROLE.md` | admin-portal / HQ·Credit / warehouse WMS | **Synced 2026-08-12** — live admin console (+ match/partner); retailer HQ/Credit mobile; warehouse bins/pick-waves/cycle/cold-chain/labor |
+| `OPTIMIZER_AND_ROUTING_RUNTIME.md` / `workers-kafka.md` | SSMR replicas 0 / not in overlay | **Synced 2026-08-12** — SSMR replicas 1 + in-overlay |
+| `PARTNER_EDI.md` | datamatrix placeholder modules | **Synced W5** — FNC1 DataMatrix + EDI-lite breadth |
 | Dual trees | “pegasus and pegasusX equal” | **False** — plan and ship from **pegasusX** |
 
 ---
@@ -64,7 +64,7 @@ Client (role app)
 | Outbox relay → Kafka | Wired on **worker/all** tier |
 | NotificationDispatcher → WS + inbox + FCM | Wired; api-only gets notif consumer when no worker heartbeat |
 | Worker heartbeat | Wired |
-| WS hubs | **7:** retailer, supplier, driver, payload, warehouse, factory, telemetry |
+| WS hubs | **8:** retailer, supplier, driver, payload, warehouse, factory, telemetry, platform-admin — browsers mint role `/ws-session` (`token_use=ws`) then `?token=`; natives use `Authorization: Bearer` |
 | AR / payout outbox | **Emitting** (not silent) |
 | Driver location bus | Throttled `DRIVER_LOCATION_UPDATED` → TopicRealtime outbox |
 | Twin Kafka consumer | **Started** (W1) — group `void-digital-twin` |
@@ -85,9 +85,9 @@ Order lifecycle core (create → reserve → dispatch → seal → depart → ar
 | Supplier | ● ~62 screens | ● ~131 swift | ● via **supplier-portal** Tauri | ● ~73 pages | No separate `supplier-app-desktop` dir |
 | Driver | ● ~15 screens | ● ~129 swift | ○ | ○ | Field-only by design; no ops portal |
 | Warehouse | ● ~39 screens | ● ~96 swift | ● warehouse-portal Tauri | ● ~42 pages | WMS depth strong on portal |
-| Factory | ● ~20 screens | ● ~67 swift | ● factory-portal Tauri | ● ~19 pages | Loading bay ↔ payload loop is fragile |
-| Payload | ● ~3 screens (thin) | ● ~41 swift | ○ | △ Expo `payload-terminal` | Terminal is real; natives are stubs |
-| Platform admin | ○ | ○ | ○ | ● thin Next console | Tenants / flags / audit only |
+| Factory | ● ~20 screens | ● ~67 swift | ● factory-portal Tauri | ● ~19 pages | Loading bay ↔ payload Class A (P1-18) |
+| Payload | ● Android loading-bay | ● iOS loading-bay | ○ | ● Expo `payload-terminal` | Expo SoT; natives peer for factory+payloader (P2-25) |
+| Platform admin | ○ | ○ | ○ | ● Next console | Tenants / flags / audit / match / partner |
 
 **Desktop stack (recommendation at bottom):** all real desktops are **Next.js 15 + Tauri 2**. No Electron in tree.
 
@@ -100,16 +100,15 @@ Classify every feature into one of four classes. Only **Class A** is shippable e
 | Class | Meaning | Example |
 |-------|---------|---------|
 | **A — Wired E2E** | Spanner write + outbox + consumer + client(s) for involved roles | Order create → supplier WS → warehouse dispatch → driver cash → fiscal path |
-| **B — Backend island** | API/schema exist; missing client or missing consumer | Twin routes, cold-chain APIs, labor capacity |
-| **C — UI island** | Screen exists; mock/local or incomplete backend hop | Partial control-tower empties, incomplete admin product-match UI |
-| **D — Flag / cert blocked** | Logic present; off in prod or needs external proof | Auto-order place, Soliq EDS, optimizer prod image |
+| **B — Backend island** | API/schema exist; missing client or missing consumer | (was twin/cold-chain/labor — closed P2-23) |
+| **C — UI island** | Screen exists; mock/local or incomplete backend hop | Thin admin billing analytics; warehouse Control Tower / cold-chain / labor portal-primary (mobile absent); desktop retailer `/control-tower` orphan (not in shell nav) |
+| **D — Flag / cert blocked** | Logic present; off in prod or needs external proof | Auto-order place, Soliq EDS live, optimizer prod replicas, live dunning provider keys |
 
 **Major cross-role loops still Class B/C (not A):**
 
 | Loop | Gap |
 |------|-----|
-| Cold-chain temps + twin routes | APIs, **no client consumer** (P2-23) |
-| Auto-order place | Dual-control Evaluate + soak gate + `FLAG_AUTO_ORDER_PLACE` audit wired; place env remains false until flip evidence (P1-2…5 ✅) |
+| Auto-order place | Dual-control Evaluate + soak gate + `FLAG_AUTO_ORDER_PLACE` audit; soak bypass is money-flag + `FLAG_AUTO_ORDER_SOAK_GATE` / runtime `AUTO_ORDER_SOAK_GATE_BYPASS` (P2-7 ✅); place env remains false until flip evidence (P1-2…5 ✅) |
 
 **W2 Class A loops closed 2026-08-12:** factory↔payload (P1-18), retailer AR/HQ mobile (P1-17), supplier planning web (P2-26), warehouse WMS screens (P2-24), admin match/partner/dunning (P1-16).
 
@@ -140,11 +139,11 @@ AR pay-down on cash collect · payout fail-closed without live rail · platform-
 
 **P2 enterprise**
 
-Demand-sensing producers · multi-currency AR · MFA · CI gates for multi-tenancy · SLO on relay/DLQ · ~~EDIFACT breadth~~ ✅ W5 · ~~partner sandbox~~ ✅ W5 · ~~warehouse dedicated WMS screens~~ ✅ W2 · payload native depth · ~~supplier planning on web~~ ✅ W2.
+~~Demand-sensing producers~~ ✅ P2-6 · ~~optimizer constraint e2e hard-fail~~ ✅ P2-1 · ~~optimizer cert harness + heuristic status~~ ✅ P2-2 · ~~MEIO capital-cap~~ ✅ P2-3 · ~~scenario workbench clone/compare/publish + real RaR~~ ✅ P2-4 · ~~S&OP capacity/demand split + production-lines~~ ✅ P2-5 · ~~multi-currency AR~~ ✅ P2-8 · ~~dev webhook secret defaults in NewService~~ ✅ P2-9 · ~~MFA~~ ✅ P2-17 · ~~CI gates for multi-tenancy~~ ✅ P2-18 · ~~SLO on relay/DLQ~~ ✅ · ~~EDIFACT breadth~~ ✅ W5 · ~~partner sandbox~~ ✅ W5 · ~~warehouse dedicated WMS screens~~ ✅ W2 · ~~payload native factory loading-bay~~ ✅ P2-25 · ~~supplier planning on web~~ ✅ W2 · ~~cold-chain/labor/twin clients~~ ✅ P2-23.
 
-**Security initiative (separate track)**
+**Security initiative**
 
-Detail IDORs (`HandleGetDriver/Vehicle/Warehouse/Factory`, payers list, credit-note lines, seed-supplier fallbacks, demandroutes auth). Middleware masks list gaps in ssmr; detail IDORs remain.
+Detail IDORs + JWT revocation closed W0 2026-08-12 (gap register § Security).
 
 ---
 

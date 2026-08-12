@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 const (
@@ -58,11 +59,38 @@ type Repository interface {
 // Service orchestrates lifecycle transitions with audit.
 type Service struct {
 	repo Repository
+	hub  *ws.Hub
 	now  func() time.Time
 }
 
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo, now: func() time.Time { return time.Now().UTC() }}
+}
+
+// SetHub attaches the platform-admin WebSocket hub for live console refresh.
+func (s *Service) SetHub(h *ws.Hub) {
+	if s != nil {
+		s.hub = h
+	}
+}
+
+func (s *Service) publish(ctx context.Context, eventType, action, tenantType, tenantID, actor string, detail any) {
+	if s == nil || s.hub == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"type":        eventType,
+		"action":      action,
+		"tenant_type": tenantType,
+		"tenant_id":   tenantID,
+		"actor":       actor,
+		"detail":      detail,
+		"at":          s.now().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return
+	}
+	s.hub.Broadcast(ctx, ws.PlatformAdminRoom(), payload)
 }
 
 func (s *Service) EnsurePending(ctx context.Context, tenantType, tenantID, displayName string) error {
@@ -82,14 +110,20 @@ func (s *Service) EnsurePending(ctx context.Context, tenantType, tenantID, displ
 		return nil
 	}
 	now := s.now()
-	return s.repo.UpsertTenant(ctx, Tenant{
+	if err := s.repo.UpsertTenant(ctx, Tenant{
 		TenantType:  tenantType,
 		TenantID:    tenantID,
 		Status:      StatusPending,
 		DisplayName: strings.TrimSpace(displayName),
 		CreatedAt:   now,
 		UpdatedAt:   now,
+	}); err != nil {
+		return err
+	}
+	s.publish(ctx, "PLATFORM_ADMIN_AUDIT", "TENANT_PENDING", tenantType, tenantID, "system", map[string]string{
+		"display_name": strings.TrimSpace(displayName),
 	})
+	return nil
 }
 
 func (s *Service) List(ctx context.Context, status string, limit int) ([]Tenant, error) {
@@ -163,16 +197,19 @@ func (s *Service) Transition(ctx context.Context, actor, tenantType, tenantID, t
 	if err := s.repo.UpsertTenant(ctx, t); err != nil {
 		return Tenant{}, err
 	}
-	detail, _ := json.Marshal(map[string]string{"to": toStatus, "from": prev})
+	detailMap := map[string]string{"to": toStatus, "from": prev}
+	detail, _ := json.Marshal(detailMap)
+	action := "TENANT_" + toStatus
 	_ = s.repo.InsertAudit(ctx, AuditRow{
 		AuditID:      uuid.NewString(),
 		ActorSubject: strings.TrimSpace(actor),
-		Action:       "TENANT_" + toStatus,
+		Action:       action,
 		TenantType:   t.TenantType,
 		TenantID:     t.TenantID,
 		DetailJSON:   string(detail),
 		CreatedAt:    now,
 	})
+	s.publish(ctx, "PLATFORM_ADMIN_AUDIT", action, t.TenantType, t.TenantID, actor, detailMap)
 	return t, nil
 }
 
@@ -209,7 +246,7 @@ func (s *Service) RecordFlagAudit(ctx context.Context, actor, action, tenantType
 	if s == nil || s.repo == nil {
 		return fmt.Errorf("platformadmin_unavailable")
 	}
-	return s.repo.InsertAudit(ctx, AuditRow{
+	if err := s.repo.InsertAudit(ctx, AuditRow{
 		AuditID:      uuid.NewString(),
 		ActorSubject: actor,
 		Action:       action,
@@ -217,5 +254,14 @@ func (s *Service) RecordFlagAudit(ctx context.Context, actor, action, tenantType
 		TenantID:     tenantID,
 		DetailJSON:   detailJSON,
 		CreatedAt:    time.Now().UTC(),
-	})
+	}); err != nil {
+		return err
+	}
+	var detail any = detailJSON
+	var parsed map[string]any
+	if json.Unmarshal([]byte(detailJSON), &parsed) == nil {
+		detail = parsed
+	}
+	s.publish(ctx, "PLATFORM_ADMIN_AUDIT", action, tenantType, tenantID, actor, detail)
+	return nil
 }

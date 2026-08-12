@@ -1,12 +1,14 @@
 openapi: 3.0.3
 info:
   title: PegasusX Partner API
-  version: "1.5.0"
+  version: "1.6.0"
   description: |
     Gate-3 machine integration surface (§8.9). Authenticate with a partner API key
     (`Authorization: Bearer pxk_…`) **or** a short-lived OAuth2 access token from
     `POST /partner/v1/oauth/token` (`grant_type=client_credentials`; `PartnerApiKeys` are the clients).
-    Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under `/v1/supplier/…`).
+    Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under
+    `/v1/supplier/partner-*`, retailer under `/v1/retailer/partner-keys`, SFTP under
+    `/v1/supplier/partner-sftp` and `/v1/admin/partner-sftp`).
     Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite. Wave 2C: GS1. Journals + configurable CoA.
     AS2 transport over EDI-lite (not Drummond-certified).
     Phase 2: master-data upsert (products/prices/stock), webhook secret rotation, POS demand feed,
@@ -550,6 +552,10 @@ paths:
                   type: array
                   items:
                     type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+                  description: Optional; SANDBOX issues `pxs_*` keys
       responses:
         "201":
           description: Key issued (secret once)
@@ -561,6 +567,267 @@ paths:
       responses:
         "200":
           description: Keys metadata
+  /v1/admin/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (admin / platform-admin JWT)
+      operationId: revokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-keys:
+    post:
+      summary: Issue partner API key (supplier portal JWT alias)
+      description: Same handler as `/v1/admin/partner-keys`; tenant scoped to the supplier session.
+      operationId: supplierIssuePartnerApiKey
+      security:
+        - BearerJWT: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+      responses:
+        "201":
+          description: Key issued (secret once)
+    get:
+      summary: List partner keys (supplier portal JWT alias)
+      operationId: supplierListPartnerApiKeys
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Keys metadata
+  /v1/supplier/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (supplier portal JWT alias)
+      operationId: supplierRevokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/retailer/partner-keys:
+    post:
+      summary: Issue partner API key (retailer self-serve)
+      operationId: retailerIssuePartnerApiKey
+      security:
+        - BearerJWT: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+      responses:
+        "201":
+          description: Key issued (secret once)
+    get:
+      summary: List partner keys (retailer self-serve)
+      operationId: retailerListPartnerApiKeys
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Keys metadata
+  /v1/retailer/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (retailer self-serve)
+      operationId: retailerRevokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-sftp:
+    get:
+      summary: Get SFTP destination config (supplier portal JWT)
+      operationId: supplierGetPartnerSftp
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Config (no secret material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
+    put:
+      summary: Upsert SFTP destination config (supplier portal JWT)
+      operationId: supplierPutPartnerSftp
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerSftpConfigUpdate"
+      responses:
+        "200":
+          description: Saved
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/admin/partner-sftp:
+    get:
+      summary: Get SFTP destination config (admin / platform-admin JWT)
+      operationId: adminGetPartnerSftp
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: tenant_type
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Config (no secret material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
+    put:
+      summary: Upsert SFTP destination config (admin / platform-admin JWT)
+      operationId: adminPutPartnerSftp
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: tenant_type
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerSftpConfigUpdate"
+      responses:
+        "200":
+          description: Saved
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-webhooks:
+    get:
+      summary: List webhooks (supplier portal JWT alias of /partner/v1/webhooks)
+      operationId: supplierListPartnerWebhooks
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Subscriptions
+    post:
+      summary: Create webhook (supplier portal JWT alias)
+      operationId: supplierCreatePartnerWebhook
+      security:
+        - BearerJWT: []
+      responses:
+        "201":
+          description: Created
+  /v1/supplier/partner-webhooks/{subscriptionID}/rotate-secret:
+    post:
+      summary: Rotate webhook secret (supplier portal JWT alias)
+      operationId: supplierRotatePartnerWebhookSecret
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rotated
+  /v1/supplier/partner-as2:
+    get:
+      summary: Get AS2 config (supplier portal JWT alias of /partner/v1/as2/config)
+      operationId: supplierGetPartnerAs2
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: AS2 config
+    put:
+      summary: Upsert AS2 config (supplier portal JWT alias)
+      operationId: supplierPutPartnerAs2
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Saved
+  /v1/supplier/partner-coa:
+    get:
+      summary: Get CoA map (supplier portal JWT alias of /partner/v1/coa)
+      operationId: supplierGetPartnerCoa
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: CoA
+    put:
+      summary: Upsert CoA map (supplier portal JWT alias)
+      operationId: supplierPutPartnerCoa
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Saved
 components:
   securitySchemes:
     PartnerApiKey:
@@ -854,6 +1121,30 @@ components:
         host_key_sha256:
           type: string
           description: Base64 SHA-256 of SSH host key (pin); required when PARTNER_SFTP_STRICT_HOSTKEY=true
+    PartnerSftpConfigUpdate:
+      type: object
+      description: Upsert body for JWT SFTP config routes
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        secret_ref:
+          type: string
+        remote_dir:
+          type: string
+        inbound_dir:
+          type: string
+        outbound_dir:
+          type: string
+        archive_dir:
+          type: string
+        edi_enabled:
+          type: boolean
+        host_key_sha256:
+          type: string
     PartnerProductUpsertRequest:
       type: object
       required: [items]

@@ -2,10 +2,11 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { TwinOpsRouteView } from "@pegasusx/types";
+import type { TwinOpsRouteView, TwinVehicleInventoryRow } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import { useMapLibreTeardown } from "@pegasusx/ui-kit/desktop";
+import { createSupplierApi } from "@/lib/api";
 
 const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
 
@@ -149,6 +150,37 @@ export default function LiveOpsMap({
 
 export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) {
   const t = usePortalT();
+  const [fetchedInventory, setFetchedInventory] = useState<TwinVehicleInventoryRow[] | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+
+  const embeddedInventoryLen = route?.Inventory?.length ?? 0;
+  useEffect(() => {
+    if (!route?.RouteID) {
+      setFetchedInventory(null);
+      return;
+    }
+    if (embeddedInventoryLen > 0) {
+      setFetchedInventory(null);
+      return;
+    }
+    let cancelled = false;
+    setInventoryLoading(true);
+    void createSupplierApi()
+      .getTwinRouteInventory(route.RouteID)
+      .then((rows) => {
+        if (!cancelled) setFetchedInventory(rows ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedInventory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setInventoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [route?.RouteID, embeddedInventoryLen]);
+
   if (!route) {
     return (
       <div className="p-4 text-sm" style={{ color: "var(--desk-text-secondary)" }}>
@@ -156,6 +188,8 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
       </div>
     );
   }
+
+  const inventory = (route.Inventory ?? []).length > 0 ? route.Inventory! : (fetchedInventory ?? []);
 
   return (
     <div className="p-4 flex flex-col gap-4 text-sm overflow-y-auto h-full">
@@ -198,11 +232,13 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
 
       <section>
         <h4 className="font-medium mb-2">{t("supplier_portal.live_ops_map.text.vehicle_inventory")}</h4>
-        {(route.Inventory ?? []).length === 0 ? (
+        {inventoryLoading && inventory.length === 0 ? (
+          <p style={{ color: "var(--desk-text-secondary)" }}>Loading…</p>
+        ) : inventory.length === 0 ? (
           <p style={{ color: "var(--desk-text-secondary)" }}>{t("supplier_portal.live_ops_map.text.no_inventory_rows")}</p>
         ) : (
           <ul className="space-y-1 font-mono text-xs">
-            {(route.Inventory ?? []).map((row) => (
+            {inventory.map((row) => (
               <li key={row.Sku}>{row.Sku}: {row.QtyOnVehicle}</li>
             ))}
           </ul>

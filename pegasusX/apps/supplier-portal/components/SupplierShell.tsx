@@ -28,6 +28,7 @@ const NAV: NavSection[] = [
       { href: "/orders", icon: "orders", labelKey: "portal.nav.orders" },
       { href: "/dispatch", icon: "dispatch", labelKey: "portal.nav.dispatch" },
       { href: "/ops/map", icon: "dispatch", labelKey: "portal.nav.live_ops_map" },
+      { href: "/labor-capacity", icon: "fleet", labelKey: "portal.nav.labor_capacity" },
       { href: "/manifests", icon: "manifests", labelKey: "portal.nav.manifests" },
       { href: "/fleet", icon: "fleet", labelKey: "portal.nav.fleet" },
       { href: "/fleet/orders", icon: "orders", labelKey: "portal.nav.fleet_orders" },

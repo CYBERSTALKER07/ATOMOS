@@ -34,6 +34,16 @@ func TestMoneyFlagRequiresReason(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected reason_required")
 	}
+	err = svc.SetOverride(context.Background(), Override{
+		FlagKey: "AUTO_ORDER_SOAK_GATE_DISABLED", TenantType: "RETAILER", TenantID: "r1",
+		Enabled: true, UpdatedBy: "a",
+	})
+	if err == nil {
+		t.Fatal("expected reason_required for soak-gate break-glass")
+	}
+	if !MoneyAffectingFlags["AUTO_ORDER_SOAK_GATE_DISABLED"] {
+		t.Fatal("AUTO_ORDER_SOAK_GATE_DISABLED must be money-affecting")
+	}
 }
 
 // Money flags are dual-controlled: a set is PENDING and does not change runtime

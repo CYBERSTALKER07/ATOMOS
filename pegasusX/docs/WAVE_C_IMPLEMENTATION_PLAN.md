@@ -31,7 +31,7 @@ This document is the runbook for agents and humans. Each PR has: goal, files, DD
 | `MULTI_ORG_RETAILER_ALLOWLIST` | empty | Optional comma `RetailerId`s |
 | `PENDING_ORG_SELECT_TTL_SEC` | `420` (7m) | Intermediate JWT |
 | `HQ_ANALYTICS_ENABLED` | `false` | C2 |
-| `POS_HOLDS_ENABLED` | `false` | C3 holds |
+| `POS_HOLDS_ENABLED` | pilot default **on** (unset); set `false` to disable | C3 holds |
 | `OFFLINE_COUNT_ENABLED` | `false` | C3 count |
 | `ASSIST_SLA_ENABLED` | `false` | C4 |
 | `ASSIST_SLA_MINUTES` | `15` | C4 |

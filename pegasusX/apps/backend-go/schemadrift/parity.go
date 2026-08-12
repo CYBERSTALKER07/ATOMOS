@@ -39,6 +39,7 @@ var RequiredProductTables = []string{
 	"FlywheelDemandFeed",
 	"RetailerStockCountForceAudits",
 	"OrderShopClosedLog",
+	"PlanningScenarios",
 }
 
 // MigrationTables returns CREATE TABLE names from all *.ddl files in dir.

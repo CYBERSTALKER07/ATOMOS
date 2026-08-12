@@ -10,7 +10,7 @@ resources:
   - frontendconfig.yaml
   - managed-certificate.yaml
   - ingress.yaml
-  # §8.5 — OR-Tools sidecar manifests (replicas 0 until AR image published)
+  # §8.5 — OR-Tools sidecar manifests (patched to replicas 1 below; prod stays 0 until AR)
   - ../../optimizer-core/configmap.yaml
   - ../../optimizer-core/deployment.yaml
   - ../../optimizer-core/service.yaml

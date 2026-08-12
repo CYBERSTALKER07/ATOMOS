@@ -78,6 +78,7 @@ data class LiveOrder(
 data class Manifest(
     @SerialName("manifest_id") val manifestId: String,
     @SerialName("truck_id") val truckId: String = "",
+    @SerialName("vehicle_id") val vehicleId: String = "",
     @SerialName("driver_id") val driverId: String = "",
     val state: String = "DRAFT", // DRAFT | LOADING | SEALED | DISPATCHED | COMPLETED
     @SerialName("total_volume_vu") val totalVolumeVu: Double = 0.0,
@@ -93,7 +94,17 @@ data class Manifest(
     @SerialName("driver_lat") val driverLat: Double? = null,
     @SerialName("driver_lng") val driverLng: Double? = null,
     @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
-)
+    /** Client-only: payloader | factory (P1-18 / P2-25 loading-bay merge). */
+    @Transient val source: String = SOURCE_PAYLOADER,
+) {
+    fun matchesTruck(truckId: String): Boolean =
+        this.truckId == truckId || vehicleId == truckId
+
+    companion object {
+        const val SOURCE_PAYLOADER = "payloader"
+        const val SOURCE_FACTORY = "factory"
+    }
+}
 
 @Serializable
 data class ManifestsResponse(val manifests: List<Manifest> = emptyList())

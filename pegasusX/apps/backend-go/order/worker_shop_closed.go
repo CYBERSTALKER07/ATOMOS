@@ -236,8 +236,14 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 		// Open the AR open item post-commit, mirroring the driver credit-leave
 		// path (idempotent per order via the OPEN ledger key).
 		if s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
-			if _, aerr := s.ar.OpenFromCreditLeave(ctx, resolvedOrder.SupplierID, resolvedOrder.RetailerID, orderID,
-				resolvedOrder.TotalMinor, 0, 0, now, time.Time{}); aerr != nil {
+			if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+				SupplierID:    resolvedOrder.SupplierID,
+				RetailerID:    resolvedOrder.RetailerID,
+				OrderID:       orderID,
+				AmountMinor:   resolvedOrder.TotalMinor,
+				Currency:      resolvedOrder.Currency,
+				CreditLeaveAt: now,
+			}); aerr != nil {
 				s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
 			}
 		}

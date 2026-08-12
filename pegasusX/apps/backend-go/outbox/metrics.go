@@ -26,3 +26,23 @@ func IncDeadLettered(n int) {
 		deadLetteredTotal.Add(float64(n))
 	}
 }
+
+var relayRestartsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "void_outbox_relay_restarts_total",
+	Help: "Outbox relay Start() invocations (process / loop restarts; SLO < 1/hour)",
+})
+
+// IncRelayRestart increments when the outbox relay loop starts.
+func IncRelayRestart() {
+	relayRestartsTotal.Inc()
+}
+
+var stuckEventsDetected = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "void_outbox_relay_stuck_events_total",
+	Help: "Times the outbox watchdog observed stuck unpublished events",
+})
+
+// IncStuckEventsDetected increments when watchdog finds stuck outbox rows.
+func IncStuckEventsDetected() {
+	stuckEventsDetected.Inc()
+}

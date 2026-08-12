@@ -173,6 +173,52 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
     }
 
+    // MARK: - Factory loading-bay (P1-18 / P2-25 parity with Expo terminal)
+    func factoryManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
+        try await get("v1/factory/manifests?state=\(state)")
+    }
+
+    func factoryManifestDetail(_ manifestId: String) async throws -> Manifest {
+        try await get("v1/factory/manifests/\(manifestId)")
+    }
+
+    func factoryStartLoading(manifestId: String) async throws -> StatusResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/start-loading",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
+        )
+    }
+
+    func factorySealManifest(manifestId: String) async throws -> SealManifestResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/seal",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.sealCompleted(manifestIds: [manifestId])
+        )
+    }
+
+    /// Payloader + factory manifests; payloader wins on id collision.
+    func listLoadingBayManifests(state: String = "DRAFT") async throws -> [Manifest] {
+        var out: [String: Manifest] = [:]
+        let payloaderManifests: [Manifest]
+        do {
+            let primary: ManifestsResponse = try await get("v1/payloader/manifests?state=\(state)")
+            payloaderManifests = primary.manifests
+        } catch {
+            payloaderManifests = (try? await supplierManifests(state: state))?.manifests ?? []
+        }
+        for m in payloaderManifests {
+            out[m.manifestId] = m.withSource("payloader")
+        }
+        if let factory = try? await factoryManifests(state: state) {
+            for m in factory.manifests where out[m.manifestId] == nil {
+                out[m.manifestId] = m.withSource("factory")
+            }
+        }
+        return Array(out.values)
+    }
+
     func sealCompletedManifests(manifestIds: [String]) async throws -> SealCompletedManifestsResponse {
         let ids = Array(Set(manifestIds.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }))
         guard !ids.isEmpty else { throw APIError.httpError(400) }
@@ -184,7 +230,8 @@ final class APIClient: @unchecked Sendable {
     }
 
     func loadingManifests() async throws -> ManifestsResponse {
-        try await supplierManifests(state: "LOADING")
+        let manifests = try await listLoadingBayManifests(state: "LOADING")
+        return ManifestsResponse(manifests: manifests)
     }
 
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {

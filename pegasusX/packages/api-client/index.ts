@@ -129,6 +129,9 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   CreateCreditNoteRequest,
   TwinOpsRouteView,
   TwinVehicleInventoryRow,
+  TemperatureReadingView,
+  LaborZoneCapacity,
+  LaborDriverScore,
   ControlTowerZoneOverride,
   ControlTowerZoneOverridesResponse,
   ControlTowerZoneOverrideRequest,
@@ -142,6 +145,9 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SetSkuClassInput,
   PlanningScenarioInput,
   PlanningScenarioResult,
+  PlanningScenarioCloneInput,
+  PlanningScenarioCompareResult,
+  PlanningScenarioListResponse,
   PlanningSignalIngestStatus,
   PlanningSAndOPSnapshot,
   SupplierKnowledgeGraph,
@@ -1470,6 +1476,47 @@ export class ApiClient {
     );
   }
 
+  async listWarehouseTemperatureReadings(manifestId: string): Promise<{ readings: TemperatureReadingView[] }> {
+    return this.request<{ readings: TemperatureReadingView[] }>(
+      `/v1/warehouse/ops/temperature-readings?manifest_id=${encodeURIComponent(manifestId)}`,
+      "GET",
+    );
+  }
+
+  async ingestWarehouseTemperatureReading(body: {
+    manifest_id: string;
+    sensor_id?: string;
+    temp_c: number;
+    lat?: number;
+    lng?: number;
+    min_c?: number;
+    max_c?: number;
+  }): Promise<TemperatureReadingView> {
+    return this.request<TemperatureReadingView>("/v1/warehouse/ops/temperature-readings", "POST", body);
+  }
+
+  async listLaborZoneCapacity(date?: string): Promise<{ zones: LaborZoneCapacity[] } | LaborZoneCapacity> {
+    const q = date ? `?date=${encodeURIComponent(date)}` : "";
+    return this.request<{ zones: LaborZoneCapacity[] } | LaborZoneCapacity>(`/v1/labor-capacity/zone-capacity${q}`, "GET");
+  }
+
+  async getLaborDriverScore(driverId: string): Promise<LaborDriverScore> {
+    return this.request<LaborDriverScore>(
+      `/v1/labor-capacity/driver-score/${encodeURIComponent(driverId)}`,
+      "GET",
+    );
+  }
+
+  async setLaborDriverAvailability(body: {
+    driverId: string;
+    date: string;
+    availableHours: number;
+    zoneH3?: string;
+    status: string;
+  }): Promise<{ status: string }> {
+    return this.request<{ status: string }>("/v1/labor-capacity/driver-availability", "POST", body);
+  }
+
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
     return this.request<SupplierMEIONetworkSummary>("/v1/supplier/meio/network-summary", "GET");
   }
@@ -1556,6 +1603,35 @@ export class ApiClient {
   async runPlanningScenario(request: PlanningScenarioInput, idempotencyKey: string): Promise<PlanningScenarioResult> {
     return this.request<PlanningScenarioResult>("/v1/supplier/planning/scenarios/run", "POST", {
       body: request,
+      idempotencyKey,
+    });
+  }
+
+  async listPlanningScenarios(): Promise<PlanningScenarioListResponse> {
+    return this.request<PlanningScenarioListResponse>("/v1/supplier/planning/scenarios", "GET");
+  }
+
+  async clonePlanningScenario(
+    scenarioId: string,
+    request: PlanningScenarioCloneInput,
+    idempotencyKey: string,
+  ): Promise<PlanningScenarioResult> {
+    return this.request<PlanningScenarioResult>(`/v1/supplier/planning/scenarios/${scenarioId}/clone`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async comparePlanningScenarios(scenarioIds: [string, string], idempotencyKey: string): Promise<PlanningScenarioCompareResult> {
+    return this.request<PlanningScenarioCompareResult>("/v1/supplier/planning/scenarios/compare", "POST", {
+      body: { scenario_ids: scenarioIds },
+      idempotencyKey,
+    });
+  }
+
+  async publishPlanningScenario(scenarioId: string, idempotencyKey: string): Promise<PlanningScenarioResult> {
+    return this.request<PlanningScenarioResult>(`/v1/supplier/planning/scenarios/${scenarioId}/publish`, "POST", {
+      body: {},
       idempotencyKey,
     });
   }

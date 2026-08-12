@@ -173,7 +173,11 @@ final class HomeViewModel {
             let loading = try await api.loadingManifests().manifests
             var ready: [String] = []
             for item in loading {
-                guard let manifestTruckId = item.truckId else { continue }
+                // Batch seal-completed is payloader-only; factory seals via /v1/factory/.../seal.
+                guard item.source != "factory" else { continue }
+                let manifestTruckId = item.truckId.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? item.vehicleId.flatMap { $0.isEmpty ? nil : $0 }
+                guard let manifestTruckId else { continue }
                 let truckOrders: [LiveOrder]
                 if manifestTruckId == truckId {
                     truckOrders = orders
@@ -253,13 +257,13 @@ final class HomeViewModel {
         if !silent { loadingManifest = true }
         defer { if !silent { loadingManifest = false } }
         do {
-            let draft = try await api.supplierManifests(state: "DRAFT")
-            if let match = draft.manifests.first(where: { $0.truckId == truckId }) {
+            let draft = try await api.listLoadingBayManifests(state: "DRAFT")
+            if let match = draft.first(where: { $0.matchesTruck(truckId) }) {
                 manifest = match
                 return
             }
-            let loading = try await api.supplierManifests(state: "LOADING")
-            manifest = loading.manifests.first(where: { $0.truckId == truckId })
+            let loading = try await api.listLoadingBayManifests(state: "LOADING")
+            manifest = loading.first(where: { $0.matchesTruck(truckId) })
         } catch {
             if !silent { self.error = describe(error) }
         }
@@ -377,12 +381,20 @@ final class HomeViewModel {
 
     // MARK: - Manifest-level transitions
     func startLoading() async {
-        guard let id = manifest?.manifestId, !startingLoading else { return }
+        guard let current = manifest, !startingLoading else { return }
         startingLoading = true
         error = nil
         defer { startingLoading = false }
         do {
-            _ = try await api.supplierStartLoading(manifestId: id)
+            if current.source == "factory" {
+                _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+            } else {
+                do {
+                    _ = try await api.supplierStartLoading(manifestId: current.manifestId)
+                } catch {
+                    _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+                }
+            }
             manifest = manifest.map { mutateState($0, to: "LOADING") }
         } catch {
             self.error = describe(error)
@@ -394,18 +406,23 @@ final class HomeViewModel {
     }
 
     func sealManifest() async {
-        guard let id = manifest?.manifestId, !sealingManifest else { return }
+        guard let current = manifest, !sealingManifest else { return }
         sealingManifest = true
         error = nil
         errorExplain = nil
         defer { sealingManifest = false }
         do {
-            let manifestIds = batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(id)
+            let factoryOnly = current.source == "factory"
+            let manifestIds = !factoryOnly && batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(current.manifestId)
                 ? batchReadyManifestIds
-                : [id]
-            _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+                : [current.manifestId]
+            if factoryOnly {
+                _ = try await api.factorySealManifest(manifestId: current.manifestId)
+            } else {
+                _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+            }
             manifestSealed = true
-            if manifestIds.count > 1 {
+            if !factoryOnly && manifestIds.count > 1 {
                 batchReadyManifestIds = []
                 sealedOrdersByTruck = [:]
             }
@@ -736,6 +753,7 @@ final class HomeViewModel {
         Manifest(
             manifestId: m.manifestId,
             truckId: m.truckId,
+            vehicleId: m.vehicleId,
             driverId: m.driverId,
             state: state,
             totalVolumeVu: m.totalVolumeVu,
@@ -746,7 +764,8 @@ final class HomeViewModel {
             dispatchedAt: m.dispatchedAt,
             createdAt: m.createdAt,
             orders: m.orders,
-            overflowCount: m.overflowCount
+            overflowCount: m.overflowCount,
+            source: m.source
         )
     }
 

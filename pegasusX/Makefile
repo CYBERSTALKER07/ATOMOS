@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -34,6 +34,8 @@ help:
 	@echo "  phase5b-gate              Phase-5b progress gate: ParentOrders + multi-supplier checkout"
 	@echo "  phase5c-gate              Phase-5c progress gate: GlobalProducts master + match queue"
 	@echo "  analytics-tenancy-gate    RoutePerformanceAnalytics SupplierId + tenant list filter"
+	@echo "  ci-enterprise-gates       CI chain: phase2→5c + analytics-tenancy (P2-18)"
+	@echo "  admin-portal-ci           Typecheck + build admin-portal (P2-18)"
 	@echo "  apply-shop-closed-ddl     EH0.2 apply 20260729 shop-closed DDL + verify (SSMR default)"
 	@echo "  apply-parent-orders-ddl   Gate 5 Phase 2 apply 20260817 ParentOrders DDL + verify"
 	@echo "  apply-global-products-ddl Gate 5 Phase 3 apply 20260818 GlobalProducts DDL + verify"
@@ -169,6 +171,13 @@ phase5c-gate:
 analytics-tenancy-gate:
 	bash scripts/analytics_tenancy_gate.sh
 
+ci-enterprise-gates:
+	bash scripts/ci_enterprise_gates.sh
+
+admin-portal-ci:
+	pnpm --filter @pegasusx/admin-portal typecheck
+	pnpm --filter @pegasusx/admin-portal build
+
 apply-shop-closed-ddl:
 	bash scripts/apply_shop_closed_ddl.sh
 
@@ -213,6 +222,15 @@ partner-openapi-gate:
 	@grep -q 'catalog:write' contracts/partner.openapi.yaml || (echo "missing catalog:write scope" && exit 1)
 	@grep -q 'IdempotencyKey' contracts/partner.openapi.yaml || (echo "missing IdempotencyKey parameter" && exit 1)
 	@grep -c 'IdempotencyKey' contracts/partner.openapi.yaml | awk '$$1 < 4 { print "need IdempotencyKey on orders+products+prices+stock(+pos)"; exit 1 }'
+	@grep -q '/v1/admin/partner-keys/{keyID}/revoke' contracts/partner.openapi.yaml || (echo "missing admin key revoke path" && exit 1)
+	@grep -q '/v1/supplier/partner-keys' contracts/partner.openapi.yaml || (echo "missing supplier partner-keys alias" && exit 1)
+	@grep -q '/v1/supplier/partner-keys/{keyID}/revoke' contracts/partner.openapi.yaml || (echo "missing supplier key revoke" && exit 1)
+	@grep -q '/v1/supplier/partner-sftp' contracts/partner.openapi.yaml || (echo "missing supplier partner-sftp path" && exit 1)
+	@grep -q '/v1/admin/partner-sftp' contracts/partner.openapi.yaml || (echo "missing admin partner-sftp path" && exit 1)
+	@grep -q '/v1/retailer/partner-keys' contracts/partner.openapi.yaml || (echo "missing retailer partner-keys path" && exit 1)
+	@grep -q '/v1/supplier/partner-webhooks' contracts/partner.openapi.yaml || (echo "missing supplier partner-webhooks alias" && exit 1)
+	@grep -q '/v1/supplier/partner-as2' contracts/partner.openapi.yaml || (echo "missing supplier partner-as2 alias" && exit 1)
+	@grep -q '/v1/supplier/partner-coa' contracts/partner.openapi.yaml || (echo "missing supplier partner-coa alias" && exit 1)
 	@echo "partner-openapi-gate-ok"
 
 jwt-openapi-gate:

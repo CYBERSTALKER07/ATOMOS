@@ -100,11 +100,130 @@ func (s *Service) HandlePlanningScenarioRun(w http.ResponseWriter, r *http.Reque
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
 	var in planning.ScenarioInput
 	_ = json.Unmarshal(body, &in)
-	result, err := svc.RunScenario(r.Context(), s.scopedSupplierID(r), in)
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.RunScenario(r.Context(), s.scopedSupplierID(r), claims.Subject, in)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_run_failed"})
 		return
 	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// HandlePlanningScenarioList serves GET /v1/supplier/planning/scenarios.
+func (s *Service) HandlePlanningScenarioList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	rows, err := svc.ListScenarios(r.Context(), s.scopedSupplierID(r), 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_list_failed"})
+		return
+	}
+	if rows == nil {
+		rows = []planning.ScenarioResult{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"scenarios": rows})
+}
+
+// HandlePlanningScenarioClone serves POST /v1/supplier/planning/scenarios/{scenarioID}/clone.
+func (s *Service) HandlePlanningScenarioClone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	scenarioID := chi.URLParam(r, "scenarioID")
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
+	var in planning.ScenarioCloneInput
+	_ = json.Unmarshal(body, &in)
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.CloneScenario(r.Context(), s.scopedSupplierID(r), scenarioID, claims.Subject, in)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_clone_failed"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
+}
+
+// HandlePlanningScenarioCompare serves POST /v1/supplier/planning/scenarios/compare.
+func (s *Service) HandlePlanningScenarioCompare(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
+	var in planning.ScenarioCompareRequest
+	if err := json.Unmarshal(body, &in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_body"})
+		return
+	}
+	result, err := svc.CompareScenarios(r.Context(), s.scopedSupplierID(r), in.ScenarioIDs)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		if strings.Contains(err.Error(), "compare_requires_two") {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "compare_requires_two_scenarios"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_compare_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// HandlePlanningScenarioPublish serves POST /v1/supplier/planning/scenarios/{scenarioID}/publish.
+func (s *Service) HandlePlanningScenarioPublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	scenarioID := chi.URLParam(r, "scenarioID")
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.PublishScenario(r.Context(), s.scopedSupplierID(r), scenarioID, claims.Subject)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		if errors.Is(err, planning.ErrScenarioPublishConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "scenario_publish_conflict"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_publish_failed"})
+		return
+	}
+	s.broadcastSupplierPlanningEvent(r.Context(), s.scopedSupplierID(r), "", map[string]any{
+		"type":        "planning.scenario.published.v1",
+		"scenario_id": result.ScenarioID,
+		"version":     result.Version,
+		"supplier_id": result.SupplierID,
+	})
 	writeJSON(w, http.StatusOK, result)
 }
 

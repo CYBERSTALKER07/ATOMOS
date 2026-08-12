@@ -62,6 +62,7 @@ type jwtPayload struct {
 	LocationIDs      []string `json:"location_ids,omitempty"`
 	ActiveLocationID string   `json:"active_location_id,omitempty"`
 	CapabilityPacks  []string `json:"capability_packs,omitempty"`
+	MFAVerified      bool     `json:"mfa_verified,omitempty"`
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
@@ -102,10 +103,45 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		LocationIDs:      c.LocationIDs,
 		ActiveLocationID: c.ActiveLocationID,
 		CapabilityPacks:  c.CapabilityPacks,
+		MFAVerified:      c.MFAVerified,
 	})
 	head := b64(h) + "." + b64(p)
 	sig := sign(head, opts.Secret)
 	return head + "." + sig, nil
+}
+
+// IssueWSTicket mints a short-lived WebSocket upgrade ticket (token_use=ws).
+// Copies identity from the session claims and forces a fresh jti so logout of
+// the parent session does not denylist this ticket by accident (ticket TTL is short).
+func IssueWSTicket(session Claims, opts IssueOptions) (token string, expiresAt time.Time, err error) {
+	if opts.TTL <= 0 {
+		opts.TTL = 10 * time.Minute
+	}
+	if opts.Now == nil {
+		opts.Now = func() time.Time { return time.Now().UTC() }
+	}
+	now := opts.Now()
+	ticket := session
+	ticket.TokenUse = TokenUseWS
+	ticket.JTI = ""
+	token, err = Issue(ticket, opts)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return token, now.Add(opts.TTL), nil
+}
+
+// ParseBearerClaims extracts and validates Authorization: Bearer (incl. revocation).
+func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
+	token := BearerToken(r)
+	if token == "" {
+		return Claims{}, false
+	}
+	claims, err := Parse(token, secret)
+	if err != nil || tokenRevoked(r.Context(), claims) {
+		return Claims{}, false
+	}
+	return claims, true
 }
 
 // Parse verifies signature + exp and returns the embedded Claims.
@@ -152,6 +188,7 @@ func Parse(token, secret string) (Claims, error) {
 		LocationIDs:      p.LocationIDs,
 		ActiveLocationID: p.ActiveLocationID,
 		CapabilityPacks:  p.CapabilityPacks,
+		MFAVerified:      p.MFAVerified,
 	}, nil
 }
 

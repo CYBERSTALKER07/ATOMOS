@@ -54,6 +54,7 @@ was unmounted, and no UI surfaced the metrics. This change closes that loop.
   (PortalPrimitives, PageChrome, GlassmorphismPanel, …) and several unrelated
   pages. None reference the files touched in this change; a scoped `tsc` over
   `ForecastAccuracyPanel.tsx` + its imports reports zero errors.
-- The prod `optimizer-core` image/replicas gap flagged by the End-Product Reality
-  Report is an external build/publish step (no in-repo optimizer source/Dockerfile);
-  it cannot be resolved from this tree and is tracked separately.
+- Optimizer source lives in-repo at `services/optimizer-core/` (Dockerfile + solvers).
+  SSMR overlay patches `replicas: 1` and remaps to `optimizer-core:ssmr`. Prod stays
+  `replicas: 0` until Artifact Registry publishes a real optimizer-core digest
+  (CI fails if prod image is still backend-go — see P1-1).

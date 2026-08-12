@@ -1,15 +1,16 @@
 package com.pegasusx.retailer.ui.screens.settings
 
-import androidx.compose.ui.res.stringResource
-
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,15 +27,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import com.pegasusx.retailer.data.api.PegasusApi
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 import com.pegasusx.retailer.R
-import com.pegasusx.retailer.data.json.*
+import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.json.asInt
+import com.pegasusx.retailer.data.json.asJsonObject
+import com.pegasusx.retailer.data.json.asLong
+import com.pegasusx.retailer.data.json.asString
+import com.pegasusx.retailer.data.json.getAsJsonArray
+import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class ReportsViewModel @Inject constructor(val api: PegasusApi) : ViewModel()
@@ -46,12 +57,14 @@ fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel(),
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var salesMinor by remember { mutableStateOf(0L) }
     var saleCount by remember { mutableStateOf(0) }
     var onHand by remember { mutableStateOf(0) }
     var lowStock by remember { mutableStateOf(0) }
     var topLine by remember { mutableStateOf("—") }
     var banner by remember { mutableStateOf<String?>(null) }
+    var exporting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -69,6 +82,40 @@ fun ReportsScreen(
                 banner = "REPORTS_PRO enabled on first view"
             } catch (e: Exception) {
                 banner = e.message
+            }
+        }
+    }
+
+    fun shareSalesCsv() {
+        if (exporting) return
+        exporting = true
+        scope.launch {
+            try {
+                val body = viewModel.api.exportReportsCsv(report = "sales")
+                val file = withContext(Dispatchers.IO) {
+                    val out = File(context.cacheDir, "sales.csv")
+                    body.byteStream().use { input ->
+                        out.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    out
+                }
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file,
+                )
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/csv"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "sales.csv")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(share, "Export sales CSV"))
+                banner = "Sales CSV ready to share"
+            } catch (e: Exception) {
+                banner = e.message ?: "Export failed"
+            } finally {
+                exporting = false
             }
         }
     }
@@ -101,6 +148,15 @@ fun ReportsScreen(
                         Text(stringResource(R.string.mobile_retailer_ui_low_stock_bins_lowstock_2, lowStock))
                         Text(stringResource(R.string.mobile_retailer_ui_top_sku_topline_2, topLine))
                     }
+                }
+            }
+            item {
+                Button(
+                    onClick = { shareSalesCsv() },
+                    enabled = !exporting,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (exporting) "Exporting…" else "Export sales CSV")
                 }
             }
         }

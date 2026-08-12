@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 )
@@ -117,11 +117,17 @@ func issueRoleJWT(cfg *bootstrap.Config, claims auth.Claims) (string, error) {
 	})
 }
 
-func wsURL(base, token string) string {
+func wsURL(base string) string {
 	root := strings.TrimRight(base, "/")
 	root = strings.Replace(root, "https://", "wss://", 1)
 	root = strings.Replace(root, "http://", "ws://", 1)
-	return root + "/v1/ws?token=" + url.QueryEscape(token)
+	return root + "/v1/ws"
+}
+
+func dialWS(ctx context.Context, base, token string) (*websocket.Conn, *http.Response, error) {
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	return websocket.DefaultDialer.DialContext(ctx, wsURL(base), header)
 }
 
 func registerRetailer(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, string, error) {

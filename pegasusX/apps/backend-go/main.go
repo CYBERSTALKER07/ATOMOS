@@ -47,6 +47,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
+	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
@@ -171,8 +172,9 @@ func main() {
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 	})
-	platformadmin.RegisterRoutes(r, app.PlatformAdminHandlers)
-	featureflags.RegisterRoutes(r, app.FeatureFlagHandlers)
+	platformadmin.RegisterRoutes(r, app.PlatformAdminHandlers, mfa.RequireStepUp(app.MFAService))
+	featureflags.RegisterRoutes(r, app.FeatureFlagHandlers, mfa.RequireStepUp(app.MFAService))
+	mfa.RegisterRoutes(r, app.MFAHandlers)
 	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
 		Handlers:            app.PulseHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -184,6 +186,8 @@ func main() {
 		PaymentService:      app.PaymentService,
 		PromotionService:    app.PromotionService,
 		OrderService:        app.OrderService,
+		JWTSecret:           cfg.JWTSecret,
+		JWTIssuer:           cfg.JWTIssuer,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
@@ -199,6 +203,7 @@ func main() {
 	factoryroutes.RegisterRoutes(r, factoryroutes.Deps{
 		Service:             app.FactoryService,
 		JWTSecret:           cfg.JWTSecret,
+		JWTIssuer:           cfg.JWTIssuer,
 		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
@@ -218,6 +223,7 @@ func main() {
 			Spanner: app.Spanner,
 		},
 		JWTSecret:           cfg.JWTSecret,
+		JWTIssuer:           cfg.JWTIssuer,
 		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
@@ -390,7 +396,7 @@ func main() {
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,
-		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub,
+		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub, app.PlatformAdminHub,
 		ws.RegisterConfig{
 			RetailerPromoSuppliers: func(ctx context.Context, retailerID string) []string {
 				if app.PromotionAudience == nil {

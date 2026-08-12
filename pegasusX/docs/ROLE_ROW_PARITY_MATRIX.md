@@ -84,8 +84,8 @@
 | Code path (`optimizerclient` → `optimizer-core`) | **Wired** (supplier + warehouse dispatch) |
 | Constraint fields + multi-depot + OSRM `/table` matrix | **Wired** (§8.5; haversine fallback) |
 | Local compose (`docker-compose.ssmr.yml`) | OR-Tools available when service up |
-| SSMR GKE overlay | **Manifest included, `replicas: 0`** until AR image; heuristic until then |
-| Prod GKE overlay | Manifest present, **`replicas: 0`**, no real AR image |
+| SSMR GKE overlay | **Manifest included, `replicas: 1`** (heuristic fallback if image unhealthy) |
+| Prod GKE overlay | Manifest present, **`replicas: 0`**, until real AR image published |
 | Client apps call solver | **No** — `optimizer_source` on API only |
 | Exit criteria for cloud OR-Tools | Publish image + replicas ≥ 1 + `"optimizer_source":"optimizer"` |
 
@@ -112,7 +112,8 @@
 | Soliq OFD (state tax; Pegasus branded receipts Wired) | Tax / ops | `FISCAL_PROVIDER=SOLIQ` + sandbox readiness |
 | Offline POS | Product | Offline Retail OS flag; online-required v1 until then |
 | GP card SUCCESS + Firebase SMS | Cloud ops | Merchant password + SHA-1 / Blaze |
-| optimizer-core live in SSMR/prod | Cloud ops | AR image + replicas ≥ 1 (see runtime SoT) |
+| optimizer-core live in SSMR | Cloud ops | SSMR already replicas 1; prove healthy pod + `"optimizer_source":"optimizer"` |
+| optimizer-core live in prod | Cloud ops | Publish AR image + bump prod replicas ≥ 1 |
 | Interactive UI walk PASS cells | Operator | Flip READY_FOR_WALK → PASS in client signoff |
 
 Historical snapshot (pre-delete, not current truth): [`../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md`](../artifacts/ROLE_ROW_PARITY_MATRIX_SNAPSHOT_2026-07-07.md)

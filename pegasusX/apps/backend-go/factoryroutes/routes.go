@@ -11,6 +11,7 @@ import (
 type Deps struct {
 	Service             *factory.Service
 	JWTSecret           string
+	JWTIssuer           string
 	Spanner             *spanner.Client
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -77,6 +78,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	loadingBayRoles := []auth.Role{auth.RoleFactory, auth.RoleFactoryAdmin, auth.RoleAdmin, auth.RolePayload}
 
 	register := func(gr chi.Router) {
+		gr.Group(func(ws chi.Router) {
+			ws.Use(auth.RequireRole(factoryRoles...))
+			ws.Get("/v1/factory/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
+		})
 		gr.Group(func(bay chi.Router) {
 			bay.Use(auth.RequireRole(loadingBayRoles...))
 			bay.Use(auth.RequireFactoryScope)

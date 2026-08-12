@@ -55,7 +55,10 @@ func TestSLOCollector_EmitsMetrics(t *testing.T) {
 	for _, f := range fams {
 		found[f.GetName()] = true
 	}
-	for _, want := range []string{"void_outbox_lag_seconds", "void_fiscal_success_ratio", "void_capture_success_ratio"} {
+	for _, want := range []string{
+		"void_outbox_lag_seconds", "void_fiscal_success_ratio", "void_capture_success_ratio",
+		"void_outbox_dlq_depth", "void_partner_webhook_success_ratio",
+	} {
 		if !found[want] {
 			t.Errorf("metric %s not emitted", want)
 		}

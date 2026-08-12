@@ -14,6 +14,15 @@ import (
 // AUTO_ORDER_PLACE_ENABLED is dual-control approved (place-flip evidence trail).
 const AuditActionAutoOrderPlace = "FLAG_AUTO_ORDER_PLACE"
 
+// AuditActionAutoOrderSoakGate is written when AUTO_ORDER_SOAK_GATE_DISABLED
+// is dual-control approved (break-glass soak bypass trail — P2-7).
+const AuditActionAutoOrderSoakGate = "FLAG_AUTO_ORDER_SOAK_GATE"
+
+const (
+	auditActionOverrideSet     = "FLAG_OVERRIDE_SET"
+	auditActionOverrideApprove = "FLAG_OVERRIDE_APPROVE"
+)
+
 // FlagAuditor records dual-control flag approvals for money-affecting flags.
 type FlagAuditor interface {
 	RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error
@@ -46,9 +55,9 @@ func (h *Handlers) HandleEvaluate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"flag_key": strings.ToUpper(flag),
-		"enabled":  enabled,
-		"source":   source,
+		"flag_key":        strings.ToUpper(flag),
+		"enabled":         enabled,
+		"source":          source,
 		"money_affecting": MoneyAffectingFlags[strings.ToUpper(flag)],
 	})
 }
@@ -68,13 +77,7 @@ func (h *Handlers) HandleSetOverride(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
-	actor := "unknown"
-	if c, ok := auth.FromContext(r.Context()); ok {
-		actor = c.Subject
-		if actor == "" {
-			actor = string(c.Role)
-		}
-	}
+	actor := auth.ActorFromContext(r.Context())
 	err := h.Svc.SetOverride(r.Context(), Override{
 		FlagKey:    flag,
 		TenantType: req.TenantType,
@@ -91,6 +94,21 @@ func (h *Handlers) HandleSetOverride(w http.ResponseWriter, r *http.Request) {
 	if MoneyAffectingFlags[strings.ToUpper(flag)] {
 		status = StatusPending
 	}
+	if h.Audit != nil {
+		detail, _ := json.Marshal(map[string]any{
+			"flag_key":    strings.ToUpper(flag),
+			"tenant_type": req.TenantType,
+			"tenant_id":   req.TenantID,
+			"enabled":     req.Enabled,
+			"reason":      req.Reason,
+			"status":      status,
+			"actor":       actor,
+		})
+		if err := h.Audit.RecordFlagAudit(r.Context(), actor, auditActionOverrideSet, req.TenantType, req.TenantID, string(detail)); err != nil {
+			writeErr(w, http.StatusInternalServerError, "audit_failed")
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": status})
 }
 
@@ -106,13 +124,7 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 		writeErr(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
-	approver := "unknown"
-	if c, ok := auth.FromContext(r.Context()); ok {
-		approver = c.Subject
-		if approver == "" {
-			approver = string(c.Role)
-		}
-	}
+	approver := auth.ActorFromContext(r.Context())
 	if err := h.Svc.ApproveOverride(r.Context(), flag, req.TenantType, req.TenantID, approver); err != nil {
 		status := http.StatusUnprocessableEntity
 		switch err.Error() {
@@ -125,9 +137,11 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if h.Audit != nil {
-		action := "FLAG_OVERRIDE_APPROVE"
+		action := auditActionOverrideApprove
 		if strings.EqualFold(flag, "AUTO_ORDER_PLACE_ENABLED") {
 			action = AuditActionAutoOrderPlace
+		} else if strings.EqualFold(flag, "AUTO_ORDER_SOAK_GATE_DISABLED") {
+			action = AuditActionAutoOrderSoakGate
 		}
 		detail, _ := json.Marshal(map[string]any{
 			"flag_key":    strings.ToUpper(flag),
@@ -135,19 +149,27 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 			"tenant_id":   req.TenantID,
 			"approver":    approver,
 		})
-		_ = h.Audit.RecordFlagAudit(r.Context(), approver, action, req.TenantType, req.TenantID, string(detail))
+		if err := h.Audit.RecordFlagAudit(r.Context(), approver, action, req.TenantType, req.TenantID, string(detail)); err != nil {
+			writeErr(w, http.StatusInternalServerError, "audit_failed")
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": StatusActive})
 }
 
 // RegisterRoutes mounts flag routes under an already PLATFORM_ADMIN-gated router group
-// or standalone with RequireRole.
-func RegisterRoutes(r chi.Router, h *Handlers) {
+// or standalone with RequireRole. Optional stepUp enforces TOTP when MFA is enrolled/required.
+func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http.Handler) {
 	if h == nil || h.Svc == nil {
 		return
 	}
 	r.Route("/v1/platform-admin/flags", func(fr chi.Router) {
 		fr.Use(auth.RequireRole(auth.RolePlatformAdmin))
+		for _, mw := range stepUp {
+			if mw != nil {
+				fr.Use(mw)
+			}
+		}
 		fr.Get("/{flagKey}", h.HandleEvaluate)
 		fr.Put("/{flagKey}", h.HandleSetOverride)
 		fr.Post("/{flagKey}/approve", h.HandleApproveOverride)

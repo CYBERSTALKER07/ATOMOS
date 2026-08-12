@@ -173,11 +173,15 @@ function toApiPath(input: RequestInfo | URL): string {
 export const warehouseSessionFetch: typeof fetch = (input, init) =>
   apiFetch(toApiPath(input), init);
 
-/** Open a WebSocket to the unified pegasusX hub (warehouse rooms). */
+/** Mint a short-lived token_use=ws ticket, then open /v1/ws (browsers cannot set Authorization). */
 export async function connectWarehouseWS(): Promise<WebSocket> {
+  const session = await apiFetch('/v1/warehouse/ws-session', { method: 'GET', cache: 'no-store' });
+  const payload = (await session.json().catch(() => null)) as { token?: string } | null;
+  if (!session.ok || typeof payload?.token !== 'string' || !payload.token) {
+    throw new Error('Failed to mint warehouse WebSocket session');
+  }
   const wsBase = API.replace(/^http/, 'ws');
-  const token = await getWarehouseToken();
-  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
+  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(payload.token)}`);
 }
 
 export type WarehouseSocketStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'offline';

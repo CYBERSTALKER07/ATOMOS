@@ -11,16 +11,16 @@ import (
 )
 
 // HandleCreatePayer serves POST /v1/payers
-// Role-gated: only retailers (self) and admins may create payer profiles;
-// an explicit payer_id must belong to the caller (fail-closed ownership).
+// Role-gated: retailers (self), supplier ADMIN (self), and platform-admin may create.
+// Non-platform callers cannot mint a foreign payer_id.
 func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
 	if !ok || claims.Subject == "" {
 		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin {
-		web.JSONError(w, "forbidden: only retailers or admins can create payers", http.StatusForbidden)
+	if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin {
+		web.JSONError(w, "forbidden: only retailers, admins, or platform-admin can create payers", http.StatusForbidden)
 		return
 	}
 	var req Payer
@@ -36,7 +36,7 @@ func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 
 	if req.PayerID == "" {
 		req.PayerID = claims.Subject
-	} else if claims.Role != auth.RoleAdmin && req.PayerID != claims.Subject {
+	} else if claims.Role != auth.RolePlatformAdmin && req.PayerID != claims.Subject {
 		web.JSONError(w, "forbidden: cannot create another payer profile", http.StatusForbidden)
 		return
 	}
@@ -47,6 +47,18 @@ func (s *Service) HandleCreatePayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSONResponse(w, http.StatusCreated, req)
+}
+
+// payerAccessAllowed reports whether claims may read/update payerID.
+// Platform admin: any. Retailer / supplier ADMIN: self only. Others: deny.
+func payerAccessAllowed(claims auth.Claims, payerID string) bool {
+	if claims.Role == auth.RolePlatformAdmin {
+		return true
+	}
+	if claims.Role != auth.RoleRetailer && claims.Role != auth.RoleAdmin {
+		return false
+	}
+	return claims.Subject == payerID
 }
 
 // HandleGetPayer serves GET /v1/payers/{payerId}
@@ -62,7 +74,7 @@ func (s *Service) HandleGetPayer(w http.ResponseWriter, r *http.Request) {
 		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+	if !payerAccessAllowed(claims, payerID) {
 		web.JSONError(w, "forbidden: cannot access another payer profile", http.StatusForbidden)
 		return
 	}
@@ -89,7 +101,7 @@ func (s *Service) HandleUpdatePayer(w http.ResponseWriter, r *http.Request) {
 		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if claims.Role != auth.RoleAdmin && claims.Subject != payerID {
+	if !payerAccessAllowed(claims, payerID) {
 		web.JSONError(w, "forbidden: cannot update another payer profile", http.StatusForbidden)
 		return
 	}

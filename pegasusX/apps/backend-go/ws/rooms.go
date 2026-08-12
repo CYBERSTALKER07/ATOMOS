@@ -6,3 +6,8 @@ import "strings"
 func SupplierPromoRoom(supplierID string) string {
 	return "supplier-promo:" + strings.TrimSpace(supplierID)
 }
+
+// PlatformAdminRoom is the shared governance room for PLATFORM_ADMIN consoles.
+func PlatformAdminRoom() string {
+	return "platform-admin"
+}

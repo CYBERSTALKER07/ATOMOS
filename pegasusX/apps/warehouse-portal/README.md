@@ -18,7 +18,7 @@ Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same r
 
 - `POST /v1/auth/warehouse/login` — phone + PIN (demo: `+998901000088` / `1234`)
 - `POST /v1/auth/warehouse/refresh` — refresh token rotation
-- WebSocket: `GET /v1/ws?token=…` (warehouse + supplier rooms)
+- WebSocket: `GET /v1/warehouse/ws-session` → short-lived `token_use=ws` ticket → `/v1/ws?token=…` (browsers cannot set Authorization on WebSocket).
 
 ## Commands
 

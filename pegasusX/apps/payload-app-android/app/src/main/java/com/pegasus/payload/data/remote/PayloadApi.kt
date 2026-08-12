@@ -139,6 +139,27 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
+    // ── Factory loading-bay (P1-18 / P2-25 parity with Expo terminal) ─────────
+    @GET("v1/factory/manifests")
+    suspend fun factoryManifests(
+        @Query("state") state: String = "DRAFT",
+    ): ManifestsResponse
+
+    @GET("v1/factory/manifests/{id}")
+    suspend fun factoryManifestDetail(@Path("id") manifestId: String): Manifest
+
+    @POST("v1/factory/manifests/{id}/start-loading")
+    suspend fun factoryStartLoading(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
+
+    @POST("v1/factory/manifests/{id}/seal")
+    suspend fun factorySealManifest(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealManifestResponse
+
     // ── Per-order seal / exception ───────────────────────────────────────────
     @POST("v1/payload/seal")
     suspend fun sealOrder(

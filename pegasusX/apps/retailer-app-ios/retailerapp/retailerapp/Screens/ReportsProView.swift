@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ReportsProView: View {
     @State private var salesMinor: Int64 = 0
@@ -7,6 +8,9 @@ struct ReportsProView: View {
     @State private var lowStock = 0
     @State private var topLine = "—"
     @State private var banner: String?
+    @State private var exportURL: URL?
+    @State private var exporting = false
+    @State private var showShare = false
     private let api = APIClient.shared
 
     var body: some View {
@@ -19,11 +23,30 @@ struct ReportsProView: View {
                 Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(lowStock)"))
                 Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(topLine)"))
             }
+            Section {
+                Button {
+                    Task { await exportCSV() }
+                } label: {
+                    HStack {
+                        Text(exporting ? "Exporting…" : "Export sales CSV")
+                        Spacer()
+                        if exporting {
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(exporting)
+            }
         }
         .navigationTitle("portal.nav.reports_pro")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
+        .sheet(isPresented: $showShare) {
+            if let exportURL {
+                ActivityView(activityItems: [exportURL])
+            }
+        }
     }
 
     private func load() async {
@@ -41,4 +64,31 @@ struct ReportsProView: View {
             banner = error.localizedDescription
         }
     }
+
+    private func exportCSV() async {
+        guard !exporting else { return }
+        exporting = true
+        defer { exporting = false }
+        do {
+            let data = try await api.exportReportsCSV(report: "sales")
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("sales.csv")
+            try data.write(to: url, options: .atomic)
+            exportURL = url
+            showShare = true
+            banner = "Sales CSV ready to share"
+        } catch {
+            banner = error.localizedDescription
+        }
+    }
+}
+
+/// UIKit share sheet bridge for CSV files.
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

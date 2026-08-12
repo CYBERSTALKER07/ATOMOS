@@ -11,6 +11,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
 
+func allowTestWebhooks(svc *Service) {
+	svc.WebhookURLPolicy = &WebhookURLPolicy{AllowHTTP: true, AllowPrivateHosts: true}
+}
+
 func TestIssueKeyAndAuthMiddleware(t *testing.T) {
 	keys := NewMemoryKeyRepository()
 	hooks := NewMemoryWebhookRepository()
@@ -63,6 +67,7 @@ func TestWebhookEnqueueAndDeliver(t *testing.T) {
 	keys := NewMemoryKeyRepository()
 	hooks := NewMemoryWebhookRepository()
 	svc := NewService(keys, hooks, nil, nil, nil)
+	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
 
 	var received map[string]any
@@ -111,6 +116,7 @@ func TestWebhookEnqueueAndDeliver(t *testing.T) {
 func TestPingWebhook(t *testing.T) {
 	hooks := NewMemoryWebhookRepository()
 	svc := NewService(NewMemoryKeyRepository(), hooks, nil, nil, nil)
+	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
 	hit := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +141,7 @@ func TestPingWebhook(t *testing.T) {
 func TestWebhookReplayAndDeactivate(t *testing.T) {
 	hooks := NewMemoryWebhookRepository()
 	svc := NewService(NewMemoryKeyRepository(), hooks, nil, nil, nil)
+	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
 
 	hits := 0

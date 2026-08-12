@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 )
 
@@ -15,12 +16,18 @@ type Deps struct {
 	Service *laborcapacity.Service
 }
 
-// RegisterRoutes registers all labor capacity API endpoints.
+// RegisterRoutes registers labor capacity API endpoints (supplier/warehouse JWT).
 func RegisterRoutes(r chi.Router, d Deps) {
-	r.Route("/v1/labor-capacity", func(r chi.Router) {
-		r.Get("/driver-score/{driverId}", handleGetDriverScore(d.Service))
-		r.Get("/zone-capacity", handleGetZoneCapacity(d.Service))
-		r.Post("/driver-availability", handleSetDriverAvailability(d.Service))
+	r.Route("/v1/labor-capacity", func(lr chi.Router) {
+		lr.Use(auth.RequireRole(
+			auth.RoleAdmin,
+			auth.RoleWarehouseAdmin,
+			auth.RoleWarehouse,
+			auth.RolePlatformAdmin,
+		))
+		lr.Get("/driver-score/{driverId}", handleGetDriverScore(d.Service))
+		lr.Get("/zone-capacity", handleGetZoneCapacity(d.Service))
+		lr.Post("/driver-availability", handleSetDriverAvailability(d.Service))
 	})
 }
 
@@ -63,7 +70,6 @@ func handleGetZoneCapacity(s *laborcapacity.Service) http.HandlerFunc {
 			return
 		}
 
-		// List all zones for the date
 		zones, err := s.ListZoneCapacities(r.Context(), date)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())

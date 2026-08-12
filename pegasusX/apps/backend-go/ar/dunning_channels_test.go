@@ -33,6 +33,7 @@ func (r rewriteHost) RoundTrip(req *http.Request) (*http.Response, error) {
 func TestTransportsFromEnv_FailClosed(t *testing.T) {
 	t.Setenv("DUNNING_SMS_PROVIDER", "")
 	t.Setenv("DUNNING_EMAIL_PROVIDER", "")
+	t.Setenv("DUNNING_WHATSAPP_PROVIDER", "")
 	tr, err := TransportsFromEnv()
 	if err != nil || len(tr) != 0 {
 		t.Fatalf("unset providers must build empty: tr=%v err=%v", tr, err)
@@ -57,6 +58,21 @@ func TestTransportsFromEnv_FailClosed(t *testing.T) {
 	t.Setenv("SENDGRID_FROM_EMAIL", "")
 	if _, err := TransportsFromEnv(); err == nil || !strings.Contains(err.Error(), "SENDGRID_API_KEY") {
 		t.Fatalf("sendgrid without creds must fail, got %v", err)
+	}
+
+	t.Setenv("DUNNING_EMAIL_PROVIDER", "")
+	t.Setenv("DUNNING_WHATSAPP_PROVIDER", "carrier-pigeon")
+	if _, err := TransportsFromEnv(); err == nil || !strings.Contains(err.Error(), "unknown DUNNING_WHATSAPP_PROVIDER") {
+		t.Fatalf("unknown WhatsApp provider must fail, got %v", err)
+	}
+
+	t.Setenv("DUNNING_WHATSAPP_PROVIDER", "twilio")
+	t.Setenv("TWILIO_ACCOUNT_SID", "AC1")
+	t.Setenv("TWILIO_AUTH_TOKEN", "tok")
+	t.Setenv("TWILIO_WHATSAPP_FROM", "")
+	t.Setenv("TWILIO_WHATSAPP_CONTENT_SID", "")
+	if _, err := TransportsFromEnv(); err == nil || !strings.Contains(err.Error(), "TWILIO_WHATSAPP_FROM") {
+		t.Fatalf("twilio WhatsApp without FROM/CONTENT_SID must fail, got %v", err)
 	}
 }
 
@@ -188,6 +204,69 @@ func TestPlayMobileSMS_Contract(t *testing.T) {
 	}
 	if msg["sms"].(map[string]any)["content"] != "due 1000 UZS" {
 		t.Fatalf("content = %v", msg["sms"])
+	}
+}
+
+func TestTwilioWhatsApp_Contract(t *testing.T) {
+	var gotAuth, gotBody, gotPath string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		raw, _ := io.ReadAll(r.Body)
+		gotBody = string(raw)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"sid":"SMWA"}`))
+	}))
+	defer ts.Close()
+
+	tr := &twilioWhatsApp{
+		sid: "AC1", token: "tok", from: "+15005550006",
+		contentSID: "HXabc", contentVarBody: "1",
+		baseURL: ts.URL, hc: ts.Client(),
+	}
+	if err := tr.Send(context.Background(), Contact{Phone: "+998901234567"}, "pay invoice inv-1"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if gotPath != "/2010-04-01/Accounts/AC1/Messages.json" {
+		t.Fatalf("path = %q", gotPath)
+	}
+	if !strings.HasPrefix(gotAuth, "Basic ") {
+		t.Fatalf("auth = %q, want Basic", gotAuth)
+	}
+	for _, want := range []string{
+		"To=whatsapp%3A%2B998901234567",
+		"From=whatsapp%3A%2B15005550006",
+		"ContentSid=HXabc",
+		"ContentVariables=",
+	} {
+		if !strings.Contains(gotBody, want) {
+			t.Fatalf("form %q missing %q", gotBody, want)
+		}
+	}
+	if !strings.Contains(gotBody, "pay") {
+		t.Fatalf("form %q missing notice body in ContentVariables", gotBody)
+	}
+}
+
+func TestTwilioWhatsApp_PrefixedFromPassthrough(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		gotBody = string(raw)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer ts.Close()
+
+	tr := &twilioWhatsApp{
+		sid: "AC1", token: "tok", from: "whatsapp:+15005550006",
+		contentSID: "HXabc", contentVarBody: "1",
+		baseURL: ts.URL, hc: ts.Client(),
+	}
+	if err := tr.Send(context.Background(), Contact{Phone: "whatsapp:+998901234567"}, "x"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if !strings.Contains(gotBody, "From=whatsapp%3A%2B15005550006") {
+		t.Fatalf("From should keep single whatsapp: prefix, got %q", gotBody)
 	}
 }
 

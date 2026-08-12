@@ -11,7 +11,7 @@ const TRANSITIONS: Record<string, string[]> = {
   OFFBOARDED: [],
 };
 
-export default function TenantsPanel({ token }: { token: string }) {
+export default function TenantsPanel({ token, refreshKey = 0 }: { token: string; refreshKey?: number }) {
   const [status, setStatus] = useState("");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function TenantsPanel({ token }: { token: string }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const transition = async (t: Tenant, to: string) => {
     const key = `${t.TenantType}/${t.TenantID}`;

@@ -2626,6 +2626,8 @@
       "bins_lots": "Ячейки и лоты",
       "pick_waves": "Волны сборки",
       "cycle_counts": "Циклические пересчёты",
+      "cold_chain": "Холодовая цепь",
+      "labor_capacity": "Трудоёмкость",
       "stock_commitments": "Резервы",
       "products": "Товары",
       "supply_requests": "Заявки на поставку",

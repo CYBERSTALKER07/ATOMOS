@@ -87,6 +87,7 @@ func NewRelay(store Store, publisher Publisher, cfg RelayConfig, log *slog.Logge
 // process; do not start multiple instances against the same OutboxEvents
 // partition without coordination.
 func (r *Relay) Start(ctx context.Context) {
+	IncRelayRestart()
 	drainTicker := time.NewTicker(r.cfg.TickInterval)
 	defer drainTicker.Stop()
 	watchdogTicker := time.NewTicker(r.cfg.WatchdogInterval)
@@ -133,6 +134,7 @@ func (r *Relay) watchdogOnce(ctx context.Context) {
 	if stuck == 0 {
 		return
 	}
+	IncStuckEventsDetected()
 	r.log.Error("outbox stuck events detected",
 		"count", stuck,
 		"oldest_event_id", oldestID,

@@ -28,7 +28,7 @@ func TestRegisterRoutesRejectsWhenHubAtCapacity(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, driverHub, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, driverHub, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -57,7 +57,7 @@ func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -78,7 +78,7 @@ func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -99,7 +99,7 @@ func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -124,7 +124,7 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -144,7 +144,36 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	token, _, err := auth.IssueWSTicket(auth.Claims{
+		Role:       auth.RoleAdmin,
+		Subject:    "admin-1",
+		SupplierID: "sup-1",
+	}, auth.IssueOptions{
+		Secret: testWSJWTSecret,
+		TTL:    5 * time.Minute,
+		Now:    func() time.Time { return time.Now().UTC() },
+	})
+	if err != nil {
+		t.Fatalf("issue ws ticket: %v", err)
+	}
+
+	conn := dialTestWebSocketWithQuery(t, server.URL, "token="+token)
+	defer conn.Close()
+
+	assertWebSocketMessageWithRetry(t, func() {
+		telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
+	}, conn, "supplier-location")
+}
+
+func TestRegisterRoutesRejectsSessionJWTInQuery(t *testing.T) {
+	telemetryHub := NewHub("telemetry", nil, nil)
+	router := chi.NewRouter()
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -155,19 +184,59 @@ func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 		SupplierID: "sup-1",
 	}, auth.IssueOptions{
 		Secret: testWSJWTSecret,
-		TTL:    5 * time.Minute,
+		TTL:    24 * time.Hour,
 		Now:    func() time.Time { return time.Now().UTC() },
 	})
 	if err != nil {
-		t.Fatalf("issue token: %v", err)
+		t.Fatalf("issue session token: %v", err)
 	}
 
-	conn := dialTestWebSocketWithQuery(t, server.URL, "token="+token)
+	url := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/ws?token=" + token
+	_, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err == nil {
+		t.Fatal("expected dial failure for session JWT in query")
+	}
+	if resp == nil {
+		t.Fatal("expected HTTP response on failed upgrade")
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestRegisterRoutesAcceptsBearerSessionJWT(t *testing.T) {
+	telemetryHub := NewHub("telemetry", nil, nil)
+	router := chi.NewRouter()
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	token, err := auth.Issue(auth.Claims{
+		Role:       auth.RoleDriver,
+		Subject:    "drv-1",
+		SupplierID: "sup-1",
+	}, auth.IssueOptions{
+		Secret: testWSJWTSecret,
+		TTL:    24 * time.Hour,
+		Now:    func() time.Time { return time.Now().UTC() },
+	})
+	if err != nil {
+		t.Fatalf("issue session token: %v", err)
+	}
+
+	url := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/ws"
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	conn, _, err := websocket.DefaultDialer.Dial(url, header)
+	if err != nil {
+		t.Fatalf("dial with Bearer: %v", err)
+	}
 	defer conn.Close()
 
 	assertWebSocketMessageWithRetry(t, func() {
-		telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
-	}, conn, "supplier-location")
+		telemetryHub.Broadcast(context.Background(), "telemetry:driver:drv-1", []byte("driver-location"))
+	}, conn, "driver-location")
 }
 
 func testClaimsMiddleware(claims auth.Claims) func(http.Handler) http.Handler {

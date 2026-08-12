@@ -254,6 +254,15 @@ func NewService(c ServiceConfig) *Service {
 }
 
 // resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+// AuthIssuer returns the JWT iss claim used when minting role tokens / WS tickets.
+func (s *Service) AuthIssuer() string {
+	if s == nil {
+		return ""
+	}
+	return s.jwtIssuer
+}
+
+
 func (s *Service) resolveSupplierScope(ctx context.Context) string {
 	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }

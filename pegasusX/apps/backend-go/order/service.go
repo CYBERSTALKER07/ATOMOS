@@ -2190,7 +2190,7 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	if s.ar != nil && result.Order.OrderID != "" {
 		if _, found, ierr := s.ar.GetByOrder(ctx, result.Order.OrderID); ierr == nil && found {
 			if perr := s.ar.RecordPaymentForOrder(ctx, result.Order.OrderID, receivedMinor,
-				fmt.Sprintf("ar-cash-collect-%s", result.Order.OrderID)); perr != nil {
+				fmt.Sprintf("ar-cash-collect-%s", result.Order.OrderID), result.Order.Currency); perr != nil {
 				s.log.Error("AR pay-down on cash collect failed", "order_id", result.Order.OrderID, "err", perr)
 			}
 		}

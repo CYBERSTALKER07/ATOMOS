@@ -46,3 +46,5 @@ See `Layout/RetailerSection.swift` for the full enum. Summary:
 Post-login gate: when JWT `is_configured=false`, `SetupView` runs before `ContentView`.
 
 Pending checkout replay: `PendingOrderReplayer` on WS reconnect in `ContentView`.
+
+Reports Pro: summary + **Export sales CSV** share sheet (`/v1/retailer/reports/export`). Dashboard **network pulse** strip uses `/v1/retailer/pulse` (Control Tower uses `/v1/retailer/control-tower/pulse`).

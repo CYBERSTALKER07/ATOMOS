@@ -18,6 +18,7 @@ type Deps struct {
 	PayloadService      *payload.Service
 	WMSHandler          *stocklots.Handler
 	JWTSecret           string
+	JWTIssuer           string
 	Spanner             *spanner.Client
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -175,6 +176,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			insights.Use(auth.RequireRole(insightsRoles...))
 			insights.Use(auth.RequireReplenishmentInsightsScope(d.Spanner))
 			mountReplenishmentInsights(insights)
+		})
+		gr.Group(func(ws chi.Router) {
+			ws.Use(auth.RequireRole(allowed...))
+			ws.Get("/v1/warehouse/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
 		})
 		gr.Use(auth.RequireRole(allowed...))
 		gr.Use(auth.RequireWarehouseOpsScope)

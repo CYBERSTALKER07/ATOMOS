@@ -19,6 +19,7 @@
 | Callers | **Supplier** + **warehouse** dispatch preview/execute only (`plan.OptimizeAndValidate`) |
 | Clients | **Never** call the solver; they only see `optimizer_source` on API responses |
 | Factory | **Does not** use optimizer-core |
+| Certification (P2-2) | `testdata/cert/*.json` + `server/test_certification_harness.py`; Rust greedy reports `HEURISTIC` not `OPTIMAL` |
 
 ### Constraint fidelity (§8.5)
 
@@ -64,15 +65,15 @@ When optimizer is missing, slow, empty, or rejected:
 | `fallback_validation_rejected` | Solver response failed capacity checks |
 | `pure_small_batch` | Below `DISPATCH_AI_MIN_STOPS` (default 12) — skip sidecar |
 
-SSMR e2e accepts `fallback_phase1` when the sidecar is absent (`PX_E2E_OPTIMIZER_SOURCE_FALLBACK_OK`). Cold-chain fixture soft-skip: `PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED` / `_OK`.
+SSMR e2e accepts `fallback_phase1` when the sidecar is absent (`PX_E2E_OPTIMIZER_SOURCE_FALLBACK_OK`). Cold-chain fixture: soft-skip only when sidecar unreachable (`PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED`); mis-assignment is hard `PX_E2E_OPTIMIZER_CONSTRAINT_FAIL` (P2-1).
 
 ### Runtime by environment (truth)
 
 | Environment | OR-Tools live? | Notes |
 |-------------|----------------|-------|
 | **Local** `infra/docker-compose.ssmr.yml` | **Yes** (when compose up) | Builds `optimizer-core`; backend `OPTIMIZER_BASE_URL=http://optimizer-core:8082` |
-| **SSMR GKE** (`overlays/ssmr`) | **Manifest ready, replicas 0** | Overlay **includes** optimizer-core + AR image remap; raise replicas after image push |
-| **Prod GKE** (`overlays/prod`) | **No** | Manifests exist but **`replicas: 0`**; placeholder image pin until real AR digest |
+| **SSMR GKE** (`overlays/ssmr`) | **Yes (manifest)** | Overlay includes optimizer-core; kustomize patch sets **`replicas: 1`**; image remapped to `…/optimizer-core:ssmr`. Heuristic fallback remains if the pod/image is unhealthy. |
+| **Prod GKE** (`overlays/prod`) | **No** | Manifests exist but **`replicas: 0`** until AR publish of a real optimizer-core digest (not backend-go). |
 | **Staging overlay** | Intended | Remaps image to `…/pegasusx-staging-images/optimizer-core:staging` — only live if that image exists and deploy is applied |
 
 ### How to turn OR-Tools on in cloud

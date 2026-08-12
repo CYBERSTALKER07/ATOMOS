@@ -623,6 +623,9 @@ export interface SupplierMEIONetworkSummary {
   skus_analyzed: number;
   insights_generated: number;
   transfer_recommendations: number;
+  capital_cap_minor?: number;
+  capital_used_minor?: number;
+  transfers_skipped_capital?: number;
   warehouse_balances: SupplierMEIOWarehouseNode[];
   generated_at: string;
 }
@@ -796,6 +799,41 @@ export interface TwinVehicleInventoryRow {
   QtyOnVehicle?: number;
 }
 
+export interface TemperatureReadingView {
+  reading_id: string;
+  manifest_id: string;
+  sensor_id?: string;
+  recorded_at: string;
+  temp_c: number;
+  lat?: number;
+  lng?: number;
+  min_c?: number;
+  max_c?: number;
+  excursion?: boolean;
+}
+
+export interface LaborZoneCapacity {
+  zoneH3: string;
+  date: string;
+  totalCapacity: number;
+  usedCapacity: number;
+  computedAt?: string;
+}
+
+export interface LaborDriverScore {
+  driverId: string;
+  score: number;
+  onTimeRate: number;
+  completionRate: number;
+  damageRate: number;
+  shopClosedRate: number;
+  feedbackScore: number;
+  stopsPerHour: number;
+  windowStart?: string;
+  windowEnd?: string;
+  computedAt?: string;
+}
+
 export interface TwinRouteException {
   type: string;
   order_id?: string;
@@ -956,29 +994,70 @@ export interface PlanningScenarioInput {
   factory_downtime_hours?: number;
   demand_delta_pct?: number;
   horizon_days?: number;
+  label?: string;
+}
+
+export interface PlanningScenarioCloneInput {
+  factory_downtime_hours?: number;
+  demand_delta_pct?: number;
+  horizon_days?: number;
+  label?: string;
 }
 
 export interface PlanningScenarioResult {
   scenario_id: string;
   supplier_id: SupplierId;
+  version?: number;
+  status?: "DRAFT" | "PUBLISHED" | "SUPERSEDED" | "REJECTED" | string;
+  parent_scenario_id?: string;
+  label?: string;
+  horizon_days?: number;
+  factory_downtime_hours?: number;
+  demand_delta_pct?: number;
   sla_risk_pct: number;
   fleet_volume_orders: number;
   stockout_skus: string[];
   capacity_breach: boolean;
-  cached_until: string;
+  cached_until?: string;
   mode?: string;
   baseline_sla_risk_pct?: number;
   revenue_at_risk_minor?: number;
+  unit_value_source?: "products" | "fallback" | "mixed" | string;
+  created_by?: string;
+  published_by?: string;
+  published_at?: string;
+  updated_at?: string;
+}
+
+export interface PlanningScenarioCompareDeltas {
+  sla_risk_pct_delta: number;
+  fleet_volume_orders_delta: number;
+  revenue_at_risk_minor_delta: number;
+  stockout_count_delta: number;
+  capacity_breach_changed: boolean;
+}
+
+export interface PlanningScenarioCompareResult {
+  left: PlanningScenarioResult;
+  right: PlanningScenarioResult;
+  deltas: PlanningScenarioCompareDeltas;
+}
+
+export interface PlanningScenarioListResponse {
+  scenarios: PlanningScenarioResult[];
 }
 
 export interface PlanningSAndOPSnapshot {
   supplier_id: SupplierId;
   horizon_days: number;
+  production_line_count?: number;
   factory_capacity_units: number;
+  projected_demand_units?: number;
   warehouse_inbound_cap_units: number;
   warehouse_outbound_cap_units: number;
   utilization_pct: number;
   capacity_alert: boolean;
+  capacity_model?: string;
 }
 
 export interface KnowledgeGraphNode {
@@ -3505,6 +3584,7 @@ export type EventType =
   | "REPLENISHMENT_INSIGHT_CREATED"
   | "DISPATCH_ZONE_OVERRIDE"
   | "planning.meio.recommendation.v1"
+  | "planning.scenario.published.v1"
   | "planning.signal.ingest.v1"
   | "DEMAND_BASELINE_UPDATED"
   | "PLANNING_AGENT_BROADCAST"

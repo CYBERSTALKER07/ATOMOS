@@ -351,8 +351,16 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		dueAt = dueTime.UTC().Format(time.RFC3339)
 	}
 	if s.ar != nil && current.TotalMinor > 0 {
-		if _, aerr := s.ar.OpenFromCreditLeave(ctx, current.SupplierID, current.RetailerID, orderID,
-			current.TotalMinor, termsDays, 0, leaveAt, dueTime); aerr != nil {
+		if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+			SupplierID:    current.SupplierID,
+			RetailerID:    current.RetailerID,
+			OrderID:       orderID,
+			AmountMinor:   current.TotalMinor,
+			Currency:      current.Currency,
+			TermsDays:     termsDays,
+			CreditLeaveAt: leaveAt,
+			DueAt:         dueTime,
+		}); aerr != nil {
 			s.log.Error("open AR invoice failed", "order_id", orderID, "err", aerr)
 		}
 	}
@@ -536,8 +544,16 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			dueAt = dueTime.UTC().Format(time.RFC3339)
 		}
 		if s.ar != nil {
-			if _, aerr := s.ar.OpenFromCreditLeave(ctx, result.Order.SupplierID, result.Order.RetailerID, result.Order.OrderID,
-				result.Order.TotalMinor, termsDays, 0, leaveAt, dueTime); aerr != nil {
+			if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+				SupplierID:    result.Order.SupplierID,
+				RetailerID:    result.Order.RetailerID,
+				OrderID:       result.Order.OrderID,
+				AmountMinor:   result.Order.TotalMinor,
+				Currency:      result.Order.Currency,
+				TermsDays:     termsDays,
+				CreditLeaveAt: leaveAt,
+				DueAt:         dueTime,
+			}); aerr != nil {
 				s.log.Error("open AR invoice failed", "order_id", result.Order.OrderID, "err", aerr)
 			}
 		}

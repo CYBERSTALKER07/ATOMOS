@@ -16,15 +16,16 @@ import (
 	"time"
 )
 
-// Off-app dunning transports: SMS + email behind a per-channel provider
-// interface — the pattern every collections platform uses. FCM/inbox remain
-// the in-app path (bootstrap notify); these channels reach actors who never
-// open the app.
+// Off-app dunning transports: SMS + email + WhatsApp behind a per-channel
+// provider interface — the pattern every collections platform uses. FCM/inbox
+// remain the in-app path (bootstrap notify); these channels reach actors who
+// never open the app.
 //
 // Selection (fail-closed):
 //
 //	DUNNING_SMS_PROVIDER=twilio|playmobile  (unset/empty/off = SMS disabled)
 //	DUNNING_EMAIL_PROVIDER=sendgrid         (unset/empty/off = email disabled)
+//	DUNNING_WHATSAPP_PROVIDER=twilio        (unset/empty/off = WhatsApp disabled)
 //
 // A selected provider with missing credentials is a construction error at
 // bootstrap — a misconfigured collections path must surface at deploy, not at
@@ -88,6 +89,17 @@ func TransportsFromEnv() ([]ChannelTransport, error) {
 	default:
 		return nil, fmt.Errorf("unknown DUNNING_EMAIL_PROVIDER %q", p)
 	}
+	switch p := strings.ToLower(strings.TrimSpace(os.Getenv("DUNNING_WHATSAPP_PROVIDER"))); p {
+	case "", "off":
+	case "twilio":
+		t, err := twilioWhatsAppFromEnv()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	default:
+		return nil, fmt.Errorf("unknown DUNNING_WHATSAPP_PROVIDER %q", p)
+	}
 	return out, nil
 }
 
@@ -126,6 +138,9 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 				if tr.Channel() == "sms" && to.Phone == "" {
 					continue
 				}
+				if tr.Channel() == "whatsapp" && to.Phone == "" {
+					continue
+				}
 				if tr.Channel() == "email" && to.Email == "" {
 					continue
 				}
@@ -142,7 +157,7 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 
 func maskContact(c Contact, channel string) string {
 	switch channel {
-	case "sms":
+	case "sms", "whatsapp":
 		if len(c.Phone) > 4 {
 			return "***" + c.Phone[len(c.Phone)-4:]
 		}
@@ -298,6 +313,81 @@ func (s *sendGridEmail) Send(ctx context.Context, to Contact, body string) error
 	if resp.StatusCode/100 != 2 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("sendgrid status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	return nil
+}
+
+// --- WhatsApp: Twilio (Content template) ---
+
+type twilioWhatsApp struct {
+	sid, token, from, contentSID, contentVarBody string
+	baseURL                                      string
+	hc                                           *http.Client
+}
+
+func twilioWhatsAppFromEnv() (ChannelTransport, error) {
+	sid, token := os.Getenv("TWILIO_ACCOUNT_SID"), os.Getenv("TWILIO_AUTH_TOKEN")
+	from, contentSID := os.Getenv("TWILIO_WHATSAPP_FROM"), os.Getenv("TWILIO_WHATSAPP_CONTENT_SID")
+	if sid == "" || token == "" || from == "" || contentSID == "" {
+		return nil, fmt.Errorf("DUNNING_WHATSAPP_PROVIDER=twilio requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_CONTENT_SID")
+	}
+	return &twilioWhatsApp{
+		sid: sid, token: token, from: from, contentSID: contentSID,
+		contentVarBody: envOr("TWILIO_WHATSAPP_CONTENT_VAR_BODY", "1"),
+		baseURL:        envOr("TWILIO_BASE_URL", "https://api.twilio.com"),
+		hc:             &http.Client{Timeout: 10 * time.Second},
+	}, nil
+}
+
+func (t *twilioWhatsApp) Channel() string { return "whatsapp" }
+
+func whatsappAddress(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	if strings.HasPrefix(strings.ToLower(s), "whatsapp:") {
+		return s
+	}
+	return "whatsapp:" + s
+}
+
+func (t *twilioWhatsApp) Send(ctx context.Context, to Contact, body string) error {
+	from := whatsappAddress(t.from)
+	dest := whatsappAddress(to.Phone)
+	if from == "" || dest == "" {
+		return fmt.Errorf("twilio whatsapp: missing from/to")
+	}
+	varKey := strings.TrimSpace(t.contentVarBody)
+	if varKey == "" {
+		varKey = "1"
+	}
+	vars, err := json.Marshal(map[string]string{varKey: body})
+	if err != nil {
+		return err
+	}
+	form := url.Values{
+		"From":             {from},
+		"To":               {dest},
+		"ContentSid":       {t.contentSID},
+		"ContentVariables": {string(vars)},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		t.baseURL+"/2010-04-01/Accounts/"+t.sid+"/Messages.json",
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(t.sid+":"+t.token)))
+	resp, err := t.hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("twilio whatsapp status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
 	}
 	return nil
 }

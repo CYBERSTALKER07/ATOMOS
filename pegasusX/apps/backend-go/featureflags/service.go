@@ -12,11 +12,12 @@ import (
 
 // MoneyAffectingFlags require two-person style audit when overridden.
 var MoneyAffectingFlags = map[string]bool{
-	"AR_INVOICES_ENABLED":       true,
-	"AR_DUNNING_ENABLED":        true,
-	"AUTO_ORDER_PLACE_ENABLED":  true,
-	"AUTO_ORDER_SHADOW_ENABLED": true,
-	"FISCAL_PROVIDER":           true,
+	"AR_INVOICES_ENABLED":              true,
+	"AR_DUNNING_ENABLED":               true,
+	"AUTO_ORDER_PLACE_ENABLED":         true,
+	"AUTO_ORDER_SHADOW_ENABLED":        true,
+	"AUTO_ORDER_SOAK_GATE_DISABLED":    true,
+	"FISCAL_PROVIDER":                  true,
 }
 
 // Override is one tenant-scoped flag value.

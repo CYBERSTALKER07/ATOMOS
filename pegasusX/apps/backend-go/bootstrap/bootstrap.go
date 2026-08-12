@@ -40,6 +40,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
+	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -111,6 +112,8 @@ type Config struct {
 
 	JWTSecret string
 	JWTIssuer string
+	// PlatformAdminMFARequired forces TOTP enroll+verify for PLATFORM_ADMIN governance routes.
+	PlatformAdminMFARequired bool
 
 	FirebaseAuthEnabled             bool
 	FirebaseProjectID               string
@@ -229,6 +232,7 @@ type App struct {
 	WarehouseHub           *ws.Hub
 	FactoryHub             *ws.Hub
 	TelemetryHub           *ws.Hub
+	PlatformAdminHub       *ws.Hub
 	OutboxRelay            *outbox.Relay
 	NotificationConsumer   *kafka.Consumer
 	OrderEventConsumer     *kafka.Consumer
@@ -245,6 +249,8 @@ type App struct {
 	PlatformHandler         *platform.Handler
 	PlatformAdminService    *platformadmin.Service
 	PlatformAdminHandlers   *platformadmin.Handlers
+	MFAService              *mfa.Service
+	MFAHandlers             *mfa.Handlers
 	FeatureFlagService      *featureflags.Service
 	FeatureFlagHandlers     *featureflags.Handlers
 	PulseHandlers           *pulse.Handlers
@@ -310,6 +316,7 @@ func LoadConfig() (*Config, error) {
 		WebSocketAllowedOrigins:         splitAndTrimCSV(envOr("WS_ALLOWED_ORIGINS", "")),
 		JWTSecret:                       envOr("JWT_SECRET", "dev-only-change-me"),
 		JWTIssuer:                       envOr("JWT_ISSUER", "pegasusx-dev"),
+		PlatformAdminMFARequired:        envBool("PLATFORM_ADMIN_MFA_REQUIRED", isProductionEnv()),
 		FirebaseAuthEnabled:             envBool("FIREBASE_AUTH_ENABLED", false),
 		FirebaseProjectID:               envOr("FIREBASE_PROJECT_ID", ""),
 		FirebaseCertsURL:                envOr("FIREBASE_CERTS_URL", "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"),
@@ -318,7 +325,7 @@ func LoadConfig() (*Config, error) {
 		GlobalPayServiceID:              envOr("GLOBAL_PAY_SERVICE_ID", "doc-supplier-service"),
 		GlobalPayUsername:               envOr("GLOBAL_PAY_USERNAME", "doc-username"),
 		GlobalPayPassword:               envOr("GLOBAL_PAY_PASSWORD", "doc-password"),
-		GlobalPayWebhookSecret:          envOr("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret"),
+		GlobalPayWebhookSecret:          envOr("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret"), // local/SSMR only; production rejected by ValidateProductionProfile; NewService never invents (P2-9)
 		AdyenWebhookSecret:              envOr("ADYEN_WEBHOOK_SECRET", "dev-adyen-secret"),
 		StripeWebhookSecret:             envOr("STRIPE_WEBHOOK_SECRET", "dev-stripe-secret"),
 		PaymeWebhookSecret:              envOr("PAYME_WEBHOOK_SECRET", "dev-payme-secret"),
@@ -694,6 +701,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	warehouseHub := ws.NewHub("warehouse", cacheBackend, log)
 	factoryHub := ws.NewHub("factory", cacheBackend, log)
 	telemetryHub := ws.NewHub("telemetry", cacheBackend, log)
+	platformAdminHub := ws.NewHub("platform-admin", cacheBackend, log)
 	if promotionSvc != nil {
 		promotionSvc.BindRetailerHub(retailerHub)
 	}
@@ -1304,15 +1312,25 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	var platformAdminRepo platformadmin.Repository = platformadmin.NewMemoryRepository()
 	var featureFlagRepo featureflags.Repository = featureflags.NewMemoryRepository()
+	var mfaRepo mfa.Repository = mfa.NewMemoryRepository()
 	if spannerClient != nil {
 		platformAdminRepo = platformadmin.NewSpannerRepository(spannerClient)
 		featureFlagRepo = featureflags.NewSpannerRepository(spannerClient)
+		mfaRepo = mfa.NewSpannerRepository(spannerClient)
 	}
 	platformAdminSvc := platformadmin.NewService(platformAdminRepo)
-	platformAdminHandlers := &platformadmin.Handlers{Svc: platformAdminSvc}
+	platformAdminSvc.SetHub(platformAdminHub)
+	platformAdminHandlers := &platformadmin.Handlers{
+		Svc:       platformAdminSvc,
+		JWTSecret: cfg.JWTSecret,
+		JWTIssuer: cfg.JWTIssuer,
+	}
+	mfaSvc := mfa.NewService(mfaRepo, cfg.JWTIssuer, cfg.PlatformAdminMFARequired, platformAdminSvc)
+	mfaHandlers := &mfa.Handlers{Svc: mfaSvc, JWTSecret: cfg.JWTSecret, JWTIssuer: cfg.JWTIssuer}
 	featureFlagSvc := featureflags.NewService(featureFlagRepo)
 	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc, Audit: platformAdminSvc}
 	retailerSvc.SetPlaceFlagEvaluator(featureFlagSvc)
+	retailerSvc.SetSoakBypassAuditor(platformAdminSvc)
 	supplierSvc.OnRegistered = func(ctx context.Context, supplierID, legalName string) error {
 		if err := platformAdminSvc.EnsurePending(ctx, platformadmin.TenantSupplier, supplierID, legalName); err != nil {
 			return err
@@ -1744,6 +1762,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WarehouseHub:            warehouseHub,
 		FactoryHub:              factoryHub,
 		TelemetryHub:            telemetryHub,
+		PlatformAdminHub:        platformAdminHub,
 		NotificationConsumer:    notificationConsumer,
 		OrderEventConsumer:      orderEventConsumer,
 		WarehouseEventConsumer:  warehouseEventConsumer,
@@ -1758,6 +1777,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PlatformHandler:         platformHandler,
 		PlatformAdminService:    platformAdminSvc,
 		PlatformAdminHandlers:   platformAdminHandlers,
+		MFAService:              mfaSvc,
+		MFAHandlers:             mfaHandlers,
 		FeatureFlagService:      featureFlagSvc,
 		FeatureFlagHandlers:     featureFlagHandlers,
 		PulseHandlers:           pulseHandlers,

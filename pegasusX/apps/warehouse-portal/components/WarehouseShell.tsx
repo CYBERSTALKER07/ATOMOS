@@ -39,6 +39,7 @@ const NAV: NavSection[] = [
       { href: '/bins', icon: 'inventory', labelKey: 'portal.nav.bins_lots' },
       { href: '/pick-waves', icon: 'inventory', labelKey: 'portal.nav.pick_waves' },
       { href: '/cycle-counts', icon: 'inventory', labelKey: 'portal.nav.cycle_counts' },
+      { href: '/cold-chain', icon: 'warning', labelKey: 'portal.nav.cold_chain' },
       { href: '/stock-commitments', icon: 'inventory', labelKey: 'portal.nav.stock_commitments' },
       { href: '/products', icon: 'catalog', labelKey: 'portal.nav.products' },
       { href: '/supply-requests', icon: 'supplyRequests', labelKey: 'portal.nav.supply_requests' },
@@ -51,6 +52,7 @@ const NAV: NavSection[] = [
     labelKey: 'portal.nav.section.fleet',
     items: [
       { href: '/drivers', icon: 'fleet', labelKey: 'portal.nav.drivers' },
+      { href: '/labor-capacity', icon: 'fleet', labelKey: 'portal.nav.labor_capacity' },
       { href: '/vehicles', icon: 'fleet', labelKey: 'portal.nav.trucks' },
       { href: '/fleet-live-map', icon: 'map', labelKey: 'portal.nav.live_fleet' },
       { href: '/dispatch-locks', icon: 'lock', labelKey: 'portal.nav.dispatch_locks' },

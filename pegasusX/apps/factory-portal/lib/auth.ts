@@ -173,11 +173,12 @@ function toWSBaseUrl(baseUrl: string): string {
 }
 
 async function readFactorySocketToken(): Promise<string> {
-  try {
-    return await getFactoryToken();
-  } catch {
-    return '';
+  const res = await apiFetch('/v1/factory/ws-session', { method: 'GET', cache: 'no-store' });
+  const payload = (await res.json().catch(() => null)) as { token?: string } | null;
+  if (!res.ok || typeof payload?.token !== 'string' || !payload.token) {
+    throw new Error('Failed to mint factory WebSocket session');
   }
+  return payload.token;
 }
 
 function isFactoryEventType(value: string): value is FactoryLiveEventType {
@@ -226,8 +227,21 @@ export function subscribeFactoryWS(options: {
 
     options.onStatusChange?.(isReconnect ? 'reconnecting' : 'connecting');
 
-    const token = await readFactorySocketToken();
+    let token = '';
+    try {
+      token = await readFactorySocketToken();
+    } catch {
+      token = '';
+    }
     if (disposed) return;
+    if (!token) {
+      reconnectAttempt += 1;
+      options.onStatusChange?.('reconnecting');
+      reconnectTimer = window.setTimeout(() => {
+        void openSocket(true);
+      }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
+      return;
+    }
 
     const wsBase = toWSBaseUrl(API);
     socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);

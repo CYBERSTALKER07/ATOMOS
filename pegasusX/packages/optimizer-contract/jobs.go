@@ -1,7 +1,8 @@
 package optimizercontract
 
 // OptimizationJobType identifies the backend domain workflow that queued the
-// solver run. Values stay aligned with backend-go/optimizationjobs job types.
+// solver run. Contract enums for dispatch/optimizer envelopes (Spanner
+// OptimizationJobs table may still exist; the unused Go enqueue package was removed).
 type OptimizationJobType string
 
 const (
@@ -42,6 +43,8 @@ const (
 	OptimizationSolverStatusFeasible     OptimizationSolverStatus = "FEASIBLE"
 	OptimizationSolverStatusInfeasible   OptimizationSolverStatus = "INFEASIBLE"
 	OptimizationSolverStatusModelInvalid OptimizationSolverStatus = "MODEL_INVALID"
+	// Heuristic is for greedy / NN sidecars that never prove optimality (P2-2).
+	OptimizationSolverStatusHeuristic OptimizationSolverStatus = "HEURISTIC"
 )
 
 // OptimizationJobEnvelope is the canonical Kafka payload for

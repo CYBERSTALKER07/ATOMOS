@@ -290,6 +290,7 @@ const (
 	EventReplenishmentInsightCreated  = "REPLENISHMENT_INSIGHT_CREATED"
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
+	EventPlanningScenarioPublished    = "planning.scenario.published.v1"
 	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"
 	EventPlanningAgentBroadcast       = "PLANNING_AGENT_BROADCAST"
 	EventPlanningForecastUpdated      = "PLANNING_FORECAST_UPDATED"

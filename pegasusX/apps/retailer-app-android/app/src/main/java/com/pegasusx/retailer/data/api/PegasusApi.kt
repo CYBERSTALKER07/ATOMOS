@@ -53,6 +53,9 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import okhttp3.ResponseBody
+import com.pegasusx.retailer.data.model.PulseResponse
 
 /**
  * Retrofit interface for the Pegasus backend.
@@ -398,6 +401,27 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): JsonElement
 
+    @GET("/v1/retailer/pos/holds")
+    suspend fun listPosHolds(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/pos/holds")
+    suspend fun parkPosHold(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/holds/{holdID}/resume")
+    suspend fun resumePosHold(
+        @Path("holdID") holdId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/holds/{holdID}/void")
+    suspend fun voidPosHold(
+        @Path("holdID") holdId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
+    ): JsonElement
+
     // Retail OS Phase 5 shifts & time
     @POST("/v1/retailer/time/clock-in")
     suspend fun clockIn(
@@ -443,6 +467,13 @@ interface PegasusApi {
 
     @GET("/v1/retailer/reports/summary")
     suspend fun getReportsSummary(): JsonElement
+
+    @Streaming
+    @GET("/v1/retailer/reports/export")
+    suspend fun exportReportsCsv(@Query("report") report: String = "sales"): ResponseBody
+
+    @GET("/v1/retailer/pulse")
+    suspend fun getRetailerPulse(): PulseResponse
 
     @GET("/v1/retailer/control-tower/pulse")
     suspend fun getControlTowerPulse(): JsonElement

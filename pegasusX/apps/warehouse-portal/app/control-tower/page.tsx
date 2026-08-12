@@ -129,20 +129,26 @@ export default function ControlTowerPage() {
         >
           <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">{t("warehouse_portal.control_tower.text.baseline_vs_upside_scenarios")}</h3>
           <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={scenariosData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <YAxis stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
-                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", color: "#666" }} />
-                <Bar dataKey="baseline" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="upside" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {scenariosData.length === 0 ? (
+              <p className="text-xs text-gray-500">
+                Scenario compare is on the supplier control tower (planning drafts / published baseline).
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={scenariosData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <XAxis dataKey="name" stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
+                  <YAxis stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
+                    cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", color: "#666" }} />
+                  <Bar dataKey="baseline" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="upside" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </GlassmorphismPanel>
 

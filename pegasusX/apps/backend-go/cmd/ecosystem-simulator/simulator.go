@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -285,9 +284,11 @@ func (s *Simulator) issueJWT(claims auth.Claims) (string, error) {
 func (s *Simulator) connectWS(token string) (*websocket.Conn, error) {
 	wsURL := strings.Replace(s.base, "http://", "ws://", 1)
 	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)
-	u := wsURL + "/v1/ws?token=" + url.QueryEscape(token)
+	u := wsURL + "/v1/ws"
 
-	c, _, err := websocket.DefaultDialer.Dial(u, nil)
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	c, _, err := websocket.DefaultDialer.Dial(u, header)
 	return c, err
 }
 

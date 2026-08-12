@@ -1536,6 +1536,31 @@ CREATE TABLE PlanningPromoSimulations (
 CREATE INDEX Idx_PlanningPromoSim_ByPromotion
   ON PlanningPromoSimulations(SupplierId, PromotionId, CreatedAt DESC);
 
+-- P2-4: durable planning scenario workbench (clone → compare → publish).
+CREATE TABLE PlanningScenarios (
+  SupplierId              STRING(36)  NOT NULL,
+  ScenarioId              STRING(36)  NOT NULL,
+  Version                 INT64       NOT NULL DEFAULT (1),
+  Status                  STRING(16)  NOT NULL,
+  ParentScenarioId        STRING(36),
+  Label                   STRING(128),
+  HorizonDays             INT64       NOT NULL DEFAULT (7),
+  FactoryDowntimeHours    INT64       NOT NULL DEFAULT (0),
+  DemandDeltaPct          FLOAT64     NOT NULL DEFAULT (0),
+  ResultJSON              STRING(MAX) NOT NULL,
+  Mode                    STRING(32),
+  UnitValueSource         STRING(16),
+  SnapshotCapturedAt      TIMESTAMP,
+  CreatedBy               STRING(128),
+  PublishedBy             STRING(128),
+  PublishedAt             TIMESTAMP,
+  CreatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, ScenarioId);
+
+CREATE INDEX Idx_PlanningScenarios_BySupplierStatus
+  ON PlanningScenarios(SupplierId, Status, UpdatedAt DESC);
+
 -- ── ADR-009 Fiscal hard-gate ────────────────────────────────────────────────
 CREATE TABLE OrderFiscalReceipts (
   OrderId              STRING(36)  NOT NULL,
@@ -2845,6 +2870,14 @@ CREATE TABLE PlatformAdminAudit (
 
 CREATE INDEX Idx_PlatformAdminAudit_ByCreated
   ON PlatformAdminAudit(CreatedAt DESC);
+
+CREATE TABLE PlatformAdminMFA (
+  Subject   STRING(128) NOT NULL,
+  Secret    STRING(128) NOT NULL,
+  Enabled   BOOL NOT NULL,
+  CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  EnabledAt TIMESTAMP,
+) PRIMARY KEY (Subject);
 
 CREATE TABLE FeatureFlagOverrides (
   FlagKey      STRING(128) NOT NULL,

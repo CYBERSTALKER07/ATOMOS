@@ -83,9 +83,19 @@ func TestPlaceAllowedForRetailer_RequiresFlagAndGate(t *testing.T) {
 	if s.placeAllowedForRetailer(context.Background(), "org1") {
 		t.Fatal("place must be blocked when soak gate fails")
 	}
-	// Break-glass bypass → true.
+	// Break-glass bypass → true + audited.
 	t.Setenv("AUTO_ORDER_SOAK_GATE_DISABLED", "true")
 	if !s.placeAllowedForRetailer(context.Background(), "org1") {
 		t.Fatal("place must be allowed when gate disabled and flag on")
+	}
+	if len(s.soakBypassAudits) != 1 {
+		t.Fatalf("expected one soak bypass audit, got %d", len(s.soakBypassAudits))
+	}
+	// Second call dedupes audit.
+	if !s.placeAllowedForRetailer(context.Background(), "org1") {
+		t.Fatal("place must stay allowed on second bypass")
+	}
+	if len(s.soakBypassAudits) != 1 {
+		t.Fatalf("expected deduped soak bypass audit, got %d", len(s.soakBypassAudits))
 	}
 }

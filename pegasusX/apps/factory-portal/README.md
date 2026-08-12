@@ -18,7 +18,7 @@ Next.js 15 + **Tauri 2** desktop shell for factory operators. All authenticated 
 
 - `POST /v1/auth/factory/login` — Firebase phone OTP (`id_token`) or phone + password (dev)
 - `POST /v1/auth/factory/refresh` — refresh token rotation
-- WebSocket: `GET /v1/ws?token=…` (factory hub rooms)
+- WebSocket: `GET /v1/factory/ws-session` → short-lived `token_use=ws` ticket → `/v1/ws?token=…` (factory hub rooms).
 
 Firebase phone OTP uses the Auth emulator in development (`NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`, default `http://localhost:9099`).
 

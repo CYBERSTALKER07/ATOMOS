@@ -54,13 +54,13 @@ Feature classes (from master alignment): only **Class A** (Spanner write + outbo
 
 | Pillar | Exit when |
 |--------|-----------|
-| Money and law | EDS Soliq OFD path proven (sign→submit→poll); capture / refund / AR fail-closed; payout is either a live rail or bank-file documented as permanent settlement |
+| Money and law | EDS Soliq **contract** proven in CI (sign→submit→poll); live legal OFD needs owner EDS; capture/refund/AR fail-closed in-tree; payout bank-file permanent settlement; off-app dunning **code-wired** (keys/templates residual) |
 | Data-flow | Coverage rule holds; twin consumer started (W1); TopicWebhooks retired; DEMAND_SIGNAL atomic with sell-through; search = Spanner LIKE ([`SEARCH_DECISION.md`](./SEARCH_DECISION.md)); run-mode never silently drops push / inbox |
 | Cross-role Class A | Factory↔payload, retailer AR / HQ on mobile, supplier planning on web, warehouse WMS floor screens |
 | Trust | Detail-IDOR sweep closed (W0 2026-08-12); JWT revocation / denylist landed (`jti` + logout) |
 | Autonomy | 30-day soak artifact generated; dual-control `place` flip wired; real optimizer image + replicas ≥1 in prod |
 | Partner | GS1 DataMatrix FNC1-conformant + label path (W5); AS2 MDN/MIC verified (W5); partner Go SDK in go.work (W5); admin partner / match UI (W2); EDI-lite breadth + sandbox keys (W5). Drummond / certified EDIFACT still open. |
-| Ops | SLOs from [`PLATFORM_SLOS.md`](./PLATFORM_SLOS.md) alertable (outbox lag, DLQ depth, fiscal / capture / webhook success) |
+| Ops | SLOs from [`PLATFORM_SLOS.md`](./PLATFORM_SLOS.md) alertable (outbox lag, relay restarts, DLQ depth, fiscal / capture / webhook success) — stubs + collectors Wired 2026-08-12; enable via `enable_observability_resources` |
 
 ---
 
@@ -73,7 +73,7 @@ Roadmap order mapped to gap-register IDs. Closing gaps is separate work; this se
 | **W0 Trust** | Detail IDORs + JWT revocation — **closed 2026-08-12** | Gap register § Security; P1-11 ✅ |
 | **W1 Data-flow hygiene** | Twin start + TopicWebhooks retire + search decision + atomic DEMAND_SIGNAL — **closed 2026-08-12** | P2-11 ✅, P2-12 ✅, P2-13 decided |
 | **W2 Class A loops** | Close broken / half-wired cross-role product surfaces — **closed 2026-08-12** | P1-16 ✅, P1-17 ✅, P1-18 ✅, P2-24 ✅, P2-26 ✅ |
-| **W3 Money legality** | EDS fiscal proof; payout-rail decision; Global Pay refund proof — **closed 2026-08-12** | P1-7 ✅; P0-2 bank-file decision ✅; P2-10 ✅ |
+| **W3 Money legality** | EDS fiscal **contract** proof + payout-rail decision + GP **simulator** refund proof — **closed in-tree 2026-08-12** (live Soliq/GP keys = owner residual) | P1-7 ✅; P0-2 bank-file decision ✅; P2-10 ✅ |
 | **W4 Autonomy** | Prod optimizer; soak artifact; dual-control place; CronJobs / autonomy flags — **closed 2026-08-12** | P1-1 ✅, P1-2 ✅, P1-3 ✅, P1-4 ✅, P1-5 ✅ |
 | **W5 Partner cert** | GS1 / AS2 / SDK + EDIFACT breadth / sandbox — **closed 2026-08-12** | P1-13 ✅, P1-14 ✅, P1-15 ✅; P2-20 ✅, P2-21 ✅ |
 

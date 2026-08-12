@@ -65,6 +65,7 @@ class PayloadRepository @Inject constructor(
         val endpoints = listOf(
             "/v1/payloader/trucks",
             "/v1/payloader/manifests",
+            "/v1/factory/manifests",
         )
         for (endpoint in endpoints) {
             runCatching {
@@ -81,25 +82,59 @@ class PayloadRepository @Inject constructor(
 
     suspend fun loadTrucks(): List<Truck> = api.trucks()
 
-    /** Draft OR currently-loading manifest for the selected truck, or null. */
-    suspend fun loadOpenManifest(truckId: String): Manifest? {
-        val draft = api.supplierManifests(state = "DRAFT").manifests.firstOrNull { it.truckId == truckId }
-        if (draft != null) return draft
-        return api.supplierManifests(state = "LOADING").manifests.firstOrNull { it.truckId == truckId }
+    /**
+     * Payloader + factory loading-bay manifests (P1-18 / P2-25 Class A bridge).
+     * Dedupes by manifest_id; payloader wins on collision.
+     */
+    suspend fun listLoadingBayManifests(state: String = "DRAFT"): List<Manifest> {
+        val out = linkedMapOf<String, Manifest>()
+        val payloader = runCatching { api.manifests(state = state).manifests }
+            .getOrElse {
+                runCatching { api.supplierManifests(state = state).manifests }.getOrDefault(emptyList())
+            }
+        for (m in payloader) {
+            out.putIfAbsent(m.manifestId, m.copy(source = Manifest.SOURCE_PAYLOADER))
+        }
+        val factory = runCatching { api.factoryManifests(state = state).manifests }.getOrDefault(emptyList())
+        for (m in factory) {
+            out.putIfAbsent(m.manifestId, m.copy(source = Manifest.SOURCE_FACTORY))
+        }
+        return out.values.toList()
     }
 
-    suspend fun loadSupplierManifestDetail(manifestId: String): Manifest =
-        api.supplierManifestDetail(manifestId)
+    /** Draft OR currently-loading manifest for the selected truck, or null. */
+    suspend fun loadOpenManifest(truckId: String): Manifest? {
+        listLoadingBayManifests("DRAFT").firstOrNull { it.matchesTruck(truckId) }?.let { return it }
+        return listLoadingBayManifests("LOADING").firstOrNull { it.matchesTruck(truckId) }
+    }
+
+    suspend fun loadSupplierManifestDetail(manifestId: String, source: String = Manifest.SOURCE_PAYLOADER): Manifest =
+        when (source) {
+            Manifest.SOURCE_FACTORY -> api.factoryManifestDetail(manifestId).copy(source = Manifest.SOURCE_FACTORY)
+            else -> runCatching { api.manifestDetail(manifestId).copy(source = Manifest.SOURCE_PAYLOADER) }
+                .getOrElse {
+                    runCatching { api.supplierManifestDetail(manifestId).copy(source = Manifest.SOURCE_PAYLOADER) }
+                        .getOrElse {
+                            api.factoryManifestDetail(manifestId).copy(source = Manifest.SOURCE_FACTORY)
+                        }
+                }
+        }
 
     /** Live orders (with line items) for the selected vehicle. */
     suspend fun loadOrders(vehicleId: String, state: String = "LOADED"): List<LiveOrder> =
         api.orders(vehicleId = vehicleId, state = state)
 
-    suspend fun startLoading(manifestId: String): StatusResponse =
-        api.supplierStartLoading(
-            manifestId = manifestId,
-            idempotencyKey = deterministicIdempotencyKey("supplier-start-loading", manifestId),
-        )
+    suspend fun startLoading(manifestId: String, source: String = Manifest.SOURCE_PAYLOADER): StatusResponse {
+        val key = deterministicIdempotencyKey("supplier-start-loading", manifestId)
+        if (source == Manifest.SOURCE_FACTORY) {
+            return api.factoryStartLoading(manifestId = manifestId, idempotencyKey = key)
+        }
+        return runCatching {
+            api.supplierStartLoading(manifestId = manifestId, idempotencyKey = key)
+        }.getOrElse {
+            api.factoryStartLoading(manifestId = manifestId, idempotencyKey = key)
+        }
+    }
 
     suspend fun sealOrder(orderId: String, terminalId: String): SealOrderResponse =
         api.sealOrder(
@@ -108,7 +143,7 @@ class PayloadRepository @Inject constructor(
         )
 
     suspend fun loadLoadingManifests(): List<Manifest> =
-        api.supplierManifests(state = "LOADING").manifests
+        listLoadingBayManifests("LOADING")
 
     suspend fun sealCompletedManifests(manifestIds: List<String>): SealCompletedManifestsResponse {
         val ids = manifestIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -119,7 +154,13 @@ class PayloadRepository @Inject constructor(
         )
     }
 
-    suspend fun sealManifest(manifestId: String): SealManifestResponse {
+    suspend fun sealManifest(manifestId: String, source: String = Manifest.SOURCE_PAYLOADER): SealManifestResponse {
+        if (source == Manifest.SOURCE_FACTORY) {
+            return api.factorySealManifest(
+                manifestId = manifestId,
+                idempotencyKey = deterministicIdempotencyKey("seal-completed", manifestId),
+            )
+        }
         val batch = sealCompletedManifests(listOf(manifestId))
         return SealManifestResponse(
             status = batch.status,

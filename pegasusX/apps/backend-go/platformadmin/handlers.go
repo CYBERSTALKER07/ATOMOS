@@ -5,14 +5,19 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
+const websocketSessionTTL = 15 * time.Minute
+
 // Handlers expose PLATFORM_ADMIN tenant APIs.
 type Handlers struct {
-	Svc *Service
+	Svc       *Service
+	JWTSecret string
+	JWTIssuer string
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -26,13 +31,7 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 }
 
 func actorSubject(r *http.Request) string {
-	if c, ok := auth.FromContext(r.Context()); ok {
-		if c.Subject != "" {
-			return c.Subject
-		}
-		return string(c.Role)
-	}
-	return "unknown"
+	return auth.ActorFromContext(r.Context())
 }
 
 // HandleListTenants GET /v1/platform-admin/tenants
@@ -101,16 +100,50 @@ func (h *Handlers) HandleListAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"audit": rows})
 }
 
+// HandleWebSocketSession GET /v1/platform-admin/ws-session
+// Mints a short-lived JWT for /v1/ws (token_use=ws, including mfa_verified).
+func (h *Handlers) HandleWebSocketSession(w http.ResponseWriter, r *http.Request) {
+	c, ok := auth.FromContext(r.Context())
+	if !ok || c.Role != auth.RolePlatformAdmin {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if strings.TrimSpace(h.JWTSecret) == "" {
+		writeErr(w, http.StatusServiceUnavailable, "jwt_not_configured")
+		return
+	}
+	token, expiresAt, err := auth.IssueWSTicket(c, auth.IssueOptions{
+		Secret: h.JWTSecret,
+		Issuer: h.JWTIssuer,
+		TTL:    websocketSessionTTL,
+	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "issue_websocket_token_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token":      token,
+		"expires_at": expiresAt.UTC().Format(time.RFC3339Nano),
+	})
+}
+
 // RegisterRoutes mounts PLATFORM_ADMIN-gated routes.
-func RegisterRoutes(r chi.Router, h *Handlers) {
+// Optional stepUp middleware enforces TOTP when MFA is enrolled/required.
+func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http.Handler) {
 	if h == nil || h.Svc == nil {
 		return
 	}
 	r.Route("/v1/platform-admin", func(pr chi.Router) {
 		pr.Use(auth.RequireRole(auth.RolePlatformAdmin))
+		for _, mw := range stepUp {
+			if mw != nil {
+				pr.Use(mw)
+			}
+		}
 		pr.Get("/tenants", h.HandleListTenants)
 		pr.Get("/tenants/{tenantType}/{tenantID}", h.HandleGetTenant)
 		pr.Post("/tenants/{tenantType}/{tenantID}/transition", h.HandleTransitionTenant)
 		pr.Get("/audit", h.HandleListAudit)
+		pr.Get("/ws-session", h.HandleWebSocketSession)
 	})
 }

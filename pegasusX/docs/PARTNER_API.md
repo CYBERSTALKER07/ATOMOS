@@ -68,6 +68,7 @@ Orders go through `order.Service.Create` (reserve / credit / pricing). Tenant is
 
 - Kafka consumer `void-partner-webhooks` enqueues allowlisted events (`ORDER_CREATED`, `ORDER_STATUS_CHANGED`, `CLAIM_FILED`, `PAYMENT_CLEARED`)
 - Delivery worker HMAC-SHA256: `X-Pegasus-Signature: sha256=<hex>` over `{timestamp}.{body}`
+- **URL SSRF (P2-14):** `https` required (unless `PARTNER_WEBHOOK_ALLOW_HTTP`); rejects loopback/private/link-local/metadata after DNS; optional `PARTNER_WEBHOOK_HOST_ALLOWLIST` (comma hosts/suffixes) for explicit trust.
 - Headers: `X-Pegasus-Timestamp`, `X-Pegasus-Event-Id`, `X-Pegasus-Event-Type`
 - Idempotent on `(SubscriptionId, EventId)`; dead-letter after 8 attempts
 - Replay resets `AttemptCount` to 0 and sets `Status=PENDING` with `NextRetryAt=now`

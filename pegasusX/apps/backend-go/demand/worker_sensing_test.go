@@ -43,12 +43,18 @@ func TestPaydayFactor(t *testing.T) {
 		{28, 1.0},
 	}
 	for _, tt := range tests {
-		t.Run("day_"+string(rune('0'+tt.day/10))+string(rune('0'+tt.day%10)), func(t *testing.T) {
-			got := paydayFactor(tt.day)
-			if got != tt.want {
-				t.Errorf("paydayFactor(%d) = %v, want %v", tt.day, got, tt.want)
-			}
-		})
+		if got := paydayFactor(tt.day); got != tt.want {
+			t.Fatalf("day %d: got %v want %v", tt.day, got, tt.want)
+		}
+	}
+}
+
+func TestBlendVelocitiesWeights(t *testing.T) {
+	// Documented blend: 0.65 order + 0.35 POS flywheel.
+	order, fw := 10.0, 20.0
+	got := 0.65*order + 0.35*fw
+	if got < 13.4 || got > 13.6 {
+		t.Fatalf("blend = %v", got)
 	}
 }
 

@@ -3,6 +3,7 @@ import Network
 
 struct PosView: View {
     @State private var registerId: String?
+    @State private var locationId: String?
     @State private var sessionId: String?
     @State private var cart: [PosCartLine] = []
     @State private var sku = ""
@@ -14,6 +15,9 @@ struct PosView: View {
     @State private var pending: [PendingPosStore.Entry] = []
     @State private var isOnline = true
     @State private var pathMonitor = NWPathMonitor()
+    @State private var holdsEnabled = false
+    @State private var serverHolds: [PosHoldWire] = []
+    @State private var holdNote = ""
 
     private let api = APIClient.shared
     private let store = PendingPosStore.shared
@@ -83,12 +87,37 @@ struct PosView: View {
                     }
                     Text(String(format: "Total %.2f", Double(totalMinor) / 100.0))
                         .font(.headline)
+                    if holdsEnabled && isOnline {
+                        TextField("Hold note", text: $holdNote)
+                        Button("Park hold") { Task { await parkHold() } }
+                            .disabled(busy || cart.isEmpty || (locationId ?? "").isEmpty)
+                    }
                     Button(busy ? "…" : (isOnline ? "Complete cash sale" : "Complete cash sale offline")) {
                         Task { await completeSale() }
                     }
                     .disabled(busy || cart.isEmpty)
                     if lastSaleId != nil && isOnline {
                         Button("mobile_retailer.ui.void_last_sale", role: .destructive) { Task { await voidLast() } }
+                    }
+                }
+            }
+            if holdsEnabled && !serverHolds.isEmpty {
+                Section("Parked holds") {
+                    ForEach(serverHolds, id: \.holdId) { hold in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(
+                                String(hold.holdId.prefix(8))
+                                    + (hold.note.map { $0.isEmpty ? "" : " · \($0)" } ?? "")
+                                    + " · \(hold.cart?.lines?.count ?? 0) lines"
+                            )
+                            .font(.caption)
+                            HStack {
+                                Button("Resume") { Task { await resumeHold(hold) } }
+                                    .disabled(busy || !isOnline || sessionId == nil || !cart.isEmpty)
+                                Button("Void", role: .destructive) { Task { await voidHold(hold) } }
+                                    .disabled(busy || !isOnline)
+                            }
+                        }
                     }
                 }
             }
@@ -99,7 +128,10 @@ struct PosView: View {
             await ensureRegister()
             refreshPending()
             startNetworkMonitor()
-            if isOnline { await syncPending() }
+            if isOnline {
+                await syncPending()
+                await loadServerHolds()
+            }
         }
         .onDisappear { pathMonitor.cancel() }
     }
@@ -125,11 +157,112 @@ struct PosView: View {
             let regs = try await api.getRegisters()
             if let first = regs.items.first {
                 registerId = first.registerId
+                locationId = first.locationId
             } else {
                 let created = try await api.createRegister(label: "Register 1")
                 registerId = created.registerId
+                locationId = created.locationId
                 banner = "Register created"
             }
+            await loadServerHolds()
+        } catch {
+            banner = error.localizedDescription
+        }
+    }
+
+    private func loadServerHolds() async {
+        guard isOnline else { return }
+        do {
+            let list = try await api.listPosHolds(locationId: locationId)
+            holdsEnabled = true
+            serverHolds = list.items
+        } catch let APIError.serverError(statusCode, message) {
+            if statusCode == 404 || message.contains("POS_HOLDS_DISABLED") {
+                holdsEnabled = false
+                serverHolds = []
+            }
+        } catch {
+            let msg = error.localizedDescription
+            if msg.contains("404") || msg.contains("POS_HOLDS_DISABLED") {
+                holdsEnabled = false
+                serverHolds = []
+            }
+        }
+    }
+
+    private func linesFromHold(_ hold: PosHoldWire) -> [PosCartLine] {
+        (hold.cart?.lines ?? []).compactMap { line in
+            guard !line.sku.isEmpty else { return nil }
+            return PosCartLine(
+                id: line.sku,
+                sku: line.sku,
+                name: line.name ?? line.sku,
+                qty: line.qty ?? 1,
+                unitPriceMinor: line.unitPriceMinor ?? 0
+            )
+        }
+    }
+
+    private func parkHold() async {
+        guard let registerId, let locationId, !locationId.isEmpty else {
+            banner = "Location required to park hold"
+            return
+        }
+        busy = true
+        defer { busy = false }
+        let lines = cart.map {
+            PosSaleLineWire(sku: $0.sku, name: $0.name, qty: $0.qty, unitPriceMinor: $0.unitPriceMinor)
+        }
+        do {
+            _ = try await api.parkPosHold(
+                locationId: locationId,
+                registerId: registerId,
+                lines: lines,
+                note: holdNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : holdNote
+            )
+            cart = []
+            holdNote = ""
+            banner = "Cart parked on server (no stock held)"
+            await loadServerHolds()
+        } catch {
+            let msg = error.localizedDescription
+            if msg.contains("404") || msg.contains("POS_HOLDS_DISABLED") {
+                holdsEnabled = false
+                banner = "Server holds disabled"
+            } else {
+                banner = msg
+            }
+        }
+    }
+
+    private func resumeHold(_ hold: PosHoldWire) async {
+        guard cart.isEmpty else {
+            banner = "Clear or park current cart before resuming"
+            return
+        }
+        busy = true
+        defer { busy = false }
+        do {
+            let resumed = try await api.resumePosHold(
+                holdId: hold.holdId,
+                locationId: locationId ?? hold.locationId ?? ""
+            )
+            let lines = linesFromHold(resumed)
+            cart = lines.isEmpty ? linesFromHold(hold) : lines
+            banner = "Resumed hold \(hold.holdId.prefix(8))"
+            await loadServerHolds()
+        } catch {
+            banner = error.localizedDescription
+        }
+    }
+
+    private func voidHold(_ hold: PosHoldWire) async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await api.voidPosHold(holdId: hold.holdId)
+            banner = "Hold voided"
+            await loadServerHolds()
         } catch {
             banner = error.localizedDescription
         }

@@ -39,9 +39,11 @@ const (
 
 // TokenUse discriminates intermediate multi-org tokens from full session JWTs.
 // Empty / "full" = normal business access. "PendingOrgSelect" is C1.2 only.
+// "ws" is a short-lived WebSocket upgrade ticket (query ?token= only).
 const (
 	TokenUseFull             = ""
 	TokenUsePendingOrgSelect = "PendingOrgSelect"
+	TokenUseWS               = "ws"
 )
 
 // Claims is the parsed JWT identity. Populated by Middleware and read via
@@ -80,11 +82,46 @@ type Claims struct {
 	LocationIDs      []string // optional location scope (staff bind)
 	ActiveLocationID string   // currently selected store branch (Phase 2)
 	CapabilityPacks  []string // enabled pack ids excluding always-on CORE (optional cache)
+
+	// MFAVerified is set after PLATFORM_ADMIN TOTP step-up (claim mfa_verified).
+	MFAVerified bool
 }
 
 // IsPendingOrgSelect reports whether claims are intermediate multi-org tokens.
 func IsPendingOrgSelect(c Claims) bool {
 	return strings.EqualFold(strings.TrimSpace(c.TokenUse), TokenUsePendingOrgSelect)
+}
+
+// IsWSTicket reports whether claims are a short-lived WebSocket upgrade ticket.
+func IsWSTicket(c Claims) bool {
+	return strings.EqualFold(strings.TrimSpace(c.TokenUse), TokenUseWS)
+}
+
+// ActorLabel returns a stable audit actor id for platform-admin / flag trails.
+// Preference: Subject → PhoneNumber → RetailerUserID → Role → "unknown".
+// Never returns an empty string.
+func ActorLabel(c Claims) string {
+	if s := strings.TrimSpace(c.Subject); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(c.PhoneNumber); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(c.RetailerUserID); s != "" {
+		return s
+	}
+	if c.Role != "" {
+		return string(c.Role)
+	}
+	return "unknown"
+}
+
+// ActorFromContext resolves ActorLabel from request claims, or "unknown".
+func ActorFromContext(ctx context.Context) string {
+	if c, ok := FromContext(ctx); ok {
+		return ActorLabel(c)
+	}
+	return "unknown"
 }
 
 type ctxKey int

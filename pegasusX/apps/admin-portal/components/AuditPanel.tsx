@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type AuditRow } from "@/lib/api";
 
-export default function AuditPanel({ token }: { token: string }) {
+export default function AuditPanel({ token, refreshKey = 0 }: { token: string; refreshKey?: number }) {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export default function AuditPanel({ token }: { token: string }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   return (
     <section>

@@ -9,10 +9,10 @@ package gs1
 //   - Standard codeword module placement (the four corner cases + two "utah"
 //     shapes) and the finder/timing pattern.
 //
-// Only the square, non-interleaved sizes up to 52x52 are supported — these cover
-// every GS1 AI element string this package builds (<= ~88 data codewords). Larger
-// payloads should use the ZPL ^BX path (AIDataMatrixZPL), which offloads ECC200
-// to the printer firmware.
+// Only the square sizes up to 44x44 are supported (single RS block; no
+// interleave). These cover every GS1 AI element string this package builds
+// (<= 144 data codewords). Larger payloads should use the ZPL ^BX path
+// (AIDataMatrixZPL), which offloads ECC200 to the printer firmware.
 //
 // References: ISO/IEC 16022; the public-domain annex tables (symbol attributes,
 // RS block counts, placement algorithm) reproduced below.
@@ -21,13 +21,13 @@ package gs1
 type dmSymbol struct {
 	size      int // module width/height (incl. finder)
 	dataCW    int // number of data codewords
-	eccCW     int // number of error codewords (single block; no interleave <= 52x52)
+	eccCW      int // number of error codewords (single block; no interleave <= 44x44)
 	matrixSize int // data-region module width (size without finder, per region grid)
 	regionSize int // modules per region side (size/regionCount - 2)
 	regions    int // regions per side
 }
 
-// Square ECC200 symbol table (single RS block up to 52x52).
+// Square ECC200 symbol table (single RS block up to 44x44).
 var dmSquareSymbols = []dmSymbol{
 	{size: 10, dataCW: 3, eccCW: 5, regions: 1, regionSize: 8},
 	{size: 12, dataCW: 5, eccCW: 7, regions: 1, regionSize: 10},

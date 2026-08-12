@@ -90,7 +90,17 @@ func (w *InvoiceWorker) GenerateMonthlyInvoice(ctx context.Context, supplierID s
 	}
 
 	monthEnd := next.Add(-time.Second)
-	inv, err := w.ar.OpenFromCreditLeave(ctx, "PLATFORM", supplierID, billingKey, fee, 14, 3, monthEnd, monthEnd.AddDate(0, 0, 14))
+	inv, err := w.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+		SupplierID:    "PLATFORM",
+		RetailerID:    supplierID,
+		OrderID:       billingKey,
+		AmountMinor:   fee,
+		Currency:      sched.Currency,
+		TermsDays:     14,
+		GraceDays:     3,
+		CreditLeaveAt: monthEnd,
+		DueAt:         monthEnd.AddDate(0, 0, 14),
+	})
 	if err != nil {
 		return "", fmt.Errorf("open billing AR item: %w", err)
 	}

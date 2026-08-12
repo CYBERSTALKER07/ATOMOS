@@ -19,9 +19,10 @@ Outputs land in (and are committed at):
 - `sdk/partner/ts/` — TypeScript (fetch) client (`@pegasusx/partner-sdk`)
 - `sdk/partner/go/` — Go client (`github.com/pegasusx/pegasusx/sdk/partner/go`, in `go.work`)
 
-Requires Docker (uses `openapitools/openapi-generator-cli`). Human JWT core
-remains on the hand client until `contracts/jwt-core.openapi.yaml` coverage
-expands.
+Requires Docker (uses `openapitools/openapi-generator-cli`). Human JWT partner
+aliases (`/v1/supplier/partner-*`, key revoke, SFTP) are documented in the same
+spec (v1.6+); regenerate SDKs after contract edits. Human JWT core remains on
+the hand client until `contracts/jwt-core.openapi.yaml` coverage expands.
 
 ## Verify contract drift
 

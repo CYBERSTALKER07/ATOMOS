@@ -23,6 +23,8 @@ type Deps struct {
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
+	JWTSecret           string
+	JWTIssuer           string
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 	AllowAuthBypass     bool
@@ -44,6 +46,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	mountProtected := func(rr chi.Router) {
 		// C1.2 switch-org requires full JWT (RequireRole rejects PendingOrgSelect).
 		rr.Post("/v1/auth/retailer/switch-org", d.Service.HandleSwitchOrg)
+		rr.Get("/v1/retailer/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
 		// Retail OS Phase 0 identity + capability packs
 		rr.Get("/v1/retailer/me", d.Service.HandleMe)
 		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)

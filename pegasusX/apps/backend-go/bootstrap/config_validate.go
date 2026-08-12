@@ -27,6 +27,9 @@ func (c *Config) ValidateProductionProfile() error {
 		strings.EqualFold(strings.TrimSpace(c.JWTSecret), "dev-only-change-me") {
 		return fmt.Errorf("JWT_SECRET must be a non-dev value when PEGASUSX_ENV=production")
 	}
+	if !c.PlatformAdminMFARequired {
+		return fmt.Errorf("PLATFORM_ADMIN_MFA_REQUIRED must be true when PEGASUSX_ENV=production")
+	}
 	if err := c.validateUpdatesBaseURL(true); err != nil {
 		return err
 	}

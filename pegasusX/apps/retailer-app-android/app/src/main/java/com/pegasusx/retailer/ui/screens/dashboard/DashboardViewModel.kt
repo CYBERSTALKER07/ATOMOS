@@ -8,6 +8,7 @@ import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.data.model.PulseEvent
 import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -31,6 +32,8 @@ data class DashboardUiState(
     val activeOrders: List<Order> = emptyList(),
     val predictions: List<DemandForecast> = emptyList(),
     val recentProducts: List<Product> = emptyList(),
+    val pulseEvents: List<PulseEvent> = emptyList(),
+    val pulseLoading: Boolean = false,
     val error: String? = null,
     val loadIssue: DashboardLoadIssue? = null,
     val orderActionPending: Boolean = false,
@@ -82,7 +85,7 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, pulseLoading = true, error = null) }
 
             var nextIssue: DashboardLoadIssue? = null
             var nextError: String? = null
@@ -116,6 +119,14 @@ class DashboardViewModel @Inject constructor(
                     nextIssue = resolveLoadIssue(e)
                     nextError = resolveErrorMessage(e, nextIssue)
                 }
+            }
+
+            try {
+                val pulse = api.getRetailerPulse()
+                _uiState.update { it.copy(pulseEvents = pulse.events, pulseLoading = false) }
+            } catch (_: Exception) {
+                // Soft-fail: hide strip when pulse is unavailable.
+                _uiState.update { it.copy(pulseEvents = emptyList(), pulseLoading = false) }
             }
 
             _uiState.update {

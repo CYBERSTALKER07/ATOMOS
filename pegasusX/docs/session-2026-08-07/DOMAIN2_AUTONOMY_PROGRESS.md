@@ -17,14 +17,15 @@ Date: 2026-08-11 · Roadmap ref: `/Users/shakhzod/.cursor/plans/Ecosystem Capabi
 
 - New `retailer/auto_order_soak_gate.go`:
   - `SoakGateConfig` (env-tunable): `AUTO_ORDER_SOAK_MIN_PROPOSALS` (20),
-    `AUTO_ORDER_SOAK_MAX_WAPE` (0.30), `AUTO_ORDER_SOAK_MIN_UNMODIFIED` (0.60),
-    `AUTO_ORDER_SOAK_GATE_DISABLED` (break-glass bypass, default off).
+    `AUTO_ORDER_SOAK_MAX_WAPE` (0.30), `AUTO_ORDER_SOAK_MIN_UNMODIFIED` (0.80 —
+    aligned with place-flip policy), `AUTO_ORDER_SOAK_GATE_DISABLED` (break-glass
+    bypass; money-flag dual-control as of P2-7).
   - `EvaluateSoakGate` — allows place only when the 30-day shadow stats pass all
     thresholds. **Fail-closed**: stats errors, too few proposals, or enough
     proposals with zero matched orders all deny the flip.
-  - `placeAllowedForRetailer` — combines the process flag AND the soak gate;
-    wired into both place paths in `auto_order_worker.go` (`sweepAutoOrderEnabled`
-    and `runAutoOrderPlace`).
+  - `placeAllowedForRetailer` — combines process env, soak gate, and runtime
+    `featureflags.Evaluate("AUTO_ORDER_PLACE_ENABLED", …)` (W4 / P1-5); wired into
+    place paths in `auto_order_worker.go`.
   - `Service.soakGateDisabled` test seam (avoids `t.Setenv` + `t.Parallel` panic).
 - Handlers (registered in `retailerroutes/routes.go`):
   - `GET /v1/retailer/settings/auto-order/soak-gate` — live gate decision +
@@ -57,8 +58,9 @@ Date: 2026-08-11 · Roadmap ref: `/Users/shakhzod/.cursor/plans/Ecosystem Capabi
 
 ## Notes / follow-ups
 
-- The dual-control feature-flag surface (Domain 5) governs the `AUTO_ORDER_*`
-  flags; the soak gate is the *runtime evidence* counterpart. Together: flag says
-  "may", soak gate says "ready".
+- Dual-control + runtime `featureflags.Evaluate` govern `AUTO_ORDER_PLACE_ENABLED`
+  / soak-bypass money flags; the soak gate is the *runtime evidence* counterpart.
+  Together: flag says "may", soak gate says "ready". Place env remains false until
+  flip evidence (W4).
 - Pre-existing flake `TestAutoOrderWorkerFromAIPredictions` (no_suggestions under
   parallel seeding) is worth a separate hardening pass — out of scope here.

@@ -990,8 +990,7 @@ func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	expiresAt := s.now().Add(supplierWebSocketSessionTTL)
-	token, err := auth.Issue(claims, auth.IssueOptions{
+	token, expiresAt, err := auth.IssueWSTicket(claims, auth.IssueOptions{
 		Secret: s.jwtSecret,
 		Issuer: s.jwtIssuer,
 		TTL:    supplierWebSocketSessionTTL,
@@ -1004,7 +1003,7 @@ func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request)
 	}
 	writeJSON(w, http.StatusOK, supplierWebSocketSessionResponse{
 		Token:     token,
-		ExpiresAt: expiresAt.Format(time.RFC3339Nano),
+		ExpiresAt: expiresAt.UTC().Format(time.RFC3339Nano),
 	})
 }
 

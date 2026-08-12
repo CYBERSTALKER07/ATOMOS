@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -92,35 +93,57 @@ func NewService(repo Repository) *Service {
 
 func (s *Service) SetNow(fn func() time.Time) { s.now = fn }
 
+// OpenFromCreditLeaveRequest opens an AR invoice at credit leave (or billing).
+type OpenFromCreditLeaveRequest struct {
+	SupplierID      string
+	RetailerID      string
+	OrderID         string
+	AmountMinor     int64
+	Currency        string // ISO-4217; empty falls back to UZS only as last resort
+	TermsDays       int64
+	GraceDays       int64
+	CreditLeaveAt   time.Time
+	DueAt           time.Time
+}
+
 // OpenFromCreditLeave creates an OPEN invoice with due date from terms (idempotent per order).
-func (s *Service) OpenFromCreditLeave(ctx context.Context, supplierID, retailerID, orderID string, amountMinor, termsDays, graceDays int64, creditLeaveAt, dueAt time.Time) (Invoice, error) {
-	if !InvoicesEnabled() || amountMinor <= 0 {
+func (s *Service) OpenFromCreditLeave(ctx context.Context, req OpenFromCreditLeaveRequest) (Invoice, error) {
+	if !InvoicesEnabled() || req.AmountMinor <= 0 {
 		return Invoice{}, nil
 	}
-	if existing, found, err := s.repo.GetByOrder(ctx, orderID); err != nil {
+	if existing, found, err := s.repo.GetByOrder(ctx, req.OrderID); err != nil {
 		return Invoice{}, err
 	} else if found {
 		return existing, nil
 	}
+	termsDays := req.TermsDays
 	if termsDays <= 0 {
 		termsDays = 30
 	}
+	dueAt := req.DueAt
 	if dueAt.IsZero() {
-		dueAt = creditLeaveAt.AddDate(0, 0, int(termsDays))
+		dueAt = req.CreditLeaveAt.AddDate(0, 0, int(termsDays))
+	}
+	currency := fxrates.NormalizeCurrency(req.Currency)
+	if currency == "" {
+		currency = "UZS"
+	}
+	if len(currency) != 3 {
+		return Invoice{}, fmt.Errorf("%w: %q", fxrates.ErrInvalidCurrency, req.Currency)
 	}
 	inv := Invoice{
 		InvoiceID:       s.newID(),
-		SupplierID:      supplierID,
-		RetailerID:      retailerID,
-		OrderID:         orderID,
+		SupplierID:      req.SupplierID,
+		RetailerID:      req.RetailerID,
+		OrderID:         req.OrderID,
 		Status:          StatusOpen,
-		PrincipalMinor:  amountMinor,
-		BalanceMinor:    amountMinor,
-		Currency:        "UZS",
-		CreditLeaveAt:   creditLeaveAt,
+		PrincipalMinor:  req.AmountMinor,
+		BalanceMinor:    req.AmountMinor,
+		Currency:        currency,
+		CreditLeaveAt:   req.CreditLeaveAt,
 		DueAt:           dueAt,
 		TermsDays:       termsDays,
-		GracePeriodDays: graceDays,
+		GracePeriodDays: req.GraceDays,
 		AgingBucket:     AgingCurrent,
 		Version:         1,
 		CreatedAt:       s.now(),
@@ -145,12 +168,22 @@ func (s *Service) ListSupplierInvoices(ctx context.Context, supplierID, status s
 // idempotencyKey; returns the updated invoice. This is the production entry
 // point that was previously missing — without it credit invoices could never
 // be settled and every one marched to CREDIT_HOLD regardless of payment.
-func (s *Service) RecordPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) (Invoice, error) {
+// currency, when non-empty, must match the invoice currency (P2-8).
+func (s *Service) RecordPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey, currency string) (Invoice, error) {
 	if amountMinor <= 0 {
 		return Invoice{}, fmt.Errorf("amount_minor must be positive")
 	}
 	if strings.TrimSpace(idempotencyKey) == "" {
 		return Invoice{}, fmt.Errorf("idempotency_key required")
+	}
+	if strings.TrimSpace(currency) != "" {
+		inv, err := s.repo.GetByID(ctx, invoiceID)
+		if err != nil {
+			return Invoice{}, err
+		}
+		if err := fxrates.AssertSameCurrency(inv.Currency, currency); err != nil {
+			return Invoice{}, err
+		}
 	}
 	if err := s.repo.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey); err != nil {
 		return Invoice{}, err
@@ -161,7 +194,8 @@ func (s *Service) RecordPayment(ctx context.Context, invoiceID string, amountMin
 // RecordPaymentForOrder pays down the AR invoice opened for a given order, if
 // one exists. No-op when there is no invoice (cash/card orders) — safe to call
 // unconditionally from the cash-collection and capture paths.
-func (s *Service) RecordPaymentForOrder(ctx context.Context, orderID string, amountMinor int64, idempotencyKey string) error {
+// currency, when non-empty, must match the invoice (typically order.Currency).
+func (s *Service) RecordPaymentForOrder(ctx context.Context, orderID string, amountMinor int64, idempotencyKey, currency string) error {
 	inv, found, err := s.repo.GetByOrder(ctx, orderID)
 	if err != nil {
 		return err
@@ -172,7 +206,7 @@ func (s *Service) RecordPaymentForOrder(ctx context.Context, orderID string, amo
 	if inv.Status == StatusPaid || inv.Status == StatusVoid {
 		return nil
 	}
-	_, err = s.RecordPayment(ctx, inv.InvoiceID, amountMinor, idempotencyKey)
+	_, err = s.RecordPayment(ctx, inv.InvoiceID, amountMinor, idempotencyKey, currency)
 	return err
 }
 

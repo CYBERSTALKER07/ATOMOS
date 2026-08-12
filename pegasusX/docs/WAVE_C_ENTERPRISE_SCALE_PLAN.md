@@ -154,7 +154,7 @@ Not “clear cart only.”
 |------|---------|---------|
 | `MULTI_ORG_LOGIN_ENABLED` | **off** | Multi-membership picker path |
 | `HQ_ANALYTICS_ENABLED` | off | HQ APIs + writers gate |
-| `POS_HOLDS_ENABLED` | off | Parked carts |
+| `POS_HOLDS_ENABLED` | pilot default on | Parked carts |
 | `OFFLINE_COUNT_ENABLED` | off | Count commit + 409 protocol |
 | `ASSIST_SLA_ENABLED` | off | SLA worker |
 
@@ -306,7 +306,7 @@ C3 parked carts before full HQ UI: simpler, immediate operational value.
 | DDL | `schema/migrations/20260811_retailer_pos_holds.ddl` + `spanner.ddl` |
 | Service | `retailer/pos_holds.go` — park/list/resume/void |
 | Invariants | **No OnHand/stock writes**; resume **same LocationId only**; TTL **24h** |
-| Flag | `POS_HOLDS_ENABLED` default off → 404 `POS_HOLDS_DISABLED` |
+| Flag | `POS_HOLDS_ENABLED` pilot default on; set `false` → 404 `POS_HOLDS_DISABLED` |
 | Routes | `GET/POST /v1/retailer/pos/holds`, `…/{holdID}/resume`, `…/void` |
 | Tests | `pos_holds_test.go` PASS |
 | SSMR | DDL applied when gcloud available |

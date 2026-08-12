@@ -97,6 +97,7 @@ struct LiveOrder: Decodable, Identifiable {
 struct Manifest: Decodable, Identifiable {
     let manifestId: String
     let truckId: String?
+    let vehicleId: String?
     let driverId: String?
     let state: String   // DRAFT | LOADING | SEALED | DISPATCHED | COMPLETED
     let totalVolumeVu: Double?
@@ -109,7 +110,36 @@ struct Manifest: Decodable, Identifiable {
     /// Hydrated by the detail endpoint only — Phase 4 wires this.
     let orders: [LiveOrder]?
     let overflowCount: Int?
+    /// Client-only: payloader | factory (P1-18 / P2-25 loading-bay merge).
+    var source: String = "payloader"
     var id: String { manifestId }
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case truckId = "truck_id"
+        case vehicleId = "vehicle_id"
+        case driverId = "driver_id"
+        case state
+        case totalVolumeVu = "total_volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
+        case regionCode = "region_code"
+        case sealedAt = "sealed_at"
+        case dispatchedAt = "dispatched_at"
+        case createdAt = "created_at"
+        case orders
+        case overflowCount = "overflow_count"
+    }
+
+    func matchesTruck(_ truckId: String) -> Bool {
+        self.truckId == truckId || vehicleId == truckId
+    }
+
+    func withSource(_ source: String) -> Manifest {
+        var copy = self
+        copy.source = source
+        return copy
+    }
 }
 
 struct ManifestsResponse: Decodable {

@@ -29,6 +29,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/payloader/refresh", d.Service.HandlePayloaderRefresh)
 
 	mountProtected := func(rr chi.Router) {
+		rr.Get("/v1/payload/ws-session", auth.WSSessionHandler(d.JWTSecret, d.Service.AuthIssuer(), 0))
 		rr.Get("/v1/payloader/trucks", d.Service.HandleTrucks)
 		rr.Get("/v1/payloader/orders", d.Service.HandleOrders)
 		rr.Get("/v1/payloader/manifests", d.Service.HandleManifestsList)

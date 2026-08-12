@@ -52,6 +52,10 @@ data:
   PARTNER_SFTP_STRICT_HOSTKEY: "true"
   PARTNER_AS2_ENABLED: "false"
   PARTNER_AS2_INSECURE_PLAIN: "false"
+  # Webhook URL SSRF: https-only + block private/metadata IPs (P2-14).
+  # Override with PARTNER_WEBHOOK_HOST_ALLOWLIST or ALLOW_HTTP/PRIVATE only in SSMR/staging tests.
+  PARTNER_WEBHOOK_ALLOW_HTTP: "false"
+  PARTNER_WEBHOOK_ALLOW_PRIVATE: "false"
   # §8.4 forecast accuracy — enable after ForecastAccuracyDaily migration + soak.
   # Prod overlay merges FORECAST_ACCURACY_ENABLED=true for soak evidence (W4).
   FORECAST_ACCURACY_ENABLED: "false"

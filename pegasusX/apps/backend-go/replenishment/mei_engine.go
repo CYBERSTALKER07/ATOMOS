@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 // MEIONetworkSummary is the supplier-facing network optimization snapshot.
@@ -22,8 +26,22 @@ type MEIONetworkSummary struct {
 	SKUsAnalyzed            int                 `json:"skus_analyzed"`
 	InsightsGenerated       int                 `json:"insights_generated"`
 	TransferRecommendations int                 `json:"transfer_recommendations"`
+	CapitalCapMinor         int64               `json:"capital_cap_minor,omitempty"`
+	CapitalUsedMinor        int64               `json:"capital_used_minor,omitempty"`
+	TransfersSkippedCapital int                 `json:"transfers_skipped_capital,omitempty"`
 	WarehouseBalances       []MEIOWarehouseNode `json:"warehouse_balances"`
 	GeneratedAt             string              `json:"generated_at"`
+}
+
+// meiTransferCandidate is a proposed surplus→deficit move evaluated under capital_cap.
+type meiTransferCandidate struct {
+	skuID             string
+	qty               int64
+	unitValueMinor    int64
+	receiverDaysCover float64
+	urgency           string
+	donorWarehouseID  string
+	receiver          meiSkuBalance
 }
 
 // MEIOWarehouseNode summarizes stock health per warehouse in the network.
@@ -161,11 +179,18 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 		}
 	}
 
-	// Network transfer recommendations: move stock from surplus to deficit warehouses.
+	// Network transfer recommendations: move stock from surplus to deficit warehouses,
+	// constrained by Σ(transfer_qty × unit_value) <= MEIO_CAPITAL_CAP_MINOR (0 = unlimited).
+	unitValues, _ := e.productUnitValuesMinor(ctx, summary.SupplierID)
+	fallbackUnit := meioUnitValueFallbackMinor()
+	capitalCap := meioCapitalCapMinor()
+	summary.CapitalCapMinor = capitalCap
+
 	bySKU := make(map[string][]meiSkuBalance)
 	for _, b := range balances {
 		bySKU[b.skuID] = append(bySKU[b.skuID], b)
 	}
+	var candidates []meiTransferCandidate
 	for skuID, nodes := range bySKU {
 		if len(nodes) < 2 {
 			continue
@@ -191,13 +216,32 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 		if transferQty < 1 {
 			continue
 		}
+		uv := unitValues[skuID]
+		if uv <= 0 {
+			uv = fallbackUnit
+		}
+		candidates = append(candidates, meiTransferCandidate{
+			skuID:             skuID,
+			qty:               transferQty,
+			unitValueMinor:    uv,
+			receiverDaysCover: receiver.daysCover,
+			urgency:           receiver.urgency,
+			donorWarehouseID:  donor.warehouseID,
+			receiver:          *receiver,
+		})
+	}
+
+	accepted, used, skipped := selectTransfersUnderCapital(candidates, capitalCap)
+	summary.CapitalUsedMinor = used
+	summary.TransfersSkippedCapital = skipped
+	for _, c := range accepted {
 		summary.TransferRecommendations++
-		wh, whOK := warehouseByID(warehouses, receiver.warehouseID)
+		wh, whOK := warehouseByID(warehouses, c.receiver.warehouseID)
 		if !whOK {
 			continue
 		}
-		if err := e.writeMEIOInsight(ctx, wh, *receiver, transferQty, donor.warehouseID); err != nil {
-			e.Log.Warn("mei.write_insight_failed", "sku", skuID, "err", err)
+		if err := e.writeMEIOInsight(ctx, wh, c.receiver, c.qty, c.donorWarehouseID); err != nil {
+			e.Log.Warn("mei.write_insight_failed", "sku", c.skuID, "err", err)
 			continue
 		}
 		summary.InsightsGenerated++
@@ -279,4 +323,102 @@ func warehouseByID(warehouses []warehouseInfo, id string) (warehouseInfo, bool) 
 		}
 	}
 	return warehouseInfo{}, false
+}
+
+// selectTransfersUnderCapital prioritizes CRITICAL then lowest days-cover receivers,
+// accepting transfers while Σ(qty × unit_value) stays within capitalCapMinor.
+// capitalCapMinor <= 0 means unlimited.
+func selectTransfersUnderCapital(cands []meiTransferCandidate, capitalCapMinor int64) (accepted []meiTransferCandidate, usedMinor int64, skipped int) {
+	if len(cands) == 0 {
+		return nil, 0, 0
+	}
+	sorted := append([]meiTransferCandidate(nil), cands...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		ui, uj := sorted[i].urgency, sorted[j].urgency
+		if ui != uj {
+			return urgencyRank(ui) < urgencyRank(uj)
+		}
+		if sorted[i].receiverDaysCover != sorted[j].receiverDaysCover {
+			return sorted[i].receiverDaysCover < sorted[j].receiverDaysCover
+		}
+		return sorted[i].skuID < sorted[j].skuID
+	})
+	for _, c := range sorted {
+		cost := c.qty * c.unitValueMinor
+		if cost < 0 {
+			cost = 0
+		}
+		if capitalCapMinor > 0 && usedMinor+cost > capitalCapMinor {
+			skipped++
+			continue
+		}
+		accepted = append(accepted, c)
+		usedMinor += cost
+	}
+	return accepted, usedMinor, skipped
+}
+
+func urgencyRank(u string) int {
+	switch strings.ToUpper(strings.TrimSpace(u)) {
+	case "CRITICAL":
+		return 0
+	case "WARNING":
+		return 1
+	default:
+		return 2
+	}
+}
+
+func meioCapitalCapMinor() int64 {
+	v := strings.TrimSpace(os.Getenv("MEIO_CAPITAL_CAP_MINOR"))
+	if v == "" {
+		return 0
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
+func meioUnitValueFallbackMinor() int64 {
+	v := strings.TrimSpace(os.Getenv("MEIO_UNIT_VALUE_MINOR"))
+	if v == "" {
+		return 10000
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return 10000
+	}
+	return n
+}
+
+func (e *Engine) productUnitValuesMinor(ctx context.Context, supplierID string) (map[string]int64, error) {
+	out := make(map[string]int64)
+	if e == nil || e.Spanner == nil || strings.TrimSpace(supplierID) == "" {
+		return out, nil
+	}
+	iter := e.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT ProductId, PriceMinor FROM Products WHERE SupplierId = @sid AND IsActive = true`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return out, err
+		}
+		var pid string
+		var price int64
+		if err := row.Columns(&pid, &price); err != nil {
+			return out, err
+		}
+		if price > 0 {
+			out[pid] = price
+		}
+	}
+	return out, nil
 }

@@ -129,6 +129,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
 		slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays)
 	}
+	if app.DemandService != nil {
+		go app.DemandService.RunDensityWorker(ctx, 6*time.Hour)
+		slog.Info("demand density worker started")
+	}
 
 	if app.ControlTowerWorker != nil {
 		go app.ControlTowerWorker.Run(ctx)
@@ -241,6 +245,7 @@ func hubList(app *bootstrap.App) []*ws.Hub {
 		app.WarehouseHub,
 		app.FactoryHub,
 		app.TelemetryHub,
+		app.PlatformAdminHub,
 	}
 }
 

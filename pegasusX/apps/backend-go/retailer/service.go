@@ -359,6 +359,9 @@ type Service struct {
 	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED (fallback when flags unset)
 	placeFlags            PlaceFlagEvaluator
 	soakGateDisabled      bool // test seam: bypass the soak-evidence gate
+	soakBypassAuditor     SoakBypassAuditor
+	soakBypassLogged      sync.Map // orgID|source → true (dedupe runtime audits)
+	soakBypassAudits      []map[string]any
 	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
 	autoOrderBucket map[string]string
 	// Local POS catalog (memory fallback)
@@ -536,12 +539,26 @@ type PlaceFlagEvaluator interface {
 	Evaluate(ctx context.Context, flagKey, tenantType, tenantID string) (bool, string, error)
 }
 
-// SetPlaceFlagEvaluator wires runtime dual-control evaluation for AUTO_ORDER_PLACE_ENABLED.
+// SoakBypassAuditor records runtime soak-gate break-glass usage (env or flag).
+type SoakBypassAuditor interface {
+	RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error
+}
+
+// SetPlaceFlagEvaluator wires runtime dual-control evaluation for AUTO_ORDER_PLACE_ENABLED
+// and AUTO_ORDER_SOAK_GATE_DISABLED.
 func (s *Service) SetPlaceFlagEvaluator(eval PlaceFlagEvaluator) {
 	if s == nil {
 		return
 	}
 	s.placeFlags = eval
+}
+
+// SetSoakBypassAuditor wires PlatformAdminAudit for soak-gate break-glass (P2-7).
+func (s *Service) SetSoakBypassAuditor(a SoakBypassAuditor) {
+	if s == nil {
+		return
+	}
+	s.soakBypassAuditor = a
 }
 
 // RegisterRequest is the wire shape for POST /v1/auth/retailer/register.

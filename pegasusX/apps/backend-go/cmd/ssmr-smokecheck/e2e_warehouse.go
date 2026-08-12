@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 )
@@ -923,7 +922,7 @@ func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client,
 	if err != nil {
 		return nil, fmt.Errorf("issue warehouse admin jwt: %w", err)
 	}
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL(base, whToken), nil)
+	conn, _, err := dialWS(ctx, base, whToken)
 	if err != nil {
 		return nil, fmt.Errorf("warehouse ws dial: %w", err)
 	}

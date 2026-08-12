@@ -40,6 +40,7 @@ func TestRotateWebhookSecret(t *testing.T) {
 	keys := NewMemoryKeyRepository()
 	hooks := NewMemoryWebhookRepository()
 	svc := NewService(keys, hooks, nil, nil, nil)
+	svc.WebhookURLPolicy = &WebhookURLPolicy{HostAllowlist: []string{"example.test"}}
 	p := Principal{TenantType: TenantSupplier, TenantID: "sup-1", Scopes: []string{ScopeWebhooksManage}}
 	sub, secret, err := svc.CreateWebhookSubscription(context.Background(), p, "https://example.test/hook", []string{"ORDER_CREATED"})
 	if err != nil {

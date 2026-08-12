@@ -373,7 +373,13 @@ class HomeViewModel @Inject constructor(
             val loading = runCatching { repository.loadLoadingManifests() }.getOrElse { return@launch }
             val ready = mutableListOf<String>()
             for (manifest in loading) {
-                val manifestTruckId = manifest.truckId ?: continue
+                // Batch seal-completed is payloader-only; factory seals via /v1/factory/.../seal.
+                if (manifest.source == Manifest.SOURCE_FACTORY) continue
+                val manifestTruckId = when {
+                    manifest.truckId.isNotEmpty() -> manifest.truckId
+                    manifest.vehicleId.isNotEmpty() -> manifest.vehicleId
+                    else -> continue
+                }
                 val orders = if (manifestTruckId == truckId) {
                     snapshot.orders
                 } else {
@@ -665,11 +671,11 @@ class HomeViewModel @Inject constructor(
 
     // ── Manifest-level transitions ──────────────────────────────────────────
     fun startLoading() {
-        val manifestId = _state.value.manifest?.manifestId ?: return
+        val manifest = _state.value.manifest ?: return
         if (_state.value.startingLoading) return
         _state.update { it.copy(startingLoading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.startLoading(manifestId) }
+            runCatching { repository.startLoading(manifest.manifestId, manifest.source) }
                 .onSuccess {
                     _state.update {
                         it.copy(
@@ -692,23 +698,35 @@ class HomeViewModel @Inject constructor(
         }
 
     fun sealManifest() {
-        val manifestId = _state.value.manifest?.manifestId ?: return
+        val manifest = _state.value.manifest ?: return
+        val manifestId = manifest.manifestId
         if (_state.value.sealingManifest) return
+        val factoryOnly = manifest.source == Manifest.SOURCE_FACTORY
         val batchIds = _state.value.batchReadyManifestIds
-        val manifestIds = if (batchIds.size > 1 && manifestId in batchIds) batchIds else listOf(manifestId)
+        val manifestIds = if (!factoryOnly && batchIds.size > 1 && manifestId in batchIds) {
+            batchIds
+        } else {
+            listOf(manifestId)
+        }
         _state.update { it.copy(sealingManifest = true, error = null, errorExplain = null) }
         viewModelScope.launch {
-            runCatching { repository.sealCompletedManifests(manifestIds) }
-                .onSuccess { resp ->
+            runCatching {
+                if (factoryOnly) {
+                    repository.sealManifest(manifestId, Manifest.SOURCE_FACTORY)
+                } else {
+                    repository.sealCompletedManifests(manifestIds)
+                }
+            }
+                .onSuccess {
                     _state.update {
                         it.copy(
                             sealingManifest = false,
                             manifestSealed = true,
-                            batchReadyManifestIds = if (manifestIds.size > 1) emptyList() else it.batchReadyManifestIds,
+                            batchReadyManifestIds = if (!factoryOnly && manifestIds.size > 1) emptyList() else it.batchReadyManifestIds,
                             manifest = it.manifest?.copy(state = "SEALED"),
                         )
                     }
-                    if (manifestIds.size > 1) {
+                    if (!factoryOnly && manifestIds.size > 1) {
                         refreshBatchReadyManifests()
                     }
                 }

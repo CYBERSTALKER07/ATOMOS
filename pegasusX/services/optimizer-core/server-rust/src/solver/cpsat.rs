@@ -130,10 +130,12 @@ pub fn solve(req: OptimizeCpsatRequest) -> OptimizeCpsatResponse {
         }
     }
 
-    let status = if unassigned.is_empty() {
-        SolverStatus::Optimal
+    let any_assigned = assignments.iter().any(|a| a.assigned);
+    let status = if !any_assigned && !req.manifest_requirements.is_empty() {
+        SolverStatus::Infeasible
     } else {
-        SolverStatus::Feasible
+        // Greedy factory slot assignment never proves optimality — HEURISTIC (P2-2).
+        SolverStatus::Heuristic
     };
 
     info!("CPSAT solved with status {:?}, unassigned: {}", status, unassigned.len());

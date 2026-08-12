@@ -11,6 +11,8 @@ struct DashboardView: View {
     @State private var preorderingId: String?
     @State private var orderActionPending = false
     @State private var loadError: String?
+    @State private var pulseEvents: [RetailerPulseEvent] = []
+    @State private var pulseLoading = false
     @State private var socket = RetailerWebSocket.shared
 
     private let api = APIClient.shared
@@ -39,6 +41,9 @@ struct DashboardView: View {
                         horizontalSizeClass: horizontalSizeClass
                     )
                         .slideIn(delay: 0)
+
+                    PulseStripView(events: pulseEvents, loading: pulseLoading)
+                        .slideIn(delay: 0.02)
 
                     // Hero Service Grid (Yandex Go style)
                     ServiceGrid(
@@ -174,6 +179,7 @@ struct DashboardView: View {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         if !silent { isLoading = true }
         if !silent { loadError = nil }
+        pulseLoading = true
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             activeOrders = orders.filter { $0.status.isActive }
@@ -197,6 +203,14 @@ struct DashboardView: View {
         } catch {
             if !silent { reorderProducts = [] }
         }
+
+        do {
+            let pulse = try await api.getRetailerPulse()
+            pulseEvents = pulse.events
+        } catch {
+            pulseEvents = []
+        }
+        pulseLoading = false
         if !silent { isLoading = false }
     }
 

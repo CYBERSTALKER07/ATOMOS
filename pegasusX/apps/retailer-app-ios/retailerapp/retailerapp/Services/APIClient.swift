@@ -148,6 +148,57 @@ final class APIClient {
         try await request(method: "GET", path: path)
     }
 
+    /// GET/POST helpers that return raw response bytes (e.g. CSV export).
+    func requestData(
+        method: String = "GET",
+        path: String,
+        body: (any Encodable)? = nil,
+        headers: [String: String] = [:],
+        isRetry: Bool = false
+    ) async throws -> Data {
+        guard let url = URL(string: "\(baseURL)\(path)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Trace-Id")
+        if method != "GET" {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        headers.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        if let body {
+            request.httpBody = try encoder.encode(AnyEncodable(body))
+        }
+
+        let (data, response) = try await dataForRequestWithFallback(request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 && !isRetry && !isRefreshing {
+            if let _ = await attemptTokenRefresh() {
+                return try await requestData(method: method, path: path, body: body, headers: headers, isRetry: true)
+            }
+            throw APIError.serverError(statusCode: 401, message: "Unauthorized")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? ""
+            if contentType.contains("application/problem+json"),
+               let problem = try? decoder.decode(ProblemDetail.self, from: data) {
+                throw APIError.problemDetail(problem)
+            }
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw APIError.serverError(statusCode: http.statusCode, message: message)
+        }
+        return data
+    }
+
     func post<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
         try await request(method: "POST", path: path, body: body, headers: headers)
     }
@@ -651,6 +702,53 @@ final class APIClient {
         )
     }
 
+    func listPosHolds(locationId: String?) async throws -> PosHoldsListWire {
+        var path = "/v1/retailer/pos/holds"
+        if let locationId, !locationId.isEmpty {
+            let enc = locationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? locationId
+            path += "?location_id=\(enc)"
+        }
+        return try await get(path: path)
+    }
+
+    func parkPosHold(
+        locationId: String,
+        registerId: String,
+        lines: [PosSaleLineWire],
+        note: String?
+    ) async throws -> PosHoldWire {
+        struct Cart: Encodable { let lines: [PosSaleLineWire] }
+        struct Body: Encodable {
+            let location_id: String
+            let register_id: String
+            let cart: Cart
+            let note: String?
+        }
+        return try await post(
+            path: "/v1/retailer/pos/holds",
+            body: Body(
+                location_id: locationId,
+                register_id: registerId,
+                cart: Cart(lines: lines),
+                note: note
+            ),
+            headers: ["Idempotency-Key": "hold-park-\(UUID().uuidString)"]
+        )
+    }
+
+    func resumePosHold(holdId: String, locationId: String) async throws -> PosHoldWire {
+        struct Body: Encodable { let location_id: String }
+        return try await post(
+            path: "/v1/retailer/pos/holds/\(holdId)/resume",
+            body: Body(location_id: locationId)
+        )
+    }
+
+    func voidPosHold(holdId: String) async throws -> PosHoldWire {
+        struct EmptyBody: Encodable {}
+        return try await post(path: "/v1/retailer/pos/holds/\(holdId)/void", body: EmptyBody())
+    }
+
     // Retail OS Phase 5 shifts & time
     func clockIn(locationId: String? = nil) async throws -> TimeEntryWire {
         struct Body: Encodable { let location_id: String? }
@@ -724,6 +822,16 @@ final class APIClient {
 
     func getReportsSummary() async throws -> ReportsSummaryWire {
         try await get(path: "/v1/retailer/reports/summary")
+    }
+
+    /// Downloads CSV bytes from reports export (not JSON-decoded).
+    func exportReportsCSV(report: String = "sales") async throws -> Data {
+        let path = "/v1/retailer/reports/export?report=\(report.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? report)"
+        return try await requestData(method: "GET", path: path)
+    }
+
+    func getRetailerPulse() async throws -> RetailerPulseResponse {
+        try await get(path: "/v1/retailer/pulse")
     }
 
     func getControlTowerPulse() async throws -> ControlTowerPulseWire {
@@ -1068,10 +1176,44 @@ struct RetailerRegistersWire: Codable {
 struct RetailerRegisterWire: Codable {
     let registerId: String
     let label: String?
+    let locationId: String?
     enum CodingKeys: String, CodingKey {
         case label
         case registerId = "register_id"
+        case locationId = "location_id"
     }
+}
+
+struct PosHoldCartWire: Codable {
+    let lines: [PosHoldCartLineWire]?
+}
+
+struct PosHoldCartLineWire: Codable {
+    let sku: String
+    let name: String?
+    let qty: Int64?
+    let unitPriceMinor: Int64?
+    enum CodingKeys: String, CodingKey {
+        case sku, name, qty
+        case unitPriceMinor = "unit_price_minor"
+    }
+}
+
+struct PosHoldWire: Codable {
+    let holdId: String
+    let locationId: String?
+    let status: String?
+    let note: String?
+    let cart: PosHoldCartWire?
+    enum CodingKeys: String, CodingKey {
+        case note, status, cart
+        case holdId = "hold_id"
+        case locationId = "location_id"
+    }
+}
+
+struct PosHoldsListWire: Codable {
+    let items: [PosHoldWire]
 }
 
 struct PosSessionWire: Codable {
@@ -1193,6 +1335,57 @@ struct ReportsSummaryWire: Codable {
         case onHandSkuCount = "on_hand_sku_count"
         case lowStockCount = "low_stock_count"
         case topSkus = "top_skus"
+    }
+}
+
+struct RetailerPulseEvent: Codable, Identifiable {
+    let id: String
+    let kind: String?
+    let title: String
+    let description: String?
+    let occurredAt: String?
+    let deepLink: String?
+    let orderId: String?
+    let manifestId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, title, description
+        case occurredAt = "occurred_at"
+        case deepLink = "deep_link"
+        case orderId = "order_id"
+        case manifestId = "manifest_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let rawId = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        kind = try c.decodeIfPresent(String.self, forKey: .kind)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        occurredAt = try c.decodeIfPresent(String.self, forKey: .occurredAt)
+        deepLink = try c.decodeIfPresent(String.self, forKey: .deepLink)
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId)
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId)
+        id = rawId.isEmpty ? "\(title)-\(occurredAt ?? UUID().uuidString)" : rawId
+    }
+}
+
+struct RetailerPulseResponse: Codable {
+    let events: [RetailerPulseEvent]
+    let fetchedAt: String?
+    let unreadCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case events
+        case fetchedAt = "fetched_at"
+        case unreadCount = "unread_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        events = try c.decodeIfPresent([RetailerPulseEvent].self, forKey: .events) ?? []
+        fetchedAt = try c.decodeIfPresent(String.self, forKey: .fetchedAt)
+        unreadCount = try c.decodeIfPresent(Int.self, forKey: .unreadCount)
     }
 }
 

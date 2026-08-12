@@ -139,4 +139,16 @@ export const api = {
     ),
   runDunningOnce: (token: string) =>
     req<Record<string, unknown>>(token, "POST", `/v1/admin/ar/dunning/run-once`, {}),
+
+  mfaStatus: (token: string) =>
+    req<{ enrolled: boolean; required: boolean; verified: boolean }>(token, "GET", "/v1/platform-admin/mfa/status"),
+  mfaEnroll: (token: string) =>
+    req<{ secret: string; otpauth_url: string; subject: string }>(token, "POST", "/v1/platform-admin/mfa/enroll"),
+  mfaConfirm: (token: string, code: string) =>
+    req<{ ok: boolean; enrolled: boolean; token: string }>(token, "POST", "/v1/platform-admin/mfa/confirm", { code }),
+  mfaVerify: (token: string, code: string) =>
+    req<{ ok: boolean; verified: boolean; token: string }>(token, "POST", "/v1/platform-admin/mfa/verify", { code }),
+
+  wsSession: (token: string) =>
+    req<{ token: string; expires_at: string }>(token, "GET", "/v1/platform-admin/ws-session"),
 };

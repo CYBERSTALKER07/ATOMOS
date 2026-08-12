@@ -18,7 +18,7 @@ import (
 //	AUTO_ORDER_SOAK_MIN_PROPOSALS   minimum shadow proposals in the window (default 20)
 //	AUTO_ORDER_SOAK_MAX_WAPE        max weighted-abs-pct-error vs actual orders (default 0.30)
 //	AUTO_ORDER_SOAK_MIN_UNMODIFIED  min unmodified accept rate (default 0.80 — matches place-flip policy)
-//	AUTO_ORDER_SOAK_GATE_DISABLED   "true" bypasses the gate (break-glass; default off)
+//	AUTO_ORDER_SOAK_GATE_DISABLED   money-flag (dual-control) + env default; break-glass bypass (P2-7)
 type SoakGateConfig struct {
 	MinProposals  int64
 	MaxWAPE       float64
@@ -27,20 +27,22 @@ type SoakGateConfig struct {
 }
 
 // SoakGateConfigFromEnv reads the gate thresholds from the environment.
+// Disabled is left false here — use soakGateBypassed for audited break-glass.
 func SoakGateConfigFromEnv() SoakGateConfig {
 	return SoakGateConfig{
 		MinProposals:  envInt64("AUTO_ORDER_SOAK_MIN_PROPOSALS", 20),
 		MaxWAPE:       envFloat("AUTO_ORDER_SOAK_MAX_WAPE", 0.30),
 		MinUnmodified: envFloat("AUTO_ORDER_SOAK_MIN_UNMODIFIED", 0.80),
-		Disabled:      strings.EqualFold(strings.TrimSpace(os.Getenv("AUTO_ORDER_SOAK_GATE_DISABLED")), "true"),
+		Disabled:      false,
 	}
 }
 
 // SoakGateDecision explains whether place mode is permitted and why.
 type SoakGateDecision struct {
-	Allowed bool     `json:"allowed"`
-	Reasons []string `json:"reasons,omitempty"`
+	Allowed bool                  `json:"allowed"`
+	Reasons []string              `json:"reasons,omitempty"`
 	Stats   *AutoOrderShadowStats `json:"stats,omitempty"`
+	Source  string                `json:"bypass_source,omitempty"`
 }
 
 // EvaluateSoakGate computes whether the retailer may run place mode based on
@@ -81,6 +83,58 @@ func (s *Service) EvaluateSoakGate(ctx context.Context, orgID string, cfg SoakGa
 	return d
 }
 
+// soakGateBypassed reports whether break-glass disabled the soak gate.
+// Preference: test seam → dual-control/env via PlaceFlagEvaluator → raw env.
+func (s *Service) soakGateBypassed(ctx context.Context, orgID string) (bool, string) {
+	if s != nil && s.soakGateDisabled {
+		return true, "test_seam"
+	}
+	if s != nil && s.placeFlags != nil {
+		if on, src, err := s.placeFlags.Evaluate(ctx, "AUTO_ORDER_SOAK_GATE_DISABLED", "RETAILER", orgID); err == nil {
+			if on {
+				return true, src
+			}
+			return false, ""
+		}
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("AUTO_ORDER_SOAK_GATE_DISABLED")), "true") {
+		return true, "env"
+	}
+	return false, ""
+}
+
+func (s *Service) recordSoakGateBypass(ctx context.Context, orgID, source string) {
+	if s == nil {
+		return
+	}
+	key := strings.TrimSpace(orgID) + "|" + source
+	if _, loaded := s.soakBypassLogged.LoadOrStore(key, true); loaded {
+		return
+	}
+	at := time.Now().UTC()
+	if s.now != nil {
+		at = s.now().UTC()
+	}
+	entry := map[string]any{
+		"retailer_id": orgID,
+		"source":      source,
+		"at":          at.Format(time.RFC3339Nano),
+	}
+	s.soakBypassAudits = append(s.soakBypassAudits, entry)
+	if s.soakBypassAuditor == nil {
+		return
+	}
+	detail, _ := json.Marshal(entry)
+	_ = s.soakBypassAuditor.RecordFlagAudit(
+		ctx,
+		"runtime",
+		"AUTO_ORDER_SOAK_GATE_BYPASS",
+		"RETAILER",
+		orgID,
+		string(detail),
+	)
+}
+
 // placeAllowedForRetailer combines dual-control place flag evaluation with the
 // per-retailer soak gate. Used by the worker before honoring ExecutionMode=place.
 func (s *Service) placeAllowedForRetailer(ctx context.Context, orgID string) bool {
@@ -93,10 +147,12 @@ func (s *Service) placeAllowedForRetailer(ctx context.Context, orgID string) boo
 	if !enabled {
 		return false
 	}
-	if s.soakGateDisabled {
+	if bypass, source := s.soakGateBypassed(ctx, orgID); bypass {
+		s.recordSoakGateBypass(ctx, orgID, source)
 		return true
 	}
-	return s.EvaluateSoakGate(ctx, orgID, SoakGateConfigFromEnv()).Allowed
+	cfg := SoakGateConfigFromEnv()
+	return s.EvaluateSoakGate(ctx, orgID, cfg).Allowed
 }
 
 func envInt64(k string, def int64) int64 {
@@ -130,14 +186,21 @@ func (s *Service) HandleAutoOrderSoakGate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	cfg := SoakGateConfigFromEnv()
+	bypass, bypassSource := s.soakGateBypassed(r.Context(), orgID)
+	cfg.Disabled = bypass
 	d := s.EvaluateSoakGate(r.Context(), orgID, cfg)
+	if bypass {
+		d.Source = bypassSource
+		s.recordSoakGateBypass(r.Context(), orgID, bypassSource)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"decision":  d,
+		"decision": d,
 		"thresholds": map[string]any{
 			"min_proposals":  cfg.MinProposals,
 			"max_wape":       cfg.MaxWAPE,
 			"min_unmodified": cfg.MinUnmodified,
-			"gate_disabled":  cfg.Disabled,
+			"gate_disabled":  bypass,
+			"bypass_source":  bypassSource,
 		},
 		"place_flag_enabled": s.autoOrderPlaceEnabled,
 	})
@@ -158,7 +221,12 @@ func (s *Service) HandleAutoOrderSoakArtifact(w http.ResponseWriter, r *http.Req
 		return
 	}
 	cfg := SoakGateConfigFromEnv()
+	bypass, bypassSource := s.soakGateBypassed(r.Context(), orgID)
+	cfg.Disabled = bypass
 	d := s.EvaluateSoakGate(r.Context(), orgID, cfg)
+	if bypass {
+		d.Source = bypassSource
+	}
 	props, perr := s.listShadowProposals(r.Context(), orgID, 1000)
 	if perr != nil {
 		props = []AutoOrderShadowProposal{}
@@ -178,12 +246,14 @@ func (s *Service) HandleAutoOrderSoakArtifact(w http.ResponseWriter, r *http.Req
 			"min_proposals":  cfg.MinProposals,
 			"max_wape":       cfg.MaxWAPE,
 			"min_unmodified": cfg.MinUnmodified,
+			"gate_disabled":  bypass,
+			"bypass_source":  bypassSource,
 		},
 		"decision": d,
 		// Dual field names for flip-check + runtime schema compatibility (P1-2).
-		"unmodified_accept_rate":      rate,
-		"unmodified_acceptance_rate":  rate,
-		"proposals":                   props,
+		"unmodified_accept_rate":     rate,
+		"unmodified_acceptance_rate": rate,
+		"proposals":                  props,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", `attachment; filename="auto-order-soak-`+orgID+`.json"`)

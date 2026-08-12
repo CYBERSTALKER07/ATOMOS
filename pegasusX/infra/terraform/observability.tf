@@ -321,3 +321,83 @@ resource "google_monitoring_alert_policy" "capture_success_low" {
     mime_type = "text/markdown"
   }
 }
+
+# P2-19 — relay restarts, DLQ depth, partner webhook success
+resource "google_monitoring_alert_policy" "outbox_relay_restarts_high" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Outbox relay restarts > 1/hour"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "relay restarts high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_relay_restarts_total/counter\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "3600s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "Outbox relay Start() rate exceeded 1/hour. Check pod crash loops / OOM / lease thrash. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "outbox_dlq_depth_nonzero" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Outbox DLQ depth > 0 for 5m"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "dlq depth nonzero"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_dlq_depth/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "OutboxDeadLetters depth stayed > 0 for 5 minutes. Inspect DLQ rows, fix publish cause, then requeue. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "partner_webhook_success_low" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Partner webhook success rate < 99%"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "partner webhook success low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_partner_webhook_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+  documentation {
+    content   = "Partner webhook SUCCESS ratio below 99% over 1h. Check subscriber URLs, HMAC secrets, and WebhookDeliveryAttempts DEAD rows."
+    mime_type = "text/markdown"
+  }
+}

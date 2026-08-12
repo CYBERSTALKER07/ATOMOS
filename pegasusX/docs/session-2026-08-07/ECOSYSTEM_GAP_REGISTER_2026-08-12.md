@@ -21,22 +21,22 @@ Spanner (source of truth, single schema, 167 tables)
                  └─ Consumers (manual commit + DLQ + Redis dedup):
                       NotificationDispatcher → WS hub + FCM push + inbox persist
                       Order mutator · Warehouse mutator · Returns · Billing tier · Partner webhooks
-                       └─ 7 WS hubs (retailer, supplier, driver, payload, warehouse, factory, telemetry)
+                       └─ 8 WS hubs (retailer, supplier, driver, payload, warehouse, factory, telemetry, platform-admin)
                             cross-pod via Redis Pub/Sub
                             └─ clients: every role has live WS on at least one platform
 ```
 
-**The architecture you described is already the one that exists.** Spanner is the source of truth, the outbox is transactional, Kafka is real (not in-process), WS hubs exist per role, webhooks are signed with retry+DLQ, push is FCM. The system is not missing a data-flow paradigm — it has **coverage holes and mode-dependency** in an otherwise correct pipeline.
+**The architecture you described is already the one that exists.** Spanner is the source of truth, the outbox is transactional, Kafka is real (not in-process), WS hubs exist per role, webhooks are signed with retry+DLQ, push is FCM. The system is not missing a data-flow paradigm — remaining work is **ops enablement, legal cert, and a few flag/scale residuals**, not a new bus.
 
-### 1.2 Why it *feels* unmaintainable — the three real root causes
+### 1.2 Why it *felt* unmaintainable — root causes (and 2026-08-12 status)
 
-1. **The pipeline is opt-in per domain, not universal.** Order/payment/fiscal/allocation/wms/dispatch emit in-transaction events (16+ sites). **AR and Payout emit zero outbox events** — finance-critical state mutates silently. Telemetry bypasses the bus entirely. So some parts of the system are real-time and some are invisible, and there's no rule that says which.
+1. **Pipeline coverage was uneven.** Order/payment/fiscal/allocation/wms/dispatch already emitted in-transaction events. **AR + Payout now emit** `AR_*` / `PAYOUT_BATCH_*` in the same Spanner txn (P0-4/5 ✅). Driver location is on the bus (P1-10 ✅). Twin consumer started (P2-11 ✅). Residual: some domains still dual-write or best-effort post-commit (e.g. FlywheelDemandFeed).
 
-2. **Behavior changes by run mode without warning.** In `PEGASUSX_RUN_MODE=api` the relay and all consumers don't start → FCM push and inbox persistence silently stop while direct WS broadcasts keep working. Same code, different runtime truth. That's the "complex and difficult to maintain" feeling — it's not the architecture, it's undocumented mode-dependence.
+2. **Behavior changed by run mode without warning.** In `PEGASUSX_RUN_MODE=api` the relay/consumers historically did not start → FCM/inbox could silently stop while direct WS kept working. **Mitigated (P1-9 ✅):** worker heartbeat + api-tier notification consumer when no live worker. Mode docs still matter; silent dual-truth is closed for push/inbox.
 
-3. **Cross-role loops are half-wired in clients.** Backend emits the events, but: supplier credit → retailer is wired; factory loading bay → payload terminal is broken; cold-chain temperature readings and twin routes have APIs with **no client consumer at all**; supplier planning scenarios exist on mobile but not web; retailer AR/HQ exist on desktop but not mobile.
+3. **Cross-role loops were half-wired in clients.** Those Class A loops are **closed (W2):** factory loading bay ↔ payload (P1-18/P2-25), warehouse cold-chain + labor-capacity + twin Live Ops Map (P2-23), supplier planning web (P2-26), retailer AR/HQ mobile (P1-17), warehouse WMS screens (P2-24). Residual Class B/C: thin admin billing analytics; portal-only warehouse Control Tower / cold-chain on mobile; payload `seal-all` + capacity API-only.
 
-**Conclusion:** you don't need a new data-flow paradigm. You need a **coverage rule** (every state mutation emits an event; every event has a declared consumer) and **run-mode parity**. That turns "complex and hard to maintain" into a checklist.
+**Conclusion:** keep the **coverage rule** (every state mutation emits an event; every event has a declared consumer). Checklist items that were open at audit time are tracked as ✅ in Part 2; open residuals are owner keys, Soliq EDS, optimizer prod replicas, and auto-order place flip.
 
 ---
 
@@ -80,36 +80,36 @@ Spanner (source of truth, single schema, 167 tables)
 
 | # | Gap | Domain |
 |---|-----|--------|
-| P2-1 | Optimizer e2e soft-passes on constraint violation (SKIPPED not FAIL) | Planning |
-| P2-2 | No optimizer certification harness (4 unit tests, no benchmark corpus, Rust sidecar mislabels greedy as `Optimal`) | Planning |
-| P2-3 | MEIO is a greedy heuristic, not joint multi-echelon optimization; no capital-cap constraint | Planning |
-| P2-4 | Scenario workbench: no clone→compare→publish, no versioning, placeholder revenue-at-risk unit value | Planning |
-| P2-5 | S&OP: projected demand overwrites factory-capacity field; no ProductionLines model; 7-day horizon only | Planning |
-| P2-6 | Demand-sensing producers missing: density worker no-op; EVENT/COMPETITOR_PRESSURE no ingestion; POS flywheel not folded into planning; DOW/payday hard-coded | Planning |
-| P2-7 | Soak-gate break-glass bypass unaudited, not in money-flag set | Planning |
-| P2-8 | Multi-currency AR unsupported (Currency hardcoded "UZS") | Money |
-| P2-9 | Dev-default webhook secrets in `payment.NewService` (only bootstrap validation protects prod) | Money |
+| P2-1 ✅ | **RESOLVED (2026-08-12).** Optimizer cold-chain e2e soft-skips only when sidecar unreachable; HTTP error / decode error / cold stop on non-reefer → hard `PX_E2E_OPTIMIZER_CONSTRAINT_FAIL` (no more SKIPPED on constraint violation). | Planning | `cmd/ssmr-smokecheck/e2e_optimizer_constraint.go` |
+| P2-2 ✅ | **RESOLVED (2026-08-12).** Certification harness: `testdata/cert/*.json` + `test_certification_harness.py` (cold-chain/capacity/max-stops/multi-depot). Rust greedy VRP/CPSAT now report `HEURISTIC` (proto + contract), never `OPTIMAL`; Rust unit test asserts. | Planning | `services/optimizer-core/testdata/cert/`, `server/test_certification_harness.py`, `server-rust` solver + proto `HEURISTIC=5` |
+| P2-3 ✅ | **RESOLVED (2026-08-12).** MEIO transfer recommendations remain greedy donor→receiver per SKU, but now enforce `Σ(qty × unit_value) <= MEIO_CAPITAL_CAP_MINOR` (0 = unlimited). Unit value from `Products.PriceMinor` with `MEIO_UNIT_VALUE_MINOR` fallback; CRITICAL/lowest days-cover prioritized; summary exposes capital used/skipped. | Planning | `replenishment/mei_engine.go` |
+| P2-4 ✅ | **RESOLVED (2026-08-12).** Durable `PlanningScenarios` (DRAFT/PUBLISHED/SUPERSEDED) with run→persist, clone, compare, CAS publish + `planning.scenario.published.v1` outbox. RaR uses `Products.PriceMinor` (`SCENARIO_UNIT_VALUE_MINOR` fallback); heuristic path included. Publish is planning-baseline only (no sealed-manifest rewrite). | Planning | `planning/scenarios.go`, `projector.go`, `schema/migrations/20260812_planning_scenarios.ddl`, PlanningBrainPanel |
+| P2-5 ✅ | **RESOLVED (2026-08-12).** S&OP keeps `FactoryCapacityUnits` from production-lines model (`factories × SOP_LINES_PER_FACTORY × daily × SOP_HORIZON_DAYS`); supply-request projections go to `ProjectedDemandUnits` only; utilization = demand/capacity; alert on demand > factory or inbound. | Planning | `planning/service.go`, `planning/sandop_test.go`, PlanningBrainPanel |
+| P2-6 ✅ | **RESOLVED (2026-08-12).** Density worker computes H3 order hotspots → `EVENT_DENSITY` (+ extreme `EVENT`); flywheel peer skew → `COMPETITOR_PRESSURE`; sensing blends STORE_POS flywheel into base velocity (65/35); PAYDAY DemandSignals override hard-coded calendar (DOW fallback retained). Worker started in `runtime_workers`. | Planning | `demand/density_worker.go`, `demand/worker_sensing.go`, `runtime_workers.go` |
+| P2-7 ✅ | **RESOLVED (2026-08-12).** `AUTO_ORDER_SOAK_GATE_DISABLED` added to money-flag set (dual-control + reason); approve audits `FLAG_AUTO_ORDER_SOAK_GATE`; runtime bypass (env/flag) writes deduped `AUTO_ORDER_SOAK_GATE_BYPASS` via PlatformAdminAudit. | Planning | `featureflags/service.go`, `retailer/auto_order_soak_gate.go`, bootstrap `SetSoakBypassAuditor` |
+| P2-8 ✅ | **RESOLVED (2026-08-12).** AR invoices take ISO-4217 from order (credit leave) or fee schedule (billing); reject invalid codes; payment paths AssertSameCurrency when currency provided. Empty currency still falls back to UZS as last resort. | Money | `ar/service.go` OpenFromCreditLeaveRequest; order/driver_edges + shop-closed + cash collect; billing invoice_worker |
+| P2-9 ✅ | **RESOLVED (2026-08-12).** `payment.NewService` no longer invents `dev-*` webhook secrets; production strips empty/`dev-*` so verify fails closed even if bootstrap validation is skipped. Local/SSMR still via bootstrap `envOr` + `ValidateProductionProfile`. | Money | `payment/service.go` `normalizeWebhookSecret`, `payment/webhook_secret_test.go` |
 | P2-10 ✅ | **RESOLVED (W3 2026-08-12).** Global Pay refund `action=RF` proven against in-repo simulator (auth→perform). Live merchant confirm remains ops checklist. See [`GLOBAL_PAY_REFUND_PROOF.md`](../GLOBAL_PAY_REFUND_PROOF.md). | Money | `payment/gp_simulator_refund_test.go`; `simulator/global_pay.go` |
 | P2-11 ✅ | **RESOLVED (W1 2026-08-12).** Twin Kafka consumer started (`void-digital-twin` on TwinConsumerTopics); telemetry envelope parsing fixed. TopicWebhooks **retired** (payment/partner stay on TopicMain/Orders; const kept for infra compat, no producers). | Data-flow |
 | P2-12 ✅ | **RESOLVED (W1 2026-08-12).** Sell-through row + DEMAND_SIGNAL outbox emit in the same Spanner RW txn; FlywheelDemandFeed remains best-effort post-commit. | Data-flow |
 | P2-13 ✅ | **DECIDED deferred (W1 2026-08-12).** Keep Spanner LIKE/prefix search; no ES/OpenSearch until scale/SLO evidence. See [`SEARCH_DECISION.md`](../SEARCH_DECISION.md). | Data-flow |
-| P2-14 | Partner webhook subscription URLs: no scheme/host allowlist / SSRF validation | Data-flow |
-| P2-15 | Admin portal REST-only (no WS hub, no push) | Data-flow |
-| P2-16 | Flag approvals not written to PlatformAdminAudit; platform-admin actor degrades to "unknown" on empty Subject | Tenancy |
-| P2-17 | No MFA anywhere (TOTP for PLATFORM_ADMIN at minimum); hand-rolled HS256 JWT | Tenancy |
-| P2-18 | Phase 2–5c gates + analytics-tenancy gate local-only, not in CI; admin-portal no CI job | Tenancy |
-| P2-19 | SLO alerts missing for relay restarts / DLQ depth / partner-webhook success | Tenancy |
+| P2-14 ✅ | **RESOLVED (2026-08-12).** Partner webhook URLs validated: https-required, no credentials, block localhost/metadata/private IPs after DNS; optional host allowlist. SSMR: `PARTNER_WEBHOOK_ALLOW_HTTP/PRIVATE`. | Data-flow | `partner/webhook_url.go` |
+| P2-15 ✅ | **RESOLVED (2026-08-12).** `platform-admin` WS hub + `/v1/platform-admin/ws-session`; broadcasts on tenant/flag/MFA audit; admin console live refresh. Push/FCM N/A for break-glass desktop (WS is the path). | Data-flow | `ws/handler.go`, `platformadmin`, `admin-portal/lib/use-admin-ws-refresh.ts` |
+| P2-16 ✅ | **RESOLVED (2026-08-12).** Flag set + approve write `PlatformAdminAudit` (fail-closed); `auth.ActorLabel` Subject→phone→role; mint-dev-jwt `--role PLATFORM_ADMIN --subject`. | Tenancy | `featureflags/handlers.go`, `auth/claims.go` ActorLabel |
+| P2-17 ✅ | **RESOLVED (2026-08-12).** PLATFORM_ADMIN TOTP enroll/confirm/verify; JWT `mfa_verified`; step-up on tenants/flags; prod requires `PLATFORM_ADMIN_MFA_REQUIRED`; admin console MFA gate. HS256 JWT remains (not RS256). | Tenancy | `mfa/`, `auth` claim, `admin-portal` |
+| P2-18 ✅ | **RESOLVED (2026-08-12).** CI jobs `enterprise-gates` (phase2→5c + analytics-tenancy; needs backend-spanner) + `admin-portal` (typecheck/build). `scripts/ci_enterprise_gates.sh` + `make ci-enterprise-gates` / `admin-portal-ci`. | Tenancy | `.github/workflows/ci.yml`, `scripts/ci_enterprise_gates.sh` |
+| P2-19 ✅ | **RESOLVED (2026-08-12).** Metrics + TF alerts for relay restarts (`void_outbox_relay_restarts_total`), DLQ depth (`void_outbox_dlq_depth`), partner webhook success (`void_partner_webhook_success_ratio`). Phase-3 gate asserts stubs. | Tenancy | `telemetry/slo_metrics.go`, `outbox/metrics.go`, `infra/terraform/observability.tf` |
 | P2-20 ✅ | **RESOLVED (W5 2026-08-12).** EDI-lite breadth: PRICAT/INVRPT/SLSRPT/RECADV/ORDCHG/DELFOR/REMADV build+parse; PRICAT→price upsert, INVRPT→stock upsert; others ledger+ACK. Still not certified EDIFACT/Drummond. | Integration | `partner/edi/breadth.go`, `partner/edi_inbound.go` |
 | P2-21 ✅ | **RESOLVED (W5 2026-08-12).** Sandbox keys `pxs_*` (`environment=SANDBOX`, `RateLimitClass=partner_sandbox`); retailer/supplier self-serve key routes; sandbox orders tagged `PARTNER_SANDBOX`. | Integration | `partner/keys.go`, `partner/routes.go`, `partner/service.go` |
-| P2-22 | OpenAPI incomplete vs routes (missing `/v1/supplier/partner-*` aliases, key revoke, SFTP-config path) | Integration |
-| P2-23 | Cold-chain temperature readings + labor capacity + twin routes APIs have no client UI anywhere | Client apps |
+| P2-22 ✅ | **RESOLVED (2026-08-12).** Partner OpenAPI 1.6: admin/supplier/retailer key revoke + `/v1/supplier/partner-*` aliases (keys/sftp/webhooks/as2/coa) + admin SFTP; gate asserts. | Integration | `contracts/partner.openapi.yaml`, `Makefile` partner-openapi-gate |
+| P2-23 ✅ | **RESOLVED (2026-08-12).** Warehouse `/cold-chain` + `/labor-capacity`; supplier `/labor-capacity` + Live Ops Map twin routes (inventory fetch on select). Twin was already Class A via ops map. | Client apps | `apps/warehouse-portal/app/cold-chain`, `*/labor-capacity`, `supplier-portal/.../ops/map` |
 | P2-24 ✅ | **RESOLVED (W2 2026-08-12, already shipped).** Dedicated warehouse portal screens + nav for pick-waves, bins, cycle-counts (not TransferActions-only). | Client apps |
-| P2-25 | Payload native apps (Android 3 screens / iOS 5 views) are stubs; Expo terminal is the real app | Client apps |
+| P2-25 ✅ | **RESOLVED (2026-08-12).** Native Android/iOS payload apps already had full loading-bay UI; remaining gap vs Expo was factory merge (P1-18). Wired `/v1/factory/manifests` list + start-loading + seal alongside payloader/supplier; batch seal stays payloader-only. Expo remains field SoT; natives are Class A peers for factory↔payload. | Client apps | `payload-app-android` PayloadApi/Repository/HomeViewModel; `payload-app-ios` APIClient/HomeViewModel |
 | P2-26 ✅ | **RESOLVED (W2 2026-08-12).** Supplier web `/planning` page with PlanningBrainPanel (S&OP + scenarios) + analytics-section nav; settings/planning remains overrides. | Client apps |
 
 ### P3 — polish / acknowledged-by-design
 
-WhatsApp dunning channel absent (SMS/email only) · WS JWT in URL query param (non-Firebase path) · ECC200 ASCII-only, square ≤44×44 (comment says 52) · control-tower scenariosData hardcoded empty · Pulse/reports-export/POS-holds desktop-only · quantity negotiation intentionally disabled · stale docs (`PARTNER_EDI.md:74` "placeholder", `OPTIMIZER_AND_ROUTING_RUNTIME.md` replica counts) · dead `optimizationjobs/` package.
+~~WhatsApp dunning channel absent (SMS/email only)~~ ✅ **2026-08-12** Twilio WhatsApp via `DUNNING_WHATSAPP_PROVIDER=twilio` + Content SID (`ar/dunning_channels.go`; owner: approved template + WhatsApp sender) · ~~WS JWT in URL query param (non-Firebase path)~~ ✅ **2026-08-12** query `?token=` accepts only `token_use=ws` short-lived tickets; session JWT via `Authorization: Bearer` (natives) or role `/ws-session` then query (browsers) · ~~ECC200 comment said 52×52~~ ✅ **2026-08-12** comments match 44×44 encoder cap · ~~control-tower scenariosData hardcoded empty~~ ✅ supplier control-tower ← planning scenarios · ~~Pulse/reports-export desktop-only~~ ✅ **2026-08-12** Android/iOS Reports Pro CSV share via `/v1/retailer/reports/export` + Dashboard network pulse strip via `/v1/retailer/pulse` (desktop remains primary deep-reports surface) · ~~POS-holds desktop-only~~ ✅ **2026-08-12** Android/iOS POS park/list/resume/void via `/v1/retailer/pos/holds` (**pilot default on**; set `POS_HOLDS_ENABLED=false` to hide / 404) · quantity negotiation intentionally disabled · ~~stale optimizer/soak docs (Part 3)~~ ✅ · ~~dead `optimizationjobs/` Go package~~ ✅ deleted (Spanner `OptimizationJobs` DDL retained).
 
 ### Security follow-through (from Domain 6.2 audit, re-verified 2026-08-12 · **W0 closed 2026-08-12**)
 
@@ -118,6 +118,7 @@ WhatsApp dunning channel absent (SMS/email only) · WS JWT in URL query param (n
 | Item | Status |
 |------|--------|
 | `payment.HandleListPayers` | Fixed — auth required; retailer/admin scoped to self; platform-admin may list |
+| `payment.HandleGetPayer` / `HandleUpdatePayer` / `HandleCreatePayer` | Fixed — self-only for retailer/supplier ADMIN; platform-admin may any; create no longer allows ADMIN to mint foreign `payer_id` |
 | `driver.HandleGetDriver` / `HandleGetVehicle` | Fixed — tenant supplier match (driver self-only for RoleDriver) |
 | `warehouse.HandleGetWarehouse` / `factory.HandleGetFactory` | Fixed — tenant supplier or home-node match |
 | `creditnote.HandleOrderLines` / `HandleListReverseTasks` | Fixed — order owned-by-supplier; warehouse home-node required |
@@ -134,29 +135,33 @@ Helpers: `auth/entity_scope.go`, `auth/revoke.go`, `auth/revoke_redis.go`. Boots
 
 | Doc | Claim | Reality |
 |-----|-------|---------|
-| `OPTIMIZER_AND_ROUTING_RUNTIME.md:74` | SSMR optimizer "replicas 0" | Stale — ssmr overlay sets replicas 1 |
-| `big-platform-baseline/technical/workers-kafka.md:10` | optimizer-core "not in SSMR overlay" | False now |
-| `DOMAIN3_PLANNING_PROGRESS.md:57-59` | "no in-repo optimizer source/Dockerfile" | False — `services/optimizer-core/Dockerfile` + solver in-tree |
-| `AUTO_ORDER_PLACE_FLIP.md` + reality report | flip needs 30-day ≥80% artifact, `FLAG_AUTO_ORDER_PLACE` audit | Runtime default is 60%; artifact never generated; audit action doesn't exist |
-| `DOMAIN2_AUTONOMY_PROGRESS.md:60-62` | dual-control governs AUTO_ORDER_* flags | Not wired — no production caller of `featureflags.Evaluate` |
-| `PHASE4_COMPLETION.md:13` | "optimizer replicas ≥1 SSMR+staging OK" | Gate greps YAML text; proves intent not a running optimizer |
+| `OPTIMIZER_AND_ROUTING_RUNTIME.md` | ~~SSMR optimizer "replicas 0"~~ | ✅ Synced 2026-08-12 — SSMR patch `replicas: 1`; prod still 0 until AR |
+| `workers-kafka.md` | ~~optimizer-core "not in SSMR overlay"~~ | ✅ Synced 2026-08-12 — in SSMR overlay at replicas 1 |
+| `DOMAIN3_PLANNING_PROGRESS.md` | ~~"no in-repo optimizer source/Dockerfile"~~ | ✅ Synced — `services/optimizer-core/` in-tree |
+| `DOMAIN2_AUTONOMY_PROGRESS.md` | ~~soak 0.60 / Evaluate unwired~~ | ✅ Synced — default unmodified 0.80; `placeAllowedForRetailer` calls `Evaluate` (W4) |
+| `AUTO_ORDER_PLACE_FLIP.md` | flip needs 30-day ≥80% artifact + audit | Aligned with runtime (0.80) + soak artifact scripts + `FLAG_AUTO_ORDER_PLACE` (W4); place env still false until flip |
+| `PHASE4_COMPLETION.md:13` | "optimizer replicas ≥1 SSMR+staging OK" | Caveat remains: gate greps YAML intent; does not prove a healthy live optimizer pod |
 | `PARTNER_EDI.md` | datamatrix / breadth notes | Updated W5 — FNC1 DataMatrix + PRICAT…REMADV |
-| `END_PRODUCT_REALITY_REPORT` §5 | "no admin console UI", "SDK README-only", "datamatrix placeholder", "reatilerapp typo", "App.tsx 2.5k monolith", "redirect stubs" | All fixed since the report (Domains 2-6) — report is now 1 day stale |
+| `END_PRODUCT_REALITY_REPORT` §5 | admin/SDK/datamatrix stubs | Historical snapshot only (banner on report); use gap register + master alignment |
 
 ---
 
 ## Part 4 — What "done" looks like (the coverage rule)
 
-To reach the consistent data flow you described, the closing condition is a single invariant:
+Closing condition (invariant):
 
 > **Every Spanner state mutation emits an in-transaction outbox event; every event has a declared consumer (WS hub and/or webhook and/or push); no cross-role loop ends at an API with no client.**
 
-Concretely that means, in order:
-1. Put AR + Payout on the outbox (P0-4/5) and wire AR invoice pay-down (P0-1).
-2. Fix the P0 tenant + routing breaks (P0-3, P0-6); payout live-rail remainder **decided bank-file** (P0-2 ✅).
-3. Run-mode parity so `api` doesn't silently lose push/inbox (P1-9); put driver location on the bus (P1-10).
-4. Close the broken cross-role client loops (P1-18 ✅, P2-24 ✅, P2-26 ✅; P2-23 still open).
-5. Then the security backlog and certification items.
+**Checklist vs Part 2 (2026-08-12):**
+
+| Step | Status |
+|------|--------|
+| 1. AR + Payout on outbox (P0-4/5) + AR invoice pay-down (P0-1) | ✅ |
+| 2. P0 tenant + routing (P0-3, P0-6); payout bank-file decision (P0-2) | ✅ |
+| 3. Run-mode push/inbox parity (P1-9); driver location on bus (P1-10) | ✅ |
+| 4. Class A client loops (P1-17/18, P2-23/24/25/26) | ✅ |
+| 5. W0 Trust IDOR + JWT revocation (P1-11 + security follow-through) | ✅ |
+| 6. W3–W5 money/autonomy/partner gates in-tree | ✅ code/simulator; **owner residuals:** live Soliq EDS, GP merchant, dunning provider keys, prod optimizer replicas ≥1, auto-order place flip |
 
 ---
 
@@ -176,6 +181,13 @@ Re-verify notes (2026-08-12 afternoon):
 - **W4 autonomy closed 2026-08-12:** optimizer-core no longer remapped to backend-go; soak artifact path + 80% threshold aligned; forecast/accuracy CronJobs on prod/SSMR; shadow soak flags on (place off); dual-control `Evaluate` + `FLAG_AUTO_ORDER_PLACE` audit. See [`AUTO_ORDER_PLACE_FLIP.md`](../AUTO_ORDER_PLACE_FLIP.md).
 - **W5 partner cert closed 2026-08-12:** GS1 FNC1 DataMatrix + label path; AS2 MDN/MIC verify; SDK in go.work; EDI-lite breadth; sandbox keys.
 - **P1-12 schema drift closed 2026-08-12:** 14 migration-only tables mirrored into `spanner.ddl`; offline + live schema-drift gate broadened.
+- **P2-14 / P2-19 closed 2026-08-12:** webhook URL SSRF validation; SLO alerts for relay restarts / DLQ depth / partner webhook success.
+- **P2-23 closed 2026-08-12:** warehouse cold-chain + labor-capacity UIs; supplier labor-capacity; twin Live Ops Map (inventory on select). Class A client loops for those APIs.
+- **P2-16 closed 2026-08-12:** flag set/approve → PlatformAdminAudit fail-closed; ActorLabel for empty-Subject tokens.
+- **P2-17 closed 2026-08-12:** PLATFORM_ADMIN TOTP MFA + `mfa_verified` step-up (HS256 JWT retained).
+- **P2-18 closed 2026-08-12:** phase2→5c + analytics-tenancy in CI (`enterprise-gates`); admin-portal typecheck/build job.
+- **P2-15 closed 2026-08-12:** platform-admin WS hub + admin console live refresh (push deferred by design for break-glass).
+- **P2-22 closed 2026-08-12:** partner OpenAPI covers supplier/admin key revoke + SFTP + partner-* JWT aliases.
 - Desktop stack recommendation: **keep Next.js + Tauri 2** (no Electron migration).
 
 *Generated by consolidated audit, 2026-08-12; Part 5 appended after live re-verify.*

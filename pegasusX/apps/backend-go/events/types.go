@@ -534,6 +534,9 @@ type PlanningEvent struct {
 	Transfers      int     `json:"transfer_recommendations,omitempty"`
 	SignalID       string  `json:"signal_id,omitempty"`
 	SimulationID   string  `json:"simulation_id,omitempty"`
+	ScenarioID     string  `json:"scenario_id,omitempty"`
+	Version        int64   `json:"version,omitempty"`
+	PublishedBy    string  `json:"published_by,omitempty"`
 }
 
 // @Sync(ProductEvent)

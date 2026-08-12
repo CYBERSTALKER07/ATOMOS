@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -352,21 +353,14 @@ func NewService(c ServiceConfig) *Service {
 	if c.Currency == "" {
 		c.Currency = "UZS"
 	}
-	if c.GlobalPayWebhookSecret == "" {
-		c.GlobalPayWebhookSecret = "dev-global-pay-secret"
-	}
-	if c.AdyenWebhookSecret == "" {
-		c.AdyenWebhookSecret = "dev-adyen-secret"
-	}
-	if c.StripeWebhookSecret == "" {
-		c.StripeWebhookSecret = "dev-stripe-secret"
-	}
-	if c.PaymeWebhookSecret == "" {
-		c.PaymeWebhookSecret = "dev-payme-secret"
-	}
-	if c.ClickWebhookSecret == "" {
-		c.ClickWebhookSecret = "dev-click-secret"
-	}
+	// Webhook secrets: never invent. Bootstrap may supply local/SSMR defaults via
+	// envOr; production must set real secrets (ValidateProductionProfile). Empty
+	// or known-weak secrets in production are stripped so webhooks fail closed.
+	c.GlobalPayWebhookSecret = normalizeWebhookSecret(c.GlobalPayWebhookSecret)
+	c.AdyenWebhookSecret = normalizeWebhookSecret(c.AdyenWebhookSecret)
+	c.StripeWebhookSecret = normalizeWebhookSecret(c.StripeWebhookSecret)
+	c.PaymeWebhookSecret = normalizeWebhookSecret(c.PaymeWebhookSecret)
+	c.ClickWebhookSecret = normalizeWebhookSecret(c.ClickWebhookSecret)
 	if c.Execution == nil {
 		c.Execution = NewProviderExecutionRouter(ProviderExecutionRouterConfig{
 			AirwallexDirectExecutionEnabled: c.AirwallexDirectExecutionEnabled,
@@ -402,6 +396,25 @@ func NewService(c ServiceConfig) *Service {
 		now:                    c.Now,
 		newID:                  c.NewID,
 	}
+}
+
+// normalizeWebhookSecret leaves configured secrets as-is outside production.
+// In PEGASUSX_ENV=production, empty and "dev-*" values are rejected (empty →
+// webhook verify fails closed) so NewService cannot paper over a missed
+// ValidateProductionProfile (P2-9).
+func normalizeWebhookSecret(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if !isProductionPaymentEnv() {
+		return trimmed
+	}
+	if trimmed == "" || strings.HasPrefix(strings.ToLower(trimmed), "dev-") {
+		return ""
+	}
+	return trimmed
+}
+
+func isProductionPaymentEnv() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "production")
 }
 
 // SetFxRates attaches theatre #13 ConvertMinor for settlement operating rollups.

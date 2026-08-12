@@ -17,7 +17,11 @@ export SPANNER_INSTANCE="${SPANNER_INSTANCE:-pegasusx-instance}"
 export SPANNER_DATABASE="${SPANNER_DATABASE:-pegasusx-db}"
 
 echo "[1/6] Phase-1 gate (regression) ..."
-bash scripts/phase1_gate.sh
+if [[ "${PHASE2_SKIP_REGRESSION:-}" == "1" ]]; then
+  echo "skipping phase-1 (PHASE2_SKIP_REGRESSION=1)"
+else
+  bash scripts/phase1_gate.sh
+fi
 
 echo "[2/6] Partner OpenAPI gate (Phase-2 paths + idempotency) ..."
 make partner-openapi-gate

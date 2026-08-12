@@ -1,7 +1,7 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   LiveEKGNetworkGraph,
   HexagonalControlTowerMap,
@@ -23,15 +23,34 @@ import {
 import { ScoredExceptionsPanel } from "@/components/control-tower/ScoredExceptionsPanel";
 import { PlaybookRunsPanel } from "@/components/exceptions/PlaybookRunsPanel";
 import { sessionSupplierId } from "@/lib/supplier-scope";
+import { createSupplierApi } from "@/lib/api";
+import { buildScenarioChartRows, type ScenarioChartRow } from "@/lib/scenario-chart";
 
 const performanceData: Record<string, unknown>[] = [];
-const scenariosData: Record<string, unknown>[] = [];
+const api = createSupplierApi();
 
 export default function ControlTowerPage() {
   const t = usePortalT();
   const [view, setView] = useState<"network" | "map">("network");
+  const [scenariosData, setScenariosData] = useState<ScenarioChartRow[]>([]);
   const supplierId = sessionSupplierId() ?? "";
   const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
+
+  useEffect(() => {
+    if (!supplierId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await api.listPlanningScenarios();
+        if (!cancelled) setScenariosData(buildScenarioChartRows(list.scenarios ?? []));
+      } catch {
+        if (!cancelled) setScenariosData([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
 
   if (!supplierId) {
     return (

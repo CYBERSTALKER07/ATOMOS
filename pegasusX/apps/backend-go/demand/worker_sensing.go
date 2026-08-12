@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -115,16 +116,23 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 				adj.Factors[string(sig.Type)] = sig.Multiplier
 			}
 
-			// Day-of-week factor (static rules from Phase 1 spec)
-			dowFactor := dayOfWeekFactor(today.Weekday())
-			adj.Adjustment *= dowFactor
-			adj.Factors["DAY_OF_WEEK"] = dowFactor
-
-			// Payday factor: 1st and 15th of month (common salary dates in UZ)
-			pdFactor := paydayFactor(today.Day())
-			if pdFactor != 1.0 {
-				adj.Adjustment *= pdFactor
-				adj.Factors["PAYDAY"] = pdFactor
+			// Day-of-week / payday: prefer DemandSignals when present (P2-6);
+			// otherwise keep static UZ retail calendar as fallback.
+			if _, ok := adj.Factors[string(SignalPayday)]; !ok {
+				if _, hasDOW := adj.Factors["DAY_OF_WEEK"]; !hasDOW {
+					dowFactor := dayOfWeekFactor(today.Weekday())
+					adj.Adjustment *= dowFactor
+					adj.Factors["DAY_OF_WEEK"] = dowFactor
+				}
+				pdFactor := paydayFactor(today.Day())
+				if pdFactor != 1.0 {
+					adj.Adjustment *= pdFactor
+					adj.Factors["PAYDAY"] = pdFactor
+				}
+			} else if _, hasDOW := adj.Factors["DAY_OF_WEEK"]; !hasDOW {
+				dowFactor := dayOfWeekFactor(today.Weekday())
+				adj.Adjustment *= dowFactor
+				adj.Factors["DAY_OF_WEEK"] = dowFactor
 			}
 
 			// Clamp final adjustment to [0.6, 1.8]
@@ -271,7 +279,8 @@ type retailerSkuVelocity struct {
 	BaseVelocity float64
 }
 
-// computeBaseVelocities computes BaseVelocity from the last 28 days of order lines.
+// computeBaseVelocities computes BaseVelocity from the last 28 days of order lines,
+// blended with STORE_POS FlywheelDemandFeed daily averages when present (P2-6).
 func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]retailerSkuVelocity, error) {
 	twentyEightDaysAgo := now.Add(-28 * 24 * time.Hour)
 
@@ -291,7 +300,7 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	var out []retailerSkuVelocity
+	byKey := map[velocityKey]retailerSkuVelocity{}
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -304,7 +313,70 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 		if err := row.Columns(&v.RetailerId, &v.SupplierId, &v.Sku, &v.BaseVelocity); err != nil {
 			return nil, err
 		}
+		byKey[velocityKey{v.RetailerId, v.SupplierId, v.Sku}] = v
+	}
+
+	flywheel, err := s.loadFlywheelDailyAvg(ctx, now)
+	if err != nil {
+		slog.Warn("flywheel velocity blend skipped", "err", err)
+	} else {
+		for k, fw := range flywheel {
+			if existing, ok := byKey[k]; ok {
+				existing.BaseVelocity = 0.65*existing.BaseVelocity + 0.35*fw
+				byKey[k] = existing
+				continue
+			}
+			// POS-only SKUs still enter planning.
+			byKey[k] = retailerSkuVelocity{
+				RetailerId:   k.retailer,
+				SupplierId:   k.supplier,
+				Sku:          k.sku,
+				BaseVelocity: fw,
+			}
+		}
+	}
+
+	out := make([]retailerSkuVelocity, 0, len(byKey))
+	for _, v := range byKey {
 		out = append(out, v)
+	}
+	return out, nil
+}
+
+type velocityKey struct{ retailer, supplier, sku string }
+
+func (s *Service) loadFlywheelDailyAvg(ctx context.Context, now time.Time) (map[velocityKey]float64, error) {
+	if s == nil || s.spanner == nil {
+		return nil, nil
+	}
+	start := now.AddDate(0, 0, -7)
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT RetailerId, IFNULL(SupplierId, '') AS SupplierId, SkuId, SUM(NetSold) / 7.0 AS DailyAvg
+			FROM FlywheelDemandFeed
+			WHERE Day >= @Start AND NetSold > 0
+			GROUP BY RetailerId, SupplierId, SkuId
+		`,
+		Params: map[string]any{"Start": start},
+	}
+	iter := s.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := map[velocityKey]float64{}
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var retailer, supplier, sku string
+		var avg float64
+		if err := row.Columns(&retailer, &supplier, &sku, &avg); err != nil {
+			return nil, err
+		}
+		out[velocityKey{retailer, supplier, sku}] = avg
 	}
 	return out, nil
 }

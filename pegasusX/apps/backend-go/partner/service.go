@@ -36,6 +36,8 @@ type Service struct {
 	oauthJWTSecret string
 	oauthJWTIssuer string
 	oauthTTL       time.Duration
+	// WebhookURLPolicy overrides DefaultWebhookURLPolicy when non-nil (tests / SSMR).
+	WebhookURLPolicy *WebhookURLPolicy
 }
 
 // NewService constructs the partner service.
@@ -302,8 +304,12 @@ func (s *Service) CreateWebhookSubscription(ctx context.Context, p Principal, ur
 		return WebhookSubscription{}, "", fmt.Errorf("insufficient_scope")
 	}
 	url = strings.TrimSpace(url)
-	if url == "" || (!strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://")) {
-		return WebhookSubscription{}, "", fmt.Errorf("invalid_url")
+	policy := DefaultWebhookURLPolicy()
+	if s.WebhookURLPolicy != nil {
+		policy = *s.WebhookURLPolicy
+	}
+	if err := ValidateWebhookURL(url, policy); err != nil {
+		return WebhookSubscription{}, "", err
 	}
 	secret, err := GenerateWebhookSecret()
 	if err != nil {

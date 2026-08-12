@@ -25,7 +25,7 @@ import javax.inject.Singleton
 
 /**
  * PayloadWebSocket — process-singleton wrapper around an OkHttp [WebSocket]
- * pointed at `${BuildConfig.WS_BASE_URL}/v1/ws?token=...`.
+ * pointed at `${BuildConfig.WS_BASE_URL}/v1/ws` with Authorization: Bearer.
  *
  * Mirrors the Expo `payload-terminal/App.tsx` behaviour:
  *   - reconnects 3s after every close/error while a token is configured
@@ -79,9 +79,11 @@ class PayloadWebSocket @Inject constructor(
     private fun openSocket() {
         val authToken = token ?: return
         socket?.close(NORMAL_CLOSURE, "reopen")
-        val url = BuildConfig.WS_BASE_URL.trimEnd('/') +
-            "/v1/ws?token=" + java.net.URLEncoder.encode(authToken, "UTF-8")
-        val req = Request.Builder().url(url).build()
+        val url = BuildConfig.WS_BASE_URL.trimEnd('/') + "/v1/ws"
+        val req = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $authToken")
+            .build()
         socket = okHttp.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 reconnectAttempt = 0

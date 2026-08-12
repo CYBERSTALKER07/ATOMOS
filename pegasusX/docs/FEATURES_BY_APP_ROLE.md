@@ -19,7 +19,7 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 | `supplier-portal` | Live Next.js + Tauri 2 supplier/ADMIN UI (web + desktop shell) |
 | `supplier-app-android` / `supplier-app-ios` | Live |
 | `supplier-app-desktop` | **Does not exist** — desktop = `supplier-portal` Tauri |
-| `admin-portal` | Live thin Next **PLATFORM_ADMIN** console (tenants / flags / audit) — not a redirect |
+| `admin-portal` | Live Next **PLATFORM_ADMIN** console: tenants / flags (+ dual-control approve) / audit / match queue / partner keys·AS2·SFTP |
 | `retailer-app-desktop` / `-android` / `-ios` | Live (desktop = Next 15 + Tauri 2) |
 | `warehouse-portal` / `-android` / `-ios` | Live |
 | `factory-portal` / `-android` / `-ios` | Live |
@@ -33,7 +33,7 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 ## 0.1 JWT roles (`auth/claims.go`)
 
 ```
-ADMIN, RETAILER, DRIVER, PAYLOAD,
+ADMIN, PLATFORM_ADMIN, RETAILER, DRIVER, PAYLOAD,
 FACTORY, FACTORY_ADMIN, FACTORY_DRIVER,
 WAREHOUSE_ADMIN, WAREHOUSE
 ```
@@ -50,9 +50,9 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Client | Evidence | Surfaces |
 |--------|----------|----------|
-| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` |
-| Android | `RetailerNavigation.kt` route ids | `PROCUREMENT`, `CONTROL_TOWER`, `DOCK`, `ANALYTICS`, `AUTO_ORDER`, `CART`, `NOTIFICATIONS`, `ACCOUNT_PROFILE`, `FAMILY_MEMBERS`, `CAPABILITIES`, `TEAM`, `LOCATIONS`, `STORE_STOCK`, `LOCAL_SKUS`, `POS`, `SHIFTS`, `SECTIONS`, `REPORTS_PRO`, `ASSIST`, `SETUP_WIZARD` |
-| iOS | `ContentView.swift` | Tab shell (`home`, `insights`, …) + screen modules under `Screens/` |
+| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` (+ orphan page `/control-tower` not in shell nav) |
+| Android | `RetailerNavigation.kt` + `SidebarMenu.kt` | `PROCUREMENT`, `CONTROL_TOWER`, `CREDIT`, `HQ`, `DOCK`, `ANALYTICS`, `AI_PREDICTIONS`→`FUTURE_DEMAND`, `AUTO_ORDER`, `CART`, `NOTIFICATIONS`, `ACCOUNT_PROFILE`, `FAMILY_MEMBERS`, `CAPABILITIES`, `TEAM`, `LOCATIONS`, `STORE_STOCK`, `LOCAL_SKUS`, `POS`, `SHIFTS`, `SECTIONS`, `REPORTS_PRO`, `ASSIST`, `SETUP_WIZARD` |
+| iOS | `ContentView.swift` / `Screens/` | Full Retail OS + `HqView`, `CreditPartnersView`, `ControlTower`, `ReportsProView`, `PosView`, pulse on `DashboardView` |
 
 ### Feature inventory = registered routes
 
@@ -119,10 +119,10 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Observation | Code basis |
 |-------------|------------|
-| `/hq` in desktop shell; not in Android route ids | Shell vs `RetailerNavigation.kt` |
-| `/credit` in desktop shell; Android exposes profile/credit via account, not a `CREDIT` section id | Shell vs Android ids |
-| `CONTROL_TOWER` on Android; desktop has pulse API but no `/control-tower` in shell href list | Shell hrefs vs Android |
-| AR invoices routes exist; no shell href `/ar` | `creditroutes` vs shells |
+| HQ / Credit / AR | **Parity closed** — desktop `/hq` `/credit`; Android `CREDIT`/`HQ`; iOS `HqView` / `CreditPartnersView` (AR under credit) |
+| Control Tower | Android/iOS first-class; desktop has `/control-tower` page but **not** in `RetailerShell` nav (discoverability gap) |
+| Reports / pulse | Desktop deep reports + mobile Reports Pro CSV share + dashboard pulse strip (`/v1/retailer/reports/export`, `/v1/retailer/pulse`) |
+| POS holds | Mobile park/list/resume/void when `POS_HOLDS_ENABLED` (pilot default on; set `false` to hide) |
 
 ---
 
@@ -132,9 +132,9 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Client | Evidence | Surfaces (abbrev.) |
 |--------|----------|-------------------|
-| Portal | `SupplierShell.tsx` | dashboard, orders, dispatch, fleet*, manifests, exceptions, catalog, inventory(+import), pricing*, promotions, topology/factories/warehouses/zones/lanes, ledger/payments/chargebacks*/reconciliation/treasury*/earnings/compliance, credit/*, control-tower, playbooks, planning, segmentation, tax-regimes, AI, analytics*, replenishment*, returns, org-fleet, activity, ops/map, … |
-| Android | `SupplierSection.kt` | `DASHBOARD`, `ORDERS`, `FLEET*`, `MANIFESTS`, `DISPATCH_PREVIEW`, `ACTIVITY`, `ORG_FLEET`, `TREASURY_HUB`, `LEDGER`, `PAYMENTS`, `CHARGEBACKS`, `RECONCILIATION`, `OPERATIONS`, `ANALYTICS`, `AI_RECOMMENDATIONS`, topology/catalog/inventory/pricing/promotions/returns/earnings/profile/setup, … |
-| Desktop | `supplier-app-desktop/package.json` | redirect only |
+| Portal (+ Tauri desktop) | `SupplierShell.tsx` | dashboard, orders, dispatch, fleet*, manifests, exceptions, catalog, inventory(+import), pricing*, promotions, topology/factories/warehouses/zones/lanes, ledger/payments/chargebacks*/reconciliation/treasury*/earnings/compliance, credit/*, control-tower, playbooks, planning, segmentation, tax-regimes, AI, analytics*, replenishment*, returns, org-fleet, activity, ops/map, … |
+| Android / iOS | `SupplierSection.kt` (+ iOS peers) | `DASHBOARD`, `ORDERS`, `FLEET*`, `MANIFESTS`, `DISPATCH_PREVIEW`, `ACTIVITY`, `ORG_FLEET`, `TREASURY_HUB`, `LEDGER`, `PAYMENTS`, `CHARGEBACKS`, `RECONCILIATION`, `OPERATIONS`, `ANALYTICS`, `AI_RECOMMENDATIONS`, topology/catalog/inventory/pricing/promotions/returns/earnings/profile/setup, … |
+| `supplier-app-desktop` | — | **Does not exist** — use `supplier-portal` Tauri (see §0) |
 
 ### Feature inventory (route groups)
 
@@ -176,8 +176,9 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 
 | Client | Evidence |
 |--------|----------|
-| Portal | `WarehouseShell.tsx`: `/`, dispatch*, orders, preorders, tomorrow-board, drivers/vehicles, inventory, stock-commitments, products, manifests, fleet-live-map, replenishment, demand-forecast, supply-requests, transfers, returns, claims, exceptions, rescues, analytics, crm, treasury, payment-config, staff, settings, operations, control-tower, dispatch-locks |
-| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS`, `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, `EXCEPTIONS`, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
+| Portal | `WarehouseShell.tsx`: `/`, dispatch*, orders, preorders, tomorrow-board, drivers/vehicles, inventory, **`/bins`**, **`/pick-waves`**, **`/cycle-counts`**, **`/cold-chain`**, **`/labor-capacity`**, stock-commitments, products, manifests, fleet-live-map, replenishment, demand-forecast, supply-requests, transfers, returns, claims, exceptions, rescues, analytics, crm, treasury, payment-config, staff, settings (incl. return-policy embed), operations, control-tower, dispatch-locks |
+| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS` (pick-wave/cycle nested), `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, `RETURN_POLICY`, `EXCEPTIONS`, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
+| iOS | Peer screens incl. `ReturnPolicySettingsView`; pick/cycle via Transfer Actions; **no** dedicated control-tower / cold-chain / labor-capacity sections (portal-only) |
 
 ### Feature inventory
 
@@ -202,10 +203,11 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 
 | Observation | Code |
 |-------------|------|
-| Control Tower in portal shell; absent from Android section enum | shells vs `WarehouseSection.kt` |
-| `PORTAL_SETUP` / `PORTAL_PROFILE` / `PORTAL_SEARCH` on Android | explicit portal handoff |
-| Return-policy routes; no shell href `/return-policy` | warehouseroutes vs WarehouseShell |
+| Control Tower / cold-chain / labor-capacity | Portal shell routes live; **absent** from Android/iOS section enums (portal-primary) |
+| Pick waves / cycle counts / bins | Portal dedicated routes; mobile nested under Transfer Actions |
+| Return policy | Routes + Android `RETURN_POLICY` + iOS settings; portal embeds under settings (no `/return-policy` href) |
 | Reverse-logistics role = `WAREHOUSE` not `WAREHOUSE_ADMIN` | `creditnoteroutes` |
+| `PORTAL_SETUP` / `PORTAL_PROFILE` / `PORTAL_SEARCH` on Android | explicit portal handoff |
 
 ---
 
@@ -264,7 +266,7 @@ Role: `PAYLOAD` (+ ADMIN).
 | Pulse / notifications | `/v1/payloader/pulse`, user notifications |
 | Inbound returns | `returnsroutes` (PAYLOAD allowed on inbound) |
 
-`seal-all` is registered; client usage must be verified per app (not assumed from docs).
+**Client usage notes:** terminal + native apps use inbound + seal-completed / per-order seal. **`seal-all` and capacity are API-registered with no payload-terminal / Android / iOS call sites** (backend-only until a client wires them).
 
 ---
 

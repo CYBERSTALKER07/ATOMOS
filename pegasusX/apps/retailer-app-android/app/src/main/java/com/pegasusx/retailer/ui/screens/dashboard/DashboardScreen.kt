@@ -83,6 +83,7 @@ import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.screens.dashboard.components.DashboardOverviewCard
+import com.pegasusx.retailer.ui.components.PulseStrip
 import com.pegasusx.retailer.ui.screens.dashboard.components.PredictionCard
 import com.pegasusx.retailer.ui.screens.dashboard.components.QuickReorderRow
 import com.pegasusx.retailer.ui.screens.dashboard.components.ServiceGrid
@@ -158,6 +159,13 @@ fun DashboardScreen(
                         activeOrderCount = uiState.activeOrders.size,
                         predictionCount = uiState.predictions.size,
                         recentProductCount = uiState.recentProducts.size,
+                    )
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PulseStrip(
+                        events = uiState.pulseEvents,
+                        loading = uiState.pulseLoading,
                     )
                 }
 
