@@ -1,0 +1,153 @@
+# Ecosystem surface registry — what quality agents must track.
+# Status is documentation of intent; re-verify against code when auditing.
+version: 1
+tree: pegasusX
+updated: 2026-08-12
+
+# Recently closed gap IDs (see ECOSYSTEM_GAP_REGISTER ✅ rows). Do not re-report as open
+# without re-verifying code: P0-1..P0-6, P1-6, P1-8, P1-9, P1-10.
+resolved_gap_ids:
+  - P0-1  # AR invoice pay-down on cash collect
+  - P0-2  # live payout rail fail-closed
+  - P0-3  # PLATFORM_ADMIN RequireTenant exempt
+  - P0-4  # payout outbox events
+  - P0-5  # AR outbox events
+  - P0-6  # supplier-portal /api catch-all
+  - P1-6  # buyer acceptance PENDING + credit-note default ON
+  - P1-8  # WebhookReconciler started
+  - P1-9  # worker-liveness / api push safety net
+  - P1-10 # throttled driver location on TopicRealtime
+
+surfaces:
+  backend-go:
+    path: apps/backend-go
+    owns: [HTTP routes, domain services, Spanner access, outbox emit]
+    quality_checks:
+      - mutation_same_txn_outbox
+      - role_gate_on_routes
+      - package_owner_no_duplicates
+      - focused_unit_tests
+
+  spanner:
+    path: apps/backend-go/schema
+    owns: [DDL, migrations, tenancy columns]
+    quality_checks:
+      - ddl_migration_parity
+      - supplier_id_not_null_on_tenant_tables
+      - no_float_money
+
+  outbox-kafka:
+    path: [apps/backend-go/outbox, apps/backend-go/kafka, apps/backend-go/events]
+    owns: [relay, topics, consumers, DLQ]
+    quality_checks:
+      - every_event_has_consumer_or_explicit_drop
+      - run_mode_worker_vs_api_parity  # P1-9: worker heartbeat + api safety net
+      - twin_consumer_started_or_deleted  # still P2-11 hygiene
+      - topic_webhooks_decision
+      - driver_location_throttled_bus  # P1-10 TopicRealtime
+
+  redis:
+    path: [apps/backend-go, infra]
+    owns: [cache, WS cross-pod Pub/Sub, worker heartbeat]
+    quality_checks:
+      - invalidation_on_mutation
+      - heartbeat_for_api_only_notif  # bootstrap/worker_heartbeat.go
+      - no_cache_as_source_of_truth
+
+  websockets:
+    path: apps/backend-go/ws
+    hubs: [retailer, supplier, driver, payload, warehouse, factory, telemetry]
+    quality_checks:
+      - hub_per_role
+      - envelope_matches_packages_types
+      - no_admin_hub_or_documented_rest_only
+
+  ai-worker:
+    path: apps/ai-worker
+    owns: [import mapping, freeze, synthesis consumers]
+    quality_checks:
+      - kafka_consumer_groups_match_k8s
+      - no_silent_fail_without_status_event
+
+  optimizer:
+    path: services/optimizer-core
+    owns: [OR-Tools / routing sidecar]
+    quality_checks:
+      - prod_image_not_backend_go_digest
+      - replicas_and_fallback_heuristic
+
+  money-fiscal:
+    path: [apps/backend-go/ar, apps/backend-go/payout, apps/backend-go/payment, apps/backend-go/order]
+    owns: [AR, payout, capture, fiscal OFD, buyer EHF acceptance]
+    quality_checks:
+      - ar_payout_outbox_same_txn  # P0-4/5
+      - webhook_reconciler_running  # P1-8
+      - buyer_acceptance_pending_on_mysoliq  # P1-6
+      - live_payout_fail_closed  # P0-2
+
+  contracts:
+    path: [packages/types, packages/api-client, contracts]
+    quality_checks:
+      - events_schema_regen
+      - openapi_partner_sync
+      - native_generated_stubs
+
+  clients-retailer:
+    path: [apps/retailer-app-android, apps/retailer-app-ios, apps/retailer-app-desktop]
+    quality_checks: [role_row_parity, ws_refresh, ar_hq_mobile]
+
+  clients-supplier:
+    path: [apps/supplier-app-android, apps/supplier-app-ios, apps/supplier-portal]
+    quality_checks: [role_row_parity, planning_web_parity, api_catch_all_at_app_api]
+
+  clients-driver:
+    path: [apps/driver-app-android, apps/driver-app-ios]
+    quality_checks: [cash_collection, offline_sync, doorstep_states]
+
+  clients-warehouse:
+    path: [apps/warehouse-app-android, apps/warehouse-app-ios, apps/warehouse-portal]
+    quality_checks: [wms_screens, reverse_logistics]
+
+  clients-factory:
+    path: [apps/factory-app-android, apps/factory-app-ios, apps/factory-portal]
+    quality_checks: [loading_bay_payload_loop]
+
+  clients-payload:
+    path: [apps/payload-app-android, apps/payload-app-ios, apps/payload-terminal]
+    quality_checks: [terminal_primary, native_not_stub_forever]
+
+  clients-admin:
+    path: apps/admin-portal
+    quality_checks: [platform_admin_only, dual_control_money_flags]
+
+  cloud:
+    path: [infra/k8s, infra/terraform, cloudbuild*.yaml]
+    quality_checks:
+      - overlay_real_images_not_placeholders
+      - secrets_via_ESO_GSM
+      - kafka_redis_spanner_env_parity
+      - run_mode_api_and_worker_deployments
+
+  docs-quality:
+    path: [docs/session-2026-08-07, docs/DATA_FLOW_AS_IMPLEMENTED.md, .agents/AGENTS.md]
+    quality_checks:
+      - gap_register_current
+      - no_stale_stub_claims
+      - master_alignment_linked
+
+roles:
+  supplier: [portal, android, ios]
+  retailer: [desktop, android, ios]
+  driver: [android, ios]
+  warehouse: [portal, android, ios]
+  factory: [portal, android, ios]
+  payload: [terminal, android, ios]
+  platform_admin: [admin-portal]
+
+class_a_definition:
+  - spanner_write
+  - outbox_emit_same_txn
+  - consumer_or_fanout
+  - contracts_if_shape_changed
+  - all_role_row_clients
+  - tests_or_ssmr

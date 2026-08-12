@@ -4,6 +4,31 @@
 
 ---
 
+# LangChain / Deep Agents (ecosystem quality harness)
+
+Use for **audit and quality tracking** across backend, apps, Spanner, Redis, Kafka, WS, cloud — not as production business AI (`apps/ai-worker` owns that).
+
+| Resource | Path |
+|----------|------|
+| How to run | `docs/agents/README.md` |
+| Always-on memory | `.agents/deep-agents/MEMORY.md` |
+| Surface registry | `.agents/deep-agents/surfaces.yaml` |
+| Python runtime | `../pegasus/services/deep-agents/` |
+| Skills | `../pegasus/services/deep-agents/skills/*` |
+| Gap SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md` |
+
+```bash
+cd ../pegasus/services/deep-agents && source .venv/bin/activate
+./scripts/smoke.sh                 # dry-run + imports; live if XAI_API_KEY set
+void-deep-agent --dry-run --ecosystem
+void-ecosystem-audit "Audit P1 factory→payload Class A wiring"
+```
+
+**When:** before coding a gap cluster and after closing one — see `docs/agents/README.md` § When to run.  
+Coverage rule (same as §2 below): Spanner mutation → same-txn outbox → consumer → role clients.
+
+---
+
 # pegasusX ecosystem alignment (required on every change)
 
 > [!NOTE]
