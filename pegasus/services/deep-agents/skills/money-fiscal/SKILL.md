@@ -1,9 +1,11 @@
 ---
 name: money-fiscal
-description: Order-to-cash, AR, payout, fiscal OFD, buyer EHF acceptance, payment webhooks — money integrity and legality gates.
+description: Order-to-cash, AR, payout, fiscal OFD, buyer EHF, PSP webhooks, gov fiscal legality.
 ---
 
 # Money & fiscal
+
+Also load skill **`regulatory-gov`** for Soliq/GS1/AS2 checklists.
 
 ## Hard rules
 
@@ -11,6 +13,7 @@ description: Order-to-cash, AR, payout, fiscal OFD, buyer EHF acceptance, paymen
 - Capture/refund idempotency keys required
 - ADR-009: `FISCALIZING` → OFD SUCCESS → `COMPLETED` / `ORDER_FINALIZED` (or `FISCAL_FAILED` / force)
 - Payout live rail fail-closed without a live rail (`payout.ErrNoLiveRail`, P0-2)
+- Cash collect on credit leave must pay down AR (P0-1)
 
 ## Wired (verify before re-opening gaps)
 
@@ -20,13 +23,24 @@ description: Order-to-cash, AR, payout, fiscal OFD, buyer EHF acceptance, paymen
 | AR outbox | `OpenInvoice` / `ApplyPayment` / `UpdateDunning` via `outbox.SpannerTxnBuffer` (P0-5) |
 | Payout outbox | `Insert` / `UpdateStatusRef` → `PAYOUT_BATCH_*` (P0-4) |
 | Webhook reconciler | `App.WebhookReconciler` + worker ticker (P1-8); `PAYMENT_RECONCILE_DISABLED=1` to stop |
-| Buyer EHF track | MySoliq SUCCESS stamps `BuyerAcceptanceStatus=PENDING` + deadline; poller emits `BUYER_ACCEPTANCE_*`; auto credit-note on REJECT **default ON** (`CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=false` to opt out) (P1-6) |
+| Buyer EHF track | MySoliq SUCCESS stamps PENDING + deadline; poller `BUYER_ACCEPTANCE_*`; credit-note on REJECT default ON (P1-6) |
 
 ## Still Class D / open
 
-- Legal Soliq OFD without EDS/E-IMZO proof (P1-7)
-- Live bank payout rail integration (beyond fail-closed file rail)
-- Multi-currency AR (P2)
+- Legal Soliq OFD without EDS/E-IMZO proof (P1-7) — **gov**
+- Live bank payout rail (beyond fail-closed file rail)
+- Multi-currency AR (P2); Currency hardcoded UZS
+- Global Pay refund `RF` live verification (P2-10)
+
+## Role touchpoints
+
+| Role | Money-critical actions |
+|------|------------------------|
+| Driver | collect-cash, credit-leave, fiscal retry, cash recon |
+| Retailer | confirm-cash, credit profile, AR invoices (parity P1-17) |
+| Supplier | treasury, payout batches, claim chargebacks, credit program |
+| Warehouse admin | force-complete (fiscal stuck paths) |
+| Platform admin | dual-control money flags |
 
 ## Security
 
@@ -35,4 +49,5 @@ description: Order-to-cash, AR, payout, fiscal OFD, buyer EHF acceptance, paymen
 
 ## Refs
 
-`order/fiscal.go`, `order/buyer_acceptance_poller.go`, `payment/reconciliation.go`, `ar/`, `payout/`, gap register money rows
+`order/fiscal.go`, `order/buyer_acceptance_poller.go`, `payment/reconciliation.go`,
+`ar/`, `payout/`, gap register money rows, skill `regulatory-gov`

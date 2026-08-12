@@ -21,7 +21,7 @@ CLI: `void-ecosystem-audit --full` | `--panel money_fiscal,role_parity` | `--jso
 3. **Role-row parity:** a feature for a role lands on all clients in that row unless explicitly deferred in docs.
 4. **Money is int64 minor units.** Never float for currency.
 5. **Single tree:** plan and audit `pegasusX` only unless the user names `pegasus`.
-6. **Business + technical:** panels cover business logic, feature gaps, role parity, code quality, and architecture — merge into one scorecard.
+6. **Business + technical + regulatory:** panels must track (a) per-role business duties and doorstep/order edge cases, (b) gov/trade APIs (Soliq OFD/EHF, GS1, AS2/EDI, payout rails), (c) role feature ↔ app parity — merge into one scorecard with Business/edges · Regulatory · Role parity sections.
 
 ## Kernel data plane
 
@@ -46,7 +46,30 @@ Client → JWT HTTP (backend-go) → Spanner + Outbox (same txn)
 | Client apps | `apps/*-{android,ios,desktop}`, `*-portal`, `payload-terminal` |
 | Contracts | `packages/types`, `packages/api-client`, `contracts/` |
 | Cloud | `infra/k8s`, `infra/terraform`, Cloud Build |
+| Business / edges | `order/state_machine.go`, `docs/ORDER_FLOW_AND_EDGE_CASES.md`, `docs/ROLE_CAPABILITIES_MATH_LOGIC.md` |
+| Role features / parity | `docs/FEATURES_BY_APP_ROLE.md`, `docs/ROLE_ROW_PARITY_MATRIX.md`, `*Shell.tsx`, `*Section.kt` |
+| Regulatory / gov | Soliq OFD/EHF (`order/fiscal.go`, `fiscal/`), GS1, AS2/EDI (`partner/`), skill `regulatory-gov` |
 | Quality SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md`, `MASTER_ALIGNMENT_DATAFLOW_*.md` |
+
+## Role business + parity track (always on orchestra radar)
+
+| Role | Business must-work | Parity clients | Open track IDs |
+|------|--------------------|----------------|----------------|
+| Retailer | checkout, doorstep cash confirm, credit/AR, claims, Retail OS | desktop+Android+iOS | P1-17 AR/HQ mobile |
+| Supplier | vet, dispatch, credit, treasury, claims, integrations | portal+Android+iOS | planning/CT portal-heavy |
+| Warehouse | dispatch, WMS, returns/claims, force-complete admin | portal+Android+iOS | CT portal-only |
+| Driver | arrive/QR/offload/cash/credit/fiscal/offline | Android+iOS | — |
+| Factory | loading bay → seal → payload | portal+Android+iOS | P1-18 factory→payload |
+| Payload | seal/inject; factory+supplier manifests | terminal+Android+iOS | P1-18 |
+| Platform admin | tenants, dual-control money flags | admin-portal | P1-16 UI gaps |
+
+## Regulatory track
+
+| Rail | Track |
+|------|-------|
+| Soliq MySoliq OFD + buyer EHF | Legal fiscal; EDS proof still P1-7; EHF poller P1-6 ✅ |
+| GS1 / AS2 / EDI / 1C | Trade compliance; P1-13 DataMatrix, P1-14 AS2 MDN |
+| PSP + payout rail | Reconciler P1-8 ✅; live bank payout still open |
 
 ## Recently resolved (do not re-open as findings)
 

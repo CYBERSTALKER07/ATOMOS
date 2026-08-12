@@ -33,6 +33,34 @@ audit_panels:
   - client_contracts
   - gap_register_sync
 
+# What business/regulatory/parity tracks the orchestra must keep on the radar
+orchestra_tracks:
+  business_edges:
+    sot: [docs/ORDER_FLOW_AND_EDGE_CASES.md, docs/ROLE_CAPABILITIES_MATH_LOGIC.md]
+    panels: [business_logic, money_fiscal]
+    must_cover:
+      - adr009_fiscalizing_gate
+      - shop_closed_grace
+      - partial_offload_invariants
+      - cash_variance
+      - credit_leave_gate
+      - inventory_release_on_cancel
+      - buyer_ehf_parallel_to_completed
+      - claim_window
+  role_features_parity:
+    sot: [docs/FEATURES_BY_APP_ROLE.md, docs/ROLE_ROW_PARITY_MATRIX.md]
+    panels: [role_parity, client_contracts]
+    open_gap_ids: [P1-16, P1-17, P1-18]
+  regulatory_gov:
+    sot: [docs/GS1_LABELS.md, docs/PARTNER_AS2.md]
+    panels: [money_fiscal, business_logic, gap_register_sync]
+    rails:
+      - soliq_ofd_ehf  # P1-7 EDS open; P1-6 buyer acceptance closed
+      - gs1_labels     # P1-13 DataMatrix
+      - as2_edi        # P1-14 MDN
+      - psp_payout     # live bank rail open; reconciler P1-8 closed
+    skill: regulatory-gov
+
 surfaces:
   backend-go:
     path: apps/backend-go
@@ -99,6 +127,29 @@ surfaces:
       - webhook_reconciler_running  # P1-8
       - buyer_acceptance_pending_on_mysoliq  # P1-6
       - live_payout_fail_closed  # P0-2
+      - soliq_eds_legal_proof  # P1-7 still open
+      - edge_cash_variance_and_credit_leave
+
+  regulatory-gov:
+    path: [apps/backend-go/order, apps/backend-go/fiscal, apps/backend-go/gs1, apps/backend-go/partner]
+    owns: [Soliq OFD/EHF, GS1 labels, AS2/EDI, partner exports]
+    quality_checks:
+      - mysoliq_ofd_eds_signed  # P1-7
+      - buyer_ehf_poller_live  # P1-6
+      - gs1_datamatrix_conformant  # P1-13
+      - as2_mdn_mic_verified  # P1-14
+    skill: regulatory-gov
+
+  business-edges:
+    path: [apps/backend-go/order, apps/backend-go/claims, apps/backend-go/proximity]
+    owns: [state machine, doorstep edges, claims window]
+    quality_checks:
+      - no_soft_arrived_to_completed
+      - shop_closed_grace_path
+      - partial_offload_qty_invariant
+      - cancel_requested_has_exits
+      - claim_window_enforced
+    sot_docs: [docs/ORDER_FLOW_AND_EDGE_CASES.md, docs/ROLE_CAPABILITIES_MATH_LOGIC.md]
 
   contracts:
     path: [packages/types, packages/api-client, contracts]
@@ -109,7 +160,7 @@ surfaces:
 
   clients-retailer:
     path: [apps/retailer-app-android, apps/retailer-app-ios, apps/retailer-app-desktop]
-    quality_checks: [role_row_parity, ws_refresh, ar_hq_mobile]
+    quality_checks: [role_row_parity, ws_refresh, ar_hq_mobile]  # P1-17
 
   clients-supplier:
     path: [apps/supplier-app-android, apps/supplier-app-ios, apps/supplier-portal]
@@ -117,23 +168,27 @@ surfaces:
 
   clients-driver:
     path: [apps/driver-app-android, apps/driver-app-ios]
-    quality_checks: [cash_collection, offline_sync, doorstep_states]
+    quality_checks:
+      - role_row_parity
+      - doorstep_cash_credit_fiscal
+      - offline_sync
+      - cash_collection
 
   clients-warehouse:
     path: [apps/warehouse-app-android, apps/warehouse-app-ios, apps/warehouse-portal]
-    quality_checks: [wms_screens, reverse_logistics]
+    quality_checks: [wms_screens, reverse_logistics, role_row_parity]
 
   clients-factory:
     path: [apps/factory-app-android, apps/factory-app-ios, apps/factory-portal]
-    quality_checks: [loading_bay_payload_loop]
+    quality_checks: [loading_bay_payload_loop, role_row_parity]  # P1-18
 
   clients-payload:
     path: [apps/payload-app-android, apps/payload-app-ios, apps/payload-terminal]
-    quality_checks: [terminal_primary, native_not_stub_forever]
+    quality_checks: [terminal_primary, native_not_stub_forever, factory_manifest_consume]  # P1-18
 
   clients-admin:
     path: apps/admin-portal
-    quality_checks: [platform_admin_only, dual_control_money_flags]
+    quality_checks: [platform_admin_only, dual_control_money_flags, admin_ui_completeness]  # P1-16
 
   cloud:
     path: [infra/k8s, infra/terraform, cloudbuild*.yaml]

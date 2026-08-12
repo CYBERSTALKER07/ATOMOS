@@ -6,18 +6,20 @@
 
 # LangChain / Deep Agents (ecosystem quality orchestra)
 
-Use for **audit and quality tracking** across business logic, feature gaps, role
-parity, code quality, architecture, Spanner/Redis/Kafka/WS/cloud — not as
-production business AI (`apps/ai-worker` owns that).
+Use for **audit and quality tracking** across per-role business behavior + edge
+cases, gov/regulatory APIs (Soliq OFD/EHF, GS1, AS2), role feature/app parity,
+code quality, architecture, Spanner/Redis/Kafka/WS/cloud — not as production
+business AI (`apps/ai-worker` owns that).
 
 One **Chief Orchestrator** + **12 specialist panels** (Deep Agents subagents),
-not tens of deployed services.
+not tens of deployed services. Skills include `business-logic`, `role-row-clients`,
+`money-fiscal`, **`regulatory-gov`**.
 
 | Resource | Path |
 |----------|------|
 | How to run | `docs/agents/README.md` |
 | Always-on memory | `.agents/deep-agents/MEMORY.md` |
-| Surface registry | `.agents/deep-agents/surfaces.yaml` |
+| Surface registry | `.agents/deep-agents/surfaces.yaml` (`orchestra_tracks`) |
 | Python runtime | `../pegasus/services/deep-agents/` |
 | Skills | `../pegasus/services/deep-agents/skills/*` |
 | Finding schema | `../pegasus/services/deep-agents/schemas/finding.schema.json` |
@@ -27,7 +29,8 @@ not tens of deployed services.
 cd ../pegasus/services/deep-agents && source .venv/bin/activate
 ./scripts/smoke.sh                                    # lists 12 panels
 void-ecosystem-audit --dry-run
-void-ecosystem-audit --panel money_fiscal,role_parity "AR + retailer mobile parity"
+void-ecosystem-audit --panel business_logic,role_parity,money_fiscal \
+  "Edges + Soliq + per-role parity"
 void-ecosystem-audit --full --json-out /tmp/audit.json
 ```
 

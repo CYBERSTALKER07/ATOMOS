@@ -112,12 +112,14 @@ print(result["messages"][-1].content)
 | `backend-mutations` | Spanner + outbox + tests + SSMR |
 | `kafka-outbox` | Relay, topics, consumers, run modes |
 | `redis-cache` | Invalidation, Pub/Sub, heartbeats |
-| `role-row-clients` | Android/iOS/portal/desktop parity |
+| `role-row-clients` | Per-role features + Android/iOS/portal/desktop/terminal parity |
 | `code-quality` | Ownership, tests, dead paths |
 | `architecture` | Blast radius, anti-islands |
 | `security-tenancy` | Tenant, IDOR, JWT |
 | `cloud-infra` | K8s, TF, images, secrets |
 | `money-fiscal` | AR, payout, OFD, money safety |
+| `business-logic` | State machines, doorstep edges, per-role duties |
+| `regulatory-gov` | Soliq OFD/EHF, GS1, AS2/EDI, settlement rails |
 | `void-overview` | Monorepo map |
 
 Defaults auto-attach when `include_ecosystem_defaults=True` (default).

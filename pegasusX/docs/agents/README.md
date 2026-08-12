@@ -7,6 +7,9 @@
 | Use | Yes / No |
 |-----|----------|
 | Audit business logic, feature gaps, role parity | **Yes** |
+| Track doorstep/order **edge cases** per role | **Yes** |
+| Track **gov/regulatory** rails (Soliq OFD/EHF, GS1, AS2) | **Yes** |
+| Audit per-role **features + app parity** | **Yes** |
 | Audit code quality, architecture, data-flow | **Yes** |
 | Track Spanner → outbox → Kafka → WS → clients | **Yes** |
 | One orchestrator + ~12 specialist panels | **Yes** |
@@ -23,9 +26,9 @@ One **Chief Orchestrator** (`create_ecosystem_auditor`) + **12 specialist subage
 | Panel | Tracks |
 |-------|--------|
 | `data_flow` | Coverage rule Class A/B/C/D |
-| `business_logic` | Order/credit/fiscal state machines |
-| `role_parity` | Android/iOS/portal/desktop/terminal row |
-| `money_fiscal` | AR, payout, OFD, EHF, reconciler |
+| `business_logic` | State machines + **edge cases** + per-role business duties |
+| `role_parity` | Per-role features vs Android/iOS/portal/desktop/terminal |
+| `money_fiscal` | AR, payout, **Soliq OFD/EHF**, PSP reconciler (+ skill `regulatory-gov`) |
 | `kafka_outbox` | Topics, run-mode, twin, location bus |
 | `redis_cache` | Invalidation, heartbeat, never SoT |
 | `code_quality` | Ownership, tests, dead paths |
@@ -34,6 +37,8 @@ One **Chief Orchestrator** (`create_ecosystem_auditor`) + **12 specialist subage
 | `cloud_infra` | Images, overlays, flags, secrets |
 | `client_contracts` | types / schema vs apps |
 | `gap_register_sync` | Docs vs code; resolved_gap_ids |
+
+`surfaces.yaml` → `orchestra_tracks:` binds **business_edges**, **role_features_parity**, **regulatory_gov** to panels.
 
 Findings schema: `pegasus/services/deep-agents/schemas/finding.schema.json`.
 
@@ -44,9 +49,11 @@ Findings schema: `pegasus/services/deep-agents/schemas/finding.schema.json`.
 | Runtime (Python) | `pegasus/services/deep-agents/` |
 | Memory (always on) | `pegasusX/.agents/deep-agents/MEMORY.md` |
 | Ecosystem law | `pegasusX/.agents/AGENTS.md` |
-| Surface registry | `pegasusX/.agents/deep-agents/surfaces.yaml` (`audit_panels`) |
-| Skills | `pegasus/services/deep-agents/skills/*` |
+| Surface registry | `pegasusX/.agents/deep-agents/surfaces.yaml` (`audit_panels`, `orchestra_tracks`) |
+| Skills | `pegasus/services/deep-agents/skills/*` (incl. `regulatory-gov`) |
 | Gap SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md` |
+| Business edges SoT | `docs/ORDER_FLOW_AND_EDGE_CASES.md` |
+| Role features SoT | `docs/FEATURES_BY_APP_ROLE.md`, `docs/ROLE_ROW_PARITY_MATRIX.md` |
 
 ## Setup
 
@@ -67,20 +74,25 @@ void-ecosystem-audit --dry-run   # lists memory, 12+ skills, 12 panels
 ## When to run
 
 1. **Before coding a gap** — `--panel` for the blast radius (e.g. `money_fiscal,role_parity`).
-2. **Full scorecard** — `--full --json-out /tmp/audit.json` after a P0/P1 batch or weekly.
-3. **Docs vs code** — `--panel gap_register_sync`.
-4. Never as a substitute for landing Class A wiring yourself.
+2. **Business + edges + gov + parity** — `--panel business_logic,role_parity,money_fiscal`.
+3. **Full scorecard** — `--full --json-out /tmp/audit.json` after a P0/P1 batch or weekly.
+4. **Docs vs code** — `--panel gap_register_sync`.
+5. Never as a substitute for landing Class A wiring yourself.
 
 ## Run commands
 
 ```bash
 source .venv/bin/activate
 
+# Business edges + Soliq/gov + per-role features/parity
+void-ecosystem-audit --panel business_logic,role_parity,money_fiscal \
+  "Edge cases, Soliq OFD/EHF, GS1/AS2, and role app parity"
+
 # Subset
 void-ecosystem-audit --panel business_logic,security_tenancy \
   "Invalid order transitions and open IDORs"
 
-# Full orchestra
+# Full orchestra (scorecard must include Business/edges · Regulatory · Role parity)
 void-ecosystem-audit --full --json-out /tmp/pegasusx-audit.json
 
 # Via void-deep-agent wrapper

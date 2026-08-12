@@ -29,32 +29,39 @@ Classify Class A/B/C/D. Cite outbox.EmitJSON / SpannerTxnBuffer / consumers.
         "data-flow-coverage",
     ),
     "business_logic": (
-        "Audit order/credit/payment/fiscal state machines, ADR-009, invalid transitions.",
+        "Audit order/credit/fiscal machines, doorstep edge cases, per-role business duties.",
         f"""{_COMMON}
-Panel: business_logic. Skill: business-logic.
-Check order Status transitions (state_machine), ADR-009 fiscal gate,
-credit leave / cash collect / AR pay-down, buyer EHF vs COMPLETED,
-invalid happy-path-only cancel paths. Flag business-rule bugs as P0/P1.
+Panel: business_logic. Skills: business-logic, regulatory-gov.
+Track HOW each role's business must behave — not only happy path:
+shop-closed grace, partial offload invariants, cash variance, credit leave
+gates, inventory release on cancel, ADR-009 FISCALIZING gate, claim window,
+CANCEL_REQUESTED exits, proximity/geofence. Per-role duties in skill.
+Flag invalid transitions and missing edge handlers as P0/P1.
+Cite ORDER_FLOW_AND_EDGE_CASES.md + state_machine.go.
 """,
         "business-logic",
     ),
     "role_parity": (
-        "Audit role-row client parity across Android/iOS/portal/desktop/terminal.",
+        "Audit per-role features + app parity (Android/iOS/portal/desktop/terminal).",
         f"""{_COMMON}
 Panel: role_parity. Skill: role-row-clients.
-A feature for a role must land on all clients in that row unless deferred
-in the gap register. Cite shells, navigation, FEATURES_BY_APP_ROLE.
-Known holes: retailer AR/HQ mobile; supplier planning web; factory↔payload.
+For EACH role: list required features vs shells/nav/routes; score parity.
+A feature for a role lands on ALL clients in that row unless deferred.
+Known holes (re-verify): retailer AR/HQ mobile (P1-17); factory→payload
+loop (P1-18); admin portal UI gaps (P1-16); supplier planning/CT portal-only.
+Cite FEATURES_BY_APP_ROLE.md + ROLE_ROW_PARITY_MATRIX.md + gap register.
 """,
         "role-row-clients",
     ),
     "money_fiscal": (
-        "Audit AR, payout, OFD, buyer EHF, webhook reconciler, live-rail fail-closed.",
+        "Audit AR, payout, Soliq OFD/EHF gov fiscal, PSP reconciler, live-rail fail-closed.",
         f"""{_COMMON}
-Panel: money_fiscal. Skill: money-fiscal.
-Verify AR/payout outbox, CollectCash pay-down, WebhookReconciler running,
+Panel: money_fiscal. Skills: money-fiscal, regulatory-gov.
+Verify AR/payout outbox, CollectCash AR pay-down, WebhookReconciler,
 BuyerAcceptance PENDING on MySoliq, credit-note default ON, ErrNoLiveRail.
-Do not claim Soliq EDS live without proof (P1-7).
+Track gov fiscal separately: Soliq OFD + buyer EHF (P1-7 EDS still open).
+Track trade rails: GS1 DataMatrix (P1-13), AS2 MDN (P1-14). Never claim
+legal Soliq without EDS proof.
 """,
         "money-fiscal",
     ),
