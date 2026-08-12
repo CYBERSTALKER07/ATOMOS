@@ -44,12 +44,12 @@ Spanner (source of truth, single schema, 167 tables)
 
 | # | Gap | Domain | Evidence |
 |---|-----|--------|----------|
-| P0-1 | **AR invoices can never be paid down.** `ApplyPayment` only reachable via `ApplyCreditNote` (zero callers); no `RecordPayment`; every credit invoice marches to CREDIT_HOLD even if money collected | Money | `ar/service.go:93-140,269,501`; no `payment/`→AR reference |
-| P0-2 | **No live payout rail + stranded-batch bug.** Only `BankFileRail` (CSV); `railByName` dead code; `SubmitForDispatch(live=true)` on file rail sets SUBMITTED with empty RailReference → batch stranded appearing "in settlement" | Money | `payout/rail.go:43,55-90`; `payout/handlers.go:117` |
-| P0-3 | **PLATFORM_ADMIN routes dead when RequireTenant enforced** (admin JWT has no SupplierID → 401). Default-enforced in ssmr/prod → admin console unusable in prod | Tenancy | `auth/tenant.go:95-118`, `main.go:124-125` (no role exemption) |
-| P0-4 | **Payout domain: zero outbox events** — batch generate/export/mark-paid/dispatch mutate silently | Data-flow | `payout/store.go:18,98`; grep `outbox` in `payout/` = 0 |
-| P0-5 | **AR domain: zero outbox events** — invoices/ledger/dunning written directly; no real-time AR state to clients | Data-flow | `ar/service.go:347-580`; grep `outbox` in `ar/` = 0 |
-| P0-6 | **Supplier-portal `/api/*` catch-all nested 11 levels deep** → route unreachable; breaks `demand/payday-calendar` + `demand/signals` (404, still linked in nav) | Client apps | `apps/supplier-portal/app/api/api/.../[...path]/route.ts` |
+| P0-1 ✅ | **RESOLVED (commit 9f8d8787).** Added `ar.Service.RecordPayment` / `RecordPaymentForOrder` / `GetByID` / `GetByOrder`; wired pay-down into `order.CollectCash` so credit invoices settle on cash collection. Tests in `ar/service_test.go`. | Money | `ar/service.go`, `order/service.go` |
+| P0-2 ✅ | **RESOLVED (commit 9f8d8787).** `Rail.IsLive()` added; `SubmitForDispatch(live=true)` fails closed with `ErrNoLiveRail` on a non-live rail — a batch can no longer strand in SUBMITTED with an empty rail ref. Live rail still pending a real bank integration (separate scope). | Money | `payout/rail.go` |
+| P0-3 ✅ | **RESOLVED (commit 9f8d8787).** `RequireTenant` now exempts `RolePlatformAdmin` (cross-tenant break-glass role has no SupplierID) so the admin console works when tenancy is enforced. | Tenancy | `auth/tenant.go:95` |
+| P0-4 ✅ | **RESOLVED (commit 9f8d8787).** Payout `Insert`/`UpdateStatusRef` now emit `PAYOUT_BATCH_GENERATED/EXPORTED/DISPATCHED/PAID` via `outbox.SpannerTxnBuffer` in the same txn. | Data-flow | `payout/store.go`, `outbox/spanner_txn_buffer.go` |
+| P0-5 ✅ | **RESOLVED (commit 9f8d8787).** AR `OpenInvoice`/`ApplyPayment`/`UpdateDunning` now emit `AR_INVOICE_OPENED/PAYMENT/SETTLED/DUNNED` atomically in the same Spanner txn. | Data-flow | `ar/service.go` |
+| P0-6 ✅ | **RESOLVED (commit 9f8d8787).** Moved `/api/[...path]` and `/api/ws-session` from 11-deep `app/api/api/...` to `app/api/`, restoring the demand pages. | Client apps | `apps/supplier-portal/app/api/` |
 
 ### P1 — structural product truth / cross-role loops
 
