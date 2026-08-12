@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,17 @@ const (
 	FiscalProviderPegasus   = "PEGASUS"    // platform commercial receipt (default product path)
 	FiscalProviderGlobalPay = "GLOBAL_PAY" // payment-provider receipt (optional secondary)
 	FiscalProviderMySoliq   = "MY_SOLIQ"   // tax OFD — deferred until Soliq sandbox creds
+
+	// BuyerAcceptancePending / Accepted / Rejected / Expired are the Soliq EHF
+	// buyer-clearance states (parallel to ADR-009 COMPLETED).
+	BuyerAcceptancePending  = "PENDING"
+	BuyerAcceptanceAccepted = "ACCEPTED"
+	BuyerAcceptanceRejected = "REJECTED"
+	BuyerAcceptanceExpired  = "EXPIRED"
+
+	// BuyerAcceptanceWindowDefault is the UZ EHF buyer clearance window (10 days
+	// per soliq-ehf-integration.md). Overridable via BUYER_ACCEPTANCE_DAYS.
+	BuyerAcceptanceWindowDefault = 10 * 24 * time.Hour
 
 	// FiscalOFDTimeout is the hard timeout per external receipt call (P0 T8/T9).
 	FiscalOFDTimeout = 8 * time.Second
@@ -82,25 +94,25 @@ func isTerminalMoneyStatus(st Status) bool {
 
 // FiscalReceiptRow is one immutable OFD attempt (supplier-scoped leg).
 type FiscalReceiptRow struct {
-	OrderID           string
-	AttemptID         string
-	SupplierID        string
-	RetailerID        string
-	Provider          string
-	Status            string
-	FiscalReceiptID   string
-	FiscalQR          string
-	AmountMinor       int64
-	Currency          string
-	PaymentMethod     string
-	ProviderPayload   []byte
-	ErrorCode         string
-	ErrorMessage      string
-	ReasonCode        string
-	ActorID           string
-	TraceID           string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	OrderID         string
+	AttemptID       string
+	SupplierID      string
+	RetailerID      string
+	Provider        string
+	Status          string
+	FiscalReceiptID string
+	FiscalQR        string
+	AmountMinor     int64
+	Currency        string
+	PaymentMethod   string
+	ProviderPayload []byte
+	ErrorCode       string
+	ErrorMessage    string
+	ReasonCode      string
+	ActorID         string
+	TraceID         string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // FiscalProvider calls the OFD / tax receipt API asynchronously from a worker.
@@ -345,6 +357,57 @@ func emitOrderForceCompleted(ctx context.Context, txn outbox.TxnBuffer, orderRec
 	})
 }
 
+func emitBuyerAcceptance(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, eventType, status string) error {
+	deadline := ""
+	if orderRecord.BuyerAcceptanceDeadline != nil {
+		deadline = orderRecord.BuyerAcceptanceDeadline.UTC().Format(time.RFC3339Nano)
+	}
+	ts := orderRecord.UpdatedAt
+	if ts.IsZero() {
+		ts = time.Now().UTC()
+	}
+	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.BuyerAcceptanceEvent{
+		BaseEvent:  events.BaseEvent{Type: eventType, Timestamp: ts.Format(time.RFC3339Nano)},
+		OrderID:    orderRecord.OrderID,
+		SupplierID: orderRecord.SupplierID,
+		RetailerID: orderRecord.RetailerID,
+		EhfID:      orderRecord.LatestFiscalReceiptID,
+		Status:     status,
+		Deadline:   deadline,
+	})
+}
+
+// stampBuyerAcceptancePending marks the order for the Soliq EHF buyer-clearance
+// poller. Only applies to MY_SOLIQ (real EHF); PEGASUS/FAKE commercial receipts
+// have no buyer-acceptance window. ADR-009 still completes the order; this is
+// the parallel track that gates reverse-settlement on REJECT.
+func stampBuyerAcceptancePending(orderRecord *Order, provider string, now time.Time) bool {
+	if orderRecord == nil || provider != FiscalProviderMySoliq {
+		return false
+	}
+	if strings.TrimSpace(orderRecord.BuyerAcceptanceStatus) != "" &&
+		orderRecord.BuyerAcceptanceStatus != BuyerAcceptancePending {
+		// Already resolved (ACCEPTED/REJECTED/EXPIRED) — do not reopen.
+		return false
+	}
+	orderRecord.BuyerAcceptanceStatus = BuyerAcceptancePending
+	deadline := now.Add(buyerAcceptanceWindow())
+	orderRecord.BuyerAcceptanceDeadline = &deadline
+	return true
+}
+
+func buyerAcceptanceWindow() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("BUYER_ACCEPTANCE_DAYS"))
+	if raw == "" {
+		return BuyerAcceptanceWindowDefault
+	}
+	days, err := strconv.Atoi(raw)
+	if err != nil || days <= 0 {
+		return BuyerAcceptanceWindowDefault
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
 // emitPaymentCaptureFiscal wires PAYMENT_CLEARED + FISCAL_RECEIPT_REQUESTED for a capture txn.
 // Does NOT emit ORDER_FINALIZED (ADR-009).
 func emitPaymentCaptureFiscal(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, row FiscalReceiptRow, paymentMethod string) error {
@@ -488,6 +551,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
 	orderRecord.FiscalReceiptUpdate = &row
+	buyerPending := stampBuyerAcceptancePending(&orderRecord, s.ProviderName(), now)
 	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -504,6 +568,11 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		}
 		if err := emitFiscalReceiptSucceeded(ctx, txn, row); err != nil {
 			return err
+		}
+		if buyerPending {
+			if err := emitBuyerAcceptance(ctx, txn, orderRecord, events.EventBuyerAcceptancePending, BuyerAcceptancePending); err != nil {
+				return err
+			}
 		}
 		return emitOrderFinalized(ctx, txn, orderRecord)
 	})
@@ -531,6 +600,7 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 	orderRecord.LatestFiscalAttemptID = existing.AttemptID
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
+	buyerPending := stampBuyerAcceptancePending(&orderRecord, s.ProviderName(), now)
 	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -544,6 +614,11 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 			Reason:         "fiscal_succeeded_idempotent",
 		}); err != nil {
 			return err
+		}
+		if buyerPending {
+			if err := emitBuyerAcceptance(ctx, txn, orderRecord, events.EventBuyerAcceptancePending, BuyerAcceptancePending); err != nil {
+				return err
+			}
 		}
 		return emitOrderFinalized(ctx, txn, orderRecord)
 	})
@@ -763,7 +838,7 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 		if err := s.stampTaxRegimeTxn(ctx, txn, &orderRecord); err != nil {
 			return err
 		}
-		
+
 		if err := s.AssertMoneyCoversDelivery(ctx, orderID, 0, 0); err != nil {
 			delivered, _ := s.getDeliveredGrossMinor(ctx, orderID)
 			paid, _ := s.getCapturedPaymentMinor(ctx, orderID)

@@ -91,6 +91,42 @@
       "title": "ARInvoicePayload",
       "type": "object"
     },
+    "BuyerAcceptancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "deadline": {
+          "type": "string"
+        },
+        "ehf_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "status",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "BuyerAcceptancePayload",
+      "type": "object"
+    },
     "CashVariancePayload": {
       "additionalProperties": true,
       "properties": {
@@ -2048,6 +2084,82 @@
         }
       ],
       "title": "ArInvoiceSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_PENDING"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptancePendingEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_ACCEPTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceAcceptedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_REJECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceRejectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_EXPIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceExpiredEnvelope"
     },
     {
       "allOf": [
@@ -5082,6 +5194,10 @@
         "AR_INVOICE_PAYMENT",
         "AR_INVOICE_DUNNED",
         "AR_INVOICE_SETTLED",
+        "BUYER_ACCEPTANCE_ACCEPTED",
+        "BUYER_ACCEPTANCE_EXPIRED",
+        "BUYER_ACCEPTANCE_PENDING",
+        "BUYER_ACCEPTANCE_REJECTED",
         "CART_SYNC_UPDATED",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
@@ -5259,6 +5375,10 @@
     "AR_INVOICE_PAYMENT": "ARInvoicePayload",
     "AR_INVOICE_DUNNED": "ARInvoicePayload",
     "AR_INVOICE_SETTLED": "ARInvoicePayload",
+    "BUYER_ACCEPTANCE_ACCEPTED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_EXPIRED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_REJECTED": "BuyerAcceptancePayload",
     "CART_SYNC_UPDATED": "SyncPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",

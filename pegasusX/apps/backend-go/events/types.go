@@ -656,6 +656,19 @@ type OrderForceCompletedEvent struct {
 	TraceID    string `json:"trace_id,omitempty"`
 }
 
+// BuyerAcceptanceEvent tracks Soliq EHF buyer clearance. ADR-009 still marks the
+// order COMPLETED on OFD submit success; this parallel track gates final ledger
+// close / reverse-settlement (credit note on REJECT).
+type BuyerAcceptanceEvent struct {
+	BaseEvent
+	OrderID    string `json:"order_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id,omitempty"`
+	EhfID      string `json:"ehf_id,omitempty"`
+	Status     string `json:"status"` // PENDING | ACCEPTED | REJECTED | EXPIRED
+	Deadline   string `json:"deadline,omitempty"`
+}
+
 // CashVarianceEvent records cash shortfall or overage at collection (integer Tiyin).
 type CashVarianceEvent struct {
 	BaseEvent

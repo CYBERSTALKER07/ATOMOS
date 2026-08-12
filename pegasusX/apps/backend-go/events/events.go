@@ -156,6 +156,11 @@ const (
 	EventFiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
 	EventFiscalReceiptSucceeded = "FISCAL_RECEIPT_SUCCEEDED"
 	EventFiscalReceiptFailed    = "FISCAL_RECEIPT_FAILED"
+	// @Sync(BuyerAcceptanceEvent) Soliq EHF buyer clearance (parallel to ADR-009 COMPLETED)
+	EventBuyerAcceptancePending  = "BUYER_ACCEPTANCE_PENDING"
+	EventBuyerAcceptanceAccepted = "BUYER_ACCEPTANCE_ACCEPTED"
+	EventBuyerAcceptanceRejected = "BUYER_ACCEPTANCE_REJECTED"
+	EventBuyerAcceptanceExpired  = "BUYER_ACCEPTANCE_EXPIRED"
 	// @Sync(OrderForceCompletedEvent)
 	EventOrderForceCompleted = "ORDER_FORCE_COMPLETED"
 	// @Sync(CashVarianceEvent) cash collect shortfall / overage (integer Tiyin)

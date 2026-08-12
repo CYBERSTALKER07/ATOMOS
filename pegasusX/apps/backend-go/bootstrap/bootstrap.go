@@ -216,6 +216,9 @@ type App struct {
 	CashReconEscalation    *cashrecon.EscalationWorker
 	CreditNoteHandlers     *creditnote.Handlers
 	CreditNoteService      *creditnote.Service
+	// BuyerAcceptancePoller polls Soliq EHF buyer clearance for MySoliq-fiscalized
+	// orders (P1-6). Nil when Soliq client / credit-note service unavailable.
+	BuyerAcceptancePoller  *order.BuyerAcceptancePoller
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
@@ -1048,13 +1051,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
 	fiscalProvider := order.ProviderFromEnv()
 	orderSvc.SetFiscalProvider(fiscalProvider)
+	var buyerAcceptancePoller *order.BuyerAcceptancePoller
 	if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
-		buyerPoller := order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
-		if strings.EqualFold(strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")), "true") {
-			buyerPoller.SetAutoCreditNoteOnBuyerReject(true)
+		buyerAcceptancePoller = order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
+		// Default is ON (reverse settlement on reject). Explicit override still honored.
+		if v := strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")); strings.EqualFold(v, "false") || v == "0" {
+			buyerAcceptancePoller.SetAutoCreditNoteOnBuyerReject(false)
 		}
-		go buyerPoller.Run(context.Background())
-		log.Info("buyer acceptance poller started")
+		log.Info("buyer acceptance poller constructed (started by worker tier)")
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:                       driverRepo,
@@ -1698,6 +1702,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		CashReconEscalation:     cashReconEscalation,
 		CreditNoteHandlers:      creditNoteHandlers,
 		CreditNoteService:       creditNoteSvc,
+		BuyerAcceptancePoller:   buyerAcceptancePoller,
 		HandoffEngine:           handoffEngine,
 		DriverLocations:         driverLocations,
 		RetailerHub:             retailerHub,

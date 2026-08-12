@@ -162,6 +162,11 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.ARDunningWorker.Start(ctx, time.Hour)
 		slog.Info("ar dunning worker started", "enabled", os.Getenv("AR_DUNNING_ENABLED"))
 	}
+	// P1-6: Soliq EHF buyer-clearance poller (MySoliq path only; nil otherwise).
+	if app.BuyerAcceptancePoller != nil {
+		go app.BuyerAcceptancePoller.Run(ctx)
+		slog.Info("buyer acceptance poller started")
+	}
 	// Gate-0: auto-confirm due AI preorders (default off until smoke).
 	if app.OrderService != nil && os.Getenv("AUTO_CONFIRM_PREORDERS_ENABLED") == "1" {
 		go func() {

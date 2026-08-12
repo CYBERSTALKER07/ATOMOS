@@ -3449,6 +3449,10 @@ export type EventType =
   | "FISCAL_RECEIPT_REQUESTED"
   | "FISCAL_RECEIPT_SUCCEEDED"
   | "FISCAL_RECEIPT_FAILED"
+  | "BUYER_ACCEPTANCE_PENDING"
+  | "BUYER_ACCEPTANCE_ACCEPTED"
+  | "BUYER_ACCEPTANCE_REJECTED"
+  | "BUYER_ACCEPTANCE_EXPIRED"
   | "ORDER_FORCE_COMPLETED"
   | "CASH_SHORTFALL"
   | "CASH_OVERAGE"
@@ -4421,6 +4425,16 @@ export interface PayoutBatchEventPayload {
   timestamp: string;
 }
 
+export interface BuyerAcceptanceEventPayload {
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id?: RetailerId;
+  ehf_id?: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+  deadline?: string;
+  timestamp: string;
+}
+
 export interface DeliverySessionUpdated {
   session_id: SessionId;
   order_id: OrderId;
@@ -4539,6 +4553,10 @@ export type WsEvent =
   | WsEventEnvelope<"PAYOUT_BATCH_EXPORTED", PayoutBatchEventPayload>
   | WsEventEnvelope<"PAYOUT_BATCH_DISPATCHED", PayoutBatchEventPayload>
   | WsEventEnvelope<"PAYOUT_BATCH_PAID", PayoutBatchEventPayload>
+  | WsEventEnvelope<"BUYER_ACCEPTANCE_PENDING", BuyerAcceptanceEventPayload>
+  | WsEventEnvelope<"BUYER_ACCEPTANCE_ACCEPTED", BuyerAcceptanceEventPayload>
+  | WsEventEnvelope<"BUYER_ACCEPTANCE_REJECTED", BuyerAcceptanceEventPayload>
+  | WsEventEnvelope<"BUYER_ACCEPTANCE_EXPIRED", BuyerAcceptanceEventPayload>
   | WsEventEnvelope<"DELIVERY_SESSION_UPDATED", DeliverySessionUpdated>
   | DriverAvailabilityChangedEvent
   | DriverLocationUpdatedEvent
