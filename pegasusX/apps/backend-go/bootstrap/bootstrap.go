@@ -19,7 +19,6 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
-	"github.com/redis/go-redis/v9"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
@@ -29,36 +28,35 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cashrecon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
-	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
+	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
-	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
+	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
-	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
-	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
-	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
@@ -72,13 +70,15 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
-	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/api/iterator"
 )
 
@@ -93,13 +93,13 @@ type Config struct {
 	SpannerInstance     string
 	SpannerDatabase     string
 
-	RedisAddr         string
-	RedisPassword     string
-	RedisPoolSize     int
-	RedisMaxRetries   int
-	RedisTLSEnabled   bool
-	RedisCACertPEM    string // Memorystore server CA PEM (optional)
-	RedisTLSInsecure  bool   // skip TLS verify (staging only; prefer RedisCACertPEM)
+	RedisAddr        string
+	RedisPassword    string
+	RedisPoolSize    int
+	RedisMaxRetries  int
+	RedisTLSEnabled  bool
+	RedisCACertPEM   string // Memorystore server CA PEM (optional)
+	RedisTLSInsecure bool   // skip TLS verify (staging only; prefer RedisCACertPEM)
 
 	KafkaBrokers            string
 	KafkaTopicMain          string
@@ -174,25 +174,28 @@ type Config struct {
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
 // never as package-level globals.
 type App struct {
-	Config                 *Config
-	Cache                  *cache.Cache
-	Idempotency            idempotency.Store
-	Supplier               seed.Supplier
-	CatalogService         *catalog.Service
-	GlobalProductsService  *globalproducts.Service
-	PromotionService       *promotion.Service
-	PromotionAudience      *promotion.AudienceResolver
-	InventoryService       *inventory.Service
-	NotificationService    *notifications.Service
-	NotificationInbox      *notifications.InboxHandlers
-	SupplierService        *supplier.Service
-	RetailerService        *retailer.Service
-	RetailerProximity      *retailer.RetailerProximityService
-	DriverService          *driver.Service
-	FactoryService         *factory.Service
-	PayloadService         *payload.Service
-	PaymentService         *payment.Service
-	WebhookInbox           *payment.WebhookInboxStore
+	Config                *Config
+	Cache                 *cache.Cache
+	Idempotency           idempotency.Store
+	Supplier              seed.Supplier
+	CatalogService        *catalog.Service
+	GlobalProductsService *globalproducts.Service
+	PromotionService      *promotion.Service
+	PromotionAudience     *promotion.AudienceResolver
+	InventoryService      *inventory.Service
+	NotificationService   *notifications.Service
+	NotificationInbox     *notifications.InboxHandlers
+	SupplierService       *supplier.Service
+	RetailerService       *retailer.Service
+	RetailerProximity     *retailer.RetailerProximityService
+	DriverService         *driver.Service
+	FactoryService        *factory.Service
+	PayloadService        *payload.Service
+	PaymentService        *payment.Service
+	WebhookInbox          *payment.WebhookInboxStore
+	// WebhookReconciler polls stuck payment sessions against the gateway and
+	// advances them through the outbox (P1-8). Started as a background worker.
+	WebhookReconciler      *payment.WebhookReconciler
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
 	TaxService             *tax.Service
@@ -230,25 +233,25 @@ type App struct {
 	BillingTierConsumer    *kafka.Consumer
 	// RedisClient is the raw go-redis client when the Redis backend is enabled,
 	// else nil. Used by the api-mode worker-liveness gate (P1-9).
-	RedisClient *redis.Client
-	Reliability            *ReliabilityMiddleware
-	InfraHealth            infraroutes.Deps
-	OutboundCircuits       *OutboundCircuits
-	PlatformService        *platform.Service
-	PlatformHandler        *platform.Handler
-	PlatformAdminService   *platformadmin.Service
-	PlatformAdminHandlers  *platformadmin.Handlers
-	FeatureFlagService     *featureflags.Service
-	FeatureFlagHandlers    *featureflags.Handlers
-	PulseHandlers          *pulse.Handlers
-	PushBridge             *notifications.PushBridge
-	Spanner                *spanner.Client
-	OptimizerClient        *optimizerclient.Client
-	DispatchPlanCounters   *plan.SourceCounters
-	ReplenishmentEngine    *replenishment.Engine
+	RedisClient             *redis.Client
+	Reliability             *ReliabilityMiddleware
+	InfraHealth             infraroutes.Deps
+	OutboundCircuits        *OutboundCircuits
+	PlatformService         *platform.Service
+	PlatformHandler         *platform.Handler
+	PlatformAdminService    *platformadmin.Service
+	PlatformAdminHandlers   *platformadmin.Handlers
+	FeatureFlagService      *featureflags.Service
+	FeatureFlagHandlers     *featureflags.Handlers
+	PulseHandlers           *pulse.Handlers
+	PushBridge              *notifications.PushBridge
+	Spanner                 *spanner.Client
+	OptimizerClient         *optimizerclient.Client
+	DispatchPlanCounters    *plan.SourceCounters
+	ReplenishmentEngine     *replenishment.Engine
 	ReorderSuggestionWorker *replenishment.ReorderSuggestionWorker
-	RouteAnalyticsWorker  *analytics.RouteAnalyticsWorker
-	AnalyticsHandlers     *analytics.Handlers
+	RouteAnalyticsWorker    *analytics.RouteAnalyticsWorker
+	AnalyticsHandlers       *analytics.Handlers
 	NotificationPreferences *notifications.PreferenceHandlers
 	PartnerService          *partner.Service
 	PartnerHandlers         *partner.Handlers
@@ -277,25 +280,25 @@ type App struct {
 // local development.
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		HTTPPort:                        envOr("HTTP_PORT", "8080"),
-		WorkerHTTPPort:                  envOr("WORKER_HTTP_PORT", "8081"),
-		RunMode:                         envOr("PEGASUSX_RUN_MODE", RunModeAll),
+		HTTPPort:       envOr("HTTP_PORT", "8080"),
+		WorkerHTTPPort: envOr("WORKER_HTTP_PORT", "8081"),
+		RunMode:        envOr("PEGASUSX_RUN_MODE", RunModeAll),
 		// Empty emulator host = real GCP. Local SSMR defaults to emulator only when
 		// SPANNER_PROJECT is the local sandbox (or SPANNER_EMULATOR_HOST is set).
-		SpannerEmulatorHost:             resolveSpannerEmulatorHost(),
-		SpannerProject:                  envOr("SPANNER_PROJECT", "pegasusx-local"),
-		SpannerInstance:                 envOr("SPANNER_INSTANCE", "pegasusx-instance"),
-		SpannerDatabase:                 envOr("SPANNER_DATABASE", "pegasusx-db"),
-		RedisAddr:                       envOr("REDIS_ADDR", "localhost:6379"),
-		RedisPassword:                   envOr("REDIS_PASSWORD", ""),
-		RedisPoolSize:                   envInt("REDIS_POOL_SIZE", 50),
-		RedisMaxRetries:                 envInt("REDIS_MAX_RETRIES", 3),
-		RedisTLSEnabled:                 envBool("REDIS_TLS_ENABLED", false),
-		RedisCACertPEM:                  envOr("REDIS_CA_CERT", ""),
-		RedisTLSInsecure:                envBool("REDIS_TLS_INSECURE", false),
-		KafkaBrokers:                    envOr("KAFKA_BROKERS", "localhost:9092"),
-		KafkaTopicMain:                  envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
-		KafkaTopicMainDLQ:               envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
+		SpannerEmulatorHost: resolveSpannerEmulatorHost(),
+		SpannerProject:      envOr("SPANNER_PROJECT", "pegasusx-local"),
+		SpannerInstance:     envOr("SPANNER_INSTANCE", "pegasusx-instance"),
+		SpannerDatabase:     envOr("SPANNER_DATABASE", "pegasusx-db"),
+		RedisAddr:           envOr("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:       envOr("REDIS_PASSWORD", ""),
+		RedisPoolSize:       envInt("REDIS_POOL_SIZE", 50),
+		RedisMaxRetries:     envInt("REDIS_MAX_RETRIES", 3),
+		RedisTLSEnabled:     envBool("REDIS_TLS_ENABLED", false),
+		RedisCACertPEM:      envOr("REDIS_CA_CERT", ""),
+		RedisTLSInsecure:    envBool("REDIS_TLS_INSECURE", false),
+		KafkaBrokers:        envOr("KAFKA_BROKERS", "localhost:9092"),
+		KafkaTopicMain:      envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
+		KafkaTopicMainDLQ:   envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
 		// GCP_MANAGED_OAUTH = Managed Service for Apache Kafka (SASL_SSL + access token).
 		KafkaAuthMode:                   envOr("KAFKA_AUTH_MODE", ""),
 		KafkaSASLUsername:               envOr("KAFKA_SASL_USERNAME", ""),
@@ -632,19 +635,19 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	retailerSvc := retailer.NewService(retailer.ServiceConfig{
-		Repo:        retailerRepo,
-		CartRepo:    cartRepo,
-		NotifSvc:    notifAdapter,
-		Cache:       cacheClient,
-		Idem:        idemStore,
-		Locations:   driverLocations,
-		Proximity:   retailerProximity,
-		SupplierID:  supplierSeed.SupplierID,
+		Repo:           retailerRepo,
+		CartRepo:       cartRepo,
+		NotifSvc:       notifAdapter,
+		Cache:          cacheClient,
+		Idem:           idemStore,
+		Locations:      driverLocations,
+		Proximity:      retailerProximity,
+		SupplierID:     supplierSeed.SupplierID,
 		SeedSupplierID: supplierSeed.SupplierID,
-		CountryCode: cfg.SeedSupplierCountry,
-		JWTSecret:   cfg.JWTSecret,
-		JWTIssuer:   cfg.JWTIssuer,
-		Log:         log,
+		CountryCode:    cfg.SeedSupplierCountry,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		Log:            log,
 		// Required for sell-through, reorder suggestions, auto-order bucket/runs, locations Spanner path.
 		Spanner: spannerClient,
 	})
@@ -658,23 +661,23 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		dashboardQuery = supplierDashboardCountQuery(spannerClient)
 	}
 	supplierSvc := supplier.NewService(supplier.ServiceConfig{
-		Repo:             supplierRepo,
-		Cache:            cacheClient,
-		Idem:             idemStore,
-		Locations:        driverLocations,
-		InventoryService: supplierInventory,
-		DashboardQuery:   dashboardQuery,
-		SupplierID:                   supplierSeed.SupplierID,
-		SeedSupplierID:               supplierSeed.SupplierID,
-		MaxSuppliers:                 cfg.MaxSuppliers,
-		AllowMultiSupplierRegister:   cfg.AllowMultiSupplierRegister,
-		Country:                      cfg.SeedSupplierCountry,
-		Currency:         cfg.SeedSupplierCurrency,
-		JWTSecret:        cfg.JWTSecret,
-		JWTIssuer:        cfg.JWTIssuer,
-		JWTTTL:           24 * time.Hour,
-		CookieSecure:     false,
-		Log:              log,
+		Repo:                       supplierRepo,
+		Cache:                      cacheClient,
+		Idem:                       idemStore,
+		Locations:                  driverLocations,
+		InventoryService:           supplierInventory,
+		DashboardQuery:             dashboardQuery,
+		SupplierID:                 supplierSeed.SupplierID,
+		SeedSupplierID:             supplierSeed.SupplierID,
+		MaxSuppliers:               cfg.MaxSuppliers,
+		AllowMultiSupplierRegister: cfg.AllowMultiSupplierRegister,
+		Country:                    cfg.SeedSupplierCountry,
+		Currency:                   cfg.SeedSupplierCurrency,
+		JWTSecret:                  cfg.JWTSecret,
+		JWTIssuer:                  cfg.JWTIssuer,
+		JWTTTL:                     24 * time.Hour,
+		CookieSecure:               false,
+		Log:                        log,
 	})
 
 	// Role hubs share the cache backend for Pub/Sub fan-out. Production swaps
@@ -940,37 +943,37 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	factorySvc := factory.NewService(factory.ServiceConfig{
-		Repo:          factoryRepo,
-		Cache:         cacheClient,
-		SupplierHub:   supplierHub,
-		FactoryHub:    factoryHub,
-		Log:           log,
-		Spanner:       spannerClient,
-		Locations:     driverLocations,
-		SupplierID:    supplierSeed.SupplierID,
+		Repo:           factoryRepo,
+		Cache:          cacheClient,
+		SupplierHub:    supplierHub,
+		FactoryHub:     factoryHub,
+		Log:            log,
+		Spanner:        spannerClient,
+		Locations:      driverLocations,
+		SupplierID:     supplierSeed.SupplierID,
 		SeedSupplierID: supplierSeed.SupplierID,
-		FactoryNodeID: factoryNodeID,
-		Currency:      cfg.SeedSupplierCurrency,
-		JWTSecret:     cfg.JWTSecret,
-		JWTIssuer:     cfg.JWTIssuer,
-		Idem:          idemStore,
+		FactoryNodeID:  factoryNodeID,
+		Currency:       cfg.SeedSupplierCurrency,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		Idem:           idemStore,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
-		Repo:          payloadRepo,
-		Cache:         cacheClient,
-		SupplierHub:   supplierHub,
-		PayloadHub:    payloadHub,
-		DriverHub:     driverHub,
-		NotifSvc:      notifSvc,
-		Log:           log,
-		SupplierID:    supplierSeed.SupplierID,
+		Repo:           payloadRepo,
+		Cache:          cacheClient,
+		SupplierHub:    supplierHub,
+		PayloadHub:     payloadHub,
+		DriverHub:      driverHub,
+		NotifSvc:       notifSvc,
+		Log:            log,
+		SupplierID:     supplierSeed.SupplierID,
 		SeedSupplierID: supplierSeed.SupplierID,
-		Currency:      cfg.SeedSupplierCurrency,
-		JWTSecret:     cfg.JWTSecret,
-		JWTIssuer:     cfg.JWTIssuer,
-		ManifestStore: manifest.NewStore(spannerClient),
-		Idem:          idemStore,
-		Locations:     driverLocations,
+		Currency:       cfg.SeedSupplierCurrency,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		ManifestStore:  manifest.NewStore(spannerClient),
+		Idem:           idemStore,
+		Locations:      driverLocations,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.SetOrderExpectationReader(orderRepo)
@@ -1054,17 +1057,17 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("buyer acceptance poller started")
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
-		Repo:               driverRepo,
-		Cache:              cacheClient,
-		NotifSvc:           notifAdapter,
-		OrderList:          driverOrderList,
-		OrderGet:           driverOrderGet,
-		ProfileLookup:      driverProfileLookup,
-		AvailabilityReader: driverAvailReader,
-		RouteGeometry:      driverRouteGeometry,
-		Depart:             driverDepart,
-		ReturnComplete:     driverReturnComplete,
-		OpenFiscal:         driverOpenFiscal,
+		Repo:                       driverRepo,
+		Cache:                      cacheClient,
+		NotifSvc:                   notifAdapter,
+		OrderList:                  driverOrderList,
+		OrderGet:                   driverOrderGet,
+		ProfileLookup:              driverProfileLookup,
+		AvailabilityReader:         driverAvailReader,
+		RouteGeometry:              driverRouteGeometry,
+		Depart:                     driverDepart,
+		ReturnComplete:             driverReturnComplete,
+		OpenFiscal:                 driverOpenFiscal,
 		CashReconciliationRequired: cashReconRequired,
 		CashReconciliationGate: func(ctx context.Context, driverID string) (bool, error) {
 			if cashReconSvc == nil {
@@ -1111,12 +1114,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			}
 			return factorySvc.ManifestDetailSnapshotForDriver(driverID, manifestID, date)
 		},
-		SupplierID: supplierSeed.SupplierID,
+		SupplierID:     supplierSeed.SupplierID,
 		SeedSupplierID: supplierSeed.SupplierID,
-		Currency:   cfg.SeedSupplierCurrency,
-		JWTSecret:  cfg.JWTSecret,
-		JWTIssuer:  cfg.JWTIssuer,
-		Idem:       idemStore,
+		Currency:       cfg.SeedSupplierCurrency,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		Idem:           idemStore,
 	})
 	paymentExec := payment.NewProviderExecutionRouter(payment.ProviderExecutionRouterConfig{
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
@@ -1157,6 +1160,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
 	orderSvc.SetPaymentRefunder(paymentSvc)
+
+	// P1-8: settlement-vs-captured reconciliation. Polls sessions stuck in
+	// AWAITING_PAYMENT and advances them via the gateway status check. Without a
+	// runner this was manual-only.
+	webhookReconciler := payment.NewWebhookReconciler(paymentRepo, orderRepo, paymentExec, time.Now)
 
 	// Theatre #13: FX rates (ConvertMinor + admin GET/PUT). Operating currency stays UZS.
 	var fxRepo fxrates.Repository = fxrates.NewMemoryRepository()
@@ -1651,74 +1659,75 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	return &App{
-		Config:                 cfg,
-		Cache:                  cacheClient,
-		Idempotency:            idemStore,
-		Supplier:               supplierSeed,
-		CatalogService:         catalogSvc,
-		GlobalProductsService:  globalProductsSvc,
-		PromotionService:       promotionSvc,
-		PromotionAudience:      promotionAudience,
-		InventoryService:       inventorySvc,
-		NotificationService:    notifSvc,
-		NotificationInbox:      notifInbox,
-		SupplierService:        supplierSvc,
-		RetailerService:        retailerSvc,
-		DriverService:          driverSvc,
-		FactoryService:         factorySvc,
-		PayloadService:         payloadSvc,
-		PaymentService:         paymentSvc,
-		WebhookInbox:           webhookInbox,
-		WarehouseService:       warehouseSvc,
-		ReturnsService:         returnsSvc,
-		TaxService:             taxSvc,
-		ComplianceService:      complianceSvc,
-		ControlTowerService:    controlTowerSvc,
-		ControlTowerHandlers:   controlTowerHandlers,
-		ControlTowerWorker:     controlTowerWorker,
-		DemandService:          demandSvc,
-		LaborCapacityService:   laborcapacity.NewService(spannerClient),
-		ETAService:             eta.NewService(spannerClient),
-		OrderService:           orderSvc,
-		ClaimsService:          claimsSvc,
-		CreditService:          creditSvc,
-		CreditPolicyService:    creditPolicySvc,
-		ARService:              arSvc,
-		CashReconHandlers:      cashReconHandlers,
-		CashReconService:       cashReconSvc,
-		CashReconEscalation:    cashReconEscalation,
-		CreditNoteHandlers:     creditNoteHandlers,
-		CreditNoteService:      creditNoteSvc,
-		HandoffEngine:          handoffEngine,
-		DriverLocations:        driverLocations,
-		RetailerHub:            retailerHub,
-		SupplierHub:            supplierHub,
-		DriverHub:              driverHub,
-		PayloadHub:             payloadHub,
-		WarehouseHub:           warehouseHub,
-		FactoryHub:             factoryHub,
-		TelemetryHub:           telemetryHub,
-		NotificationConsumer:   notificationConsumer,
-		OrderEventConsumer:     orderEventConsumer,
-		WarehouseEventConsumer: warehouseEventConsumer,
-		ReturnsEventConsumer:   returnsEventConsumer,
-		BillingTierConsumer:    billingTierConsumer,
-		RedisClient:            redisClientOrNil(redisAdapter),
-		OutboxRelay:            outboxRelay,
-		Reliability:            reliabilityMiddleware,
-		InfraHealth:            infraHealth,
-		OutboundCircuits:       outboundCircuits,
-		PlatformService:        platformSvc,
-		PlatformHandler:        platformHandler,
-		PlatformAdminService:   platformAdminSvc,
-		PlatformAdminHandlers:  platformAdminHandlers,
-		FeatureFlagService:     featureFlagSvc,
-		FeatureFlagHandlers:    featureFlagHandlers,
-		PulseHandlers:          pulseHandlers,
-		PushBridge:             pushBridge,
-		Spanner:                spannerClient,
-		OptimizerClient:        optimizerCli,
-		DispatchPlanCounters:   dispatchCounters,
+		Config:                  cfg,
+		Cache:                   cacheClient,
+		Idempotency:             idemStore,
+		Supplier:                supplierSeed,
+		CatalogService:          catalogSvc,
+		GlobalProductsService:   globalProductsSvc,
+		PromotionService:        promotionSvc,
+		PromotionAudience:       promotionAudience,
+		InventoryService:        inventorySvc,
+		NotificationService:     notifSvc,
+		NotificationInbox:       notifInbox,
+		SupplierService:         supplierSvc,
+		RetailerService:         retailerSvc,
+		DriverService:           driverSvc,
+		FactoryService:          factorySvc,
+		PayloadService:          payloadSvc,
+		PaymentService:          paymentSvc,
+		WebhookInbox:            webhookInbox,
+		WebhookReconciler:       webhookReconciler,
+		WarehouseService:        warehouseSvc,
+		ReturnsService:          returnsSvc,
+		TaxService:              taxSvc,
+		ComplianceService:       complianceSvc,
+		ControlTowerService:     controlTowerSvc,
+		ControlTowerHandlers:    controlTowerHandlers,
+		ControlTowerWorker:      controlTowerWorker,
+		DemandService:           demandSvc,
+		LaborCapacityService:    laborcapacity.NewService(spannerClient),
+		ETAService:              eta.NewService(spannerClient),
+		OrderService:            orderSvc,
+		ClaimsService:           claimsSvc,
+		CreditService:           creditSvc,
+		CreditPolicyService:     creditPolicySvc,
+		ARService:               arSvc,
+		CashReconHandlers:       cashReconHandlers,
+		CashReconService:        cashReconSvc,
+		CashReconEscalation:     cashReconEscalation,
+		CreditNoteHandlers:      creditNoteHandlers,
+		CreditNoteService:       creditNoteSvc,
+		HandoffEngine:           handoffEngine,
+		DriverLocations:         driverLocations,
+		RetailerHub:             retailerHub,
+		SupplierHub:             supplierHub,
+		DriverHub:               driverHub,
+		PayloadHub:              payloadHub,
+		WarehouseHub:            warehouseHub,
+		FactoryHub:              factoryHub,
+		TelemetryHub:            telemetryHub,
+		NotificationConsumer:    notificationConsumer,
+		OrderEventConsumer:      orderEventConsumer,
+		WarehouseEventConsumer:  warehouseEventConsumer,
+		ReturnsEventConsumer:    returnsEventConsumer,
+		BillingTierConsumer:     billingTierConsumer,
+		RedisClient:             redisClientOrNil(redisAdapter),
+		OutboxRelay:             outboxRelay,
+		Reliability:             reliabilityMiddleware,
+		InfraHealth:             infraHealth,
+		OutboundCircuits:        outboundCircuits,
+		PlatformService:         platformSvc,
+		PlatformHandler:         platformHandler,
+		PlatformAdminService:    platformAdminSvc,
+		PlatformAdminHandlers:   platformAdminHandlers,
+		FeatureFlagService:      featureFlagSvc,
+		FeatureFlagHandlers:     featureFlagHandlers,
+		PulseHandlers:           pulseHandlers,
+		PushBridge:              pushBridge,
+		Spanner:                 spannerClient,
+		OptimizerClient:         optimizerCli,
+		DispatchPlanCounters:    dispatchCounters,
 		ReplenishmentEngine:     replenishmentEngine,
 		ReorderSuggestionWorker: reorderSuggestionWorker,
 		RouteAnalyticsWorker:    routeAnalyticsWorker,

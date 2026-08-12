@@ -58,6 +58,35 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.WebhookInbox.StartReconciler(ctx, app.PaymentService, 0)
 		slog.Info("webhook inbox reconciler started")
 	}
+	// P1-8: settlement-vs-captured reconciliation of stuck payment sessions.
+	// On by default; the reconciler skips stub gateway refs and only advances
+	// sessions stuck >15min via a real provider status check. Set
+	// PAYMENT_RECONCILE_DISABLED=1 to turn it off.
+	if app.WebhookReconciler != nil && os.Getenv("PAYMENT_RECONCILE_DISABLED") != "1" {
+		go func() {
+			// Initial jitter so a multi-replica rollout doesn't stampede the gateway.
+			timer := time.NewTimer(30 * time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := app.WebhookReconciler.ReconcileStuckSessions(ctx); err != nil {
+						slog.Warn("webhook reconciler pass failed", "err", err)
+					}
+				}
+			}
+		}()
+		slog.Info("webhook reconciler worker started", "interval", "5m")
+	}
 	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
 		app.ReplenishmentEngine.StartCron(ctx)
 		slog.Info("replenishment engine cron started")
