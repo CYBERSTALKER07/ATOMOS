@@ -405,15 +405,14 @@ func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error 
 	}
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		buf := outbox.NewSpannerTxnBuffer(txn)
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, inv.InvoiceID, events.TopicMain, map[string]any{
-			"type":            events.EventARInvoiceOpened,
-			"invoice_id":      inv.InvoiceID,
-			"supplier_id":     inv.SupplierID,
-			"retailer_id":     inv.RetailerID,
-			"order_id":        inv.OrderID,
-			"principal_minor": inv.PrincipalMinor,
-			"due_at":          inv.DueAt.UTC().Format(time.RFC3339Nano),
-			"timestamp":       time.Now().UTC().Format(time.RFC3339Nano),
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, inv.InvoiceID, events.TopicMain, events.ARInvoiceEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventARInvoiceOpened, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			InvoiceID:      inv.InvoiceID,
+			SupplierID:     inv.SupplierID,
+			RetailerID:     inv.RetailerID,
+			OrderID:        inv.OrderID,
+			PrincipalMinor: inv.PrincipalMinor,
+			DueAt:          inv.DueAt.UTC().Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -566,15 +565,14 @@ func (r *SpannerRepository) ApplyPayment(ctx context.Context, invoiceID string, 
 		if newStatus == StatusPaid {
 			eventType = events.EventARInvoiceSettled
 		}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, map[string]any{
-			"type":          eventType,
-			"invoice_id":    invoiceID,
-			"supplier_id":   sid,
-			"retailer_id":   rid,
-			"amount_minor":  amountMinor,
-			"balance_minor": newBal,
-			"status":        newStatus,
-			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
+			BaseEvent:    events.BaseEvent{Type: eventType, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			InvoiceID:    invoiceID,
+			SupplierID:   sid,
+			RetailerID:   rid,
+			AmountMinor:  amountMinor,
+			BalanceMinor: newBal,
+			Status:       newStatus,
 		}); err != nil {
 			return err
 		}
@@ -642,15 +640,14 @@ func (r *SpannerRepository) UpdateDunning(ctx context.Context, invoiceID string,
 			_ = row.Columns(&sid, &rid)
 		}
 		buf := outbox.NewSpannerTxnBuffer(txn)
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, map[string]any{
-			"type":           events.EventARInvoiceDunned,
-			"invoice_id":     invoiceID,
-			"supplier_id":    sid,
-			"retailer_id":    rid,
-			"dunning_step":   step,
-			"aging_bucket":   agingBucket,
-			"last_dunned_at": lastDunnedAt.UTC().Format(time.RFC3339Nano),
-			"timestamp":      time.Now().UTC().Format(time.RFC3339Nano),
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventARInvoiceDunned, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			InvoiceID:    invoiceID,
+			SupplierID:   sid,
+			RetailerID:   rid,
+			DunningStep:  step,
+			AgingBucket:  agingBucket,
+			LastDunnedAt: lastDunnedAt.UTC().Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}

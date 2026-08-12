@@ -13,6 +13,38 @@ type BaseEvent struct {
 	Timestamp string `json:"timestamp,omitempty"`
 }
 
+// ARInvoiceEvent is emitted on AR open-item lifecycle changes (open / payment /
+// settled / dunned). Fields are omitempty because each event type populates the
+// subset relevant to it (e.g. principal_minor only on open, dunning fields only
+// on dunned).
+type ARInvoiceEvent struct {
+	BaseEvent
+	InvoiceID      string `json:"invoice_id"`
+	SupplierID     string `json:"supplier_id"`
+	RetailerID     string `json:"retailer_id"`
+	OrderID        string `json:"order_id,omitempty"`
+	PrincipalMinor int64  `json:"principal_minor,omitempty"`
+	AmountMinor    int64  `json:"amount_minor,omitempty"`
+	BalanceMinor   int64  `json:"balance_minor,omitempty"`
+	Status         string `json:"status,omitempty"`
+	DunningStep    int64  `json:"dunning_step,omitempty"`
+	AgingBucket    string `json:"aging_bucket,omitempty"`
+	DueAt          string `json:"due_at,omitempty"`
+	LastDunnedAt   string `json:"last_dunned_at,omitempty"`
+}
+
+// PayoutBatchEvent is emitted on the supplier payout lifecycle (generated /
+// exported / dispatched / paid).
+type PayoutBatchEvent struct {
+	BaseEvent
+	BatchID        string `json:"batch_id"`
+	SupplierID     string `json:"supplier_id"`
+	Status         string `json:"status"`
+	NetPayoutMinor int64  `json:"net_payout_minor"`
+	Currency       string `json:"currency"`
+	RailReference  string `json:"rail_reference,omitempty"`
+}
+
 // SupplierEvent handles generic supplier operations.
 type SupplierEvent struct {
 	BaseEvent
@@ -237,8 +269,6 @@ type SplitShipmentEvent struct {
 	// TruckCount is the number of trucks carrying the split shipment.
 	TruckCount int `json:"truck_count"`
 }
-
-
 
 // RouteEvent handles route events.
 type RouteEvent struct {
@@ -629,15 +659,15 @@ type OrderForceCompletedEvent struct {
 // CashVarianceEvent records cash shortfall or overage at collection (integer Tiyin).
 type CashVarianceEvent struct {
 	BaseEvent
-	OrderID             string `json:"order_id"`
-	SupplierID          string `json:"supplier_id"`
-	RetailerID          string `json:"retailer_id,omitempty"`
-	DriverID            string `json:"driver_id,omitempty"`
-	ExpectedMinor       int64  `json:"expected_minor"`
-	ReceivedMinor       int64  `json:"received_minor"`
-	ShortfallMinor      int64  `json:"shortfall_minor,omitempty"`
-	OverageMinor        int64  `json:"overage_minor,omitempty"`
-	Currency            string `json:"currency"`
-	Note                string `json:"note,omitempty"`
-	TraceID             string `json:"trace_id,omitempty"`
+	OrderID        string `json:"order_id"`
+	SupplierID     string `json:"supplier_id"`
+	RetailerID     string `json:"retailer_id,omitempty"`
+	DriverID       string `json:"driver_id,omitempty"`
+	ExpectedMinor  int64  `json:"expected_minor"`
+	ReceivedMinor  int64  `json:"received_minor"`
+	ShortfallMinor int64  `json:"shortfall_minor,omitempty"`
+	OverageMinor   int64  `json:"overage_minor,omitempty"`
+	Currency       string `json:"currency"`
+	Note           string `json:"note,omitempty"`
+	TraceID        string `json:"trace_id,omitempty"`
 }

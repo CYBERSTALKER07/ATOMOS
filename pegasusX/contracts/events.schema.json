@@ -37,6 +37,60 @@
       "title": "AIRecommendationPayload",
       "type": "object"
     },
+    "ARInvoicePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "aging_bucket": {
+          "type": "string"
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "balance_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "due_at": {
+          "type": "string"
+        },
+        "dunning_step": {
+          "type": "integer"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "last_dunned_at": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "principal_minor": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "invoice_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ARInvoicePayload",
+      "type": "object"
+    },
     "CashVariancePayload": {
       "additionalProperties": true,
       "properties": {
@@ -975,6 +1029,45 @@
       "title": "OrderPayload",
       "type": "object"
     },
+    "PayoutBatchPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "batch_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "net_payout_minor": {
+          "type": "integer"
+        },
+        "rail_reference": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "batch_id",
+        "currency",
+        "net_payout_minor",
+        "rail_reference",
+        "status",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "PayoutBatchPayload",
+      "type": "object"
+    },
     "PlanningPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1879,6 +1972,82 @@
         }
       ],
       "title": "AllocationPolicyAppliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceOpenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_PAYMENT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoicePaymentEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_DUNNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceDunnedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceSettledEnvelope"
     },
     {
       "allOf": [
@@ -3000,6 +3169,82 @@
         }
       ],
       "title": "PartialOffloadEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_GENERATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchGeneratedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_EXPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchExportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_PAID"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchPaidEnvelope"
     },
     {
       "allOf": [
@@ -4833,6 +5078,10 @@
         "AI_RECOMMENDATION_DECIDED",
         "ALLOCATION_FAIR_SHARE_APPLIED",
         "ALLOCATION_POLICY_APPLIED",
+        "AR_INVOICE_OPENED",
+        "AR_INVOICE_PAYMENT",
+        "AR_INVOICE_DUNNED",
+        "AR_INVOICE_SETTLED",
         "CART_SYNC_UPDATED",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
@@ -4892,6 +5141,10 @@
         "ORDER_STATUS_CHANGED",
         "ORDER_VALIDATION_FAILED",
         "PARTIAL_OFFLOAD",
+        "PAYOUT_BATCH_GENERATED",
+        "PAYOUT_BATCH_EXPORTED",
+        "PAYOUT_BATCH_DISPATCHED",
+        "PAYOUT_BATCH_PAID",
         "PAYMENT_CLEARED",
         "PAYMENT_FAILED",
         "PAYMENT_REQUIRED",
@@ -5002,6 +5255,10 @@
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
     "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
     "ALLOCATION_POLICY_APPLIED": "OrderPayload",
+    "AR_INVOICE_OPENED": "ARInvoicePayload",
+    "AR_INVOICE_PAYMENT": "ARInvoicePayload",
+    "AR_INVOICE_DUNNED": "ARInvoicePayload",
+    "AR_INVOICE_SETTLED": "ARInvoicePayload",
     "CART_SYNC_UPDATED": "SyncPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",
@@ -5061,6 +5318,10 @@
     "ORDER_STATUS_CHANGED": "OrderPayload",
     "ORDER_VALIDATION_FAILED": "OrderPayload",
     "PARTIAL_OFFLOAD": "ShopClosedBypassOffloadPayload",
+    "PAYOUT_BATCH_GENERATED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_EXPORTED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_DISPATCHED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_PAID": "PayoutBatchPayload",
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_FAILED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",

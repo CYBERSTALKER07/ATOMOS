@@ -3438,6 +3438,14 @@ export type EventType =
   | "PAYMENT_FAILED"
   | "PAYMENT_REQUIRED"
   | "SETTLEMENT_REQUIRED"
+  | "AR_INVOICE_OPENED"
+  | "AR_INVOICE_PAYMENT"
+  | "AR_INVOICE_DUNNED"
+  | "AR_INVOICE_SETTLED"
+  | "PAYOUT_BATCH_GENERATED"
+  | "PAYOUT_BATCH_EXPORTED"
+  | "PAYOUT_BATCH_DISPATCHED"
+  | "PAYOUT_BATCH_PAID"
   | "FISCAL_RECEIPT_REQUESTED"
   | "FISCAL_RECEIPT_SUCCEEDED"
   | "FISCAL_RECEIPT_FAILED"
@@ -4387,6 +4395,32 @@ export interface SettlementRequired {
   status?: OrderStatus;
 }
 
+export interface ARInvoiceEventPayload {
+  invoice_id: string;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  order_id?: OrderId;
+  principal_minor?: number;
+  amount_minor?: number;
+  balance_minor?: number;
+  status?: string;
+  dunning_step?: number;
+  aging_bucket?: string;
+  due_at?: string;
+  last_dunned_at?: string;
+  timestamp: string;
+}
+
+export interface PayoutBatchEventPayload {
+  batch_id: string;
+  supplier_id: SupplierId;
+  status: string;
+  net_payout_minor: number;
+  currency: Iso4217;
+  rail_reference: string;
+  timestamp: string;
+}
+
 export interface DeliverySessionUpdated {
   session_id: SessionId;
   order_id: OrderId;
@@ -4497,6 +4531,14 @@ export type WsEvent =
   | WsEventEnvelope<"PAYMENT_REQUIRED", PaymentRequired>
   | WsEventEnvelope<"PAYMENT_CLEARED", PaymentCleared>
   | WsEventEnvelope<"SETTLEMENT_REQUIRED", SettlementRequired>
+  | WsEventEnvelope<"AR_INVOICE_OPENED", ARInvoiceEventPayload>
+  | WsEventEnvelope<"AR_INVOICE_PAYMENT", ARInvoiceEventPayload>
+  | WsEventEnvelope<"AR_INVOICE_DUNNED", ARInvoiceEventPayload>
+  | WsEventEnvelope<"AR_INVOICE_SETTLED", ARInvoiceEventPayload>
+  | WsEventEnvelope<"PAYOUT_BATCH_GENERATED", PayoutBatchEventPayload>
+  | WsEventEnvelope<"PAYOUT_BATCH_EXPORTED", PayoutBatchEventPayload>
+  | WsEventEnvelope<"PAYOUT_BATCH_DISPATCHED", PayoutBatchEventPayload>
+  | WsEventEnvelope<"PAYOUT_BATCH_PAID", PayoutBatchEventPayload>
   | WsEventEnvelope<"DELIVERY_SESSION_UPDATED", DeliverySessionUpdated>
   | DriverAvailabilityChangedEvent
   | DriverLocationUpdatedEvent

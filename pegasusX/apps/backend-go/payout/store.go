@@ -51,15 +51,14 @@ func (r *Repository) Insert(ctx context.Context, b Batch) error {
 // the caller so the same status-transition code path can label generate /
 // export / dispatch / paid distinctly.
 func emitPayoutEvent(ctx context.Context, buf *outbox.SpannerTxnBuffer, eventType string, b Batch, railRef string) error {
-	return outbox.EmitJSON(ctx, buf, events.AggregatePayoutBatch, b.BatchID, events.TopicMain, map[string]any{
-		"type":             eventType,
-		"batch_id":         b.BatchID,
-		"supplier_id":      b.SupplierID,
-		"status":           b.Status,
-		"net_payout_minor": b.NetPayoutMinor,
-		"currency":         b.Currency,
-		"rail_reference":   railRef,
-		"timestamp":        time.Now().UTC().Format(time.RFC3339Nano),
+	return outbox.EmitJSON(ctx, buf, events.AggregatePayoutBatch, b.BatchID, events.TopicMain, events.PayoutBatchEvent{
+		BaseEvent:      events.BaseEvent{Type: eventType, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+		BatchID:        b.BatchID,
+		SupplierID:     b.SupplierID,
+		Status:         b.Status,
+		NetPayoutMinor: b.NetPayoutMinor,
+		Currency:       b.Currency,
+		RailReference:  railRef,
 	})
 }
 
