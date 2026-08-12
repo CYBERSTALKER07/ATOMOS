@@ -4,9 +4,14 @@
 
 ---
 
-# LangChain / Deep Agents (ecosystem quality harness)
+# LangChain / Deep Agents (ecosystem quality orchestra)
 
-Use for **audit and quality tracking** across backend, apps, Spanner, Redis, Kafka, WS, cloud — not as production business AI (`apps/ai-worker` owns that).
+Use for **audit and quality tracking** across business logic, feature gaps, role
+parity, code quality, architecture, Spanner/Redis/Kafka/WS/cloud — not as
+production business AI (`apps/ai-worker` owns that).
+
+One **Chief Orchestrator** + **12 specialist panels** (Deep Agents subagents),
+not tens of deployed services.
 
 | Resource | Path |
 |----------|------|
@@ -15,16 +20,18 @@ Use for **audit and quality tracking** across backend, apps, Spanner, Redis, Kaf
 | Surface registry | `.agents/deep-agents/surfaces.yaml` |
 | Python runtime | `../pegasus/services/deep-agents/` |
 | Skills | `../pegasus/services/deep-agents/skills/*` |
+| Finding schema | `../pegasus/services/deep-agents/schemas/finding.schema.json` |
 | Gap SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md` |
 
 ```bash
 cd ../pegasus/services/deep-agents && source .venv/bin/activate
-./scripts/smoke.sh                 # dry-run + imports; live if XAI_API_KEY set
-void-deep-agent --dry-run --ecosystem
-void-ecosystem-audit "Audit P1 factory→payload Class A wiring"
+./scripts/smoke.sh                                    # lists 12 panels
+void-ecosystem-audit --dry-run
+void-ecosystem-audit --panel money_fiscal,role_parity "AR + retailer mobile parity"
+void-ecosystem-audit --full --json-out /tmp/audit.json
 ```
 
-**When:** before coding a gap cluster and after closing one — see `docs/agents/README.md` § When to run.  
+**When:** before coding a gap cluster and after closing one — see `docs/agents/README.md`.  
 Coverage rule (same as §2 below): Spanner mutation → same-txn outbox → consumer → role clients.
 
 ---

@@ -18,6 +18,21 @@ resolved_gap_ids:
   - P1-9  # worker-liveness / api push safety net
   - P1-10 # throttled driver location on TopicRealtime
 
+# Multi-agent audit orchestra panels (void-ecosystem-audit --full / --panel)
+audit_panels:
+  - data_flow
+  - business_logic
+  - role_parity
+  - money_fiscal
+  - kafka_outbox
+  - redis_cache
+  - code_quality
+  - architecture
+  - security_tenancy
+  - cloud_infra
+  - client_contracts
+  - gap_register_sync
+
 surfaces:
   backend-go:
     path: apps/backend-go

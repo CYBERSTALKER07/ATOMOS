@@ -1,4 +1,4 @@
-# PegasusX — LangChain / Deep Agents for ecosystem quality
+# PegasusX — LangChain / Deep Agents ecosystem audit orchestra
 
 ## Should we use this?
 
@@ -6,13 +6,36 @@
 
 | Use | Yes / No |
 |-----|----------|
-| Audit wiring: Spanner → outbox → Kafka → WS → clients | **Yes** |
-| Track role-row parity, gap register, Class A/B/C/D | **Yes** |
-| Improve code/architecture quality checklists | **Yes** |
-| Replace `ai-worker` / OR-Tools / production LLM mapping | **No** |
+| Audit business logic, feature gaps, role parity | **Yes** |
+| Audit code quality, architecture, data-flow | **Yes** |
+| Track Spanner → outbox → Kafka → WS → clients | **Yes** |
+| One orchestrator + ~12 specialist panels | **Yes** |
+| Deploy tens of agent microservices on GKE | **No** |
+| Replace `ai-worker` / OR-Tools / production LLM | **No** |
 | Auto-merge PRs without human review | **No** |
 
-Production AI remains `apps/ai-worker` (Kafka consumers). Deep Agents help **humans and coding agents** enforce ecosystem law across backend, apps, Redis, Kafka, Spanner, and cloud.
+Production AI remains `apps/ai-worker`. Deep Agents is a **companion auditor mesh** for humans and coding agents.
+
+## Orchestra architecture
+
+One **Chief Orchestrator** (`create_ecosystem_auditor`) + **12 specialist subagents** connected via Deep Agents `task` tool:
+
+| Panel | Tracks |
+|-------|--------|
+| `data_flow` | Coverage rule Class A/B/C/D |
+| `business_logic` | Order/credit/fiscal state machines |
+| `role_parity` | Android/iOS/portal/desktop/terminal row |
+| `money_fiscal` | AR, payout, OFD, EHF, reconciler |
+| `kafka_outbox` | Topics, run-mode, twin, location bus |
+| `redis_cache` | Invalidation, heartbeat, never SoT |
+| `code_quality` | Ownership, tests, dead paths |
+| `architecture` | Blast radius, anti-islands, stack |
+| `security_tenancy` | Tenant, IDOR, JWT denylist |
+| `cloud_infra` | Images, overlays, flags, secrets |
+| `client_contracts` | types / schema vs apps |
+| `gap_register_sync` | Docs vs code; resolved_gap_ids |
+
+Findings schema: `pegasus/services/deep-agents/schemas/finding.schema.json`.
 
 ## Layout
 
@@ -21,56 +44,47 @@ Production AI remains `apps/ai-worker` (Kafka consumers). Deep Agents help **hum
 | Runtime (Python) | `pegasus/services/deep-agents/` |
 | Memory (always on) | `pegasusX/.agents/deep-agents/MEMORY.md` |
 | Ecosystem law | `pegasusX/.agents/AGENTS.md` |
-| Surface registry | `pegasusX/.agents/deep-agents/surfaces.yaml` |
-| Skills (progressive) | `pegasus/services/deep-agents/skills/*` |
-| Gap / alignment SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md`, `MASTER_ALIGNMENT_DATAFLOW_*.md` |
+| Surface registry | `pegasusX/.agents/deep-agents/surfaces.yaml` (`audit_panels`) |
+| Skills | `pegasus/services/deep-agents/skills/*` |
+| Gap SoT | `docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_*.md` |
 
 ## Setup
 
 ```bash
-cd pegasus/services/deep-agents   # from monorepo root V.O.I.D or adjust path
-# if cwd is pegasusX: cd ../pegasus/services/deep-agents
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-cp .env.example .env              # set XAI_API_KEY (https://console.x.ai/)
+cd pegasus/services/deep-agents
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+cp .env.example .env   # set XAI_API_KEY from https://console.x.ai/
 ```
 
-Optional env:
-
-```bash
-export PEGASUSX_ROOT=/Users/shakhzod/Desktop/V.O.I.D/pegasusX
-export VOID_ROOT=/Users/shakhzod/Desktop/V.O.I.D
-export XAI_API_KEY=...
-export DEEP_AGENTS_MODEL=grok-4.5
-```
-
-## Smoke (paths + imports; live if key set)
+## Smoke
 
 ```bash
 ./scripts/smoke.sh
-# or
-void-ecosystem-audit --dry-run
+void-ecosystem-audit --dry-run   # lists memory, 12+ skills, 12 panels
 ```
 
-## When to run Deep Agents
+## When to run
 
-Use the auditor **before and after** closing a gap cluster, not as a substitute for coding:
+1. **Before coding a gap** — `--panel` for the blast radius (e.g. `money_fiscal,role_parity`).
+2. **Full scorecard** — `--full --json-out /tmp/audit.json` after a P0/P1 batch or weekly.
+3. **Docs vs code** — `--panel gap_register_sync`.
+4. Never as a substitute for landing Class A wiring yourself.
 
-1. **Before coding a gap** — map blast radius (roles, emit, consumer, clients, cloud flags) against `surfaces.yaml` + gap register Part 4 sequence.
-2. **After a P0/P1 batch** — confirm MEMORY/`resolved_gap_ids` and register ✅ rows agree; catch regressions that re-open Class A wiring.
-3. **When docs disagree with code** — force evidence (`path:line`) instead of stale wiki claims.
-
-Gap register Part 4 order (data-flow first): P0 money/tenant → P1-9/10 run-mode + location bus → cross-role client loops → security → certification.
-
-## Run ecosystem auditor
+## Run commands
 
 ```bash
 source .venv/bin/activate
-void-ecosystem-audit "List open P1 gaps from ECOSYSTEM_GAP_REGISTER and classify by surface"
-# or
-void-deep-agent --ecosystem "Verify twin consumer start path and TopicWebhooks usage"
+
+# Subset
+void-ecosystem-audit --panel business_logic,security_tenancy \
+  "Invalid order transitions and open IDORs"
+
+# Full orchestra
+void-ecosystem-audit --full --json-out /tmp/pegasusx-audit.json
+
+# Via void-deep-agent wrapper
+void-deep-agent --ecosystem --panel role_parity "Retailer AR/HQ mobile gaps"
 ```
 
 Programmatic:
@@ -78,35 +92,17 @@ Programmatic:
 ```python
 from void_deep_agents import create_ecosystem_auditor
 
-agent = create_ecosystem_auditor()
+agent = create_ecosystem_auditor(panels=["data_flow", "architecture"])
 result = agent.invoke({
-    "messages": [{"role": "user", "content": "Audit factory→payload Class A gaps"}]
+    "messages": [{"role": "user", "content": "Factory→payload Class A gaps"}]
 })
 print(result["messages"][-1].content)
 ```
 
-## What the agent loads
-
-1. **Memory:** `MEMORY.md` + `AGENTS.md` (coverage rule, role rows, DoD, recently resolved IDs)
-2. **Skills (on demand):** data-flow, backend mutations, kafka/outbox, redis, cloud, clients, money
-3. **Filesystem:** repo tree (read tools) — agent can open `surfaces.yaml`, gap register, source
-
-## Quality workflow (recommended)
-
-1. Pick a feature or gap ID (e.g. P1-18 factory→payload).
-2. Run auditor: map blast radius → emit? consumer? clients? cloud flags?
-3. Classify Class A/B/C/D.
-4. Land code + contracts + clients + tests in one batch.
-5. Update gap register status + `surfaces.yaml` `resolved_gap_ids` in the same session.
-
-## Companion skills (Grok / Cursor, not Python)
-
-Human coding agents also use monorepo skills: `void-guardian`, `kafka-event-contracts`, `cache-redis-correctness`, `gap-hunter`, `pegasus-doctrine` / efficient-code. Deep Agents skills **mirror the same laws** so LangChain runs stay consistent with IDE agents.
-
 ## Anti-patterns
 
-- Do not point Deep Agents at production secrets.
-- Do not let the agent “fix” a gap without code evidence.
-- Do not grow skills into a second outdated wiki — link gap register + code paths.
-- Do not use this to invent RFQ/marketplace features not in the plan.
-- Do not re-report `resolved_gap_ids` / register ✅ rows as open without re-verification.
+- Do not deploy one GKE service per panel.
+- Do not point agents at production secrets.
+- Do not “fix” gaps without code evidence.
+- Do not reopen `resolved_gap_ids` without regression proof.
+- Do not grow skills into a second outdated wiki — link the gap register.

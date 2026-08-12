@@ -108,15 +108,22 @@ print(result["messages"][-1].content)
 | Skill | Tracks |
 |-------|--------|
 | `data-flow-coverage` | Coverage rule, Class A/B/C/D |
+| `business-logic` | Order/credit/fiscal state machines |
 | `backend-mutations` | Spanner + outbox + tests + SSMR |
 | `kafka-outbox` | Relay, topics, consumers, run modes |
 | `redis-cache` | Invalidation, Pub/Sub, heartbeats |
 | `role-row-clients` | Android/iOS/portal/desktop parity |
+| `code-quality` | Ownership, tests, dead paths |
+| `architecture` | Blast radius, anti-islands |
+| `security-tenancy` | Tenant, IDOR, JWT |
 | `cloud-infra` | K8s, TF, images, secrets |
 | `money-fiscal` | AR, payout, OFD, money safety |
 | `void-overview` | Monorepo map |
 
 Defaults auto-attach when `include_ecosystem_defaults=True` (default).
+
+Orchestra panels (subagents): see `void_deep_agents.subagents.panel_names()` /
+`void-ecosystem-audit --dry-run`.
 
 ## Models
 
