@@ -9,6 +9,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -203,4 +204,13 @@ func hubList(app *bootstrap.App) []*ws.Hub {
 		app.FactoryHub,
 		app.TelemetryHub,
 	}
+}
+
+// locationBusEmitter returns the throttled outbox emitter for driver location
+// when Spanner is available, else nil (bus emit disabled, WS/Redis unaffected).
+func locationBusEmitter(app *bootstrap.App) telemetryroutes.LocationBusEmitter {
+	if app == nil || app.Spanner == nil {
+		return nil
+	}
+	return telemetryroutes.NewSpannerLocationBusEmitter(app.Spanner)
 }

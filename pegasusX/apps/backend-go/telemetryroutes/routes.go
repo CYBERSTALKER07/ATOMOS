@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -44,15 +45,37 @@ type Deps struct {
 	Log                 *slog.Logger
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
+	// LocationBusEmitter publishes a throttled DRIVER_LOCATION_UPDATED to the
+	// transactional outbox (TopicRealtime) so the notification dispatcher and
+	// digital-twin consumers are live. Nil disables bus emit (WS/Redis still run
+	// at full fidelity). Wired in main.go from the Spanner outbox store.
+	LocationBusEmitter LocationBusEmitter
+	// LocationBusInterval throttles bus emits per driver (default 5s). Full
+	// fidelity stays on WS/Redis; only the bus copy is throttled.
+	LocationBusInterval time.Duration
+	// RouteLookup optionally resolves a driver's active route for twin consumers.
+	// Nil-safe: events are emitted without route_id when unavailable.
+	RouteLookup DriverRouteLookup
+}
+
+// LocationBusEmitter emits one outbox event for a driver location update. The
+// payload is the canonical location envelope JSON (same bytes fanned out to WS).
+type LocationBusEmitter interface {
+	EmitDriverLocation(ctx context.Context, supplierID, driverID, routeID string, payload []byte) error
+}
+
+// DriverRouteLookup resolves the driver's currently-active route id, if any.
+type DriverRouteLookup interface {
+	ActiveRouteForDriver(ctx context.Context, driverID string) (string, error)
 }
 
 type LocationUpdate struct {
-	DriverID  string   `json:"driver_id,omitempty"`
-	Lat       *float64 `json:"lat,omitempty"`
-	Lng       *float64 `json:"lng,omitempty"`
-	Latitude  *float64 `json:"latitude,omitempty"`
-	Longitude *float64 `json:"longitude,omitempty"`
-	Velocity  *float64 `json:"velocity,omitempty"`
+	DriverID           string   `json:"driver_id,omitempty"`
+	Lat                *float64 `json:"lat,omitempty"`
+	Lng                *float64 `json:"lng,omitempty"`
+	Latitude           *float64 `json:"latitude,omitempty"`
+	Longitude          *float64 `json:"longitude,omitempty"`
+	Velocity           *float64 `json:"velocity,omitempty"`
 	Heading            *float64 `json:"heading,omitempty"`
 	Timestamp          string   `json:"timestamp,omitempty"`
 	NextStopRetailerID string   `json:"next_stop_retailer_id,omitempty"`
@@ -137,10 +160,11 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 			d.Log.Warn("telemetry last location save failed", "driver_id", identity.DriverID, "err", err)
 		}
 	}
+	d.emitLocationToBus(r.Context(), identity, raw)
 	for _, room := range telemetryRooms(identity) {
 		d.TelemetryHub.Broadcast(r.Context(), room, raw)
 	}
-	
+
 	if loc.NextStopRetailerID != "" && loc.NextStopLat != nil && loc.NextStopLng != nil && payload.Data.Lat != 0 && payload.Data.Lng != 0 {
 		dist := proximity.HaversineDistance(payload.Data.Lat, payload.Data.Lng, *loc.NextStopLat, *loc.NextStopLng)
 		if proximity.WithinDeliveryApproach(dist) {
@@ -161,14 +185,14 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				approachPayload, _ := json.Marshal(map[string]any{
-					"type":            "DRIVER_APPROACHING",
-					"order_id":        loc.NextStopOrderID,
-					"retailer_id":     loc.NextStopRetailerID,
-					"driver_id":       identity.DriverID,
-					"delivery_token":  deliveryToken,
-					"driver_latitude": payload.Data.Lat,
+					"type":             "DRIVER_APPROACHING",
+					"order_id":         loc.NextStopOrderID,
+					"retailer_id":      loc.NextStopRetailerID,
+					"driver_id":        identity.DriverID,
+					"delivery_token":   deliveryToken,
+					"driver_latitude":  payload.Data.Lat,
 					"driver_longitude": payload.Data.Lng,
-					"distance_km":     dist,
+					"distance_km":      dist,
 				})
 				d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
 			}
@@ -192,6 +216,44 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 		"driver_id":   identity.DriverID,
 		"supplier_id": identity.SupplierID,
 	})
+}
+
+// locationBusThrottle tracks the last bus emit per driver so the outbox/Kafka
+// copy is throttled while WS/Redis stay full-fidelity.
+var locationBusThrottle = struct {
+	sync.Mutex
+	last map[string]time.Time
+}{last: map[string]time.Time{}}
+
+// emitLocationToBus publishes a throttled DRIVER_LOCATION_UPDATED to the outbox
+// so dispatcher + twin consumers receive it. Best-effort: a bus failure never
+// fails the driver's location request (WS/Redis already delivered full copy).
+func (d Deps) emitLocationToBus(ctx context.Context, identity locationIdentity, raw []byte) {
+	if d.LocationBusEmitter == nil {
+		return
+	}
+	interval := d.LocationBusInterval
+	if interval <= 0 {
+		interval = 5 * time.Second
+	}
+	locationBusThrottle.Lock()
+	last, seen := locationBusThrottle.last[identity.DriverID]
+	if seen && time.Since(last) < interval {
+		locationBusThrottle.Unlock()
+		return
+	}
+	locationBusThrottle.last[identity.DriverID] = time.Now()
+	locationBusThrottle.Unlock()
+
+	routeID := ""
+	if d.RouteLookup != nil {
+		if rid, err := d.RouteLookup.ActiveRouteForDriver(ctx, identity.DriverID); err == nil {
+			routeID = rid
+		}
+	}
+	if err := d.LocationBusEmitter.EmitDriverLocation(ctx, identity.SupplierID, identity.DriverID, routeID, raw); err != nil {
+		d.Log.Warn("driver location bus emit failed", "driver_id", identity.DriverID, "err", err)
+	}
 }
 
 func driverLocationFromEnvelope(envelope locationEnvelope) telemetry.DriverLocation {

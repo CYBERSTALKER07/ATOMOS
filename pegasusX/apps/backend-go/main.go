@@ -330,6 +330,10 @@ func main() {
 		Log:                 slog.Default(),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
+		// P1-10: throttled copy of driver location onto the outbox/Kafka bus so the
+		// notification dispatcher + twin consumers are live. Full fidelity stays on
+		// WS/Redis; only the bus copy is throttled.
+		LocationBusEmitter: locationBusEmitter(app),
 	})
 
 	updatesBase := strings.TrimSpace(cfg.UpdatesBaseURL)
