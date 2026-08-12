@@ -19,6 +19,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/redis/go-redis/v9"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
@@ -227,6 +228,9 @@ type App struct {
 	WarehouseEventConsumer *kafka.Consumer
 	ReturnsEventConsumer   *kafka.Consumer
 	BillingTierConsumer    *kafka.Consumer
+	// RedisClient is the raw go-redis client when the Redis backend is enabled,
+	// else nil. Used by the api-mode worker-liveness gate (P1-9).
+	RedisClient *redis.Client
 	Reliability            *ReliabilityMiddleware
 	InfraHealth            infraroutes.Deps
 	OutboundCircuits       *OutboundCircuits
@@ -1699,6 +1703,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WarehouseEventConsumer: warehouseEventConsumer,
 		ReturnsEventConsumer:   returnsEventConsumer,
 		BillingTierConsumer:    billingTierConsumer,
+		RedisClient:            redisClientOrNil(redisAdapter),
 		OutboxRelay:            outboxRelay,
 		Reliability:            reliabilityMiddleware,
 		InfraHealth:            infraHealth,

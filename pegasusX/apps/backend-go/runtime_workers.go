@@ -14,6 +14,9 @@ import (
 )
 
 func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
+	// Worker tier publishes a liveness heartbeat so an api-only tier can detect
+	// it and avoid double-running the notification consumer (P1-9).
+	bootstrap.StartWorkerHeartbeat(ctx, app.RedisClient, slog.Default())
 	if app.OutboxRelay != nil {
 		go app.OutboxRelay.Start(ctx)
 		slog.Info("outbox relay started")
@@ -168,6 +171,26 @@ func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {
 		go hub.StartRelaySubscriber(ctx)
 	}
 	slog.Info("ws relay subscribers started", "hub_count", len(hubs))
+}
+
+// startNotificationConsumerIfNoWorker starts the notification consumer on an
+// api-tier only when no worker-tier heartbeat is present. This restores FCM
+// push + inbox persistence for single-tier api deployments without
+// double-firing when a worker tier is running (P1-9).
+func startNotificationConsumerIfNoWorker(ctx context.Context, app *bootstrap.App) {
+	if app.NotificationConsumer == nil {
+		return
+	}
+	// RUN_MODE=all already started it via startBackgroundWorkers.
+	if app.Config != nil && app.Config.RunsWorkers() {
+		return
+	}
+	if bootstrap.WorkerLive(ctx, app.RedisClient) {
+		slog.Info("worker tier live; api tier leaving notification consumer to worker")
+		return
+	}
+	go app.NotificationConsumer.Start(ctx)
+	slog.Warn("no worker tier heartbeat detected; api tier started notification consumer (push+inbox safety net)")
 }
 
 func hubList(app *bootstrap.App) []*ws.Hub {

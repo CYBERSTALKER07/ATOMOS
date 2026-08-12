@@ -101,6 +101,12 @@ func main() {
 	}
 	if cfg.RunsAPI() {
 		startHubRelaySubscribers(ctx, hubList(app))
+		// P1-9 run-mode parity: in api-only mode the notification consumer (FCM
+		// push + inbox persistence) normally lives on the worker tier. When no
+		// worker is live (local/dev or a misconfigured deploy), start it here so
+		// push/inbox are not silently lost. The liveness gate prevents double
+		// delivery when a worker tier is present.
+		startNotificationConsumerIfNoWorker(ctx, app)
 	}
 
 	if !cfg.RunsAPI() {
