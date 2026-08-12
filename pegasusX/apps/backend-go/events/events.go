@@ -55,27 +55,27 @@ const (
 	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
 	EventStoreStockClaimHold   = "STORE_STOCK_CLAIM_HOLD"
 	// Retail OS Phase 4
-	EventPosSessionOpened  = "POS_SESSION_OPENED"
-	EventPosSessionClosed  = "POS_SESSION_CLOSED"
-	EventPosSaleCompleted  = "POS_SALE_COMPLETED"
-	EventPosSaleVoided     = "POS_SALE_VOIDED"
+	EventPosSessionOpened = "POS_SESSION_OPENED"
+	EventPosSessionClosed = "POS_SESSION_CLOSED"
+	EventPosSaleCompleted = "POS_SALE_COMPLETED"
+	EventPosSaleVoided    = "POS_SALE_VOIDED"
 	// L3 sell-through flywheel
 	EventRetailerSellThroughUpdated = "RETAILER_SELL_THROUGH_UPDATED"
 	// B4 flywheel broadcast to suppliers (sku/qty/day only — no POS internals)
 	EventDemandSignal = "DEMAND_SIGNAL"
 	// Retail OS Phase 5
-	EventRetailerClockIn          = "RETAILER_CLOCK_IN"
-	EventRetailerClockOut         = "RETAILER_CLOCK_OUT"
-	EventRetailerShiftOpened      = "RETAILER_SHIFT_OPENED"
-	EventRetailerShiftClosed      = "RETAILER_SHIFT_CLOSED"
-	EventRetailerShiftVariance    = "RETAILER_SHIFT_CASH_VARIANCE"
+	EventRetailerClockIn       = "RETAILER_CLOCK_IN"
+	EventRetailerClockOut      = "RETAILER_CLOCK_OUT"
+	EventRetailerShiftOpened   = "RETAILER_SHIFT_OPENED"
+	EventRetailerShiftClosed   = "RETAILER_SHIFT_CLOSED"
+	EventRetailerShiftVariance = "RETAILER_SHIFT_CASH_VARIANCE"
 	// Retail OS Phase 6
-	EventRetailerSectionCreated      = "RETAILER_SECTION_CREATED"
-	EventRetailerSectionUpdated      = "RETAILER_SECTION_UPDATED"
-	EventRetailerSectionSkuMapped    = "RETAILER_SECTION_SKU_MAPPED"
-	EventRetailerStaffSectionAssigned = "RETAILER_STAFF_SECTION_ASSIGNED"
-	EventRetailerAssistTicketOpened  = "RETAILER_ASSIST_TICKET_OPENED"
-	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
+	EventRetailerSectionCreated        = "RETAILER_SECTION_CREATED"
+	EventRetailerSectionUpdated        = "RETAILER_SECTION_UPDATED"
+	EventRetailerSectionSkuMapped      = "RETAILER_SECTION_SKU_MAPPED"
+	EventRetailerStaffSectionAssigned  = "RETAILER_STAFF_SECTION_ASSIGNED"
+	EventRetailerAssistTicketOpened    = "RETAILER_ASSIST_TICKET_OPENED"
+	EventRetailerAssistTicketClaimed   = "RETAILER_ASSIST_TICKET_CLAIMED"
 	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
 	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
 	// Wave C4.1: SLA breach (OPEN past SlaDueAt)
@@ -116,20 +116,20 @@ const (
 	EventFactoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
 
 	// @Sync(OrderEvent)
-	EventOrderCreated          = "ORDER_CREATED"
-	EventOrderStatusChanged    = "ORDER_STATUS_CHANGED"
-	EventOrderValidationFailed = "ORDER_VALIDATION_FAILED"
-	EventOrderAssigned         = "ORDER_ASSIGNED"
-	EventOrderReassigned       = "ORDER_REASSIGNED"
-	EventOrderFinalized        = "ORDER_FINALIZED"
-	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
-	EventOrderAmended          = "ORDER_AMENDED"
-	EventOrderAllocated        = "ORDER_ALLOCATED"
-	EventAllocationPolicyApplied = "ALLOCATION_POLICY_APPLIED"
+	EventOrderCreated               = "ORDER_CREATED"
+	EventOrderStatusChanged         = "ORDER_STATUS_CHANGED"
+	EventOrderValidationFailed      = "ORDER_VALIDATION_FAILED"
+	EventOrderAssigned              = "ORDER_ASSIGNED"
+	EventOrderReassigned            = "ORDER_REASSIGNED"
+	EventOrderFinalized             = "ORDER_FINALIZED"
+	EventMissingItemsReported       = "MISSING_ITEMS_REPORTED"
+	EventOrderAmended               = "ORDER_AMENDED"
+	EventOrderAllocated             = "ORDER_ALLOCATED"
+	EventAllocationPolicyApplied    = "ALLOCATION_POLICY_APPLIED"
 	EventAllocationFairShareApplied = "ALLOCATION_FAIR_SHARE_APPLIED"
-	EventRetailerSegmentUpdated   = "RETAILER_SEGMENT_UPDATED"
-	EventSkuClassUpdated          = "SKU_CLASS_UPDATED"
-	EventServicePolicyUpdated     = "SERVICE_POLICY_UPDATED"
+	EventRetailerSegmentUpdated     = "RETAILER_SEGMENT_UPDATED"
+	EventSkuClassUpdated            = "SKU_CLASS_UPDATED"
+	EventServicePolicyUpdated       = "SERVICE_POLICY_UPDATED"
 
 	// @Sync(AIRecommendationEvent)
 	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"
@@ -208,10 +208,10 @@ const (
 	EventShopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
 
 	// Enhanced shop-closed / proximity / partial offload (Phase-1 last-mile).
-	EventShopClosedTimeout   = "SHOP_CLOSED_TIMEOUT"
-	EventProximityUnlocked   = "PROXIMITY_UNLOCKED"
-	EventPartialOffload      = "PARTIAL_OFFLOAD"
-	EventCreditLeave         = "CREDIT_LEAVE"
+	EventShopClosedTimeout = "SHOP_CLOSED_TIMEOUT"
+	EventProximityUnlocked = "PROXIMITY_UNLOCKED"
+	EventPartialOffload    = "PARTIAL_OFFLOAD"
+	EventCreditLeave       = "CREDIT_LEAVE"
 
 	// @Sync(CreditDeliveryEvent)
 	EventCreditDeliveryMarked   = "CREDIT_DELIVERY_MARKED"
@@ -253,6 +253,17 @@ const (
 	EventRetailerCreditProfileChanged = "RETAILER_CREDIT_PROFILE_CHANGED"
 	// @Sync(CreditLimitEvent)
 	EventRetailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
+
+	// @Sync(AREvent) accounts-receivable open items
+	EventARInvoiceOpened  = "AR_INVOICE_OPENED"
+	EventARInvoicePayment = "AR_INVOICE_PAYMENT"
+	EventARInvoiceDunned  = "AR_INVOICE_DUNNED"
+	EventARInvoiceSettled = "AR_INVOICE_SETTLED"
+	// @Sync(PayoutEvent) supplier payout lifecycle
+	EventPayoutBatchGenerated  = "PAYOUT_BATCH_GENERATED"
+	EventPayoutBatchExported   = "PAYOUT_BATCH_EXPORTED"
+	EventPayoutBatchDispatched = "PAYOUT_BATCH_DISPATCHED"
+	EventPayoutBatchPaid       = "PAYOUT_BATCH_PAID"
 
 	// @Sync(ProductEvent)
 	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
@@ -309,6 +320,8 @@ const (
 	AggregateConditionReport       = "ConditionReport"
 	AggregateCreditProfile         = "CreditProfile"
 	AggregateDemandSignal          = "DemandSignal"
+	AggregateARInvoice             = "ARInvoice"
+	AggregatePayoutBatch           = "PayoutBatch"
 )
 
 func topicFromEnv(key string, fallback string) string {

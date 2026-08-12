@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -26,15 +28,15 @@ func InvoicesEnabled() bool {
 }
 
 const (
-	StatusOpen       = "OPEN"
-	StatusPartial    = "PARTIAL"
-	StatusPaid       = "PAID"
-	StatusVoid       = "VOID"
-	AgingCurrent     = "CURRENT"
-	Aging1to30       = "1_30"
-	Aging31to60      = "31_60"
-	Aging61to90      = "61_90"
-	Aging90Plus      = "90_PLUS"
+	StatusOpen    = "OPEN"
+	StatusPartial = "PARTIAL"
+	StatusPaid    = "PAID"
+	StatusVoid    = "VOID"
+	AgingCurrent  = "CURRENT"
+	Aging1to30    = "1_30"
+	Aging31to60   = "31_60"
+	Aging61to90   = "61_90"
+	Aging90Plus   = "90_PLUS"
 )
 
 // Invoice is an AR open item created at credit leave.
@@ -63,6 +65,7 @@ type Invoice struct {
 type Repository interface {
 	OpenInvoice(ctx context.Context, inv Invoice) error
 	GetByOrder(ctx context.Context, orderID string) (Invoice, bool, error)
+	GetByID(ctx context.Context, invoiceID string) (Invoice, error)
 	ListByRetailer(ctx context.Context, retailerID string, status string, limit int) ([]Invoice, error)
 	ListBySupplier(ctx context.Context, supplierID string, status string, limit int) ([]Invoice, error)
 	ListOpenForDunning(ctx context.Context, limit int) ([]Invoice, error)
@@ -137,6 +140,52 @@ func (s *Service) ListSupplierInvoices(ctx context.Context, supplierID, status s
 	return s.repo.ListBySupplier(ctx, supplierID, status, limit)
 }
 
+// RecordPayment pays down an open AR invoice (cash collection against a credit
+// delivery, or a card capture applied to the invoice). Idempotent on
+// idempotencyKey; returns the updated invoice. This is the production entry
+// point that was previously missing — without it credit invoices could never
+// be settled and every one marched to CREDIT_HOLD regardless of payment.
+func (s *Service) RecordPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) (Invoice, error) {
+	if amountMinor <= 0 {
+		return Invoice{}, fmt.Errorf("amount_minor must be positive")
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return Invoice{}, fmt.Errorf("idempotency_key required")
+	}
+	if err := s.repo.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey); err != nil {
+		return Invoice{}, err
+	}
+	return s.GetByID(ctx, invoiceID)
+}
+
+// RecordPaymentForOrder pays down the AR invoice opened for a given order, if
+// one exists. No-op when there is no invoice (cash/card orders) — safe to call
+// unconditionally from the cash-collection and capture paths.
+func (s *Service) RecordPaymentForOrder(ctx context.Context, orderID string, amountMinor int64, idempotencyKey string) error {
+	inv, found, err := s.repo.GetByOrder(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	if inv.Status == StatusPaid || inv.Status == StatusVoid {
+		return nil
+	}
+	_, err = s.RecordPayment(ctx, inv.InvoiceID, amountMinor, idempotencyKey)
+	return err
+}
+
+// GetByID loads an invoice by primary key.
+func (s *Service) GetByID(ctx context.Context, invoiceID string) (Invoice, error) {
+	return s.repo.GetByID(ctx, invoiceID)
+}
+
+// GetByOrder loads the invoice opened for an order, if any.
+func (s *Service) GetByOrder(ctx context.Context, orderID string) (Invoice, bool, error) {
+	return s.repo.GetByOrder(ctx, orderID)
+}
+
 func (s *Service) RunAgingPass(ctx context.Context) (int, error) {
 	return s.repo.RecomputeAging(ctx, s.now(), 500)
 }
@@ -161,9 +210,9 @@ func AgingBucketFor(dueAt, now time.Time) string {
 
 // MemoryRepository for tests.
 type MemoryRepository struct {
-	mu        sync.RWMutex
-	byID      map[string]Invoice
-	byOrder   map[string]string
+	mu         sync.RWMutex
+	byID       map[string]Invoice
+	byOrder    map[string]string
 	ledgerKeys map[string]bool
 }
 
@@ -196,6 +245,16 @@ func (r *MemoryRepository) GetByOrder(_ context.Context, orderID string) (Invoic
 	}
 	inv, ok := r.byID[id]
 	return inv, ok, nil
+}
+
+func (r *MemoryRepository) GetByID(_ context.Context, invoiceID string) (Invoice, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	inv, ok := r.byID[invoiceID]
+	if !ok {
+		return Invoice{}, fmt.Errorf("invoice_not_found")
+	}
+	return inv, nil
 }
 
 func (r *MemoryRepository) ListByRetailer(_ context.Context, retailerID, status string, limit int) ([]Invoice, error) {
@@ -344,39 +403,56 @@ func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error 
 	if skew := time.Now().UTC().Add(-time.Second); creditLeaveAt.After(skew) {
 		creditLeaveAt = skew
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("ArInvoices", map[string]any{
-			"InvoiceId":       inv.InvoiceID,
-			"SupplierId":      inv.SupplierID,
-			"RetailerId":      inv.RetailerID,
-			"OrderId":         inv.OrderID,
-			"Status":          inv.Status,
-			"PrincipalMinor":  inv.PrincipalMinor,
-			"BalanceMinor":    inv.BalanceMinor,
-			"Currency":        inv.Currency,
-			"CreditLeaveAt":   creditLeaveAt,
-			"DueAt":           inv.DueAt,
-			"TermsDays":       inv.TermsDays,
-			"GracePeriodDays": inv.GracePeriodDays,
-			"AgingBucket":     inv.AgingBucket,
-			"DunningStep":     inv.DunningStep,
-			"Version":         inv.Version,
-			"CreatedAt":       spanner.CommitTimestamp,
-			"UpdatedAt":       spanner.CommitTimestamp,
-		}),
-		spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
-			"EntryId":        inv.InvoiceID + ":OPEN",
-			"InvoiceId":      inv.InvoiceID,
-			"SupplierId":     inv.SupplierID,
-			"RetailerId":     inv.RetailerID,
-			"EntryType":      "OPEN",
-			"AmountMinor":    inv.PrincipalMinor,
-			"IdempotencyKey": "open:" + inv.OrderID,
-			"RefOrderId":     inv.OrderID,
-			"CreatedAt":      spanner.CommitTimestamp,
-		}),
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, inv.InvoiceID, events.TopicMain, map[string]any{
+			"type":            events.EventARInvoiceOpened,
+			"invoice_id":      inv.InvoiceID,
+			"supplier_id":     inv.SupplierID,
+			"retailer_id":     inv.RetailerID,
+			"order_id":        inv.OrderID,
+			"principal_minor": inv.PrincipalMinor,
+			"due_at":          inv.DueAt.UTC().Format(time.RFC3339Nano),
+			"timestamp":       time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdateMap("ArInvoices", map[string]any{
+				"InvoiceId":       inv.InvoiceID,
+				"SupplierId":      inv.SupplierID,
+				"RetailerId":      inv.RetailerID,
+				"OrderId":         inv.OrderID,
+				"Status":          inv.Status,
+				"PrincipalMinor":  inv.PrincipalMinor,
+				"BalanceMinor":    inv.BalanceMinor,
+				"Currency":        inv.Currency,
+				"CreditLeaveAt":   creditLeaveAt,
+				"DueAt":           inv.DueAt,
+				"TermsDays":       inv.TermsDays,
+				"GracePeriodDays": inv.GracePeriodDays,
+				"AgingBucket":     inv.AgingBucket,
+				"DunningStep":     inv.DunningStep,
+				"Version":         inv.Version,
+				"CreatedAt":       spanner.CommitTimestamp,
+				"UpdatedAt":       spanner.CommitTimestamp,
+			}),
+			spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
+				"EntryId":        inv.InvoiceID + ":OPEN",
+				"InvoiceId":      inv.InvoiceID,
+				"SupplierId":     inv.SupplierID,
+				"RetailerId":     inv.RetailerID,
+				"EntryType":      "OPEN",
+				"AmountMinor":    inv.PrincipalMinor,
+				"IdempotencyKey": "open:" + inv.OrderID,
+				"RefOrderId":     inv.OrderID,
+				"CreatedAt":      spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
-	return err
 }
 
 func (r *SpannerRepository) GetByOrder(ctx context.Context, orderID string) (Invoice, bool, error) {
@@ -393,6 +469,16 @@ func (r *SpannerRepository) GetByOrder(ctx context.Context, orderID string) (Inv
 	}
 	inv, err := scanInvoice(row)
 	return inv, err == nil, err
+}
+
+func (r *SpannerRepository) GetByID(ctx context.Context, invoiceID string) (Invoice, error) {
+	row, err := r.client.Single().ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID}, []string{
+		"InvoiceId", "SupplierId", "RetailerId", "OrderId", "Status", "PrincipalMinor", "BalanceMinor", "Currency", "CreditLeaveAt", "DueAt", "TermsDays", "GracePeriodDays", "AgingBucket", "DunningStep", "Version", "CreatedAt", "UpdatedAt",
+	})
+	if err != nil {
+		return Invoice{}, err
+	}
+	return scanInvoice(row)
 }
 
 func scanInvoice(row *spanner.Row) (Invoice, error) {
@@ -475,7 +561,24 @@ func (r *SpannerRepository) ApplyPayment(ctx context.Context, invoiceID string, 
 			newStatus = StatusPaid
 		}
 		entryID := fmt.Sprintf("arl_%d", time.Now().UnixNano())
-		return txn.BufferWrite([]*spanner.Mutation{
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		eventType := events.EventARInvoicePayment
+		if newStatus == StatusPaid {
+			eventType = events.EventARInvoiceSettled
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, map[string]any{
+			"type":          eventType,
+			"invoice_id":    invoiceID,
+			"supplier_id":   sid,
+			"retailer_id":   rid,
+			"amount_minor":  amountMinor,
+			"balance_minor": newBal,
+			"status":        newStatus,
+			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ArInvoices", map[string]any{
 				"InvoiceId":    invoiceID,
 				"BalanceMinor": newBal,
@@ -493,7 +596,10 @@ func (r *SpannerRepository) ApplyPayment(ctx context.Context, invoiceID string, 
 				"IdempotencyKey": idempotencyKey,
 				"CreatedAt":      spanner.CommitTimestamp,
 			}),
-		})
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 }
 
@@ -530,17 +636,38 @@ FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') ORDER BY DueAt ASC LIMIT %d`,
 }
 
 func (r *SpannerRepository) UpdateDunning(ctx context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error {
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{
-		spanner.UpdateMap("ArInvoices", map[string]any{
-			"InvoiceId":    invoiceID,
-			"DunningStep":  step,
-			"AgingBucket":  agingBucket,
-			"LastDunnedAt": lastDunnedAt,
-			"Version":      version + 1,
-			"UpdatedAt":    spanner.CommitTimestamp,
-		}),
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var sid, rid string
+		if row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID}, []string{"SupplierId", "RetailerId"}); err == nil {
+			_ = row.Columns(&sid, &rid)
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, map[string]any{
+			"type":           events.EventARInvoiceDunned,
+			"invoice_id":     invoiceID,
+			"supplier_id":    sid,
+			"retailer_id":    rid,
+			"dunning_step":   step,
+			"aging_bucket":   agingBucket,
+			"last_dunned_at": lastDunnedAt.UTC().Format(time.RFC3339Nano),
+			"timestamp":      time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("ArInvoices", map[string]any{
+				"InvoiceId":    invoiceID,
+				"DunningStep":  step,
+				"AgingBucket":  agingBucket,
+				"LastDunnedAt": lastDunnedAt,
+				"Version":      version + 1,
+				"UpdatedAt":    spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
-	return err
 }
 
 func (r *SpannerRepository) RecomputeAging(ctx context.Context, now time.Time, limit int) (int, error) {

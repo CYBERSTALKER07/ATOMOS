@@ -78,7 +78,7 @@ const (
 	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
 	OrderSourceBackorder      OrderSource = "BACKORDER"
-	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER" // L3.5 place mode
+	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER"  // L3.5 place mode
 	OrderSourcePartnerEDI     OrderSource = "PARTNER_EDI" // Gate-3 Wave 2B EDI-lite ORDERS
 )
 
@@ -189,19 +189,19 @@ type Order struct {
 	UpdatedAt              time.Time
 
 	// Denormalized fiscal rollup (Orders columns; ADR-009).
-	FiscalStatus           string
-	LatestFiscalReceiptID  string
-	LatestFiscalAttemptID  string
-	FiscalizedAt           *time.Time
+	FiscalStatus          string
+	LatestFiscalReceiptID string
+	LatestFiscalAttemptID string
+	FiscalizedAt          *time.Time
 
 	// Shop-closed / proximity / partial (additive Orders columns; 2026-07-29).
-	ShopClosedAt         *time.Time
-	ShopClosedReason     string
+	ShopClosedAt          *time.Time
+	ShopClosedReason      string
 	ShopClosedGraceEndsAt *time.Time
-	ShopClosedResolution string
-	PartialDelivery      bool
-	ProximityUnlockedAt  *time.Time
-	ProximityMethod      string
+	ShopClosedResolution  string
+	PartialDelivery       bool
+	ProximityUnlockedAt   *time.Time
+	ProximityMethod       string
 
 	BuyerAcceptanceStatus   string
 	BuyerAcceptanceDeadline *time.Time
@@ -362,8 +362,8 @@ type Service struct {
 	spannerClient      *spanner.Client
 	manifestStore      *manifest.Store
 	idem               idempotency.Store
-	shopGrace time.Duration
-	log       *slog.Logger
+	shopGrace          time.Duration
+	log                *slog.Logger
 	now                func() time.Time
 	newID              func() string
 	jwtSecret          string
@@ -371,9 +371,9 @@ type Service struct {
 	gatewayPolicy      GatewayPolicyReader
 	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
 	previewRateLimiter RateLimiter
-	ofd                FiscalProvider // optional; nil → ProviderFromEnv()
-	claimsBridge       claimsBridge   // optional logistics claims domain
-	taxSvc             *tax.Service   // optional tax regime service
+	ofd                FiscalProvider  // optional; nil → ProviderFromEnv()
+	claimsBridge       claimsBridge    // optional logistics claims domain
+	taxSvc             *tax.Service    // optional tax regime service
 	pricingSvc         pricing.Service // optional pricing engine
 	proximityCfg       ProximityConfig
 	allocator          Allocator
@@ -396,14 +396,14 @@ type Allocator interface {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo            Repository
-	Cache           *cache.Cache
-	Warehouse       WarehouseResolver
-	Promotions      *promotion.Service
-	Credit          *credit.Service
-	Replanner       RouteReplanner
+	Repo       Repository
+	Cache      *cache.Cache
+	Warehouse  WarehouseResolver
+	Promotions *promotion.Service
+	Credit     *credit.Service
+	Replanner  RouteReplanner
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11). Prefer TenantContext.
-	SeedSupplierID  string
+	SeedSupplierID string
 	// SupplierID is deprecated; use SeedSupplierID. Kept for bootstrap/test call sites.
 	SupplierID      string
 	SupplierName    string
@@ -849,12 +849,12 @@ type CompleteOrderRequest struct {
 // amount_received_minor is the cash actually taken (Tiyin). Fiscal uses this amount.
 // When omitted, expected order total is used (compat); shortfall/overage still computed when provided.
 type CollectCashRequest struct {
-	OrderID              string     `json:"order_id"`
-	Latitude             float64    `json:"latitude"`
-	Longitude            float64    `json:"longitude"`
-	AmountReceivedMinor  *int64     `json:"amount_received_minor,omitempty"`
-	Note                 string     `json:"note,omitempty"`
-	ClientTimestamp      *time.Time `json:"client_timestamp,omitempty"`
+	OrderID             string     `json:"order_id"`
+	Latitude            float64    `json:"latitude"`
+	Longitude           float64    `json:"longitude"`
+	AmountReceivedMinor *int64     `json:"amount_received_minor,omitempty"`
+	Note                string     `json:"note,omitempty"`
+	ClientTimestamp     *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // CollectCashResponse matches the driver mobile cash-collection contract.
@@ -1738,7 +1738,7 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 	}
 
 	s.afterOrderMutation(ctx, current)
-	
+
 	if s.replanner != nil {
 		if previousManifestID != "" && previousManifestID != current.ManifestID {
 			go func(rID, act string) {
@@ -2181,6 +2181,19 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	if err != nil {
 		return CollectCashResponse{}, err
 	}
+	// AR pay-down: collecting cash against a credit-delivered order settles the
+	// AR invoice opened at credit leave. Without this, every credit invoice
+	// marched to CREDIT_HOLD even after the money was collected. Fail-open with
+	// a logged error (mirrors OpenFromCreditLeave handling) — payment capture
+	// already succeeded; an AR bookkeeping miss must not roll back the delivery.
+	if s.ar != nil && result.Order.OrderID != "" {
+		if _, found, ierr := s.ar.GetByOrder(ctx, result.Order.OrderID); ierr == nil && found {
+			if perr := s.ar.RecordPaymentForOrder(ctx, result.Order.OrderID, receivedMinor,
+				fmt.Sprintf("ar-cash-collect-%s", result.Order.OrderID)); perr != nil {
+				s.log.Error("AR pay-down on cash collect failed", "order_id", result.Order.OrderID, "err", perr)
+			}
+		}
+	}
 	if result.NoChange {
 		distanceM = 0
 		return CollectCashResponse{
@@ -2408,14 +2421,14 @@ func (s *Service) recordDriverTransitionSuccess(ctx context.Context, claims auth
 						eventType = "PAYMENT_COMPLETED"
 						message = "Payment has been collected by another driver."
 					}
-					
+
 					payload := map[string]any{
 						"type":     eventType,
 						"order_id": current.OrderID,
 						"message":  message,
 					}
 					b, _ := json.Marshal(payload)
-					
+
 					go s.driverHub.Broadcast(context.Background(), "driver:"+sib, b)
 				}
 			}
@@ -2990,7 +3003,7 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, ErrInvalidStatusTransition):
 		writeJSON(w, http.StatusConflict, map[string]string{
-			"error": "invalid_status_transition",
+			"error":   "invalid_status_transition",
 			"message": err.Error(),
 		})
 	case errors.Is(err, ErrGeofenceViolation):

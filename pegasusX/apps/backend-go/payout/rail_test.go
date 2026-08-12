@@ -35,6 +35,7 @@ type fakeLiveRail struct {
 }
 
 func (f *fakeLiveRail) Name() string { return "fake-live" }
+func (f *fakeLiveRail) IsLive() bool { return true }
 func (f *fakeLiveRail) Submit(_ context.Context, b Batch, _ SupplierBankDetails, live bool) (string, error) {
 	if !live {
 		return "", nil
@@ -95,6 +96,39 @@ func TestPayoutRail_DispatchThenSettlementConfirm(t *testing.T) {
 	}
 	if err := svc.ConfirmSettlement(ctx, b.BatchID, rail.ref); err != nil {
 		t.Fatalf("idempotent confirm: %v", err)
+	}
+}
+
+// TestPayoutRail_LiveDispatchOnFileRailFailsClosed proves a batch can never be
+// stranded in SUBMITTED: live=true on the default (non-live) bank-file rail is
+// rejected, leaving the batch DRAFT so it can still be exported and marked paid.
+func TestPayoutRail_LiveDispatchOnFileRailFailsClosed(t *testing.T) {
+	ctx := context.Background()
+	client := newEmulatorClient(t, ctx)
+	defer client.Close()
+
+	suffix := time.Now().UnixNano()
+	supplierID := fmt.Sprintf("sup-po-fc-%d", suffix)
+	legTime := time.Now().UTC().Add(-2 * time.Minute)
+	seedSupplierProfile(t, ctx, client, supplierID)
+	seedLegs(t, ctx, client, supplierID, fmt.Sprintf("ord-po-fc-%d", suffix), legTime, []map[string]any{
+		{"LegId": "l1", "Method": "CARD", "AmountMinor": int64(100000), "Status": "CAPTURED", "IdempotencyKey": fmt.Sprintf("cap-fc-%d", suffix), "CreatedAt": legTime, "CapturedAt": legTime},
+	})
+	svc := NewService(NewRepository(client)) // default BankFileRail (not live)
+	b, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if _, err := svc.SubmitForDispatch(ctx, b.BatchID, true); err == nil {
+		t.Fatal("live dispatch on non-live rail must fail closed")
+	}
+	got, _, _ := svc.repo.Get(ctx, b.BatchID)
+	if got.Status == StatusSubmitted {
+		t.Fatalf("batch stranded in SUBMITTED with empty rail ref; status = %s", got.Status)
+	}
+	// Still dispatchable as a file export.
+	if _, err := svc.SubmitForDispatch(ctx, b.BatchID, false); err != nil {
+		t.Fatalf("file export after fail-closed live attempt: %v", err)
 	}
 }
 

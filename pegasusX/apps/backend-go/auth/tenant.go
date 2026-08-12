@@ -106,6 +106,13 @@ func RequireTenant(enforced bool) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+			// Break-glass governance: PLATFORM_ADMIN is a cross-tenant role whose
+			// JWT carries no SupplierID. Requiring a tenant would 401 every
+			// platform-admin route in enforced envs, so exempt it here.
+			if claims, ok := FromContext(r.Context()); ok && claims.Role == RolePlatformAdmin {
+				next.ServeHTTP(w, r)
+				return
+			}
 			if !hasTenant {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)

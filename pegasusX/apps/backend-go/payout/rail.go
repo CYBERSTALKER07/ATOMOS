@@ -20,17 +20,31 @@ import (
 type Rail interface {
 	// Name identifies the rail ("bank-file", "globalpay-payout", ...).
 	Name() string
+	// IsLive reports whether Submit(live=true) actually moves money. The file
+	// rail is not live; a real bank/payment rail returns true. SubmitForDispatch
+	// refuses live=true on a non-live rail so a batch can never be stranded in
+	// SUBMITTED with no rail to confirm it.
+	IsLive() bool
 	// Submit dispatches the batch. live=false renders a file/instruction only
 	// and must not move money. Returns a rail reference (empty for file rails).
 	Submit(ctx context.Context, b Batch, d SupplierBankDetails, live bool) (ref string, err error)
 }
+
+// ErrNoLiveRail rejects a live dispatch when the configured rail cannot move
+// money. Prevents batches stranding in SUBMITTED with no settlement webhook.
+var ErrNoLiveRail = fmt.Errorf("no live payout rail configured: cannot dispatch live")
 
 // BankFileRail is the default: renders the CSV instruction, no live dispatch.
 type BankFileRail struct{}
 
 func (BankFileRail) Name() string { return "bank-file" }
 
+func (BankFileRail) IsLive() bool { return false }
+
 func (BankFileRail) Submit(_ context.Context, b Batch, d SupplierBankDetails, live bool) (string, error) {
+	if live {
+		return "", ErrNoLiveRail
+	}
 	if _, err := RenderBankFile(b, d); err != nil {
 		return "", err
 	}
@@ -72,6 +86,11 @@ func (s *Service) SubmitForDispatch(ctx context.Context, batchID string, live bo
 	details, err := s.repo.SupplierBankDetails(ctx, b.SupplierID)
 	if err != nil {
 		return Batch{}, err
+	}
+	if live && !s.rail.IsLive() {
+		// Fail closed: never set SUBMITTED on a rail that cannot settle, else the
+		// batch strands with an empty RailReference and no webhook to flip it PAID.
+		return Batch{}, ErrNoLiveRail
 	}
 	ref, err := s.rail.Submit(ctx, b, details, live)
 	if err != nil {

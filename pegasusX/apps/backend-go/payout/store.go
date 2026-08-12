@@ -10,30 +10,57 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
 
 func (r *Repository) Insert(ctx context.Context, b Batch) error {
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("PayoutBatches", map[string]any{
-			"BatchId":            b.BatchID,
-			"SupplierId":         b.SupplierID,
-			"PeriodStart":        civilDateOf(b.PeriodStart),
-			"PeriodEnd":          civilDateOf(b.PeriodEnd),
-			"GrossCapturedMinor": b.GrossCapturedMinor,
-			"RefundedMinor":      b.RefundedMinor,
-			"CommissionMinor":    b.CommissionMinor,
-			"NetPayoutMinor":     b.NetPayoutMinor,
-			"Currency":           b.Currency,
-			"Status":             b.Status,
-			"IdempotencyKey":     b.IdempotencyKey,
-			"CreatedBy":          b.CreatedBy,
-			"CreatedAt":          spanner.CommitTimestamp,
-			"UpdatedAt":          spanner.CommitTimestamp,
-		}),
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := emitPayoutEvent(ctx, buf, events.EventPayoutBatchGenerated, b, ""); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertMap("PayoutBatches", map[string]any{
+				"BatchId":            b.BatchID,
+				"SupplierId":         b.SupplierID,
+				"PeriodStart":        civilDateOf(b.PeriodStart),
+				"PeriodEnd":          civilDateOf(b.PeriodEnd),
+				"GrossCapturedMinor": b.GrossCapturedMinor,
+				"RefundedMinor":      b.RefundedMinor,
+				"CommissionMinor":    b.CommissionMinor,
+				"NetPayoutMinor":     b.NetPayoutMinor,
+				"Currency":           b.Currency,
+				"Status":             b.Status,
+				"IdempotencyKey":     b.IdempotencyKey,
+				"CreatedBy":          b.CreatedBy,
+				"CreatedAt":          spanner.CommitTimestamp,
+				"UpdatedAt":          spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
-	return err
+}
+
+// emitPayoutEvent buffers a payout lifecycle event. The event type is chosen by
+// the caller so the same status-transition code path can label generate /
+// export / dispatch / paid distinctly.
+func emitPayoutEvent(ctx context.Context, buf *outbox.SpannerTxnBuffer, eventType string, b Batch, railRef string) error {
+	return outbox.EmitJSON(ctx, buf, events.AggregatePayoutBatch, b.BatchID, events.TopicMain, map[string]any{
+		"type":             eventType,
+		"batch_id":         b.BatchID,
+		"supplier_id":      b.SupplierID,
+		"status":           b.Status,
+		"net_payout_minor": b.NetPayoutMinor,
+		"currency":         b.Currency,
+		"rail_reference":   railRef,
+		"timestamp":        time.Now().UTC().Format(time.RFC3339Nano),
+	})
 }
 
 func (r *Repository) Get(ctx context.Context, batchID string) (Batch, bool, error) {
@@ -82,21 +109,54 @@ func (r *Repository) UpdateStatus(ctx context.Context, batchID, status, exportUR
 }
 
 // UpdateStatusRef updates status, optional export URI, and optional rail
-// reference (set when a live rail dispatches or confirms settlement).
+// reference (set when a live rail dispatches or confirms settlement). Emits the
+// matching payout lifecycle outbox event in the same transaction so partner
+// webhooks / search / notifications see the state change atomically.
 func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, exportURI, railRef string) error {
-	m := map[string]any{
-		"BatchId":   batchID,
-		"Status":    status,
-		"UpdatedAt": spanner.CommitTimestamp,
-	}
-	if strings.TrimSpace(exportURI) != "" {
-		m["ExportFileUri"] = spanner.NullString{StringVal: exportURI, Valid: true}
-	}
-	if strings.TrimSpace(railRef) != "" {
-		m["RailReference"] = spanner.NullString{StringVal: railRef, Valid: true}
-	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.UpdateMap("PayoutBatches", m)})
-	return err
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{"SupplierId", "NetPayoutMinor", "Currency"})
+		if err != nil {
+			return err
+		}
+		var b Batch
+		if err := row.Columns(&b.SupplierID, &b.NetPayoutMinor, &b.Currency); err != nil {
+			return err
+		}
+		b.BatchID = batchID
+		b.Status = status
+
+		eventType := ""
+		switch status {
+		case StatusExported:
+			eventType = events.EventPayoutBatchExported
+		case StatusSubmitted:
+			eventType = events.EventPayoutBatchDispatched
+		case StatusPaid:
+			eventType = events.EventPayoutBatchPaid
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if eventType != "" {
+			if err := emitPayoutEvent(ctx, buf, eventType, b, railRef); err != nil {
+				return err
+			}
+		}
+
+		m := map[string]any{
+			"BatchId":   batchID,
+			"Status":    status,
+			"UpdatedAt": spanner.CommitTimestamp,
+		}
+		if strings.TrimSpace(exportURI) != "" {
+			m["ExportFileUri"] = spanner.NullString{StringVal: exportURI, Valid: true}
+		}
+		if strings.TrimSpace(railRef) != "" {
+			m["RailReference"] = spanner.NullString{StringVal: railRef, Valid: true}
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PayoutBatches", m)}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
 }
 
 // SupplierBankDetails holds the beneficiary account for the bank file.
