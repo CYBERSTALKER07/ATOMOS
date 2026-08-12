@@ -1,5 +1,10 @@
 # Production wiring status + third-party inventory
 
+> **HISTORICAL / FROZEN (2026-07-28 snapshot, re-bannered 2026-08-12).**  
+> Prefer [`../context/current_status.md`](../context/current_status.md) · [`../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md).  
+> TLS/DNS/ManagedCert and optimizer SSMR rows in body may be outdated (SSMR ManagedCert Active; optimizer SSMR replicas 1; prod 0).
+
+
 **Date:** 2026-07-28  
 **Stack:** `pegasus-503013` / `pegasusx-ssmr-gke` / ns `pegasusx-ssmr`  
 **Scope:** What is already wired on GCP via CLI, what still needs you, and which **non-GCP / non–Global Pay** third parties the product uses.

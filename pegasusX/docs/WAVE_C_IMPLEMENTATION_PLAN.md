@@ -1,6 +1,11 @@
 # Wave C — Agent-executable implementation plan
 
-**Status:** Product answers locked · C1.1 done · ready for C1.2  
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
+**Status:** C1–C4.1 **code complete** (historical Wave C runbook) · residual flags/pilot ops — use [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md)  
 **Companion design:** `docs/WAVE_C_ENTERPRISE_SCALE_PLAN.md`  
 **Repo root:** `pegasusX/`  
 **Env for prove:** SSMR (`pegasus-503013`, `api-ssmr.pegasusx.app`, ns `pegasusx-ssmr`)

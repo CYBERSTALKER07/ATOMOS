@@ -1,5 +1,9 @@
 # Gate 5 / §8.10 Phase 3 — GlobalProducts Progress
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **Date:** 2026-08-11  
 **ADR:** [`docs/MULTI_TENANCY_GATE5_PHASE3.md`](../../MULTI_TENANCY_GATE5_PHASE3.md)  
 **Gate:** `bash scripts/phase5c_gate.sh` → `phase5c-gate-ok`  

@@ -34,7 +34,7 @@ Spanner (source of truth, single schema, 167 tables)
 
 2. **Behavior changed by run mode without warning.** In `PEGASUSX_RUN_MODE=api` the relay/consumers historically did not start → FCM/inbox could silently stop while direct WS kept working. **Mitigated (P1-9 ✅):** worker heartbeat + api-tier notification consumer when no live worker. Mode docs still matter; silent dual-truth is closed for push/inbox.
 
-3. **Cross-role loops were half-wired in clients.** Those Class A loops are **closed (W2):** factory loading bay ↔ payload (P1-18/P2-25), warehouse cold-chain + labor-capacity + twin Live Ops Map (P2-23), supplier planning web (P2-26), retailer AR/HQ mobile (P1-17), warehouse WMS screens (P2-24). Residual Class B/C: thin admin billing analytics; portal-only warehouse Control Tower / cold-chain on mobile; payload `seal-all` + capacity API-only.
+3. **Cross-role loops were half-wired in clients.** Those Class A loops are **closed (W2):** factory loading bay ↔ payload (P1-18/P2-25), warehouse cold-chain + labor-capacity + twin Live Ops Map (P2-23), supplier planning web (P2-26), retailer AR/HQ mobile (P1-17), warehouse WMS screens (P2-24). Residual Class B/C: thin admin billing analytics; portal-only warehouse Control Tower on mobile; payload `seal-all` + capacity API-only. **R4.1 (2026-08-12):** warehouse Android/iOS cold-chain + labor-capacity parity with portal.
 
 **Conclusion:** keep the **coverage rule** (every state mutation emits an event; every event has a declared consumer). Checklist items that were open at audit time are tracked as ✅ in Part 2; open residuals are owner keys, Soliq EDS, optimizer prod replicas, and auto-order place flip.
 
@@ -170,6 +170,7 @@ Closing condition (invariant):
 Planning SoT for docs↔code↔role×platform + desktop stack decision:
 
 - [`MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md)
+- **Post–W0–W5 ordered residuals:** [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) (R0–R6 enterprise prod readiness)
 
 Re-verify notes (2026-08-12 afternoon):
 
@@ -183,6 +184,9 @@ Re-verify notes (2026-08-12 afternoon):
 - **P1-12 schema drift closed 2026-08-12:** 14 migration-only tables mirrored into `spanner.ddl`; offline + live schema-drift gate broadened.
 - **P2-14 / P2-19 closed 2026-08-12:** webhook URL SSRF validation; SLO alerts for relay restarts / DLQ depth / partner webhook success.
 - **P2-23 closed 2026-08-12:** warehouse cold-chain + labor-capacity UIs; supplier labor-capacity; twin Live Ops Map (inventory on select). Class A client loops for those APIs.
+- **R4.1 closed 2026-08-12:** warehouse Android/iOS cold-chain + labor-capacity screens + nav (portal parity); Control Tower remains portal-primary.
+- **R4.2 closed 2026-08-12:** retailer desktop `/control-tower` added to `RetailerShell` nav (was orphan page).
+- **Docs alignment pass 2026-08-12:** historical reports/roadmaps bannered; living map in [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md); no `.docx` in repo.
 - **P2-16 closed 2026-08-12:** flag set/approve → PlatformAdminAudit fail-closed; ActorLabel for empty-Subject tokens.
 - **P2-17 closed 2026-08-12:** PLATFORM_ADMIN TOTP MFA + `mfa_verified` step-up (HS256 JWT retained).
 - **P2-18 closed 2026-08-12:** phase2→5c + analytics-tenancy in CI (`enterprise-gates`); admin-portal typecheck/build job.

@@ -1,5 +1,10 @@
 # 02 Per Role Client Apps
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 _Source: subagent `bd693ff3-85c7-447f-97b6-3ab4479a9319` from End-Product Reality Report session (2026-08-07)._
 
 # PegasusX / ATOMOS — End-Product Reality Report (Client Applications)

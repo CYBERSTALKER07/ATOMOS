@@ -1,10 +1,10 @@
 # PegasusX — Platform Audit & Build Specification
 
-Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-08-04. No repo markdown was trusted; every claim below traces to code, schema, or config. File:line references are given so each finding can be re-checked.
+Evidence base: originally `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-08-04. **Planning SoT for residuals is now** [`docs/PROD_READINESS_SEQUENCE.md`](./docs/PROD_READINESS_SEQUENCE.md) + [`docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md). Doc map: [`docs/DOCS_SOURCE_OF_TRUTH.md`](./docs/DOCS_SOURCE_OF_TRUTH.md). Do not treat frozen §0/§3/§5 bullets below as current gaps without re-verify.
 
-> **Runtime supersession (2026-08-06 / Gate-3 Wave 2C GS1 + 1C journals + 2B EDI-lite + collections; Enterprise Phase 1 money/law 2026-08-11):** OR-Tools code-wired but cloud heuristic-only — [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Geometry: Google Routes → OSRM → dense. Gate-0 Track A closed Spanner PITR/backup TF, outbox leases + Kafka `event_id` dedupe, SchemaMigrations, P0-4 iOS offline enqueue. **§8.6 credit terms/AR/aging + dunning step machine + `DelinquencyCount` bump + CREDIT_HOLD auto-freeze are live** behind flags — [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](./docs/CREDIT_ECOSYSTEM_BEHAVIOR.md); **SMS/email dunning transports wired** (Twilio/PlayMobile/SendGrid; owner keys residual); WhatsApp still open. **Enterprise Phase 1 gate green** (`make phase1-gate` → `phase1-gate-ok`) — refunds, payouts, billing fee schedule, Soliq EDS contract, GP simulator — [`docs/session-2026-08-07/PHASE1_MONEY_LAW_PROGRESS.md`](./docs/session-2026-08-07/PHASE1_MONEY_LAW_PROGRESS.md). **§8.9 Partner Integration Wave 1+2A+2B+2C + 1C journals shipped** — keys + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + GLN/SSCC/ZPL + **journals CSV/XML** ([`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md), [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md), [`docs/PARTNER_JOURNALS_1C.md`](./docs/PARTNER_JOURNALS_1C.md)); AS2 / configurable CoA still open. Integration scorecard **8/10**.
+> **Runtime supersession (2026-08-12 R0):** W0–W5 closed in-tree. **SMS/email/WhatsApp dunning transports code-wired** (`DUNNING_*_PROVIDER`; owner keys + WhatsApp Content SID residual). **Partner surface live:** OpenAPI, OAuth2, `/partner/v1`, HMAC webhooks, SFTP, EDI-lite, **AS2 MDN/MIC**, CoA, GS1/ZPL/journals — certified Drummond/1C still open. **Admin console live** (tenants/flags/audit/match/partner). **SSMR optimizer replicas: 1**; prod replicas 0 until AR. OR-Tools code-wired — [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Credit AR/dunning step machine live behind flags — [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](./docs/CREDIT_ECOSYSTEM_BEHAVIOR.md). Phase 1 money gate green (simulator/contract) — [`docs/session-2026-08-07/PHASE1_MONEY_LAW_PROGRESS.md`](./docs/session-2026-08-07/PHASE1_MONEY_LAW_PROGRESS.md). Integration scorecard **~9/10** (cert residual). Ordered residuals: [`docs/PROD_READINESS_SEQUENCE.md`](./docs/PROD_READINESS_SEQUENCE.md).
 
-**Re-aligned 2026-08-04 (post Phase A/B G1–G3 + Gate-0 hygiene):** claims/receive/stock/eligibility/window snapshot are **live**; fiscal env-selected (`PEGASUS` default); credit scoring removed; Firebase client configs committed. **Gate-0 closed:** Claims in `spanner.ddl`, iOS snake_case decode, OrgFleet Android compile, optimizer minutes Time dim + empty-route reject, worker replicas=1, AutoConfirm sweeper flag, orphan `ledger/` deleted, Spanner backup/PITR, outbox leases, SchemaMigrations, P0-4 offline. Still open: single-supplier runtime, partner API (Gate 3 in progress), ML forecasting theatre.
+> **Historical (2026-08-04 / Gate-0):** claims/receive/stock live; fiscal env-selected; credit scoring removed; Gate-0 closed (Claims in `spanner.ddl`, iOS decode, OrgFleet, optimizer minutes, outbox leases, backups). **Superseded “still open”:** partner API shipped; multi-tenancy Phase 1–3 backends wired (seed fallback remains — not “request plane serves exactly 1”).
 
 ---
 
@@ -12,31 +12,31 @@ Evidence base: the source tree at `/Users/shakhzod/ATOMOS/pegasusX` as of 2026-0
 
 **Is it "just a stupid CRUD system"? No. Emphatically no.** A CRUD app has handlers calling an ORM. This has a transactional outbox whose event rows commit inside the same Spanner transaction as the state mutation, optimistic concurrency with real compare-and-swap on `Version`, an 18-state order machine with a centralized transition table, money as integer minor units with zero float money anywhere, bcrypt throughout, payment webhook verification that re-verifies settlement out-of-band against the gateway, Redis pub/sub WebSocket fan-out for horizontal scale, deterministic content-fingerprinted idempotency keys mirrored across web/iOS/Android, and a production config validator that fails closed on dev secrets. That is the work of people who have operated real transactional systems.
 
-**But it is not the system the docs and naming claim it is.** Three structural facts dominate everything else:
+**Structural facts (re-verified 2026-08-12 — frozen Aug-4 wording struck):**
 
-1. **It is a single-supplier system, at runtime, by construction.** The schema is multi-tenant-shaped (`SupplierId` leads most keys), and supplier registration will mint up to 10 tenants — but `bootstrap/bootstrap.go` injects one `supplierSeed.SupplierID` into ~15 service constructors at process start, and `order.Service` holds it as a private `supplierID` field (`order/service.go` ~351) used as a constant on create/list paths. **The supplier the retailer picks in the UI is discarded during order creation.** Registering a second supplier today produces a tenant whose orders are attributed to the seed supplier. The data plane can hold 10 suppliers; the request plane can serve exactly 1.
+1. **~~Single-supplier only at runtime~~ → Partial.** Schema is multi-tenant; `TenantContext` / `PreferTenantSupplierID` + multi-supplier checkout / parent orders exist (Gate 5 Phases 1–3). Seed supplier remains a **bootstrap fallback**, not the sole request-plane path. Residual: retailer UI often one active trading-partner JWT; marketplace Phases 4–5 deferred — [`docs/MULTI_TENANCY_GATE5_PHASE1.md`](./docs/MULTI_TENANCY_GATE5_PHASE1.md).
 
-2. **There is zero machine learning, and the "AI" layer is arithmetic.** The Python service's entire dependency list is one line: `ortools==9.15.6755`. No Vertex, Gemini, OpenAI, TensorFlow, PyTorch, ONNX, sklearn, XGBoost, Prophet, statsmodels, embeddings, or vector search anywhere in Go modules, requirements, Cargo, or package.json. The code says so itself: `planning/baseline_sources.go:14` — *"Never returns 'ml' — training inference is deferred"*; `cmd/planning-training-export/main.go:24` — *"collect-only; no training"*. Legacy synthesis still had `line.Quantity / 2` — **diverted** when `AUTO_ORDER_INVENTORY_GROUNDED` (§8.3); inventory `(R,s,S)` is the preferred qty path.
+2. **There is zero machine learning, and the "AI" layer is arithmetic.** The Python service's entire dependency list is one line: `ortools==9.15.6755`. No Vertex/Gemini/OpenAI/TF training path. Inventory `(R,s,S)` is the preferred auto-order qty path when `AUTO_ORDER_INVENTORY_GROUNDED` — [`docs/AUTO_ORDER.md`](./docs/AUTO_ORDER.md).
 
-3. **There is no machine-to-machine integration surface at all.** Zero matches across the backend for `openapi`, `swagger`, `oauth2`, `client_credentials`, EDIFACT, X12, SSCC, GLN, ZPL, SAP, 1C, Odoo, NetSuite, BigQuery, SFTP. No outbound webhooks (the 5 webhook routes are inbound gateway receivers). No export endpoint of any kind. **A retailer with an ERP cannot integrate today by any path.** The only automated inbound channel is a human uploading a spreadsheet through a browser wizard and clicking approve.
+3. **~~No M2M integration~~ → False (superseded).** Partner keys + OAuth2 `client_credentials` + `/partner/v1` + OpenAPI + outbound HMAC webhooks + SFTP + EDI-lite + AS2 + GS1/ZPL + 1C journals/CoA are shipped. Residual: Drummond / certified EDIFACT / certified 1C package — see R5 in [`docs/PROD_READINESS_SEQUENCE.md`](./docs/PROD_READINESS_SEQUENCE.md).
 
-**Scale, for calibration:** ~410k lines of real code — 131,670 Go / 81,116 TSX / 94,332 Kotlin / 74,434 Swift / 22,858 TS / 1,826 Python / 988 Rust / 32,118 YAML / 1,507 Terraform. 411 distinct HTTP endpoints, 73 Spanner tables, 12 native apps, 6 web surfaces. This is 18–30 months of competent engineering, not a prototype.
+**Scale, for calibration:** ~410k lines of real code across Go/TSX/Kotlin/Swift; 12 native apps; web portals including a real **admin-portal** (not a stub). Desktop supplier = `supplier-portal` Tauri (`supplier-app-desktop` removed).
 
-**Can it replace the field sales agent?** It replaces the agent's **order pad**, not the agent. The commercial loop (demand signal → proposal → confirmation → credit → pricing → allocation → dispatch) is genuinely automatable with flags that already exist. But picking, loading, driving, the delivery handshake, cash collection, and every exception path terminate in a human — and **off-app dunning** still needs SMS/email (in-app terms/aging/step machine/hold/FCM are wired). Honest number: **~35–40% of the agent's job is automatable with what exists, ~65% with the P1 work in §8, and the cash-collection half is structural, not a gap.**
+**Can it replace the field sales agent?** It replaces the agent's **order pad**, not the agent. Commercial loop automatable behind flags; physical pick/load/drive/cash stay human. **Off-app SMS/email/WhatsApp dunning is code-wired** (keys/template residual). Cash-collection half is structural.
 
 **Scorecard:**
 
 | Layer | Score | One-line justification |
 |---|---|---|
-| Go backend | **8/10** | Same transactional primitives; claims/receive/stock liability spine + claim-window snapshot now wired. Still loses points on duplicate event publishing and state-machine bypasses. |
-| Domain modelling | **8.5/10** | 18-state order machine, two-sided delivery negotiation, volumetric dispatch, COD/credit/split payment, post-delivery claims ↔ quarantine ↔ reverse. Genuinely deep. |
-| Web frontend | **6/10** | Excellent type hygiene and idempotency; no server-state library across 60k lines, 0% localized, accessibility unusable. |
-| iOS | **6/10** | Modern SwiftUI/`@Observable`; Gate-0 removed convertFromSnakeCase decoder bug. PoD photo/signature + background location wired (§8.8); Android reconnect/boot wired — iOS telemetry buffer residual. |
-| Android | **6/10** | Best offline queue in the repo; supplier Android compiles again (Gate-0 OrgFleet). |
-| Infra / DevOps | **6/10** | Digest-pinned prod overlay + ManagedCertificate + ExternalSecret path WIRED; **Gate-0 CI expanded** (`pegasusx-ci` + 12-app native mobile matrices + golangci/gitleaks/`-race`). Live apply / real GSM / CD still ops. |
-| AI / optimization | **4/10** *(§8.5 constraints/multi-depot/OSRM matrix wired; cloud still undeployed)* | OR-Tools sidecar + Clarke-Wright exist; cloud dispatch heuristic until AR image/replicas; forecasting remains a 7-day mean. |
-| Integration surface | **9.5/10** *(OAuth + GS1/ZPL + DESADV SSCC + CoA journals + EDI-lite + AS2 transport; certified 1C/EDIFACT still open)* | Partner keys + OAuth + `/partner/v1` + HMAC webhooks + bulk export/SFTP + EDI-lite + AS2 + GLN/SSCC/ZPL + journals CoA + OpenAPI. See [`docs/PARTNER_API.md`](./docs/PARTNER_API.md) / [`docs/PARTNER_AS2.md`](./docs/PARTNER_AS2.md). |
-| Multi-tenancy (runtime) | **1/10** | One supplier, bound at startup. |
+| Go backend | **8/10** | Same transactional primitives; claims/receive/stock liability spine wired. |
+| Domain modelling | **8.5/10** | 18-state order machine, volumetric dispatch, COD/credit, claims ↔ quarantine ↔ reverse. |
+| Web frontend | **6/10** | Strong type hygiene; i18n draft; a11y residuals. |
+| iOS | **6/10** | Modern SwiftUI; PoD + background location; telemetry buffer residual. |
+| Android | **6/10** | Best offline queue; OrgFleet compiles. |
+| Infra / DevOps | **6/10** | Digest pins + ManagedCert + ExternalSecret WIRED; live GSM/CD still ops (R2). |
+| AI / optimization | **4/10** | OR-Tools + OSRM matrix wired; **SSMR replicas 1**; **prod replicas 0** until AR (R3). |
+| Integration surface | **9.5/10** | Partner API + AS2 + CoA + EDI-lite + GS1; certified EDIFACT/1C open (R5). |
+| Multi-tenancy (runtime) | **6/10** | Phase 1–3 backends + outbox `SupplierId` NOT NULL; seed fallback + UI multi-partner residual. |
 
 ---
 
@@ -119,13 +119,13 @@ Removed `.convertFromSnakeCase` from driver + payload `APIClient.swift` so expli
 | ExternalSecret / GSM | **Repo-WIRED** — TF shells for all 12 ES GSM names; `phase0_sync_gsm_secrets.sh` can stub unused PSP rails (`unused-rail-placeholder`); prod overlay includes SecretStore+ExternalSecret; SSMR maps `redis-password` |
 | Residual (ops) | Real GSM versions (JWT, internal-api-key, Maps, GP merchant password, redis AUTH); `kubectl apply` prod overlay; DNS → LB for ManagedCert Active; real optimizer-core AR image + replicas ≥ 1 |
 
-**P1 — Others worth naming:**
-- **`Claims` / `ClaimEvidences` missing from `schema/spanner.ddl`.** Tables exist in `schema/migrations/20260728_logistics_claims.ddl` (and are used by the live claims package). Greenfield `spanner.ddl` applies and schema-drift CI that only diffs the monolith file will miss them — mirror the CREATE TABLEs into `spanner.ddl`.
-- **Payment bypass violates the fiscal hard gate its own test asserts.** `order/supplier_ops.go:237` writes `Status: COMPLETED` from `AWAITING_PAYMENT` via a raw `UpdateMap`; `state_machine_test.go:40-44` explicitly asserts that transition must be blocked. The test passes; production skips fiscalization on a real money path. The validator has **4 call sites against 12 direct status assignments**, and `ARRIVED_SHOP_CLOSED` has no inbound edge in the table yet is written at `shop_closed.go:151`.
-- **Plaintext `"4321"` written into the `PinHash` column.** `warehouse/ops_fleet_handlers.go:77` — either every ops-created driver is locked out, or some path does a plaintext compare and they all share PIN 4321.
-- **Monotonic outbox and audit primary keys guarantee a Spanner hotspot.** `outbox/outbox.go:211-213` returns `evt_<UnixNano>` under a comment claiming "Production uses crypto/rand UUIDv7". That is the PK of `OutboxEvents` and `AuditLog`. Every insert in the fleet lands on one split. `uuid` is already a direct dependency.
-- **Idempotency keys are globally scoped** — `"idem:" + rawHeader`, no principal, no route (`idempotency/redis_store.go:29`). Caller B with the same key and body gets caller A's cached response.
-- **Nil Spanner client makes every write silently succeed** — `spannerutils/retry.go:20-22` returns `nil` when `client == nil`. Misconfiguration becomes silent data loss reported as HTTP 200.
+**P1 — Others worth naming (many line citations drifted — re-verify before treating as open):**
+- ~~**`Claims` / `ClaimEvidences` missing from `schema/spanner.ddl`.**~~ **Closed** — present in `apps/backend-go/schema/spanner.ddl`.
+- **Payment bypass / fiscal gate** — historically claimed raw `COMPLETED` skip; current path returns `FISCALIZING` — re-verify `order/supplier_ops.go` before treating as open.
+- ~~**Plaintext `"4321"` into `PinHash`.**~~ **Closed** — bcrypt into `PinHash`; plaintext only once in create response.
+- ~~**Monotonic `evt_<UnixNano>` outbox PKs.**~~ **Closed** — `newEventID` → `uuid.NewString()`.
+- **Idempotency keys are globally scoped** — `"idem:" + rawHeader`, no principal, no route (`idempotency/redis_store.go`). Caller B with the same key and body gets caller A's cached response.
+- **Nil Spanner client makes every write silently succeed** — `spannerutils/retry.go` returns `nil` when `client == nil`. Misconfiguration becomes silent data loss reported as HTTP 200.
 - **32-bit FNV hash guards checkout idempotency.** `packages/api-client/idempotency.ts:1-8` — ~50% collision probability around 77k distinct values; a collision means a different cart produces the same key and the second checkout is silently rejected as a duplicate. Lost order, no error surfaced.
 - **`AbortSignal` is accepted but never plumbed into `fetch`.** `usePolling.ts:27,70` hands callers a signal; `RequestOptions` has no `signal` field. All 8 call sites do one pre-flight `if (signal.aborted) return` then issue an unabortable request — so a slow response for filter A overwrites fresh data for filter B. The code *looks* like it handles the race.
 - **`usePolling` swallows every error** — `usePolling.ts:72-75`, the catch branch body is empty. Dashboards show indefinitely stale data during an outage with no indication.
@@ -172,8 +172,8 @@ Twenty-two steps from need-detection to cash in the bank. "Automatable" means a 
 | 7 | Delivery date agreement | Sometimes | **Partial** — auto by default; the negotiation path needs a human on both sides |
 | 8 | Transfer approval | Sometimes | **Automatable** — touchless with a daily unit budget; CRITICAL always escalates by design |
 | 9 | Dispatch planning & driver assignment | Optional | **Automatable** — 60s auto-dispatch worker, real closed loop |
-| 10 | **Physical picking** | **YES — hard blocker** | **Absent at warehouse.** No WH pick list/bin/lot. (Retailer on-hand **does** exist: `RetailerStockBalances` / receive sessions.) |
-| 11 | **Truck loading** | **YES — hard blocker** | Absent by design — a 26-endpoint payload terminal exists so a human can drive it |
+| 10 | **Physical picking** | **YES — hard blocker** | **WMS lots/bins/pick-waves wired** (flag-gated); still human-executed on floor |
+| 11 | **Truck loading** | **YES — hard blocker** | Payload terminal + natives drive loading bay (human by design) |
 | 12 | Manifest sealing | Yes | Partial — `seal-all` batches the clicks |
 | 13 | **Driving** | **YES** | — |
 | 14 | QR handshake | **YES — by design** | Geofence auto-detects arrival; the handshake is an intentional two-party control |
@@ -184,13 +184,13 @@ Twenty-two steps from need-detection to cash in the bank. "Automatable" means a 
 | 19 | Reconciliation | On exception | Partial — detection automated, resolution manual |
 | 20 | Returns disposition | Yes | **Stronger** — FileClaim + approve/reject + stock hold + reverse open; human still confirms disposition |
 | 21 | Exceptions (shop closed, delay, overflow, rescue) | **YES** | Absent — every path ends in a human decision |
-| 22 | **Dunning / collections** | Partial | **In-app wired** (terms/due/aging/step machine/hold/FCM+inbox) behind `AR_DUNNING_ENABLED`; **off-app SMS/email still absent** |
+| 22 | **Dunning / collections** | Partial | **In-app wired** behind `AR_DUNNING_ENABLED`; **off-app SMS/email/WhatsApp code-wired** (`DUNNING_*_PROVIDER`; owner keys + WhatsApp Content SID residual — R1.3) |
 
 **The honest read.** Steps 1–9 — the whole commercial decision loop — are genuinely automatable today, and that is more than most SFA vendors ship. But the automation is only as good as its inputs, and right now step 1 produces `last_order / 2` even though **retailer on-hand balances now exist** — the auto-order path still does not consult them. An agent walks in, looks at the shelf, knows what sells, knows what's near expiry, knows the promo calendar, and negotiates. This halves the last invoice.
 
 Two blockers are structural rather than unbuilt:
 - **Cash collection.** In a COD-dominant market the driver *is* the collections function. The platform doesn't remove that human, it instruments him — arguably the correct product decision, but it converts field headcount from sales to logistics rather than eliminating it.
-- **Dunning.** In-app step machine + hold + FCM/inbox are wired; the remaining gap for field-agent replacement is **off-app SMS/email** so retailers without the app still get reached.
+- **Dunning.** In-app step machine + hold + FCM/inbox are wired; off-app SMS/email/WhatsApp transports are **code-wired** — remaining gap is **owner keys/templates** so retailers without the app get reached in prod (R1.3).
 
 ---
 
@@ -206,7 +206,7 @@ The premise that "there is no such system in the world" is **not accurate**, and
 
 **The critical lesson from that landscape, and it is directly relevant.** The pure marketplace/e-commerce thesis largely *failed*. MaxAB-Wasoko retreated from 8 markets to 5 and is betting the company on **embedded fintech**; in Egypt fintech transactions already outpace e-commerce. TradeDepot pivoted to **advertising and data**. MarketForce shut its e-commerce arm. Sabi went to commodity exports. Udaan survived by abandoning geographic breadth for **city-level density** and private label (now 15% of revenue). Ankorstore gave up reorder commission entirely and monetizes via **subscription + fintech**.
 
-Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** Terms/AR/aging/dunning/`DelinquencyCount`/CREDIT_HOLD are now code-wired (flag-gated); **risk scoring stays removed** (Phase A). The remaining collections gap is **off-app reach** (SMS/email) for retailers without the app.
+Translated for PegasusX: **distribution margin does not pay for this platform. Credit does.** Terms/AR/aging/dunning/`DelinquencyCount`/CREDIT_HOLD are code-wired (flag-gated); **risk scoring stays removed** (Phase A). Collections residual is **live provider keys** (R1.3), not missing transports.
 
 **What is genuinely defensible here.** Not "a platform connecting all suppliers and retailers" — that exists and has been expensively fought over. What is unusual is the **vertical depth of a single stack from factory floor to shop shelf**: factory manifests → inter-hub transfers → warehouse loading bay with a dedicated terminal role → volumetric truck packing in VU → geofenced driver handshake → COD/split-payment/credit-delivery with ledger and reconciliation → fiscal receipt. Most competitors are a marketplace bolted onto 3PL, or an SFA app bolted onto someone else's ERP. **Nobody has the whole physical chain in one transactional model with one event bus.** That is the asset. It happens to be worth more as *deep software for one large distributor* than as a thin marketplace for many.
 
@@ -224,12 +224,12 @@ What the code offers them today:
 |---|---|
 | An API their ERP can call | **Partner API keys + OAuth2 client_credentials + `/partner/v1` + OpenAPI** (Wave 1). Human JWT remains for portal. |
 | Events pushed to their system | **Outbound HMAC webhooks** (Wave 1) + list/deactivate/replay (Wave 2A). Inbound payment gateway webhooks unchanged. |
-| A file drop | **Bulk export API + optional SFTP** (Wave 2A). EDI/AS2 still open. |
-| EDI (ORDERS/ORDRSP/DESADV/INVOIC) | **EDI-lite over SFTP** (Wave 2B) — UNA segment dialect; no AS2 / certified EDIFACT. See [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). |
-| Bulk load | **The one real primitive:** a 9-state import wizard (`supplier/import_sessions.go:177`) with signed-URL upload, column auto-discovery, mapping, staging with raw+cleaned JSON, and error summaries. Production-grade — but **inventory/product only, one-way, human-driven**. |
-| GS1 identifiers | **GTIN + GLN + SSCC + ZPL (Wave 2C) + DESADV GIN+BJ.** Shared `gs1/` package; GLN on org profiles; SSCC-18 on `ManifestShipUnits` at seal; ZPL label API; DESADV emits CPS/PAC/GIN from ship units. See [`docs/GS1_LABELS.md`](./docs/GS1_LABELS.md) / [`docs/PARTNER_EDI.md`](./docs/PARTNER_EDI.md). |
-| Label printing | **No ZPL.** Scanning in, nothing out. |
-| Accounting export | `PaymentLedgerEntries` and `MasterInvoices` internally; **no journal export, no chart-of-accounts mapping**. |
+| A file drop | **Bulk export API + optional SFTP** (Wave 2A). AS2 transport WIRED (not Drummond). |
+| EDI (ORDERS/ORDRSP/DESADV/INVOIC) | **EDI-lite over SFTP** (Wave 2B) — UNA segment dialect; certified EDIFACT open (R5). |
+| Bulk load | **The one real primitive:** a 9-state import wizard (`supplier/import_sessions.go`) with signed-URL upload, column auto-discovery, mapping, staging with raw+cleaned JSON, and error summaries. Production-grade — but **inventory/product only, one-way, human-driven**. |
+| GS1 identifiers | **GTIN + GLN + SSCC + ZPL + DESADV GIN+BJ** (Wave 2C / W5 FNC1). |
+| Label printing | **ZPL label API** (Wave 2C). |
+| Accounting export | **1C journals CSV/JSON/XML + configurable CoA** — certified 1C package still open (R5). |
 | Legal receipt | `FISCAL_PROVIDER=PEGASUS` issues platform commercial receipts; **`MY_SOLIQ` OFD adapter exists but needs sandbox/prod creds.** You cannot legally close a Soliq-mandated sale until L5 lands. |
 | Data warehouse | **Zero BigQuery references.** |
 
@@ -324,7 +324,7 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 **Time budget — WIRED.** Solver default `time_limit_ms=5000` (honors tunables; clamp 60s); Go HTTP soft timeout 8s; sidecar `OPTIMIZER_SOFT_TIMEOUT_SEC=8`. Numpy vectorization of haversine remains a residual scale optimization when OSRM matrix is absent.
 
-**Cloud OR-Tools deploy path — WIRED (replicas ops-gated).** SSMR overlay includes optimizer-core Deployment+Service with AR image remap (`replicas: 0` until image exists). Prod keeps pin + `replicas: 0` — raise ≥ 1 after publish. Build recipe in [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Exit criterion: `"optimizer_source":"optimizer"` + `PX_E2E_OPTIMIZER_CONSTRAINT_OK` when sidecar up.
+**Cloud OR-Tools deploy path — WIRED (replicas ops-gated).** SSMR overlay includes optimizer-core with AR image remap and **`replicas: 1`**. Prod keeps pin + **`replicas: 0`** — raise ≥ 1 after publish (R3.1–R3.2). Build recipe in [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](./docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Exit criterion: `"optimizer_source":"optimizer"` + `PX_E2E_OPTIMIZER_CONSTRAINT_OK` when sidecar up.
 
 **Stop reporting OPTIMAL from a heuristic.** `vrp.rs` / `cpsat.rs` still mis-report Optimal; Rust sidecar remains undeployed. Options: delete it, or deploy Go Clarke-Wright as a real A/B arm. **Deferred (explicit residual).**
 
@@ -342,9 +342,9 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 **Risk scoring (product decision).** Phase A removed the scoring desk / worker / `RiskTier` gates — CREDIT_LEAVE and placement are **status + available only**. Do **not** re-add a scorecard unless product explicitly reverses that decision.
 
-**Dunning — WIRED behind `AR_DUNNING_ENABLED`.** Full step machine `DUE_SOON → … → COLLECTIONS`, auto-hold at CREDIT_HOLD via `HoldRelationship`, inbox + FCM notify on step advances. Ops: `POST /v1/admin/ar/dunning/run-once`. **Off-app SMS/email transports WIRED (2026-08-11):** `ar/dunning_channels.go` — Twilio / PlayMobile / SendGrid via `DUNNING_SMS_PROVIDER` / `DUNNING_EMAIL_PROVIDER` (fail-closed on missing creds). Residual: **WhatsApp**; owner prod keys; live staging soak / `PX_E2E_COLLECTIONS_DUNNING_OK`.
+**Dunning — WIRED behind `AR_DUNNING_ENABLED`.** Full step machine `DUE_SOON → … → COLLECTIONS`, auto-hold at CREDIT_HOLD via `HoldRelationship`, inbox + FCM notify on step advances. Ops: `POST /v1/admin/ar/dunning/run-once`. **Off-app SMS/email/WhatsApp transports WIRED:** `ar/dunning_channels.go` — Twilio / PlayMobile / SendGrid / Twilio WhatsApp via `DUNNING_SMS_PROVIDER` / `DUNNING_EMAIL_PROVIDER` / `DUNNING_WHATSAPP_PROVIDER` (fail-closed on missing creds). Residual: **owner prod keys + approved WhatsApp Content SID**; live staging soak / `PX_E2E_COLLECTIONS_DUNNING_OK` (R1.3).
 
-**Notification transports.** FCM + inbox + `LogTransport` + **SMS/email dunning channels** (env-selected). WhatsApp still open.
+**Notification transports.** FCM + inbox + `LogTransport` + **SMS/email/WhatsApp dunning channels** (env-selected). WhatsApp is code-wired, not “still open” as a missing transport.
 
 **Fiscalization, for real (Soliq).** `ProviderFromEnv` already selects `PEGASUS` / `FAKE` / `MY_SOLIQ` / `GLOBAL_PAY`. **EDS signer + MY_SOLIQ recorded-contract suite WIRED** (`fiscal/signer*.go`, gate step 6). Residual owner: Soliq sandbox/prod SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ`. PEGASUS remains the non-legal commercial path. Retry state machine + `OrderFiscalReceipts` + hard gate are already built.
 
@@ -368,7 +368,7 @@ Also in P0 hygiene: `git rm --cached` the 53 MB and 8.7 MB binaries; commit the 
 
 **PR-7 — WIRED (2026-08-06 harden).** Inventory reconcile endpoint; ops checklist [`docs/WMS_GATE4_OPS.md`](./docs/WMS_GATE4_OPS.md); **forbid non-rollup V2 writers when `WMS_LOTS_ENABLED`** (putaway/rollup only); barcode kit + WH pick-wave scan throughput — [`docs/WMS_GATE4_HARDENING.md`](./docs/WMS_GATE4_HARDENING.md). **Still open:** serial tracking.
 
-**Why (original gap).** Without lots/expiry, warehouse stock is a bag of SKUs — disqualifying for food/pharma. Retailer on-hand **is** modeled (`RetailerStockBalances`, receive sessions, counts). Wave 1A addresses warehouse expiry + location; Wave 1B adds manifest pick waves + seal gate; Wave 1C stubs cycle counts; ABC apply-on-approve / S-shape / cold-chain remain residual.
+**Why (original gap).** Without lots/expiry, warehouse stock is a bag of SKUs — disqualifying for food/pharma. Retailer on-hand **is** modeled (`RetailerStockBalances`, receive sessions, counts). Wave 1A–PR-7 WMS lots/FEFO/pick-waves/cycle/ABC/S-shape/cold-chain are **code-wired** behind `WMS_*` flags — [`docs/WMS_GATE4_OPS.md`](./docs/WMS_GATE4_OPS.md). **R4.1:** warehouse Android/iOS cold-chain + labor-capacity screens shipped; portal CT remains portal-primary for warehouse. Residual: Bluetooth sensor fleet / cumulative minutes outside band; floor pick-wave UX depth.
 
 **Schema.**
 ```
@@ -440,19 +440,17 @@ Per §7 this is the highest-leverage work in the report relative to its cost, be
 
 **Program ADR (Phase 1):** [`docs/MULTI_TENANCY_GATE5_PHASE1.md`](./docs/MULTI_TENANCY_GATE5_PHASE1.md) — 12-week request-scoped tenancy roadmap (freeze register → TenantContext → vertical slices → outbox partition → tenant rate limits → bootstrap cleanup). **Status: Phase 1 Wired (Done)** — live `PX_E2E_TENANT_*` / `PX_E2E_OUTBOX_TENANT_PARTITION_*` OK via `ssmr-smokecheck tenant` (2026-08-11). **Outbox `SupplierId` NOT NULL soak closed** (`20260819_outbox_supplier_id_not_null.ddl`, `_platform` sentinel). **Analytics column tenancy:** RoutePerformanceAnalytics + DemandSignals/DemandAdjustments Wired (`make analytics-tenancy-gate`). Progress: [`docs/session-2026-08-07/PHASE5_PROGRESS.md`](./docs/session-2026-08-07/PHASE5_PROGRESS.md), [`docs/session-2026-08-07/ANALYTICS_COLUMN_TENANCY_PROGRESS.md`](./docs/session-2026-08-07/ANALYTICS_COLUMN_TENANCY_PROGRESS.md).
 
-**Phase 1 — request-scoped tenancy.** `TenantContext` + `RequireTenant` + `PreferTenantSupplierID` (fail-closed when enforced) are live; registration freeze default-on (demo scope marks seed registered so freeze cannot re-bind); order/payment/warehouse/driver/portal verticals prefer request tenant; outbox stamps `SupplierId` + fair interleave + backfill worker/CLI; rate limits key `tenant:{supplierId}`. SSMR markers green on focused tenant path. **Still open after Phase 1 / Phase 2 backend:** §8.10 Phases 3–5 (marketplace), Outbox NOT NULL tighten, analytics column tenancy, retailer multi-partner UI.
+**Phase 1 — request-scoped tenancy.** `TenantContext` + `RequireTenant` + `PreferTenantSupplierID` (fail-closed when enforced) are live; registration freeze default-on (demo scope marks seed registered so freeze cannot re-bind); order/payment/warehouse/driver/portal verticals prefer request tenant; outbox stamps `SupplierId` + fair interleave + backfill worker/CLI; rate limits key `tenant:{supplierId}`. SSMR markers green on focused tenant path. **Closed after Phase 1:** Outbox `SupplierId` NOT NULL; analytics column tenancy. **Still open:** marketplace Phases 4–5 (R6), retailer multi-partner UI residual, seed-fallback cleanup.
 
-The reason it can't be incremental: today isolation is safe *only because* the ID is a startup constant. The moment it becomes request-derived, all 411 endpoints are potential IDOR vectors and there is no central enforcement point to lean on. Either every path is tenant-aware or none are safe. **Until Phase 1 lands, disable multi-supplier registration** (`supplier/service.go:433-447` currently mints up to 10 tenants the runtime cannot serve, and their orders would be attributed to `seed-supplier-1` — worse than refusing).
-
-Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub`, so a tenant with 500 users gets 500× the quota of a tenant with one), and outbox partitioning by tenant (`OutboxEvents` is a single global queue — one noisy tenant delays every tenant's events).
+~~Until Phase 1 lands, disable multi-supplier registration~~ **Superseded** — Phase 1–3 backends landed; multi-supplier register + parent-order split exist (UI often one active JWT).
 
 **Phase 2 — multi-supplier cart and order splitting.** **Wired (backend)** — see [`docs/MULTI_TENANCY_GATE5_PHASE2.md`](./docs/MULTI_TENANCY_GATE5_PHASE2.md). `ParentOrders` + `Orders.ParentOrderId`; cart `ListByRetailerAll` / clear-all with preserved per-line `SupplierId`; `MULTI_SUPPLIER_CHECKOUT_ENABLED` split in `UnifiedCheckout` (always parent including N=1; all-or-nothing); on-read parent rollup `GET /v1/retailer/parent-orders/{id}`; SSMR reopen `ALLOW_MULTI_SUPPLIER_REGISTER` + `MAX_SUPPLIERS=10`. Markers: `PX_E2E_MULTI_SUPPLIER_REGISTER_*`, `PX_E2E_PARENT_ORDER_SPLIT_*`, `PX_E2E_PARENT_ORDER_ISOLATION_*` via `ssmr-smokecheck parent-order`. Gate: `scripts/phase5b_gate.sh`. **UI residual:** retailer desktop/mobile stay one active trading-partner JWT until a later client program. Progress: [`docs/session-2026-08-07/PHASE5_PHASE2_PROGRESS.md`](./docs/session-2026-08-07/PHASE5_PHASE2_PROGRESS.md).
 
 **Phase 3 — global product master.** **Wired (backend)** — see [`docs/MULTI_TENANCY_GATE5_PHASE3.md`](./docs/MULTI_TENANCY_GATE5_PHASE3.md). `GlobalProducts` (unique GTIN) + `SupplierProductOffers` + `ProductMatchQueue` + `UnitsOfMeasure` pack hierarchy; exact GTIN then fuzzy match with review queue; flag `GLOBAL_PRODUCTS_ENABLED` (SSMR on). Markers: `PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_*`, `PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_*`, `PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_*` via `ssmr-smokecheck global-products`. Gate: `scripts/phase5c_gate.sh`. Progress: [`docs/session-2026-08-07/PHASE5_PHASE3_PROGRESS.md`](./docs/session-2026-08-07/PHASE5_PHASE3_PROGRESS.md). **Still open:** marketplace commerce (Phase 4), KYB console (Phase 5), retailer GlobalProduct UI.
 
-**Phase 4 — marketplace commerce.** Billing meter schema + amount decode wired (§2.2); still need fee schedule/invoices. Then: supplier ratings and scorecards; RFQ / competing quotes (note `NegotiationProposals` is delivery-date negotiation, not price bidding); split payments and escrow — which likely **forces a second gateway integration**, since Global Pay probably lacks sub-merchant support; supplier payout execution.
+**Phase 4 — marketplace commerce.** Fee schedule + monthly AR invoices WIRED (Phase 1 money). Residual marketplace: supplier ratings/scorecards; RFQ / competing quotes; escrow — **deferred R6** until W3–W4 evidence (see prod goal).
 
-**Phase 5 — tenant operations.** There is currently **no platform admin console at all** — no supplier management, no approval queue, no suspension, no offboarding. A supplier can self-register and nobody can approve or remove them. Add the console, an approval workflow with document collection and KYB, tenant-scoped audit, and per-tenant observability.
+**Phase 5 — tenant operations.** ~~no platform admin console~~ **Superseded:** live `admin-portal` (Tenants / Flags dual-control / Audit / Match / Partner). Residual: deeper billing analytics + KYB document workflow (R4.3 / Gate 5 Phase 5).
 
 **Honest total: 250–400 files touched.** Multi-tenancy was designed into the schema and designed out of the runtime.
 
@@ -468,7 +466,7 @@ Also in Phase 1: per-tenant rate limits and quotas (the limiter keys on JWT `sub
 | **Factory** | Portal 9k lines / iOS 55% / Android 55% (0 ViewModels) | Production scheduling, capacity/MRP (`GetSAndOP` is `factories × 700 × 7`), real transfer lead-time capture |
 | **Driver** | iOS decoder Gate-0 fixed / Android 70% (best offline story) | photo/signature POD + iOS background location + Android reconnect/boot **wired** (§8.8); iOS telemetry buffer / security residuals |
 | **Payload terminal** | iOS 45% (no `.xcodeproj`) / Android 50% | Generate the Xcode project, hardware scanner, per-line quantities, split the 1,700-line god view |
-| **Platform admin** | **Effectively absent** — 3 endpoints and a redirect stub | The entire console: tenant management, approval, suspension, fee schedule, global observability, support tooling |
+| **Platform admin** | **Live Next console** — tenants, flags (+ dual-control), audit, match queue, partner | Billing/platform analytics thin (R4.3); KYB depth residual |
 
 Cross-cutting, all surfaces: localization (0% on web, 0% on iOS, ~1% on Android despite complete generated catalogs), accessibility (2 `htmlFor` against 90 `<label>`, 1 `onKeyDown`, 0 `tabIndex` across 51k lines of portal TSX), testing (frontend ~1 test file per 2,700 lines with zero e2e; mobile 2.2%/2.4% with zero UI tests), and server-state management (0 data-fetching libraries across 483 hand-rolled `useEffect` fetches).
 
@@ -478,7 +476,7 @@ Cross-cutting, all surfaces: localization (0% on web, 0% on iOS, ~1% on Android 
 
 **Gate 0 — Stop the bleeding (2–4 weeks).** All of §8.0. Non-negotiable end state: CI compiles and tests all 12 mobile apps and lints everything; Spanner backups exist and a restore has been *executed*; Terraform state is remote; the prod overlay renders real digest-pinned images; the optimizer either solves or provably falls back; `supplier-app-android` and `driver-app-ios` work.
 
-**Gate 1 — Make it legal and reachable (4–6 weeks).** Soliq OFD adapter + EDS signer + contract suite **wired** (§8.6; PEGASUS commercial path already live); residual owner: sandbox/prod SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ`. SMS + email dunning transports (§8.6) — **wired** (Twilio/PlayMobile/SendGrid; owner keys residual); WhatsApp still open. Payment terms / due / aging / `DelinquencyCount` / dunning state machine (§8.6) — **wired** behind `AR_*` flags (no credit scoring re-add). Finish push/OTP ops (APNs entitlements, SHA-1, real SMS) on top of committed Firebase configs (§8.8). Without live Soliq credentials + off-app provider keys you cannot fully collect outside the app in production.
+**Gate 1 — Make it legal and reachable (4–6 weeks).** Soliq OFD adapter + EDS signer + contract suite **wired** (§8.6; PEGASUS commercial path already live); residual owner: sandbox/prod SUCCESS behind `FISCAL_PROVIDER=MY_SOLIQ` (R1.1). SMS + email + WhatsApp dunning transports (§8.6) — **code-wired** (Twilio/PlayMobile/SendGrid/Twilio WhatsApp; owner keys + Content SID residual — R1.3). Payment terms / due / aging / `DelinquencyCount` / dunning state machine (§8.6) — **wired** behind `AR_*` flags (no credit scoring re-add). Finish push/OTP ops (APNs entitlements, SHA-1, real SMS) on top of committed Firebase configs (§8.8 / R1.4). Ordered residuals: [`docs/PROD_READINESS_SEQUENCE.md`](./docs/PROD_READINESS_SEQUENCE.md).
 
 **Gate 2 — Make the intelligence real (6–10 weeks).** §8.4 accuracy + §8.1 Croston/SES/HW + §8.2 safety stock + §8.3 inventory-grounded shadow auto-order — **wired** (flags; soak `ReceivedAt` / shadow acceptance). Ship touchless place only when shadow-mode acceptance exceeds 80% + human + env.
 
@@ -502,11 +500,11 @@ Delete or explicitly rename. Every one of these currently misleads the next engi
 |---|---|
 | ~~`ledger/` package~~ | **Deleted (Gate-0).** |
 | `services/optimizer-core/server-rust/` | 447 lines, index bug, deployed nowhere. Delete, or replace it with the Go Clarke-Wright as a real A/B arm. |
-| `optimizationjobs/` package + `OptimizationJobs` table | `EnqueueJob` has zero callers; nothing publishes or consumes `TopicOptimizerJobs`. |
+| ~~`optimizationjobs/` package~~ | **Deleted** (gap register P3). Spanner `OptimizationJobs` DDL may remain. |
 | `kafka.AnalyticsStreamProcessor` | Package still exists (`kafka/stream_processor.go`) but **is no longer started** from `runtime_workers.go` (dummy channel removed). Delete the orphan type or wire a real Kafka stream — do not reintroduce a dummy. |
 | `enterprise/` (auth0, datadog, vault) | 225 lines of vendor SDKs bolted onto a system that already has Firebase Auth, Prometheus, and external-secrets. `InitVault` failure is logged and ignored. |
 | The four dead chart components | Ship empty axis-labelled charts to four production analytics pages. Wire or delete, and add a CI grep failing on `MOCK_` outside tests. |
-| `apps/admin-portal`, `apps/supplier-app-desktop` | 3-file redirect stubs that inflate the app count from 6 real web surfaces to 8. |
+| ~~`apps/admin-portal`, `apps/supplier-app-desktop`~~ | **Superseded:** `admin-portal` is a live console; `supplier-app-desktop` **does not exist** (desktop = `supplier-portal` Tauri). |
 | `packages/validation` zod schemas | Both schemas and both inferred types imported nowhere. Only `normalizeEanBarcode` is live. |
 | `cypress` in `retailer-app-desktop` | Declared dependency, no config, no directory, no spec. |
 | `patch_*.sh` ×8, `refactor_ios.py`, `refactor_android.py`, `fix_imports.py`, `patch_spy*.py` ×5 | Regex source surgery. One of them broke an entire app. `refactor_ios.py:141-268` overwrites `OrgFleetView.swift` with a hardcoded re-authored body. |

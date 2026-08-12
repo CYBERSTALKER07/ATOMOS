@@ -1,5 +1,9 @@
 # PegasusX Ecosystem — Features by Role (Deep Reference)
 
+> **Secondary overview — prefer living SoTs.**  
+> Route/nav inventory: [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) · ordered residuals: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · gap register: [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md).  
+> Re-verify client parity claims (control-tower, cold-chain, labor) against shells/section enums before planning.
+
 **Audience:** operators, product, engineering  
 **Grounding:** live monorepo (`apps/backend-go`, role apps, contracts); spatial/dispatch bullets re-aligned 2026-08-05  
 **Money unit:** all financial amounts are **integer minor units** (tiyin/cents-style). **Never floats** for money.
@@ -450,7 +454,7 @@ List/act on seal exceptions.
 
 ### Clients
 
-Terminal (web/Electron-style), Android, iOS.
+Terminal: Expo `payload-terminal` (SoT) + Android/iOS native peers (not Electron); factory loading-bay APIs for Class A factory↔payload.
 
 ### Features
 

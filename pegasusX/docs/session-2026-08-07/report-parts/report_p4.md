@@ -1,5 +1,10 @@
 # 4. Alignment with Systems Big Retailers and Suppliers Already Run
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 A mid-size Uzbek/CIS distributor runs **1C** for accounting and often stock; a retail chain runs 1C or SAP plus a POS plus possibly a WMS. They will not re-key orders, will not run their inventory in someone else's database, and will not accept a system whose numbers their accountant cannot recognize. This section assesses the machine-to-machine reality from code.
 
 ## 4.1 Current state of the machine-to-machine surface

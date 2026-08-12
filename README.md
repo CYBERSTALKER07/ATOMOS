@@ -12,6 +12,10 @@
 
 ---
 
+> **PATH / SoT WARNING (2026-08-12):** Canonical product tree is **`pegasusX/`** (not legacy `pegasus/`).  
+> Planning docs: [`pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md`](pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md) · [`PROD_ECOSYSTEM_GOAL.md`](pegasusX/docs/PROD_ECOSYSTEM_GOAL.md) · gap register + master alignment under `pegasusX/docs/session-2026-08-07/`.  
+> Frozen Reality Report `.docx` files are historical only.
+
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
 The platform is built for high-consequence physical operations where route sequencing, payment integrity, geofence rules, and telemetry accuracy must remain coherent under high concurrency.
@@ -144,11 +148,11 @@ Implemented Maglev or Maglev-derived load balancer paths:
 
 | Component | Path |
 |-----------|------|
-| Edge ring-hash infrastructure | `pegasus/infra/terraform/networking.tf` |
-| Maglev-derived read-router engine | `pegasus/apps/backend-go/bootstrap/spannerrouter/router.go` |
-| Current single-region boot mode | `pegasus/apps/backend-go/bootstrap/new.go` |
-| xDS gRPC load-balanced client path | `pegasus/apps/backend-go/internal/rpc/optimizergrpc/client.go` |
-| xDS gRPC optimizer server endpoint | `pegasus/apps/ai-worker/grpc_server.go` |
+| Edge ring-hash infrastructure | `pegasusX/infra/terraform/networking.tf` |
+| Maglev-derived read-router engine | `pegasusX/apps/backend-go/bootstrap/spannerrouter/router.go` |
+| Current single-region boot mode | `pegasusX/apps/backend-go/bootstrap/new.go` |
+| xDS gRPC load-balanced client path | `pegasusX/apps/backend-go/internal/rpc/optimizergrpc/client.go` |
+| xDS gRPC optimizer server endpoint | `pegasusX/apps/ai-worker/grpc_server.go` |
 
 **Operational note:** Warehouse sibling reroute is operational load balancing logic, not Maglev ring-hash.
 
@@ -293,21 +297,22 @@ Security posture is zero-trust at the handler boundary and policy-strict inside 
 
 | Role | Surface | Stack | Path |
 |---|---|---|---|
-| SUPPLIER | Admin Portal (web + desktop shell) | Next.js 15 + React 19 + Tailwind v4 | `pegasus/apps/admin-portal` |
-| DRIVER | Android | Kotlin + Jetpack Compose | `pegasus/apps/driver-app-android` |
-| DRIVER | iOS | SwiftUI | `pegasus/apps/driverappios` |
-| RETAILER | Android | Kotlin + Jetpack Compose | `pegasus/apps/retailer-app-android` |
-| RETAILER | iOS | SwiftUI | `pegasus/apps/retailer-app-ios` |
-| RETAILER | Desktop | Next.js + Tauri shell | `pegasus/apps/retailer-app-desktop` |
-| PAYLOAD | Terminal | Expo + React Native | `pegasus/apps/payload-terminal` |
-| PAYLOAD | iOS tablet | SwiftUI | `pegasus/apps/payload-app-ios` |
-| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | `pegasus/apps/payload-app-android` |
-| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasus/apps/factory-portal` |
-| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | `pegasus/apps/factory-app-android` |
-| FACTORY_ADMIN | iOS | SwiftUI | `pegasus/apps/factory-app-ios` |
-| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasus/apps/warehouse-portal` |
-| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | `pegasus/apps/warehouse-app-android` |
-| WAREHOUSE_ADMIN | iOS | SwiftUI | `pegasus/apps/warehouse-app-ios` |
+| SUPPLIER | Supplier Portal (web + Tauri desktop) | Next.js 15 + React 19 + Tailwind v4 | `pegasusX/apps/supplier-portal` |
+| PLATFORM_ADMIN | Admin console (web only) | Next.js | `pegasusX/apps/admin-portal` |
+| DRIVER | Android | Kotlin + Jetpack Compose | `pegasusX/apps/driver-app-android` |
+| DRIVER | iOS | SwiftUI | `pegasusX/apps/driver-app-ios` |
+| RETAILER | Android | Kotlin + Jetpack Compose | `pegasusX/apps/retailer-app-android` |
+| RETAILER | iOS | SwiftUI | `pegasusX/apps/retailer-app-ios` |
+| RETAILER | Desktop | Next.js + Tauri shell | `pegasusX/apps/retailer-app-desktop` |
+| PAYLOAD | Terminal | Expo + React Native | `pegasusX/apps/payload-terminal` |
+| PAYLOAD | iOS tablet | SwiftUI | `pegasusX/apps/payload-app-ios` |
+| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | `pegasusX/apps/payload-app-android` |
+| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasusX/apps/factory-portal` |
+| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | `pegasusX/apps/factory-app-android` |
+| FACTORY_ADMIN | iOS | SwiftUI | `pegasusX/apps/factory-app-ios` |
+| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | `pegasusX/apps/warehouse-portal` |
+| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | `pegasusX/apps/warehouse-app-android` |
+| WAREHOUSE_ADMIN | iOS | SwiftUI | `pegasusX/apps/warehouse-app-ios` |
 
 ---
 
@@ -335,7 +340,7 @@ Security posture is zero-trust at the handler boundary and policy-strict inside 
 ```text
 V.O.I.D/
 ├── README.md
-├── pegasus/
+├── pegasusX/
 │   ├── apps/
 │   │   ├── backend-go/
 │   │   ├── ai-worker/
@@ -396,7 +401,7 @@ make seed
 ### Build and Run Backend
 
 ```bash
-cd pegasus/apps/backend-go
+cd pegasusX/apps/backend-go
 go build ./...
 go run .
 ```
@@ -417,20 +422,20 @@ make env-down
 ### Web and Desktop Surfaces
 
 ```bash
-cd pegasus/apps/admin-portal && npm run dev
-cd pegasus/apps/admin-portal && npm run tauri:dev
-cd pegasus/apps/factory-portal && npm run dev
-cd pegasus/apps/warehouse-portal && npm run dev
-cd pegasus/apps/retailer-app-desktop && npm run tauri:dev
+cd pegasusX/apps/admin-portal && npm run dev
+cd pegasusX/apps/admin-portal && npm run tauri:dev
+cd pegasusX/apps/factory-portal && npm run dev
+cd pegasusX/apps/warehouse-portal && npm run dev
+cd pegasusX/apps/retailer-app-desktop && npm run tauri:dev
 ```
 
 ### Mobile Surfaces
 
 ```bash
-cd pegasus/apps/payload-terminal && npm run start
-cd pegasus/apps/driver-app-android && ./gradlew :app:assembleDebug
-cd pegasus/apps/retailer-app-android && ./gradlew :app:assembleDebug
-cd pegasus/apps/payload-app-android && ./gradlew :app:assembleDebug
+cd pegasusX/apps/payload-terminal && npm run start
+cd pegasusX/apps/driver-app-android && ./gradlew :app:assembleDebug
+cd pegasusX/apps/retailer-app-android && ./gradlew :app:assembleDebug
+cd pegasusX/apps/payload-app-android && ./gradlew :app:assembleDebug
 ```
 
 ### Desktop Scripts from Monorepo Root
@@ -450,7 +455,7 @@ npm run desktop:retailer:dev
 ### Backend
 
 ```bash
-cd pegasus/apps/backend-go
+cd pegasusX/apps/backend-go
 go test ./...
 go vet ./...
 go build ./...
@@ -517,9 +522,9 @@ This repository follows a systems doctrine focused on correctness under load and
 
 | Document | Path |
 |----------|------|
-| Barcode Scanning | `pegasus/docs/BARCODE_SCANNING.md` |
-| Cloud Run to GKE Cutover Runbook | `pegasus/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md` |
-| Maglev Read Router Rollout | `pegasus/docs/MAGLEV_READ_ROUTER_ROLLOUT.md` |
+| Barcode Scanning | `pegasusX/docs/BARCODE_SCANNING.md` |
+| Cloud Run to GKE Cutover Runbook | `pegasusX/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md` |
+| Maglev Read Router Rollout | `pegasusX/docs/MAGLEV_READ_ROUTER_ROLLOUT.md` |
 | E2E Test Protocol | `pegasus/E2E_TEST_PROTOCOL.md` |
 
 ---

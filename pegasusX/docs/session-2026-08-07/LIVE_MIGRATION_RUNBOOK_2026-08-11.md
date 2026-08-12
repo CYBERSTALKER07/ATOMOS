@@ -1,5 +1,9 @@
 # Live Migration Runbook — Domain 1.3 (Tenancy NOT NULL + Payout Rail)
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 Apply these to the **live** Spanner database, in order, after preconditions are
 met. Each uses the existing `scripts/apply_spanner_migration.sh` harness
 (`DDL_FILE=... ./scripts/apply_spanner_migration.sh`). For live GCP, unset

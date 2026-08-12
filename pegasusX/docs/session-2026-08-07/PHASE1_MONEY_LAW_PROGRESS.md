@@ -1,5 +1,9 @@
 # Enterprise Phase 1 — Money and law
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **Date:** 2026-08-11 (clarified 2026-08-12)  
 **Plan source:** `docs/session-2026-08-07/ENTERPRISE_GRADE_EXECUTION_PLAN.md` §Phase 1  
 **Gate:** `make phase1-gate` → **`phase1-gate-ok`** (2026-08-11, Spanner emulator `localhost:9010`)  

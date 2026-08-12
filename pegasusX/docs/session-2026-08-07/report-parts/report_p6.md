@@ -1,5 +1,10 @@
 # 6. Per-Role, Per-App, Per-Feature Reality
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 Method: static code audit of every app under `apps/`, verified against the backend routes it calls. Status vocabulary per §1. API depths are measured (Retrofit endpoint counts for Android, unique `/v1/` path literals for iOS, unique api-client methods for portals).
 
 ## 6.1 Retailer — Android (187 kt files) · iOS (144 real Swift files) · Desktop (27 dashboard routes, Tauri)

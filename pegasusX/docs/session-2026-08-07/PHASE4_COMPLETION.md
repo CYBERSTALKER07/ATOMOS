@@ -1,5 +1,9 @@
 # Phase 4 completion — Autonomy on evidence foundations (2026-08-11)
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **Gate:** `make phase4-gate` → **`phase4-gate-ok`** (re-proved 2026-08-11, Spanner emulator `localhost:9010`; full regression, no skip)  
 **Status:** Wired (foundations); 30-day soak / prod optimizer / human place flip remain owner residuals
 

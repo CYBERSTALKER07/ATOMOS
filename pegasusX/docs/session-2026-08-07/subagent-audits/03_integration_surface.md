@@ -1,5 +1,10 @@
 # 03 Integration Surface
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 _Source: subagent `caba0852-3519-4fd8-bdfd-d0e441c23759` from End-Product Reality Report session (2026-08-07)._
 
 All evidence gathered. Here is the report.

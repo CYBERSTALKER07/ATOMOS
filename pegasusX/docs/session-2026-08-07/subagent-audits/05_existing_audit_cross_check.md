@@ -1,5 +1,10 @@
 # 05 Existing Audit Cross Check
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 _Source: subagent `b3099a18-b9cd-46ab-b680-9e39ed998d55` from End-Product Reality Report session (2026-08-07)._
 
 # PegasusX / ATOMOS — Documentation-vs-Code Audit Grounding Report

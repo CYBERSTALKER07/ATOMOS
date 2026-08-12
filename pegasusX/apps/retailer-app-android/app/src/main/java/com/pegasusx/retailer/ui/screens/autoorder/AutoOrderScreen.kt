@@ -257,6 +257,47 @@ fun AutoOrderScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    uiState.soakGate?.let { gate ->
+                        val allowed = gate.decision?.allowed == true
+                        val reasons = gate.decision?.reasons.orEmpty().joinToString(" · ")
+                        val stats = gate.decision?.stats
+                        Text(
+                            "Place readiness: " + if (allowed) "passed" else "blocked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (allowed) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                        if (stats != null) {
+                            Text(
+                                "${stats.proposalCount} proposals · ${stats.matchedOrders} matched · " +
+                                    "WAPE ${(stats.wape * 100).toInt()}% · unmodified ${(stats.unmodifiedAcceptRate * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (gate.placeFlagEnabled == false) {
+                            Text(
+                                "Server place flag is off (dual-control required).",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (reasons.isNotEmpty()) {
+                            Text(
+                                reasons,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            "Download soak evidence from desktop or scripts/generate_auto_order_soak_artifact.sh",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

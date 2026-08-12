@@ -1,5 +1,9 @@
 # Optimizer & routing — runtime SoT (aligned to codebase)
 
+**Last verified:** 2026-08-12 against overlays + Go client.  
+**Note:** SSMR **manifest** runs optimizer-core at **replicas 1**; **prod** stays **replicas 0** until AR publish. Live `"optimizer_source":"optimizer"` still requires a healthy image/pod.
+
+
 **Last verified:** 2026-08-06 against `pegasusX` tree + §8.5 constraint/multi-depot/OSRM-matrix wiring.  
 **Supersedes** conflicting wording in older artifacts that imply OR-Tools/OSRM are live on SSMR/prod GKE.
 

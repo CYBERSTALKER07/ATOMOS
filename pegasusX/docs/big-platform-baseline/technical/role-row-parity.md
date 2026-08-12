@@ -1,5 +1,8 @@
 # Role-Row Parity Obligations
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 | Role | Clients | Notes |
 |------|---------|-------|
 | Supplier | portal, Android, iOS | Planning desk may be portal-first with mobile read |

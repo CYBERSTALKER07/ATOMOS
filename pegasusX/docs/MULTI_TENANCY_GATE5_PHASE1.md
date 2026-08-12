@@ -7,16 +7,17 @@
 
 ---
 
-## Context
+> **Runtime (post-Done, 2026-08-12):** Request-scoped tenancy is **live** — `TenantContext`, `RequireTenant`, `PreferTenantSupplierID`, outbox `SupplierId`, tenant rate limits. Seed remains bootstrap **fallback** only. Phase 2 ParentOrders + Phase 3 GlobalProducts are Wired (backend). Do **not** re-plan from the historical “1/10 / single-supplier by construction” narrative below.
 
-pegasusX’s Spanner schema is multi-tenant-shaped (`SupplierId` leads most keys). The **request plane is single-supplier by construction**:
+## Context (historical motivation — pre–2026-08-11)
 
-- [`bootstrap/bootstrap.go`](../apps/backend-go/bootstrap/bootstrap.go) injects one seed `SupplierID` (`seed.EnsureSupplier` / `sup_61d822c6…`) into ~8 domain `ServiceConfig`s plus repos and handler closures (~15 sites total).
-- [`auth.Claims.SupplierID`](../apps/backend-go/auth/claims.go) and `ResolveSupplierID` already exist on JWTs, but most domain services prefer constructor fields (`s.supplierID`).
-- [`supplier.resolveRegistrationSupplierID`](../apps/backend-go/supplier/service.go) can mint up to `MAX_SUPPLIERS` (default 10). Extra suppliers get real rows whose orders can still be attributed to the seed — **worse than refusing registration**.
-- Partner API is ahead: [`partner.Principal`](../apps/backend-go/partner/types.go) is tenant-keyed; core `order.Service.Create` / unified checkout still seed-bound when defaults apply.
+pegasusX’s Spanner schema is multi-tenant-shaped (`SupplierId` leads most keys). **Before Phase 1 shipped**, the request plane was single-supplier by construction:
 
-Audit score today: **multi-tenancy (runtime) ~1/10**. Gate 5 is 10–16 weeks; Phase 1 alone is ~150–250 files. Phase 1 **cannot be “soft-flipped” mid-flight**: isolation is safe today *only because* the ID is a startup constant. Request-derived tenancy without universal fail-closed enforcement turns every path into an IDOR vector.
+- [`bootstrap/bootstrap.go`](../apps/backend-go/bootstrap/bootstrap.go) injected one seed `SupplierID` into many domain constructors.
+- JWT `SupplierID` existed but many services preferred constructor seed fields.
+- Multi-supplier registration could mint rows the request plane could not isolate.
+
+**Pre-wire audit score was ~1/10.** Phase 1 was deliberately sequenced (not soft-flipped mid-flight) so fail-closed tenant middleware landed with domain migration.
 
 ### Behavioral reference
 

@@ -43,7 +43,7 @@ cd pegasusX/apps/retailer-app-android
 | Procurement | Sidebar `PROCUREMENT` | `/procurement` |
 | Insights / Analytics | Sidebar `ANALYTICS` | `/insights` |
 | Suppliers | `SUPPLIERS` | catalog / procurement |
-| Auto-order | Sidebar `AUTO_ORDER` | `/settings` (subsection) |
+| Auto-order | Sidebar `AUTO_ORDER` | `/auto-order` (soak readiness strip; evidence download on desktop/script) |
 | Future demand | Sidebar `FUTURE_DEMAND` | dashboard + insights |
 | Notifications | Inbox overlay | `/notifications` |
 | Settings / Profile | Profile stack | `/settings`, `/settings/cards`, `/settings/family` |

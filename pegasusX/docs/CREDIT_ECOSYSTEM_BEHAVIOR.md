@@ -28,7 +28,7 @@ Trade credit for Pegaus B2B wholesale: irreversible enablement, Net terms, reser
 4. Driver **credit leave** → same-txn MarkBalance/convert reserve → open AR invoice with DueAt.
 5. Aging worker buckets overdue invoices; **dunning step machine** (when `AR_DUNNING_ENABLED`) advances  
    `DUE_SOON → OVERDUE → ESCALATED_1 → ESCALATED_2 → CREDIT_HOLD → COLLECTIONS`, bumps `DelinquencyCount` on first OVERDUE,  
-   auto-holds (`FROZEN`) at CREDIT_HOLD without clearing `CreditEnabled`, and fans out inbox + FCM.
+   auto-holds (`FROZEN`) at CREDIT_HOLD without clearing `CreditEnabled`, and fans out inbox + FCM; optionally SMS / email / WhatsApp when `DUNNING_*_PROVIDER` is set (owner keys residual).
 6. Repayment clears balance / closes invoice.
 7. Permanent disable only via admin API; open AR remains collectible. Re-enable is self-serve again (new ack).
 

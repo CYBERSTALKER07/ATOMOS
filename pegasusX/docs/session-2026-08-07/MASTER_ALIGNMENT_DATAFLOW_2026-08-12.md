@@ -4,7 +4,7 @@
 
 **Date:** 2026-08-12  
 **Trees:** `pegasusX` = source of truth · `pegasus` = legacy/secondary (do not plan from it alone)  
-**Companions:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DATA_FLOW_AS_IMPLEMENTED.md`](../DATA_FLOW_AS_IMPLEMENTED.md) · [`../FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md)
+**Companions:** [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) · [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DATA_FLOW_AS_IMPLEMENTED.md`](../DATA_FLOW_AS_IMPLEMENTED.md) · [`../FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md) · [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md)
 
 This document answers: *What is actually true in the codebase, where docs lie, what “perfect data flow” means here, and what remains so every role/platform feature is enterprise-wired end-to-end.*
 
@@ -101,7 +101,7 @@ Classify every feature into one of four classes. Only **Class A** is shippable e
 |-------|---------|---------|
 | **A — Wired E2E** | Spanner write + outbox + consumer + client(s) for involved roles | Order create → supplier WS → warehouse dispatch → driver cash → fiscal path |
 | **B — Backend island** | API/schema exist; missing client or missing consumer | (was twin/cold-chain/labor — closed P2-23) |
-| **C — UI island** | Screen exists; mock/local or incomplete backend hop | Thin admin billing analytics; warehouse Control Tower / cold-chain / labor portal-primary (mobile absent); desktop retailer `/control-tower` orphan (not in shell nav) |
+| **C — UI island** | Screen exists; mock/local or incomplete backend hop | Thin admin billing analytics; warehouse Control Tower portal-primary (mobile absent) |
 | **D — Flag / cert blocked** | Logic present; off in prod or needs external proof | Auto-order place, Soliq EDS live, optimizer prod replicas, live dunning provider keys |
 
 **Major cross-role loops still Class B/C (not A):**

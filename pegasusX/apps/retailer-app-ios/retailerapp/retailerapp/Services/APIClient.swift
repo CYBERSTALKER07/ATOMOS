@@ -1039,6 +1039,10 @@ final class APIClient {
         try await get(path: "/v1/retailer/settings/auto-order/shadow-stats")
     }
 
+    func getAutoOrderSoakGate() async throws -> AutoOrderSoakGate {
+        try await get(path: "/v1/retailer/settings/auto-order/soak-gate")
+    }
+
     func setSupplierAutoOrder(supplierId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
         try await patch(
             path: "/v1/retailer/settings/auto-order/supplier/\(supplierId)",

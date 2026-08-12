@@ -10,9 +10,9 @@ retired redirect stub.
   (PENDING → APPROVED/SUSPENDED/OFFBOARDED) with optional KYB notes.
 - **Flags** — evaluate + set tenant feature-flag overrides. Money-affecting
   flags (`AR_INVOICES_ENABLED`, `AR_DUNNING_ENABLED`, `AUTO_ORDER_PLACE_ENABLED`,
-  `AUTO_ORDER_SHADOW_ENABLED`, `FISCAL_PROVIDER`) are **dual-controlled**: a set
-  is stored PENDING and only takes effect after a *different* PLATFORM_ADMIN
-  approves via the Approve action.
+  `AUTO_ORDER_SHADOW_ENABLED`, `AUTO_ORDER_SOAK_GATE_DISABLED`, `FISCAL_PROVIDER`)
+  are **dual-controlled**: a set is stored PENDING and only takes effect after a
+  *different* PLATFORM_ADMIN approves via the Approve action.
 - **Audit** — read `PlatformAdminAudit` immutable action log.
 
 ## Auth

@@ -2,6 +2,8 @@
 
 Do **not** set `AUTO_ORDER_PLACE_ENABLED=true` until all of the following are true.
 
+**Wiring SoT (modes, overlays, ladder):** [`AUTO_ORDER.md`](./AUTO_ORDER.md).
+
 ## Evidence gate
 
 1. Shadow soak ≥ **30 days** for the pilot retailer cohort with `AUTO_ORDER_SHADOW_ENABLED=true` (+ `AUTO_ORDER_WORKER_ENABLED=true`).

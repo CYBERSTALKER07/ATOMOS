@@ -1,5 +1,10 @@
 # 3. Problem Coverage vs Existing Logistics / Planning Software
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 ## 3.1 Capability-by-capability comparison
 
 Capabilities are marked from PegasusX's **code-verified** state today (W = wired-live, F = flag-gated real code, P = partial/heuristic, D = decorative, – = absent). Enterprise columns reflect the public 2026 state of each category.

@@ -1,5 +1,9 @@
 # Domain 3 — Planning: Forecast Accuracy Surface
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 Date: 2026-08-12 (UTC+5)
 Scope: Ecosystem Capability Roadmap, Domain 3 (Planning, P2) — forecast accuracy UI + planning read-path wiring.
 

@@ -18,6 +18,48 @@ struct AutoOrderShadowStats: Codable {
     }
 }
 
+struct AutoOrderSoakDecision: Codable {
+    let allowed: Bool
+    let reasons: [String]?
+    let stats: AutoOrderShadowStats?
+    let bypassSource: String?
+
+    enum CodingKeys: String, CodingKey {
+        case allowed
+        case reasons
+        case stats
+        case bypassSource = "bypass_source"
+    }
+}
+
+struct AutoOrderSoakThresholds: Codable {
+    let minProposals: Int64?
+    let maxWape: Double?
+    let minUnmodified: Double?
+    let gateDisabled: Bool?
+    let bypassSource: String?
+
+    enum CodingKeys: String, CodingKey {
+        case minProposals = "min_proposals"
+        case maxWape = "max_wape"
+        case minUnmodified = "min_unmodified"
+        case gateDisabled = "gate_disabled"
+        case bypassSource = "bypass_source"
+    }
+}
+
+struct AutoOrderSoakGate: Codable {
+    let decision: AutoOrderSoakDecision?
+    let thresholds: AutoOrderSoakThresholds?
+    let placeFlagEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case decision
+        case thresholds
+        case placeFlagEnabled = "place_flag_enabled"
+    }
+}
+
 struct AutoOrderShadowProposal: Codable, Identifiable {
     var id: String { proposalId }
     let proposalId: String
@@ -190,6 +232,7 @@ struct AutoOrderView: View {
     @State private var placeConfirmOpen = false
     @State private var reorderSuggestions: [RetailerReorderSuggestion] = []
     @State private var shadowProposals: [AutoOrderShadowProposal] = []
+    @State private var soakGate: AutoOrderSoakGate?
 
     private enum EnableTarget {
         case global
@@ -402,6 +445,36 @@ struct AutoOrderView: View {
             }
             if let stats = settings?.shadowStats {
                 Text(String(format: "30d WAPE %.0f%% · accept %.0f%% (%lld proposals)", stats.wape * 100, stats.unmodifiedAcceptRate * 100, stats.proposalCount))
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            if let gate = soakGate {
+                let allowed = gate.decision?.allowed == true
+                Text(allowed ? "Place readiness: passed" : "Place readiness: blocked")
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .foregroundStyle(allowed ? AppTheme.accent : Color.red.opacity(0.85))
+                if let stats = gate.decision?.stats {
+                    Text(String(
+                        format: "%lld proposals · %lld matched · WAPE %.0f%% · unmodified %.0f%%",
+                        stats.proposalCount,
+                        stats.matchedOrders,
+                        stats.wape * 100,
+                        stats.unmodifiedAcceptRate * 100
+                    ))
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+                }
+                if gate.placeFlagEnabled == false {
+                    Text("Server place flag is off (dual-control required).")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                if let reasons = gate.decision?.reasons, !reasons.isEmpty {
+                    Text(reasons.joined(separator: " · "))
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Text("Download soak evidence from desktop or scripts/generate_auto_order_soak_artifact.sh")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -618,12 +691,14 @@ struct AutoOrderView: View {
         async let runsReq: [AutoOrderRun] = loadRuns()
         async let suggestionsReq: [RetailerReorderSuggestion] = loadSuggestions()
         async let shadowReq: [AutoOrderShadowProposal] = loadShadowProposals()
+        async let soakReq: AutoOrderSoakGate? = loadSoakGate()
 
         let (fetchedSettings, settingsSyncMessage) = await settingsReq
         let (fetchedForecasts, forecastSyncMessage) = await forecastsReq
         let fetchedRuns = await runsReq
         let fetchedSuggestions = await suggestionsReq
         let fetchedShadow = await shadowReq
+        let fetchedSoak = await soakReq
 
         withAnimation(AnimationConstants.fluid) {
             settings = fetchedSettings
@@ -631,6 +706,7 @@ struct AutoOrderView: View {
             runs = fetchedRuns
             reorderSuggestions = fetchedSuggestions
             shadowProposals = fetchedShadow
+            soakGate = fetchedSoak
             globalAutoOrder = fetchedSettings?.globalEnabled ?? false
             executionMode = normalizeMode(fetchedSettings?.executionMode, global: fetchedSettings?.globalEnabled ?? false)
             localToggleStates.removeAll()
@@ -651,6 +727,14 @@ struct AutoOrderView: View {
             return try await api.getAutoOrderShadowProposals().items
         } catch {
             return shadowProposals
+        }
+    }
+
+    private func loadSoakGate() async -> AutoOrderSoakGate? {
+        do {
+            return try await api.getAutoOrderSoakGate()
+        } catch {
+            return soakGate
         }
     }
 

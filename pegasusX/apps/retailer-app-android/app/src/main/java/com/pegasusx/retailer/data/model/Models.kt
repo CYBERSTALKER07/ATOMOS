@@ -699,6 +699,30 @@ data class AutoOrderShadowStats(
 )
 
 @Serializable
+data class AutoOrderSoakDecision(
+    @SerialName("allowed") val allowed: Boolean = false,
+    @SerialName("reasons") val reasons: List<String> = emptyList(),
+    @SerialName("stats") val stats: AutoOrderShadowStats? = null,
+    @SerialName("bypass_source") val bypassSource: String? = null,
+)
+
+@Serializable
+data class AutoOrderSoakThresholds(
+    @SerialName("min_proposals") val minProposals: Long = 20,
+    @SerialName("max_wape") val maxWape: Double = 0.30,
+    @SerialName("min_unmodified") val minUnmodified: Double = 0.80,
+    @SerialName("gate_disabled") val gateDisabled: Boolean = false,
+    @SerialName("bypass_source") val bypassSource: String? = null,
+)
+
+@Serializable
+data class AutoOrderSoakGate(
+    @SerialName("decision") val decision: AutoOrderSoakDecision? = null,
+    @SerialName("thresholds") val thresholds: AutoOrderSoakThresholds? = null,
+    @SerialName("place_flag_enabled") val placeFlagEnabled: Boolean? = null,
+)
+
+@Serializable
 data class AutoOrderShadowProposal(
     @SerialName("proposal_id") val proposalId: String = "",
     @SerialName("retailer_id") val retailerId: String = "",

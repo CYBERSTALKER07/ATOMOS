@@ -1,5 +1,10 @@
 # 5. Does a True Unified Platform Already Exist?
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 **The question:** is there any public system that connects quality suppliers and retailers into one transactional platform with near-zero human interaction for routine replenishment, while still supporting the physical execution roles (warehouse floor, loading bay, driver, store receiving)?
 
 ## 5.1 The public landscape (verified August 2026)

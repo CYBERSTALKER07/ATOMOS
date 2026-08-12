@@ -1,9 +1,13 @@
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
 <!-- 7cbf327a-1262-48ab-b381-682788c012cb -->
 ---
 todos:
   - id: "phase-0"
     content: "Phase 0: Money-path correctness and legal safety (capture bug, stubs, idempotency DB indexes, Kafka HA, hygiene)"
-    status: pending
+    status: completed
   - id: "phase-1"
     content: "Phase 1: Money and law complete (fiscal flip-readiness, AR activation + off-app dunning, refunds/payouts, fee schedule)"
     status: completed

@@ -6,6 +6,7 @@ import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.AutoOrderShadowProposalsResponse
 import com.pegasusx.retailer.data.model.AutoOrderShadowStats
+import com.pegasusx.retailer.data.model.AutoOrderSoakGate
 import com.pegasusx.retailer.data.model.RetailerReorderSuggestionsResponse
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
@@ -645,6 +646,9 @@ interface PegasusApi {
 
     @GET("/v1/retailer/settings/auto-order/shadow-stats")
     suspend fun getAutoOrderShadowStats(): AutoOrderShadowStats
+
+    @GET("/v1/retailer/settings/auto-order/soak-gate")
+    suspend fun getAutoOrderSoakGate(): AutoOrderSoakGate
 
     /** OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY). */
     @GET("/v1/retailer/reorder-suggestions")

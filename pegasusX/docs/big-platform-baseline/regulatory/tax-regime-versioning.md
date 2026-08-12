@@ -1,5 +1,8 @@
 # Versioned Tax & Regime Engine
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Goal
 
 Tax rates, simplified regimes, VAT thresholds are **versioned objects**. Every COMPLETED order line stores the regime version so history survives mid-flight law changes.

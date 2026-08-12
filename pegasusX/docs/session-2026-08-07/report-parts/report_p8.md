@@ -1,5 +1,10 @@
 # 7. Correctness, Concurrency, Money, and Fiscal Reality — Verified Register
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 This section consolidates the backend truth the brief demands be accurately reflected. Items are ranked by severity; all are code-verified with file:line.
 
 ## 7.1 P0 — correctness / legality (fix before anything else)

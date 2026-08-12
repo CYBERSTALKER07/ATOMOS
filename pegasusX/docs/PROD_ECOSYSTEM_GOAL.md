@@ -5,6 +5,8 @@
 
 **Companions (evidence + backlog, not the goal itself):**
 
+- [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md) — living vs frozen documentation map
+- [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) — **ordered post–W0–W5 residuals** (R0–R6) for enterprise prod readiness
 - [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) — open gaps with evidence
 - [`session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md) — docs↔code↔data-flow truth
 - [`PLATFORM_SLOS.md`](./PLATFORM_SLOS.md) — ops SLI targets
@@ -76,6 +78,8 @@ Roadmap order mapped to gap-register IDs. Closing gaps is separate work; this se
 | **W3 Money legality** | EDS fiscal **contract** proof + payout-rail decision + GP **simulator** refund proof — **closed in-tree 2026-08-12** (live Soliq/GP keys = owner residual) | P1-7 ✅; P0-2 bank-file decision ✅; P2-10 ✅ |
 | **W4 Autonomy** | Prod optimizer; soak artifact; dual-control place; CronJobs / autonomy flags — **closed 2026-08-12** | P1-1 ✅, P1-2 ✅, P1-3 ✅, P1-4 ✅, P1-5 ✅ |
 | **W5 Partner cert** | GS1 / AS2 / SDK + EDIFACT breadth / sandbox — **closed 2026-08-12** | P1-13 ✅, P1-14 ✅, P1-15 ✅; P2-20 ✅, P2-21 ✅ |
+
+**Post-wave residuals (ordered):** [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) — R0 SoT hygiene → R1 live money/law keys → R2 ops/SLO → R3 autonomy scale + place → R4 Class A client parity → R5 partner cert → R6 deferred.
 
 ---
 

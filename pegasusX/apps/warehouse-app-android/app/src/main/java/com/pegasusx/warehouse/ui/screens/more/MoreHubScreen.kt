@@ -57,6 +57,8 @@ private val operations = listOf(
     MoreDestination("Depot operations", "Broadcasts & pricing preview", Icons.Default.Send, WarehouseRoutes.OPERATIONS),
     MoreDestination("Retailers", "CRM", Icons.Default.Store, WarehouseRoutes.CRM),
     MoreDestination("Returns", "Inbound + credit-note reverse", Icons.AutoMirrored.Filled.Undo, WarehouseRoutes.RETURNS),
+    MoreDestination("Cold chain", "Manifest temp readings + ingest", Icons.Default.Thermostat, WarehouseRoutes.COLD_CHAIN),
+    MoreDestination("Labor capacity", "Zone capacity + driver availability", Icons.Default.Groups, WarehouseRoutes.LABOR_CAPACITY),
     MoreDestination("Exceptions", "Manifest / delay / lock triage", Icons.Default.Warning, WarehouseRoutes.EXCEPTIONS),
     MoreDestination("Claims", "Reverse-logistics prep (read-only)", Icons.Default.Report, WarehouseRoutes.CLAIMS),
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),

@@ -334,6 +334,31 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/exceptions")
     }
 
+    // MARK: - Cold chain
+    static func temperatureReadings(manifestId: String) async throws -> TemperatureReadingListResponse {
+        try await api.get(
+            "v1/warehouse/ops/temperature-readings",
+            query: ["manifest_id": manifestId]
+        )
+    }
+
+    static func ingestTemperatureReading(_ body: TemperatureReadingIngestRequest) async throws -> TemperatureReading {
+        try await api.post("v1/warehouse/ops/temperature-readings", body: body)
+    }
+
+    // MARK: - Labor capacity
+    static func laborZoneCapacity(date: String) async throws -> LaborZoneCapacityListResponse {
+        try await api.get("v1/labor-capacity/zone-capacity", query: ["date": date])
+    }
+
+    static func laborDriverScore(driverId: String) async throws -> LaborDriverScore {
+        try await api.get("v1/labor-capacity/driver-score/\(driverId)")
+    }
+
+    static func setLaborDriverAvailability(_ body: LaborDriverAvailabilityRequest) async throws -> LaborDriverAvailabilityResponse {
+        try await api.post("v1/labor-capacity/driver-availability", body: body)
+    }
+
     static func supplierClaims(status: String? = "OPEN", limit: Int = 50) async throws -> WarehouseClaimsResponse {
         var query: [String: String] = ["limit": String(limit)]
         if let status, !status.isEmpty {

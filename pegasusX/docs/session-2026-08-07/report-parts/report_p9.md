@@ -1,5 +1,10 @@
 # 8. Recommendations
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 ## 8.1 Product scope — what to change
 
 1. **Sell deep-single-distributor, not thin-marketplace — for now.** The runtime is single-supplier by construction; the vertical chain (factory→warehouse→fleet→store) is the rare asset. Position as the operating system for one large distributor's whole chain, with the integration layer (§4) as the sales wedge into retail chains. Defer marketplace commerce (Phase 3–5) until Gates below produce evidence.

@@ -1,5 +1,8 @@
 # Workers & Kafka Design
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Processes
 
 | Process | Run mode | Duties |

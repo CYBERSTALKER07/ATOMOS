@@ -1,5 +1,10 @@
 # 0. Executive Verdict
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 **PegasusX is not a prototype and not "just a CRUD app."** It is a ~214k-line Go transactional backend (`apps/backend-go`, 812 non-test files, 644 HTTP handler functions), a 155-table Spanner schema (`apps/backend-go/schema/spanner.ddl`) with 87 incremental migrations, 12 native mobile apps and 6 web surfaces, a hand-written 164-method typed API client (`packages/api-client/index.ts`), a real transactional outbox that commits event rows inside the same Spanner transaction as the state mutation (`apps/backend-go/order/repository_spanner.go:28-38`), optimistic concurrency with in-transaction compare-and-swap on `Version` (`apps/backend-go/order/repository_spanner.go:208-215`), money carried as integer minor units with zero float money in any money path, and a real, event-driven integration layer (partner API keys + OAuth2, EDI-lite, AS2 with PKCS#7 crypto, SFTP, GS1, 1C-style journal export). This is the work of engineers who have operated real transactional systems.
 
 **But it is not yet the system the product narrative claims.** Five structural facts dominate everything else in this report:

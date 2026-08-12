@@ -35,7 +35,7 @@ flowchart LR
   Notif --> Inbox["Spanner Notifications"]
   Notif --> FCM["FCM optional"]
   OrderMut --> Fiscal["Settle + OFD"]
-  Twin["Twin consumer"] -.->|"not started in bootstrap"| Kafka
+  Kafka --> Twin["Twin consumer (void-digital-twin, W1)"]
 ```
 
 ### Topics (`events/topic_routing.go`, `events.go`)
@@ -110,7 +110,7 @@ sequenceDiagram
 | Stage | Writer | Events | Depth |
 |-------|--------|--------|-------|
 | Create | RETAILER | ORDER_CREATED | wired |
-| Reserve | same txn | stock none; credit profile; ORDER_ALLOCATED silent | **partial** |
+| Reserve | same txn | stock reservation markers; credit reserve emits profile event; ORDER_ALLOCATED **emitted** (allocation path); inventory domain + credit release/convert still partial | **partial** |
 | Dispatch | WH/ADMIN | ORDER_ASSIGNED, ROUTE_*, MANIFEST_DRAFT_* | wired |
 | Seal | PAYLOAD | MANIFEST_LOADING_STARTED, MANIFEST_SEALED | wired |
 | Depart | DRIVER | status → IN_TRANSIT, MANIFEST_DISPATCHED | wired |

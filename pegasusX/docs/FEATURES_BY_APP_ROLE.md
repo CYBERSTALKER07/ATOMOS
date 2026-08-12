@@ -1,14 +1,16 @@
 # PegasusX — Features by App / Role
 
 **SOURCE OF TRUTH: CODE ONLY (not other markdown).**  
-Extracted 2026-08-04 from:
+Extracted 2026-08-04; **client parity rows re-synced 2026-08-12** (R4.1 warehouse cold-chain/labor mobile; R4.2 retailer desktop control-tower nav). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
+
+Extracted from:
 
 - JWT roles: [`apps/backend-go/auth/claims.go`](../apps/backend-go/auth/claims.go)
 - HTTP mounts: every `apps/backend-go/*routes/routes.go` (612 route registrations scanned)
-- Client nav: `*Shell.tsx`, `*Section.kt`, `DriverRoutes`, `RetailerNavigation.kt`
+- Client nav: `*Shell.tsx`, `*Section.kt` / `WarehouseSection.swift`, `DriverRoutes`, `RetailerNavigation.kt`
 - Apps tree: `apps/*` (stubs noted from their `package.json`)
 
-Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) · [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md)
+Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) · [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md) · [PROD_READINESS_SEQUENCE.md](./PROD_READINESS_SEQUENCE.md)
 
 ---
 
@@ -50,7 +52,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Client | Evidence | Surfaces |
 |--------|----------|----------|
-| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` (+ orphan page `/control-tower` not in shell nav) |
+| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, **`/control-tower`**, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` |
 | Android | `RetailerNavigation.kt` + `SidebarMenu.kt` | `PROCUREMENT`, `CONTROL_TOWER`, `CREDIT`, `HQ`, `DOCK`, `ANALYTICS`, `AI_PREDICTIONS`→`FUTURE_DEMAND`, `AUTO_ORDER`, `CART`, `NOTIFICATIONS`, `ACCOUNT_PROFILE`, `FAMILY_MEMBERS`, `CAPABILITIES`, `TEAM`, `LOCATIONS`, `STORE_STOCK`, `LOCAL_SKUS`, `POS`, `SHIFTS`, `SECTIONS`, `REPORTS_PRO`, `ASSIST`, `SETUP_WIZARD` |
 | iOS | `ContentView.swift` / `Screens/` | Full Retail OS + `HqView`, `CreditPartnersView`, `ControlTower`, `ReportsProView`, `PosView`, pulse on `DashboardView` |
 
@@ -120,7 +122,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 | Observation | Code basis |
 |-------------|------------|
 | HQ / Credit / AR | **Parity closed** — desktop `/hq` `/credit`; Android `CREDIT`/`HQ`; iOS `HqView` / `CreditPartnersView` (AR under credit) |
-| Control Tower | Android/iOS first-class; desktop has `/control-tower` page but **not** in `RetailerShell` nav (discoverability gap) |
+| Control Tower | Android/iOS first-class; desktop `/control-tower` in `RetailerShell` nav (R4.2) |
 | Reports / pulse | Desktop deep reports + mobile Reports Pro CSV share + dashboard pulse strip (`/v1/retailer/reports/export`, `/v1/retailer/pulse`) |
 | POS holds | Mobile park/list/resume/void when `POS_HOLDS_ENABLED` (pilot default on; set `false` to hide) |
 
@@ -177,8 +179,8 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 | Client | Evidence |
 |--------|----------|
 | Portal | `WarehouseShell.tsx`: `/`, dispatch*, orders, preorders, tomorrow-board, drivers/vehicles, inventory, **`/bins`**, **`/pick-waves`**, **`/cycle-counts`**, **`/cold-chain`**, **`/labor-capacity`**, stock-commitments, products, manifests, fleet-live-map, replenishment, demand-forecast, supply-requests, transfers, returns, claims, exceptions, rescues, analytics, crm, treasury, payment-config, staff, settings (incl. return-policy embed), operations, control-tower, dispatch-locks |
-| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS` (pick-wave/cycle nested), `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, `RETURN_POLICY`, `EXCEPTIONS`, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
-| iOS | Peer screens incl. `ReturnPolicySettingsView`; pick/cycle via Transfer Actions; **no** dedicated control-tower / cold-chain / labor-capacity sections (portal-only) |
+| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS` (pick-wave/cycle nested), `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, **`COLD_CHAIN`**, **`LABOR_CAPACITY`**, `RETURN_POLICY`, `EXCEPTIONS`, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
+| iOS | Peer screens incl. `ReturnPolicySettingsView`, **`ColdChainView`**, **`LaborCapacityView`**; pick/cycle via Transfer Actions; Control Tower remains portal-primary |
 
 ### Feature inventory
 
@@ -203,7 +205,8 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 
 | Observation | Code |
 |-------------|------|
-| Control Tower / cold-chain / labor-capacity | Portal shell routes live; **absent** from Android/iOS section enums (portal-primary) |
+| Control Tower | Portal shell route live; **absent** from Android/iOS section enums (portal-primary) |
+| Cold-chain / labor-capacity | Portal + Android/iOS (R4.1) — `ColdChainScreen`/`LaborCapacityScreen`, `ColdChainView`/`LaborCapacityView` |
 | Pick waves / cycle counts / bins | Portal dedicated routes; mobile nested under Transfer Actions |
 | Return policy | Routes + Android `RETURN_POLICY` + iOS settings; portal embeds under settings (no `/return-policy` href) |
 | Reverse-logistics role = `WAREHOUSE` not `WAREHOUSE_ADMIN` | `creditnoteroutes` |

@@ -38,7 +38,7 @@ See `Layout/RetailerSection.swift` for the full enum. Summary:
 | Procurement | Sidebar sheet | `/procurement` |
 | Insights | Sidebar sheet | `/insights` |
 | Suppliers | Suppliers tab | catalog |
-| Auto-order | Sidebar sheet | `/settings` |
+| Auto-order | Sidebar sheet | `/auto-order` (soak readiness strip; evidence download on desktop/script) |
 | Future demand | Sidebar sheet | dashboard |
 | Notifications | Inbox sheet | `/notifications` |
 | Settings | Profile tab | `/settings` |

@@ -1,9 +1,7 @@
 # PegasusX — End-Product Reality Report
 
-> **STALE (2026-08-12):** Gap sections and several §5 claims below are **one day out of date**.  
-> **Current SoT for gaps + data-flow + role×platform:**  
-> - [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md)  
-> - [`MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md)  
+> **HISTORICAL / FROZEN (2026-08-12):** Gap sections and several §5 claims are **out of date**.  
+> **Current SoT:** [`PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md).  
 > Do not use this report alone for planning. Keep it for historical evidence of the 2026-08-11 gate session.
 
 **Evidence base:** live source tree `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` as of **2026-08-11**. Every claim below traces to code, schema, or configuration. File:line references are given so findings can be re-checked. Deleted documentation is not used.

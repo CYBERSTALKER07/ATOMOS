@@ -63,6 +63,12 @@ struct MoreHubView: View {
                 NavigationLink { ReturnsView() } label: {
                     Label("portal.nav.returns", systemImage: "arrow.uturn.backward")
                 }
+                NavigationLink { ColdChainView() } label: {
+                    Label("portal.nav.cold_chain", systemImage: "thermometer")
+                }
+                NavigationLink { LaborCapacityView() } label: {
+                    Label("portal.nav.labor_capacity", systemImage: "person.3")
+                }
                 NavigationLink { ExceptionsView() } label: {
                     Label("portal.nav.exceptions", systemImage: "exclamationmark.triangle")
                 }

@@ -1,5 +1,8 @@
 # Credit Engine (Compliance-Facing)
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Existing
 
 - Profiles: limit, balance, available, risk, delinquency, status  

@@ -1,5 +1,8 @@
 # Implementation Phases
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 | Phase | Horizon | Doc |
 |-------|---------|-----|
 | **1** | 3–6 months | [phase-1.md](./phase-1.md) |

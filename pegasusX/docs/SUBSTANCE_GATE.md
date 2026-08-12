@@ -1,14 +1,15 @@
 # Substance Gate — E2E verification for every role, app, and platform
 
 **Status:** Operating instruction (anti-theatre)  
-**Repo:** `/Users/shakhzod/ATOMOS/pegasusX`  
-**Date:** 2026-08-04  
+**Repo:** `pegasusX` (SoT tree)  
+**Date:** 2026-08-04 (role matrix re-aligned 2026-08-12)  
 **Companion SoTs:**
+- Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md)
 - Marker catalog: [`contracts/ssmr_ecosystem_markers.json`](../contracts/ssmr_ecosystem_markers.json)
-- Role features: [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md)
+- Feature inventory: [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md)
 - Role-row parity: [`ROLE_ROW_PARITY_MATRIX.md`](./ROLE_ROW_PARITY_MATRIX.md)
 - Retail OS packs: [`RETAILER_OS_E2E_MATRIX.md`](./RETAILER_OS_E2E_MATRIX.md)
-- Theatre inventory: [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) §2
+- Theatre inventory: [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) §2 (re-verify frozen bullets)
 - Living status: [`../context/current_status.md`](../context/current_status.md)
 
 **Hard rule:** A feature may be labeled **Done** only if it passes the Substance Gate (SG) below. UI, DDL, workers, or dashboards that imply capability without SG proof are **Theatre** — wire, rename/hide, or delete.
@@ -52,12 +53,12 @@ Deferred  ⇔ tracked as Theatre/Partial with owner + exit marker/test — UI mu
 | Role | Web / desktop | Android | iOS | Notes |
 |------|---------------|---------|-----|-------|
 | **Retailer** | `retailer-app-desktop` (Tauri) | `retailer-app-android` | `retailer-app-ios` | Retail OS packs; stock + claims |
-| **Supplier** | `supplier-portal` (+ stub `supplier-app-desktop`) | `supplier-app-android` | `supplier-app-ios` | Org/fleet, treasury, ops |
-| **Warehouse** | `warehouse-portal` | `warehouse-app-android` | `warehouse-app-ios` | Dispatch, returns dock, claims approve |
-| **Factory** | `factory-portal` | `factory-app-android` | `factory-app-ios` | Manifests, supply requests |
+| **Supplier** | `supplier-portal` (Next + Tauri 2; no separate desktop app) | `supplier-app-android` | `supplier-app-ios` | Org/fleet, treasury, ops, planning web |
+| **Warehouse** | `warehouse-portal` | `warehouse-app-android` | `warehouse-app-ios` | Dispatch, WMS, returns dock, claims approve |
+| **Factory** | `factory-portal` | `factory-app-android` | `factory-app-ios` | Manifests, supply requests, loading bay |
 | **Driver** | — | `driver-app-android` | `driver-app-ios` | Delivery, cash, shop-closed |
-| **Payload** | terminal via `payload-app-*` | `payload-app-android` | `payload-app-ios` | Seal / load / reassign |
-| **Admin** | `admin-portal` (redirect stub) | — | — | Not a full product surface |
+| **Payload** | `payload-terminal` (Expo SoT) | `payload-app-android` | `payload-app-ios` | Seal / load / reassign + factory loading-bay bridge |
+| **Platform admin** | `admin-portal` (live Next console) | — | — | Tenants / flags dual-control / audit / match / partner; MFA; web only |
 
 **Platform versions to verify (each client row):**
 

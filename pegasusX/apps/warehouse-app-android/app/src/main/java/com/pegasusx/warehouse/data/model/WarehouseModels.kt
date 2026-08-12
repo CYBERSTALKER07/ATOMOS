@@ -1041,3 +1041,90 @@ data class CycleCountCreateRequest(
 data class CycleCountSubmitRequest(
     @SerialName("counted_qty") val countedQty: Long,
 )
+
+// ── Cold chain (WMS temperature readings) ──
+@Serializable
+data class TemperatureReading(
+    @SerialName("reading_id") val readingId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    @SerialName("sensor_id") val sensorId: String? = null,
+    @SerialName("recorded_at") val recordedAt: String = "",
+    @SerialName("temp_c") val tempC: Double = 0.0,
+    @SerialName("min_c") val minC: Double? = null,
+    @SerialName("max_c") val maxC: Double? = null,
+    val excursion: Boolean = false,
+)
+
+@Serializable
+data class TemperatureReadingListResponse(
+    val readings: List<TemperatureReading> = emptyList(),
+)
+
+@Serializable
+data class TemperatureReadingIngestRequest(
+    @SerialName("manifest_id") val manifestId: String,
+    @SerialName("temp_c") val tempC: Double,
+    @SerialName("sensor_id") val sensorId: String? = null,
+    @SerialName("min_c") val minC: Double? = null,
+    @SerialName("max_c") val maxC: Double? = null,
+)
+
+// ── Labor capacity (camelCase API) ──
+@Serializable
+data class LaborZoneCapacity(
+    val zoneH3: String = "",
+    val date: String = "",
+    val totalCapacity: Double = 0.0,
+    val usedCapacity: Double = 0.0,
+    val computedAt: String? = null,
+)
+
+@Serializable
+data class LaborZoneCapacityListResponse(
+    val zones: List<LaborZoneCapacity>? = null,
+    val zoneH3: String? = null,
+    val date: String? = null,
+    val totalCapacity: Double? = null,
+    val usedCapacity: Double? = null,
+    val computedAt: String? = null,
+) {
+    fun resolvedZones(): List<LaborZoneCapacity> {
+        zones?.takeIf { it.isNotEmpty() }?.let { return it }
+        val h3 = zoneH3?.takeIf { it.isNotBlank() } ?: return emptyList()
+        return listOf(
+            LaborZoneCapacity(
+                zoneH3 = h3,
+                date = date.orEmpty(),
+                totalCapacity = totalCapacity ?: 0.0,
+                usedCapacity = usedCapacity ?: 0.0,
+                computedAt = computedAt,
+            ),
+        )
+    }
+}
+
+@Serializable
+data class LaborDriverScore(
+    val driverId: String = "",
+    val score: Double = 0.0,
+    val onTimeRate: Double = 0.0,
+    val completionRate: Double = 0.0,
+    val damageRate: Double = 0.0,
+    val shopClosedRate: Double = 0.0,
+    val feedbackScore: Double = 0.0,
+    val stopsPerHour: Double = 0.0,
+)
+
+@Serializable
+data class LaborDriverAvailabilityRequest(
+    val driverId: String,
+    val date: String,
+    val availableHours: Double,
+    val status: String,
+    val zoneH3: String? = null,
+)
+
+@Serializable
+data class LaborDriverAvailabilityResponse(
+    val status: String = "",
+)

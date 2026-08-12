@@ -5,7 +5,7 @@
 > *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
 
 
-Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same route map as `pegasus/apps/warehouse-portal` (dashboard, orders, dispatch, inventory, supply, forecast, fleet, treasury, etc.).
+Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same route map as `apps/warehouse-portal` (dashboard, orders, dispatch, inventory, supply, forecast, fleet, treasury, etc.).
 
 ## Stack
 

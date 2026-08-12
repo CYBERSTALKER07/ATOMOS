@@ -1,5 +1,8 @@
 # 1. Architectural Foundations
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 Non-negotiable base under every planning and execution feature.
 
 | Doc | Topic |

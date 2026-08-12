@@ -1,5 +1,9 @@
 # Analytics column tenancy — progress (2026-08-11)
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **Gate:** `make analytics-tenancy-gate` → **`analytics-tenancy-gate-ok`**
 
 ## Wave 1 — RoutePerformanceAnalytics

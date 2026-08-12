@@ -1,5 +1,9 @@
 # Phase 5 progress — Runtime multi-tenancy Phase 1 + Outbox soak (2026-08-11)
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **ADR:** `docs/MULTI_TENANCY_GATE5_PHASE1.md`  
 **Gate:** `make phase5-gate` → **`phase5-gate-ok`** (re-proved 2026-08-11, Spanner emulator `localhost:9010`; full regression)  
 **Audit:** `PLATFORM_AUDIT.md` §8.10 → Phase 1 **Wired (Done)**; Outbox `SupplierId` NOT NULL soak closed  

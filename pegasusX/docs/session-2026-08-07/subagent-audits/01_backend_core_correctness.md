@@ -1,5 +1,10 @@
 # 01 Backend Core Correctness
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 _Source: subagent `cf2e366c-bf7d-4302-9926-1e16b52e1d48` from End-Product Reality Report session (2026-08-07)._
 
 # END-PRODUCT REALITY REPORT — PegasusX / ATOMOS `apps/backend-go`

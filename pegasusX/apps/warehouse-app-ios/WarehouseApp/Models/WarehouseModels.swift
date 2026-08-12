@@ -2437,3 +2437,202 @@ struct WarehouseOpsBoardResponse: Decodable {
         case deliverBefore = "deliver_before"
     }
 }
+
+// MARK: - Cold chain
+
+struct TemperatureReading: Decodable, Identifiable {
+    var id: String { readingId }
+    let readingId: String
+    let manifestId: String
+    let sensorId: String?
+    let recordedAt: String
+    let tempC: Double
+    let minC: Double?
+    let maxC: Double?
+    let excursion: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case readingId = "reading_id"
+        case manifestId = "manifest_id"
+        case sensorId = "sensor_id"
+        case recordedAt = "recorded_at"
+        case tempC = "temp_c"
+        case minC = "min_c"
+        case maxC = "max_c"
+        case excursion
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        readingId = try c.decodeIfPresent(String.self, forKey: .readingId) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        sensorId = try c.decodeIfPresent(String.self, forKey: .sensorId)
+        recordedAt = try c.decodeIfPresent(String.self, forKey: .recordedAt) ?? ""
+        tempC = try c.decodeIfPresent(Double.self, forKey: .tempC) ?? 0
+        minC = try c.decodeIfPresent(Double.self, forKey: .minC)
+        maxC = try c.decodeIfPresent(Double.self, forKey: .maxC)
+        excursion = try c.decodeIfPresent(Bool.self, forKey: .excursion) ?? false
+    }
+}
+
+struct TemperatureReadingListResponse: Decodable {
+    let readings: [TemperatureReading]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        readings = try c.decodeIfPresent([TemperatureReading].self, forKey: .readings) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case readings }
+}
+
+struct TemperatureReadingIngestRequest: Encodable {
+    let manifestId: String
+    let tempC: Double
+    let sensorId: String?
+    let minC: Double?
+    let maxC: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case tempC = "temp_c"
+        case sensorId = "sensor_id"
+        case minC = "min_c"
+        case maxC = "max_c"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(manifestId, forKey: .manifestId)
+        try c.encode(tempC, forKey: .tempC)
+        if let sensorId, !sensorId.isEmpty { try c.encode(sensorId, forKey: .sensorId) }
+        if let minC { try c.encode(minC, forKey: .minC) }
+        if let maxC { try c.encode(maxC, forKey: .maxC) }
+    }
+}
+
+// MARK: - Labor capacity (camelCase API)
+
+struct LaborZoneCapacity: Decodable, Identifiable {
+    var id: String { "\(zoneH3)-\(date)" }
+    let zoneH3: String
+    let date: String
+    let totalCapacity: Double
+    let usedCapacity: Double
+    let computedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case zoneH3, date, totalCapacity, usedCapacity, computedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        zoneH3 = try c.decodeIfPresent(String.self, forKey: .zoneH3) ?? ""
+        if let s = try? c.decode(String.self, forKey: .date) {
+            date = s
+        } else {
+            date = ""
+        }
+        totalCapacity = try c.decodeIfPresent(Double.self, forKey: .totalCapacity) ?? 0
+        usedCapacity = try c.decodeIfPresent(Double.self, forKey: .usedCapacity) ?? 0
+        if let s = try? c.decode(String.self, forKey: .computedAt) {
+            computedAt = s
+        } else {
+            computedAt = nil
+        }
+    }
+
+    init(zoneH3: String, date: String, totalCapacity: Double, usedCapacity: Double, computedAt: String?) {
+        self.zoneH3 = zoneH3
+        self.date = date
+        self.totalCapacity = totalCapacity
+        self.usedCapacity = usedCapacity
+        self.computedAt = computedAt
+    }
+}
+
+struct LaborZoneCapacityListResponse: Decodable {
+    let zones: [LaborZoneCapacity]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let list = try c.decodeIfPresent([LaborZoneCapacity].self, forKey: .zones), !list.isEmpty {
+            zones = list
+            return
+        }
+        if let h3 = try c.decodeIfPresent(String.self, forKey: .zoneH3), !h3.isEmpty {
+            let date: String
+            if let s = try? c.decode(String.self, forKey: .date) { date = s } else { date = "" }
+            let total = try c.decodeIfPresent(Double.self, forKey: .totalCapacity) ?? 0
+            let used = try c.decodeIfPresent(Double.self, forKey: .usedCapacity) ?? 0
+            let computed: String?
+            if let s = try? c.decode(String.self, forKey: .computedAt) { computed = s } else { computed = nil }
+            zones = [LaborZoneCapacity(zoneH3: h3, date: date, totalCapacity: total, usedCapacity: used, computedAt: computed)]
+            return
+        }
+        zones = []
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case zones, zoneH3, date, totalCapacity, usedCapacity, computedAt
+    }
+}
+
+struct LaborDriverScore: Decodable {
+    let driverId: String
+    let score: Double
+    let onTimeRate: Double
+    let completionRate: Double
+    let damageRate: Double
+    let shopClosedRate: Double
+    let feedbackScore: Double
+    let stopsPerHour: Double
+
+    enum CodingKeys: String, CodingKey {
+        case driverId, score, onTimeRate, completionRate, damageRate, shopClosedRate, feedbackScore, stopsPerHour
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId) ?? ""
+        score = try c.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        onTimeRate = try c.decodeIfPresent(Double.self, forKey: .onTimeRate) ?? 0
+        completionRate = try c.decodeIfPresent(Double.self, forKey: .completionRate) ?? 0
+        damageRate = try c.decodeIfPresent(Double.self, forKey: .damageRate) ?? 0
+        shopClosedRate = try c.decodeIfPresent(Double.self, forKey: .shopClosedRate) ?? 0
+        feedbackScore = try c.decodeIfPresent(Double.self, forKey: .feedbackScore) ?? 0
+        stopsPerHour = try c.decodeIfPresent(Double.self, forKey: .stopsPerHour) ?? 0
+    }
+}
+
+struct LaborDriverAvailabilityRequest: Encodable {
+    let driverId: String
+    let date: String
+    let availableHours: Double
+    let status: String
+    let zoneH3: String?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId, date, availableHours, status, zoneH3
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(driverId, forKey: .driverId)
+        try c.encode(date, forKey: .date)
+        try c.encode(availableHours, forKey: .availableHours)
+        try c.encode(status, forKey: .status)
+        if let zoneH3, !zoneH3.isEmpty { try c.encode(zoneH3, forKey: .zoneH3) }
+    }
+}
+
+struct LaborDriverAvailabilityResponse: Decodable {
+    let status: String
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+    }
+
+    enum CodingKeys: String, CodingKey { case status }
+}

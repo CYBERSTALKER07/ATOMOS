@@ -113,6 +113,8 @@
 		FB94B7668476D4B203F4C716 /* ReturnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BC14978EB4C787C361EE07F /* ReturnsView.swift */; };
 		FBB3EBDFB3EF244574B312C3 /* DispatchOrderList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB040DE6E3ED0A2DB84AFC0 /* DispatchOrderList.swift */; };
 		FC5FA964A3A7D626BDE3DE43 /* NotificationInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7B48A3A550663694C41102 /* NotificationInboxView.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* ColdChainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* ColdChainView.swift */; };
+		B2C3D4E5F60718293A4B5C6E /* LaborCapacityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* LaborCapacityView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -223,6 +225,8 @@
 		FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailView.swift; sourceTree = "<group>"; };
 		FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalLinks.swift; sourceTree = "<group>"; };
 		FFB03717F0BDEC8F8801AC94 /* SupplyRequestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestDetailView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* ColdChainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColdChainView.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B5C6D /* LaborCapacityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaborCapacityView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -437,6 +441,8 @@
 				1323C12B453CA1132BCAB5BB /* LoginView.swift */,
 				38524BE299B36E8E7C0FE192 /* Analytics */,
 				DA7D8BA8F137ABDAC08205C0 /* Claims */,
+				C3D4E5F60718293A4B5C6D7E /* ColdChain */,
+				D4E5F60718293A4B5C6D7E8F /* LaborCapacity */,
 				B014CBB6E9DE464E448ABA03 /* Components */,
 				8E8EFF231D1F8A20CA54E9BA /* CRM */,
 				114EABD6CB0C2D1FD62264F5 /* Dashboard */,
@@ -639,6 +645,22 @@
 			path = Theme;
 			sourceTree = "<group>";
 		};
+		C3D4E5F60718293A4B5C6D7E /* ColdChain */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60718293A4B5C /* ColdChainView.swift */,
+			);
+			path = ColdChain;
+			sourceTree = "<group>";
+		};
+		D4E5F60718293A4B5C6D7E8F /* LaborCapacity */ = {
+			isa = PBXGroup;
+			children = (
+				B2C3D4E5F60718293A4B5C6D /* LaborCapacityView.swift */,
+			);
+			path = LaborCapacity;
+			sourceTree = "<group>";
+		};
 		DA7D8BA8F137ABDAC08205C0 /* Claims */ = {
 			isa = PBXGroup;
 			children = (
@@ -830,6 +852,8 @@
 				6BA5666C405873005E70A4F8 /* AutoUpdater.swift in Sources */,
 				06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */,
 				4D1F3CF15D06FF7C8DA316E7 /* ClaimsView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5D /* ColdChainView.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6E /* LaborCapacityView.swift in Sources */,
 				CF5BFE1B9756F27FDA763C24 /* ClientPolicyBanner.swift in Sources */,
 				EC18276A3E30FEB64B7311A2 /* CollapsibleSidebar.swift in Sources */,
 				72CA2B5FF6A38A618C561FA7 /* CreateSupplyRequestSheet.swift in Sources */,

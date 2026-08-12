@@ -19,6 +19,8 @@
 
 Production AI remains `apps/ai-worker`. Deep Agents is a **companion auditor mesh** for humans and coding agents.
 
+**Docs SoT map:** [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) — living vs frozen markdown (no `.docx` in repo).
+
 ## Orchestra architecture
 
 One **Chief Orchestrator** (`create_ecosystem_auditor`) + **12 specialist subagents** connected via Deep Agents `task` tool:

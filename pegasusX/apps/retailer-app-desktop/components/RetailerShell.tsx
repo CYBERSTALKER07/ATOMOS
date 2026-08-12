@@ -28,6 +28,7 @@ import {
   FileBarChart,
   Box,
   Building2,
+  Radar,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -73,6 +74,7 @@ const NAV: NavSection[] = [
       { href: "/sections", icon: LayoutGrid, labelKey: "portal.nav.sections", perm: "stock.view", pack: "SECTIONS" },
       { href: "/assist", icon: HandHelping, labelKey: "portal.nav.assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
       { href: "/insights", icon: BarChart3, labelKey: "portal.nav.insights", perm: "reports.view" },
+      { href: "/control-tower", icon: Radar, labelKey: "portal.nav.control_tower" },
       { href: "/reports", icon: FileBarChart, labelKey: "portal.nav.reports_pro", perm: "reports.view", pack: "REPORTS_PRO" },
       { href: "/hq", icon: Building2, labelKey: "portal.nav.franchise_hq", perm: "reports.view", pack: "REPORTS_PRO" },
     ],

@@ -7,6 +7,7 @@ import com.pegasusx.retailer.data.model.AutoOrderRun
 import com.pegasusx.retailer.data.model.AutoOrderRunsResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.AutoOrderShadowProposal
+import com.pegasusx.retailer.data.model.AutoOrderSoakGate
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.RetailerReorderSuggestion
 import com.pegasusx.retailer.data.model.UpdateGlobalSettingsRequest
@@ -57,6 +58,7 @@ data class AutoOrderUiState(
     val lastRun: AutoOrderRun? = null,
     val runBanner: String? = null,
     val placeConfirmOpen: Boolean = false,
+    val soakGate: AutoOrderSoakGate? = null,
 ) {
     val syncMessage: String?
         get() = when {
@@ -112,6 +114,7 @@ class AutoOrderViewModel @Inject constructor(
             val nextRuns = loadRunsInternal()
             val nextSuggestions = loadSuggestionsInternal()
             val nextShadow = loadShadowInternal()
+            val nextSoak = loadSoakGateInternal()
 
             _uiState.update {
                 val effectiveSettings = nextSettings ?: it.settings
@@ -122,6 +125,7 @@ class AutoOrderViewModel @Inject constructor(
                     forecasts = nextForecasts,
                     reorderSuggestions = nextSuggestions,
                     shadowProposals = nextShadow,
+                    soakGate = nextSoak,
                     globalEnabled = effectiveSettings?.globalEnabled ?: it.globalEnabled,
                     executionMode = mode,
                     error = nextError,
@@ -280,6 +284,14 @@ class AutoOrderViewModel @Inject constructor(
             api.getAutoOrderShadowProposals().items
         } catch (_: Exception) {
             _uiState.value.shadowProposals
+        }
+    }
+
+    private suspend fun loadSoakGateInternal(): AutoOrderSoakGate? {
+        return try {
+            api.getAutoOrderSoakGate()
+        } catch (_: Exception) {
+            _uiState.value.soakGate
         }
     }
 

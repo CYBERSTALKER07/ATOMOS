@@ -53,6 +53,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
 import com.pegasusx.warehouse.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.warehouse.ui.screens.auth.LoginScreen
 import com.pegasusx.warehouse.ui.screens.claims.ClaimsScreen
+import com.pegasusx.warehouse.ui.screens.coldchain.ColdChainScreen
 import com.pegasusx.warehouse.ui.screens.crm.CRMScreen
 import com.pegasusx.warehouse.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.warehouse.ui.screens.dispatch.DispatchScreen
@@ -65,6 +66,7 @@ import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.LocationSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.ReturnPolicySettingsScreen
+import com.pegasusx.warehouse.ui.screens.labor.LaborCapacityScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
@@ -105,6 +107,8 @@ object WarehouseRoutes {
     const val ANALYTICS = "analytics"
     const val CRM = "crm"
     const val RETURNS = "returns"
+    const val COLD_CHAIN = "cold_chain"
+    const val LABOR_CAPACITY = "labor_capacity"
     const val EXCEPTIONS = "exceptions"
     const val CLAIMS = "claims"
     const val RESCUES = "rescues"
@@ -408,6 +412,12 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.RETURNS) {
                     ReturnsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURNS))
+                }
+                composable(WarehouseRoutes.COLD_CHAIN) {
+                    ColdChainScreen(api = api, onBack = backFor(WarehouseRoutes.COLD_CHAIN))
+                }
+                composable(WarehouseRoutes.LABOR_CAPACITY) {
+                    LaborCapacityScreen(api = api, onBack = backFor(WarehouseRoutes.LABOR_CAPACITY))
                 }
                 composable(WarehouseRoutes.EXCEPTIONS) {
                     ExceptionsScreen(

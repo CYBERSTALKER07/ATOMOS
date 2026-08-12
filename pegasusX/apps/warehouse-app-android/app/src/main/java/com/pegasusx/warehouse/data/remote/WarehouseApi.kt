@@ -483,6 +483,33 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/pulse")
     suspend fun getPulse(): Response<PulseResponse>
 
+    // ── Cold chain ──
+    @GET("v1/warehouse/ops/temperature-readings")
+    suspend fun listTemperatureReadings(
+        @Query("manifest_id") manifestId: String,
+    ): Response<TemperatureReadingListResponse>
+
+    @POST("v1/warehouse/ops/temperature-readings")
+    suspend fun ingestTemperatureReading(
+        @Body body: TemperatureReadingIngestRequest,
+    ): Response<TemperatureReading>
+
+    // ── Labor capacity ──
+    @GET("v1/labor-capacity/zone-capacity")
+    suspend fun listLaborZoneCapacity(
+        @Query("date") date: String,
+    ): Response<LaborZoneCapacityListResponse>
+
+    @GET("v1/labor-capacity/driver-score/{driverId}")
+    suspend fun getLaborDriverScore(
+        @Path("driverId") driverId: String,
+    ): Response<LaborDriverScore>
+
+    @POST("v1/labor-capacity/driver-availability")
+    suspend fun setLaborDriverAvailability(
+        @Body body: LaborDriverAvailabilityRequest,
+    ): Response<LaborDriverAvailabilityResponse>
+
     // ── Rescue Operations ──
     @POST("v1/warehouse/ops/dispatch/rescue/preview")
     suspend fun previewRescue(

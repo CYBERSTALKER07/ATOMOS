@@ -1,5 +1,10 @@
 ## 6.4 Payload / Loading — Android (61 kt) · iOS (41 Swift) · Terminal (Expo RN, 33 files)
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 **Maturity: ~85%. Zero mock/TODO hits. 38/34/15 endpoints across android/iOS/terminal.**
 
 ### What exists and works

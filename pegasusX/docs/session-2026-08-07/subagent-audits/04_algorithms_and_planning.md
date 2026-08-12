@@ -1,5 +1,10 @@
 # 04 Algorithms And Planning
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 _Source: subagent `59b342b1-9810-4397-a9a4-4cf3175c0981` from End-Product Reality Report session (2026-08-07)._
 
 # PEGASUSX / ATOMOS — END-PRODUCT REALITY REPORT

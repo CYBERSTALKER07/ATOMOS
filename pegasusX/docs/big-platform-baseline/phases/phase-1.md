@@ -1,5 +1,8 @@
 # Phase 1 (3–6 months) — Regulatory + Differentiation Must-Haves
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Scope
 
 1. **Full Soliq EHF + versioned tax engine** (`regulatory/soliq-ehf-integration.md`, `tax-regime-versioning.md`)  

@@ -123,6 +123,10 @@ struct WarehouseAdaptiveShell: View {
             CRMView()
         case .returns:
             ReturnsView()
+        case .coldChain:
+            ColdChainView()
+        case .laborCapacity:
+            LaborCapacityView()
         case .exceptions:
             ExceptionsView()
         case .claims:

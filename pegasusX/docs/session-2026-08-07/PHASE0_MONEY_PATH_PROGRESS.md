@@ -1,5 +1,9 @@
 # Enterprise Phase 0 — Money-path correctness
 
+> **HISTORICAL / FROZEN — session progress note; do not treat as current gap SoT.**
+> Living residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).
+
+
 **Date:** 2026-08-11  
 **Plan source:** `docs/session-2026-08-07/ENTERPRISE_GRADE_EXECUTION_PLAN.md` §Phase 0  
 **Gate:** `make money-path-gate` → **`money-path-gate-ok`** (2026-08-11, Spanner emulator `localhost:9010`)  

@@ -1,5 +1,9 @@
 # Big-Platform Baseline Plan (O9 / Blue Yonder / Manhattan / Kinaxis + PegasusX)
 
+> **HISTORICAL / FROZEN planning baseline — not the current residual SoT.**  
+> Live residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).  
+> Many items below are now code-wired (WMS Gate 4, labor-capacity, partner rails); re-verify before treating as open.
+
 **Status:** planning baseline (not fully implemented)  
 **Date:** 2026-07-29  
 **Spine (must not break):** Spanner + outbox + Kafka + Redis + WS + role clients + **int64 minor units** + canonical order status machine  
