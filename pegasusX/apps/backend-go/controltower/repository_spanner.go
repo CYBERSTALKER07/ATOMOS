@@ -505,6 +505,12 @@ func scanRunRow(row *spanner.Row) (PlaybookRun, error) {
 }
 
 func (r *SpannerRepository) UpdateRun(ctx context.Context, run PlaybookRun) error {
+	return r.FinalizeRunWithExceptionEffects(ctx, run, nil)
+}
+
+// FinalizeRunWithExceptionEffects writes terminal run status + optional exception
+// ticket mutations + outbox in one RW txn (control-tower action mega-txn residual).
+func (r *SpannerRepository) FinalizeRunWithExceptionEffects(ctx context.Context, run PlaybookRun, effects []localExceptionSideEffect) error {
 	resultsRaw := run.ActionsResultRaw
 	if len(resultsRaw) == 0 && len(run.ActionsResult) > 0 {
 		resultsRaw, _ = json.Marshal(run.ActionsResult)
@@ -525,6 +531,27 @@ func (r *SpannerRepository) UpdateRun(ctx context.Context, run PlaybookRun) erro
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("ControlTowerPlaybookRuns", row)}); err != nil {
 			return err
+		}
+		for _, se := range effects {
+			if strings.HasPrefix(se.ExceptionID, "fiscal:") || strings.HasPrefix(se.ExceptionID, "shop-closed:") {
+				continue
+			}
+			if se.Status != "" {
+				if _, err := txn.Update(ctx, spanner.Statement{
+					SQL:    `UPDATE ExceptionTickets SET Status = @status WHERE TicketId = @id`,
+					Params: map[string]any{"status": se.Status, "id": se.ExceptionID},
+				}); err != nil {
+					return err
+				}
+			}
+			if se.AssigneeRole != "" {
+				if _, err := txn.Update(ctx, spanner.Statement{
+					SQL:    `UPDATE ExceptionTickets SET AssignedRole = @role WHERE TicketId = @id`,
+					Params: map[string]any{"role": se.AssigneeRole, "id": se.ExceptionID},
+				}); err != nil {
+					return err
+				}
+			}
 		}
 		return emitControlTowerOutbox(ctx, txn, events.EventControlTowerRunUpdated, run.SupplierID, run.PlaybookID, run.RunID, run.ExceptionID, run.Status, run.Mode, "UPDATE", run.ExecutedBy)
 	})
