@@ -136,6 +136,8 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 		writeErr(w, status, err.Error())
 		return
 	}
+	// B5 M-P0-11: money-flag ACTIVE without durable audit is fail-closed —
+	// compensate back to PENDING when audit cannot be recorded.
 	if h.Audit != nil {
 		action := auditActionOverrideApprove
 		if strings.EqualFold(flag, "AUTO_ORDER_PLACE_ENABLED") {
@@ -150,6 +152,7 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 			"approver":    approver,
 		})
 		if err := h.Audit.RecordFlagAudit(r.Context(), approver, action, req.TenantType, req.TenantID, string(detail)); err != nil {
+			_ = h.Svc.RevertApproveToPending(r.Context(), flag, req.TenantType, req.TenantID)
 			writeErr(w, http.StatusInternalServerError, "audit_failed")
 			return
 		}

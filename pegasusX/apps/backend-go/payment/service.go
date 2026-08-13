@@ -221,8 +221,9 @@ type Service struct {
 
 	cartCheckout    CartCheckoutHandler
 	checkoutPreview CheckoutPreviewHandler
-	orderReader  OrderCheckoutReader
-	policy       PolicyResolver
+	orderReader     OrderCheckoutReader
+	orderCash       OrderCashSelector
+	policy          PolicyResolver
 
 	globalPayEnv           string
 	globalPayUsername      string

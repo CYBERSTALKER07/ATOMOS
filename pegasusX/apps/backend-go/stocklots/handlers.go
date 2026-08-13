@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -244,7 +245,21 @@ func (h *Handler) HandlePutaway(w http.ResponseWriter, r *http.Request) {
 	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		result, err = PutawayInTxn(ctx, txn, req)
-		return err
+		if err != nil {
+			return err
+		}
+		lotID := ""
+		qty := int64(0)
+		if result != nil {
+			lotID = result.LotID
+			qty = result.QuantityOnHand
+		}
+		return emitWMSEvent(ctx, txn, events.EventWMSPutaway, warehouseID(r), supplierID(r, h.SupplierID), lotID, map[string]any{
+			"product_id":  req.ProductID,
+			"location_id": req.LocationID,
+			"lot_id":      lotID,
+			"quantity":    qty,
+		})
 	})
 	if err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
@@ -341,11 +356,21 @@ func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) 
 		PickerID       string `json:"picker_id"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	whID := warehouseID(r)
+	sid := supplierID(r, h.SupplierID)
 	var wave *PickWaveView
 	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		wave, err = ConfirmPickTaskInTxn(ctx, txn, waveID, taskID, body.PickerID, body.QuantityPicked)
-		return err
+		if err != nil {
+			return err
+		}
+		return emitWMSEvent(ctx, txn, events.EventWMSPickConfirmed, whID, sid, taskID, map[string]any{
+			"wave_id":         waveID,
+			"task_id":         taskID,
+			"quantity_picked": body.QuantityPicked,
+			"picker_id":       body.PickerID,
+		})
 	})
 	if err != nil {
 		if spanner.ErrCode(err) == 5 {
@@ -538,11 +563,19 @@ func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *htt
 		return
 	}
 	adjID := chi.URLParam(r, "adjustmentID")
+	whID := warehouseID(r)
+	sid := supplierID(r, h.SupplierID)
 	var view *InventoryAdjustmentView
 	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		view, err = ApproveAdjustmentInTxn(ctx, txn, adjID, actorSubject(r))
-		return err
+		if err != nil {
+			return err
+		}
+		return emitWMSEvent(ctx, txn, events.EventWMSCycleApproved, whID, sid, adjID, map[string]any{
+			"adjustment_id": adjID,
+			"actor":         actorSubject(r),
+		})
 	})
 	if err != nil {
 		if spanner.ErrCode(err) == 5 {
@@ -700,11 +733,24 @@ func (h *Handler) HandleTemperatureReadings(w http.ResponseWriter, r *http.Reque
 		if body.MinC != nil && body.MaxC != nil {
 			bandOverride = &TempBand{MinC: *body.MinC, MaxC: *body.MaxC}
 		}
+		whID := warehouseID(r)
+		sid := supplierID(r, h.SupplierID)
 		var view *TemperatureReadingView
 		err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			var err error
 			view, err = IngestTemperatureInTxn(ctx, txn, body.ManifestID, body.SensorID, body.TempC, body.Lat, body.Lng, bandOverride)
-			return err
+			if err != nil {
+				return err
+			}
+			// Emit only when an excursion/quarantine was recorded.
+			if view != nil && view.Excursion {
+				return emitWMSEvent(ctx, txn, events.EventWMSTemperatureBreach, whID, sid, body.ManifestID, map[string]any{
+					"manifest_id": body.ManifestID,
+					"sensor_id":   body.SensorID,
+					"temp_c":      body.TempC,
+				})
+			}
+			return nil
 		})
 		if err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})

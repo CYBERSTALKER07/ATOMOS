@@ -1172,6 +1172,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.BindCartCheckout(orderSvc)
 	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
+	paymentSvc.BindOrderCashSelector(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
 	orderSvc.SetPaymentRefunder(paymentSvc)
 

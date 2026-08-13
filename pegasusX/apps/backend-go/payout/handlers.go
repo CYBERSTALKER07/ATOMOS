@@ -44,6 +44,8 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
+		// SupplierID in body is ignored for authorization (B1 M-P0-14).
+		// Kept for backward-compatible clients; tenant comes from JWT/context.
 		SupplierID     string `json:"supplier_id"`
 		PeriodStart    string `json:"period_start"` // YYYY-MM-DD
 		PeriodEnd      string `json:"period_end"`
@@ -53,13 +55,22 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
 	}
+	// Scope from claims / TenantContext only — never trust body.supplier_id for auth.
+	supplierID := auth.PreferTenantSupplierID(r.Context(), "")
+	if supplierID == "" {
+		supplierID = strings.TrimSpace(claims.SupplierID)
+	}
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
 	start, err1 := time.Parse("2006-01-02", strings.TrimSpace(body.PeriodStart))
 	end, err2 := time.Parse("2006-01-02", strings.TrimSpace(body.PeriodEnd))
 	if err1 != nil || err2 != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "period_start/period_end must be YYYY-MM-DD"})
 		return
 	}
-	b, err := h.Svc.GenerateBatch(r.Context(), body.SupplierID, start, end, claims.Subject, body.IdempotencyKey)
+	b, err := h.Svc.GenerateBatch(r.Context(), supplierID, start, end, claims.Subject, body.IdempotencyKey)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, ErrNothingPayable) {

@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // HandleFleetReassign serves POST /v1/fleet/reassign (native payload terminal contract).
@@ -38,6 +42,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 	conflicts := make([]map[string]string, 0)
 	now := s.now().Format("2006-01-02T15:04:05Z07:00")
 
+	// B2: emit ORDER_REASSIGNED on the bus (was emit=nil silent path).
 	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -61,7 +66,19 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 			reassigned++
 		}
 		return nil
-	}, nil)
+	}, func(txn outbox.TxnBuffer) error {
+		if reassigned == 0 {
+			return nil
+		}
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateRoute, req.NewRouteID, events.TopicMain, map[string]any{
+			"type":          events.EventOrderReassigned,
+			"new_route_id":  req.NewRouteID,
+			"reassigned":    reassigned,
+			"supplier_id":   s.resolveSupplierScope(r.Context()),
+			"warehouse_id":  s.resolveWarehouseScope(r.Context()),
+			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		})
+	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reassign_failed"})
 		return

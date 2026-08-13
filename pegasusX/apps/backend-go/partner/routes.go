@@ -52,10 +52,17 @@ func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) 
 }
 
 // RegisterAdminKeyRoutes mounts JWT-gated key issuance for humans.
-func RegisterAdminKeyRoutes(r chi.Router, h *Handlers) {
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Post("/v1/admin/partner-keys", h.HandleIssueKey)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-keys", h.HandleListKeys)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+// Optional stepUp middleware (e.g. mfa.RequireStepUp) enforces TOTP for PLATFORM_ADMIN only.
+func RegisterAdminKeyRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http.Handler) {
+	adminKeys := r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin))
+	for _, mw := range stepUp {
+		if mw != nil {
+			adminKeys = adminKeys.With(mw)
+		}
+	}
+	adminKeys.Post("/v1/admin/partner-keys", h.HandleIssueKey)
+	adminKeys.Get("/v1/admin/partner-keys", h.HandleListKeys)
+	adminKeys.Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
 	// Supplier portal convenience alias (ADMIN role is supplier portal session).
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-keys", h.HandleIssueKey)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-keys", h.HandleListKeys)

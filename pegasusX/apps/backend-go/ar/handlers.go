@@ -75,13 +75,14 @@ func (s *Service) HandleListSupplierInvoices(w http.ResponseWriter, r *http.Requ
 }
 
 // HandleRunDunningOnce POST /v1/admin/ar/dunning/run-once — ops/e2e trigger.
+// B5 M-P0-12: allow PLATFORM_ADMIN (route already gates ADMIN|PLATFORM_ADMIN).
 func (w *DunningWorker) HandleRunDunningOnce(rw http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(rw, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleAdmin {
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
 		writeJSON(rw, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}

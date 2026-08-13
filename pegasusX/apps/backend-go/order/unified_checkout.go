@@ -126,7 +126,13 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Subject == "" {
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	// B3 M-P0-4: multi-user JWT — org is tenant for RetailerId on orders.
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -152,14 +158,14 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if req.RetailerID != "" && req.RetailerID != claims.Subject {
+	if req.RetailerID != "" && req.RetailerID != retailerID {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "retailer_id_mismatch"})
 		return
 	}
 
-	resp, err := s.UnifiedCheckout(r.Context(), claims.Subject, req)
+	resp, err := s.UnifiedCheckout(r.Context(), retailerID, req)
 	if err != nil {
-		s.log.Warn("unified checkout failed", "retailer_id", claims.Subject, "err", err)
+		s.log.Warn("unified checkout failed", "retailer_id", retailerID, "err", err)
 		var multiErr *MultiSupplierCheckoutError
 		if errors.As(err, &multiErr) {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{

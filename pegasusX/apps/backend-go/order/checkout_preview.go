@@ -50,7 +50,13 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Subject == "" {
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	// B3 M-P0-4: org-scoped preview (staff JWT must not quote under Subject).
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -66,18 +72,18 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	if req.RetailerID != "" && req.RetailerID != claims.Subject {
+	if req.RetailerID != "" && req.RetailerID != retailerID {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "retailer_id_mismatch"})
 		return
 	}
 
-	// Rate limit checkout preview by RetailerID to prevent scraping.
-	if s.previewRateLimiter != nil && !s.previewRateLimiter.Allow(claims.Subject) {
+	// Rate limit checkout preview by org id to prevent scraping.
+	if s.previewRateLimiter != nil && !s.previewRateLimiter.Allow(retailerID) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate_limit_exceeded"})
 		return
 	}
 
-	resp, err := s.PreviewCheckout(r.Context(), claims.Subject, req)
+	resp, err := s.PreviewCheckout(r.Context(), retailerID, req)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrZoneMiss):

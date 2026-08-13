@@ -378,6 +378,10 @@ func (s *Service) HandleReplenishmentPolicies(w http.ResponseWriter, r *http.Req
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_upsert_failed"})
 			return
 		}
+		// S-P1-2: defensive cache bust (policy readers may adopt this key later).
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), "supplier:replenishment:policy:"+sid)
+		}
 		respBytes, _ := json.Marshal(cur)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

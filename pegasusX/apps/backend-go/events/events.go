@@ -110,6 +110,15 @@ const (
 	EventWarehouseTransferCreated  = "WAREHOUSE_TRANSFER_CREATED"
 	EventWarehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"
 	EventSupplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
+	EventSupplyTransferArrived     = "SUPPLY_TRANSFER_ARRIVED"
+
+	// @Sync(WMS stock mutations — Wave B2)
+	EventInventoryQuantityUpdated = "INVENTORY_QUANTITY_UPDATED"
+	EventInventoryPolicyUpdated   = "INVENTORY_POLICY_UPDATED"
+	EventWMSPutaway               = "WMS_PUTAWAY"
+	EventWMSPickConfirmed         = "WMS_PICK_CONFIRMED"
+	EventWMSCycleApproved         = "WMS_CYCLE_APPROVED"
+	EventWMSTemperatureBreach     = "WMS_TEMPERATURE_BREACH"
 
 	// @Sync(FactoryEvent)
 	EventFactoryCreated         = "FACTORY_CREATED"
@@ -130,6 +139,19 @@ const (
 	EventRetailerSegmentUpdated     = "RETAILER_SEGMENT_UPDATED"
 	EventSkuClassUpdated            = "SKU_CLASS_UPDATED"
 	EventServicePolicyUpdated       = "SERVICE_POLICY_UPDATED"
+
+	// B3 M-P0-6: multi-supplier parent rollup lifecycle (same txn as ParentOrders write).
+	EventParentOrderCreated = "PARENT_ORDER_CREATED"
+	EventParentOrderUpdated = "PARENT_ORDER_UPDATED"
+
+	// B4 M-P1-5: supplier org credit program / relationship terms lifecycle.
+	EventSupplierCreditProgramChanged = "SUPPLIER_CREDIT_PROGRAM_CHANGED"
+	EventSupplierCreditTermsChanged   = "SUPPLIER_CREDIT_TERMS_CHANGED"
+
+	// B4 M-P1-4: control tower playbook + run bus.
+	EventControlTowerPlaybookChanged = "CONTROL_TOWER_PLAYBOOK_CHANGED"
+	EventControlTowerRunCreated      = "CONTROL_TOWER_RUN_CREATED"
+	EventControlTowerRunUpdated      = "CONTROL_TOWER_RUN_UPDATED"
 
 	// @Sync(AIRecommendationEvent)
 	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"
@@ -169,6 +191,7 @@ const (
 
 	// @Sync(LogisticsException) claims / OS&D / reverse logistics
 	EventClaimFiled                 = "CLAIM_FILED"
+	EventClaimUnderReview           = "CLAIM_UNDER_REVIEW"
 	EventClaimResolved              = "CLAIM_RESOLVED"
 	EventLogisticsExceptionReported = "LOGISTICS_EXCEPTION_REPORTED"
 	EventReverseLogisticsRequired   = "REVERSE_LOGISTICS_REQUIRED"
@@ -288,6 +311,8 @@ const (
 	// @Sync(PlanningEvent)
 	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
 	EventReplenishmentInsightCreated  = "REPLENISHMENT_INSIGHT_CREATED"
+	// S-P1-2: supplier PATCH /v1/supplier/replenishment/policies bus event.
+	EventReplenishmentPolicyUpdated = "REPLENISHMENT_POLICY_UPDATED"
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
 	EventPlanningScenarioPublished    = "planning.scenario.published.v1"
@@ -314,6 +339,8 @@ const (
 	AggregateWarehouse             = "Warehouse"
 	AggregateFactory               = "Factory"
 	AggregateOrder                 = "Order"
+	AggregateParentOrder           = "ParentOrder"
+	AggregateControlTower          = "ControlTower"
 	AggregateClaim                 = "Claim"
 	AggregateAIRecommendation      = "AIRecommendation"
 	AggregateRoute                 = "Route"

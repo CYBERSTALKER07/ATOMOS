@@ -16,6 +16,8 @@ type Deps struct {
 	PolicyService *credit.PolicyService
 	ARService     *ar.Service
 	DunningWorker *ar.DunningWorker
+	// StepUp optional MFA middleware for PLATFORM_ADMIN on dunning run-once (B5 M-P1-11).
+	StepUp func(http.Handler) http.Handler
 }
 
 // RegisterRoutes mounts credit profile + policy + AR endpoints.
@@ -52,7 +54,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/invoices", d.ARService.HandleListSupplierInvoices)
 		}
 		if d.DunningWorker != nil {
-			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
+			dunning := gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin))
+			if d.StepUp != nil {
+				dunning = dunning.With(d.StepUp)
+			}
+			dunning.Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
 		}
 	}
 

@@ -128,7 +128,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
-	case EventClaimFiled, EventClaimResolved, EventLogisticsExceptionReported,
+	case EventClaimFiled, EventClaimUnderReview, EventClaimResolved, EventLogisticsExceptionReported,
 		EventReverseLogisticsRequired:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
 		// is done explicitly in order handlers when needed.

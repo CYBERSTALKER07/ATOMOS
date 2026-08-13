@@ -864,6 +864,7 @@ func (h *Handlers) HandleListKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleRevokeKey POST /v1/admin/partner-keys/{keyID}/revoke
+// B5 M-P0-10: PLATFORM_ADMIN must pass tenant_type/tenant_id (query or body), same as list/issue.
 func (h *Handlers) HandleRevokeKey(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
 	if !ok {
@@ -877,9 +878,45 @@ func (h *Handlers) HandleRevokeKey(w http.ResponseWriter, r *http.Request) {
 		tenantType = TenantRetailer
 		tenantID = auth.ResolveRetailerOrgID(claims)
 	}
+	if claims.Role == auth.RolePlatformAdmin {
+		// Prefer query (matches ListKeys); body optional for clients that POST JSON.
+		tenantType = TenantSupplier
+		if q := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("tenant_type"))); q != "" {
+			tenantType = q
+		}
+		tenantID = strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+		if tenantID == "" {
+			// Best-effort body parse (non-consuming if already read — revoke typically empty body).
+			var body struct {
+				TenantType string `json:"tenant_type"`
+				TenantID   string `json:"tenant_id"`
+			}
+			if raw, err := readBody(r); err == nil && len(raw) > 0 {
+				_ = json.Unmarshal(raw, &body)
+				if tt := strings.ToUpper(strings.TrimSpace(body.TenantType)); tt != "" {
+					tenantType = tt
+				}
+				if tid := strings.TrimSpace(body.TenantID); tid != "" {
+					tenantID = tid
+				}
+			}
+		}
+		if tenantID == "" {
+			writePartnerError(w, http.StatusBadRequest, "tenant_id_required")
+			return
+		}
+	}
+	if tenantID == "" && claims.Role != auth.RolePlatformAdmin {
+		// Supplier ADMIN without supplier claim cannot revoke.
+		if claims.SupplierID == "" {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		tenantID = claims.SupplierID
+	}
 	if err := h.Svc.RevokeKey(r.Context(), keyID, tenantType, tenantID); err != nil {
 		writePartnerError(w, http.StatusNotFound, "key_not_found")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "tenant_type": tenantType, "tenant_id": tenantID})
 }

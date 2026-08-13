@@ -140,10 +140,36 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
 			return FormatClaimFiled(e.ClaimID, e.OrderID, e.ClaimType)
 		}
+	case events.EventClaimUnderReview:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimUnderReview(e.ClaimID, e.OrderID)
+		}
+		// Map payloads use claim_id keys without LogisticsException shape.
+		var m map[string]any
+		if json.Unmarshal(payload, &m) == nil {
+			cid, _ := m["claim_id"].(string)
+			oid, _ := m["order_id"].(string)
+			if cid != "" {
+				return FormatClaimUnderReview(cid, oid)
+			}
+		}
 	case events.EventClaimResolved:
 		var e events.LogisticsException
 		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
 			return FormatClaimResolved(e.ClaimID, e.OrderID, e.Status)
+		}
+	case events.EventARInvoiceOpened, events.EventARInvoicePayment,
+		events.EventARInvoiceSettled, events.EventARInvoiceDunned:
+		var e events.ARInvoiceEvent
+		if json.Unmarshal(payload, &e) == nil && e.InvoiceID != "" {
+			return FormatARInvoice(e.Type, e.InvoiceID, e.OrderID, e.Status, e.BalanceMinor, "")
+		}
+	case events.EventPayoutBatchGenerated, events.EventPayoutBatchExported,
+		events.EventPayoutBatchDispatched, events.EventPayoutBatchPaid:
+		var e events.PayoutBatchEvent
+		if json.Unmarshal(payload, &e) == nil && e.BatchID != "" {
+			return FormatPayoutBatch(e.Type, e.BatchID, e.Status, e.NetPayoutMinor, e.Currency)
 		}
 	case events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired:
 		var e events.LogisticsException

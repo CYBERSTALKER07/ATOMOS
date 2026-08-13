@@ -217,6 +217,51 @@ type OrderEvent struct {
 	GPSLng                float64 `json:"gps_lng,omitempty"`
 }
 
+// ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6).
+type ParentOrderEvent struct {
+	BaseEvent
+	ParentOrderID string `json:"parent_order_id"`
+	RetailerID    string `json:"retailer_id"`
+	Status        string `json:"status,omitempty"`
+	Currency      string `json:"currency,omitempty"`
+	TotalMinor    int64  `json:"total_minor,omitempty"`
+	ChildCount    int    `json:"child_count,omitempty"`
+}
+
+// SupplierCreditProgramEvent is org-level credit program enable/patch/disable (B4 M-P1-5).
+type SupplierCreditProgramEvent struct {
+	BaseEvent
+	SupplierID     string `json:"supplier_id"`
+	ProgramEnabled bool   `json:"program_enabled"`
+	Version        int64  `json:"version,omitempty"`
+	Action         string `json:"action,omitempty"` // ENABLE | PATCH | DISABLE
+	ActorID        string `json:"actor_id,omitempty"`
+}
+
+// SupplierCreditTermsEvent is per-retailer payment terms lifecycle (B4 M-P1-5).
+type SupplierCreditTermsEvent struct {
+	BaseEvent
+	SupplierID    string `json:"supplier_id"`
+	RetailerID    string `json:"retailer_id"`
+	CreditEnabled bool   `json:"credit_enabled"`
+	Version       int64  `json:"version,omitempty"`
+	Action        string `json:"action,omitempty"` // ENABLE | PATCH | HOLD | UNHOLD | DISABLE
+	ActorID       string `json:"actor_id,omitempty"`
+}
+
+// ControlTowerEvent is playbook/run lifecycle for supplier control tower (B4 M-P1-4).
+type ControlTowerEvent struct {
+	BaseEvent
+	SupplierID  string `json:"supplier_id"`
+	PlaybookID  string `json:"playbook_id,omitempty"`
+	RunID       string `json:"run_id,omitempty"`
+	ExceptionID string `json:"exception_id,omitempty"`
+	Status      string `json:"status,omitempty"`
+	Mode        string `json:"mode,omitempty"`
+	Action      string `json:"action,omitempty"`
+	ActorID     string `json:"actor_id,omitempty"`
+}
+
 // ManifestEvent handles manifest lifecycle events.
 type ManifestEvent struct {
 	BaseEvent

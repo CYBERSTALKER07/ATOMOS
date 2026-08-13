@@ -167,8 +167,10 @@ func (s *Service) ApproveOverride(ctx context.Context, flagKey, tenantType, tena
 		return fmt.Errorf("featureflags_unavailable")
 	}
 	flagKey = strings.ToUpper(strings.TrimSpace(flagKey))
+	tenantType = strings.ToUpper(strings.TrimSpace(tenantType))
+	tenantID = strings.TrimSpace(tenantID)
 	approver = strings.TrimSpace(approver)
-	ov, ok, err := s.repo.Get(ctx, flagKey, strings.ToUpper(strings.TrimSpace(tenantType)), strings.TrimSpace(tenantID))
+	ov, ok, err := s.repo.Get(ctx, flagKey, tenantType, tenantID)
 	if err != nil {
 		return err
 	}
@@ -187,5 +189,31 @@ func (s *Service) ApproveOverride(ctx context.Context, flagKey, tenantType, tena
 	ov.Status = StatusActive
 	ov.ApprovedBy = approver
 	ov.ApprovedAt = time.Now().UTC()
+	return s.repo.Upsert(ctx, ov)
+}
+
+// RevertApproveToPending undoes a money-flag activation when audit cannot be
+// recorded (B5 M-P0-11 fail-closed). Best-effort; callers treat audit failure
+// as the primary error even if revert fails.
+func (s *Service) RevertApproveToPending(ctx context.Context, flagKey, tenantType, tenantID string) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("featureflags_unavailable")
+	}
+	flagKey = strings.ToUpper(strings.TrimSpace(flagKey))
+	tenantType = strings.ToUpper(strings.TrimSpace(tenantType))
+	tenantID = strings.TrimSpace(tenantID)
+	ov, ok, err := s.repo.Get(ctx, flagKey, tenantType, tenantID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("override_not_found")
+	}
+	if ov.Status != StatusActive {
+		return nil
+	}
+	ov.Status = StatusPending
+	ov.ApprovedBy = ""
+	ov.ApprovedAt = time.Time{}
 	return s.repo.Upsert(ctx, ov)
 }

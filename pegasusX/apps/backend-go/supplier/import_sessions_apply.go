@@ -12,6 +12,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -333,7 +335,25 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 		if err := flush(); err != nil {
 			return fmt.Errorf("flush final apply mutations: %w", err)
 		}
-		return nil
+		// B4: one durable bus event per import session (not per-SKU).
+		whList := make([]string, 0, len(affectedWarehouses))
+		for warehouseID := range affectedWarehouses {
+			whList = append(whList, warehouseID)
+		}
+		sort.Strings(whList)
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateSupplier, supplierID, events.TopicMain, map[string]any{
+			"type":            events.EventInventorySyncComplete,
+			"supplier_id":     supplierID,
+			"session_id":      sessionID,
+			"applied_rows":    summary.AppliedRows,
+			"warehouse_ids":   whList,
+			"product_count":   len(affectedProducts),
+			"timestamp":       time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 
 	if err != nil {

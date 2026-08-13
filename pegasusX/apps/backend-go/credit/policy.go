@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -81,11 +83,13 @@ type CreditPolicyAuditRow struct {
 // PolicyRepository persists programs, terms, and audit.
 type PolicyRepository interface {
 	GetProgram(ctx context.Context, supplierID string) (SupplierCreditProgram, bool, error)
-	UpsertProgram(ctx context.Context, p SupplierCreditProgram) error
+	// UpsertProgram writes SupplierCreditPrograms; emit runs in the same RW txn when non-nil (B4).
+	UpsertProgram(ctx context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error
 	GetTerms(ctx context.Context, retailerID, supplierID string) (RetailerPaymentTerms, bool, error)
 	ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error)
 	ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error)
-	UpsertTerms(ctx context.Context, t RetailerPaymentTerms) error
+	// UpsertTerms writes RetailerPaymentTerms; emit runs in the same RW txn when non-nil (B4).
+	UpsertTerms(ctx context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error
 	AppendAudit(ctx context.Context, a CreditPolicyAuditRow) error
 }
 
@@ -113,7 +117,12 @@ func (r *MemoryPolicyRepository) GetProgram(_ context.Context, supplierID string
 	return p, ok, nil
 }
 
-func (r *MemoryPolicyRepository) UpsertProgram(_ context.Context, p SupplierCreditProgram) error {
+func (r *MemoryPolicyRepository) UpsertProgram(_ context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		if err := emit(&memoryPolicyTxnBuffer{}); err != nil {
+			return err
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.programs[p.SupplierID] = p
@@ -163,10 +172,23 @@ func (r *MemoryPolicyRepository) ListTermsByRetailer(_ context.Context, retailer
 	return out, nil
 }
 
-func (r *MemoryPolicyRepository) UpsertTerms(_ context.Context, t RetailerPaymentTerms) error {
+func (r *MemoryPolicyRepository) UpsertTerms(_ context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		if err := emit(&memoryPolicyTxnBuffer{}); err != nil {
+			return err
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.terms[termsKey(t.RetailerID, t.SupplierID)] = t
+	return nil
+}
+
+// memoryPolicyTxnBuffer is a no-op buffer for memory-repo emit callbacks in tests.
+type memoryPolicyTxnBuffer struct{}
+
+func (b *memoryPolicyTxnBuffer) BufferOutbox(context.Context, outbox.Event) error { return nil }
+func (b *memoryPolicyTxnBuffer) BufferAudit(context.Context, outbox.AuditEntry) error {
 	return nil
 }
 
@@ -226,7 +248,7 @@ func scanProgram(row *spanner.Row) (SupplierCreditProgram, error) {
 	return p, nil
 }
 
-func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierCreditProgram) error {
+func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error {
 	m := map[string]any{
 		"SupplierId":              p.SupplierID,
 		"ProgramEnabled":          p.ProgramEnabled,
@@ -246,7 +268,19 @@ func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierC
 	if p.DisabledAt != nil {
 		m["DisabledAt"] = *p.DisabledAt
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierCreditPrograms", m)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierCreditPrograms", m)}); err != nil {
+			return err
+		}
+		if emit == nil {
+			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := emit(buf); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
 	return err
 }
 
@@ -341,7 +375,7 @@ func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retai
 	return out, nil
 }
 
-func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPaymentTerms) error {
+func termsMutationMap(t RetailerPaymentTerms) map[string]any {
 	m := map[string]any{
 		"RetailerId":        t.RetailerID,
 		"SupplierId":        t.SupplierID,
@@ -361,7 +395,99 @@ func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPay
 	if t.DisabledAt != nil {
 		m["DisabledAt"] = *t.DisabledAt
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPaymentTerms", m)})
+	return m
+}
+
+func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPaymentTerms", termsMutationMap(t))}); err != nil {
+			return err
+		}
+		if emit == nil {
+			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := emit(buf); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	return err
+}
+
+// UpsertTermsAndProfile writes RetailerPaymentTerms + RetailerCreditProfiles + dual outbox
+// in one RW txn (relationship enable/patch/disable Class A). Same Spanner database as credit.
+func (r *SpannerPolicyRepository) UpsertTermsAndProfile(ctx context.Context, t RetailerPaymentTerms, p Profile, emitTerms, emitProfile func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("policy upsert unavailable")
+	}
+	p.AvailableCreditMinor = p.Available()
+	if p.Status == "" {
+		p.Status = StatusInactive
+	}
+	if !p.Status.Valid() {
+		return fmt.Errorf("invalid credit profile status: %s", p.Status)
+	}
+	callerVersion := p.Version
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// Profile version CAS (same semantics as credit.SpannerRepository.UpsertProfile).
+		expectedVersion, reserved, balance, found, err := readProfileVersionReservedBalance(ctx, txn, p.RetailerID, p.SupplierID)
+		if err != nil {
+			return err
+		}
+		if found {
+			if callerVersion != 0 && expectedVersion != callerVersion {
+				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", callerVersion, expectedVersion)
+			}
+			p.Version = expectedVersion + 1
+			if p.ReservedMinor == 0 {
+				p.ReservedMinor = reserved
+			}
+			if p.CurrentBalanceMinor == 0 && balance > 0 && p.CreditLimitMinor > 0 {
+				// keep existing balance unless caller set it
+			}
+		} else {
+			p.Version = 1
+			if p.CreatedAt.IsZero() {
+				p.CreatedAt = p.UpdatedAt
+			}
+		}
+		p.AvailableCreditMinor = p.Available()
+
+		muts := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("RetailerPaymentTerms", termsMutationMap(t)),
+			spanner.InsertOrUpdateMap("RetailerCreditProfiles", map[string]any{
+				"RetailerId":           p.RetailerID,
+				"SupplierId":           p.SupplierID,
+				"CreditLimitMinor":     p.CreditLimitMinor,
+				"CurrentBalanceMinor":  p.CurrentBalanceMinor,
+				"ReservedMinor":        p.ReservedMinor,
+				"AvailableCreditMinor": p.AvailableCreditMinor,
+				"RiskScore":            p.RiskScore,
+				"DelinquencyCount":     p.DelinquencyCount,
+				"Status":               string(p.Status),
+				"LastEvaluatedAt":      p.LastEvaluatedAt,
+				"Version":              p.Version,
+				"CreatedAt":            p.CreatedAt,
+				"UpdatedAt":            p.UpdatedAt,
+			}),
+		}
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if emitTerms != nil {
+			if err := emitTerms(buf); err != nil {
+				return err
+			}
+		}
+		if emitProfile != nil {
+			if err := emitProfile(buf); err != nil {
+				return err
+			}
+		}
+		return buf.Flush(ctx)
+	})
 	return err
 }
 
@@ -417,6 +543,61 @@ func NewPolicyService(repo PolicyRepository, credit *Service) *PolicyService {
 }
 
 func (s *PolicyService) SetNow(fn func() time.Time) { s.now = fn }
+
+// writeTermsAndProfile persists relationship terms and optional credit profile mirror.
+// On Spanner, both rows + dual outbox commit in one RW txn; otherwise sequential fallback.
+func (s *PolicyService) writeTermsAndProfile(ctx context.Context, t RetailerPaymentTerms, profile *Profile, actorUserID, termsAction, profileReason string) error {
+	now := t.UpdatedAt
+	if now.IsZero() {
+		now = s.now()
+	}
+	emitTerms := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, t.SupplierID, events.TopicMain, events.SupplierCreditTermsEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventSupplierCreditTermsChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:    t.SupplierID,
+			RetailerID:    t.RetailerID,
+			CreditEnabled: t.CreditEnabled,
+			Version:       t.Version,
+			Action:        termsAction,
+			ActorID:       actorUserID,
+		})
+	}
+	if profile == nil {
+		return s.repo.UpsertTerms(ctx, t, emitTerms)
+	}
+	if profile.UpdatedAt.IsZero() {
+		profile.UpdatedAt = now
+	}
+	if profile.LastEvaluatedAt.IsZero() {
+		profile.LastEvaluatedAt = now
+	}
+	if profile.CreatedAt.IsZero() {
+		profile.CreatedAt = now
+	}
+	emitProfile := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateCreditProfile, profile.RetailerID, events.TopicMain, events.CreditProfileEvent{
+			BaseEvent:        events.BaseEvent{Type: events.EventRetailerCreditProfileChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			ProfileID:        profileID(profile.RetailerID, profile.SupplierID),
+			RetailerID:       profile.RetailerID,
+			SupplierID:       profile.SupplierID,
+			CreditLimitMinor: profile.CreditLimitMinor,
+			CurrentBalance:   profile.CurrentBalanceMinor,
+			Delinquent:       profile.DelinquencyCount > 0,
+			Reason:           profileReason,
+		})
+	}
+	if sp, ok := s.repo.(*SpannerPolicyRepository); ok {
+		return sp.UpsertTermsAndProfile(ctx, t, *profile, emitTerms, emitProfile)
+	}
+	// Memory / non-Spanner: terms then profile (tests).
+	if err := s.repo.UpsertTerms(ctx, t, emitTerms); err != nil {
+		return err
+	}
+	if s.credit != nil {
+		return s.credit.UpsertProfile(ctx, *profile, actorUserID, profileReason)
+	}
+	return nil
+}
 
 // CreditPathAllowed implements PolicyGate.
 func (s *PolicyService) CreditPathAllowed(ctx context.Context, retailerID, supplierID string) (bool, string, int64, error) {
@@ -547,7 +728,16 @@ func (s *PolicyService) EnableProgram(ctx context.Context, supplierID, actorUser
 	}
 	before, _ := json.Marshal(existing)
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: true,
+			Version:        p.Version,
+			Action:         "ENABLE",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return SupplierCreditProgram{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
@@ -583,7 +773,16 @@ func (s *PolicyService) PatchProgramDefaults(ctx context.Context, supplierID, ac
 	p.Version++
 	p.UpdatedAt = s.now()
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: p.UpdatedAt.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: p.ProgramEnabled,
+			Version:        p.Version,
+			Action:         "PATCH",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return SupplierCreditProgram{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
@@ -642,24 +841,25 @@ func (s *PolicyService) EnableRelationship(ctx context.Context, supplierID, reta
 	}
 	before, _ := json.Marshal(existing)
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return RetailerPaymentTerms{}, err
-	}
-	// Mirror onto credit profile as ACTIVE with limit.
-	if s.credit != nil {
-		limit := t.CreditLimitMinor
-		if t.UseGlobalDefaults {
-			limit = prog.GlobalDefaultLimitMinor
-			if t.CreditLimitMinor > 0 {
-				limit = t.CreditLimitMinor
-			}
+	limit := t.CreditLimitMinor
+	if t.UseGlobalDefaults {
+		limit = prog.GlobalDefaultLimitMinor
+		if t.CreditLimitMinor > 0 {
+			limit = t.CreditLimitMinor
 		}
-		_ = s.credit.UpsertProfile(ctx, Profile{
-			RetailerID:       retailerID,
-			SupplierID:       supplierID,
-			CreditLimitMinor: limit,
-			Status:           StatusActive,
-		}, actorUserID, "relationship_enable")
+	}
+	profile := &Profile{
+		RetailerID:       retailerID,
+		SupplierID:       supplierID,
+		CreditLimitMinor: limit,
+		Status:           StatusActive,
+		UpdatedAt:        now,
+		CreatedAt:        now,
+		LastEvaluatedAt:  now,
+	}
+	// Single Spanner RW: terms + profile + dual outbox (residual S-P1-7).
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "ENABLE", "relationship_enable"); err != nil {
+		return RetailerPaymentTerms{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "REL_ENABLE",
@@ -694,15 +894,17 @@ func (s *PolicyService) PatchRelationshipTerms(ctx context.Context, supplierID, 
 	t.Version++
 	t.UpdatedAt = s.now()
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return RetailerPaymentTerms{}, err
-	}
-	if s.credit != nil && limitMinor != nil {
+	var profile *Profile
+	if limitMinor != nil && s.credit != nil {
 		prof, found, _ := s.credit.GetProfile(ctx, retailerID, supplierID)
 		if found {
 			prof.CreditLimitMinor = *limitMinor
-			_ = s.credit.UpsertProfile(ctx, prof, actorUserID, "terms_limit_patch")
+			prof.UpdatedAt = t.UpdatedAt
+			profile = &prof
 		}
+	}
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "PATCH", "terms_limit_patch"); err != nil {
+		return RetailerPaymentTerms{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "TERMS_PATCH",
@@ -737,15 +939,17 @@ func (s *PolicyService) AdminDisableRelationship(ctx context.Context, supplierID
 	t.Version++
 	t.UpdatedAt = now
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return err
-	}
+	var profile *Profile
 	if s.credit != nil {
 		prof, found, _ := s.credit.GetProfile(ctx, retailerID, supplierID)
 		if found {
 			prof.Status = StatusInactive
-			_ = s.credit.UpsertProfile(ctx, prof, actorUserID, "admin_disable:"+ticketID)
+			prof.UpdatedAt = now
+			profile = &prof
 		}
+	}
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "DISABLE", "admin_disable:"+ticketID); err != nil {
+		return err
 	}
 	return s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "ADMIN_DISABLE",
@@ -775,7 +979,16 @@ func (s *PolicyService) AdminDisableProgram(ctx context.Context, supplierID, act
 	p.Version++
 	p.UpdatedAt = now
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: false,
+			Version:        p.Version,
+			Action:         "DISABLE",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return err
 	}
 	return s.repo.AppendAudit(ctx, CreditPolicyAuditRow{

@@ -96,16 +96,16 @@ func (s *Service) UpdateOrderDuringDelivery(ctx context.Context, claims auth.Cla
 		return UpdateOrderDuringDeliveryResponse{}, ErrOrderForbidden
 	}
 
-	// Geofence check
+	// Geofence check (validates spoofing even when the mutator is not implemented).
 	_, err = validateRequiredGeofence(req.Latitude, req.Longitude, o)
 	if err != nil {
 		return UpdateOrderDuringDeliveryResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// Add adjustments and create DeliverySessionAdjustments logic here.
-
-	return UpdateOrderDuringDeliveryResponse{
-		Success: true,
-		Message: "Order updated successfully during delivery",
-	}, nil
+	// B1 M-P0-2: never report success without a Spanner write + outbox.
+	// Delivery-session adjustments are not wired; clients must use the
+	// real edge routes (arrive / partial-offload / amend / collect-cash).
+	return UpdateOrderDuringDeliveryResponse{}, errors.New(
+		"not_implemented: use /v1/delivery/arrive, partial-offload, amend, or collect-cash — mid-delivery update has no durable writer",
+	)
 }

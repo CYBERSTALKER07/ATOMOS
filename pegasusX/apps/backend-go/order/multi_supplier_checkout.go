@@ -6,11 +6,14 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 const (
@@ -165,21 +168,44 @@ func (s *Service) loadProductSupplierIDs(ctx context.Context, lines []LineItem) 
 	return out, nil
 }
 
+// insertParentOrder writes ParentOrders + PARENT_ORDER_CREATED outbox in one RW txn (B3 M-P0-6).
 func (s *Service) insertParentOrder(ctx context.Context, parentID, retailerID, currency string, childCount int) error {
 	if s.spannerClient == nil {
 		return nil
 	}
-	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("ParentOrders", map[string]any{
-			"ParentOrderId": parentID,
-			"RetailerId":    retailerID,
-			"Status":        parentStatusPending,
-			"Currency":      currency,
-			"TotalMinor":    int64(0),
-			"ChildCount":    int64(childCount),
-			"CreatedAt":     spanner.CommitTimestamp,
-			"UpdatedAt":     spanner.CommitTimestamp,
-		}),
+	parentID = strings.TrimSpace(parentID)
+	retailerID = strings.TrimSpace(retailerID)
+	if parentID == "" || retailerID == "" {
+		return fmt.Errorf("parent order requires parent_id and retailer_id")
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertMap("ParentOrders", map[string]any{
+				"ParentOrderId": parentID,
+				"RetailerId":    retailerID,
+				"Status":        parentStatusPending,
+				"Currency":      currency,
+				"TotalMinor":    int64(0),
+				"ChildCount":    int64(childCount),
+				"CreatedAt":     spanner.CommitTimestamp,
+				"UpdatedAt":     spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateParentOrder, parentID, events.TopicMain, events.ParentOrderEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventParentOrderCreated, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			ParentOrderID: parentID,
+			RetailerID:    retailerID,
+			Status:        parentStatusPending,
+			Currency:      currency,
+			TotalMinor:    0,
+			ChildCount:    childCount,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("insert parent order: %w", err)
@@ -187,19 +213,46 @@ func (s *Service) insertParentOrder(ctx context.Context, parentID, retailerID, c
 	return nil
 }
 
+// updateParentOrderTotals updates ParentOrders + PARENT_ORDER_UPDATED outbox in one RW txn (B3 M-P0-6).
 func (s *Service) updateParentOrderTotals(ctx context.Context, parentID, status, currency string, totalMinor int64, childCount int) error {
 	if s.spannerClient == nil {
 		return nil
 	}
-	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.UpdateMap("ParentOrders", map[string]any{
-			"ParentOrderId": parentID,
-			"Status":        status,
-			"Currency":      currency,
-			"TotalMinor":    totalMinor,
-			"ChildCount":    int64(childCount),
-			"UpdatedAt":     spanner.CommitTimestamp,
-		}),
+	parentID = strings.TrimSpace(parentID)
+	if parentID == "" {
+		return fmt.Errorf("parent order requires parent_id")
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("ParentOrders", map[string]any{
+				"ParentOrderId": parentID,
+				"Status":        status,
+				"Currency":      currency,
+				"TotalMinor":    totalMinor,
+				"ChildCount":    int64(childCount),
+				"UpdatedAt":     spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		// RetailerID not on update map — load for fanout key when present; empty still keys by parent.
+		retailerID := ""
+		if row, rerr := txn.ReadRow(ctx, "ParentOrders", spanner.Key{parentID}, []string{"RetailerId"}); rerr == nil {
+			_ = row.Columns(&retailerID)
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateParentOrder, parentID, events.TopicMain, events.ParentOrderEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventParentOrderUpdated, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			ParentOrderID: parentID,
+			RetailerID:    strings.TrimSpace(retailerID),
+			Status:        status,
+			Currency:      currency,
+			TotalMinor:    totalMinor,
+			ChildCount:    childCount,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("update parent order: %w", err)

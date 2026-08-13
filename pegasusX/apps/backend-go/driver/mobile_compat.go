@@ -357,85 +357,54 @@ func (s *Service) HandleOrderComplete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
 }
 
-// HandleOrderCollectCash serves POST /v1/order/collect-cash.
+// HandleOrderCollectCash serves POST /v1/order/collect-cash when OrderService is absent.
+// B1 M-P0-2: never fake money capture — clients must hit order.HandleCollectCash.
 func (s *Service) HandleOrderCollectCash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "collected", "state": "COMPLETED"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/order/collect-cash with OrderService wired — silent cash capture is forbidden",
+		"path":    "/v1/order/collect-cash",
+	})
 }
 
 // HandleOrderStatePatch serves PATCH /v1/orders/{orderID}/state.
+// B1 M-P0-2: fail-closed — this path never wrote Spanner/outbox; do not report success.
 func (s *Service) HandleOrderStatePatch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 	orderID := strings.TrimSpace(chi.URLParam(r, "orderID"))
-	body, err := readLimitedBody(r, 8*1024)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	var req struct {
-		State string `json:"state"`
-	}
-	_ = json.Unmarshal(body, &req)
-	state := strings.TrimSpace(req.State)
-	if state == "" {
-		state = "IN_TRANSIT"
-	}
-	var resp any
-	if s.orderGet != nil {
-		current, found, _ := s.orderGet(r.Context(), orderID)
-		if found {
-			current.Status = state
-			resp = current
-			
-			if state == "IN_TRANSIT" && current.SplitGroupID != "" && s.repo != nil {
-				claims, ok := auth.FromContext(r.Context())
-				if ok {
-					siblings, err := s.repo.FindSiblingDriversForOrder(r.Context(), orderID)
-					if err == nil {
-						for _, sib := range siblings {
-							if sib != claims.Subject {
-								payload := map[string]any{
-									"type":           "OTHER_TRUCK_ON_WAY",
-									"order_id":       orderID,
-									"split_group_id": current.SplitGroupID,
-									"message":        "Another truck is on the way to this route.",
-								}
-								s.broadcastDriverEvent(r.Context(), sib, payload)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	if resp == nil {
-		resp = map[string]any{"id": orderID, "state": state}
-	}
-	respBytes, err := json.Marshal(resp)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_response_failed"})
-		return
-	}
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-	writeJSONBytes(w, http.StatusOK, respBytes)
+	writeJSON(w, http.StatusNotImplemented, map[string]any{
+		"error":    "not_implemented",
+		"order_id": orderID,
+		"message":  "PATCH /v1/orders/{id}/state does not mutate Spanner; use delivery edge routes (arrive, depart, collect-cash, credit-leave, partial-offload)",
+		"use": []string{
+			"/v1/delivery/arrive",
+			"/v1/order/collect-cash",
+			"/v1/driver/orders/{orderId}/credit-leave",
+			"/v1/driver/orders/{orderId}/partial-offload",
+			"/v1/fleet/driver/depart",
+		},
+	})
 }
 
-// HandleDeliveryArrive serves POST /v1/delivery/arrive.
+// HandleDeliveryArrive serves POST /v1/delivery/arrive when OrderService is absent.
+// B1 M-P0-2: never fake arrive success.
 func (s *Service) HandleDeliveryArrive(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "arrived"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/delivery/arrive with OrderService wired — silent arrive is forbidden",
+		"path":    "/v1/delivery/arrive",
+	})
 }
 
 // HandleDeliveryShopClosed is a fallback when order.Service is not wired.

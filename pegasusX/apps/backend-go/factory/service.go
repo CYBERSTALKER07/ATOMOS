@@ -702,6 +702,19 @@ type wsEnvelope struct {
 	Data      any    `json:"data"`
 }
 
+// resolveFactoryNode prefers JWT home-node / FactoryScope over bootstrap demo id (B2 M-P0-8).
+func (s *Service) resolveFactoryNode(ctx context.Context) string {
+	if id := auth.EffectiveFactoryID(ctx); strings.TrimSpace(id) != "" {
+		return strings.TrimSpace(id)
+	}
+	if claims, ok := auth.FromContext(ctx); ok {
+		if claims.HomeNodeType == auth.HomeNodeFactory && strings.TrimSpace(claims.HomeNodeID) != "" {
+			return strings.TrimSpace(claims.HomeNodeID)
+		}
+	}
+	return s.factoryNodeID
+}
+
 func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, data map[string]any) {
 	envelope := wsEnvelope{
 		Type:      eventType,
@@ -717,7 +730,7 @@ func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, d
 		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), payload)
 	}
 	if s.factoryHub != nil {
-		s.factoryHub.Broadcast(ctx, "factory:"+s.factoryNodeID, payload)
+		s.factoryHub.Broadcast(ctx, "factory:"+s.resolveFactoryNode(ctx), payload)
 	}
 }
 
@@ -738,7 +751,7 @@ func (s *Service) manifestOutboxFields(ctx context.Context, manifest ManifestRow
 		BaseEvent:     events.BaseEvent{Type: eventType},
 		ManifestID:    manifest.ManifestID,
 		SupplierID:    s.resolveSupplierScope(ctx),
-		FactoryID:     s.factoryNodeID,
+		FactoryID:     s.resolveFactoryNode(ctx),
 		State:         manifest.State,
 		DriverID:      manifest.DriverID,
 		VehicleID:     manifest.VehicleID,

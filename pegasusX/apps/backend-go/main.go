@@ -42,7 +42,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
+	// B2: richer payload routes (ws-session, ship-units, labels).
+	payloadroutes "github.com/pegasusx/pegasusx/apps/backend-go/payloaderoutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
@@ -208,7 +209,7 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
-	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{
+	payloadroutes.RegisterRoutes(r, payloadroutes.Deps{
 		Service:             app.PayloadService,
 		OrderService:        app.OrderService,
 		JWTSecret:           cfg.JWTSecret,
@@ -284,6 +285,7 @@ func main() {
 		PolicyService: app.CreditPolicyService,
 		ARService:     app.ARService,
 		DunningWorker: app.ARDunningWorker,
+		StepUp:        mfa.RequireStepUp(app.MFAService),
 	})
 	if app.ForecastAccuracy != nil || app.ForecastRunner != nil || app.Spanner != nil {
 		auth.ProtectMutations(r, auth.MutationGuardConfig{}, func(gr chi.Router) {
@@ -376,12 +378,14 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
+		StepUp:              mfa.RequireStepUp(app.MFAService),
 	})
 	if app.PartnerHandlers != nil && app.PartnerKeys != nil {
 		partner.RegisterPartnerRoutesOpts(r, partner.AuthOptions{
 			Keys: app.PartnerKeys, JWTSecret: app.PartnerJWTSecret,
 		}, app.PartnerHandlers)
-		partner.RegisterAdminKeyRoutes(r, app.PartnerHandlers)
+		// B5 M-P1-11: MFA step-up for PLATFORM_ADMIN partner key issue/list/revoke.
+		partner.RegisterAdminKeyRoutes(r, app.PartnerHandlers, mfa.RequireStepUp(app.MFAService))
 	}
 	if app.FxRatesHandlers != nil {
 		fxrates.RegisterAdminRoutes(r, app.FxRatesHandlers)

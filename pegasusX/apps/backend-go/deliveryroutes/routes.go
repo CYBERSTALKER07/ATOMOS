@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -76,12 +77,15 @@ func handleUpdateOrderDuringDelivery(svc *order.Service) http.HandlerFunc {
 		resp, err := svc.UpdateOrderDuringDelivery(r.Context(), claims, req)
 		if err != nil {
 			status := http.StatusUnprocessableEntity
+			msg := err.Error()
 			if errors.Is(err, order.ErrOrderNotFound) {
 				status = http.StatusNotFound
 			} else if errors.Is(err, order.ErrOrderForbidden) {
 				status = http.StatusForbidden
+			} else if strings.HasPrefix(msg, "not_implemented") {
+				status = http.StatusNotImplemented
 			}
-			writeJSON(w, status, map[string]string{"error": err.Error()})
+			writeJSON(w, status, map[string]string{"error": msg})
 			return
 		}
 

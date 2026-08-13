@@ -338,7 +338,14 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		err := s.repo.UpdateInventoryQuantity(r.Context(), whID, patchBody.ProductID, patchBody.Quantity, func(buf outbox.TxnBuffer) error {
-			return nil
+			// B2 M-P0-3: stock absolute set must leave the bus.
+			return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, map[string]any{
+				"type":         events.EventInventoryQuantityUpdated,
+				"warehouse_id": whID,
+				"product_id":   patchBody.ProductID,
+				"quantity":     patchBody.Quantity,
+				"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+			})
 		})
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory"})

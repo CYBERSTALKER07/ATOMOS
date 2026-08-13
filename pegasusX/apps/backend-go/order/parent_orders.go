@@ -195,7 +195,7 @@ func (s *Service) HandleGetParentOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Subject == "" {
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -203,12 +203,18 @@ func (s *Service) HandleGetParentOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
+	// B3 M-P0-4: ParentOrders.RetailerId is org id.
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
 	parentID := strings.TrimSpace(chi.URLParam(r, "parentOrderID"))
 	if parentID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "parent_order_id_required"})
 		return
 	}
-	view, err := s.GetParentOrder(r.Context(), claims.Subject, parentID)
+	view, err := s.GetParentOrder(r.Context(), retailerID, parentID)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrOrderNotFound):

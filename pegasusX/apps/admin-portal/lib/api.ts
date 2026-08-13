@@ -117,8 +117,14 @@ export const api = {
       "GET",
       `/v1/admin/partner-keys?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
     ),
-  revokePartnerKey: (token: string, keyId: string) =>
-    req<{ status?: string }>(token, "POST", `/v1/admin/partner-keys/${encodeURIComponent(keyId)}/revoke`, {}),
+  // B5 M-P0-10: PLATFORM_ADMIN revoke requires tenant scope (query + body).
+  revokePartnerKey: (token: string, keyId: string, tenantType: string, tenantId: string) =>
+    req<{ ok?: boolean; status?: string }>(
+      token,
+      "POST",
+      `/v1/admin/partner-keys/${encodeURIComponent(keyId)}/revoke?tenant_type=${encodeURIComponent(tenantType)}&tenant_id=${encodeURIComponent(tenantId)}`,
+      { tenant_type: tenantType, tenant_id: tenantId },
+    ),
   getPartnerAs2: (token: string, tenantType: string, tenantId: string) =>
     req<Record<string, unknown>>(
       token,

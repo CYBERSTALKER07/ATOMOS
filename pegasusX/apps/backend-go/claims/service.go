@@ -756,11 +756,30 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 
 	now := s.now().UTC()
 	// CAS OPEN → UNDER_REVIEW so concurrent approves fail closed.
+	// B1 M-P0-13: emit CLAIM_UNDER_REVIEW so consumers see the intermediate state
+	// (settlement may still fail and leave the claim under review).
 	c.Status = StatusUnderReview
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
 	c.UpdatedAt = now
-	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, nil); err != nil {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":            events.EventClaimUnderReview,
+			"claim_id":        c.ClaimID,
+			"order_id":        c.OrderID,
+			"supplier_id":     c.SupplierID,
+			"retailer_id":     c.RetailerID,
+			"status":          string(StatusUnderReview),
+			"amount_minor":    c.AmountMinor,
+			"currency":        c.Currency,
+			"resolution_note": c.ResolutionNote,
+			"timestamp":       now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+	}); err != nil {
 		return Claim{}, SettlementResult{}, err
 	}
 

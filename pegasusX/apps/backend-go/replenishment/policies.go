@@ -7,6 +7,9 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // Policy holds touchless + safety-stock knobs for one supplier.
@@ -77,7 +80,8 @@ func LoadPolicy(ctx context.Context, client *spanner.Client, supplierID string) 
 	return p, nil
 }
 
-// UpsertPolicy writes the full policy row.
+// UpsertPolicy writes the full policy row + REPLENISHMENT_POLICY_UPDATED outbox (S-P1-2).
+// EnsurePolicy seeds silently and must not call this path for default-create noise.
 func UpsertPolicy(ctx context.Context, client *spanner.Client, p Policy) error {
 	if client == nil || p.SupplierID == "" {
 		return errors.New("policy upsert unavailable")
@@ -97,18 +101,39 @@ func UpsertPolicy(ctx context.Context, client *spanner.Client, p Policy) error {
 	if p.MinConfidenceScore <= 0 {
 		p.MinConfidenceScore = 0.85
 	}
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("ReplenishmentPolicies", map[string]any{
-			"SupplierId":                p.SupplierID,
-			"AutoApproveStable":         p.AutoApproveStable,
-			"AutoApprovePredictivePush": p.AutoApprovePredictivePush,
-			"MaxDailyTransferUnits":     p.MaxDailyTransferUnits,
-			"MinConfidenceScore":        p.MinConfidenceScore,
-			"TargetServiceLevel":        p.TargetServiceLevel,
-			"LeadTimeDays":              p.LeadTimeDays,
-			"LeadTimeSigmaDays":         p.LeadTimeSigmaDays,
-			"UpdatedAt":                 spanner.CommitTimestamp,
-		}),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdateMap("ReplenishmentPolicies", map[string]any{
+				"SupplierId":                p.SupplierID,
+				"AutoApproveStable":         p.AutoApproveStable,
+				"AutoApprovePredictivePush": p.AutoApprovePredictivePush,
+				"MaxDailyTransferUnits":     p.MaxDailyTransferUnits,
+				"MinConfidenceScore":        p.MinConfidenceScore,
+				"TargetServiceLevel":        p.TargetServiceLevel,
+				"LeadTimeDays":              p.LeadTimeDays,
+				"LeadTimeSigmaDays":         p.LeadTimeSigmaDays,
+				"UpdatedAt":                 spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		payload := map[string]any{
+			"type":                         events.EventReplenishmentPolicyUpdated,
+			"supplier_id":                  p.SupplierID,
+			"auto_approve_stable":          p.AutoApproveStable,
+			"auto_approve_predictive_push": p.AutoApprovePredictivePush,
+			"max_daily_transfer_units":     p.MaxDailyTransferUnits,
+			"min_confidence_score":         p.MinConfidenceScore,
+			"target_service_level":         p.TargetServiceLevel,
+			"lead_time_days":               p.LeadTimeDays,
+			"lead_time_sigma_days":         p.LeadTimeSigmaDays,
+			"timestamp":                    time.Now().UTC().Format(time.RFC3339Nano),
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateSupplier, p.SupplierID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	return err
 }

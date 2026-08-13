@@ -3,10 +3,14 @@ package retailer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // CartItem mirrors the CartItems Spanner row.
@@ -98,11 +102,19 @@ func (r *SpannerCartRepository) ListByRetailerAll(ctx context.Context, retailerI
 	return items, nil
 }
 
-// UpsertItems writes cart items inside a ReadWriteTransaction.
+// UpsertItems writes cart items + CART_SYNC_UPDATED outbox in one ReadWriteTransaction (B3 M-P1-3).
 func (r *SpannerCartRepository) UpsertItems(ctx context.Context, items []CartItem) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		mutations := make([]*spanner.Mutation, 0, len(items))
+		retailerID := ""
+		supplierID := ""
 		for _, ci := range items {
+			if retailerID == "" {
+				retailerID = strings.TrimSpace(ci.RetailerID)
+			}
+			if supplierID == "" {
+				supplierID = strings.TrimSpace(ci.SupplierID)
+			}
 			m := spanner.InsertOrUpdateMap("CartItems", map[string]any{
 				"CartItemId":    ci.CartItemID,
 				"RetailerId":    ci.RetailerID,
@@ -115,7 +127,12 @@ func (r *SpannerCartRepository) UpsertItems(ctx context.Context, items []CartIte
 			})
 			mutations = append(mutations, m)
 		}
-		return txn.BufferWrite(mutations)
+		if len(mutations) > 0 {
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
+		}
+		return emitCartSyncOutbox(ctx, txn, retailerID, supplierID, len(items))
 	})
 	if err != nil {
 		return fmt.Errorf("upsert cart items: %w", err)
@@ -123,7 +140,7 @@ func (r *SpannerCartRepository) UpsertItems(ctx context.Context, items []CartIte
 	return nil
 }
 
-// ClearCart deletes all cart items for a retailer + supplier pair.
+// ClearCart deletes all cart items for a retailer + supplier pair (+ cart sync outbox).
 func (r *SpannerCartRepository) ClearCart(ctx context.Context, retailerID, supplierID string) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
@@ -149,9 +166,11 @@ func (r *SpannerCartRepository) ClearCart(ctx context.Context, retailerID, suppl
 			mutations = append(mutations, spanner.Delete("CartItems", spanner.Key{cartItemID}))
 		}
 		if len(mutations) > 0 {
-			return txn.BufferWrite(mutations)
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
 		}
-		return nil
+		return emitCartSyncOutbox(ctx, txn, retailerID, supplierID, 0)
 	})
 	if err != nil {
 		return fmt.Errorf("clear cart for retailer %s: %w", retailerID, err)
@@ -159,7 +178,7 @@ func (r *SpannerCartRepository) ClearCart(ctx context.Context, retailerID, suppl
 	return nil
 }
 
-// ClearCartAll deletes all cart items for a retailer across suppliers.
+// ClearCartAll deletes all cart items for a retailer across suppliers (+ cart sync outbox).
 func (r *SpannerCartRepository) ClearCartAll(ctx context.Context, retailerID string) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
@@ -185,12 +204,34 @@ func (r *SpannerCartRepository) ClearCartAll(ctx context.Context, retailerID str
 			mutations = append(mutations, spanner.Delete("CartItems", spanner.Key{cartItemID}))
 		}
 		if len(mutations) > 0 {
-			return txn.BufferWrite(mutations)
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
 		}
-		return nil
+		return emitCartSyncOutbox(ctx, txn, retailerID, "", 0)
 	})
 	if err != nil {
 		return fmt.Errorf("clear all cart items for retailer %s: %w", retailerID, err)
 	}
 	return nil
+}
+
+// emitCartSyncOutbox buffers CART_SYNC_UPDATED for multi-device RetailerHub fanout.
+func emitCartSyncOutbox(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID string, itemCount int) error {
+	retailerID = strings.TrimSpace(retailerID)
+	if txn == nil || retailerID == "" {
+		return nil
+	}
+	payload := map[string]any{
+		"type":        events.EventCartSyncUpdated,
+		"timestamp":   time.Now().UTC().Format(time.RFC3339Nano),
+		"retailer_id": retailerID,
+		"supplier_id": strings.TrimSpace(supplierID),
+		"item_count":  itemCount,
+	}
+	buf := outbox.NewSpannerTxnBuffer(txn)
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateRetailer, retailerID, events.TopicMain, payload); err != nil {
+		return err
+	}
+	return buf.Flush(ctx)
 }

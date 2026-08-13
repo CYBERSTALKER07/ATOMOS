@@ -501,12 +501,13 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			leg := PaymentLeg{
-				OrderID:        req.OrderID,
-				LegID:          s.newID(),
-				Method:         MethodCredit,
-				AmountMinor:    delivered,
-				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("credit-leave-%s-%s", req.OrderID, s.newID()),
+				OrderID:     req.OrderID,
+				LegID:       s.newID(),
+				Method:      MethodCredit,
+				AmountMinor: delivered,
+				Status:      PaymentStatusCaptured,
+				// Stable key: match HandleCreditLeave — retries must not mint a second leg.
+				IdempotencyKey: "credit-leave-" + req.OrderID,
 				CreatedAt:      s.now(),
 				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 			}

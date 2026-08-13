@@ -94,7 +94,10 @@ export default function PartnerPanel({ token }: { token: string }) {
                   <button
                     className="rounded border px-2 py-0.5 text-xs hover:bg-red-50"
                     onClick={() =>
-                      void api.revokePartnerKey(token, k.key_id).then(load).catch((e) => setError(String(e)))
+                      void api
+                        .revokePartnerKey(token, k.key_id, tenantType, tenantId.trim())
+                        .then(load)
+                        .catch((e) => setError(String(e)))
                     }
                   >
                     Revoke

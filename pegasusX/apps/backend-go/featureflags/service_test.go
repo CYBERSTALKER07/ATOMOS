@@ -84,3 +84,34 @@ func TestMoneyFlagDualControl(t *testing.T) {
 		t.Fatal("re-approving an active override must fail")
 	}
 }
+
+func TestRevertApproveToPending_FailClosed(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("AR_DUNNING_ENABLED", "false")
+	svc := NewService(NewMemoryRepository())
+	if err := svc.SetOverride(ctx, Override{
+		FlagKey: "AR_DUNNING_ENABLED", TenantType: "SUPPLIER", TenantID: "s1",
+		Enabled: true, UpdatedBy: "setter-1", Reason: "ops",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ApproveOverride(ctx, "AR_DUNNING_ENABLED", "SUPPLIER", "s1", "approver-2"); err != nil {
+		t.Fatalf("approve: %v", err)
+	}
+	on, _, _ := svc.Evaluate(ctx, "AR_DUNNING_ENABLED", "SUPPLIER", "s1")
+	if !on {
+		t.Fatal("expected active override")
+	}
+	// B5 M-P0-11: audit failure path reverts ACTIVE → PENDING so money flag is not live without audit.
+	if err := svc.RevertApproveToPending(ctx, "AR_DUNNING_ENABLED", "SUPPLIER", "s1"); err != nil {
+		t.Fatalf("revert: %v", err)
+	}
+	on, src, _ := svc.Evaluate(ctx, "AR_DUNNING_ENABLED", "SUPPLIER", "s1")
+	if on {
+		t.Fatalf("after revert, override must not take effect (src=%s)", src)
+	}
+	// Re-evaluate via Get through approve path: re-approve after revert should work.
+	if err := svc.ApproveOverride(ctx, "AR_DUNNING_ENABLED", "SUPPLIER", "s1", "approver-3"); err != nil {
+		t.Fatalf("re-approve after revert: %v (status should be PENDING)", err)
+	}
+}

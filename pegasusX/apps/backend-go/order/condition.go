@@ -109,7 +109,8 @@ func reporterAuthorizedForOrder(claims auth.Claims, o Order) bool {
 	case auth.RoleDriver:
 		return o.DriverID != "" && o.DriverID == claims.Subject
 	case auth.RoleRetailer:
-		return o.RetailerID != "" && o.RetailerID == claims.Subject
+		// B3 M-P0-4: order tenant is org id.
+		return o.RetailerID != "" && o.RetailerID == auth.ResolveRetailerOrgID(claims)
 	case auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RoleFactoryAdmin:
 		return o.WarehouseID != "" && o.WarehouseID == claims.HomeNodeID
 	}

@@ -226,7 +226,9 @@ func authorizeReceiptParty(claims auth.Claims, o Order, party ReceiptPartyCopy) 
 	switch party {
 	case PartyCopyRetailer:
 		if claims.Role == auth.RoleRetailer {
-			return claims.Subject != "" && claims.Subject == o.RetailerID
+			// B3 M-P0-4: receipt party scoped to org, not staff Subject.
+			orgID := auth.ResolveRetailerOrgID(claims)
+			return orgID != "" && orgID == o.RetailerID
 		}
 		// Admin may inspect retailer copy within supplier tenant.
 		if claims.Role == auth.RoleAdmin {

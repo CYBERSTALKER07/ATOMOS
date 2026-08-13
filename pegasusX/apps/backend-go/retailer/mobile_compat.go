@@ -42,13 +42,18 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// HandleCashCheckout serves POST /v1/order/cash-checkout.
+// HandleCashCheckout serves POST /v1/order/cash-checkout when PaymentService is absent.
+// B1 M-P0-5: never fake PENDING_CASH_COLLECTION without Spanner/outbox.
 func (s *Service) HandleCashCheckout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "state": "PENDING_CASH_COLLECTION"})
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"error":         "use_confirm_cash",
+		"message":       "Use POST /v1/delivery/confirm-cash (or wired payment cash-checkout) — silent cash selection is forbidden",
+		"checkout_path": "/v1/delivery/confirm-cash",
+	})
 }
 
 // HandleCardCheckout serves POST /v1/order/card-checkout.

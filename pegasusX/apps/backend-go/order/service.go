@@ -1582,7 +1582,9 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		return UpdateStatusResponse{}, ErrOrderForbidden
 	}
 	if claims.Role == auth.RoleRetailer {
-		if claims.Subject == "" || claims.Subject != current.RetailerID || nextStatus != StatusCancelled {
+		// B3 M-P0-4: order.RetailerID is org id; staff Subject must not be used for ownership.
+		orgID := auth.ResolveRetailerOrgID(claims)
+		if orgID == "" || orgID != current.RetailerID || nextStatus != StatusCancelled {
 			return UpdateStatusResponse{}, ErrOrderForbidden
 		}
 		if PreorderCancelLocked(s.now(), current) {
@@ -2167,12 +2169,13 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 				return err
 			}
 			leg := PaymentLeg{
-				OrderID:        req.OrderID,
-				LegID:          s.newID(),
-				Method:         MethodCash,
-				AmountMinor:    receivedMinor,
-				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("cash-%s-%s", req.OrderID, s.newID()),
+				OrderID:     req.OrderID,
+				LegID:       s.newID(),
+				Method:      MethodCash,
+				AmountMinor: receivedMinor,
+				Status:      PaymentStatusCaptured,
+				// Stable key: retries must hit the unique index, not mint a second cash leg.
+				IdempotencyKey: "cash-" + req.OrderID,
 				CreatedAt:      s.now(),
 				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 			}
@@ -2445,7 +2448,13 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Subject == "" {
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	// B3 M-P0-4: multi-user JWT — org is tenant; Subject is staff person.
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -2471,11 +2480,10 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Subject IS the retailer id for RETAILER-role callers.
-	resp, err := s.Create(r.Context(), claims.Subject, req)
+	resp, err := s.Create(r.Context(), retailerID, req)
 	if err != nil {
 		s.log.Warn("order create failed",
-			"retailer_id", claims.Subject, "err", err)
+			"retailer_id", retailerID, "err", err)
 		switch {
 		case errors.Is(err, ErrZoneMiss):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
@@ -2642,7 +2650,7 @@ func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 		return
 	}
-	if claims.Role == auth.RoleRetailer && current.RetailerID != claims.Subject {
+	if claims.Role == auth.RoleRetailer && current.RetailerID != auth.ResolveRetailerOrgID(claims) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -3806,6 +3814,64 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SelectCashAtDelivery transitions ARRIVED|AWAITING_PAYMENT → PENDING_CASH_COLLECTION
+// with same-txn outbox (B1 M-P0-5). Implements payment.OrderCashSelector.
+func (s *Service) SelectCashAtDelivery(ctx context.Context, orderID, retailerID, actorID string) (status string, amountMinor int64, currency string, err error) {
+	orderID = strings.TrimSpace(orderID)
+	retailerID = strings.TrimSpace(retailerID)
+	if orderID == "" || retailerID == "" {
+		return "", 0, "", errors.New("order_id and retailer_id required")
+	}
+	current, found, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return "", 0, "", err
+	}
+	if !found {
+		return "", 0, "", ErrOrderNotFound
+	}
+	if current.RetailerID != retailerID {
+		return "", 0, "", ErrOrderForbidden
+	}
+	// Idempotent replay: already selected cash.
+	if current.Status == StatusPendingCashCollection {
+		return string(current.Status), current.TotalMinor, current.Currency, nil
+	}
+	switch current.Status {
+	case StatusArrived, StatusAwaitingPayment:
+		// ok
+	default:
+		return "", 0, "", fmt.Errorf("%w: cannot select cash from %s", ErrInvalidStatusTransition, current.Status)
+	}
+	if err := ValidateStatusTransition(string(current.Status), string(StatusPendingCashCollection), TransitionOpts{}); err != nil {
+		return "", 0, "", err
+	}
+
+	previousStatus := current.Status
+	current.Status = StatusPendingCashCollection
+	current.UpdatedAt = s.now()
+	claims := auth.Claims{Subject: actorID, Role: auth.RoleRetailer}
+
+	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
+			Claims:         claims,
+			Order:          current,
+			PreviousStatus: previousStatus,
+			Reason:         "retailer_selected_cash",
+			ActorID:        actorID,
+		}); err != nil {
+			return err
+		}
+		cashPayment := s.paymentRequiredData(ctx, current)
+		cashPayment["payment_method"] = "CASH"
+		cashPayment["status"] = string(StatusPendingCashCollection)
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, cashPayment)
+	}); err != nil {
+		return "", 0, "", err
+	}
+	s.afterOrderMutation(ctx, current)
+	return string(current.Status), current.TotalMinor, current.Currency, nil
+}
+
 // HandleRetailerConfirmCash serves POST /v1/delivery/confirm-cash for Retailers.
 func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -3847,56 +3913,38 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "retailer_scope_missing"})
+		return
+	}
+	actorID := auth.ResolveRetailerUserID(claims)
+	if actorID == "" {
+		actorID = claims.Subject
+	}
+	status, amount, currency, err := s.SelectCashAtDelivery(r.Context(), orderID, retailerID, actorID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
-		return
-	}
-	if !found {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
-		return
-	}
-	if current.RetailerID != claims.Subject {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-		return
-	}
-
-	if current.Status != StatusAwaitingPayment {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_cash_selection"})
-		return
-	}
-
-	previousStatus := current.Status
-	current.Status = StatusPendingCashCollection
-	current.UpdatedAt = s.now()
-
-	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
-		if err := emitOrderStatusChanged(r.Context(), txn, orderStatusEmitParams{
-			Claims:         claims,
-			Order:          current,
-			PreviousStatus: previousStatus,
-			Reason:         "retailer_selected_cash",
-			ActorID:        claims.Subject,
-		}); err != nil {
-			return err
+		statusCode := http.StatusConflict
+		if errors.Is(err, ErrOrderNotFound) {
+			statusCode = http.StatusNotFound
+		} else if errors.Is(err, ErrOrderForbidden) {
+			statusCode = http.StatusForbidden
+		} else if errors.Is(err, ErrInvalidStatusTransition) {
+			statusCode = http.StatusConflict
+		} else {
+			statusCode = http.StatusInternalServerError
 		}
-		cashPayment := s.paymentRequiredData(r.Context(), current)
-		cashPayment["payment_method"] = "CASH"
-		cashPayment["status"] = string(StatusPendingCashCollection)
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, current.OrderID, events.TopicMain, cashPayment)
-	}); err != nil {
-		s.log.ErrorContext(r.Context(), "failed to select cash payment", "order_id", orderID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
+		writeJSON(w, statusCode, map[string]string{"error": err.Error()})
 		return
 	}
-
-	s.afterOrderMutation(r.Context(), current)
 
 	resp := map[string]any{
-		"success":  true,
-		"order_id": orderID,
-		"state":    current.Status,
-		"message":  "awaiting_driver_cash_collection",
+		"success":      true,
+		"order_id":     orderID,
+		"state":        status,
+		"amount_minor": amount,
+		"currency":     currency,
+		"message":      "awaiting_driver_cash_collection",
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)

@@ -27,9 +27,20 @@ type OrderCheckoutReader interface {
 	CheckoutOrderContext(ctx context.Context, orderID, retailerID string) (order.CheckoutOrderContext, error)
 }
 
+// OrderCashSelector marks an order as cash-at-delivery (durable Spanner + outbox).
+// Implemented by order.Service.SelectCashAtDelivery.
+type OrderCashSelector interface {
+	SelectCashAtDelivery(ctx context.Context, orderID, retailerID, actorID string) (status string, amountMinor int64, currency string, err error)
+}
+
 // BindOrderCheckoutReader wires order totals for card/cash checkout handlers.
 func (s *Service) BindOrderCheckoutReader(reader OrderCheckoutReader) {
 	s.orderReader = reader
+}
+
+// BindOrderCashSelector wires durable cash selection (B1 M-P0-5).
+func (s *Service) BindOrderCashSelector(sel OrderCashSelector) {
+	s.orderCash = sel
 }
 
 type retailerCardCheckoutRequest struct {
@@ -101,9 +112,10 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// B3 M-P0-4: multi-user JWT — checkout ownership is org id.
 	retailerID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok && claims.Subject != "" {
-		retailerID = claims.Subject
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		retailerID = auth.ResolveRetailerOrgID(claims)
 	}
 	if retailerID == "" {
 		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/order/card-checkout", false, "")
@@ -189,6 +201,7 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 }
 
 // HandleOrderCashCheckout serves POST /v1/order/cash-checkout.
+// B1 M-P0-5: must mutate Spanner to PENDING_CASH_COLLECTION + outbox (via orderCash).
 func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/order/cash-checkout", false, "")
@@ -217,31 +230,41 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	retailerID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok && claims.Subject != "" {
-		retailerID = claims.Subject
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized", "unauthorized", "/v1/order/cash-checkout", false, "")
+		return
 	}
+	// B3 M-P0-4: org-scoped cash selection; actor remains staff user id.
+	retailerID := auth.ResolveRetailerOrgID(claims)
 	if retailerID == "" {
 		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/order/cash-checkout", false, "")
 		return
 	}
+	actorID := auth.ResolveRetailerUserID(claims)
+	if actorID == "" {
+		actorID = claims.Subject
+	}
 
-	amountMinor := int64(0)
-	if s.orderReader != nil {
-		total, _, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
-		if snapErr != nil {
-			s.writeOrderCheckoutError(w, "/v1/order/cash-checkout", snapErr)
-			return
-		}
-		amountMinor = total
+	if s.orderCash == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "cash_selector_unwired",
+			"Cash selection requires order service wiring; use POST /v1/delivery/confirm-cash",
+			"/v1/order/cash-checkout", false, "")
+		return
+	}
+
+	status, amountMinor, _, err := s.orderCash.SelectCashAtDelivery(r.Context(), req.OrderID, retailerID, actorID)
+	if err != nil {
+		s.writeOrderCheckoutError(w, "/v1/order/cash-checkout", err)
+		return
 	}
 
 	resp := retailerCashCheckoutResponse{
 		OrderID:    req.OrderID,
-		State:      "PENDING",
+		State:      status,
 		Amount:     amountMinor,
 		RetailerID: retailerID,
-		Message:    "cash checkout accepted",
+		Message:    "awaiting_driver_cash_collection",
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.persistIdempotencyRecord(r.Context(), r.Header.Get("Idempotency-Key"), sha256Hex(body), http.StatusOK, respBytes, 24*time.Hour)
@@ -261,6 +284,8 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 		writeJSONError(w, http.StatusUnprocessableEntity, "backorder_payment_deferred", "backorder payment is deferred until fulfillment", endpoint, false, "")
 	case errors.Is(err, order.ErrPaymentBeforeDelivery):
 		writeJSONError(w, http.StatusUnprocessableEntity, "payment_before_delivery_not_allowed", "payment is collected at delivery after offload", endpoint, false, "")
+	case errors.Is(err, order.ErrInvalidStatusTransition):
+		writeJSONError(w, http.StatusConflict, "invalid_status_for_cash_selection", err.Error(), endpoint, false, "")
 	default:
 		writeJSONError(w, http.StatusInternalServerError, "order_lookup_failed", err.Error(), endpoint, false, "")
 	}
