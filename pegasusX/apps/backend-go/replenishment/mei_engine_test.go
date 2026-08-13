@@ -50,3 +50,39 @@ func TestSelectTransfersUnderCapital(t *testing.T) {
 		t.Fatalf("unlimited: accepted=%d used=%d skipped=%d", len(accepted), used, skipped)
 	}
 }
+
+func TestSelectTransfersCostAware_PrefersShortHaul(t *testing.T) {
+	// Same CRITICAL urgency; short-haul should win under capital that only funds one transfer.
+	cands := []meiTransferCandidate{
+		{skuID: "long", qty: 5, unitValueMinor: 1000, urgency: "CRITICAL", transportCostKm: 200, receiverDaysCover: 1},
+		{skuID: "short", qty: 5, unitValueMinor: 1000, urgency: "CRITICAL", transportCostKm: 10, receiverDaysCover: 1},
+		{skuID: "mid", qty: 5, unitValueMinor: 1000, urgency: "WARNING", transportCostKm: 5, receiverDaysCover: 3},
+	}
+	accepted, used, skipped := selectTransfersCostAware(cands, 5000)
+	if len(accepted) != 1 || skipped != 2 || used != 5000 {
+		t.Fatalf("accepted=%d used=%d skipped=%d", len(accepted), used, skipped)
+	}
+	if accepted[0].skuID != "short" {
+		t.Fatalf("want short-haul under capital bind, got %s (solver=%s)", accepted[0].skuID, MEIOSolverCostAwareV2)
+	}
+	// Unlimited: short (crit) before long (crit) before mid (warn) by bang-for-buck.
+	accepted, _, _ = selectTransfersCostAware(cands, 0)
+	if len(accepted) != 3 {
+		t.Fatalf("unlimited len=%d", len(accepted))
+	}
+	if accepted[0].skuID != "short" {
+		t.Fatalf("first want short got %s", accepted[0].skuID)
+	}
+}
+
+func TestUrgencyWeightAndTransport(t *testing.T) {
+	if urgencyWeight("CRITICAL") <= urgencyWeight("WARNING") {
+		t.Fatal("CRITICAL weight must exceed WARNING")
+	}
+	if transportCostMinor(10) <= transportCostMinor(0) {
+		t.Fatal("longer haul costs more")
+	}
+	if MEIOSolverCostAwareV2 != "cost_aware_v2" {
+		t.Fatal("honesty label")
+	}
+}

@@ -25,6 +25,7 @@ type Service struct {
 	as2            As2ConfigRepository
 	coa            CoaRepository
 	ediDocs        EdiDocumentRepository
+	ediProfiles    EdiProfileRepository
 	ediOut         *EdiOutboundWorker
 	orders         *order.Service
 	catalog        *catalog.Service
@@ -47,8 +48,17 @@ func NewService(keys KeyRepository, webhooks WebhookRepository, orders *order.Se
 	}
 	return &Service{
 		keys: keys, webhooks: webhooks, orders: orders, catalog: cat, log: log,
-		now: func() time.Time { return time.Now().UTC() },
+		ediProfiles: NewMemoryEdiProfiles(),
+		now:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetEdiProfiles wires G5.A tenant EDI profile repository.
+func (s *Service) SetEdiProfiles(repo EdiProfileRepository) {
+	if s == nil || repo == nil {
+		return
+	}
+	s.ediProfiles = repo
 }
 
 // SetIdempotencyStore wires the shared idempotency store (Redis in production)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -55,13 +56,27 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 		return fmt.Errorf("compute base velocities: %w", err)
 	}
 
-	// Group signals for fast lookup
-	// For simplicity, we just iterate, but grouping by scope/sku is better for large datasets.
+	// Retailer geo for REGION/CITY fail-closed matching (G6.A2).
+	retailerIDs := make([]string, 0, len(retailerSkuVelocities))
+	seenRetailer := map[string]struct{}{}
+	for _, item := range retailerSkuVelocities {
+		if _, ok := seenRetailer[item.RetailerId]; ok {
+			continue
+		}
+		seenRetailer[item.RetailerId] = struct{}{}
+		retailerIDs = append(retailerIDs, item.RetailerId)
+	}
+	geoByRetailer, geoErr := s.loadRetailerGeo(ctx, retailerIDs)
+	if geoErr != nil {
+		slog.Warn("demand sensing geo load failed; regional scopes fail-closed", "err", geoErr)
+		geoByRetailer = map[string]RetailerGeo{}
+	}
 
 	var mutations []*spanner.Mutation
 	var outboxEvents []emitData
 
 	for _, item := range retailerSkuVelocities {
+		geo := geoByRetailer[item.RetailerId]
 		// Calculate adjustments for the next 14 days
 		for dayOffset := 0; dayOffset < 14; dayOffset++ {
 			today := now.AddDate(0, 0, dayOffset)
@@ -85,23 +100,9 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 					continue
 				}
 
-				// Check scope applicability
-				// Scope formats: legacy = "country:UZ" | "city:Tashkent" | "retailer:uuid"
-				//                 new    = "GLOBAL" | "REGION" | "CITY" | "RETAILER" | "RETAILER_SKU"
-				// GLOBAL and country-level scopes apply to all retailers.
-				// RETAILER scope requires the signal's Meta or scope to encode the retailer id.
-				scopeMatch := false
-				switch sig.Scope {
-				case "GLOBAL", "country:UZ":
-					scopeMatch = true
-				case "REGION", "CITY", "city:Tashkent":
-					scopeMatch = true // Phase 1: all retailers assumed same region
-				case "RETAILER", "RETAILER_SKU":
-					scopeMatch = sig.Scope == fmt.Sprintf("retailer:%s", adj.RetailerId)
-				default:
-					scopeMatch = sig.Scope == fmt.Sprintf("retailer:%s", adj.RetailerId)
-				}
-				if !scopeMatch {
+				// Scope: GLOBAL/country always; REGION/CITY geo-matched (fail-closed);
+				// retailer:uuid / RETAILER Meta only for that retailer (G6.A2).
+				if !signalScopeMatches(sig.Scope, sig.Meta, adj.RetailerId, geo) {
 					continue
 				}
 
@@ -379,6 +380,73 @@ func (s *Service) loadFlywheelDailyAvg(ctx context.Context, now time.Time) (map[
 		out[velocityKey{retailer, supplier, sku}] = avg
 	}
 	return out, nil
+}
+
+// loadRetailerGeo loads RegionId + DeliveryAddress for CITY/REGION sensing match.
+// City is not a first-class column; address is used for contains match (fail-closed when empty).
+func (s *Service) loadRetailerGeo(ctx context.Context, retailerIDs []string) (map[string]RetailerGeo, error) {
+	out := make(map[string]RetailerGeo, len(retailerIDs))
+	if s == nil || s.spanner == nil || len(retailerIDs) == 0 {
+		return out, nil
+	}
+	// Chunk to stay under Spanner IN-list practical limits.
+	const chunk = 200
+	for i := 0; i < len(retailerIDs); i += chunk {
+		end := i + chunk
+		if end > len(retailerIDs) {
+			end = len(retailerIDs)
+		}
+		batch := retailerIDs[i:end]
+		stmt := spanner.Statement{
+			SQL: `
+				SELECT RetailerId, COALESCE(RegionId, ''), COALESCE(DeliveryAddress, ''), COALESCE(Name, '')
+				FROM Retailers
+				WHERE RetailerId IN UNNEST(@ids)
+			`,
+			Params: map[string]interface{}{"ids": batch},
+		}
+		iter := s.spanner.Single().Query(ctx, stmt)
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				return out, err
+			}
+			var id, region, addr, name string
+			if err := row.Columns(&id, &region, &addr, &name); err != nil {
+				iter.Stop()
+				return out, err
+			}
+			// Prefer city token from trailing ", City" patterns when present; else leave City empty
+			// and rely on Address contains for CITY:{name} scopes.
+			out[id] = RetailerGeo{
+				RegionID: strings.TrimSpace(region),
+				Address:  strings.TrimSpace(addr + " " + name),
+				City:     cityHintFromAddress(addr),
+			}
+		}
+		iter.Stop()
+	}
+	return out, nil
+}
+
+func cityHintFromAddress(addr string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return ""
+	}
+	// Common "Street, District, City" → last non-empty comma segment.
+	parts := strings.Split(addr, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		p := strings.TrimSpace(parts[i])
+		if p != "" {
+			return p
+		}
+	}
+	return ""
 }
 
 // dayOfWeekFactor returns a static demand multiplier for the given weekday.

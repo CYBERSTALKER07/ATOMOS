@@ -3,6 +3,7 @@ package credit
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -11,10 +12,11 @@ import (
 
 // Service evaluates and mutates retailer credit state.
 type Service struct {
-	repo   Repository
-	policy PolicyGate
-	now    func() time.Time
-	newID  func() string
+	repo         Repository
+	policy       PolicyGate
+	now          func() time.Time
+	newID        func() string
+	scoreMetrics ScoreMetricsProvider // optional AR/payment feed for G3 scoring
 }
 
 // NewService builds a credit service.
@@ -237,20 +239,63 @@ func (s *Service) ListSupplierProfiles(ctx context.Context, supplierID, status s
 	if err != nil {
 		return nil, err
 	}
+	// G3.B: refresh risk scores for desk ordering (in-memory; persist best-effort).
+	if ScoringEnabled() {
+		for i := range list {
+			sc, err := s.EvaluateProfileScore(ctx, list[i])
+			if err != nil {
+				continue
+			}
+			ApplyScoreToProfile(&list[i], sc)
+		}
+	}
 	// Collections-first ordering: open balance / frozen / high risk before idle active lines.
 	sortProfilesForCollections(list)
 	return list, nil
 }
 
+// GetScoresForRetailers returns computed risk scores (G3.B). Empty map when scoring disabled.
+func (s *Service) GetScoresForRetailers(ctx context.Context, supplierID string, retailerIDs []string) (map[string]RetailerCreditScore, error) {
+	out := make(map[string]RetailerCreditScore, len(retailerIDs))
+	if s == nil || s.repo == nil || !ScoringEnabled() {
+		return out, nil
+	}
+	for _, rid := range retailerIDs {
+		rid = strings.TrimSpace(rid)
+		if rid == "" {
+			continue
+		}
+		p, found, err := s.repo.GetProfile(ctx, rid, supplierID)
+		if err != nil || !found {
+			continue
+		}
+		sc, err := s.EvaluateProfileScore(ctx, p)
+		if err != nil {
+			continue
+		}
+		out[rid] = sc
+	}
+	return out, nil
+}
+
 func sortProfilesForCollections(list []Profile) {
-	// Stable priority: BLACKLISTED/FROZEN first, then balance desc, then updated desc.
+	// Priority: BLACKLISTED/FROZEN, then lower risk score (worse), then balance desc.
 	for i := 0; i < len(list); i++ {
 		for j := i + 1; j < len(list); j++ {
-			if profilePriority(list[j]) < profilePriority(list[i]) {
+			pi, pj := profilePriority(list[i]), profilePriority(list[j])
+			if pj < pi {
 				list[i], list[j] = list[j], list[i]
-			} else if profilePriority(list[j]) == profilePriority(list[i]) &&
-				list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
-				list[i], list[j] = list[j], list[i]
+				continue
+			}
+			if pj == pi {
+				// Worse (lower) score first for collections attention.
+				if list[j].RiskScore > 0 && list[i].RiskScore > 0 && list[j].RiskScore < list[i].RiskScore {
+					list[i], list[j] = list[j], list[i]
+					continue
+				}
+				if list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
+					list[i], list[j] = list[j], list[i]
+				}
 			}
 		}
 	}
@@ -265,7 +310,7 @@ func profilePriority(p Profile) int {
 	case StatusClosed:
 		return 4
 	default:
-		if p.CurrentBalanceMinor > 0 {
+		if p.CurrentBalanceMinor > 0 || p.DelinquencyCount > 0 {
 			return 2
 		}
 		return 3

@@ -81,7 +81,12 @@ configMapGenerator:
       - PEGASUSX_ENV=staging
       - REQUIRE_INFRA_ADAPTERS=true
       - GLOBAL_PAY_ENV=staging
+      # G1.B: commercial path until Soliq secrets are provisioned. Tax cutover:
+      # set FISCAL_PROVIDER=MY_SOLIQ + ExternalSecret for OFD/EDS (unset also defaults MY_SOLIQ in staging).
       - FISCAL_PROVIDER=PEGASUS
+      - FISCAL_ALLOW_COMMERCIAL_RECEIPTS=true
+      # G1.D: allow push_degraded until Firebase Workload Identity is verified on staging.
+      - FCM_ALLOW_NOOP=true
       # Phase 1: AR active end-to-end on staging (credit leave -> invoice ->
       # aging -> dunning -> hold -> payment -> release). Off-app channels stay
       # off until provider creds land (DUNNING_SMS_PROVIDER/DUNNING_EMAIL_PROVIDER).

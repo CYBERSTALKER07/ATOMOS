@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -173,9 +174,32 @@ func main() {
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 	})
+	// G4.B: durable PLATFORM_ADMIN password login (public; MFA step-up after token).
+	if app.PlatformAdminHandlers != nil {
+		login := &platformadmin.LoginDeps{
+			Spanner:   app.Spanner,
+			JWTSecret: cfg.JWTSecret,
+			JWTIssuer: cfg.JWTIssuer,
+		}
+		r.Post("/v1/auth/platform-admin/login", login.HandleLogin)
+	}
 	platformadmin.RegisterRoutes(r, app.PlatformAdminHandlers, mfa.RequireStepUp(app.MFAService))
 	featureflags.RegisterRoutes(r, app.FeatureFlagHandlers, mfa.RequireStepUp(app.MFAService))
 	mfa.RegisterRoutes(r, app.MFAHandlers)
+	// G4.C public capabilities honesty (run mode / bus claim).
+	r.Get("/v1/health/capabilities", func(w http.ResponseWriter, r *http.Request) {
+		mode := bootstrap.NormalizeRunMode(cfg.RunMode)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"run_mode":             mode,
+			"api":                  cfg.RunsAPI(),
+			"workers_on_process":   cfg.RunsWorkers(),
+			"outbox_relay":         cfg.RunsWorkers(),
+			"kafka_consumers":      cfg.RunsWorkers(),
+			"full_bus":             mode == bootstrap.RunModeAll,
+			"note":                 "api-only does not run outbox relay; deploy PEGASUSX_RUN_MODE=worker for full bus",
+		})
+	})
 	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
 		Handlers:            app.PulseHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,

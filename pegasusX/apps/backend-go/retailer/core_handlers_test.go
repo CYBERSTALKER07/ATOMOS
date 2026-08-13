@@ -1212,8 +1212,12 @@ func TestHandleTrackingSuppressesStaleLocation(t *testing.T) {
 	if first["live_location_available"] != false {
 		t.Fatalf("live_location_available=%v want false", first["live_location_available"])
 	}
-	if _, ok := first["driver_location"]; ok {
-		t.Fatalf("driver_location leaked: %v", first["driver_location"])
+	// G3.C: last-known GPS still returned with honesty freshness.
+	if first["location_freshness"] != "LAST_KNOWN" {
+		t.Fatalf("location_freshness=%v want LAST_KNOWN", first["location_freshness"])
+	}
+	if _, ok := first["driver_location"]; !ok {
+		t.Fatalf("expected last-known driver_location on stale telemetry")
 	}
 }
 

@@ -1410,6 +1410,14 @@ type trackingLocationLookup struct {
 
 func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrder) []TrackingOrder {
 	if s.locations == nil || len(orders) == 0 {
+		for i := range orders {
+			if strings.TrimSpace(orders[i].DriverID) == "" {
+				orders[i].LocationFreshness = "AWAITING_TELEMETRY"
+			} else {
+				orders[i].LocationFreshness = "AWAITING_TELEMETRY"
+			}
+			orders[i].LiveLocationAvailable = false
+		}
 		return orders
 	}
 	now := s.now()
@@ -1417,6 +1425,7 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 	for i := range orders {
 		orders[i].LiveLocationAvailable = false
 		orders[i].DriverLocation = nil
+		orders[i].LocationFreshness = "AWAITING_TELEMETRY"
 		driverID := strings.TrimSpace(orders[i].DriverID)
 		if driverID == "" {
 			continue
@@ -1431,26 +1440,33 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 			lookup = trackingLocationLookup{location: location, found: found}
 			lookups[driverID] = lookup
 		}
-		if !lookup.found || !lookup.location.IsLive(now) {
+		if !lookup.found {
 			continue
 		}
 		if strings.TrimSpace(lookup.location.SupplierID) != strings.TrimSpace(orders[i].SupplierID) {
 			continue
 		}
-		orders[i].LiveLocationAvailable = true
+		// G3.C: always surface last-known GPS with honesty labels (live vs stale).
 		orders[i].DriverLocation = trackingLocationFromTelemetry(lookup.location)
-		if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
-			driverLat := lookup.location.Lat
-			driverLng := lookup.location.Lng
-			if driverLat == 0 && lookup.location.Latitude != 0 {
-				driverLat = lookup.location.Latitude
+		if lookup.location.IsLive(now) {
+			orders[i].LiveLocationAvailable = true
+			orders[i].LocationFreshness = "LIVE"
+			if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
+				driverLat := lookup.location.Lat
+				driverLng := lookup.location.Lng
+				if driverLat == 0 && lookup.location.Latitude != 0 {
+					driverLat = lookup.location.Latitude
+				}
+				if driverLng == 0 && lookup.location.Longitude != 0 {
+					driverLng = lookup.location.Longitude
+				}
+				if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
+					orders[i].IsApproaching = true
+				}
 			}
-			if driverLng == 0 && lookup.location.Longitude != 0 {
-				driverLng = lookup.location.Longitude
-			}
-			if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
-				orders[i].IsApproaching = true
-			}
+		} else {
+			orders[i].LiveLocationAvailable = false
+			orders[i].LocationFreshness = "LAST_KNOWN"
 		}
 	}
 	return orders

@@ -59,8 +59,45 @@ func railByName(name string) Rail {
 	case "", "bank-file", "csv":
 		return BankFileRail{}
 	default:
-		// No live rail is implemented yet; fail closed to the file rail.
+		// G1.D: no live rail implemented yet. Fail closed to bank-file so
+		// live=true is rejected by IsLive() rather than inventing a money rail.
 		return BankFileRail{}
+	}
+}
+
+// RailInfo is the honesty surface for clients (G1.D): bank-file is prod-valid only as
+// export CSV → bank → MarkPaid, never as silent live money movement.
+type RailInfo struct {
+	Name     string   `json:"name"`
+	IsLive   bool     `json:"is_live"`
+	Workflow string   `json:"workflow"`
+	Steps    []string `json:"steps,omitempty"`
+	Message  string   `json:"message,omitempty"`
+}
+
+// RailInfo returns the configured rail's honesty metadata.
+func (s *Service) RailInfo() RailInfo {
+	name := "bank-file"
+	live := false
+	if s != nil && s.rail != nil {
+		name = s.rail.Name()
+		live = s.rail.IsLive()
+	}
+	if live {
+		return RailInfo{
+			Name:     name,
+			IsLive:   true,
+			Workflow: "live_dispatch_then_webhook",
+			Steps:    []string{"generate", "dispatch_live", "settlement_webhook", "paid"},
+			Message:  "Live rail: dispatch moves money; ConfirmSettlement webhook marks PAID",
+		}
+	}
+	return RailInfo{
+		Name:     name,
+		IsLive:   false,
+		Workflow: "bank_file_export_then_mark_paid",
+		Steps:    []string{"generate", "export_csv", "bank_processes_file", "mark_paid"},
+		Message:  "Bank-file rail only: export CSV, process at bank, then mark-paid. live dispatch is rejected (no_live_rail).",
 	}
 }
 

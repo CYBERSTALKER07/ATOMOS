@@ -217,12 +217,12 @@ func (h *Handler) HandlePutaway(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
-	if !LotsEnabled() {
+	whID := warehouseID(r)
+	sid := supplierID(r, h.SupplierID)
+	if !EffectiveLots(r.Context(), whID, sid) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_lots_disabled"})
 		return
 	}
-	whID := warehouseID(r)
-	sid := supplierID(r, h.SupplierID)
 	if whID == "" || sid == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
 		return
@@ -294,12 +294,12 @@ func (h *Handler) HandlePickWaves(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
-	if !PickWavesEnabled() {
+	whID := warehouseID(r)
+	sid := supplierID(r, h.SupplierID)
+	if !EffectivePickWaves(r.Context(), whID, sid) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_pick_waves_disabled"})
 		return
 	}
-	whID := warehouseID(r)
-	sid := supplierID(r, h.SupplierID)
 	if whID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
 		return

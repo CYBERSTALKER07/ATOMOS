@@ -96,3 +96,25 @@ func (w *DunningWorker) HandleRunDunningOnce(rw http.ResponseWriter, r *http.Req
 	}
 	writeJSON(rw, http.StatusOK, map[string]any{"ok": true})
 }
+
+// HandleDunningStatus GET /v1/admin/ar/dunning/status — G3.A ops honesty for transports + flags.
+func (w *DunningWorker) HandleDunningStatus(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(rw, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
+		writeJSON(rw, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	channels := TransportChannelsConfigured()
+	writeJSON(rw, http.StatusOK, map[string]any{
+		"ar_invoices_enabled":  InvoicesEnabled(),
+		"ar_dunning_enabled":   DunningEnabled(),
+		"off_app_channels":     channels,
+		"off_app_configured":   len(channels) > 0,
+		"in_app_notify":        w != nil && w.notify != nil,
+		"note":                 "Off-app SMS/email/WhatsApp require DUNNING_*_PROVIDER + credentials; empty channels means in-app only",
+	})
+}

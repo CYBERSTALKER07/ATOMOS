@@ -61,6 +61,7 @@ export async function loadFinanceAuthoritySnapshot(api: ApiClient): Promise<Fina
       refreshedAt: new Date().toISOString(),
     };
   } catch {
+    // G3.D: honest fallback — settlement authority endpoint failed; ledger is still real.
     const mismatches = await mismatchesPromise;
     return {
       source: "ledger_fallback",

@@ -30,6 +30,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		if d.Service != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/credit-profile", d.Service.HandleGetRetailerProfile)
 			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-profiles", d.Service.HandleListSupplierProfiles)
+			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-scores", d.Service.HandleGetScores)
 			gr.With(auth.RequireRole(auth.RoleAdmin)).Patch("/v1/supplier/retailer-credit-profile", d.Service.HandleUpsertSupplierProfile)
 		}
 		if d.PolicyService != nil {
@@ -59,6 +60,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 				dunning = dunning.With(d.StepUp)
 			}
 			dunning.Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
+			dunning.Get("/v1/admin/ar/dunning/status", d.DunningWorker.HandleDunningStatus)
 		}
 	}
 

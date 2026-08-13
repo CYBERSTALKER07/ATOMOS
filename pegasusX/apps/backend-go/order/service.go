@@ -2005,13 +2005,8 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 	if err != nil {
 		return DriverOrderResponse{}, err
 	}
-	if !result.NoChange {
-		if s.credit != nil && result.PreviousStatus == StatusDeliveredOnCredit && result.Order.TotalMinor > 0 {
-			if clearErr := s.credit.ClearBalance(ctx, result.Order.RetailerID, result.Order.SupplierID, result.Order.TotalMinor, result.Order.OrderID); clearErr != nil {
-				s.log.Error("clear credit balance failed", "order_id", result.Order.OrderID, "err", clearErr)
-			}
-		}
-	}
+	// G1-A2: ClearBalance moved into finalizeCardSettlement (same txn as CAPTURED).
+	// Do not clear credit books before provider capture confirms.
 	// Synchronous provider-confirmed settlement. Runs on both the fresh
 	// transition and idempotent retries (NoChange) so a capture interrupted
 	// mid-flight is driven to CAPTURED or FAILED, never left optimistic.
@@ -2179,24 +2174,36 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 				CreatedAt:      s.now(),
 				CapturedAt:     spanner.NullTime{Time: s.now(), Valid: true},
 			}
-			return s.RecordPaymentLeg(txnCtx, txn, leg)
+			if err := s.RecordPaymentLeg(txnCtx, txn, leg); err != nil {
+				return err
+			}
+			// G1.A: AR pay-down on the same Spanner RW txn as cash capture.
+			// Fail-closed — abort cash commit if AR apply fails when an invoice exists.
+			if s.ar != nil {
+				if err := s.ar.RecordPaymentForOrderInTxn(txnCtx, txn, req.OrderID, receivedMinor,
+					"ar-cash-collect-"+req.OrderID, orderRecord.Currency); err != nil {
+					return err
+				}
+			} else if orderRecord.Status == StatusDeliveredOnCredit && ar.InvoicesEnabled() && orderRecord.TotalMinor > 0 {
+				return fmt.Errorf("ar service required for credit cash collection")
+			}
+			// G1-A2: clear credit headroom when cash settles a credit-left order (same txn).
+			// No-op when reservation was never CONVERTED for this order.
+			if s.credit != nil && receivedMinor > 0 {
+				clearAmt := orderRecord.TotalMinor
+				if clearAmt <= 0 {
+					clearAmt = receivedMinor
+				}
+				if err := s.credit.ClearBalanceInTxn(txnCtx, txn,
+					orderRecord.RetailerID, orderRecord.SupplierID, req.OrderID, clearAmt); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	})
 	if err != nil {
 		return CollectCashResponse{}, err
-	}
-	// AR pay-down: collecting cash against a credit-delivered order settles the
-	// AR invoice opened at credit leave. Without this, every credit invoice
-	// marched to CREDIT_HOLD even after the money was collected. Fail-open with
-	// a logged error (mirrors OpenFromCreditLeave handling) — payment capture
-	// already succeeded; an AR bookkeeping miss must not roll back the delivery.
-	if s.ar != nil && result.Order.OrderID != "" {
-		if _, found, ierr := s.ar.GetByOrder(ctx, result.Order.OrderID); ierr == nil && found {
-			if perr := s.ar.RecordPaymentForOrder(ctx, result.Order.OrderID, receivedMinor,
-				fmt.Sprintf("ar-cash-collect-%s", result.Order.OrderID), result.Order.Currency); perr != nil {
-				s.log.Error("AR pay-down on cash collect failed", "order_id", result.Order.OrderID, "err", perr)
-			}
-		}
 	}
 	if result.NoChange {
 		distanceM = 0

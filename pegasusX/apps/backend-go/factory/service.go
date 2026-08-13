@@ -227,6 +227,10 @@ type SupplyRequest struct {
 	TotalVolumeVU         float64             `json:"total_volume_vu,omitempty"`
 	LinkedTransferID      string              `json:"linked_transfer_id,omitempty"`
 	Items                 []SupplyRequestItem `json:"items,omitempty"`
+	// G7.1 SLA enrichment (optional on wire; filled by handlers).
+	SLADueAt          string   `json:"sla_due_at,omitempty"`
+	SLAStatus         string   `json:"sla_status,omitempty"`
+	SLAHoursRemaining *float64 `json:"sla_hours_remaining,omitempty"`
 }
 
 // SupplyRequestItem is one SKU line on a factory supply request.
@@ -748,15 +752,16 @@ func (s *Service) broadcastFactorySupplyEvent(ctx context.Context, envelope map[
 
 func (s *Service) manifestOutboxFields(ctx context.Context, manifest ManifestRow, eventType string) events.ManifestEvent {
 	return events.ManifestEvent{
-		BaseEvent:     events.BaseEvent{Type: eventType},
-		ManifestID:    manifest.ManifestID,
-		SupplierID:    s.resolveSupplierScope(ctx),
-		FactoryID:     s.resolveFactoryNode(ctx),
-		State:         manifest.State,
-		DriverID:      manifest.DriverID,
-		VehicleID:     manifest.VehicleID,
-		TransferCount: manifest.TransferCnt,
-		RouteID:       routeIDForManifest(manifest),
+		BaseEvent:      events.BaseEvent{Type: eventType},
+		ManifestID:     manifest.ManifestID,
+		ManifestDomain: events.ManifestDomainFactory, // G2.D Option B — transfer bay SoT
+		SupplierID:     s.resolveSupplierScope(ctx),
+		FactoryID:      s.resolveFactoryNode(ctx),
+		State:          manifest.State,
+		DriverID:       manifest.DriverID,
+		VehicleID:      manifest.VehicleID,
+		TransferCount:  manifest.TransferCnt,
+		RouteID:        routeIDForManifest(manifest),
 	}
 }
 
@@ -1922,9 +1927,69 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	rows := s.loadFactorySupplyRequests(r.Context())
+	now := s.now()
+	mapped := make([]map[string]any, len(rows))
+	for i := range rows {
+		mapped[i] = supplyRequestToMap(rows[i], s.factoryNodeID, s.resolveSupplierScope(r.Context()), now)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})
+}
+
+// HandleSLABoard GET /v1/factory/sla-board — open requests sorted breach → at_risk → on_time (G7.1).
+func (s *Service) HandleSLABoard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	rows := s.loadFactorySupplyRequests(r.Context())
+	now := s.now()
+	sid := s.resolveSupplierScope(r.Context())
+	var summary SLABoardSummary
+	items := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		m := supplyRequestToMap(row, s.factoryNodeID, sid, now)
+		status, _ := m["sla_status"].(string)
+		switch status {
+		case SLAStatusBreached:
+			summary.Breached++
+			summary.TotalOpen++
+			items = append(items, m)
+		case SLAStatusAtRisk:
+			summary.AtRisk++
+			summary.TotalOpen++
+			items = append(items, m)
+		case SLAStatusOnTime:
+			summary.OnTime++
+			summary.TotalOpen++
+			items = append(items, m)
+		}
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		si, _ := items[i]["sla_status"].(string)
+		sj, _ := items[j]["sla_status"].(string)
+		if slaStatusRank(si) != slaStatusRank(sj) {
+			return slaStatusRank(si) < slaStatusRank(sj)
+		}
+		di, _ := items[i]["sla_due_at"].(string)
+		dj, _ := items[j]["sla_due_at"].(string)
+		return di < dj
+	})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"summary": summary,
+		"items":   items,
+		"as_of":   now.UTC().Format(time.RFC3339Nano),
+		"config": map[string]any{
+			"default_hours":  FactorySLADefaultHours(),
+			"at_risk_hours":  FactorySLAAtRiskHours(),
+		},
+	})
+}
+
+func (s *Service) loadFactorySupplyRequests(ctx context.Context) []SupplyRequest {
 	var rows []SupplyRequest
 	if s.spannerClient != nil {
-		spRows, err := s.listSupplyRequestsFromSpanner(r.Context())
+		spRows, err := s.listSupplyRequestsFromSpanner(ctx)
 		if err != nil {
 			s.log.Warn("factory supply list spanner failed; falling back to memory", "err", err)
 		} else {
@@ -1937,39 +2002,40 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 		rows = append([]SupplyRequest(nil), s.supplyRequests...)
 		s.mu.Unlock()
 	}
-	mapped := make([]map[string]any, len(rows))
-	for i := range rows {
-		row := rows[i]
-		items := make([]map[string]any, 0, len(row.Items))
-		for _, item := range row.Items {
-			items = append(items, map[string]any{
-				"item_id":             item.ItemID,
-				"product_id":          item.ProductID,
-				"requested_quantity":  item.RequestedQuantity,
-				"recommended_qty":     item.RecommendedQty,
-				"unit_volume_vu":      item.UnitVolumeVU,
-			})
-		}
-		mapped[i] = map[string]any{
-			"request_id":              row.RequestID,
-			"warehouse_id":            row.WarehouseID,
-			"factory_id":              s.factoryNodeID,
-			"supplier_id":             s.resolveSupplierScope(r.Context()),
-			"state":                   row.Status,
-			"priority":                row.Priority,
-			"notes":                   row.Notes,
-			"region_id":               row.RegionID,
-			"requested_delivery_date": row.RequestedDeliveryDate,
-			"total_volume_vu":         row.TotalVolumeVU,
-			"item_count":              len(row.Items),
-			"items":                   items,
-			"transfer_order_id":       row.LinkedTransferID,
-			"created_by":              "",
-			"created_at":              row.CreatedAt,
-			"updated_at":              row.UpdatedAt,
-		}
+	return rows
+}
+
+func supplyRequestToMap(row SupplyRequest, factoryID, supplierID string, now time.Time) map[string]any {
+	items := make([]map[string]any, 0, len(row.Items))
+	for _, item := range row.Items {
+		items = append(items, map[string]any{
+			"item_id":            item.ItemID,
+			"product_id":         item.ProductID,
+			"requested_quantity": item.RequestedQuantity,
+			"recommended_qty":    item.RecommendedQty,
+			"unit_volume_vu":     item.UnitVolumeVU,
+		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})
+	m := map[string]any{
+		"request_id":              row.RequestID,
+		"warehouse_id":            row.WarehouseID,
+		"factory_id":              factoryID,
+		"supplier_id":             supplierID,
+		"state":                   row.Status,
+		"priority":                row.Priority,
+		"notes":                   row.Notes,
+		"region_id":               row.RegionID,
+		"requested_delivery_date": row.RequestedDeliveryDate,
+		"total_volume_vu":         row.TotalVolumeVU,
+		"item_count":              len(row.Items),
+		"items":                   items,
+		"transfer_order_id":       row.LinkedTransferID,
+		"created_by":              "",
+		"created_at":              row.CreatedAt,
+		"updated_at":              row.UpdatedAt,
+	}
+	EnrichSupplyRequestSLA(m, row.Status, row.CreatedAt, row.RequestedDeliveryDate, now)
+	return m
 }
 
 type acceptSupplyRequest struct {

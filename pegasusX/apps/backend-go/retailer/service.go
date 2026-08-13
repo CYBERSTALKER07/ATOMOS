@@ -224,6 +224,8 @@ type TrackingOrder struct {
 	TotalMinor            int64                    `json:"total_minor"`
 	Currency              string                   `json:"currency"`
 	LiveLocationAvailable bool                     `json:"live_location_available"`
+	// LocationFreshness: LIVE | LAST_KNOWN | AWAITING_TELEMETRY (G3.C honesty).
+	LocationFreshness     string                   `json:"location_freshness,omitempty"`
 	DriverLocation        *TrackingLocation        `json:"driver_location,omitempty"`
 	// RouteGeometry is the planned sealed-route overlay (from SupplierTruckManifests).
 	RouteGeometry         *routing.RouteGeometryWire `json:"route_geometry,omitempty"`

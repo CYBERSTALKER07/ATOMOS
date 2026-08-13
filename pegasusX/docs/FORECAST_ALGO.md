@@ -9,7 +9,15 @@ Croston (Syntetos–Boylan), SES, and Holt–Winters baselines for `DemandForeca
 | `FORECAST_ALGO_ENABLED` | off (SSMR example on) | Nightly/ops writer materializes baselines |
 | `FORECAST_ALGO_REQUIRE_GATE` | off | Backtest exits non-zero unless algo beats 7-day mean by >15% WAPE on ≥80% of series |
 | `FORECAST_ACCURACY_ENABLED` | separate | §8.4 accuracy table / confidence |
+| `FORECAST_DEMOTE_ENABLED` | off | G6: auto-demote baselines when WAPE28 fails gate |
+| `FORECAST_DEMOTE_WAPE28_MAX` | 0.45 | Demote if WAPE28 > max and sample≥14 |
 | `FORECAST_SEASONAL_ESTIMATE_ENABLED` | off | YoY calendar multiplier draft suggestions (inactive overrides) |
+
+## Accuracy publish (G6.A1)
+
+- Nightly pass writes **WAPE** (primary) and **MAPE28** (`mean(|f−a|/a)` for a>0) to `ForecastAccuracyDaily`.
+- `GET /v1/admin/planning/accuracy` returns `mape28`, `demoted` (threshold view), and demote config.
+- When `FORECAST_DEMOTE_ENABLED=true` and WAPE28>max with sample≥14: set `BlockedReason=accuracy_demoted`, low confidence; forecast algo pass respects demote.
 
 ## Jobs
 

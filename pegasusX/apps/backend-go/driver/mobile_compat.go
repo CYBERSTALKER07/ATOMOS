@@ -379,8 +379,10 @@ func (s *Service) HandleOrderStatePatch(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	orderID := strings.TrimSpace(chi.URLParam(r, "orderID"))
+	// G1.C: keep hard 501 trap so mis-wired clients never invent lifecycle success.
 	writeJSON(w, http.StatusNotImplemented, map[string]any{
 		"error":    "not_implemented",
+		"code":     "use_delivery_edges",
 		"order_id": orderID,
 		"message":  "PATCH /v1/orders/{id}/state does not mutate Spanner; use delivery edge routes (arrive, depart, collect-cash, credit-leave, partial-offload)",
 		"use": []string{

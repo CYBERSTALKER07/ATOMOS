@@ -76,6 +76,31 @@ Portal: Settings → Integrations (EDI toggle + recent documents).
 
 `PX_E2E_PARTNER_EDI_ORDERS_OK` / `_SKIPPED`, `PX_E2E_PARTNER_EDI_ORDRSP_OK` / `_SKIPPED`.
 
+## Tenant EDI profile packs (G5.A)
+
+Per-tenant policy on top of EDI-lite codecs (not a re-implementation):
+
+| Field | Meaning |
+|-------|---------|
+| `pack_name` | e.g. `edifact_lite_v1` |
+| `our_gln` / `their_gln` | Party codes for CONTRL/APERAK |
+| `enabled_doc_types` | Subset of ORDERS, ORDRSP, DESADV, … |
+| `require_contrl` / `require_aperak` | ACK policy |
+| `asn_as_desadv` | Treat DESADV as WMS ASN (G5.D) |
+
+| Method | Path |
+|--------|------|
+| GET/PUT | `/partner/v1/edi/profile` |
+| GET/PUT | `/v1/supplier/partner-edi/profile` |
+
+When no profile row exists, **all** core doc types remain enabled (backward compatible).
+Disabled inbound types return `profile_doc_disabled` (APERAK reason when acks wired).
+Disabled outbound types are not enqueued.
+
+Migration: `20260813_g5_partner_enterprise_io.ddl` (`PartnerEdiProfiles`).
+
 ## Still open
 
-Full EDIFACT / Drummond certification and certified 1C CommerceML package (Phase 6). EDI-lite breadth (PRICAT…REMADV) and AS2 MDN/MIC verify are Wired (W5).
+Full EDIFACT / Drummond certification. Certified 1C CommerceML full suite residual
+(see `partner/adapters/onec` + `PARTNER_ADAPTER_1C.md`). SAP IDoc residual:
+`partner/adapters/sap/README.md`.

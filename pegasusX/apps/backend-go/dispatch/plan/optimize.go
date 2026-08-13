@@ -26,6 +26,10 @@ const (
 	SourceFallbackValidation = "fallback_validation_rejected"
 	SourcePureSmallBatch     = "pure_small_batch"
 
+	// Product honesty classes (G4.C) — additive to raw optimizer_source.
+	ClassOptimal   = "OPTIMAL"   // OR-Tools / optimizer-core accepted
+	ClassHeuristic = "HEURISTIC" // phase-1 binpack / fallback / validation reject
+
 	defaultCapacityBufferPct  = 5.0
 	maxAcceptableUtilFraction = 1.0 - defaultCapacityBufferPct/100.0
 
@@ -39,6 +43,19 @@ const (
 	// timeout) plus wire overhead — strictly greater than solver time_limit_ms (5s).
 	solverBudget = optimizerclient.DefaultTimeout + 250*time.Millisecond
 )
+
+// OptimizerClass maps raw optimizer_source to HEURISTIC|OPTIMAL product labels.
+func OptimizerClass(source string) string {
+	switch strings.TrimSpace(source) {
+	case SourceOptimizer:
+		return ClassOptimal
+	case "", SourceFallbackPhase1, SourceFallbackValidation, SourcePureSmallBatch, "manual":
+		return ClassHeuristic
+	default:
+		// Unknown sources fail-honest as HEURISTIC (never claim OPTIMAL without OR-Tools).
+		return ClassHeuristic
+	}
+}
 
 // Job is the backend-domain input. The orchestrator builds an
 // optimizerclient.SolveInput from it on the way out.

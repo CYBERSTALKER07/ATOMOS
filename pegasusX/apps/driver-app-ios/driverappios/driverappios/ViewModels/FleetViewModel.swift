@@ -615,45 +615,17 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func updateOrderDuringDelivery(orderId: String) async {
-        deliveryEdgeError = nil
+        // G1.C: mid-delivery endpoint has no durable writer — use delivery correction / amend.
+        deliveryEdgeError = "Use delivery correction (amend / missing items) — mid-delivery update is not implemented"
         deliveryEdgeMessage = nil
-        let location = await MainActor.run { Self.lastKnownLocation }
-        guard let location, location.latitude != 0 || location.longitude != 0 else {
-            deliveryEdgeError = "GPS unavailable for in-delivery update"
-            return
-        }
-        do {
-            let response = try await fleetService.updateOrderDuringDelivery(
-                orderId: orderId,
-                latitude: location.latitude,
-                longitude: location.longitude
-            )
-            guard response.success else {
-                deliveryEdgeError = response.message
-                return
-            }
-            deliveryEdgeMessage = response.message
-            await loadMissions()
-        } catch {
-            deliveryEdgeError = error.localizedDescription
-        }
     }
 
     private func legacyStartTransit() async {
-        isTransitActive = true
-        Haptics.heavy()
-        for order in loadedOrders {
-            do {
-                let updated = try await APIClient.shared.transitionState(
-                    orderId: order.id,
-                    newState: "IN_TRANSIT"
-                )
-                if let idx = orders.firstIndex(where: { $0.id == updated.id }) {
-                    orders[idx] = updated
-                }
-            } catch { }
-        }
-        isTelemetryLive = true
+        // G1.C: never PATCH …/state (always 501). Depart requires a vehicle; fail honestly.
+        Haptics.error()
+        deliveryEdgeError = "Assign a vehicle and use Depart — cannot fake IN_TRANSIT via state patch"
+        isTransitActive = false
+        isTelemetryLive = false
         deriveTruckStatus()
     }
 

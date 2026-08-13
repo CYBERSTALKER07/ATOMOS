@@ -72,6 +72,50 @@ func TestConfidencePctFromWape(t *testing.T) {
 	}
 }
 
+func TestComputeMAPE(t *testing.T) {
+	// |10-10|/10 + |12-10|/10 + |8-10|/10 = 0 + 0.2 + 0.2 = 0.4; mean = 0.4/3
+	points := []SeriesPoint{
+		{ForecastQty: 10, ActualQty: 10},
+		{ForecastQty: 12, ActualQty: 10},
+		{ForecastQty: 8, ActualQty: 10},
+		{ForecastQty: 5, ActualQty: 0}, // skipped (a<=0)
+	}
+	got := computeMAPE(points)
+	want := (0.0 + 0.2 + 0.2) / 3.0
+	if math.Abs(got-want) > 1e-9 {
+		t.Fatalf("MAPE=%v want %v", got, want)
+	}
+	m := ComputeSeriesMetrics([]SeriesPoint{
+		{Day: civil.Date{Year: 2026, Month: 8, Day: 4}, ForecastQty: 10, ActualQty: 10},
+		{Day: civil.Date{Year: 2026, Month: 8, Day: 5}, ForecastQty: 12, ActualQty: 10},
+		{Day: civil.Date{Year: 2026, Month: 8, Day: 6}, ForecastQty: 8, ActualQty: 10},
+	}, civil.Date{Year: 2026, Month: 8, Day: 6})
+	if math.Abs(m.Mape28-want) > 1e-9 {
+		t.Fatalf("Mape28=%v want %v", m.Mape28, want)
+	}
+}
+
+func TestShouldDemote(t *testing.T) {
+	t.Setenv("FORECAST_DEMOTE_ENABLED", "false")
+	if ShouldDemote(0.9, 20) {
+		t.Fatal("flag off → no demote")
+	}
+	t.Setenv("FORECAST_DEMOTE_ENABLED", "true")
+	t.Setenv("FORECAST_DEMOTE_WAPE28_MAX", "0.45")
+	if ShouldDemote(0.50, 10) {
+		t.Fatal("sample < 14 → no demote")
+	}
+	if !ShouldDemote(0.50, 14) {
+		t.Fatal("WAPE>max + sample>=14 → demote")
+	}
+	if ShouldDemote(0.40, 20) {
+		t.Fatal("WAPE under max → no demote")
+	}
+	if AccuracyDemotedReason != "accuracy_demoted" {
+		t.Fatalf("reason=%q", AccuracyDemotedReason)
+	}
+}
+
 func TestHandleListAccuracyMethodNotAllowed(t *testing.T) {
 	svc := &AccuracyService{}
 	req := httptest.NewRequest(http.MethodPost, "/v1/admin/planning/accuracy", nil)

@@ -25,8 +25,33 @@ Also keep [`schema/spanner.ddl`](../apps/backend-go/schema/spanner.ddl) as the g
 | `WMS_PICK_SSHAPE_ENABLED` | PR-5 | false | Zone serpentine + LIFO seq |
 | `WMS_SEAL_SOFT_WARN` | PR-5 | false | Soft-warn seal (hard block default) |
 | `WMS_COLD_CHAIN_ENABLED` | PR-6 | false | Temperature ingest + quarantine |
+| `PAYLOAD_LOAD_LEDGER_ENABLED` | G2.B | false | Line-level scan ledger before seal |
+| `LABOR_CAPACITY_ENFORCE` | G2.C | false | Hard refuse dispatch on zone labor overload |
 
 See [`.env.example`](../.env.example) / [`.env.ssmr.example`](../.env.ssmr.example).
+
+## Seal-class tenants (G2.A)
+
+**Do not** set all `WMS_*=true` on every prod pod.
+
+| Path | Behavior |
+|------|----------|
+| Env default | `false` (bag-of-SKU safe) |
+| SSMR / pilot overlay | lots + pick + cycle (+ load ledger) `true` after DDL apply |
+| Tenant override | dual-control `featureflags` ACTIVE override for `WAREHOUSE`/`SUPPLIER` org (same keys as env). G2 flags are dual-control (PENDING until second PLATFORM_ADMIN) |
+| Soft-warn | keep `WMS_SEAL_SOFT_WARN=false` for seal-class |
+
+Runtime: `stocklots.EffectivePickWaves/Lots/ColdChain/LoadLedger` = process env **OR** tenant override.
+
+### G2 migrations
+
+```bash
+go run ./cmd/apply-migration --ddl schema/migrations/20260813_g2_manifest_load_ledger.ddl
+```
+
+### Dual plane
+
+Factory vs delivery trucks: [`MANIFEST_DUAL_PLANE.md`](./MANIFEST_DUAL_PLANE.md) (Option B).
 
 ## Verify
 

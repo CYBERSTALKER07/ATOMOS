@@ -102,10 +102,9 @@ func (s *Service) UpdateOrderDuringDelivery(ctx context.Context, claims auth.Cla
 		return UpdateOrderDuringDeliveryResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// B1 M-P0-2: never report success without a Spanner write + outbox.
-	// Delivery-session adjustments are not wired; clients must use the
-	// real edge routes (arrive / partial-offload / amend / collect-cash).
+	// B1 M-P0-2 / G1.C: never report success without a Spanner write + outbox.
+	// Mid-delivery line adjust is not a durable product path — use amend / missing-items / partial-offload.
 	return UpdateOrderDuringDeliveryResponse{}, errors.New(
-		"not_implemented: use /v1/delivery/arrive, partial-offload, amend, or collect-cash — mid-delivery update has no durable writer",
+		"not_implemented: use_amend_or_partial_offload — POST amend, missing-items, or partial-offload; mid-delivery update has no durable writer",
 	)
 }

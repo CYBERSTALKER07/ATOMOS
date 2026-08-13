@@ -483,6 +483,21 @@ func (s *Service) assertPickWaveReadyForSealResult(ctx context.Context, manifest
 	return stocklots.AssertManifestPickReady(ctx, s.spannerClient(), manifestID)
 }
 
+// assertPhysicalSealGates runs G2 pick + load ledger + cold baseline before seal.
+func (s *Service) assertPhysicalSealGates(ctx context.Context, manifestID string) (warn string, err error) {
+	warn, err = s.assertPickWaveReadyForSealResult(ctx, manifestID)
+	if err != nil {
+		return warn, err
+	}
+	if err := stocklots.AssertLoadLedgerReady(ctx, s.spannerClient(), manifestID); err != nil {
+		return warn, err
+	}
+	if err := stocklots.AssertColdChainBaselineReady(ctx, s.spannerClient(), manifestID); err != nil {
+		return warn, err
+	}
+	return warn, nil
+}
+
 func (s *Service) sealManifestLocked(manifestID string) (ManifestRow, error) {
 	idx := s.findManifestIndexLocked(manifestID)
 	if idx < 0 {
@@ -832,6 +847,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:  events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
 			ManifestID: manifestID,
 			SupplierID: s.resolveSupplierScope(r.Context()),
@@ -851,6 +867,9 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// G2.B: seed durable load ledger from order lines (memory + optional Spanner later in apply).
+	s.seedLoadLedgerForManifest(r.Context(), manifestID)
 
 	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestLoadingStarted, map[string]any{
@@ -958,6 +977,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:     events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
 			ManifestID:    manifestID,
 			OrderID:       req.OrderID,
@@ -1112,6 +1132,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
 			ManifestID:   req.ManifestID,
 			OrderID:      req.OrderID,
@@ -1124,6 +1145,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		}
 		if exception.Escalated {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+				ManifestDomain: events.ManifestDomainSupplier,
 				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
 				ManifestID:   req.ManifestID,
 				OrderID:      req.OrderID,
@@ -1564,6 +1586,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	}, func(txn outbox.TxnBuffer) error {
 		aggregateID := coalesceString(reassignment.ManifestID, reassignment.FromManifestID, "payload-reassign")
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, aggregateID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:      events.BaseEvent{Type: events.EventManifestRebalanced, Timestamp: reassignment.AppliedAt},
 			ManifestID:     aggregateID,
 			FromManifestID: reassignment.FromManifestID,
@@ -1687,7 +1710,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		if manifestID == "" {
 			continue
 		}
-		if gateErr := s.assertPickWaveReadyForSeal(r.Context(), manifestID); gateErr != nil {
+		if _, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID); gateErr != nil {
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "pick_wave_blocked",
@@ -1705,6 +1728,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 			return sealErr
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+				ManifestDomain: events.ManifestDomainSupplier,
 				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 				ManifestID: manifestID,
 				SupplierID: s.resolveSupplierScope(r.Context()),
@@ -1796,7 +1820,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
 	}
-	sealPickWarn, gateErr := s.assertPickWaveReadyForSealResult(r.Context(), manifestID)
+	sealPickWarn, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID)
 	if gateErr != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
 		return
@@ -1812,6 +1836,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return sealErr
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 			ManifestID: manifestID,
 			SupplierID: s.resolveSupplierScope(r.Context()),
@@ -1915,7 +1940,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if gateErr := s.assertPickWaveReadyForSeal(r.Context(), req.ManifestID); gateErr != nil {
+	if _, gateErr := s.assertPhysicalSealGates(r.Context(), req.ManifestID); gateErr != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
 		return
 	}
@@ -1947,6 +1972,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		return sealErr
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
 			ManifestID:  req.ManifestID,
 			SupplierID:  s.resolveSupplierScope(r.Context()),
@@ -2070,7 +2096,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 	sealedCount := 0
 
 	for _, manifestID := range candidateIDs {
-		if gateErr := s.assertPickWaveReadyForSeal(r.Context(), manifestID); gateErr != nil {
+		if _, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID); gateErr != nil {
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "pick_wave_blocked",
@@ -2087,6 +2113,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			return e
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+				ManifestDomain: events.ManifestDomainSupplier,
 				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
 				ManifestID: manifestID,
 				SupplierID: s.resolveSupplierScope(r.Context()),

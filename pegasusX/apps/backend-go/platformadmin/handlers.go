@@ -18,6 +18,8 @@ type Handlers struct {
 	Svc       *Service
 	JWTSecret string
 	JWTIssuer string
+	// Ops is optional G4.B2 outbox/runtime visibility.
+	Ops *OpsDeps
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -145,5 +147,10 @@ func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http
 		pr.Post("/tenants/{tenantType}/{tenantID}/transition", h.HandleTransitionTenant)
 		pr.Get("/audit", h.HandleListAudit)
 		pr.Get("/ws-session", h.HandleWebSocketSession)
+		// G4.B2 ops visibility
+		pr.Get("/ops/outbox/summary", h.HandleOutboxSummary)
+		pr.Get("/ops/outbox/events", h.HandleOutboxEvents)
+		pr.Get("/ops/outbox/dead-letters", h.HandleOutboxDeadLetters)
+		pr.Get("/ops/runtime", h.HandleRuntime)
 	})
 }

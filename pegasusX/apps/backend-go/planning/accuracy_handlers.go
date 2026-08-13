@@ -78,5 +78,11 @@ func (s *AccuracyService) HandleListAccuracy(w http.ResponseWriter, r *http.Requ
 	if rows == nil {
 		rows = []AccuracyDailyRow{}
 	}
-	writeAccuracyJSON(w, http.StatusOK, map[string]any{"items": rows, "days": days})
+	writeAccuracyJSON(w, http.StatusOK, map[string]any{
+		"items":                 rows,
+		"days":                  days,
+		"demote_enabled":        ForecastDemoteEnabled(),
+		"demote_wape28_max":     ForecastDemoteWape28Max(),
+		"demote_min_sample_days": ForecastDemoteMinSample(),
+	})
 }

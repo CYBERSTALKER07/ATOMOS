@@ -100,6 +100,8 @@ const (
 	EventSupplyRequestAccepted        = "SUPPLY_REQUEST_ACCEPTED"
 	EventSupplyRequestUpdate          = "SUPPLY_REQUEST_UPDATE"
 	EventFactorySupplyRequestUpdate   = "FACTORY_SUPPLY_REQUEST_UPDATE"
+	// EventFactorySLABreach is emitted when an open supply request passes sla_due_at (G7.1).
+	EventFactorySLABreach = "FACTORY_SLA_BREACH"
 
 	// @Sync(SystemEvent)
 	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"

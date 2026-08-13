@@ -57,6 +57,28 @@ func envOr(k, def string) string {
 	return def
 }
 
+// TransportChannelsConfigured lists which off-app channels would be enabled
+// (without constructing clients). Used by dunning status honesty endpoint.
+func TransportChannelsConfigured() []string {
+	var out []string
+	switch p := strings.ToLower(strings.TrimSpace(os.Getenv("DUNNING_SMS_PROVIDER"))); p {
+	case "", "off":
+	default:
+		out = append(out, "sms:"+p)
+	}
+	switch p := strings.ToLower(strings.TrimSpace(os.Getenv("DUNNING_EMAIL_PROVIDER"))); p {
+	case "", "off":
+	default:
+		out = append(out, "email:"+p)
+	}
+	switch p := strings.ToLower(strings.TrimSpace(os.Getenv("DUNNING_WHATSAPP_PROVIDER"))); p {
+	case "", "off":
+	default:
+		out = append(out, "whatsapp:"+p)
+	}
+	return out
+}
+
 // TransportsFromEnv builds the enabled off-app transports. Unknown providers
 // and missing credentials are hard errors (fail-closed).
 func TransportsFromEnv() ([]ChannelTransport, error) {

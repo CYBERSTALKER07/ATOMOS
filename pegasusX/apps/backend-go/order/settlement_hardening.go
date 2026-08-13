@@ -338,7 +338,29 @@ func (s *Service) finalizeCardSettlement(ctx context.Context, orderRecord Order,
 				"CapturedAt":  now,
 			}))
 		}
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		// G1-A2: clear credit balance only after card money is CAPTURED (same txn).
+		// No-op when order was never credit-left (no CONVERTED reservation).
+		if s.credit != nil && orderRecord.TotalMinor > 0 {
+			if err := s.credit.ClearBalanceInTxn(ctx, txn,
+				orderRecord.RetailerID, orderRecord.SupplierID, orderRecord.OrderID, orderRecord.TotalMinor); err != nil {
+				return err
+			}
+		}
+		// G1.A twin for card: AR pay-down when invoice exists (same txn as capture).
+		if s.ar != nil && orderRecord.TotalMinor > 0 {
+			amt := orderRecord.TotalMinor
+			if leg != nil && leg.AmountMinor > 0 {
+				amt = leg.AmountMinor
+			}
+			if err := s.ar.RecordPaymentForOrderInTxn(ctx, txn, orderRecord.OrderID, amt,
+				"ar-card-settle-"+orderRecord.OrderID, orderRecord.Currency); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	return err
 }

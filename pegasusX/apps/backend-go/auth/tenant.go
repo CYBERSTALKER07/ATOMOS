@@ -52,6 +52,25 @@ func TenantContextEnforced() bool {
 	return env == "ssmr" || env == "production"
 }
 
+// SeedFallbackAllowed reports whether PreferTenant may return a bootstrap seed supplier id.
+// Default false under ssmr/production (G4.A). Break-glass: ALLOW_SEED_FALLBACK=true.
+// Explicit false always wins. Local/dev defaults true when not enforced.
+func SeedFallbackAllowed() bool {
+	if v := strings.TrimSpace(os.Getenv("ALLOW_SEED_FALLBACK")); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	// Fail closed in enforced envs unless break-glass env is set.
+	if TenantContextEnforced() {
+		return false
+	}
+	return true
+}
+
 // AttachTenantFromClaims populates TenantContext from JWT claims when not already set
 // (partner middleware may have attached first).
 func AttachTenantFromClaims(next http.Handler) http.Handler {
@@ -72,9 +91,10 @@ func AttachTenantFromClaims(next http.Handler) http.Handler {
 }
 
 // PreferTenantSupplierID returns TenantContext.SupplierID when present, else
-// ResolveSupplierID from claims, else fallback (seed during Gate 5 migration).
-// When TenantContextEnforced and the caller is authenticated (JWT claims present)
-// but has no tenant/claim supplier, returns "" instead of seed (Week 11 fail-closed).
+// ResolveSupplierID from claims, else optional seed fallback.
+// G4.A fail-closed rules:
+//  1. Authenticated + TenantContextEnforced without supplier → never seed ("").
+//  2. Seed fallback only when SeedFallbackAllowed() (false under ssmr/production by default).
 func PreferTenantSupplierID(ctx context.Context, fallback string) string {
 	if t, ok := TenantFromContext(ctx); ok {
 		return t.SupplierID
@@ -86,6 +106,9 @@ func PreferTenantSupplierID(ctx context.Context, fallback string) string {
 		if _, hasClaims := FromContext(ctx); hasClaims {
 			return ""
 		}
+	}
+	if !SeedFallbackAllowed() {
+		return ""
 	}
 	return strings.TrimSpace(fallback)
 }

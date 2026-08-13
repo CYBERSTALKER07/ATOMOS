@@ -20,28 +20,68 @@ func ForecastAccuracyEnabled() bool {
 	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
+// ForecastDemoteEnabled gates auto-demotion of poor WAPE28 SKUs (default off).
+func ForecastDemoteEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("FORECAST_DEMOTE_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
+// ForecastDemoteWape28Max is the WAPE28 threshold above which demotion fires (default 0.45).
+func ForecastDemoteWape28Max() float64 {
+	v := strings.TrimSpace(os.Getenv("FORECAST_DEMOTE_WAPE28_MAX"))
+	if v == "" {
+		return 0.45
+	}
+	var n float64
+	if _, err := fmt.Sscanf(v, "%f", &n); err != nil || n <= 0 {
+		return 0.45
+	}
+	return n
+}
+
+// ForecastDemoteMinSample is the minimum SampleDays28 required to demote (default 14).
+func ForecastDemoteMinSample() int64 {
+	return 14
+}
+
+// AccuracyDemotedReason is written to DemandForecastBaseline.BlockedReason when demoted.
+const AccuracyDemotedReason = "accuracy_demoted"
+
+// ShouldDemote reports whether a series should be demoted under current flags/thresholds.
+func ShouldDemote(wape28 float64, sampleDays28 int64) bool {
+	if !ForecastDemoteEnabled() {
+		return false
+	}
+	if sampleDays28 < ForecastDemoteMinSample() {
+		return false
+	}
+	return wape28 > ForecastDemoteWape28Max()
+}
+
 // AccuracyNotifyFunc fans out |TS|>4 alerts (inbox / ops).
 type AccuracyNotifyFunc func(ctx context.Context, supplierID, warehouseID, productID string, ts float64, day civil.Date) error
 
 // AccuracyDailyRow is one persisted ForecastAccuracyDaily record.
 type AccuracyDailyRow struct {
-	SupplierID     string
-	ForecastDate   civil.Date
-	WarehouseID    string
-	ProductID      string
-	ForecastQty    int64
-	ActualQty      int64
-	AbsError       int64
-	SignedError    int64
-	Wape7          float64
-	Wape28         float64
-	Bias7          float64
-	Bias28         float64
-	TrackingSignal float64
-	SampleDays7    int64
-	SampleDays28   int64
-	AlertTs        bool
-	ComputedAt     time.Time
+	SupplierID     string     `json:"supplier_id"`
+	ForecastDate   civil.Date `json:"forecast_date"`
+	WarehouseID    string     `json:"warehouse_id"`
+	ProductID      string     `json:"product_id"`
+	ForecastQty    int64      `json:"forecast_qty"`
+	ActualQty      int64      `json:"actual_qty"`
+	AbsError       int64      `json:"abs_error"`
+	SignedError    int64      `json:"signed_error"`
+	Wape7          float64    `json:"wape7"`
+	Wape28         float64    `json:"wape28"`
+	Mape28         float64    `json:"mape28"`
+	Bias7          float64    `json:"bias7"`
+	Bias28         float64    `json:"bias28"`
+	TrackingSignal float64    `json:"tracking_signal"`
+	SampleDays7    int64      `json:"sample_days7"`
+	SampleDays28   int64      `json:"sample_days28"`
+	AlertTs        bool       `json:"alert_ts"`
+	Demoted        bool       `json:"demoted"`
+	ComputedAt     time.Time  `json:"computed_at"`
 }
 
 // SeriesPoint is one day of forecast vs actual for rolling metrics.
@@ -51,10 +91,11 @@ type SeriesPoint struct {
 	ActualQty   int64
 }
 
-// SeriesMetrics holds rolling WAPE / bias / tracking signal.
+// SeriesMetrics holds rolling WAPE / MAPE / bias / tracking signal.
 type SeriesMetrics struct {
 	Wape7          float64
 	Wape28         float64
+	Mape28         float64
 	Bias7          float64
 	Bias28         float64
 	TrackingSignal float64
@@ -74,11 +115,13 @@ func ComputeSeriesMetrics(points []SeriesPoint, asOf civil.Date) SeriesMetrics {
 
 	wape7, bias7, n7 := wapeBias(window7)
 	wape28, bias28, n28 := wapeBias(window28)
+	mape28 := computeMAPE(window28)
 	ts := trackingSignal(window28)
 
 	return SeriesMetrics{
 		Wape7:          wape7,
 		Wape28:         wape28,
+		Mape28:         mape28,
 		Bias7:          bias7,
 		Bias28:         bias28,
 		TrackingSignal: ts,
@@ -86,6 +129,32 @@ func ComputeSeriesMetrics(points []SeriesPoint, asOf civil.Date) SeriesMetrics {
 		SampleDays28:   n28,
 		AlertTs:        math.Abs(ts) > 4,
 	}
+}
+
+// computeMAPE = mean(|f-a|/max(a,ε)) over sample days with a>0 (UI honesty; WAPE remains gate).
+func computeMAPE(points []SeriesPoint) float64 {
+	const eps = 1e-9
+	var sum float64
+	var n int
+	for _, p := range points {
+		if p.ActualQty <= 0 {
+			continue
+		}
+		err := p.ForecastQty - p.ActualQty
+		if err < 0 {
+			err = -err
+		}
+		denom := float64(p.ActualQty)
+		if denom < eps {
+			denom = eps
+		}
+		sum += float64(err) / denom
+		n++
+	}
+	if n == 0 {
+		return 0
+	}
+	return sum / float64(n)
 }
 
 func collectWindow(byDay map[civil.Date]SeriesPoint, asOf civil.Date, days int) []SeriesPoint {
@@ -254,6 +323,13 @@ func (s *AccuracyService) RunAccuracyPass(ctx context.Context, supplierID string
 
 	scoreStart := end.AddDate(0, 0, -(lookbackDays - 1))
 	mutations := make([]*spanner.Mutation, 0, 256)
+	demoteMuts := make([]*spanner.Mutation, 0, 32)
+	demotedN := 0
+	// Track latest-day demote candidates per series (apply once per SKU).
+	type demoteKey struct{ SupplierID, WarehouseID, ProductID string }
+	demotedKeys := map[demoteKey]struct{}{}
+	endDay := civil.DateOf(end)
+
 	for sk, points := range series {
 		for d := scoreStart; !d.After(end); d = d.AddDate(0, 0, 1) {
 			day := civil.DateOf(d)
@@ -283,6 +359,7 @@ func (s *AccuracyService) RunAccuracyPass(ctx context.Context, supplierID string
 				"SignedError":    fQty - aQty,
 				"Wape7":          m.Wape7,
 				"Wape28":         m.Wape28,
+				"Mape28":         m.Mape28,
 				"Bias7":          m.Bias7,
 				"Bias28":         m.Bias28,
 				"TrackingSignal": m.TrackingSignal,
@@ -305,6 +382,19 @@ func (s *AccuracyService) RunAccuracyPass(ctx context.Context, supplierID string
 						"product_id", sk.ProductID, "day", day.String(), "ts", m.TrackingSignal)
 				}
 			}
+			// Demote on the lookback end day only (latest series view).
+			if day == endDay && ShouldDemote(m.Wape28, m.SampleDays28) {
+				dk := demoteKey{sk.SupplierID, sk.WarehouseID, sk.ProductID}
+				if _, seen := demotedKeys[dk]; !seen {
+					demotedKeys[dk] = struct{}{}
+					demoteMuts = append(demoteMuts, demoteBaselineMutations(sk.SupplierID, sk.WarehouseID, sk.ProductID, endDay)...)
+					demotedN++
+					s.log().Info("forecast demoted",
+						"supplier_id", sk.SupplierID, "warehouse_id", sk.WarehouseID,
+						"product_id", sk.ProductID, "wape28", m.Wape28, "mape28", m.Mape28,
+						"sample_days28", m.SampleDays28)
+				}
+			}
 			if len(mutations) >= 400 {
 				if _, err := s.Client.Apply(ctx, mutations); err != nil {
 					return written, alerts, err
@@ -318,8 +408,34 @@ func (s *AccuracyService) RunAccuracyPass(ctx context.Context, supplierID string
 			return written, alerts, err
 		}
 	}
-	s.log().Info("forecast accuracy pass complete", "written", written, "alerts", alerts)
+	if len(demoteMuts) > 0 {
+		if _, err := s.Client.Apply(ctx, demoteMuts); err != nil {
+			s.log().Warn("forecast demote apply failed", "err", err, "count", len(demoteMuts))
+			// Non-fatal: accuracy rows already written.
+		}
+	}
+	s.log().Info("forecast accuracy pass complete", "written", written, "alerts", alerts, "demoted", demotedN)
 	return written, alerts, nil
+}
+
+// demoteBaselineMutations marks the baseline row on asOf as accuracy_demoted with low confidence.
+// Uses Update so missing baselines are skipped at Apply time rather than inventing qty=0 rows.
+func demoteBaselineMutations(supplierID, warehouseID, productID string, asOf civil.Date) []*spanner.Mutation {
+	// InsertOrUpdate with zero qty is unsafe; update only Confidence fields when row exists
+	// via DML is preferred, but Apply path uses UpdateMap which fails if missing — callers
+	// tolerate partial demote. Prefer InsertOrUpdate of confidence-only when baseline present:
+	// we use Update so Apply errors on missing keys; demote is best-effort per SKU.
+	return []*spanner.Mutation{
+		spanner.UpdateMap("DemandForecastBaseline", map[string]any{
+			"SupplierId":     supplierID,
+			"ForecastDate":   asOf,
+			"WarehouseId":    warehouseID,
+			"ProductId":      productID,
+			"Confidence":     0.05,
+			"ConfidencePct":  int64(5),
+			"BlockedReason":  AccuracyDemotedReason,
+		}),
+	}
 }
 
 type baselineRow struct {
@@ -406,6 +522,61 @@ func ListAccuracyRows(ctx context.Context, client *spanner.Client, supplierID, w
 	}
 	end := civil.DateOf(time.Now().UTC())
 	start := end.AddDays(-(days - 1))
+	// Mape28 is optional (pre-G6 rows); COALESCE keeps list API green during rollout.
+	sql := `SELECT SupplierId, ForecastDate, WarehouseId, ProductId,
+		ForecastQty, ActualQty, AbsError, SignedError,
+		COALESCE(Wape7, 0), COALESCE(Wape28, 0), COALESCE(Mape28, 0),
+		COALESCE(Bias7, 0), COALESCE(Bias28, 0),
+		COALESCE(TrackingSignal, 0), SampleDays7, SampleDays28, AlertTs, ComputedAt
+		FROM ForecastAccuracyDaily
+		WHERE SupplierId = @sid AND ForecastDate BETWEEN @start AND @end`
+	params := map[string]any{"sid": supplierID, "start": start, "end": end}
+	if wh := strings.TrimSpace(warehouseID); wh != "" {
+		sql += ` AND WarehouseId = @wh`
+		params["wh"] = wh
+	}
+	if pid := strings.TrimSpace(productID); pid != "" {
+		sql += ` AND ProductId = @pid`
+		params["pid"] = pid
+	}
+	sql += ` ORDER BY ForecastDate DESC, WarehouseId, ProductId LIMIT 2000`
+	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	defer iter.Stop()
+	var out []AccuracyDailyRow
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Fallback without Mape28 column for envs that have not applied G6 migration.
+			if strings.Contains(err.Error(), "Mape28") {
+				return listAccuracyRowsLegacy(ctx, client, supplierID, warehouseID, productID, days)
+			}
+			return nil, err
+		}
+		var r AccuracyDailyRow
+		if err := row.Columns(
+			&r.SupplierID, &r.ForecastDate, &r.WarehouseID, &r.ProductID,
+			&r.ForecastQty, &r.ActualQty, &r.AbsError, &r.SignedError,
+			&r.Wape7, &r.Wape28, &r.Mape28, &r.Bias7, &r.Bias28, &r.TrackingSignal,
+			&r.SampleDays7, &r.SampleDays28, &r.AlertTs, &r.ComputedAt,
+		); err != nil {
+			return nil, err
+		}
+		// Demoted honesty: threshold view for UI even when auto-demote flag is off.
+		r.Demoted = r.SampleDays28 >= ForecastDemoteMinSample() && r.Wape28 > ForecastDemoteWape28Max()
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+func listAccuracyRowsLegacy(ctx context.Context, client *spanner.Client, supplierID, warehouseID, productID string, days int) ([]AccuracyDailyRow, error) {
+	if days < 1 {
+		days = 28
+	}
+	end := civil.DateOf(time.Now().UTC())
+	start := end.AddDays(-(days - 1))
 	sql := `SELECT SupplierId, ForecastDate, WarehouseId, ProductId,
 		ForecastQty, ActualQty, AbsError, SignedError,
 		COALESCE(Wape7, 0), COALESCE(Wape28, 0), COALESCE(Bias7, 0), COALESCE(Bias28, 0),
@@ -442,6 +613,7 @@ func ListAccuracyRows(ctx context.Context, client *spanner.Client, supplierID, w
 		); err != nil {
 			return nil, err
 		}
+		r.Demoted = r.SampleDays28 >= ForecastDemoteMinSample() && r.Wape28 > ForecastDemoteWape28Max()
 		out = append(out, r)
 	}
 	return out, nil

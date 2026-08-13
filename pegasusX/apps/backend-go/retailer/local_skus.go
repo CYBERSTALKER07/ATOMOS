@@ -224,6 +224,70 @@ func (s *Service) HandleLocalSKUByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, cur)
 }
 
+// HandlePOSScan serves POST /v1/retailer/pos/scan — G3.C scan-to-cart line resolve.
+// Body: { "barcode": "...", "qty": 1 }. Returns normalized POS line for the till.
+func (s *Service) HandlePOSScan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || !auth.HasRetailerPerm(claims, auth.PermPosSell) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	orgID, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	var req struct {
+		Barcode string `json:"barcode"`
+		SKU     string `json:"sku"`
+		Qty     int64  `json:"qty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	code := strings.TrimSpace(req.Barcode)
+	if code == "" {
+		code = strings.TrimSpace(req.SKU)
+	}
+	if code == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "barcode_required"})
+		return
+	}
+	qty := req.Qty
+	if qty <= 0 {
+		qty = 1
+	}
+	price := int64(0)
+	hintName := ""
+	if row, ok := s.findLocalByBarcode(r.Context(), orgID, code); ok && row.IsActive {
+		price = row.DefaultPriceMinor
+		hintName = row.Name
+	}
+	sku, name, errMsg := s.validatePosSaleSKU(r.Context(), orgID, code, hintName, price)
+	if errMsg != "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "sku_not_found", "detail": errMsg, "barcode": code})
+		return
+	}
+	if name == "" {
+		name = hintName
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"sku":              sku,
+		"name":             name,
+		"qty":              qty,
+		"unit_price_minor": price,
+		"line_total_minor": price * qty,
+		"barcode":          code,
+		"source":           "pos_scan",
+		"ready_for_sale":   true,
+	})
+}
+
 // HandlePOSCatalogSearch serves GET /v1/retailer/pos/catalog?q=
 // Returns local SKUs (and optionally stock-matched names) for POS search.
 func (s *Service) HandlePOSCatalogSearch(w http.ResponseWriter, r *http.Request) {

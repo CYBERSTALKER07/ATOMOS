@@ -43,12 +43,13 @@ type EdiAckEnqueuer interface {
 
 // EdiInboundWorker polls SFTP/local inbound for ORDERS/ORDRSP/INVOIC files.
 type EdiInboundWorker struct {
-	ediDocs EdiDocumentRepository
-	sftp    SftpConfigRepository
-	svc     *Service
-	acks    EdiAckEnqueuer
-	log     *slog.Logger
-	now     func() time.Time
+	ediDocs  EdiDocumentRepository
+	sftp     SftpConfigRepository
+	profiles EdiProfileRepository
+	svc      *Service
+	acks     EdiAckEnqueuer
+	log      *slog.Logger
+	now      func() time.Time
 	// ResolveGeo optional; when nil, ORDERS must include LOC.
 	ResolveGeo   func(ctx context.Context, retailerID string) (RetailerGeo, error)
 	SecretLoader func(secretRef string) (string, error)
@@ -60,9 +61,22 @@ func NewEdiInboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, 
 	}
 	return &EdiInboundWorker{
 		ediDocs: docs, sftp: sftp, svc: svc, log: log,
+		profiles:     NewMemoryEdiProfiles(),
 		now:          func() time.Time { return time.Now().UTC() },
 		SecretLoader: LoadSecretRef,
 	}
+}
+
+// SetEdiProfiles wires G5.A tenant profile packs.
+func (w *EdiInboundWorker) SetEdiProfiles(repo EdiProfileRepository) {
+	if w != nil && repo != nil {
+		w.profiles = repo
+	}
+}
+
+func (w *EdiInboundWorker) profileAllows(ctx context.Context, tenantType, tenantID, docType string) bool {
+	p := ResolveEdiProfile(ctx, w.profiles, tenantType, tenantID)
+	return p.DocEnabled(docType)
 }
 
 // SetAckEnqueuer wires CONTRL/APERAK emission (typically the outbound worker).
@@ -253,6 +267,15 @@ func (w *EdiInboundWorker) ingestInboundBytes(ctx context.Context, cfg SftpConfi
 		default:
 			docType = EdiDocORDERS
 		}
+	}
+	// G5.A: tenant profile may disable doc types.
+	if !w.profileAllows(ctx, cfg.TenantType, cfg.TenantID, docType) {
+		w.log.Info("edi inbound skipped by profile",
+			"tenant_type", cfg.TenantType, "tenant_id", cfg.TenantID, "doc_type", docType)
+		if w.acks != nil {
+			w.acks.EnqueueFunctionalAck(ctx, cfg.TenantType, cfg.TenantID, remoteName, "", false, "profile_doc_disabled")
+		}
+		return fmt.Errorf("profile_doc_disabled:%s", docType)
 	}
 	switch strings.ToUpper(docType) {
 	case EdiDocORDERS:

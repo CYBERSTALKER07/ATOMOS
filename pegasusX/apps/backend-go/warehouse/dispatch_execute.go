@@ -12,6 +12,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 )
 
 // DispatchExecuteRequest is the service-layer input for warehouse dispatch commit.
@@ -118,14 +119,27 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		})
 		rows, fleet, _ = dispatch.EnrichScoreSignals(ctx, s.spannerClient, rows, fleet)
 		job := plan.BuildSolveJob(ctx, sid, whID, depot, rows, fleet)
-		job.Score = dispatch.ScoreContext{DepotLat: depot.Lat, DepotLng: depot.Lng}
+		job.Score = dispatch.ScoreContext{
+			DepotLat:     depot.Lat,
+			DepotLng:     depot.Lng,
+			MatrixSource: dispatch.MatrixSourceHaversine,
+		}
+		// G6.D: honesty label when road-score flag is on (RoadKm attached by callers that hold OSRM).
+		if dispatch.DispatchScoreUseOSRM() {
+			job.Score.MatrixSource = dispatch.MatrixSourceOSRM
+		}
 		assignment, source, err = plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
 		if err != nil {
 			return out, fmt.Errorf("optimize dispatch: %w", err)
 		}
+		out.MatrixSource = dispatch.ResolveMatrixSource(job.Score)
 	}
 
 	out.OptimizerSource = source
+	out.OptimizerClass = plan.OptimizerClass(source)
+	if out.MatrixSource == "" {
+		out.MatrixSource = dispatch.MatrixSourceHaversine
+	}
 	if assignment != nil {
 		out.Warnings = append(out.Warnings, assignment.Warnings...)
 		for _, orphan := range assignment.Orphans {
@@ -175,6 +189,20 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			if req.ForceCapacity && len(capacityWarnings) > 0 {
 				out.Warnings = append(out.Warnings, "capacity_override")
 			}
+		}
+	}
+
+	// G2.C: labor-capacity hard refuse when LABOR_CAPACITY_ENFORCE and zone H3 is known.
+	// Zone unknown → skip (volume capacity already gated); ops keys ZoneCapacity by H3 res-7.
+	plannedStops := int64(0)
+	for _, rt := range assignment.Routes {
+		plannedStops += int64(len(rt.Orders))
+	}
+	if zoneH3 := dispatchZoneH3(assignment, rows); zoneH3 != "" {
+		if laborErr := stocklots.AssertLaborCapacityAvailable(ctx, s.spannerClient, whID, sid, zoneH3, plannedStops, req.ForceCapacity); laborErr != nil {
+			out.Status = "labor_capacity_exceeded"
+			out.Warnings = append(out.Warnings, laborErr.Error())
+			return out, nil
 		}
 	}
 
@@ -604,4 +632,50 @@ func orphanOrderIDs(orphans []dispatch.GeoOrder) []string {
 		}
 	}
 	return ids
+}
+
+// dispatchZoneH3 picks the most common H3 cell among dispatchable rows (labor ZoneCapacity key).
+func dispatchZoneH3(assignment *dispatch.AssignmentResult, rows []dispatch.DispatchableOrder) string {
+	counts := map[string]int{}
+	for _, r := range rows {
+		c := strings.TrimSpace(r.H3Cell)
+		if c == "" && (r.Lat != 0 || r.Lng != 0) {
+			c = dispatch.H3CellLookup(r.Lat, r.Lng)
+		}
+		if c != "" {
+			counts[c]++
+		}
+	}
+	// Prefer cells on assigned routes when order ids match.
+	if assignment != nil {
+		assigned := map[string]struct{}{}
+		for _, rt := range assignment.Routes {
+			for _, o := range rt.Orders {
+				assigned[strings.TrimSpace(o.OrderID)] = struct{}{}
+			}
+		}
+		routeCounts := map[string]int{}
+		for _, r := range rows {
+			if _, ok := assigned[strings.TrimSpace(r.OrderID)]; !ok {
+				continue
+			}
+			c := strings.TrimSpace(r.H3Cell)
+			if c == "" && (r.Lat != 0 || r.Lng != 0) {
+				c = dispatch.H3CellLookup(r.Lat, r.Lng)
+			}
+			if c != "" {
+				routeCounts[c]++
+			}
+		}
+		if len(routeCounts) > 0 {
+			counts = routeCounts
+		}
+	}
+	best, n := "", 0
+	for c, k := range counts {
+		if k > n {
+			best, n = c, k
+		}
+	}
+	return best
 }

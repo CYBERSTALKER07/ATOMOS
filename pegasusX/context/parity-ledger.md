@@ -1,5 +1,14 @@
 # Parity ledger (intentional divergences)
 
+## G7 program close (2026-08-13)
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Factory SLA board | **Wired** | `GET /v1/factory/sla-board` + `sla_*` on supply list; portal badges; `FACTORY_SLA_BREACH` worker |
+| Admin OutboxDeadLetters | **Wired** | `GET /v1/platform-admin/ops/outbox/dead-letters` + OpsPanel |
+| FEATURES_BY_APP_ROLE | **Regen** | Header + G4–G7 deltas 2026-08-13 |
+| G1–G6 backend honesty | **Wired** | See session SCORECARD residuals (ops/secrets only) |
+
 ## Client parity closure (2026-08-05)
 
 | Item | Status | Notes |

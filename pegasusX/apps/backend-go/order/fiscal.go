@@ -197,18 +197,8 @@ func (s *Service) ProviderName() string {
 		}
 		return FiscalProviderPegasus
 	default:
-		// hardFailProvider and unknown → report configured intent
-		cfg := strings.ToUpper(strings.TrimSpace(os.Getenv("FISCAL_PROVIDER")))
-		switch cfg {
-		case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
-			return FiscalProviderMySoliq
-		case FiscalProviderFake:
-			return FiscalProviderFake
-		case FiscalProviderGlobalPay:
-			return FiscalProviderGlobalPay
-		default:
-			return FiscalProviderPegasus
-		}
+		// hardFailProvider and unknown → report resolved intent (G1.B defaults).
+		return ResolveFiscalProviderName()
 	}
 }
 

@@ -116,13 +116,18 @@ func (r *ForecastRunner) RunForecastPass(ctx context.Context, supplierID string,
 
 		confPct := int64(0)
 		conf := 0.0
+		blocked := res.BlockedReason
 		if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, r.Client, sk.SupplierID, sk.WarehouseID, endHist); werr == nil && ok {
-			if pct, have := ConfidencePctFromWape(wape, sample); have {
+			// G6.A1: demote path fail-closes confidence before predictive push overwrite.
+			if ShouldDemote(wape, sample) {
+				blocked = AccuracyDemotedReason
+				confPct = 5
+				conf = 0.05
+			} else if pct, have := ConfidencePctFromWape(wape, sample); have {
 				confPct = pct
 				conf = float64(pct) / 100
 			}
 		}
-		blocked := res.BlockedReason
 		if confPct <= 0 && blocked == "" {
 			blocked = "insufficient_history"
 		}

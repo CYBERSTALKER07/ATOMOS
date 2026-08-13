@@ -488,6 +488,7 @@ CREATE TABLE WarehouseSupplyRequests (
   RequestedDeliveryDate       TIMESTAMP,
   DemandBreakdown             JSON,
   TotalVolumeVU               FLOAT64       NOT NULL DEFAULT (0),
+  SlaBreachNotifiedAt         TIMESTAMP,
   CreatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RequestId);
@@ -1490,6 +1491,7 @@ CREATE TABLE ForecastAccuracyDaily (
   SignedError     INT64       NOT NULL,
   Wape7           FLOAT64,
   Wape28          FLOAT64,
+  Mape28          FLOAT64,
   Bias7           FLOAT64,
   Bias28          FLOAT64,
   TrackingSignal  FLOAT64,

@@ -218,6 +218,8 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    /// G1.C: do not call — backend always 501. Use arrive / depart / cash / card / credit edges.
+    @available(*, deprecated, message: "PATCH state is theatre (501); use delivery edge routes")
     func transitionState(orderId: String, newState: String) async throws -> Order {
         let body = ["state": newState]
         return try await patch(
@@ -234,6 +236,8 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/verify-handshake", body: body)
     }
 
+    /// G1.C: do not call — no durable writer. Use amend / missing-items / partial-offload.
+    @available(*, deprecated, message: "Mid-delivery update is not implemented; use amend edges")
     func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
         let body = UpdateOrderDuringDeliveryRequest(orderId: orderId, latitude: latitude, longitude: longitude)
         return try await post("v1/delivery/update-order-during-delivery", body: body)

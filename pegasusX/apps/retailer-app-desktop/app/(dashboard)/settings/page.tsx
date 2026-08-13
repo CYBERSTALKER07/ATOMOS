@@ -781,22 +781,12 @@ export default function SettingsPage() {
                       }}
                     />
                   </div>
-                  <div className="flex items-center justify-between py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
-                        <CreditCard size={18} />
-                      </div>
-                      <div>
-                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
-                          Settlement Priority
-                        </span>
-                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                          Managed by payment policy
-                        </span>
-                      </div>
-                    </div>
-                    <Toggle on={true} onToggle={() => {}} disabled={true} />
-                  </div>
+                  {/* G3.C: local browser mute only — not a server preference API. */}
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] px-1 pb-2">
+                    Desktop mute stores locally. Server push registration uses device-token
+                    APIs; there is no durable notification-preferences profile yet.
+                  </p>
+                  {/* Settlement Priority decorative toggle removed (G3.C — was disabled theatre). */}
                 </div>
               </section>
             </div>

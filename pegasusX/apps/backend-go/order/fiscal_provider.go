@@ -11,12 +11,17 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
 
-// Fiscal provider selection (ADR-009 hard-gate).
+// Fiscal provider selection (ADR-009 hard-gate) — G1.B product truth.
 //
-//	FISCAL_PROVIDER=PEGASUS    (default product path — platform commercial receipts, no Soliq)
-//	FISCAL_PROVIDER=FAKE       SSMR test hooks (amount=13 / fiscal-fail ids)
-//	FISCAL_PROVIDER=MY_SOLIQ   tax OFD HTTP adapter (when Soliq sandbox/prod creds arrive)
+//	FISCAL_PROVIDER=MY_SOLIQ   tax OFD (default when unset in tax-class envs: production/staging
+//	                           or FISCAL_TAX_MARKET=true). Requires Soliq + EDS env; misconfig = hard-fail.
+//	FISCAL_PROVIDER=PEGASUS    commercial platform receipts only (tax_ofd=false). Must be set
+//	                           **explicitly** — never the silent tax-market default.
+//	FISCAL_PROVIDER=FAKE       SSMR/test hooks (amount=13 / fiscal-fail ids)
 //	FISCAL_PROVIDER=GLOBAL_PAY payment-provider receipts only (rarely used alone)
+//
+// Local/SSMR (PEGASUSX_ENV empty|ssmr|dev|local) still defaults to PEGASUS when FISCAL_PROVIDER
+// is unset, so developers are not blocked without Soliq creds. Production/staging unset → MY_SOLIQ.
 //
 // Optional secondary payment receipt (best-effort, never blocks COMPLETED):
 //
@@ -31,8 +36,10 @@ import (
 //	FISCAL_MY_SOLIQ_TIN        supplier taxpayer ID (STIR)
 //	FISCAL_MY_SOLIQ_PATH       optional path, default /v1/receipts
 //	FISCAL_MY_SOLIQ_TIMEOUT_MS optional, default 8000
+//	FISCAL_MY_SOLIQ_SIGNER     dev-hmac (non-prod) | pkcs12 (prod EDS)
 const (
 	envFiscalProvider   = "FISCAL_PROVIDER"
+	envFiscalTaxMarket  = "FISCAL_TAX_MARKET"
 	envMySoliqBaseURL   = "FISCAL_MY_SOLIQ_BASE_URL"
 	envMySoliqAPIKey    = "FISCAL_MY_SOLIQ_API_KEY"
 	envMySoliqTIN       = "FISCAL_MY_SOLIQ_TIN"
@@ -42,15 +49,55 @@ const (
 	FiscalFakeFailAmountMinor int64 = 13
 )
 
-// ProviderFromEnv selects PEGASUS (default), FAKE, MY_SOLIQ, or GLOBAL_PAY.
+// ResolveFiscalProviderName returns the effective provider name after G1.B defaults.
+// Explicit FISCAL_PROVIDER always wins; empty uses tax-class default (MY_SOLIQ) or PEGASUS.
+func ResolveFiscalProviderName() string {
+	raw := strings.ToUpper(strings.TrimSpace(os.Getenv(envFiscalProvider)))
+	switch raw {
+	case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
+		return FiscalProviderMySoliq
+	case FiscalProviderFake:
+		return FiscalProviderFake
+	case FiscalProviderGlobalPay:
+		return FiscalProviderGlobalPay
+	case FiscalProviderPegasus, "COMMERCIAL", "PLATFORM":
+		return FiscalProviderPegasus
+	case "":
+		if isTaxFiscalDefaultEnv() {
+			return FiscalProviderMySoliq
+		}
+		return FiscalProviderPegasus
+	default:
+		// Unknown explicit value: do not invent tax success — treat as PEGASUS only if
+		// not tax-class; tax-class unknown falls through to hard-fail via MY_SOLIQ path.
+		if isTaxFiscalDefaultEnv() {
+			return FiscalProviderMySoliq
+		}
+		return FiscalProviderPegasus
+	}
+}
+
+// isTaxFiscalDefaultEnv is true when unset FISCAL_PROVIDER must mean MY_SOLIQ (G1.B).
+func isTaxFiscalDefaultEnv() bool {
+	if envTruthy(os.Getenv(envFiscalTaxMarket)) {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
+	case "production", "prod", "staging":
+		return true
+	default:
+		return false
+	}
+}
+
+// ProviderFromEnv selects MY_SOLIQ, PEGASUS, FAKE, or GLOBAL_PAY per ResolveFiscalProviderName.
 // When PEGASUS is primary and Global Pay receipt env is enabled, wraps multi-receipt.
 func ProviderFromEnv() FiscalProvider {
-	switch strings.ToUpper(strings.TrimSpace(os.Getenv(envFiscalProvider))) {
-	case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
+	switch ResolveFiscalProviderName() {
+	case FiscalProviderMySoliq:
 		p, err := NewMySoliqProviderFromEnv()
 		if err != nil {
-			// Misconfigured production adapter must not silently fall back in
-			// a way that invents fiscal success — surface as hard-fail provider.
+			// Misconfigured tax adapter must not invent fiscal success.
 			return hardFailProvider{reason: err.Error()}
 		}
 		return p
@@ -66,12 +113,10 @@ func ProviderFromEnv() FiscalProvider {
 		}
 		return p
 	default:
-		// PEGASUS (and empty / unknown aliases) — product default without Soliq.
+		// PEGASUS — commercial only (tax_ofd=false); never silent tax OFD.
 		primary := PegasusReceiptProvider{PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))}
 		gp, err := NewGlobalPayReceiptProviderFromEnv()
 		if err != nil {
-			// Misconfigured secondary must not block platform receipts.
-			// hard-fail only when GLOBAL_PAY is the primary provider (handled above).
 			return primary
 		}
 		if gp != nil {

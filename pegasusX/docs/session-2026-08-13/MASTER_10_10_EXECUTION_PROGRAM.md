@@ -1,6 +1,6 @@
 # PegasusX Master Plan — Enterprise 10/10 (Phased Deep Execution)
 
-**Status:** PLAN (approve before any implementation wave)  
+**Status:** G1–G7 **IMPLEMENTED** (2026-08-13). Residual ops/secrets: `RESIDUAL_REGISTER.md`.  
 **SoT tree:** `pegasusX` only  
 **Evidence base:** End-Product Reality Report 2026-08-13, `BACKEND_PARITY_*`, Waves B1–B7, live code HEAD  
 **Doctrine:** Class A mutation path + holistic cross-role sync + flags as product truth  

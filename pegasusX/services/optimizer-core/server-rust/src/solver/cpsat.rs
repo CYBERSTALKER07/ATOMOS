@@ -3,7 +3,11 @@ use crate::scaling;
 use log::{info, warn};
 use std::time::{Instant, Duration};
 
-/// Solves factory slot assignment deterministically using a greedy heuristic.
+/// Solves factory slot assignment deterministically using a greedy + local-swap heuristic.
+///
+/// Honesty (G6.C / P2-2): this is **not** OR-Tools CP-SAT. The gRPC method name and
+/// `CP_SAT` solver type are legacy aliases; status is always `HEURISTIC` (or
+/// `INFEASIBLE`), never `OPTIMAL`. Prefer contract type `GREEDY_ASSIGN` for new producers.
 pub fn solve(req: OptimizeCpsatRequest) -> OptimizeCpsatResponse {
     let start_time = Instant::now();
     let time_limit = Duration::from_millis(req.solver_time_limit_ms as u64);

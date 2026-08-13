@@ -112,6 +112,7 @@ func TestLoadConfig_ProductionProfileFailsClosed(t *testing.T) {
 
 func TestValidateProductionProfile_RequiresGlobalPayCredentialsInProductionEnv(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
+	setenvFiscalMySoliqProd(t)
 	cfg := testConfig()
 	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
 	cfg.AdyenWebhookSecret = "prod-adyen-secret"
@@ -124,6 +125,86 @@ func TestValidateProductionProfile_RequiresGlobalPayCredentialsInProductionEnv(t
 
 	if err := cfg.ValidateProductionProfile(); err == nil {
 		t.Fatal("expected missing GLOBAL_PAY_USERNAME to fail production profile")
+	}
+}
+
+func setenvFiscalMySoliqProd(t *testing.T) {
+	t.Helper()
+	t.Setenv("FISCAL_PROVIDER", "MY_SOLIQ")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "https://ofd.example/api")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "k")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "123")
+	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "pkcs12")
+	t.Setenv("FISCAL_MY_SOLIQ_PKCS12_FILE", "/secrets/eds.p12")
+	t.Setenv("FIREBASE_PROJECT_ID", "pegasus-test")
+}
+
+func TestValidateProductionProfile_RequiresMySoliqCreds(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("FISCAL_PROVIDER", "MY_SOLIQ")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected MY_SOLIQ creds required in production")
+	}
+}
+
+func TestValidateProductionProfile_PegasusRequiresCommercialAllow(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("FISCAL_PROVIDER", "PEGASUS")
+	t.Setenv("FISCAL_ALLOW_COMMERCIAL_RECEIPTS", "")
+	t.Setenv("FIREBASE_PROJECT_ID", "pegasus-test")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected PEGASUS commercial path to require FISCAL_ALLOW_COMMERCIAL_RECEIPTS")
+	}
+}
+
+func TestValidateProductionProfile_RequiresFirebaseOrFCMAllow(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	setenvFiscalMySoliqProd(t)
+	t.Setenv("FIREBASE_PROJECT_ID", "")
+	t.Setenv("FIREBASE_CREDENTIALS_PATH", "")
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+	t.Setenv("FCM_ALLOW_NOOP", "")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected missing Firebase config to fail production profile")
 	}
 }
 

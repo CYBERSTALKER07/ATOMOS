@@ -1,6 +1,6 @@
 # pegasusX Role-Row Parity Matrix
 
-**Last updated:** 2026-08-12 (admin console + W2 Class A loops; re-verify vs code)  
+**Last updated:** 2026-08-13 (G7: factory SLA board + admin OutboxDeadLetters; G1–G6 honesty residuals)  
 **Primary inventory:** [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md)  
 **Narrative secondary:** [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md)  
 **Optimizer + maps runtime:** [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md)  
@@ -18,9 +18,9 @@
 | RETAILER | desktop, Android, iOS | retailerroutes, order, payment, credit + Retail OS packs 0–6 | **Wired** | HQ / Credit-AR / CT on all 3; AUTHORIZE_BYPASS photo wired |
 | DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | P0-4 offline classifier fixed; PoD required for credit leave; §8.8 kit |
 | WAREHOUSE | portal, Android, iOS | warehouseroutes + WMS + return-policy | **Wired** | Portal: bins/pick-waves/cycle/cold/labor; mobile pick/cycle under Transfer Actions; CT portal-primary |
-| FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Staff POST + exception resolve; loading bay ↔ payload Class A |
+| FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Staff POST + exception resolve; loading bay ↔ payload Class A; **G7 SLA board + badges on portal** (mobile shows supply list `sla_*` when present) |
 | PAYLOAD | Expo terminal + Android + iOS | payloaderoutes + factory manifests bridge | **Wired** | Seal/inject/reassign/returns; factory loading-bay APIs on all three |
-| PLATFORM_ADMIN | `admin-portal` (web only) | platformadmin + featureflags + partner admin | **Wired** | Break-glass MFA; tenants/flags dual-control/audit/match/partner; no mobile by design |
+| PLATFORM_ADMIN | `admin-portal` (web only) | platformadmin + featureflags + partner admin | **Wired** | Login+MFA; tenants/flags dual-control/audit/match/partner; **ops outbox + Spanner dead-letters**; no mobile by design |
 
 ## Cross-role spine status
 

@@ -1,7 +1,7 @@
 # PegasusX — Features by App / Role
 
 **SOURCE OF TRUTH: CODE ONLY (not other markdown).**  
-Extracted 2026-08-04; **client parity rows re-synced 2026-08-12** (R4.1 warehouse cold-chain/labor mobile; R4.2 retailer desktop control-tower nav). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
+Extracted 2026-08-04; client parity re-synced 2026-08-12; **G7 regen 2026-08-13** (admin ops/dead-letters, factory SLA board, planning accuracy MAPE, partner EDI/1C/ASN). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
 
 Extracted from:
 
@@ -21,7 +21,7 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 | `supplier-portal` | Live Next.js + Tauri 2 supplier/ADMIN UI (web + desktop shell) |
 | `supplier-app-android` / `supplier-app-ios` | Live |
 | `supplier-app-desktop` | **Does not exist** — desktop = `supplier-portal` Tauri |
-| `admin-portal` | Live Next **PLATFORM_ADMIN** console: tenants / flags (+ dual-control approve) / audit / match queue / partner keys·AS2·SFTP |
+| `admin-portal` | Live Next **PLATFORM_ADMIN** console: login+MFA, tenants / flags (+ dual-control approve) / audit / match queue / partner keys·AS2·SFTP / **ops outbox + Spanner dead-letters** |
 | `retailer-app-desktop` / `-android` / `-ios` | Live (desktop = Next 15 + Tauri 2) |
 | `warehouse-portal` / `-android` / `-ios` | Live |
 | `factory-portal` / `-android` / `-ios` | Live |
@@ -235,6 +235,7 @@ Roles: `FACTORY`, `FACTORY_ADMIN` (+ ADMIN). `FACTORY_DRIVER` uses driver routes
 | Rebalance / cancel | manifests rebalance, cancel-transfer, cancel |
 | Exceptions | manifest-exceptions list/resolve |
 | Transfers / supply-requests | create/transition; accept/fulfill-options/patch |
+| **SLA board (G7.1)** | `GET /v1/factory/sla-board` + `sla_*` on supply-requests; portal badges |
 | Fleet / staff | fleet, drivers, vehicles, staff CRUD |
 | Insights | clients call `/v1/warehouse/replenishment/insights` (warehouse route allows factory roles in handler gate) |
 
@@ -312,8 +313,12 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 | `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh |
 | `webhookroutes` | global-pay, adyen, stripe, payme, click |
 | `updateroutes` | iOS plist + desktop updater.json |
-| `infraroutes` | healthz/ready |
+| `infraroutes` | healthz/ready (+ G4 `GET /v1/health/capabilities` optimizer honesty) |
 | `etaroutes` / `laborcapacityroutes` | ETA + labor capacity helpers |
+| `platformadmin` (G4–G7) | login, MFA, tenants, flags, audit, match queue, partner, `/ops/outbox/{summary,events,dead-letters}`, `/ops/runtime` |
+| Planning accuracy (G6) | `GET /v1/admin/planning/accuracy`, `POST …/run-once` (`mape28`, `demoted`) |
+| Partner enterprise I/O (G5) | EDI profile GET/PUT, 1C import, master-data, WMS ASN in/out |
+| Dispatch honesty | `optimizer_class` HEURISTIC\|OPTIMAL; `matrix_source` haversine\|osrm |
 
 ---
 

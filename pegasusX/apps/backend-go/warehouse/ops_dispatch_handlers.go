@@ -172,6 +172,10 @@ type DispatchExecuteResult struct {
 	ManifestsCreated    int                         `json:"manifests_created"`
 	OrdersAssigned      int                         `json:"orders_assigned"`
 	OptimizerSource     string                      `json:"optimizer_source,omitempty"`
+	// OptimizerClass is HEURISTIC|OPTIMAL (G4.C product honesty).
+	OptimizerClass      string                      `json:"optimizer_class,omitempty"`
+	// MatrixSource is haversine|osrm for score/ETA honesty (G6.D).
+	MatrixSource        string                      `json:"matrix_source,omitempty"`
 	Warnings            []string                    `json:"warnings,omitempty"`
 	CapacityWarnings    []DispatchCapacityWarning   `json:"capacity_warnings,omitempty"`
 	// OverflowWarnings lists retailer orders whose combined volume exceeds any single
@@ -282,6 +286,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			"manifests_created": out.ManifestsCreated,
 			"orders_assigned":   out.OrdersAssigned,
 			"optimizer_source":  out.OptimizerSource,
+			"optimizer_class":   out.OptimizerClass,
 			"timestamp":         s.now().UTC().Format(time.RFC3339Nano),
 		})
 	}

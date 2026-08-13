@@ -76,17 +76,31 @@ func firebaseCredMode(credentialsFilePath string) string {
 }
 
 // NewNoOpFCMClient returns a degraded client that skips push delivery.
+// G1.D: always log as push_degraded so prod alerting can catch silent no-op.
 func NewNoOpFCMClient(log *slog.Logger) *FCMClient {
 	if log == nil {
 		log = slog.Default()
 	}
-	log.Info("FCM running in no-op mode")
+	log.Error("FCM running in no-op mode",
+		"push_degraded", true,
+		"alert", "fcm_noop",
+		"message", "push notifications will not be delivered until Firebase credentials/project are configured",
+	)
 	return &FCMClient{noOp: true, log: log}
+}
+
+// IsNoOp reports whether this client skips all push delivery (G1.D honesty).
+func (f *FCMClient) IsNoOp() bool {
+	return f == nil || f.noOp || f.client == nil
 }
 
 // SendDataMessage delivers a silent data payload to one device token.
 func (f *FCMClient) SendDataMessage(ctx context.Context, deviceToken string, data map[string]string) error {
-	if f.noOp || deviceToken == "" {
+	if f.IsNoOp() || deviceToken == "" {
+		if f != nil && f.log != nil && f.noOp {
+			f.log.WarnContext(ctx, "fcm send skipped: push_degraded no-op",
+				"push_degraded", true, "alert", "fcm_noop_send")
+		}
 		return fmt.Errorf("fcm no-op or empty token")
 	}
 	var notification *messaging.Notification

@@ -742,6 +742,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Warn("credit repository fallback enabled", "backend", "in-memory")
 	}
 	creditSvc := credit.NewService(creditRepo)
+	if spannerClient != nil {
+		creditSvc.SetScoreMetricsProvider(&credit.ARScoreMetrics{Client: spannerClient})
+	}
 	var creditPolicyRepo credit.PolicyRepository
 	var arRepo ar.Repository
 	if spannerClient != nil {
@@ -1232,6 +1235,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	stocklots.SetPickSShapeEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_SSHAPE_ENABLED")), "true"))
 	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
 	stocklots.SetColdChainEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_COLD_CHAIN_ENABLED")), "true"))
+	stocklots.SetLoadLedgerEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("PAYLOAD_LOAD_LEDGER_ENABLED")), "true"))
+	stocklots.SetLaborCapacityEnforce(strings.EqualFold(strings.TrimSpace(os.Getenv("LABOR_CAPACITY_ENFORCE")), "true"))
 	stocklots.SetTemperatureBreachRaiser(func(ctx context.Context, txn *spanner.ReadWriteTransaction, args stocklots.TemperatureBreachArgs) error {
 		return orderSvc.RaiseSystemTemperatureBreachInTxn(ctx, txn, order.SystemTemperatureBreachArgs{
 			ManifestID: args.ManifestID,
@@ -1325,12 +1330,23 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Svc:       platformAdminSvc,
 		JWTSecret: cfg.JWTSecret,
 		JWTIssuer: cfg.JWTIssuer,
+		Ops: &platformadmin.OpsDeps{
+			Spanner:    spannerClient,
+			RunMode:    cfg.RunMode,
+			RunsAPI:    cfg.RunsAPI(),
+			RunsWorker: cfg.RunsWorkers(),
+		},
+	}
+	if spannerClient != nil {
+		platformAdminHandlers.Ops.Outbox = outbox.NewSpannerStore(spannerClient)
+		_ = platformadmin.EnsureAdminFromEnv(ctx, spannerClient)
 	}
 	mfaSvc := mfa.NewService(mfaRepo, cfg.JWTIssuer, cfg.PlatformAdminMFARequired, platformAdminSvc)
 	mfaHandlers := &mfa.Handlers{Svc: mfaSvc, JWTSecret: cfg.JWTSecret, JWTIssuer: cfg.JWTIssuer}
 	featureFlagSvc := featureflags.NewService(featureFlagRepo)
 	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc, Audit: platformAdminSvc}
 	retailerSvc.SetPlaceFlagEvaluator(featureFlagSvc)
+	stocklots.SetFlagEvaluator(featureFlagSvc) // G2.A seal-class tenant overrides
 	retailerSvc.SetSoakBypassAuditor(platformAdminSvc)
 	supplierSvc.OnRegistered = func(ctx context.Context, supplierID, legalName string) error {
 		if err := platformAdminSvc.EnsurePending(ctx, platformadmin.TenantSupplier, supplierID, legalName); err != nil {
@@ -1347,13 +1363,20 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var fcmClient *notifications.FCMClient
 	// Prefer real FCM when project id or credentials path is configured.
 	// Empty/stub credentials JSON falls through to Workload Identity ADC.
+	// G1.D: production/staging refuse silent no-op unless FCM_ALLOW_NOOP=true.
 	if strings.TrimSpace(cfg.FirebaseProjectID) != "" || strings.TrimSpace(cfg.FirebaseCredentialsPath) != "" {
 		fcmClient, err = notifications.InitFCM(cfg.FirebaseCredentialsPath, cfg.FirebaseProjectID, spannerClient, log)
 		if err != nil {
-			log.Warn("FCM init failed; using no-op", "err", err)
+			if !fcmAllowNoOp() {
+				return nil, fmt.Errorf("FCM init failed and FCM_ALLOW_NOOP is not set (push must not be silent in this env): %w", err)
+			}
+			log.Error("FCM init failed; push_degraded no-op", "err", err, "push_degraded", true, "alert", "fcm_noop")
 			fcmClient = notifications.NewNoOpFCMClient(log)
 		}
 	} else {
+		if !fcmAllowNoOp() {
+			return nil, fmt.Errorf("FCM required: set FIREBASE_PROJECT_ID and/or FIREBASE_CREDENTIALS_PATH, or FCM_ALLOW_NOOP=true for explicit degraded push")
+		}
 		fcmClient = notifications.NewNoOpFCMClient(log)
 	}
 	pushBridge := notifications.NewPushBridge(fcmClient, tokenRepo, log)
@@ -1453,6 +1476,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	partnerEdiOut.SetAs2Repository(partnerAs2)
 	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
 	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
+	// G5.A shared EDI profile store (memory default; Spanner when available).
+	var partnerEdiProfiles partner.EdiProfileRepository = partner.NewMemoryEdiProfiles()
+	if spannerClient != nil {
+		partnerEdiProfiles = &partner.SpannerEdiProfiles{Client: spannerClient}
+	}
+	partnerSvc.SetEdiProfiles(partnerEdiProfiles)
+	partnerEdiIn.SetEdiProfiles(partnerEdiProfiles)
+	partnerEdiOut.SetEdiProfiles(partnerEdiProfiles)
 	partnerEdiIn.SetAckEnqueuer(partnerEdiOut)
 	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
 		loc, err := retailerSvc.EnsurePrimaryLocation(ctx, retailerID)

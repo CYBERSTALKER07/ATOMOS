@@ -175,6 +175,7 @@ func (s *Service) solveDispatchPreview(
 	}
 	if solve.OptimizerSource != "" {
 		out["optimizer_source"] = solve.OptimizerSource
+		out["optimizer_class"] = plan.OptimizerClass(solve.OptimizerSource)
 	}
 	if len(solve.OptimizerWarnings) > 0 {
 		out["optimizer_warnings"] = solve.OptimizerWarnings
@@ -209,6 +210,7 @@ func (s *Service) planMetaFromCacheEntry(entry *dispatchPlanCacheEntry, routes [
 	}
 	if entry.OptimizerSource != "" {
 		out["optimizer_source"] = entry.OptimizerSource
+		out["optimizer_class"] = plan.OptimizerClass(entry.OptimizerSource)
 	}
 	if len(entry.OptimizerWarnings) > 0 {
 		out["optimizer_warnings"] = entry.OptimizerWarnings

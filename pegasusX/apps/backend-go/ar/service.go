@@ -15,7 +15,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/codes"
 )
 
 // ErrInvoicesDisabled rejects credit leave-behind while AR invoicing is off:
@@ -256,6 +255,52 @@ func (s *Service) RecordPaymentForOrder(ctx context.Context, orderID string, amo
 	}
 	_, err = s.RecordPayment(ctx, inv.InvoiceID, amountMinor, idempotencyKey, currency)
 	return err
+}
+
+// RecordPaymentForOrderInTxn pays down the order's AR invoice on an existing
+// Spanner RW txn (G1.A — same commit as CollectCash payment leg). No-op when
+// no invoice exists. Fail-closed: returns error on apply failure so the caller
+// can abort cash capture.
+func (s *Service) RecordPaymentForOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, amountMinor int64, idempotencyKey, currency string) error {
+	if s == nil {
+		return fmt.Errorf("ar service unavailable")
+	}
+	if amountMinor <= 0 {
+		return fmt.Errorf("amount_minor must be positive")
+	}
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if idempotencyKey == "" {
+		return fmt.Errorf("idempotency_key required")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return fmt.Errorf("order_id required")
+	}
+
+	// Spanner path: load + apply on the caller's txn.
+	if txn != nil {
+		if _, ok := s.repo.(*SpannerRepository); ok {
+			inv, found, err := getInvoiceByOrderInTxn(ctx, txn, orderID)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return nil
+			}
+			if inv.Status == StatusPaid || inv.Status == StatusVoid {
+				return nil
+			}
+			if strings.TrimSpace(currency) != "" {
+				if err := fxrates.AssertSameCurrency(inv.Currency, currency); err != nil {
+					return err
+				}
+			}
+			return applyPaymentInTxn(ctx, txn, inv.InvoiceID, amountMinor, idempotencyKey)
+		}
+	}
+
+	// Memory / non-Spanner repos: sequential apply (still fail-closed at HTTP).
+	return s.RecordPaymentForOrder(ctx, orderID, amountMinor, idempotencyKey, currency)
 }
 
 // GetByID loads an invoice by primary key.
@@ -638,72 +683,122 @@ func (r *SpannerRepository) list(ctx context.Context, col, id, status string, li
 
 func (r *SpannerRepository) ApplyPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// idempotency
-		_, err := txn.ReadRow(ctx, "ArLedgerEntries", spanner.Key{idempotencyKey}, []string{"EntryId"})
-		if err == nil {
-			return nil
-		}
-		if spanner.ErrCode(err) != codes.NotFound {
-			// try by unique index via query
-		}
-		row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID},
-			[]string{"SupplierId", "RetailerId", "BalanceMinor", "Status", "Version"})
-		if err != nil {
-			return err
-		}
-		var sid, rid, status string
-		var bal, ver int64
-		if err := row.Columns(&sid, &rid, &bal, &status, &ver); err != nil {
-			return err
-		}
-		newBal := bal - amountMinor
-		if newBal < 0 {
-			newBal = 0
-		}
-		newStatus := StatusPartial
-		if newBal == 0 {
-			newStatus = StatusPaid
-		}
-		entryID := fmt.Sprintf("arl_%d", time.Now().UnixNano())
-		buf := outbox.NewSpannerTxnBuffer(txn)
-		eventType := events.EventARInvoicePayment
-		if newStatus == StatusPaid {
-			eventType = events.EventARInvoiceSettled
-		}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
-			BaseEvent:    events.BaseEvent{Type: eventType, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
-			InvoiceID:    invoiceID,
-			SupplierID:   sid,
-			RetailerID:   rid,
-			AmountMinor:  amountMinor,
-			BalanceMinor: newBal,
-			Status:       newStatus,
-		}); err != nil {
-			return err
-		}
-		if err := txn.BufferWrite([]*spanner.Mutation{
-			spanner.UpdateMap("ArInvoices", map[string]any{
-				"InvoiceId":    invoiceID,
-				"BalanceMinor": newBal,
-				"Status":       newStatus,
-				"Version":      ver + 1,
-				"UpdatedAt":    spanner.CommitTimestamp,
-			}),
-			spanner.InsertMap("ArLedgerEntries", map[string]any{
-				"EntryId":        entryID,
-				"InvoiceId":      invoiceID,
-				"SupplierId":     sid,
-				"RetailerId":     rid,
-				"EntryType":      "PAYMENT",
-				"AmountMinor":    -amountMinor,
-				"IdempotencyKey": idempotencyKey,
-				"CreatedAt":      spanner.CommitTimestamp,
-			}),
-		}); err != nil {
-			return err
-		}
-		return buf.Flush(ctx)
+		return applyPaymentInTxn(ctx, txn, invoiceID, amountMinor, idempotencyKey)
 	})
+}
+
+// getInvoiceByOrderInTxn loads ArInvoices for order on an active RW txn (G1.A).
+func getInvoiceByOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (Invoice, bool, error) {
+	if txn == nil {
+		return Invoice{}, false, fmt.Errorf("nil spanner txn")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency,
+			CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt
+			FROM ArInvoices WHERE OrderId = @oid LIMIT 1`,
+		Params: map[string]any{"oid": orderID},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return Invoice{}, false, nil
+	}
+	if err != nil {
+		return Invoice{}, false, err
+	}
+	inv, err := scanInvoice(row)
+	if err != nil {
+		return Invoice{}, false, err
+	}
+	return inv, true, nil
+}
+
+// applyPaymentInTxn applies a PAYMENT ledger entry + balance update + outbox on
+// an existing Spanner RW txn (G1.A co-atomic with CollectCash).
+func applyPaymentInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, invoiceID string, amountMinor int64, idempotencyKey string) error {
+	if txn == nil {
+		return fmt.Errorf("nil spanner txn")
+	}
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if idempotencyKey == "" {
+		return fmt.Errorf("idempotency_key required")
+	}
+	// Idempotency by column (EntryId is a separate synthetic key).
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL:    `SELECT EntryId FROM ArLedgerEntries WHERE IdempotencyKey = @k LIMIT 1`,
+		Params: map[string]any{"k": idempotencyKey},
+	})
+	_, qerr := iter.Next()
+	iter.Stop()
+	if qerr == nil {
+		return nil // already applied
+	}
+	if qerr != iterator.Done {
+		return qerr
+	}
+
+	row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID},
+		[]string{"SupplierId", "RetailerId", "BalanceMinor", "Status", "Version"})
+	if err != nil {
+		return err
+	}
+	var sid, rid, status string
+	var bal, ver int64
+	if err := row.Columns(&sid, &rid, &bal, &status, &ver); err != nil {
+		return err
+	}
+	newBal := bal - amountMinor
+	if newBal < 0 {
+		newBal = 0
+	}
+	newStatus := StatusPartial
+	if newBal == 0 {
+		newStatus = StatusPaid
+	}
+	// Stable entry id from idempotency key so retries that race still collide safely.
+	entryID := "arl-pay:" + idempotencyKey
+	if len(entryID) > 128 {
+		entryID = entryID[:128]
+	}
+	buf := outbox.NewSpannerTxnBuffer(txn)
+	eventType := events.EventARInvoicePayment
+	if newStatus == StatusPaid {
+		eventType = events.EventARInvoiceSettled
+	}
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
+		BaseEvent:    events.BaseEvent{Type: eventType, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+		InvoiceID:    invoiceID,
+		SupplierID:   sid,
+		RetailerID:   rid,
+		AmountMinor:  amountMinor,
+		BalanceMinor: newBal,
+		Status:       newStatus,
+	}); err != nil {
+		return err
+	}
+	if err := txn.BufferWrite([]*spanner.Mutation{
+		spanner.UpdateMap("ArInvoices", map[string]any{
+			"InvoiceId":    invoiceID,
+			"BalanceMinor": newBal,
+			"Status":       newStatus,
+			"Version":      ver + 1,
+			"UpdatedAt":    spanner.CommitTimestamp,
+		}),
+		spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
+			"EntryId":        entryID,
+			"InvoiceId":      invoiceID,
+			"SupplierId":     sid,
+			"RetailerId":     rid,
+			"EntryType":      "PAYMENT",
+			"AmountMinor":    -amountMinor,
+			"IdempotencyKey": idempotencyKey,
+			"CreatedAt":      spanner.CommitTimestamp,
+		}),
+	}); err != nil {
+		return err
+	}
+	return buf.Flush(ctx)
 }
 
 func (r *SpannerRepository) ApplyCreditNote(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error {

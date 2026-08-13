@@ -51,7 +51,11 @@ data class HomeUiState(
     val manifest: Manifest? = null,
     val orders: List<LiveOrder> = emptyList(),
     val selectedOrderId: String? = null,
-    /** lineItemId → checked. Local state only; persisted nowhere by design. */
+    /**
+     * lineItemId → checked (local UX). G2.B: when PAYLOAD_LOAD_LEDGER_ENABLED,
+     * seal is backend-gated via load-ledger scan API — local checks alone must not
+     * be treated as durable truth. Prefer POST .../load-ledger/scan then seal.
+     */
     val checkedItems: Set<String> = emptySet(),
     val sealedOrderIds: Set<String> = emptySet(),
     val dispatchCodes: Map<String, String> = emptyMap(),

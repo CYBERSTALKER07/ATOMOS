@@ -1,5 +1,8 @@
-use crate::optimizer_core::{OptimizeVrpRequest, SolverStatus, VrpNodeDemand, VrpVehicle};
-use crate::solver::vrp;
+use crate::optimizer_core::{
+    CpsatFactorySlot, CpsatManifestRequirement, OptimizeCpsatRequest, OptimizeVrpRequest,
+    SolverStatus, VrpNodeDemand, VrpVehicle,
+};
+use crate::solver::{cpsat, vrp};
 
 #[test]
 fn greedy_vrp_never_reports_optimal() {
@@ -29,6 +32,33 @@ fn greedy_vrp_never_reports_optimal() {
         resp.status,
         SolverStatus::Optimal as i32,
         "greedy must not claim OPTIMAL"
+    );
+    assert_eq!(resp.status, SolverStatus::Heuristic as i32);
+}
+
+/// G6.C: legacy CP_SAT factory assign is greedy — never OPTIMAL.
+#[test]
+fn greedy_cpsat_never_reports_optimal() {
+    let req = OptimizeCpsatRequest {
+        job_id: "cpsat-t1".into(),
+        factory_slots: vec![CpsatFactorySlot {
+            factory_node_uuid: "f1".into(),
+            slot_capacity: 100.0,
+        }],
+        manifest_requirements: vec![CpsatManifestRequirement {
+            manifest_id: "m1".into(),
+            required_capacity: 10.0,
+            priority_score: 5.0,
+            eligible_factory_node_uuids: vec!["f1".into()],
+        }],
+        solver_time_limit_ms: 1000,
+        num_search_workers: 1,
+    };
+    let resp = cpsat::solve(req);
+    assert_ne!(
+        resp.status,
+        SolverStatus::Optimal as i32,
+        "greedy CPSAT path must not claim OPTIMAL"
     );
     assert_eq!(resp.status, SolverStatus::Heuristic as i32);
 }

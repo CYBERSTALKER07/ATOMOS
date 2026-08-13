@@ -30,8 +30,13 @@ const (
 type OptimizationSolverType string
 
 const (
-	OptimizationSolverTypeVRP   OptimizationSolverType = "VRP"
+	OptimizationSolverTypeVRP OptimizationSolverType = "VRP"
+	// OptimizationSolverTypeCPSAT is a legacy alias for factory-slot assignment.
+	// The Rust path is greedy + swap (not OR-Tools CP-SAT) and always returns
+	// HEURISTIC — prefer GREEDY_ASSIGN for new producers (G6.C).
 	OptimizationSolverTypeCPSAT OptimizationSolverType = "CP_SAT"
+	// OptimizationSolverTypeGreedyAssign is the honest name for factory-slot greedy.
+	OptimizationSolverTypeGreedyAssign OptimizationSolverType = "GREEDY_ASSIGN"
 )
 
 // OptimizationSolverStatus describes the solver's result quality for a

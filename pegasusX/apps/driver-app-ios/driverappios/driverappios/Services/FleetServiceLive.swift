@@ -168,11 +168,13 @@ final class FleetServiceLive: FleetServiceProtocol {
     }
 
     func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
-        try await api.updateOrderDuringDelivery(
-            orderId: orderId,
-            latitude: latitude,
-            longitude: longitude
-        )
+        // G1.C: do not hit network — backend has no durable writer. Use amend / missing-items.
+        struct MidDeliveryDisabled: LocalizedError {
+            var errorDescription: String? {
+                "Use delivery correction (amend / missing items) — mid-delivery update is not implemented"
+            }
+        }
+        throw MidDeliveryDisabled()
     }
 
     func markCreditDelivery(orderId: String, photoProofUrl: String? = nil, signatureUrl: String? = nil) async throws -> [String: String] {

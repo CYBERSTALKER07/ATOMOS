@@ -146,6 +146,42 @@ export const api = {
   runDunningOnce: (token: string) =>
     req<Record<string, unknown>>(token, "POST", `/v1/admin/ar/dunning/run-once`, {}),
 
+  /** G4.B password login (no bearer). */
+  platformAdminLogin: async (subject: string, password: string) => {
+    const res = await fetch(`${base()}/v1/auth/platform-admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject, password }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(body || `login_${res.status}`);
+    }
+    return res.json() as Promise<{ token: string; subject: string; role: string }>;
+  },
+  outboxSummary: (token: string) =>
+    req<{
+      unpublished_count: number;
+      oldest_age_seconds: number;
+      lagging?: boolean;
+      available?: boolean;
+      note?: string;
+    }>(token, "GET", "/v1/platform-admin/ops/outbox/summary"),
+  outboxEvents: (token: string) =>
+    req<{ events: Array<Record<string, string>>; count: number; note?: string }>(
+      token,
+      "GET",
+      "/v1/platform-admin/ops/outbox/events?limit=25",
+    ),
+  outboxDeadLetters: (token: string) =>
+    req<{ items: Array<Record<string, string | number>>; count: number; available?: boolean; note?: string }>(
+      token,
+      "GET",
+      "/v1/platform-admin/ops/outbox/dead-letters?limit=25",
+    ),
+  runtimeOps: (token: string) =>
+    req<Record<string, unknown>>(token, "GET", "/v1/platform-admin/ops/runtime"),
+
   mfaStatus: (token: string) =>
     req<{ enrolled: boolean; required: boolean; verified: boolean }>(token, "GET", "/v1/platform-admin/mfa/status"),
   mfaEnroll: (token: string) =>

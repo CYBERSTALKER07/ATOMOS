@@ -17,7 +17,7 @@ const DEFAULT_EVENTS = [
   { event_type: "cash_reconciliation.created", channel: "PUSH" },
   { event_type: "cash_reconciliation.escalation", channel: "PUSH" },
   { event_type: "credit_note.created", channel: "PUSH" },
-  { event_type: "credit.score.updated", channel: "EMAIL" },
+  // G1.C: credit risk scoring product is not live — do not advertise score push prefs.
 ];
 
 export default function NotificationPreferencesPage() {

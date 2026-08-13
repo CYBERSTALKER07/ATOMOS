@@ -14,18 +14,29 @@ var (
 	ErrPickWaveRequired = errors.New("pick_wave_required")
 	// ErrPickWaveIncomplete is returned when wave exists but is not READY_TO_SEAL.
 	ErrPickWaveIncomplete = errors.New("pick_wave_incomplete")
+	// ErrLoadLedgerIncomplete is returned when durable load scan is short (G2.B).
+	ErrLoadLedgerIncomplete = errors.New("load_ledger_incomplete")
+	// ErrColdChainBaselineRequired is returned when chilled SKUs lack a bay reading (G2.C).
+	ErrColdChainBaselineRequired = errors.New("cold_chain_baseline_required")
+	// ErrLaborCapacityExceeded is returned when zone labor is overloaded (G2.C).
+	ErrLaborCapacityExceeded = errors.New("labor_capacity_exceeded")
 )
 
-// AssertManifestPickReady enforces the Wave 1B seal gate when WMS_PICK_WAVES_ENABLED.
+// AssertManifestPickReady enforces the Wave 1B seal gate when pick waves are
+// process-enabled or seal-class tenant override is ACTIVE (G2.A).
 // When WMS_SEAL_SOFT_WARN is on and the wave is incomplete, returns (warn, nil) so seal may proceed.
 func AssertManifestPickReady(ctx context.Context, client *spanner.Client, manifestID string) (warn string, err error) {
-	if !PickWavesEnabled() {
+	manifestID = strings.TrimSpace(manifestID)
+	supplierID, warehouseID := "", ""
+	if client != nil && manifestID != "" {
+		supplierID, warehouseID = manifestScope(ctx, client, manifestID)
+	}
+	if !EffectivePickWaves(ctx, warehouseID, supplierID) {
 		return "", nil
 	}
 	if client == nil {
 		return "", fmt.Errorf("%w: spanner unavailable", ErrPickWaveRequired)
 	}
-	manifestID = strings.TrimSpace(manifestID)
 	if manifestID == "" {
 		return "", ErrPickWaveRequired
 	}
@@ -70,4 +81,22 @@ func AssertManifestPickReady(ctx context.Context, client *spanner.Client, manife
 		return "", fmt.Errorf("%w: status=%s", ErrPickWaveIncomplete, status)
 	}
 	return "", nil
+}
+
+func manifestScope(ctx context.Context, client *spanner.Client, manifestID string) (supplierID, warehouseID string) {
+	row, err := client.Single().ReadRow(ctx, "SupplierTruckManifests", spanner.Key{manifestID},
+		[]string{"SupplierId", "WarehouseId"})
+	if err != nil {
+		return "", ""
+	}
+	var supplier string
+	var warehouse spanner.NullString
+	if err := row.Columns(&supplier, &warehouse); err != nil {
+		return "", ""
+	}
+	supplierID = strings.TrimSpace(supplier)
+	if warehouse.Valid {
+		warehouseID = strings.TrimSpace(warehouse.StringVal)
+	}
+	return supplierID, warehouseID
 }

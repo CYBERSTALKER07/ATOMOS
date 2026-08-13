@@ -76,7 +76,25 @@ func (s *Service) MarkBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTr
 	return s.MarkBalance(ctx, retailerID, supplierID, amountMinor, orderID)
 }
 
-// TxnMutator is implemented by Spanner-backed repos for same-txn credit leave.
+// ClearBalanceInTxn decreases credit balance on an existing Spanner RW txn when a
+// credit-left order is paid (cash/card). Idempotent via CLEARED reservation status.
+// No-op when the order never had a CONVERTED credit balance mark.
+func (s *Service) ClearBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("credit service unavailable")
+	}
+	if amountMinor <= 0 {
+		return nil
+	}
+	if mut, ok := s.repo.(TxnMutator); ok && txn != nil {
+		return mut.ClearBalanceInTxn(ctx, txn, retailerID, supplierID, orderID, amountMinor)
+	}
+	// Memory / tests: sequential ClearBalance (fail-closed at caller).
+	return s.ClearBalance(ctx, retailerID, supplierID, amountMinor, orderID)
+}
+
+// TxnMutator is implemented by Spanner-backed repos for same-txn credit leave/clear.
 type TxnMutator interface {
 	MarkBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error
+	ClearBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error
 }

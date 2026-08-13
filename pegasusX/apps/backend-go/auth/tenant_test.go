@@ -91,13 +91,40 @@ func TestPreferTenantSupplierID(t *testing.T) {
 
 func TestPreferTenantSupplierIDNoSeedWhenEnforced(t *testing.T) {
 	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("ALLOW_SEED_FALLBACK", "")
 	ctx := WithClaims(context.Background(), Claims{Subject: "u", Role: RoleAdmin})
 	if got := PreferTenantSupplierID(ctx, "seed"); got != "" {
 		t.Fatalf("authenticated without supplier must not seed, got=%q", got)
 	}
+	// Unauthenticated + enforced + seed disallowed by default under enforced.
+	if got := PreferTenantSupplierID(context.Background(), "seed"); got != "" {
+		t.Fatalf("enforced unauthenticated must not seed without ALLOW_SEED_FALLBACK, got=%q", got)
+	}
+	t.Setenv("ALLOW_SEED_FALLBACK", "true")
+	if got := PreferTenantSupplierID(context.Background(), "seed"); got != "seed" {
+		t.Fatalf("break-glass seed got=%q", got)
+	}
 	t.Setenv("TENANT_CONTEXT_ENFORCED", "false")
+	t.Setenv("ALLOW_SEED_FALLBACK", "true")
 	if got := PreferTenantSupplierID(ctx, "seed"); got != "seed" {
 		t.Fatalf("unenforced fallback got=%q", got)
+	}
+}
+
+func TestSeedFallbackAllowed(t *testing.T) {
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("ALLOW_SEED_FALLBACK", "")
+	if SeedFallbackAllowed() {
+		t.Fatal("expected seed disallowed under enforced")
+	}
+	t.Setenv("ALLOW_SEED_FALLBACK", "true")
+	if !SeedFallbackAllowed() {
+		t.Fatal("expected break-glass allow")
+	}
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "false")
+	t.Setenv("ALLOW_SEED_FALLBACK", "")
+	if !SeedFallbackAllowed() {
+		t.Fatal("local/dev default allow")
 	}
 }
 

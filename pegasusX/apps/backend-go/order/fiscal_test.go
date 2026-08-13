@@ -30,12 +30,53 @@ func TestFakeFiscalProviderFailHook(t *testing.T) {
 	}
 }
 
-func TestProviderFromEnvDefaultsPegasus(t *testing.T) {
+func TestProviderFromEnvDefaultsPegasusOutsideTaxEnv(t *testing.T) {
+	// G1.B: local/ssmr (non tax-class) still defaults to commercial PEGASUS when unset.
 	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("FISCAL_TAX_MARKET", "")
+	t.Setenv("PEGASUSX_ENV", "ssmr")
 	t.Setenv("FISCAL_GLOBAL_PAY_RECEIPT_ENABLED", "")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderPegasus {
+		t.Fatalf("ResolveFiscalProviderName = %q want PEGASUS", got)
+	}
 	p := ProviderFromEnv()
 	if _, ok := p.(PegasusReceiptProvider); !ok {
 		t.Fatalf("want PegasusReceiptProvider, got %T", p)
+	}
+}
+
+func TestProviderFromEnvDefaultsMySoliqInTaxEnv(t *testing.T) {
+	// G1.B: production/staging unset → MY_SOLIQ (hard-fail when creds missing).
+	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("FISCAL_TAX_MARKET", "")
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderMySoliq {
+		t.Fatalf("ResolveFiscalProviderName = %q want MY_SOLIQ", got)
+	}
+	p := ProviderFromEnv()
+	_, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "o", AttemptID: "a", AmountMinor: 100})
+	if err == nil {
+		t.Fatal("misconfigured MY_SOLIQ default must hard-fail CreateReceipt")
+	}
+}
+
+func TestProviderFromEnvTaxMarketFlag(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("PEGASUSX_ENV", "ssmr")
+	t.Setenv("FISCAL_TAX_MARKET", "true")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderMySoliq {
+		t.Fatalf("got %q want MY_SOLIQ", got)
+	}
+}
+
+func TestProviderFromEnvExplicitPegasusInProduction(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "PEGASUS")
+	t.Setenv("PEGASUSX_ENV", "production")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderPegasus {
+		t.Fatalf("got %q want PEGASUS", got)
 	}
 }
 

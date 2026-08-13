@@ -204,6 +204,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.RetailerService.RunAutoOrderWorker(ctx, 15*time.Minute)
 		slog.Info("retailer auto-order worker started")
 	}
+	if app.FactoryService != nil {
+		go app.FactoryService.RunFactorySLABreachWorker(ctx, 5*time.Minute)
+		slog.Info("factory SLA breach worker started")
+	}
 }
 
 func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {

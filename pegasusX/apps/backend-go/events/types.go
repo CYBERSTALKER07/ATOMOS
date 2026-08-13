@@ -262,10 +262,21 @@ type ControlTowerEvent struct {
 	ActorID     string `json:"actor_id,omitempty"`
 }
 
+// Manifest domain plane (G2.D Option B). Dual tables stay intentional:
+// FACTORY = FactoryTruckManifests transfer bay; SUPPLIER = SupplierTruckManifests delivery truck.
+const (
+	ManifestDomainFactory  = "FACTORY"
+	ManifestDomainSupplier = "SUPPLIER"
+)
+
 // ManifestEvent handles manifest lifecycle events.
+// ManifestDomain disambiguates shared event type names across the dual plane.
 type ManifestEvent struct {
 	BaseEvent
 	ManifestID     string `json:"manifest_id"`
+	// ManifestDomain is FACTORY | SUPPLIER (G2.D). Omitempty keeps older producers valid;
+	// new emits always set it.
+	ManifestDomain string `json:"manifest_domain,omitempty"`
 	SupplierID     string `json:"supplier_id"`
 	FactoryID      string `json:"factory_id,omitempty"`
 	WarehouseID    string `json:"warehouse_id,omitempty"`

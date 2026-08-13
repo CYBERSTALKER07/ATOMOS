@@ -897,13 +897,22 @@ func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
 	now := s.now()
 	if s.earningsLookup == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		// G3.D honesty: machine-readable unavailable (not empty success).
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error":   "earnings_unavailable",
+			"code":    "earnings_lookup_unwired",
+			"message": "Supplier earnings authority is not wired in this process; use ledger/settlement views",
+		})
 		return
 	}
 	resp, err := s.earningsLookup(r.Context(), sid, s.currency, now)
 	if err != nil {
 		s.log.WarnContext(r.Context(), "supplier earnings authority lookup failed", "err", err, "supplier_id", sid)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error":   "earnings_unavailable",
+			"code":    "earnings_lookup_failed",
+			"message": "Could not load earnings authority; treasury page may use ledger fallback",
+		})
 		return
 	}
 	if strings.TrimSpace(resp.Currency) == "" {

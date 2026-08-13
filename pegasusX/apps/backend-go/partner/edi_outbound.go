@@ -22,6 +22,7 @@ type EdiOutboundWorker struct {
 	ediDocs      EdiDocumentRepository
 	sftp         SftpConfigRepository
 	as2          As2ConfigRepository
+	profiles     EdiProfileRepository
 	orders       *order.Service
 	spanner      *spanner.Client
 	log          *slog.Logger
@@ -38,10 +39,18 @@ func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository,
 	cli := as2.NewClient()
 	return &EdiOutboundWorker{
 		ediDocs: docs, sftp: sftp, orders: orders, spanner: client, log: log,
+		profiles:     NewMemoryEdiProfiles(),
 		now:          func() time.Time { return time.Now().UTC() },
 		SecretLoader: LoadSecretRef,
 		Uploader:     UploadSFTPToDir,
 		AS2Sender:    cli.Send,
+	}
+}
+
+// SetEdiProfiles wires G5.A tenant profile packs.
+func (w *EdiOutboundWorker) SetEdiProfiles(repo EdiProfileRepository) {
+	if w != nil && repo != nil {
+		w.profiles = repo
 	}
 }
 
@@ -99,6 +108,11 @@ func (w *EdiOutboundWorker) EnqueueOutbound(ctx context.Context, tenantType, ten
 	}
 	if tenantType == "" || tenantID == "" || docType == "" || externalDocID == "" {
 		return fmt.Errorf("invalid_edi_enqueue")
+	}
+	// G5.A: skip outbound when profile disables this message type.
+	prof := ResolveEdiProfile(ctx, w.profiles, tenantType, tenantID)
+	if !prof.DocEnabled(docType) {
+		return nil
 	}
 	_, ok, err := w.ediDocs.GetByExternal(ctx, tenantType, tenantID, EdiDirectionOut, docType, externalDocID)
 	if err != nil || ok {

@@ -92,6 +92,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/pos/sessions/open", d.Service.HandlePosSessionOpen)
 		rr.Post("/v1/retailer/pos/sessions/{sessionID}/close", d.Service.HandlePosSessionClose)
 		rr.Get("/v1/retailer/pos/sessions/{sessionID}", d.Service.HandlePosSessionGet)
+		rr.Post("/v1/retailer/pos/scan", d.Service.HandlePOSScan)
 		rr.Post("/v1/retailer/pos/sales", d.Service.HandlePosSale)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/void", d.Service.HandlePosSaleVoid)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)

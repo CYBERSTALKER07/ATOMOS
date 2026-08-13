@@ -9,8 +9,9 @@ import FlagsPanel from "@/components/FlagsPanel";
 import AuditPanel from "@/components/AuditPanel";
 import MatchQueuePanel from "@/components/MatchQueuePanel";
 import PartnerPanel from "@/components/PartnerPanel";
+import OpsPanel from "@/components/OpsPanel";
 
-type Tab = "tenants" | "flags" | "audit" | "match" | "partner";
+type Tab = "tenants" | "flags" | "audit" | "match" | "partner" | "ops";
 
 type MfaGate =
   | { kind: "ok" }
@@ -57,9 +58,9 @@ export default function Home() {
       <main className="mx-auto max-w-md p-8">
         <h1 className="text-2xl font-semibold">PegasusX Admin Console</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Break-glass platform governance. Paste a PLATFORM_ADMIN bearer token to continue.
+          Platform governance. Sign in with PLATFORM_ADMIN credentials (G4). MFA may follow.
         </p>
-        <TokenForm onSubmit={setToken} />
+        <LoginForm onSubmit={setToken} />
       </main>
     );
   }
@@ -213,7 +214,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
         </button>
       </header>
       <nav className="mb-4 flex flex-wrap gap-2 border-b">
-        {(["tenants", "flags", "audit", "match", "partner"] as Tab[]).map((t) => (
+        {(["tenants", "flags", "audit", "match", "partner", "ops"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -221,7 +222,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
               tab === t ? "border-b-2 border-indigo-600 text-indigo-700" : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t === "match" ? "Match queue" : t === "partner" ? "Partner / dunning" : t}
+            {t === "match" ? "Match queue" : t === "partner" ? "Partner / dunning" : t === "ops" ? "Ops / outbox" : t}
           </button>
         ))}
       </nav>
@@ -230,31 +231,86 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
       {tab === "audit" && <AuditPanel token={token} refreshKey={refreshKey} />}
       {tab === "match" && <MatchQueuePanel token={token} />}
       {tab === "partner" && <PartnerPanel token={token} />}
+      {tab === "ops" && <OpsPanel token={token} />}
     </main>
   );
 }
 
-function TokenForm({ onSubmit }: { onSubmit: (t: string) => void }) {
-  const [v, setV] = useState("");
+function LoginForm({ onSubmit }: { onSubmit: (t: string) => void }) {
+  const [subject, setSubject] = useState("");
+  const [password, setPassword] = useState("");
+  const [paste, setPaste] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const allowPaste =
+    process.env.NEXT_PUBLIC_ALLOW_TOKEN_PASTE === "true" ||
+    process.env.NODE_ENV === "development";
+
   return (
-    <form
-      className="mt-6 space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (v.trim()) onSubmit(v);
-      }}
-    >
-      <input
-        type="password"
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        placeholder="PLATFORM_ADMIN token"
-        className="w-full rounded border px-3 py-2 text-sm"
-        autoFocus
-      />
-      <button type="submit" className="w-full rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-        Continue
-      </button>
-    </form>
+    <div className="mt-6 space-y-6">
+      <form
+        className="space-y-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setErr("");
+          try {
+            const res = await api.platformAdminLogin(subject.trim(), password);
+            if (!res.token) throw new Error("no_token");
+            onSubmit(res.token);
+          } catch (ex) {
+            setErr(ex instanceof Error ? ex.message : "login_failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Subject or email"
+          className="w-full rounded border px-3 py-2 text-sm"
+          autoFocus
+          autoComplete="username"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="w-full rounded border px-3 py-2 text-sm"
+          autoComplete="current-password"
+        />
+        {err && <p className="text-sm text-red-700">{err}</p>}
+        <button
+          type="submit"
+          disabled={busy || !subject.trim() || !password}
+          className="w-full rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+      {allowPaste && (
+        <form
+          className="space-y-2 border-t pt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (paste.trim()) onSubmit(paste);
+          }}
+        >
+          <p className="text-xs text-gray-500">Dev break-glass: paste mint-dev-jwt token</p>
+          <input
+            type="password"
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            placeholder="PLATFORM_ADMIN token"
+            className="w-full rounded border px-3 py-2 text-sm"
+          />
+          <button type="submit" className="w-full rounded border px-3 py-2 text-sm">
+            Continue with token
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

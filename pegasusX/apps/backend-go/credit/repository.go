@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -429,6 +430,103 @@ func (r *SpannerRepository) MarkBalanceInTxn(ctx context.Context, txn *spanner.R
 	return r.convertReservationInTxn(ctx, txn, retailerID, supplierID, orderID, amountMinor, nil)
 }
 
+// ClearBalanceInTxn decreases profile balance when a credit-left order is paid
+// (G1-A2). Only acts when OrderCreditReservations is CONVERTED for orderID;
+// already CLEARED → no-op. Fail-closed on profile/write errors.
+func (r *SpannerRepository) ClearBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
+	if txn == nil {
+		return fmt.Errorf("nil spanner txn")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" || amountMinor <= 0 {
+		return nil
+	}
+	// Prefer reservation as source of truth for credit-leave mark + amount.
+	row, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{orderID},
+		[]string{"RetailerId", "SupplierId", "AmountMinor", "Status"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			// Never credit-left this order — no balance to clear.
+			return nil
+		}
+		return err
+	}
+	var rid, sid, status string
+	var resAmount int64
+	if err := row.Columns(&rid, &sid, &resAmount, &status); err != nil {
+		return err
+	}
+	if status == string(ReservationCleared) {
+		return nil // idempotent
+	}
+	if status != string(ReservationConverted) {
+		// RESERVED/RELEASED: not on balance yet — nothing to clear.
+		return nil
+	}
+	if rid != "" {
+		retailerID = rid
+	}
+	if sid != "" {
+		supplierID = sid
+	}
+	clearAmt := amountMinor
+	if resAmount > 0 {
+		clearAmt = resAmount
+	}
+	if retailerID == "" || supplierID == "" || clearAmt <= 0 {
+		return nil
+	}
+
+	prof, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Version"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return ErrProfileNotFound
+		}
+		return err
+	}
+	var limit, balance, reserved, version int64
+	if err := prof.Columns(&limit, &balance, &reserved, &version); err != nil {
+		return err
+	}
+	newBalance := balance - clearAmt
+	if newBalance < 0 {
+		newBalance = 0
+	}
+	available := limit - newBalance - reserved
+	if available < 0 {
+		available = 0
+	}
+
+	buf := &spannerTxnBuffer{}
+	_ = outbox.EmitJSON(ctx, buf, events.AggregateCreditProfile, retailerID, events.TopicMain, events.CreditProfileEvent{
+		BaseEvent:      events.BaseEvent{Type: events.EventRetailerCreditProfileChanged, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+		ProfileID:      profileID(retailerID, supplierID),
+		RetailerID:     retailerID,
+		SupplierID:     supplierID,
+		CurrentBalance: -clearAmt,
+		Reason:         fmt.Sprintf("credit_payment:%s", orderID),
+	})
+
+	mutations := []*spanner.Mutation{
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":           retailerID,
+			"SupplierId":           supplierID,
+			"CurrentBalanceMinor":  newBalance,
+			"AvailableCreditMinor": available,
+			"Version":              version + 1,
+			"UpdatedAt":            spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":   orderID,
+			"Status":    string(ReservationCleared),
+			"UpdatedAt": spanner.CommitTimestamp,
+		}),
+	}
+	mutations = append(mutations, bufferOutboxMutations(buf)...)
+	return txn.BufferWrite(mutations)
+}
+
 func (r *SpannerRepository) convertReservationInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, fallbackAmount int64, emit func(outbox.TxnBuffer) error) error {
 	row, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{orderID},
 		[]string{"RetailerId", "SupplierId", "AmountMinor", "Status"})
@@ -613,7 +711,8 @@ func bufferOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	return out
 }
 
-// GetScoresForRetailers is a no-op stub: credit risk scoring product was removed.
+// GetScoresForRetailers returns empty without supplier scope — use Service.GetScoresForRetailers.
+// Kept for Repository interface compatibility; real scoring is service-layer (G3.B).
 func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error) {
 	_ = ctx
 	_ = retailerIDs

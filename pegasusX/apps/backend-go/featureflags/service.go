@@ -11,6 +11,7 @@ import (
 )
 
 // MoneyAffectingFlags require two-person style audit when overridden.
+// G2 also treats seal-class physical gates as dual-control (ops risk).
 var MoneyAffectingFlags = map[string]bool{
 	"AR_INVOICES_ENABLED":              true,
 	"AR_DUNNING_ENABLED":               true,
@@ -18,6 +19,12 @@ var MoneyAffectingFlags = map[string]bool{
 	"AUTO_ORDER_SHADOW_ENABLED":        true,
 	"AUTO_ORDER_SOAK_GATE_DISABLED":    true,
 	"FISCAL_PROVIDER":                  true,
+	"WMS_LOTS_ENABLED":                 true,
+	"WMS_PICK_WAVES_ENABLED":           true,
+	"WMS_CYCLE_COUNTS_ENABLED":         true,
+	"WMS_COLD_CHAIN_ENABLED":           true,
+	"PAYLOAD_LOAD_LEDGER_ENABLED":      true,
+	"LABOR_CAPACITY_ENFORCE":           true,
 }
 
 // Override is one tenant-scoped flag value.
