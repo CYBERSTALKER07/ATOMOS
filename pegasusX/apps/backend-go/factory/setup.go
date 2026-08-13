@@ -10,7 +10,9 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -114,8 +116,29 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		mutations = append(mutations, spanner.UpdateMap("Factories", update))
 	}
 
+	// B7 FAC-P0-3: setup must emit FACTORY_LOCATION_UPDATED (or create) in same RW txn.
+	eventType := events.EventFactoryLocationUpdated
+	if claims.HomeNodeID == "" {
+		eventType = events.EventFactoryCreated
+	}
+	setupFactoryID := factoryID
+	setupSupplierID := supplierID
 	if err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateFactory, setupFactoryID, events.TopicMain, events.FactoryEvent{
+			BaseEvent:  events.BaseEvent{Type: eventType, Version: 1},
+			FactoryID:  setupFactoryID,
+			SupplierID: setupSupplierID,
+			Lat:        req.Lat,
+			Lng:        req.Lng,
+			UserID:     claims.Subject,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to complete factory setup", "err", err)
 		web.JSONError(w, "Failed to complete factory setup", http.StatusInternalServerError)

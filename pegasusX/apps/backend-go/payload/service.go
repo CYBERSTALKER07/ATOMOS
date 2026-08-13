@@ -161,6 +161,8 @@ type ManifestRow struct {
 	TotalVolumeVU    int64  `json:"total_volume_vu"`
 	MaxVolumeVU      int64  `json:"max_volume_vu"`
 	StopCount        int    `json:"stop_count"`
+	// WarehouseID is stamped when known (JWT home node / Spanner). B7 PL-P0-6 scope.
+	WarehouseID      string `json:"warehouse_id,omitempty"`
 	CreatedAt        string `json:"created_at"`
 	UpdatedAt        string `json:"updated_at"`
 	LoadingStartedAt string `json:"loading_started_at,omitempty"`
@@ -263,15 +265,53 @@ func (s *Service) AuthIssuer() string {
 }
 
 
-// resolveWarehouseScope prefers JWT home-node warehouse for PAYLOAD role (B2 M-P1-9).
+// resolveWarehouseScope prefers JWT home-node warehouse for PAYLOAD role (B2 M-P1-9 / B7 PL-P0-6).
 func (s *Service) resolveWarehouseScope(ctx context.Context) string {
 	if claims, ok := auth.FromContext(ctx); ok {
 		if claims.HomeNodeType == auth.HomeNodeWarehouse && strings.TrimSpace(claims.HomeNodeID) != "" {
 			return strings.TrimSpace(claims.HomeNodeID)
 		}
+		if claims.Role == auth.RolePayload && strings.TrimSpace(claims.HomeNodeID) != "" {
+			return strings.TrimSpace(claims.HomeNodeID)
+		}
 	}
 	return ""
 }
+
+// manifestMatchesWarehouseScope allows historical rows with empty warehouse when JWT is set
+// only if both non-empty and equal; mismatch with both set is forbidden (B7 PL-P0-6).
+func manifestMatchesWarehouseScope(rowWarehouseID, scopeWarehouseID string) bool {
+	scope := strings.TrimSpace(scopeWarehouseID)
+	if scope == "" {
+		return true
+	}
+	row := strings.TrimSpace(rowWarehouseID)
+	if row == "" {
+		// Historical manifests without WarehouseId remain visible until backfilled.
+		return true
+	}
+	return row == scope
+}
+
+// assertManifestWarehouseScope rejects mutate when JWT warehouse and row warehouse both set and differ.
+func (s *Service) assertManifestWarehouseScope(ctx context.Context, m ManifestRow) error {
+	scope := s.resolveWarehouseScope(ctx)
+	if scope == "" {
+		return nil
+	}
+	row := strings.TrimSpace(m.WarehouseID)
+	if row != "" && row != scope {
+		return errManifestWarehouseScope
+	}
+	return nil
+}
+
+// errManifestWarehouseScope is returned when a payload mutate targets a foreign warehouse.
+var errManifestWarehouseScope = errString("warehouse_scope_forbidden")
+
+type errString string
+
+func (e errString) Error() string { return string(e) }
 
 func (s *Service) resolveSupplierScope(ctx context.Context) string {
 	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
@@ -734,6 +774,23 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
+	}
+
+	// B7 PL-P0-6: pin start-loading to JWT warehouse when row warehouse is set.
+	_ = s.hydrateFromRepo(r.Context())
+	s.mu.Lock()
+	s.ensureManifestStateLocked()
+	preIdx := s.findManifestIndexLocked(manifestID)
+	var preRow ManifestRow
+	if preIdx >= 0 {
+		preRow = s.manifests[preIdx]
+	}
+	s.mu.Unlock()
+	if preIdx >= 0 {
+		if scopeErr := s.assertManifestWarehouseScope(r.Context(), preRow); scopeErr != nil {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+			return
+		}
 	}
 
 	var manifest ManifestRow
@@ -1861,6 +1918,23 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	if gateErr := s.assertPickWaveReadyForSeal(r.Context(), req.ManifestID); gateErr != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
 		return
+	}
+
+	// B7 PL-P0-6: seal only manifests in JWT warehouse when both sides are set.
+	_ = s.hydrateFromRepo(r.Context())
+	s.mu.Lock()
+	s.ensureManifestStateLocked()
+	preIdx := s.findManifestIndexLocked(req.ManifestID)
+	var preRow ManifestRow
+	if preIdx >= 0 {
+		preRow = s.manifests[preIdx]
+	}
+	s.mu.Unlock()
+	if preIdx >= 0 {
+		if scopeErr := s.assertManifestWarehouseScope(r.Context(), preRow); scopeErr != nil {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+			return
+		}
 	}
 
 	var manifest ManifestRow

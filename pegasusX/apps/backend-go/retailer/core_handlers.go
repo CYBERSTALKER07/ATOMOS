@@ -598,22 +598,30 @@ func (s *Service) demoOrdersForRetailer(ctx context.Context, retailerID string) 
 	return out
 }
 
-// HandleRequestCancel is POST /v1/orders/request-cancel.
+// HandleRequestCancel is POST /v1/orders/request-cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancel_requested without durable order path.
 func (s *Service) HandleRequestCancel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancel_requested"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required; request-cancel is disabled without Spanner order path",
+	})
 }
 
-// HandleCancelOrder is POST /v1/order/cancel.
+// HandleCancelOrder is POST /v1/order/cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancelled without Spanner/outbox.
 func (s *Service) HandleCancelOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required for cancel; use POST /v1/order/cancel with OrderService wired",
+	})
 }
 
 // HandleExpensesAnalytics returns basic retailer expense analytics.

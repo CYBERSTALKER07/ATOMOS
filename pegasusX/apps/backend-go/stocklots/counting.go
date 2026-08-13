@@ -564,6 +564,19 @@ func scanCycleCount(row *spanner.Row) (*CycleCountView, error) {
 }
 
 // ListInventoryAdjustments lists adjustments for a warehouse.
+// GetInventoryAdjustment loads one adjustment by id (B7 WH-P0-4 membership checks).
+func GetInventoryAdjustment(ctx context.Context, client *spanner.Client, adjustmentID string) (*InventoryAdjustmentView, error) {
+	if client == nil {
+		return nil, fmt.Errorf("spanner unavailable")
+	}
+	row, err := client.Single().ReadRow(ctx, "InventoryAdjustments", spanner.Key{strings.TrimSpace(adjustmentID)},
+		[]string{"AdjustmentId", "WarehouseId", "ProductId", "LotId", "CountId", "DeltaQty", "ReasonCode", "Status", "ActorId", "ApprovedBy", "CreatedAt"})
+	if err != nil {
+		return nil, err
+	}
+	return scanAdjustment(row)
+}
+
 func ListInventoryAdjustments(ctx context.Context, client *spanner.Client, warehouseID, status string) ([]InventoryAdjustmentView, error) {
 	if client == nil {
 		return nil, fmt.Errorf("spanner unavailable")

@@ -59,9 +59,9 @@ Deduped across agents. Same root cause merged.
 | **M-P1-7** | Arrive no GPS hard gate; shop-closed proximity soft | Driver |
 | **M-P1-8** | Dual factory vs payload manifest tables (shared event names, different rows) | Factory, Payload |
 | **M-P1-9** | Outbox events omit WarehouseID → WH fanout empty for some manifests | Payload |
-| **M-P1-10** | Reverse receive: body warehouse_id not always home-node pinned | Warehouse |
+| **M-P1-10** | ~~Reverse receive body warehouse_id~~ **FIXED Wave B7** | Warehouse |
 | **M-P1-11** | MFA step-up missing on partner/match/dunning admin routes | Platform |
-| **M-P1-12** | JWT warehouse home-node not enforced on payload list/mutate | Payload |
+| **M-P1-12** | ~~JWT warehouse on payload list/mutate~~ **FIXED Wave B7** | Payload |
 | **M-P1-13** | Optional (not required) idempotency on money driver mutators | Driver |
 | **M-P1-14** | planning.scenario.published Kafka orphan (local WS only) | Supplier |
 
@@ -154,6 +154,37 @@ Tests: `order/wave_b1_money_test.go` + packages order/payment/payout/claims/kafk
 | M-P1-11 ✅ | MFA step-up on partner keys, match queue, dunning run-once |
 
 **Owners:** A7.
+
+### Wave B6 — Money fail-closed
+
+**Status: IMPLEMENTED 2026-08-13** — see [`WAVE_B6_MONEY_FAILCLOSED.md`](./WAVE_B6_MONEY_FAILCLOSED.md)
+
+| ID | Fix |
+|----|-----|
+| SPINE-P0-4 ✅ | AR open same txn as credit leave (`OpenFromCreditLeaveInTxn`); disabled AR fail-closed |
+| S-P0-4 partial ✅ | Claim approve/reject HTTP Idempotency-Key (UNDER_REVIEW emit was B1) |
+| M-P1-6 ✅ | AR aging bucket change + `AR_INVOICE_AGING_UPDATED` outbox |
+| Credit-leave event ✅ | `HandleCreditLeave` emits `CREDIT_LEAVE` |
+| Refund/BA bus ✅ | Dispatcher for `REFUND_*` + `BUYER_ACCEPTANCE_*` |
+
+**Owners:** A0 + A2 packages.
+
+### Wave B7 — Scope & stubs (fail-closed)
+
+**Status: IMPLEMENTED 2026-08-13** — see [`WAVE_B7_SCOPE_STUBS.md`](./WAVE_B7_SCOPE_STUBS.md)
+
+| ID | Fix |
+|----|-----|
+| R-P0-3 ✅ | Retailer cancel/create/unified stubs → **503** `order_service_unwired` |
+| D-P0-6 ✅ | Depart nil fn → **503** `depart_unwired` (+ release idempotency) |
+| D-P0-7 ✅ | Return-complete nil fn → **503** `return_complete_unwired` |
+| WH-P0-3 / M-P1-10 ✅ | Reverse receive home-node pin + `WAREHOUSE_ADMIN` + ops scope |
+| WH-P0-4 ✅ | Stocklots by-id membership (`warehouse_scope_forbidden`) |
+| WH-P0-5 ✅ | Returns inbound scan → `RETURN_SCAN_RECEIVED` outbox |
+| FAC-P0-3 ✅ | Factory setup same-txn factory create/location outbox |
+| PL-P0-6 / M-P1-12 ✅ | Payload list/detail/seal/start-loading warehouse scope |
+
+**Owners:** A2 + A3 + A4 + A5 + A6 packages.
 
 ---
 

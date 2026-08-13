@@ -27,7 +27,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/credit-notes", h.HandleCreateManual)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/credit-notes/{id}/issue", h.HandleIssue)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-notes/order-lines", h.HandleOrderLines)
-		gr.With(auth.RequireRole(auth.RoleWarehouse)).Get("/v1/warehouse/reverse-logistics", h.HandleListReverseTasks)
-		gr.With(auth.RequireRole(auth.RoleWarehouse)).Post("/v1/warehouse/reverse-logistics/{taskId}/receive", h.HandleReceiveReverse)
+		// B7 WH-P0-3: WAREHOUSE + WAREHOUSE_ADMIN; handlers pin home-node (ops scope preferred).
+		gr.With(auth.RequireRole(auth.RoleWarehouse, auth.RoleWarehouseAdmin), auth.RequireWarehouseOpsScope).
+			Get("/v1/warehouse/reverse-logistics", h.HandleListReverseTasks)
+		gr.With(auth.RequireRole(auth.RoleWarehouse, auth.RoleWarehouseAdmin), auth.RequireWarehouseOpsScope).
+			Post("/v1/warehouse/reverse-logistics/{taskId}/receive", h.HandleReceiveReverse)
 	})
 }

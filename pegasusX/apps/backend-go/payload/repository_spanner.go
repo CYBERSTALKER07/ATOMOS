@@ -136,12 +136,17 @@ type spannerPayloadTx struct {
 }
 
 func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT ManifestId, State, StopCount, TotalVolumeVU, MaxVolumeVU,
-			  DriverId, TruckId, CreatedAt, UpdatedAt, LoadingStartedAt, SealedAt
-			  FROM SupplierTruckManifests WHERE SupplierId = @sid`,
-		Params: map[string]interface{}{"sid": tx.supplierID},
+	// B7 PL-P0-6: when repo is warehouse-scoped, filter SQL; empty/NULL WarehouseId
+	// rows remain visible (historical) — mutate path enforces non-empty mismatch.
+	sql := `SELECT ManifestId, State, StopCount, TotalVolumeVU, MaxVolumeVU,
+			  DriverId, TruckId, CreatedAt, UpdatedAt, LoadingStartedAt, SealedAt, WarehouseId
+			  FROM SupplierTruckManifests WHERE SupplierId = @sid`
+	params := map[string]interface{}{"sid": tx.supplierID}
+	if tx.warehouseID != "" {
+		sql += ` AND (WarehouseId IS NULL OR WarehouseId = '' OR WarehouseId = @wh)`
+		params["wh"] = tx.warehouseID
 	}
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := tx.txn.Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -160,10 +165,11 @@ func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 		var driverID, truckID string
 		var createdAt, updatedAt time.Time
 		var loadingAt, sealedAt spanner.NullTime
+		var warehouseID spanner.NullString
 
 		if err := row.Columns(&m.ManifestID, &m.State, &stopCount, &totalVolume, &maxVolume,
 			&driverID, &truckID, &createdAt, &updatedAt,
-			&loadingAt, &sealedAt); err != nil {
+			&loadingAt, &sealedAt, &warehouseID); err != nil {
 			return nil, err
 		}
 		m.StopCount = int(stopCount)
@@ -178,6 +184,13 @@ func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 		}
 		if sealedAt.Valid {
 			m.SealedAt = sealedAt.Time.Format(time.RFC3339Nano)
+		}
+		if warehouseID.Valid {
+			m.WarehouseID = strings.TrimSpace(warehouseID.StringVal)
+		}
+		// Defense in depth: filter foreign warehouse even if SQL lacked param (runtime scope).
+		if tx.warehouseID != "" && m.WarehouseID != "" && m.WarehouseID != tx.warehouseID {
+			continue
 		}
 		manifests = append(manifests, m)
 	}

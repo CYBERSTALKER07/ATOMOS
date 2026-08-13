@@ -71,6 +71,16 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 	}, 24*time.Hour)
 }
 
+// releaseIdempotency drops an in-flight claim when the handler fail-closes without
+// a durable success response (B7 D-P0-6/7 unwired paths).
+func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
+	key := idempotencyKeyFromRequest(r)
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
+}
+
 func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)

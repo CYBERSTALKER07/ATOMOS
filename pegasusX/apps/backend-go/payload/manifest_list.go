@@ -20,7 +20,7 @@ func (s *Service) SetPortalManifestLister(lister PortalManifestLister) {
 	s.portalLister = lister
 }
 
-func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []manifest.Wire {
+func (s *Service) listManifestWiresLocked(stateFilter, truckFilter, warehouseScope string) []manifest.Wire {
 	orderByID := make(map[string]OrderRow, len(s.orders))
 	for i := range s.orders {
 		orderByID[s.orders[i].OrderID] = s.orders[i]
@@ -30,6 +30,10 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []man
 	wire := make([]manifest.Wire, 0, len(rows))
 	for i := range rows {
 		m := rows[i]
+		// B7 PL-P0-6: JWT warehouse scope filters list (empty row WH still visible).
+		if !manifestMatchesWarehouseScope(m.WarehouseID, warehouseScope) {
+			continue
+		}
 		orders := append([]ManifestOrder(nil), s.manifestOrders[m.ManifestID]...)
 		payloadOrders := make([]manifest.PayloadOrderRow, 0, len(orders))
 		for j := range orders {
@@ -39,7 +43,7 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []man
 				State:       orders[j].State,
 				Amount:      or.TotalMinor,
 				RouteID:     or.RouteID,
-				WarehouseID: "",
+				WarehouseID: m.WarehouseID,
 				RetailerID:  "",
 			})
 		}
@@ -141,9 +145,10 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		_ = s.hydrateFromRepo(r.Context())
+		whScope := s.resolveWarehouseScope(r.Context())
 		s.mu.Lock()
 		s.ensureManifestStateLocked()
-		wire = s.listManifestWiresLocked(stateFilter, truckFilter)
+		wire = s.listManifestWiresLocked(stateFilter, truckFilter, whScope)
 		s.mu.Unlock()
 	}
 	s.attachInboundDriverLocations(r.Context(), wire)
@@ -166,10 +171,20 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
 	s.ensureManifestStateLocked()
+	idx := s.findManifestIndexLocked(manifestID)
+	var row ManifestRow
+	if idx >= 0 {
+		row = s.manifests[idx]
+	}
 	wire, ok := s.manifestDetailWireLocked(manifestID)
 	s.mu.Unlock()
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+		return
+	}
+	// B7 PL-P0-6: detail for foreign warehouse when both sides set → 403 (not 404 leak).
+	if err := s.assertManifestWarehouseScope(r.Context(), row); err != nil {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
 		return
 	}
 	wire = s.enrichManifestWireExpectations(r.Context(), wire)

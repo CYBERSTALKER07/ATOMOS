@@ -43,6 +43,22 @@ func supplierID(r *http.Request, fallback string) string {
 	return strings.TrimSpace(fallback)
 }
 
+// assertResourceWarehouse enforces B7 WH-P0-4: by-id resources must belong to
+// EffectiveWarehouseID. Empty resource warehouse is treated as unknown → forbid.
+func assertResourceWarehouse(w http.ResponseWriter, r *http.Request, resourceWarehouseID string) bool {
+	wh := warehouseID(r)
+	if wh == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
+		return false
+	}
+	resourceWarehouseID = strings.TrimSpace(resourceWarehouseID)
+	if resourceWarehouseID == "" || resourceWarehouseID != wh {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+		return false
+	}
+	return true
+}
+
 // HandleBins GET/POST /v1/warehouse/ops/bins
 func (h *Handler) HandleBins(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.Spanner == nil {
@@ -186,6 +202,10 @@ func (h *Handler) HandleLotByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_lot_failed"})
+		return
+	}
+	// B7 WH-P0-4: lot must belong to caller's warehouse scope.
+	if !assertResourceWarehouse(w, r, lot.WarehouseID) {
 		return
 	}
 	writeJSON(w, http.StatusOK, lot)
@@ -336,6 +356,10 @@ func (h *Handler) HandlePickWaveByID(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_pick_wave_failed"})
 		return
 	}
+	// B7 WH-P0-4: wave must belong to caller's warehouse scope.
+	if !assertResourceWarehouse(w, r, wave.WarehouseID) {
+		return
+	}
 	writeJSON(w, http.StatusOK, wave)
 }
 
@@ -358,8 +382,21 @@ func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) 
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	whID := warehouseID(r)
 	sid := supplierID(r, h.SupplierID)
+	// B7 WH-P0-4: pre-load wave membership before mutation.
+	pre, err := GetPickWave(r.Context(), h.Spanner, waveID, false)
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_pick_wave_failed"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
 	var wave *PickWaveView
-	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		wave, err = ConfirmPickTaskInTxn(ctx, txn, waveID, taskID, body.PickerID, body.QuantityPicked)
 		if err != nil {
@@ -394,8 +431,20 @@ func (h *Handler) HandleWaivePickShorts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	waveID := chi.URLParam(r, "waveID")
+	pre, err := GetPickWave(r.Context(), h.Spanner, waveID, false)
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_pick_wave_failed"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
 	var wave *PickWaveView
-	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		wave, err = WaiveShortsInTxn(ctx, txn, waveID)
 		return err
@@ -486,6 +535,10 @@ func (h *Handler) HandleCycleCountByID(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_cycle_count_failed"})
 		return
 	}
+	// B7 WH-P0-4: cycle count must belong to caller's warehouse scope.
+	if !assertResourceWarehouse(w, r, view.WarehouseID) {
+		return
+	}
 	writeJSON(w, http.StatusOK, view)
 }
 
@@ -508,8 +561,20 @@ func (h *Handler) HandleSubmitCycleCount(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	pre, err := GetCycleCount(r.Context(), h.Spanner, countID)
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_cycle_count_failed"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
 	var view *CycleCountView
-	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		view, err = SubmitCycleCountInTxn(ctx, txn, countID, actorSubject(r), body.CountedQty, body.ReasonCode)
 		return err
@@ -565,8 +630,21 @@ func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *htt
 	adjID := chi.URLParam(r, "adjustmentID")
 	whID := warehouseID(r)
 	sid := supplierID(r, h.SupplierID)
+	// B7 WH-P0-4: pin adjustment to caller's warehouse before approve mutates stock.
+	pre, err := GetInventoryAdjustment(r.Context(), h.Spanner, adjID)
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_adjustment_failed"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
 	var view *InventoryAdjustmentView
-	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		view, err = ApproveAdjustmentInTxn(ctx, txn, adjID, actorSubject(r))
 		if err != nil {
@@ -599,8 +677,20 @@ func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http
 		return
 	}
 	adjID := chi.URLParam(r, "adjustmentID")
+	pre, err := GetInventoryAdjustment(r.Context(), h.Spanner, adjID)
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_adjustment_failed"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
 	var view *InventoryAdjustmentView
-	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
 		view, err = RejectAdjustmentInTxn(ctx, txn, adjID, actorSubject(r))
 		return err

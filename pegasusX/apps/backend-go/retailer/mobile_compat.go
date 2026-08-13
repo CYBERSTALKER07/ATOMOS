@@ -13,32 +13,29 @@ import (
 // HandleCategorySuppliers) removed — replaced by catalog.Service in
 // catalogroutes. Demo data eliminated.
 
-// HandleCreateOrder serves POST /v1/order/create.
+// HandleCreateOrder is a dead fallback (not mounted when orderroutes owns create).
+// B7 R-P0-3: never fabricate order_id without Spanner.
 func (s *Service) HandleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	orderID := "ord_" + s.newID()
-	writeJSON(w, http.StatusOK, map[string]any{
-		"order_id": orderID,
-		"status":   "PENDING",
-		"message":  "order accepted",
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/order/create via order.Service (Spanner + outbox)",
 	})
 }
 
-// HandleUnifiedCheckout serves POST /v1/checkout/unified.
+// HandleUnifiedCheckout is a dead fallback (not mounted when paymentroutes owns unified).
+// B7 R-P0-3: never fabricate checkout success.
 func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	orderID := "ord_" + s.newID()
-	writeJSON(w, http.StatusOK, map[string]any{
-		"order_id":    orderID,
-		"status":      "PENDING",
-		"total_minor": int64(28000),
-		"currency":    "UZS",
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/checkout/unified via order/payment service",
 	})
 }
 

@@ -110,11 +110,13 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// B7 D-P0-6: never fake departed without wired manifest domain fn.
 	if s.depart == nil {
-		resp := map[string]string{"status": "departed"}
-		respBytes, _ := json.Marshal(resp)
-		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-		writeJSONBytes(w, http.StatusOK, respBytes)
+		s.releaseIdempotency(r.Context(), r)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error":   "depart_unwired",
+			"message": "Depart requires Spanner depart fn (bootstrap DepartFn); no silent success",
+		})
 		return
 	}
 
@@ -189,8 +191,8 @@ func (s *Service) HandleOpenFiscal(w http.ResponseWriter, r *http.Request) {
 
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.
 // It flips the driver's DISPATCHED manifest to COMPLETED and marks the driver
-// as off-shift. Without ReturnCompleteFn wired, it degrades gracefully to the
-// prior no-op stub so mobile clients never receive a hard error.
+// as off-shift. Without ReturnCompleteFn wired, B7 D-P0-7 fail-closes with 503
+// (no silent in-memory availability flip).
 //
 // Phase 6 / T10: blocks when any assigned order is still FISCALIZING or FISCAL_FAILED
 // (cash bag soft-freeze until fiscal SUCCESS or audited force-complete).
@@ -252,15 +254,13 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	// B7 D-P0-7: never fake returned / flip in-memory availability without durable path.
 	if s.returnComplete == nil {
-		// Graceful degradation — update availability in-memory and return OK.
-		s.mu.Lock()
-		s.availability[driverID] = false
-		s.mu.Unlock()
-		resp := map[string]string{"status": "returned"}
-		respBytes, _ := json.Marshal(resp)
-		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-		writeJSONBytes(w, http.StatusOK, respBytes)
+		s.releaseIdempotency(r.Context(), r)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error":   "return_complete_unwired",
+			"message": "Return-complete requires Spanner ReturnCompleteFn; no silent success",
+		})
 		return
 	}
 

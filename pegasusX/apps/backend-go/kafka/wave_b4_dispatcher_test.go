@@ -84,3 +84,30 @@ func TestHandleReplenishmentPolicyUpdated_NoError(t *testing.T) {
 		t.Fatalf("handleReplenishmentEvent policy: %v", err)
 	}
 }
+
+func TestHandleRefundAndBuyerAcceptance_B6(t *testing.T) {
+	d := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: ws.NewHub("supplier", nil, nil),
+		RetailerHub: ws.NewHub("retailer", nil, nil),
+	})
+	refundPayload, _ := json.Marshal(events.FinanceEvent{
+		BaseEvent:     events.BaseEvent{Type: events.EventRefundSucceeded},
+		OrderID:       "ord-1",
+		SupplierID:    "sup-1",
+		RetailerID:    "ret-1",
+		TransactionID: "ref-1",
+	})
+	if err := d.handleRefundEvent(context.Background(), refundPayload, "tr-b6-ref"); err != nil {
+		t.Fatalf("handleRefundEvent: %v", err)
+	}
+	baPayload, _ := json.Marshal(events.BuyerAcceptanceEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventBuyerAcceptanceAccepted},
+		OrderID:    "ord-1",
+		SupplierID: "sup-1",
+		RetailerID: "ret-1",
+		Status:     "ACCEPTED",
+	})
+	if err := d.handleBuyerAcceptanceEvent(context.Background(), baPayload, "tr-b6-ba"); err != nil {
+		t.Fatalf("handleBuyerAcceptanceEvent: %v", err)
+	}
+}

@@ -273,6 +273,8 @@ const (
 	EventSupplierReturnResolved    = "SUPPLIER_RETURN_RESOLVED"
 	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
 	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
+	// B7 WH-P0-5: inbound scan progress (qty bump before confirm).
+	EventReturnScanReceived = "RETURN_SCAN_RECEIVED"
 
 	// @Sync(ConditionEvent)
 	EventOrderConditionReported = "ORDER_CONDITION_REPORTED"

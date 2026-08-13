@@ -345,15 +345,15 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 	var resp scanResponse
 	_, err = s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
-			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason"})
+			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason", "OrderId"})
 		if err != nil {
 			return fmt.Errorf("return_not_found")
 		}
-		var sku, reason, physical string
+		var sku, reason, physical, orderID string
 		var expectedNull spanner.NullInt64
 		var rejected, received int64
 		var whNull spanner.NullString
-		if err := row.Columns(&sku, &expectedNull, &rejected, &received, &physical, &whNull, &reason); err != nil {
+		if err := row.Columns(&sku, &expectedNull, &rejected, &received, &physical, &whNull, &reason, &orderID); err != nil {
 			return err
 		}
 		if whNull.Valid && whNull.StringVal != warehouseID {
@@ -374,6 +374,46 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 			"PhysicalStatus":   newPhysical,
 			"ReceiveSessionId": nullableString(req.SessionID),
 			"ReceivedBy":       claims.Subject,
+		})}); err != nil {
+			return err
+		}
+		// B7 WH-P0-5: scan qty must leave the bus (same RW txn as physical update).
+		supplierID := ""
+		if strings.TrimSpace(orderID) != "" {
+			if orderRow, oerr := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"SupplierId"}); oerr == nil {
+				_ = orderRow.Columns(&supplierID)
+			}
+		}
+		payload, err := json.Marshal(map[string]any{
+			"type":            events.EventReturnScanReceived,
+			"return_id":       returnID,
+			"order_id":        orderID,
+			"sku_id":          sku,
+			"quantity":        qty,
+			"received_qty":    newReceived,
+			"expected_qty":    expected,
+			"warehouse_id":    warehouseID,
+			"supplier_id":     supplierID,
+			"operator_id":     claims.Subject,
+			"session_id":      strings.TrimSpace(req.SessionID),
+			"physical_status": newPhysical,
+			"timestamp":       s.now().UTC().Format(time.RFC3339Nano),
+		})
+		if err != nil {
+			return err
+		}
+		aggID := orderID
+		if aggID == "" {
+			aggID = returnID
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+			"EventId":       fmt.Sprintf("return-scan-%s-%d", returnID, newReceived),
+			"AggregateType": events.AggregateOrder,
+			"AggregateId":   aggID,
+			"TopicName":     events.TopicMain,
+			"Payload":       payload,
+			"CreatedAt":     s.now().UTC(),
+			"PublishedAt":   nil,
 		})}); err != nil {
 			return err
 		}

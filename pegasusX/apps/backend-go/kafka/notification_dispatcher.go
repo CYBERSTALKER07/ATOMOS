@@ -179,7 +179,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	case events.EventOrderAmended:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
 	case events.EventSupplierReturnCreated, events.EventSupplierReturnResolved,
-		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse:
+		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse,
+		// B7 WH-P0-5: inbound scan progress shares return-gate fanout.
+		events.EventReturnScanReceived:
 		return d.handleReturnGateEvent(ctx, msg.Value, traceID)
 	case events.EventDispatchZoneOverride, events.EventPlanningMEIORecommendation, events.EventDemandBaselineUpdated,
 		events.EventReplenishmentAutoApproved, events.EventPlanningAgentBroadcast,
