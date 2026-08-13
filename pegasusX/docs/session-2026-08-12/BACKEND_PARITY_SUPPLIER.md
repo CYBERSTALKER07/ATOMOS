@@ -249,7 +249,7 @@ Money note: `ApproveClaim` settles chargeback **before** final RESOLVED outbox (
 | S-P1-4 | ~~scenario.published orphan~~ **FIXED Wave B4** | dispatcher → `handlePlanningEvent` | multi-pod SupplierHub |
 | S-P1-5 | **Broadcast is WS-only (no durable event)** | `portal_admin_ops.go:178-192` | Optional: outbox `SUPPLIER_BROADCAST` for multi-pod FCM/inbox when hub relay down |
 | S-P1-6 | **Claims approve/reject missing handler idempotency guard** | File claim has guard (`handlers.go:41`); approve/reject do not (`handlers.go:59-109`) | Reuse `guardIdempotency` / rely on global MW + document required key for mobile |
-| S-P1-7 | **Credit relationship terms enable is dual-write without single txn** | `UpsertTerms` then separate `UpsertProfile` (`policy.go:646-662`) | One RW txn: terms + profile + outbox events |
+| S-P1-7 | ~~Credit relationship dual-write~~ **FIXED** | Spanner `UpsertTermsAndProfile` one RW + dual outbox | was sequential terms then profile |
 | S-P1-8 | **Platform client contract split (nav, not API)** | `FEATURES_BY_APP_ROLE.md:168-169` portal-only control-tower/credit policy/segmentation vs Android sections | Backend already one API; mobile should consume same routes — no second supplier API |
 | S-P1-9 | **Exception resolve lacks explicit idempotency docs** | `exception_resolve.go:23-93` | Require Idempotency-Key; map errors to 409 for double-resolve |
 

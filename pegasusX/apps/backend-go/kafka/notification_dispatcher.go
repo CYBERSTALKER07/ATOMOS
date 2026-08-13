@@ -138,13 +138,20 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired,
 		events.EventLogisticsTelemetry:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
-	// B1 M-P1-1: AR open-item + payout batch lifecycle fanout to supplier/retailer rooms.
+	// B1 M-P1-1 + B6: AR open/pay/settle/dun/aging fanout to supplier/retailer rooms.
 	case events.EventARInvoiceOpened, events.EventARInvoicePayment,
-		events.EventARInvoiceSettled, events.EventARInvoiceDunned:
+		events.EventARInvoiceSettled, events.EventARInvoiceDunned,
+		events.EventARInvoiceAgingUpdated:
 		return d.handleARInvoiceEvent(ctx, msg.Value, traceID)
 	case events.EventPayoutBatchGenerated, events.EventPayoutBatchExported,
 		events.EventPayoutBatchDispatched, events.EventPayoutBatchPaid:
 		return d.handlePayoutBatchEvent(ctx, msg.Value, traceID)
+	// B6: refund + buyer-acceptance were orphaned (outbox only).
+	case events.EventRefundRequested, events.EventRefundSucceeded, events.EventRefundFailed:
+		return d.handleRefundEvent(ctx, msg.Value, traceID)
+	case events.EventBuyerAcceptancePending, events.EventBuyerAcceptanceAccepted,
+		events.EventBuyerAcceptanceRejected, events.EventBuyerAcceptanceExpired:
+		return d.handleBuyerAcceptanceEvent(ctx, msg.Value, traceID)
 	case events.EventDriverAvailabilityChanged:
 		return d.handleDriverAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventAIRecommendationCreated, events.EventAIRecommendationDecided:
@@ -328,6 +335,40 @@ func (d *NotificationDispatcher) handleCreditEvent(ctx context.Context, payload 
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	return nil
+}
+
+// handleRefundEvent fans refund lifecycle to supplier + retailer rooms (B6).
+func (d *NotificationDispatcher) handleRefundEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.FinanceEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode refund event: %w", err)
+	}
+	agg := strings.TrimSpace(e.TransactionID)
+	if agg == "" {
+		agg = e.OrderID
+	}
+	if d.dropFanout(e.Type, traceID, agg) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out refund event", "event_type", e.Type, "order_id", e.OrderID)
+	return nil
+}
+
+// handleBuyerAcceptanceEvent fans EHF buyer clearance to order parties (B6).
+func (d *NotificationDispatcher) handleBuyerAcceptanceEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.BuyerAcceptanceEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode buyer acceptance event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.OrderID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out buyer acceptance event", "event_type", e.Type, "order_id", e.OrderID)
 	return nil
 }
 

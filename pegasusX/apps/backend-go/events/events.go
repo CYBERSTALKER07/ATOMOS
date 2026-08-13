@@ -287,6 +287,8 @@ const (
 	EventARInvoicePayment = "AR_INVOICE_PAYMENT"
 	EventARInvoiceDunned  = "AR_INVOICE_DUNNED"
 	EventARInvoiceSettled = "AR_INVOICE_SETTLED"
+	// B6 M-P1-6: aging bucket recompute leaves the bus.
+	EventARInvoiceAgingUpdated = "AR_INVOICE_AGING_UPDATED"
 	// @Sync(PayoutEvent) supplier payout lifecycle
 	EventPayoutBatchGenerated  = "PAYOUT_BATCH_GENERATED"
 	EventPayoutBatchExported   = "PAYOUT_BATCH_EXPORTED"

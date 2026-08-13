@@ -316,15 +316,50 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
+		// B6: AR open same txn as credit leave — no post-commit fail-open.
+		if s.ar != nil && current.TotalMinor > 0 {
+			termsDays := int64(30)
+			if s.credit != nil {
+				if check, cerr := s.credit.CheckCreditPath(ctx, current.RetailerID, current.SupplierID, 0); cerr == nil && check.TermsDays > 0 {
+					termsDays = check.TermsDays
+				}
+			}
+			leaveAt := s.now()
+			dueTime := leaveAt.AddDate(0, 0, int(termsDays))
+			if err := s.ar.OpenFromCreditLeaveInTxn(ctx, txn, ar.OpenFromCreditLeaveRequest{
+				SupplierID:    current.SupplierID,
+				RetailerID:    current.RetailerID,
+				OrderID:       orderID,
+				AmountMinor:   current.TotalMinor,
+				Currency:      current.Currency,
+				TermsDays:     termsDays,
+				CreditLeaveAt: leaveAt,
+				DueAt:         dueTime,
+			}); err != nil {
+				return fmt.Errorf("open AR invoice: %w", err)
+			}
+		}
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+		// B6: emit CREDIT_LEAVE (parity with HandleCreditDelivery), not status-only.
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
 			OrderID:    current.OrderID,
 			DriverID:   claims.Subject,
 			RetailerID: current.RetailerID,
 			SupplierID: current.SupplierID,
-			Status:     string(current.Status),
+			Status:     string(StatusDeliveredOnCredit),
+		}); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventCreditLeave, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+			OrderID:    current.OrderID,
+			DriverID:   claims.Subject,
+			RetailerID: current.RetailerID,
+			SupplierID: current.SupplierID,
+			Status:     string(StatusDeliveredOnCredit),
+			Resolution: ShopClosedResolutionCreditLeave,
 		})
 	})
 	if err != nil {
@@ -340,29 +375,8 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 			termsDays = check.TermsDays
 		}
 	}
-	leaveAt := s.now()
-	dueTime := leaveAt.AddDate(0, 0, 30)
-	if dueAt != "" {
-		if t, perr := time.Parse(time.RFC3339, dueAt); perr == nil {
-			dueTime = t
-		}
-	} else if termsDays > 0 {
-		dueTime = leaveAt.AddDate(0, 0, int(termsDays))
-		dueAt = dueTime.UTC().Format(time.RFC3339)
-	}
-	if s.ar != nil && current.TotalMinor > 0 {
-		if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
-			SupplierID:    current.SupplierID,
-			RetailerID:    current.RetailerID,
-			OrderID:       orderID,
-			AmountMinor:   current.TotalMinor,
-			Currency:      current.Currency,
-			TermsDays:     termsDays,
-			CreditLeaveAt: leaveAt,
-			DueAt:         dueTime,
-		}); aerr != nil {
-			s.log.Error("open AR invoice failed", "order_id", orderID, "err", aerr)
-		}
+	if dueAt == "" && termsDays > 0 {
+		dueAt = s.now().AddDate(0, 0, int(termsDays)).UTC().Format(time.RFC3339)
 	}
 	s.invalidateOrderCache(ctx, orderID)
 
@@ -441,7 +455,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var leaveRetailerID, leaveSupplierID string
+	var leaveRetailerID, leaveSupplierID, leaveCurrency string
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:    req.OrderID,
 		NextStatus: StatusDeliveredOnCredit,
@@ -449,6 +463,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		Precheck: func(o Order) error {
 			leaveRetailerID = o.RetailerID
 			leaveSupplierID = o.SupplierID
+			leaveCurrency = o.Currency
 			if o.Status != StatusArrived && o.Status != StatusShopClosedPending {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED (current: %s)", o.Status)
 			}
@@ -520,6 +535,28 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 					return markErr
 				}
 			}
+			// B6: AR open in same txn as credit delivery (fail-closed).
+			if s.ar != nil && delivered > 0 {
+				termsDays := int64(30)
+				if s.credit != nil {
+					if check, cerr := s.credit.CheckCreditPath(txnCtx, leaveRetailerID, leaveSupplierID, 0); cerr == nil && check.TermsDays > 0 {
+						termsDays = check.TermsDays
+					}
+				}
+				leaveAt := s.now()
+				if err := s.ar.OpenFromCreditLeaveInTxn(txnCtx, txn, ar.OpenFromCreditLeaveRequest{
+					SupplierID:    leaveSupplierID,
+					RetailerID:    leaveRetailerID,
+					OrderID:       req.OrderID,
+					AmountMinor:   delivered,
+					Currency:      leaveCurrency,
+					TermsDays:     termsDays,
+					CreditLeaveAt: leaveAt,
+					DueAt:         leaveAt.AddDate(0, 0, int(termsDays)),
+				}); err != nil {
+					return fmt.Errorf("open AR invoice: %w", err)
+				}
+			}
 			return nil
 		},
 	})
@@ -534,29 +571,8 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			dueAt = check.DueAt
 			termsDays = check.TermsDays
 		}
-		leaveAt := s.now()
-		dueTime := leaveAt.AddDate(0, 0, 30)
-		if dueAt != "" {
-			if t, perr := time.Parse(time.RFC3339, dueAt); perr == nil {
-				dueTime = t
-			}
-		} else if termsDays > 0 {
-			dueTime = leaveAt.AddDate(0, 0, int(termsDays))
-			dueAt = dueTime.UTC().Format(time.RFC3339)
-		}
-		if s.ar != nil {
-			if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
-				SupplierID:    result.Order.SupplierID,
-				RetailerID:    result.Order.RetailerID,
-				OrderID:       result.Order.OrderID,
-				AmountMinor:   result.Order.TotalMinor,
-				Currency:      result.Order.Currency,
-				TermsDays:     termsDays,
-				CreditLeaveAt: leaveAt,
-				DueAt:         dueTime,
-			}); aerr != nil {
-				s.log.Error("open AR invoice failed", "order_id", result.Order.OrderID, "err", aerr)
-			}
+		if dueAt == "" && termsDays > 0 {
+			dueAt = s.now().AddDate(0, 0, int(termsDays)).UTC().Format(time.RFC3339)
 		}
 	}
 	s.invalidateOrderCache(ctx, req.OrderID)

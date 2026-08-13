@@ -25,8 +25,8 @@
 
 ## Residual (documented)
 
-- Relationship enable still dual-writes terms then profile (two commits); both now bus-visible
-- Control tower action side-effects not single mega-txn with credit
+- ~~Relationship terms+profile dual-write~~ **closed (2026-08-13):** Spanner `UpsertTermsAndProfile` single RW + dual outbox; memory fallback sequential  
+- ~~Control tower action mega-txn~~ **closed (2026-08-13):** ApproveRun skips intermediate APPROVED; exception ACK/ASSIGN deferred into run finalize txn; FREEZE_CREDIT compensated if finalize fails  
 - ~~Replenishment policy PATCH~~ **closed S-P1-2 (2026-08-13):** `UpsertPolicy` emits `REPLENISHMENT_POLICY_UPDATED` in-txn; `EnsurePolicy` seed remains silent
 
 ## Verification

@@ -233,19 +233,21 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 	if err == nil {
 		s.invalidateOrderCache(ctx, orderID)
-		// Open the AR open item post-commit, mirroring the driver credit-leave
-		// path (idempotent per order via the OPEN ledger key).
-		if s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
-			if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
-				SupplierID:    resolvedOrder.SupplierID,
-				RetailerID:    resolvedOrder.RetailerID,
-				OrderID:       orderID,
-				AmountMinor:   resolvedOrder.TotalMinor,
-				Currency:      resolvedOrder.Currency,
-				CreditLeaveAt: now,
-			}); aerr != nil {
-				s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
-			}
+	}
+	// B6: AR open is performed inside the credit-leave txn when possible.
+	// Worker residual: if still missing after commit, fail-closed by returning error
+	// so the sweeper retries (OpenFromCreditLeave is idempotent per order).
+	if err == nil && s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
+		if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+			SupplierID:    resolvedOrder.SupplierID,
+			RetailerID:    resolvedOrder.RetailerID,
+			OrderID:       orderID,
+			AmountMinor:   resolvedOrder.TotalMinor,
+			Currency:      resolvedOrder.Currency,
+			CreditLeaveAt: now,
+		}); aerr != nil {
+			s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
+			return aerr
 		}
 	}
 

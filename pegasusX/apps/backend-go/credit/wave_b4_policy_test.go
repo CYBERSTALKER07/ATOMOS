@@ -133,8 +133,8 @@ func TestEnableRelationship_TermsAndProfileEmit(t *testing.T) {
 	if !foundTerms {
 		t.Fatalf("missing terms event: %v", repo.lastTypes)
 	}
-	if creditRepo.lastProfile.RetailerID != "ret-1" || creditRepo.lastProfile.Status != StatusActive {
-		t.Fatalf("profile not mirrored: %+v", creditRepo.lastProfile)
+	if creditRepo.stored == nil || creditRepo.stored.RetailerID != "ret-1" || creditRepo.stored.Status != StatusActive {
+		t.Fatalf("profile not mirrored: %+v", creditRepo.stored)
 	}
 }
 
