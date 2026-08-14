@@ -42,6 +42,18 @@ struct MoreHubView: View {
                 NavigationLink { GeoReportView() } label: {
                     Label("supplier_portal.geo_report.text.geo_report", systemImage: "map")
                 }
+                NavigationLink { ScoredExceptionsView() } label: {
+                    Label("Control tower", systemImage: "antenna.radiowaves.left.and.right")
+                }
+                NavigationLink { PlaybooksView() } label: {
+                    Label("Playbooks", systemImage: "book")
+                }
+                NavigationLink { JSONFeedView(title: "POS flywheel", path: "v1/supplier/analytics/demand/flywheel", query: ["days": "7"]) } label: {
+                    Label("POS flywheel", systemImage: "arrow.triangle.2.circlepath")
+                }
+                NavigationLink { JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"]) } label: {
+                    Label("Payday calendar", systemImage: "calendar")
+                }
             }
             Section("Network") {
                 NavigationLink { TopologyView() } label: {
@@ -53,6 +65,12 @@ struct MoreHubView: View {
                 NavigationLink { WarehousesView() } label: {
                     Label("portal.nav.warehouses", systemImage: "shippingbox.fill")
                 }
+                NavigationLink { CRMView() } label: {
+                    Label("portal.nav.crm", systemImage: "person.2")
+                }
+                NavigationLink { JSONFeedView(title: "Segmentation", path: "v1/supplier/segmentation/retailers") } label: {
+                    Label("Segmentation", systemImage: "square.grid.3x3")
+                }
                 NavigationLink { DeliveryZonesView() } label: {
                     Label("supplier_portal.delivery_zones.text.delivery_zones", systemImage: "mappin.and.ellipse")
                 }
@@ -63,6 +81,18 @@ struct MoreHubView: View {
             Section("Treasury") {
                 NavigationLink { TreasuryHubView() } label: {
                     Label("mobile_supplier.ui.treasury_hub", systemImage: "building.columns")
+                }
+                NavigationLink { PayoutsView() } label: {
+                    Label("portal.nav.payouts", systemImage: "banknote")
+                }
+                NavigationLink { JSONFeedView(title: "Credit policy", path: "v1/supplier/credit-program") } label: {
+                    Label("Credit policy", systemImage: "creditcard")
+                }
+                NavigationLink { CreditAdminDisableView() } label: {
+                    Label("Credit admin disable", systemImage: "exclamationmark.octagon")
+                }
+                NavigationLink { JSONFeedView(title: "Tax regimes", path: "v1/admin/tax-regimes", query: ["country": "UZ"]) } label: {
+                    Label("Tax regimes", systemImage: "building.columns")
                 }
                 NavigationLink { LedgerView() } label: {
                     Label("mobile_supplier.ui.payment_ledger", systemImage: "banknote")
@@ -127,5 +157,202 @@ struct MoreHubView: View {
         }
         .navigationTitle("mobile_supplier.ui.more")
         .background(SupplierTheme.background)
+    }
+}
+
+struct JSONFeedView: View {
+    let title: String
+    let path: String
+    var query: [String: String] = [:]
+    @State private var bodyText = ""
+    @State private var errorText: String?
+    @State private var loading = true
+
+    var body: some View {
+        Group {
+            if loading {
+                ProgressView()
+            } else if let errorText {
+                Text(errorText).padding()
+            } else {
+                ScrollView {
+                    Text(bodyText)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+            }
+        }
+        .navigationTitle(title)
+        .task { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            bodyText = try await APIClient.shared.getJSONString(path, query: query)
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
+struct ScoredExceptionsView: View {
+    @State private var rows: [ScoredException] = []
+    @State private var errorText: String?
+    @State private var loading = true
+
+    var body: some View {
+        Group {
+            if loading && rows.isEmpty {
+                ProgressView()
+            } else if let errorText, rows.isEmpty {
+                Text(errorText).padding()
+            } else if rows.isEmpty {
+                Text("No open scored exceptions")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.type.isEmpty ? "—" : row.type)
+                            .font(.headline)
+                        Text("score \(row.score) · \(row.severity) · \(row.ageMinutes)m")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !row.orderId.isEmpty {
+                            Text(row.orderId)
+                                .font(.caption)
+                                .foregroundStyle(.tint)
+                        }
+                        if !row.topPlaybookName.isEmpty {
+                            Text(row.topPlaybookName)
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Control tower")
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            rows = try await SupplierOperationsService.scoredExceptions()
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
+struct PlaybooksView: View {
+    @State private var rows: [ControlTowerPlaybook] = []
+    @State private var errorText: String?
+    @State private var loading = true
+
+    var body: some View {
+        Group {
+            if loading && rows.isEmpty {
+                ProgressView()
+            } else if let errorText, rows.isEmpty {
+                Text(errorText).padding()
+            } else if rows.isEmpty {
+                Text("No playbooks")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.name.isEmpty ? row.playbookId : row.name)
+                            .font(.headline)
+                        Text("\(row.isActive ? "active" : "inactive") · priority \(row.priority)\(row.autoExecute ? " · auto" : "")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !row.description.isEmpty {
+                            Text(row.description).font(.caption)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Playbooks")
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            rows = try await SupplierOperationsService.playbooks()
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
+private struct CreditAdminDisableBody: Encodable {
+    let ticket_id: String
+    let reason: String
+}
+
+private struct CreditAdminDisableResponse: Decodable {
+    let status: String?
+    let error: String?
+}
+
+struct CreditAdminDisableView: View {
+    @State private var mode = "relationship"
+    @State private var supplierId = ""
+    @State private var retailerId = ""
+    @State private var ticketId = ""
+    @State private var reason = ""
+    @State private var message: String?
+    @State private var busy = false
+
+    var body: some View {
+        Form {
+            Picker("Mode", selection: $mode) {
+                Text("Relationship").tag("relationship")
+                Text("Program").tag("program")
+            }
+            TextField("Supplier ID", text: $supplierId)
+            if mode != "program" {
+                TextField("Retailer ID", text: $retailerId)
+            }
+            TextField("Ticket ID", text: $ticketId)
+            TextField("Reason", text: $reason, axis: .vertical)
+            Button("Disable permanently") {
+                Task { await submit() }
+            }
+            .disabled(busy || supplierId.isEmpty || ticketId.isEmpty || reason.isEmpty || (mode == "relationship" && retailerId.isEmpty))
+            if let message {
+                Text(message)
+            }
+        }
+        .navigationTitle("Credit admin disable")
+    }
+
+    private func submit() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let body = CreditAdminDisableBody(ticket_id: ticketId, reason: reason)
+            let path = mode == "program"
+                ? "v1/admin/credit-program/\(supplierId)/disable"
+                : "v1/admin/credit-relationships/\(supplierId)/\(retailerId)/disable"
+            let resp: CreditAdminDisableResponse = try await APIClient.shared.post(path, body: body)
+            message = resp.status ?? resp.error ?? "ok"
+        } catch {
+            message = error.localizedDescription
+        }
     }
 }

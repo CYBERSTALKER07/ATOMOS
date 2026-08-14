@@ -90,7 +90,6 @@ import com.pegasusx.retailer.ui.screens.analytics.components.WeeklySpendCard
 import com.pegasusx.retailer.ui.screens.analytics.components.formatAmount
 import com.pegasusx.retailer.ui.screens.analytics.components.formatCompact
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
-import com.pegasusx.retailer.ui.screens.orders.components.AiPlannedCard
 import com.pegasusx.retailer.ui.theme.SquircleShape
 import com.pegasusx.retailer.R
 
@@ -183,27 +182,6 @@ fun AnalyticsScreen(
                         budgetGoal = uiState.weeklyBudgetUzs,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
-                }
-
-                if (uiState.predictions.isNotEmpty()) {
-                    item {
-                        Text(
-                            "AI Demand Signals",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
-                    items(uiState.predictions, key = { it.id }) { forecast ->
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            AiPlannedCard(
-                                forecast = forecast,
-                                onPreorder = { },
-                                onCorrect = { },
-                                onReject = { viewModel.dismissPrediction(forecast.id) },
-                            )
-                        }
-                    }
                 }
 
                 // Date Range Chips

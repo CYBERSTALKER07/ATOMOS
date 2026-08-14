@@ -15,6 +15,8 @@ type FactoryTx interface {
 	SaveManifest(ctx context.Context, m ManifestRow) error
 	ListTransfers(ctx context.Context) ([]TransferRow, error)
 	SaveTransfer(ctx context.Context, t TransferRow) error
+	SaveStaff(ctx context.Context, row StaffRow) error
+	ResolveException(ctx context.Context, row ManifestException, orderID string) error
 }
 
 // Repository is the mutation seam for factory write paths.
@@ -53,6 +55,10 @@ func (emptyFactoryTx) ListManifests(context.Context) ([]ManifestRow, error)  { r
 func (emptyFactoryTx) SaveManifest(context.Context, ManifestRow) error       { return nil }
 func (emptyFactoryTx) ListTransfers(context.Context) ([]TransferRow, error)  { return nil, nil }
 func (emptyFactoryTx) SaveTransfer(context.Context, TransferRow) error       { return nil }
+func (emptyFactoryTx) SaveStaff(context.Context, StaffRow) error             { return nil }
+func (emptyFactoryTx) ResolveException(context.Context, ManifestException, string) error {
+	return nil
+}
 
 type discardTxnBuffer struct{}
 

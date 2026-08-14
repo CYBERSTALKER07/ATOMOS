@@ -5,10 +5,10 @@ struct DashboardView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var activeOrders: [Order] = []
-    @State private var predictions: [DemandForecast] = []
+    @State private var predictions: [RetailerAIPrediction] = []
     @State private var reorderProducts: [Product] = []
     @State private var isLoading = false
-    @State private var preorderingId: String?
+    @State private var actingId: String?
     @State private var orderActionPending = false
     @State private var loadError: String?
     @State private var pulseEvents: [RetailerPulseEvent] = []
@@ -59,9 +59,12 @@ struct DashboardView: View {
                     // AI Prediction Cards
                     AiPredictionSection(
                         predictions: predictions,
-                        preorderingId: $preorderingId,
-                        onPreorder: { forecast in
-                            await preorder(forecast)
+                        actingId: $actingId,
+                        onConfirm: { item in
+                            await confirmAiOrder(item.orderId)
+                        },
+                        onReject: { item in
+                            await rejectAiOrder(item.orderId)
                         }
                     )
                         .slideIn(delay: 0.15)
@@ -191,8 +194,7 @@ struct DashboardView: View {
         }
 
         do {
-            let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
-            predictions = forecasts
+            predictions = try await api.getRetailerAIPredictions()
         } catch {
             if !silent { predictions = [] }
         }
@@ -232,8 +234,12 @@ struct DashboardView: View {
     }
 
     private func confirmAiOrder(_ orderId: String) async {
+        actingId = orderId
         orderActionPending = true
-        defer { orderActionPending = false }
+        defer {
+            actingId = nil
+            orderActionPending = false
+        }
         do {
             try await APIClient.shared.confirmAiOrder(orderId: orderId)
             await loadData()
@@ -243,8 +249,12 @@ struct DashboardView: View {
     }
 
     private func rejectAiOrder(_ orderId: String) async {
+        actingId = orderId
         orderActionPending = true
-        defer { orderActionPending = false }
+        defer {
+            actingId = nil
+            orderActionPending = false
+        }
         do {
             try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
             await loadData()
@@ -296,18 +306,6 @@ struct DashboardView: View {
         let orders: [Order] = (try? await api.get(path: "/v1/retailers/\(retailerId)/orders")) ?? []
         return orders.first { $0.id == orderId }
     }
-
-    private func preorder(_ forecast: DemandForecast) async {
-        preorderingId = forecast.id
-        do {
-            let body = PreorderRequest(productId: forecast.productId, quantity: forecast.predictedQuantity)
-            let _: [String: String] = try await api.post(path: "/v1/ai/preorder", body: body)
-            Haptics.success()
-        } catch {
-            Haptics.error()
-        }
-        preorderingId = nil
-    }
 }
 
 private struct ServiceTile {
@@ -316,15 +314,6 @@ private struct ServiceTile {
     let icon: String
     let subtitle: String?
     let size: Size
-}
-
-private struct PreorderRequest: Codable {
-    let productId: String
-    let quantity: Int
-    enum CodingKeys: String, CodingKey {
-        case productId = "product_id"
-        case quantity
-    }
 }
 
 #Preview {

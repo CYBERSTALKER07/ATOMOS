@@ -1165,3 +1165,210 @@ data class NotificationPreferencesPatchRequest(
 data class StatusResponse(
     val status: String = "",
 )
+
+@Serializable
+data class CreditAdminDisableRequest(
+    @SerialName("ticket_id") val ticketId: String,
+    val reason: String,
+)
+
+@Serializable
+data class SupplierCRMRetailer(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("retailer_name") val retailerName: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val lifetime: Long = 0,
+    @SerialName("order_count") val orderCount: Long = 0,
+    @SerialName("last_order_date") val lastOrderDate: String = "",
+    val status: String = "",
+)
+
+@Serializable
+data class SupplierCRMOrder(
+    @SerialName("order_id") val orderId: String = "",
+    val state: String = "",
+    val amount: Long = 0,
+    @SerialName("item_count") val itemCount: Long = 0,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class SupplierCRMRetailerDetail(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("retailer_name") val retailerName: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val lifetime: Long = 0,
+    @SerialName("order_count") val orderCount: Long = 0,
+    @SerialName("last_order_date") val lastOrderDate: String = "",
+    val status: String = "",
+    val orders: List<SupplierCRMOrder> = emptyList(),
+)
+
+@Serializable
+data class SupplierCRMListResponse(
+    val retailers: List<SupplierCRMRetailer> = emptyList(),
+)
+
+@Serializable
+data class NetworkModeResponse(
+    val mode: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("planning_enabled") val planningEnabled: Boolean = false,
+)
+
+@Serializable
+data class NetworkModeUpdateRequest(
+    val mode: String,
+    val reason: String = "",
+)
+
+@Serializable
+data class NetworkModeUpdateResponse(
+    @SerialName("old_mode") val oldMode: String = "",
+    @SerialName("new_mode") val newMode: String = "",
+    val status: String = "",
+)
+
+@Serializable
+data class PullMatrixResponse(
+    val status: String = "",
+    val transfers: Int = 0,
+    val skus: Int = 0,
+    val source: String = "",
+)
+
+@Serializable
+data class KillSwitchRequest(
+    val reason: String,
+)
+
+@Serializable
+data class KillSwitchResponse(
+    val status: String = "",
+    @SerialName("cancelled_transfers") val cancelledTransfers: Int = 0,
+    val mode: String = "",
+)
+
+@Serializable
+data class PayoutRailInfo(
+    val name: String = "",
+    @SerialName("is_live") val isLive: Boolean = false,
+    val workflow: String = "",
+    val steps: List<String> = emptyList(),
+    val message: String = "",
+)
+
+@Serializable
+data class PayoutBatch(
+    @SerialName("batch_id") val batchId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("period_start") val periodStart: String = "",
+    @SerialName("period_end") val periodEnd: String = "",
+    @SerialName("gross_captured_minor") val grossCapturedMinor: Long = 0,
+    @SerialName("refunded_minor") val refundedMinor: Long = 0,
+    @SerialName("commission_minor") val commissionMinor: Long = 0,
+    @SerialName("net_payout_minor") val netPayoutMinor: Long = 0,
+    val currency: String = "",
+    val status: String = "",
+    @SerialName("export_file_uri") val exportFileUri: String = "",
+    @SerialName("rail_reference") val railReference: String = "",
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class PayoutBatchListResponse(
+    val batches: List<PayoutBatch> = emptyList(),
+)
+
+@Serializable
+data class PayoutBatchGenerateRequest(
+    @SerialName("period_start") val periodStart: String,
+    @SerialName("period_end") val periodEnd: String,
+    @SerialName("idempotency_key") val idempotencyKey: String = "",
+)
+
+@Serializable
+data class PayoutBatchGenerateResponse(
+    val batch: PayoutBatch = PayoutBatch(),
+    val rail: PayoutRailInfo = PayoutRailInfo(),
+)
+
+@Serializable
+data class PayoutMarkPaidResponse(
+    val status: String = "",
+    @SerialName("batch_id") val batchId: String = "",
+    val rail: PayoutRailInfo = PayoutRailInfo(),
+    val message: String = "",
+)
+
+@Serializable
+data class PayoutDispatchResponse(
+    val batch: PayoutBatch? = null,
+    val rail: PayoutRailInfo = PayoutRailInfo(),
+    val error: String = "",
+    val code: String = "",
+    val message: String = "",
+)
+
+@Serializable
+data class SupplierPayoutPolicy(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("payout_mode") val payoutMode: String = "HQ_SUPPLIER",
+    @SerialName("fee_policy_version") val feePolicyVersion: String = "",
+    @SerialName("effective_at") val effectiveAt: String? = null,
+    @SerialName("updated_by") val updatedBy: String = "",
+    @SerialName("updated_by_type") val updatedByType: String = "",
+    val reason: String = "",
+    @SerialName("is_active") val isActive: Boolean = false,
+    val source: String = "",
+)
+
+@Serializable
+data class SupplierPayoutPolicyPatch(
+    @SerialName("payout_mode") val payoutMode: String,
+    @SerialName("fee_policy_version") val feePolicyVersion: String? = null,
+    val reason: String,
+)
+
+@Serializable
+data class ScoredException(
+    @SerialName("exception_id") val exceptionId: String = "",
+    val type: String = "",
+    val severity: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    val score: Long = 0,
+    @SerialName("severity_rank") val severityRank: Long = 0,
+    @SerialName("age_minutes") val ageMinutes: Long = 0,
+    @SerialName("retailer_segment") val retailerSegment: String = "",
+    @SerialName("recommended_playbook_ids") val recommendedPlaybookIds: List<String> = emptyList(),
+    @SerialName("top_playbook_name") val topPlaybookName: String = "",
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class ScoredExceptionsResponse(
+    val exceptions: List<ScoredException> = emptyList(),
+)
+
+@Serializable
+data class ControlTowerPlaybook(
+    @SerialName("playbook_id") val playbookId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    val name: String = "",
+    val description: String = "",
+    @SerialName("is_active") val isActive: Boolean = false,
+    val priority: Long = 0,
+    @SerialName("auto_execute") val autoExecute: Boolean = false,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("created_by") val createdBy: String = "",
+)
+
+@Serializable
+data class ControlTowerPlaybooksResponse(
+    val playbooks: List<ControlTowerPlaybook> = emptyList(),
+)

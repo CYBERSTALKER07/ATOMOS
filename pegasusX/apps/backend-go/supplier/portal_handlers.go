@@ -1019,14 +1019,17 @@ func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(respBytes)
 }
 
-// HandleInventoryAudit returns inventory levels (audit trail replaced by
-// Spanner version history).
+// HandleInventoryAudit is not a product surface (no adjust/stocklot ledger reader).
+// P1: 410 audit_unwired — never silent {entries:[]}.
 func (s *Service) HandleInventoryAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"entries": []any{}})
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "audit_unwired",
+		"message": "GET /v1/supplier/inventory/audit is not wired; use inventory list and adjust",
+	})
 }
 
 // HandleOrders returns supplier queue entries for vetting/review.

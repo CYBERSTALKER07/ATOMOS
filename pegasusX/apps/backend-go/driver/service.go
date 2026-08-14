@@ -19,9 +19,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
-	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -43,10 +43,10 @@ type DriverOrderLineView struct {
 
 // DriverOrderView is a single order row projected for the driver fleet surface.
 type DriverOrderView struct {
-	OrderID         string                `json:"id"`
-	RetailerID      string                `json:"retailer_id"`
-	RetailerName    string                `json:"retailer_name"`
-	Status          string                `json:"state"`
+	OrderID            string                `json:"id"`
+	RetailerID         string                `json:"retailer_id"`
+	RetailerName       string                `json:"retailer_name"`
+	Status             string                `json:"state"`
 	TotalMinor         int64                 `json:"total_amount"`
 	DeliveryFeeMinor   int64                 `json:"delivery_fee_minor,omitempty"`
 	DeliveryDistanceKm float64               `json:"delivery_distance_km,omitempty"`
@@ -54,12 +54,12 @@ type DriverOrderView struct {
 	Lat                float64               `json:"latitude"`
 	Lng                float64               `json:"longitude"`
 	PaymentGateway     string                `json:"payment_gateway"`
-	RouteID         string                `json:"route_id,omitempty"`
-	SequenceIndex   int64                 `json:"sequence_index,omitempty"`
-	Items           []DriverOrderLineView `json:"items,omitempty"`
-	SplitGroupID    string                `json:"split_group_id,omitempty"`
-	CreatedAt       string                `json:"created_at"`
-	UpdatedAt       string                `json:"updated_at"`
+	RouteID            string                `json:"route_id,omitempty"`
+	SequenceIndex      int64                 `json:"sequence_index,omitempty"`
+	Items              []DriverOrderLineView `json:"items,omitempty"`
+	SplitGroupID       string                `json:"split_group_id,omitempty"`
+	CreatedAt          string                `json:"created_at"`
+	UpdatedAt          string                `json:"updated_at"`
 
 	// AssignedDriverID is the order's assigned driver, used for the fail-closed
 	// ownership check in HandleOrderGet. Never serialized to clients.
@@ -68,6 +68,9 @@ type DriverOrderView struct {
 
 // DriverOrderQuery lists active orders assigned to a driver from Spanner.
 type DriverOrderQuery func(ctx context.Context, driverID string) ([]DriverOrderView, error)
+
+// DriverHistoryQuery lists completed-window orders for GET /v1/driver/history.
+type DriverHistoryQuery func(ctx context.Context, driverID string, since time.Time, limit int) ([]HistoryRow, error)
 
 // DriverOrderGetQuery retrieves a single order by ID from Spanner.
 type DriverOrderGetQuery func(ctx context.Context, orderID string) (DriverOrderView, bool, error)
@@ -90,39 +93,40 @@ type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) ma
 
 // Service keeps additive in-memory driver state for scaffold routes.
 type Service struct {
-	repo           Repository
-	cache          *cache.Cache
-	notifSvc       DriverNotificationReader
-	orderList      DriverOrderQuery
-	orderGet       DriverOrderGetQuery
-	supplierHub    *ws.Hub
-	driverHub      *ws.Hub
-	log            *slog.Logger
-	manifestGate   ManifestGateLookup
-	manifest       ManifestLookup
-	manifestTokens ManifestDeliveryTokenLookup
-	pendingQuery   PendingCollectionsLookup
-	earnings       EarningsLookup
-	depart         DepartFn
-	returnComplete ReturnCompleteFn
-	openFiscal     OpenFiscalLookup
+	repo              Repository
+	cache             *cache.Cache
+	notifSvc          DriverNotificationReader
+	orderList         DriverOrderQuery
+	orderGet          DriverOrderGetQuery
+	supplierHub       *ws.Hub
+	driverHub         *ws.Hub
+	log               *slog.Logger
+	manifestGate      ManifestGateLookup
+	manifest          ManifestLookup
+	manifestTokens    ManifestDeliveryTokenLookup
+	pendingQuery      PendingCollectionsLookup
+	earnings          EarningsLookup
+	depart            DepartFn
+	returnComplete    ReturnCompleteFn
+	openFiscal        OpenFiscalLookup
 	cashReconRequired bool
 	cashReconGate     CashReconciliationGateLookup
-	routeGeometry  RouteGeometryLookup
-	profileLookup  DriverProfileLookup
-	availReader    AvailabilityReader
-	planInvalidate func(ctx context.Context, warehouseID string)
-	fleetBroadcast FleetAvailabilityBroadcaster
-	idem           idempotency.Store
+	routeGeometry     RouteGeometryLookup
+	profileLookup     DriverProfileLookup
+	availReader       AvailabilityReader
+	planInvalidate    func(ctx context.Context, warehouseID string)
+	fleetBroadcast    FleetAvailabilityBroadcaster
+	idem              idempotency.Store
 
 	seedSupplierID string
-	currency   string
-	jwtSecret  string
-	jwtIssuer  string
+	currency       string
+	jwtSecret      string
+	jwtIssuer      string
+
+	historyQuery DriverHistoryQuery
 
 	mu                 sync.RWMutex
 	availability       map[string]bool
-	history            map[string][]HistoryRow
 	earningsMinor      map[string]int64
 	pendingCollections map[string][]PendingCollection
 	now                func() time.Time
@@ -135,6 +139,7 @@ type ServiceConfig struct {
 	Cache                        *cache.Cache
 	NotifSvc                     DriverNotificationReader
 	OrderList                    DriverOrderQuery
+	HistoryQuery                 DriverHistoryQuery
 	OrderGet                     DriverOrderGetQuery
 	SupplierHub                  *ws.Hub
 	DriverHub                    *ws.Hub
@@ -157,13 +162,13 @@ type ServiceConfig struct {
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
 	SeedSupplierID string
 	// SupplierID is deprecated; use SeedSupplierID.
-	SupplierID                   string
-	Currency                     string
-	JWTSecret                    string
-	JWTIssuer                    string
-	Now                          func() time.Time
-	FirebaseVerifier             auth.FirebaseVerifier
-	Idem                         idempotency.Store
+	SupplierID       string
+	Currency         string
+	JWTSecret        string
+	JWTIssuer        string
+	Now              func() time.Time
+	FirebaseVerifier auth.FirebaseVerifier
+	Idem             idempotency.Store
 }
 
 // ManifestGateResult is the read-model response for driver ghost-stop checks.
@@ -286,13 +291,13 @@ func NewService(c ServiceConfig) *Service {
 	}
 	return &Service{
 		availability:       make(map[string]bool),
-		history:            make(map[string][]HistoryRow),
 		earningsMinor:      make(map[string]int64),
 		pendingCollections: make(map[string][]PendingCollection),
 		repo:               c.Repo,
 		cache:              c.Cache,
 		notifSvc:           c.NotifSvc,
 		orderList:          c.OrderList,
+		historyQuery:       c.HistoryQuery,
 		orderGet:           c.OrderGet,
 		supplierHub:        c.SupplierHub,
 		driverHub:          c.DriverHub,
@@ -312,7 +317,7 @@ func NewService(c ServiceConfig) *Service {
 		availReader:        c.AvailabilityReader,
 		planInvalidate:     c.DispatchPlanInvalidate,
 		fleetBroadcast:     c.FleetAvailabilityBroadcaster,
-		seedSupplierID: seedID,
+		seedSupplierID:     seedID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
 		jwtIssuer:          strings.TrimSpace(c.JWTIssuer),
@@ -326,7 +331,6 @@ func NewService(c ServiceConfig) *Service {
 func (s *Service) resolveSupplierScope(ctx context.Context) string {
 	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
-
 
 type availabilityPatchRequest struct {
 	OnShift bool   `json:"on_shift"`
@@ -421,6 +425,9 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+const driverHistoryWindow = 30 * 24 * time.Hour
+const driverHistoryLimit = 50
+
 // HandleHistory serves GET /v1/driver/history.
 func (s *Service) HandleHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -432,10 +439,20 @@ func (s *Service) HandleHistory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	s.mu.RLock()
-	rows := append([]HistoryRow(nil), s.history[driverID]...)
-	s.mu.RUnlock()
-	sort.Slice(rows, func(i, j int) bool { return rows[i].CompletedAt > rows[j].CompletedAt })
+	if s.historyQuery == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"rows": []HistoryRow{}})
+		return
+	}
+	since := s.now().Add(-driverHistoryWindow)
+	rows, err := s.historyQuery(r.Context(), driverID, since, driverHistoryLimit)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "driver history query failed", "err", err, "driver_id", driverID)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "history_unavailable"})
+		return
+	}
+	if rows == nil {
+		rows = []HistoryRow{}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"rows": rows})
 }
 

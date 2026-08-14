@@ -260,6 +260,7 @@ type Service struct {
 	fallbackDepotLat      float64
 	fallbackDepotLng      float64
 	replenishmentEngine   *replenishment.Engine
+	factoryPlanning       FactoryPlanner
 	controlTower          *controltower.Service
 	// OnRegistered is optional (platform admin tenant mint).
 	OnRegistered func(ctx context.Context, supplierID, legalName string) error

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		03674756C8EB9B91B0A41D0E /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4532C75C995D16EC05A335FB /* AddressLocationField.swift */; };
 		05EBA0061A619F4219859EFD /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */; };
+		A16B0001C0DE0001AAA012 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A16B0001C0DE0001AAA011 /* PrivacyInfo.xcprivacy */; };
 		0742290990B8EC6F43281C17 /* FactoryRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C5251859EFAFB4B2107D3E /* FactoryRealtimeClient.swift */; };
 		08CA1FF040E6E97CA34FA9E3 /* EnterpriseUpdateConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EFAF22F41199B41862A12A /* EnterpriseUpdateConfig.swift */; };
 		08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC51DD69BB5CCE42A117B38 /* InsightsView.swift */; };
@@ -148,6 +149,7 @@
 		9DA186D19599F74294C966A1 /* StaffListContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffListContent.swift; sourceTree = "<group>"; };
 		9E46867427863103A6E92A2D /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		A16B0001C0DE0001AAA011 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A3D0C54985077D6EE59FDE11 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		A913424FD2BB0582DFA59F74 /* BayTransferCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BayTransferCard.swift; sourceTree = "<group>"; };
 		A9EFAF22F41199B41862A12A /* EnterpriseUpdateConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnterpriseUpdateConfig.swift; sourceTree = "<group>"; };
@@ -527,6 +529,7 @@
 				65B6A7D0C790233CDAEDC888 /* Assets.xcassets */,
 				EE4ACE5CF3B134F45A9BF58D /* FactoryApp.entitlements */,
 				A3B7A56FC2D3BEB8DEDEF46A /* GoogleService-Info.plist */,
+				A16B0001C0DE0001AAA011 /* PrivacyInfo.xcprivacy */,
 				E5104E434E2B1B78926A3710 /* Info.plist */,
 				508ED32543E169A94BE16715 /* L10n.swift */,
 				FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */,
@@ -653,6 +656,7 @@
 			files = (
 				6C998653E2E0B9ADCEB9EE48 /* Assets.xcassets in Resources */,
 				05EBA0061A619F4219859EFD /* GoogleService-Info.plist in Resources */,
+				A16B0001C0DE0001AAA012 /* PrivacyInfo.xcprivacy in Resources */,
 				FAB0D145289DC722563FCF74 /* Preview Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

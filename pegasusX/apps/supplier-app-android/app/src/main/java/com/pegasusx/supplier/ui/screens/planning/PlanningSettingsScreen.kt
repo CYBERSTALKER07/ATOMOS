@@ -16,9 +16,10 @@ import androidx.compose.runtime.*
 import com.pegasusx.supplier.data.model.SeasonalOverrideInput
 import com.pegasusx.supplier.data.model.SeasonalOverrideRow
 import com.pegasusx.supplier.data.model.SeasonalTemplatesResponse
+import com.pegasusx.supplier.data.model.KillSwitchRequest
+import com.pegasusx.supplier.data.model.NetworkModeUpdateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
@@ -90,6 +91,7 @@ fun PlanningSettingsScreen(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
+                item { FactoryPlanningOpsCard(ops) }
                 item {
                     SupplierSectionTitle("Custom season")
                     Text(
@@ -160,6 +162,113 @@ fun PlanningSettingsScreen(
                     SeasonalOverridesList(overrides = overrides)
                 }
             }
+        }
+    }
+}
+
+private val NETWORK_MODES = listOf("SPEED", "ECONOMY", "BALANCED", "LOW_CARBON", "MANUAL_ONLY")
+
+@Composable
+private fun FactoryPlanningOpsCard(ops: SupplierOperationsRepository) {
+    var mode by remember { mutableStateOf("") }
+    var planningEnabled by remember { mutableStateOf<Boolean?>(null) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var reason by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun loadMode() {
+        scope.launch {
+            val resp = ops.getNetworkMode()
+            if (resp.isSuccessful) {
+                mode = resp.body()?.mode.orEmpty()
+                planningEnabled = resp.body()?.planningEnabled
+            } else {
+                status = "Network mode failed (${resp.code()})"
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { loadMode() }
+
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.padding(PegasusSpacing.lg)) {
+            SupplierSectionTitle("Factory network ops")
+            Text(
+                "Mode, pull-matrix, kill-switch. Pull-matrix 409 if FACTORY_PLANNING_ENABLED is off.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (planningEnabled == false) {
+                Text("Engines off (env flag).", style = MaterialTheme.typography.bodySmall)
+            }
+            NETWORK_MODES.forEach { m ->
+                OutlinedButton(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            val key = SupplierIdempotencyKeys.networkModePut(SupplierIdempotencyKeys.supplierScopeId(), m)
+                            val resp = ops.putNetworkMode(NetworkModeUpdateRequest(mode = m), key)
+                            status = if (resp.isSuccessful) {
+                                "Mode ${resp.body()?.oldMode} → ${resp.body()?.newMode}"
+                            } else {
+                                "Mode failed (${resp.code()})"
+                            }
+                            loadMode()
+                            busy = false
+                        }
+                    },
+                    enabled = !busy,
+                ) { Text(if (mode == m) "● $m" else m) }
+            }
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        val resp = ops.postPlanningPullMatrix(
+                            SupplierIdempotencyKeys.planningPullMatrix(SupplierIdempotencyKeys.supplierScopeId()),
+                        )
+                        status = when {
+                            resp.code() == 409 -> "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on"
+                            resp.isSuccessful -> "Pull-matrix ${resp.body()?.status}: ${resp.body()?.transfers} transfers"
+                            else -> "Pull-matrix failed (${resp.code()})"
+                        }
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+            ) { Text("Run pull-matrix") }
+            OutlinedTextField(
+                value = reason,
+                onValueChange = { reason = it },
+                label = { Text("Kill-switch reason (ADMIN)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    if (reason.isBlank()) {
+                        status = "Typed reason required"
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        val key = SupplierIdempotencyKeys.planningKillSwitch(
+                            SupplierIdempotencyKeys.supplierScopeId(),
+                            reason.trim(),
+                        )
+                        val resp = ops.postPlanningKillSwitch(KillSwitchRequest(reason = reason.trim()), key)
+                        status = if (resp.isSuccessful) {
+                            "Kill-switch cancelled ${resp.body()?.cancelledTransfers}"
+                        } else {
+                            "Kill-switch failed (${resp.code()})"
+                        }
+                        loadMode()
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+            ) { Text("Kill-switch") }
+            status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }

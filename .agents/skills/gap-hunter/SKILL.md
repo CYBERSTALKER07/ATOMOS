@@ -85,8 +85,11 @@ Roles (JWT → apps must stay in sync):
 - When symptoms are flaky with no stack trace  
 - Phase exit: “can we stop building and only wire cloud?”  
 
-**Pair with:** `pegasus-doctrine` (feature shape), `financial-integrity` (money),  
+**Pair with:** `honest-code-gate` (verdict from code, not docs; cloud YES only if spine is REAL),
+`pegasus-doctrine` (feature shape), `financial-integrity` (money),
 `kafka-event-contracts`, `spanner-discipline`, `native-mobile-safety`.
+
+If the hunt is **NO** (not API-wiring-only), say **NOT READY** for cloud. Do not start GCP/PSP/OFD key wiring.
 
 ---
 

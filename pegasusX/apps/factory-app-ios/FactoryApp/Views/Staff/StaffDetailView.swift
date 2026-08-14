@@ -6,6 +6,9 @@ struct StaffDetailView: View {
     @State private var staff: StaffMember?
     @State private var loading = true
     @State private var error: String?
+    @State private var pin = ""
+    @State private var setMsg: String?
+    @State private var setting = false
 
     var body: some View {
         Group {
@@ -29,6 +32,14 @@ struct StaffDetailView: View {
                         LabeledContent("Status", value: staff.status.isEmpty ? "ACTIVE" : staff.status)
                         LabeledContent("Joined", value: staff.joinedAt.isEmpty ? "—" : staff.joinedAt)
                     }
+                    Section("Set login PIN") {
+                        SecureField("PIN (min 4)", text: $pin)
+                        Button(setting ? "Saving…" : "Set password") {
+                            Task { await setPassword() }
+                        }
+                        .disabled(setting || pin.trimmingCharacters(in: .whitespaces).count < 4)
+                        if let setMsg { Text(setMsg) }
+                    }
                 }
             }
         }
@@ -46,5 +57,19 @@ struct StaffDetailView: View {
             self.error = error.localizedDescription
         }
         loading = false
+    }
+
+    @MainActor
+    private func setPassword() async {
+        setting = true
+        setMsg = nil
+        do {
+            try await FactoryService.setStaffPassword(id: staffId, pin: pin)
+            setMsg = "Password set"
+            pin = ""
+        } catch {
+            setMsg = error.localizedDescription
+        }
+        setting = false
     }
 }

@@ -25,11 +25,13 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltowerroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/countrycfg"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
+	"github.com/pegasusx/pegasusx/apps/backend-go/entityresolutionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
@@ -277,6 +279,18 @@ func main() {
 		SupplierHub:       app.SupplierHub,
 		WarehouseHub:      app.WarehouseHub,
 	})
+	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{
+		Spanner:             app.Spanner,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
+	countrycfg.RegisterRoutes(r, countrycfg.Deps{
+		Spanner:             app.Spanner,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
+	})
 	controltowerroutes.RegisterRoutes(r, controltowerroutes.Deps{
 		Handlers:            app.ControlTowerHandlers,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -420,7 +434,7 @@ func main() {
 	}
 	planning.RegisterAccuracyRoutes(r, app.ForecastAccuracy)
 	if app.BillingInvoiceWorker != nil {
-		billing.RegisterRoutes(r, &billing.Handlers{Worker: app.BillingInvoiceWorker})
+		billing.RegisterRoutes(r, &billing.Handlers{Worker: app.BillingInvoiceWorker}, mfa.RequireStepUp(app.MFAService))
 	}
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,

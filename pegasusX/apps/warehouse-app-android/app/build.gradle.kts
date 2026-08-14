@@ -18,7 +18,7 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val devPortalHost: String = localProps.getProperty("dev.portal.host", devHost)
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
 val prodPortalBaseUrl: String = localProps.getProperty("prod.portal.base.url", "https://warehouse.pegasus.uz")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 

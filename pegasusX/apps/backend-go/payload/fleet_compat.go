@@ -1,6 +1,7 @@
 package payload
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -42,8 +43,8 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 	conflicts := make([]map[string]string, 0)
 	now := s.now().Format("2006-01-02T15:04:05Z07:00")
 
-	// B2: emit ORDER_REASSIGNED on the bus (was emit=nil silent path).
-	err = s.apply(r.Context(), func() error {
+	// P4-P2: persist Orders.RouteId/DriverId in the same RW txn as outbox.
+	err = s.repo.RunTx(r.Context(), func(ctx context.Context, tx PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -60,6 +61,10 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 			if s.orders[oIdx].RouteID == req.NewRouteID {
 				conflicts = append(conflicts, map[string]string{"order_id": orderID, "reason": "order_already_assigned"})
 				continue
+			}
+			driverID := s.driverIDForRouteLocked(req.NewRouteID)
+			if err := tx.UpdateOrderAssignment(ctx, orderID, req.NewRouteID, driverID); err != nil {
+				return err
 			}
 			s.orders[oIdx].RouteID = req.NewRouteID
 			s.orders[oIdx].UpdatedAt = now

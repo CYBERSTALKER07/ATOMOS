@@ -60,6 +60,16 @@ fun MoreScreen(
     onDemandHistory: () -> Unit,
     onFactories: () -> Unit,
     onWarehouses: () -> Unit,
+    onCrm: () -> Unit = {},
+    onPayouts: () -> Unit = {},
+    onControlTower: () -> Unit = {},
+    onPlaybooks: () -> Unit = {},
+    onSegmentation: () -> Unit = {},
+    onTaxRegimes: () -> Unit = {},
+    onCreditPolicy: () -> Unit = {},
+    onCreditAdminDisable: () -> Unit = {},
+    onFlywheel: () -> Unit = {},
+    onPaydayCalendar: () -> Unit = {},
     onSignOut: () -> Unit,
 ) {
     val fulfillment = listOf(
@@ -72,16 +82,26 @@ fun MoreScreen(
         MoreDestination("Demand history", "14-day forecast vs actual", Icons.Default.History, onDemandHistory),
         MoreDestination("AI recommendations", "Advisory queue & decisions", Icons.Default.AutoAwesome, onAiRecommendations),
         MoreDestination("Geo report", "H3 coverage", Icons.Default.Public, onGeoReport),
+        MoreDestination("Control tower", "Scored exceptions", Icons.Default.Hub, onControlTower),
+        MoreDestination("Playbooks", "Exception playbooks", Icons.Default.Description, onPlaybooks),
+        MoreDestination("POS flywheel", "STORE_POS demand feed", Icons.Default.Sync, onFlywheel),
+        MoreDestination("Payday calendar", "PAYDAY demand signals", Icons.Default.Event, onPaydayCalendar),
     )
     val network = listOf(
         MoreDestination("Factories & warehouses", "Topology overview", Icons.Default.Apartment, onTopology),
         MoreDestination("Factories", "Production nodes", Icons.Default.PrecisionManufacturing, onFactories),
         MoreDestination("Warehouses", "Distribution nodes", Icons.Default.Store, onWarehouses),
+        MoreDestination("CRM", "Retailer lifetime rollup", Icons.Default.People, onCrm),
+        MoreDestination("Segmentation", "Retailer segments + SKU class", Icons.Default.Category, onSegmentation),
         MoreDestination("Delivery zones", "Coverage areas", Icons.Default.Map, onDeliveryZones),
         MoreDestination("Supply lanes", "Lane utilization", Icons.Default.AltRoute, onSupplyLanes),
     )
     val treasury = listOf(
         MoreDestination("Treasury hub", "KPIs and finance modules", Icons.Default.AccountBalance, onTreasuryHub),
+        MoreDestination("Payouts", "Bank-file batches", Icons.Default.AccountBalanceWallet, onPayouts),
+        MoreDestination("Credit policy", "Program + relationships", Icons.Default.Policy, onCreditPolicy),
+        MoreDestination("Credit admin disable", "Ticketed disable", Icons.Default.Warning, onCreditAdminDisable),
+        MoreDestination("Tax regimes", "Country tax rows", Icons.Default.AccountBalance, onTaxRegimes),
         MoreDestination("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
         MoreDestination("Payments", "Settlement authority", Icons.Default.CreditCard, onPayments),
         MoreDestination("Chargebacks", "Record chargeback or reversal", Icons.Default.Payments, onChargebacks),

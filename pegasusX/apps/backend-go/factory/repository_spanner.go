@@ -2,6 +2,8 @@ package factory
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -241,6 +243,50 @@ func (tx *spannerFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, e
 		transfers = append(transfers, t)
 	}
 	return transfers, nil
+}
+
+func (tx *spannerFactoryTx) SaveStaff(ctx context.Context, row StaffRow) error {
+	hash := strings.TrimSpace(row.PasswordHash)
+	if hash == "" || strings.EqualFold(hash, staffPasswordUnsetSentinel) {
+		return fmt.Errorf("staff password hash required")
+	}
+	now := time.Now().UTC()
+	mut := spanner.InsertOrUpdateMap("SupplierUsers", map[string]interface{}{
+		"UserId":            row.StaffID,
+		"SupplierId":        tx.supplierID,
+		"Phone":             spanner.NullString{StringVal: row.Phone, Valid: strings.TrimSpace(row.Phone) != ""},
+		"Name":              row.Name,
+		"PasswordHash":      hash,
+		"SupplierRole":      row.Role,
+		"AssignedFactoryId": tx.factoryNode,
+		"IsActive":          true,
+		"CreatedAt":         now,
+		"UpdatedAt":         now,
+	})
+	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+}
+
+func (tx *spannerFactoryTx) ResolveException(ctx context.Context, row ManifestException, orderID string) error {
+	now := time.Now().UTC()
+	oid := strings.TrimSpace(orderID)
+	if oid == "" {
+		oid = strings.TrimSpace(row.TransferID)
+	}
+	if oid == "" {
+		oid = strings.TrimSpace(row.ExceptionID)
+	}
+	mut := spanner.InsertOrUpdateMap("ManifestExceptions", map[string]interface{}{
+		"ExceptionId":  row.ExceptionID,
+		"OrderId":      oid,
+		"ManifestId":   spanner.NullString{StringVal: row.ManifestID, Valid: row.ManifestID != ""},
+		"SupplierId":   tx.supplierID,
+		"Reason":       row.Reason,
+		"Metadata":     spanner.NullString{StringVal: row.Metadata, Valid: row.Metadata != ""},
+		"AttemptCount": row.AttemptCount,
+		"CreatedAt":    parseTime(row.CreatedAt),
+		"ResolvedAt":   now,
+	})
+	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
 }
 
 func (tx *spannerFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error {

@@ -11,6 +11,7 @@ import { supplierSeasonalOverrideCreateKey } from "@pegasusx/api-client/idempote
 import type { SeasonalOverrideInput, SeasonalTemplatesResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import SignalIngestOpsPanel from "@/components/SignalIngestOpsPanel";
+import FactoryPlanningOpsPanel from "@/components/settings/planning/FactoryPlanningOpsPanel";
 import { CreateOverrideForm, SeasonalOverridesTable, ForecastAccuracyPanel, type OverrideForm } from "@/components/settings/planning";
 
 const api = createSupplierApi();
@@ -111,6 +112,8 @@ export default function PlanningSettingsPage() {
       }
     >
       <SignalIngestOpsPanel />
+
+      <FactoryPlanningOpsPanel />
 
       <ForecastAccuracyPanel />
 

@@ -9,12 +9,16 @@ interface SupplyRequestBoardProps {
   filtered: SupplyRequest[];
   transitioning: string | null;
   handleTransition: (request: SupplyRequest, action: string) => void;
+  qcById: Record<string, string>;
+  onQC: (request: SupplyRequest, result: "PASS" | "FAIL") => void;
 }
 
 export function SupplyRequestBoard({
   filtered,
   transitioning,
   handleTransition,
+  qcById,
+  onQC,
 }: SupplyRequestBoardProps) {
   const t = usePortalT();
   return (
@@ -55,7 +59,10 @@ export function SupplyRequestBoard({
                       </span>
                     ) : null}
                   </div>
-                  <div className="text-xs opacity-70 mt-1">{request.priority} · {request.item_count ?? request.items?.length ?? 0} items</div>
+                  <div className="text-xs opacity-70 mt-1">
+                    {request.priority} · {request.item_count ?? request.items?.length ?? 0} items
+                    {qcById[request.request_id] ? ` · QC ${qcById[request.request_id]}` : ""}
+                  </div>
                   <div className="text-xs font-mono opacity-60 mt-1">
                     {request.requested_delivery_date ? new Date(request.requested_delivery_date).toLocaleDateString() : 'No delivery date'}
                     {typeof request.sla_hours_remaining === "number"
@@ -75,6 +82,24 @@ export function SupplyRequestBoard({
                         {action.label}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      className="px-2 py-1 rounded text-[10px] font-medium text-white"
+                      style={{ background: "var(--color-md-success, #2e7d32)" }}
+                      disabled={transitioning === request.request_id}
+                      onClick={() => void onQC(request, "PASS")}
+                    >
+                      PASS
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 rounded text-[10px] font-medium text-white"
+                      style={{ background: "var(--color-md-error, #c62828)" }}
+                      disabled={transitioning === request.request_id}
+                      onClick={() => void onQC(request, "FAIL")}
+                    >
+                      FAIL
+                    </button>
                   </div>
                 </div>
               ))}

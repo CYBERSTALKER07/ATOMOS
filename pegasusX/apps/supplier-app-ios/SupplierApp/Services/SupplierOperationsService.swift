@@ -318,6 +318,97 @@ enum SupplierOperationsService {
         )
     }
 
+    static func crmRetailers() async throws -> [SupplierCRMRetailer] {
+        let resp: SupplierCRMListResponse = try await APIClient.shared.get("v1/supplier/crm/retailers")
+        return resp.retailers
+    }
+
+    static func crmRetailer(_ retailerId: String) async throws -> SupplierCRMRetailerDetail {
+        try await APIClient.shared.get("v1/supplier/crm/retailers/\(retailerId)")
+    }
+
+    static func networkMode() async throws -> NetworkModeResponse {
+        try await APIClient.shared.get("v1/supplier/network-mode")
+    }
+
+    static func putNetworkMode(_ body: NetworkModeUpdateRequest, idempotencyKey: String) async throws -> NetworkModeUpdateResponse {
+        try await APIClient.shared.put(
+            "v1/supplier/network-mode",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func planningPullMatrix(idempotencyKey: String) async throws -> PullMatrixResponse {
+        struct EmptyBody: Encodable {}
+        return try await APIClient.shared.post(
+            "v1/supplier/planning/pull-matrix",
+            body: EmptyBody(),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func planningKillSwitch(_ body: KillSwitchRequest, idempotencyKey: String) async throws -> KillSwitchResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/planning/kill-switch",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func payoutRail() async throws -> PayoutRailInfo {
+        try await APIClient.shared.get("v1/supplier/payouts/rail")
+    }
+
+    static func payoutPolicy() async throws -> SupplierPayoutPolicy {
+        try await APIClient.shared.get("v1/supplier/payout-policy")
+    }
+
+    static func patchPayoutPolicy(_ body: SupplierPayoutPolicyPatch) async throws -> SupplierPayoutPolicy {
+        try await APIClient.shared.patch("v1/supplier/payout-policy", body: body)
+    }
+
+    static func scoredExceptions(limit: Int = 50) async throws -> [ScoredException] {
+        let resp: ScoredExceptionsResponse = try await APIClient.shared.get(
+            "v1/control-tower/exceptions/scored",
+            query: ["limit": String(limit)]
+        )
+        return resp.exceptions
+    }
+
+    static func playbooks() async throws -> [ControlTowerPlaybook] {
+        let resp: ControlTowerPlaybooksResponse = try await APIClient.shared.get("v1/control-tower/playbooks")
+        return resp.playbooks
+    }
+
+    static func payoutBatches() async throws -> [PayoutBatch] {
+        let resp: PayoutBatchListResponse = try await APIClient.shared.get("v1/supplier/payouts/batches")
+        return resp.batches
+    }
+
+    static func generatePayoutBatch(_ body: PayoutBatchGenerateRequest, idempotencyKey: String) async throws -> PayoutBatchGenerateResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/payouts/batches",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func exportPayoutBatch(_ batchId: String) async throws -> String {
+        try await APIClient.shared.postText("v1/supplier/payouts/batches/\(batchId)/export")
+    }
+
+    static func markPayoutBatchPaid(_ batchId: String) async throws -> PayoutMarkPaidResponse {
+        try await APIClient.shared.postEmpty("v1/supplier/payouts/batches/\(batchId)/mark-paid")
+    }
+
+    static func dispatchPayoutBatch(_ batchId: String, live: Bool) async throws -> PayoutDispatchResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/payouts/batches/\(batchId)/dispatch",
+            body: PayoutDispatchRequest(live: live)
+        )
+    }
+
     static func seasonalOverrides() async throws -> SeasonalTemplatesResponse {
         try await APIClient.shared.get("v1/supplier/planning/seasonal-overrides")
     }

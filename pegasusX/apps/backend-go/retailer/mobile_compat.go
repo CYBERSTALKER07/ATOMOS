@@ -66,17 +66,20 @@ func (s *Service) HandleCardCheckout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleAIPredictionsAlias serves GET /v1/ai/predictions (mobile catalog path).
+// HandleAIPredictionsAlias serves GET /v1/ai/predictions (legacy client path).
+// P1: fail-closed. Clients expect DemandForecast[] (id/product_name/qty).
+// The real list is GET /v1/retailer/ai/predictions ({items: RetailerAIPrediction}).
+// Proxying would be a schema lie; P4 retargets apps. Never return silent [].
 func (s *Service) HandleAIPredictionsAlias(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	if _, err := retailerIDFromRequest(r); err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, []any{})
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":            "use_retailer_ai_predictions",
+		"message":          "GET /v1/ai/predictions is not a product list; use GET /v1/retailer/ai/predictions",
+		"predictions_path": "/v1/retailer/ai/predictions",
+	})
 }
 
 // HandleAIPreorder serves POST /v1/ai/preorder.
@@ -92,21 +95,26 @@ func (s *Service) HandleAIPreorder(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCorrectPrediction serves PATCH /v1/ai/predictions/correct.
+// P1: no persist path exists — never {status:ok}.
 func (s *Service) HandleCorrectPrediction(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "prediction_correct_unwired",
+		"message": "PATCH /v1/ai/predictions/correct does not persist a correction",
+	})
 }
 
 // HandleRetailerCards serves GET /v1/retailer/cards.
+// P1: no vault — 410 saved_cards_not_product (default; not a silent empty list).
 func (s *Service) HandleRetailerCards(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"cards": []any{}})
+	writeSavedCardsGone(w)
 }
 
 // HandleRetailerCardMutation serves POST card lifecycle endpoints.
@@ -115,7 +123,26 @@ func (s *Service) HandleRetailerCardMutation(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeSavedCardsGone(w)
+}
+
+func writeSavedCardsGone(w http.ResponseWriter) {
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "saved_cards_not_product",
+		"message": "Saved cards are not a PegasusX product; pay at delivery via /v1/order/card-checkout",
+	})
+}
+
+// HandleLoyaltyNotProduct serves GET /v1/retailer/loyalty/tier — 410, never a fake tier.
+func (s *Service) HandleLoyaltyNotProduct(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "loyalty_not_product",
+		"message": "Loyalty tiers are not a PegasusX product",
+	})
 }
 
 // HandleUserNotifications serves GET /v1/user/notifications.

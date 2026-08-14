@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct TreasuryHubView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
@@ -63,6 +66,9 @@ struct TreasuryHubView: View {
                                 NavigationLink { EarningsView() } label: {
                                     Label("portal.nav.earnings", systemImage: "chart.line.uptrend.xyaxis")
                                 }
+                                NavigationLink { PayoutsView() } label: {
+                                    Label("portal.nav.payouts", systemImage: "banknote")
+                                }
                             }
                         }
                         .frame(minHeight: 320)
@@ -80,7 +86,196 @@ struct TreasuryHubView: View {
             refreshEpoch: realtimeHub.refreshEpoch,
             reconnectEpoch: realtimeHub.reconnectEpoch
         ) { silent in
-            Task { await vm.load(silent: silent) }
+            await vm.load(silent: silent)
+        }
+    }
+}
+
+struct PayoutsView: View {
+    @State private var rail: PayoutRailInfo?
+    @State private var policy: SupplierPayoutPolicy?
+    @State private var draftMode = "HQ_SUPPLIER"
+    @State private var policyReason = ""
+    @State private var batches: [PayoutBatch] = []
+    @State private var loading = true
+    @State private var error: String?
+    @State private var status: String?
+    @State private var periodStart = ""
+    @State private var periodEnd = ""
+    @State private var busy = false
+
+    var body: some View {
+        Form {
+            if loading {
+                Section { ProgressView("Loading payouts…") }
+            } else if let error, batches.isEmpty, rail == nil {
+                Section {
+                    SupplierErrorView(message: error) { Task { await load() } }
+                }
+            } else {
+                Section("Rail") {
+                    Text(rail?.message.isEmpty == false ? (rail?.message ?? "") : "Bank-file rail: generate → export CSV → mark-paid. Not a live bank.")
+                        .font(.footnote)
+                    Text("Live rail: \(rail?.isLive == true ? "yes" : "no")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Section("Payout policy") {
+                    Text("Mode \(policy?.payoutMode ?? "HQ_SUPPLIER") · source \(policy?.source ?? "DEFAULT"). Does not enable a live PSP.")
+                        .font(.footnote)
+                    Picker("Mode", selection: $draftMode) {
+                        Text("HQ_SUPPLIER").tag("HQ_SUPPLIER")
+                        Text("WAREHOUSE_LOCAL").tag("WAREHOUSE_LOCAL")
+                    }
+                    TextField("Reason (required)", text: $policyReason)
+                    Button("Save mode") { Task { await savePolicy() } }
+                        .disabled(busy || policyReason.isEmpty)
+                }
+                Section("Generate period") {
+                    TextField("Period start (YYYY-MM-DD)", text: $periodStart)
+                    TextField("Period end (YYYY-MM-DD)", text: $periodEnd)
+                    Button("Generate batch") { Task { await generate() } }
+                        .disabled(busy || periodStart.isEmpty || periodEnd.isEmpty)
+                }
+                Section("Batches") {
+                    if batches.isEmpty {
+                        Text("No batches")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(batches) { batch in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(batch.status) · \(batch.netPayoutMinor) \(batch.currency)")
+                                Text("\(batch.periodStart) → \(batch.periodEnd)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Button("Export CSV") { Task { await exportCSV(batch.batchId) } }
+                                        .disabled(busy)
+                                    Button("Mark paid") { Task { await markPaid(batch.batchId) } }
+                                        .disabled(busy)
+                                    Button("Dispatch live") { Task { await dispatchLive(batch.batchId) } }
+                                        .disabled(busy)
+                                }
+                                .font(.caption)
+                            }
+                        }
+                    }
+                }
+                if let status {
+                    Section { Text(status).font(.footnote) }
+                }
+            }
+        }
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.payouts")
+        .task { await load() }
+        .refreshable { await load(silent: true) }
+    }
+
+    @MainActor
+    private func load(silent: Bool = false) async {
+        if !silent { loading = true }
+        error = nil
+        defer { loading = false }
+        do {
+            async let railTask = SupplierOperationsService.payoutRail()
+            async let listTask = SupplierOperationsService.payoutBatches()
+            async let policyTask = SupplierOperationsService.payoutPolicy()
+            rail = try await railTask
+            batches = try await listTask
+            if let loaded = try? await policyTask {
+                policy = loaded
+                draftMode = loaded.payoutMode.isEmpty ? "HQ_SUPPLIER" : loaded.payoutMode
+            }
+        } catch {
+            if !silent { self.error = error.localizedDescription }
+        }
+    }
+
+    @MainActor
+    private func savePolicy() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let next = try await SupplierOperationsService.patchPayoutPolicy(
+                SupplierPayoutPolicyPatch(payoutMode: draftMode, feePolicyVersion: nil, reason: policyReason)
+            )
+            policy = next
+            draftMode = next.payoutMode.isEmpty ? draftMode : next.payoutMode
+            policyReason = ""
+            status = "Payout mode saved. Bank-file rail is unchanged (no_live_rail)."
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func generate() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let scope = await SupplierIdempotencyKeys.supplierScopeId()
+            _ = try await SupplierOperationsService.generatePayoutBatch(
+                PayoutBatchGenerateRequest(periodStart: periodStart, periodEnd: periodEnd),
+                idempotencyKey: SupplierIdempotencyKeys.payoutGenerate(
+                    scopeId: scope,
+                    periodStart: periodStart,
+                    periodEnd: periodEnd
+                )
+            )
+            status = "Batch generated"
+            await load(silent: true)
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func exportCSV(_ batchId: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let csv = try await SupplierOperationsService.exportPayoutBatch(batchId)
+            #if canImport(UIKit)
+            UIPasteboard.general.string = csv
+            status = "CSV copied (\(csv.count) chars). Process at bank, then mark-paid."
+            #else
+            status = "CSV exported (\(csv.count) chars). Process at bank, then mark-paid."
+            #endif
+            await load(silent: true)
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func markPaid(_ batchId: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let resp = try await SupplierOperationsService.markPayoutBatchPaid(batchId)
+            status = resp.message.isEmpty ? "Marked paid" : resp.message
+            await load(silent: true)
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func dispatchLive(_ batchId: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let resp = try await SupplierOperationsService.dispatchPayoutBatch(batchId, live: true)
+            if resp.code == "no_live_rail" || resp.error == "no_live_rail" {
+                status = resp.message.isEmpty ? "no_live_rail — export CSV, then mark-paid" : resp.message
+            } else {
+                status = resp.message.isEmpty ? "Dispatch attempted" : resp.message
+            }
+            await load(silent: true)
+        } catch {
+            let text = error.localizedDescription
+            status = text
         }
     }
 }

@@ -160,3 +160,101 @@ func (w *InvoiceWorker) monthTotals(ctx context.Context, supplierID string, star
 	}
 	return orderCount, int64(gmvMajor*100 + 0.5), nil
 }
+
+type PlatformInvoice struct {
+	InvoiceID      string    `json:"invoice_id"`
+	BilledSupplier string    `json:"billed_supplier_id"`
+	OrderID        string    `json:"order_id"`
+	Status         string    `json:"status"`
+	PrincipalMinor int64     `json:"principal_minor"`
+	BalanceMinor   int64     `json:"balance_minor"`
+	Currency       string    `json:"currency"`
+	DueAt          time.Time `json:"due_at"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// ListPlatformInvoices returns PLATFORM AR invoices (monthly billing). Empty slice when none.
+func (w *InvoiceWorker) ListPlatformInvoices(ctx context.Context, limit int) ([]PlatformInvoice, error) {
+	if w == nil || w.client == nil {
+		return nil, fmt.Errorf("billing unavailable")
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	iter := w.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT InvoiceId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, DueAt, CreatedAt
+		      FROM ArInvoices
+		      WHERE SupplierId = 'PLATFORM'
+		      ORDER BY CreatedAt DESC
+		      LIMIT @limit`,
+		Params: map[string]any{"limit": int64(limit)},
+	})
+	defer iter.Stop()
+	out := make([]PlatformInvoice, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var inv PlatformInvoice
+		if err := row.Columns(&inv.InvoiceID, &inv.BilledSupplier, &inv.OrderID, &inv.Status,
+			&inv.PrincipalMinor, &inv.BalanceMinor, &inv.Currency, &inv.DueAt, &inv.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, inv)
+	}
+}
+
+type FeeScheduleRow struct {
+	FeeScheduleID            string     `json:"fee_schedule_id"`
+	SupplierID               string     `json:"supplier_id"`
+	Tier                     string     `json:"tier"`
+	PerOrderMinor            int64      `json:"per_order_minor"`
+	GmvBps                   int64      `json:"gmv_bps"`
+	MonthlySubscriptionMinor int64      `json:"monthly_subscription_minor"`
+	Currency                 string     `json:"currency"`
+	EffectiveFrom            time.Time  `json:"effective_from"`
+	EffectiveTo              *time.Time `json:"effective_to,omitempty"`
+}
+
+// ListFeeSchedules returns billing schedules. Empty slice when none (honest skip, not invented charges).
+func (w *InvoiceWorker) ListFeeSchedules(ctx context.Context, limit int) ([]FeeScheduleRow, error) {
+	if w == nil || w.client == nil {
+		return nil, fmt.Errorf("billing unavailable")
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	iter := w.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT FeeScheduleId, SupplierId, Tier, PerOrderMinor, GmvBps, MonthlySubscriptionMinor, Currency, EffectiveFrom, EffectiveTo
+		      FROM BillingFeeSchedules
+		      ORDER BY EffectiveFrom DESC
+		      LIMIT @limit`,
+		Params: map[string]any{"limit": int64(limit)},
+	})
+	defer iter.Stop()
+	out := make([]FeeScheduleRow, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var s FeeScheduleRow
+		var effTo spanner.NullTime
+		if err := row.Columns(&s.FeeScheduleID, &s.SupplierID, &s.Tier, &s.PerOrderMinor, &s.GmvBps,
+			&s.MonthlySubscriptionMinor, &s.Currency, &s.EffectiveFrom, &effTo); err != nil {
+			return nil, err
+		}
+		if effTo.Valid {
+			t := effTo.Time
+			s.EffectiveTo = &t
+		}
+		out = append(out, s)
+	}
+}

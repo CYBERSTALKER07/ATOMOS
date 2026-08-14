@@ -12,6 +12,9 @@ struct SupplyRequestRow: View {
                 .foregroundStyle(.secondary)
             HStack {
                 FactoryStatusBadge(text: request.state)
+                if slaBadgeVisible(request.slaStatus) {
+                    FactoryStatusBadge(text: (request.slaStatus ?? "").replacingOccurrences(of: "_", with: " "))
+                }
                 Spacer()
                 if let target = request.requestedDeliveryDate {
                     Text(L10n.format("mobile_factory.ui.due_target_2", "\(target)"))

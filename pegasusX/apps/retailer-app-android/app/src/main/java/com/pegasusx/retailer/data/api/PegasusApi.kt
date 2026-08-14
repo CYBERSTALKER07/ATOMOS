@@ -18,7 +18,7 @@ import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.CreditProfile
-import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.RetailerAIPredictionsResponse
 import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
@@ -174,19 +174,11 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ApiResponse
 
-    // ── AI / Predictions ──
-    @POST("/v1/ai/preorder")
-    suspend fun aiPreorder(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse
-
-    @GET("/v1/ai/predictions")
-    suspend fun getPredictions(@Query("retailer_id") retailerId: String): List<DemandForecast>
-
-    @PATCH("/v1/ai/predictions/correct")
-    suspend fun correctPrediction(
-        @Query("prediction_id") predictionId: String,
-        @Body body: Map<String, @JvmSuppressWildcards Any>,
-        @Header("Idempotency-Key") idempotencyKey: String? = null,
-    ): ApiResponse
+    // ── AI / Predictions (pending AI preorders; not SKU DemandForecast) ──
+    @GET("/v1/retailer/ai/predictions")
+    suspend fun getRetailerAIPredictions(
+        @Query("limit") limit: Int? = null,
+    ): RetailerAIPredictionsResponse
 
     // ── Retailer Profile & Setup ──
     @POST("/v1/retailer/setup")

@@ -24,7 +24,12 @@ final class APIClient {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    var baseURL = "https://api.pegasus.uz"
+    var baseURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
 
     private init() {
@@ -365,6 +370,15 @@ final class APIClient {
             case requestedDeliveryDate = "requested_delivery_date"
             case lineItems = "line_items"
         }
+    }
+
+    func getRetailerAIPredictions(limit: Int? = nil) async throws -> [RetailerAIPrediction] {
+        var path = "/v1/retailer/ai/predictions"
+        if let limit, limit > 0 {
+            path += "?limit=\(limit)"
+        }
+        let response: RetailerAIPredictionsResponse = try await get(path: path)
+        return response.items
     }
 
     func confirmAiOrder(orderId: String) async throws {

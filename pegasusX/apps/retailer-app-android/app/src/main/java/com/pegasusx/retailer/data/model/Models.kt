@@ -471,7 +471,7 @@ data class ProcurementOrderItem(
     @SerialName("quantity") val quantity: Int,
 )
 
-// ── AI Demand Forecast (iOS: DemandForecast) ──
+// ── AI Demand Forecast (legacy SKU-forecast shape; NOT returned by GET /v1/retailer/ai/predictions) ──
 
 @Serializable
 data class DemandForecast(
@@ -490,6 +490,56 @@ data class DemandForecast(
     val isBlocked: Boolean
         get() = blocked || label == "insufficient_history" || !blockedReason.isNullOrBlank()
 }
+
+/** Live GET /v1/retailer/ai/predictions item — pending AI preorder, not a SKU forecast. */
+@Serializable
+data class RetailerAILineItem(
+    @SerialName("sku") val sku: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("quantity") val quantity: Long = 0,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long = 0,
+)
+
+@Serializable
+data class RetailerAIPrediction(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("order_source") val orderSource: String = "",
+    @SerialName("confirmation_status") val confirmationStatus: String = "",
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String = "",
+    @SerialName("auto_confirm_at") val autoConfirmAt: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    @SerialName("currency") val currency: String = "",
+    @SerialName("derived_from_order_id") val derivedFromOrderId: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("line_items") val lineItems: List<RetailerAILineItem> = emptyList(),
+) {
+    val title: String
+        get() {
+            val first = lineItems.firstOrNull()
+            val label = first?.name?.takeIf { it.isNotBlank() } ?: first?.sku?.takeIf { it.isNotBlank() }
+            return label ?: orderId
+        }
+    val quantity: Long get() = lineItems.sumOf { it.quantity }
+    val statusLabel: String
+        get() = confirmationStatus.ifBlank { "PENDING" }.replace('_', ' ')
+    val deliveryLabel: String
+        get() = requestedDeliveryDate.take(10).ifBlank { orderId }
+    val formattedTotal: String
+        get() {
+            val units = totalMinor / 100.0
+            return if (currency.isNotBlank()) {
+                "${units.toLong()} $currency"
+            } else {
+                units.toLong().toString()
+            }
+        }
+}
+
+@Serializable
+data class RetailerAIPredictionsResponse(
+    @SerialName("items") val items: List<RetailerAIPrediction> = emptyList(),
+)
 
 // ── Retailer Expense Analytics ──
 
@@ -1140,11 +1190,11 @@ data class ActiveFulfillmentsResponse(
 
 @Serializable
 data class PendingPaymentSession(
-    @SerialName("session_id") val sessionId: String,
+    @SerialName("session_id") val sessionId: String? = null,
     @SerialName("order_id") val orderId: String,
     @SerialName("retailer_id") val retailerId: String,
     @SerialName("supplier_id") val supplierId: String,
-    @SerialName("gateway") val gateway: String,
+    @SerialName("gateway") val gateway: String? = null,
     @SerialName("locked_amount") val lockedAmount: Long,
     @SerialName("currency") val currency: String,
     @SerialName("status") val status: String,

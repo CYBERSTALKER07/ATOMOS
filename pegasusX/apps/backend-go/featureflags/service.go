@@ -12,6 +12,13 @@ import (
 
 // MoneyAffectingFlags require two-person style audit when overridden.
 // G2 also treats seal-class physical gates as dual-control (ops risk).
+// P5 FACTORY_PLANNING_ENABLED / FACTORY_BATCHER_ENABLED are ops flags (default off),
+// not money flags — tenant override applies immediately if used.
+const (
+	FlagFactoryPlanning = "FACTORY_PLANNING_ENABLED"
+	FlagFactoryBatcher  = "FACTORY_BATCHER_ENABLED"
+)
+
 var MoneyAffectingFlags = map[string]bool{
 	"AR_INVOICES_ENABLED":              true,
 	"AR_DUNNING_ENABLED":               true,

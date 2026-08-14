@@ -203,7 +203,7 @@ final class HomeViewModel {
         batchSealFailures = []
         defer { batchSealing = false }
         do {
-            let response = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            let response = try await api.sealAllManifests()
             let failures = (response.results ?? []).filter { ($0.status ?? "") != "sealed" && !($0.status ?? "").isEmpty }
             if !failures.isEmpty {
                 batchSealFailures = failures

@@ -1165,22 +1165,35 @@ func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) 
 	pending := filterTrackingOrders(orders, isPendingPaymentStatus)
 	sessions := make([]map[string]any, 0, len(pending))
 	for i := range pending {
-		sessions = append(sessions, map[string]any{
-			"session_id":    "sess_" + pending[i].OrderID,
+		row := map[string]any{
 			"order_id":      pending[i].OrderID,
 			"retailer_id":   retailerID,
 			"supplier_id":   pending[i].SupplierID,
-			"gateway":       "payme",
 			"locked_amount": pending[i].TotalMinor,
 			"currency":      pending[i].Currency,
 			"status":        pending[i].Status,
 			"created_at":    pending[i].CreatedAt,
-		})
+		}
+		if s.paymentSessionByOrder != nil {
+			sessionID, gateway, ok, err := s.paymentSessionByOrder(r.Context(), pending[i].OrderID)
+			if err != nil {
+				s.log.Warn("pending payment session lookup failed", "order_id", pending[i].OrderID, "err", err)
+			} else if ok {
+				if sessionID != "" {
+					row["session_id"] = sessionID
+				}
+				if gateway != "" {
+					row["gateway"] = gateway
+				}
+			}
+		}
+		sessions = append(sessions, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":  "pending",
-		"pending": sessions,
-		"count":   len(sessions),
+		"status":           "pending",
+		"pending":          sessions,
+		"pending_payments": sessions,
+		"count":            len(sessions),
 	})
 }
 
@@ -1518,7 +1531,7 @@ func (s *Service) attachRouteGeometry(ctx context.Context, orders []TrackingOrde
 		Params: map[string]any{"ids": manifestIDs},
 	}
 	iter := s.spannerClient.Single().
-		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
 		Query(ctx, stmt)
 	defer iter.Stop()
 

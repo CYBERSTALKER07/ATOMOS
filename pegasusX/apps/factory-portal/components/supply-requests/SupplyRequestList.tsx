@@ -14,6 +14,8 @@ interface SupplyRequestListProps {
   handleToggleAll: () => void;
   handleToggleOne: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void;
   handleTransition: (request: SupplyRequest, action: string) => void;
+  qcById: Record<string, string>;
+  onQC: (request: SupplyRequest, result: "PASS" | "FAIL") => void;
 }
 
 export function SupplyRequestList({
@@ -23,6 +25,8 @@ export function SupplyRequestList({
   handleToggleAll,
   handleToggleOne,
   handleTransition,
+  qcById,
+  onQC,
 }: SupplyRequestListProps) {
   const t = usePortalT();
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
@@ -120,6 +124,33 @@ export function SupplyRequestList({
                         {transitioning === request.request_id ? '...' : action.label}
                       </motion.button>
                     ))}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => void onQC(request, "PASS")}
+                      disabled={transitioning === request.request_id}
+                      className="px-3 py-1 rounded-lg text-xs font-medium text-white"
+                      style={{ background: "var(--color-md-success, #2e7d32)" }}
+                    >
+                      PASS
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => void onQC(request, "FAIL")}
+                      disabled={transitioning === request.request_id}
+                      className="px-3 py-1 rounded-lg text-xs font-medium text-white"
+                      style={{ background: "var(--color-md-error, #c62828)" }}
+                    >
+                      FAIL
+                    </motion.button>
+                    {qcById[request.request_id] ? (
+                      <span className="text-[10px] uppercase tracking-wide self-center">
+                        QC {qcById[request.request_id]}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
               </motion.tr>

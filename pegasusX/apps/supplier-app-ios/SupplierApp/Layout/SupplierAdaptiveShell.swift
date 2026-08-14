@@ -199,8 +199,28 @@ struct SupplierAdaptiveShell: View {
             FactoriesView()
         case .warehouses:
             WarehousesView()
+        case .crm:
+            CRMView()
+        case .payouts:
+            PayoutsView()
         case .catalogDetail:
             CatalogDetailView(productId: nil)
+        case .controlTower:
+            ScoredExceptionsView()
+        case .playbooks:
+            PlaybooksView()
+        case .segmentation:
+            JSONFeedView(title: "Segmentation", path: "v1/supplier/segmentation/retailers")
+        case .taxRegimes:
+            JSONFeedView(title: "Tax regimes", path: "v1/admin/tax-regimes", query: ["country": "UZ"])
+        case .creditPolicy:
+            JSONFeedView(title: "Credit policy", path: "v1/supplier/credit-program")
+        case .creditAdminDisable:
+            CreditAdminDisableView()
+        case .flywheel:
+            JSONFeedView(title: "POS flywheel", path: "v1/supplier/analytics/demand/flywheel", query: ["days": "7"])
+        case .paydayCalendar:
+            JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"])
         }
     }
 

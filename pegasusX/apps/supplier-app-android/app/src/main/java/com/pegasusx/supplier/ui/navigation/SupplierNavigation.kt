@@ -94,6 +94,12 @@ import com.pegasusx.supplier.ui.screens.network.GeoReportScreen
 import com.pegasusx.supplier.ui.screens.network.SupplyLanesScreen
 import com.pegasusx.supplier.ui.screens.network.TopologyScreen
 import com.pegasusx.supplier.ui.screens.network.WarehousesScreen
+import com.pegasusx.supplier.ui.screens.crm.SupplierCRMScreen
+import com.pegasusx.supplier.ui.screens.ops.CreditAdminDisableScreen
+import com.pegasusx.supplier.ui.screens.ops.PlaybooksScreen
+import com.pegasusx.supplier.ui.screens.ops.ScoredExceptionsScreen
+import com.pegasusx.supplier.ui.screens.ops.SupplierPortalFeedScreen
+import com.pegasusx.supplier.ui.screens.treasury.PayoutsScreen
 import com.pegasusx.supplier.ui.screens.pricing.RetailerOverridesScreen
 import com.pegasusx.supplier.ui.screens.treasury.ChargebacksScreen
 import com.pegasusx.supplier.ui.screens.treasury.TreasuryHubScreen
@@ -129,6 +135,16 @@ object SupplierRoutes {
     const val REPLENISHMENT_POLICIES = "replenishment_policies"
     const val FACTORIES = "factories"
     const val WAREHOUSES = "warehouses"
+    const val CRM = "crm"
+    const val PAYOUTS = "payouts"
+    const val CONTROL_TOWER = "control_tower"
+    const val PLAYBOOKS = "playbooks"
+    const val SEGMENTATION = "segmentation"
+    const val TAX_REGIMES = "tax_regimes"
+    const val CREDIT_POLICY = "credit_policy"
+    const val CREDIT_ADMIN_DISABLE = "credit_admin_disable"
+    const val FLYWHEEL = "flywheel"
+    const val PAYDAY_CALENDAR = "payday_calendar"
     const val EARLY_COMPLETE = "early_complete"
     const val ORG_FLEET = "org_fleet"
     const val EARNINGS = "earnings"
@@ -391,6 +407,16 @@ fun SupplierNavigation(
                     onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
                     onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
+                    onCrm = { navController.navigate(SupplierRoutes.CRM) },
+                    onPayouts = { navController.navigate(SupplierRoutes.PAYOUTS) },
+                    onControlTower = { navController.navigate(SupplierRoutes.CONTROL_TOWER) },
+                    onPlaybooks = { navController.navigate(SupplierRoutes.PLAYBOOKS) },
+                    onSegmentation = { navController.navigate(SupplierRoutes.SEGMENTATION) },
+                    onTaxRegimes = { navController.navigate(SupplierRoutes.TAX_REGIMES) },
+                    onCreditPolicy = { navController.navigate(SupplierRoutes.CREDIT_POLICY) },
+                    onCreditAdminDisable = { navController.navigate(SupplierRoutes.CREDIT_ADMIN_DISABLE) },
+                    onFlywheel = { navController.navigate(SupplierRoutes.FLYWHEEL) },
+                    onPaydayCalendar = { navController.navigate(SupplierRoutes.PAYDAY_CALENDAR) },
                     onSignOut = {
                         TokenHolder.clear()
                         pendingBusinessSetup = false
@@ -623,6 +649,36 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.WAREHOUSES) {
                  WarehousesScreen(ops, geocodeApi) { navController.popBackStack() } 
+            }
+            composable(SupplierRoutes.CRM) {
+                SupplierCRMScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.PAYOUTS) {
+                PayoutsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CONTROL_TOWER) {
+                ScoredExceptionsScreen({ navController.popBackStack() }) { api.scoredControlTower() }
+            }
+            composable(SupplierRoutes.PLAYBOOKS) {
+                PlaybooksScreen({ navController.popBackStack() }) { api.listPlaybooks() }
+            }
+            composable(SupplierRoutes.SEGMENTATION) {
+                SupplierPortalFeedScreen("Segmentation", { navController.popBackStack() }) { api.listRetailerSegments() }
+            }
+            composable(SupplierRoutes.TAX_REGIMES) {
+                SupplierPortalFeedScreen("Tax regimes", { navController.popBackStack() }) { api.listTaxRegimes() }
+            }
+            composable(SupplierRoutes.CREDIT_POLICY) {
+                SupplierPortalFeedScreen("Credit policy", { navController.popBackStack() }) { api.getCreditProgram() }
+            }
+            composable(SupplierRoutes.CREDIT_ADMIN_DISABLE) {
+                CreditAdminDisableScreen(api) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.FLYWHEEL) {
+                SupplierPortalFeedScreen("POS flywheel", { navController.popBackStack() }) { api.getDemandFlywheel() }
+            }
+            composable(SupplierRoutes.PAYDAY_CALENDAR) {
+                SupplierPortalFeedScreen("Payday calendar", { navController.popBackStack() }) { api.getDemandSignals("PAYDAY") }
             }
             composable(SupplierRoutes.EARLY_COMPLETE) {
                  EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } 

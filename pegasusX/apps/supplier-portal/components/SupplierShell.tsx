@@ -54,6 +54,7 @@ const NAV: NavSection[] = [
     labelKey: "portal.nav.section.network",
     items: [
       { href: "/topology", icon: "topology", labelKey: "portal.nav.topology" },
+      { href: "/crm", icon: "crm", labelKey: "portal.nav.crm" },
       { href: "/factories", icon: "factory", labelKey: "portal.nav.factories" },
       { href: "/warehouses", icon: "warehouse", labelKey: "portal.nav.warehouses" },
       { href: "/delivery-zones", icon: "global", labelKey: "portal.nav.delivery_zones" },
@@ -86,6 +87,7 @@ const NAV: NavSection[] = [
       { href: "/compliance", icon: "warning", labelKey: "portal.nav.compliance_audit" },
       { href: "/payments", icon: "payment", labelKey: "portal.nav.payments" },
       { href: "/earnings", icon: "pricing", labelKey: "portal.nav.earnings" },
+      { href: "/finance/payouts", icon: "treasury", labelKey: "portal.nav.payouts" },
       { href: "/credit/policy", icon: "treasury", labelKey: "portal.nav.credit_policy" },
       { href: "/credit/collections", icon: "treasury", labelKey: "portal.nav.credit_collections" },
       { href: "/credit/admin-disable", icon: "warning", labelKey: "portal.nav.credit_admin_disable" },

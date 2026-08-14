@@ -7,8 +7,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
-	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 )
 
 // Deps is the narrow dependency contract for warehouse routes.
@@ -110,7 +110,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/execute", d.Service.HandleDispatchExecute)
 		rr.Get("/v1/warehouse/dispatch/tracking", d.Service.HandleDispatchTracking)
-		
+
 		// Payload parity for reassignment without scanning
 		if d.PayloadService != nil {
 			rr.Post("/v1/warehouse/reassign-order", d.PayloadService.HandleApplyReassign)
@@ -156,6 +156,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/demand/forecast", d.Service.HandleDemandForecast)
 		rr.Get("/v1/warehouse/supply-requests", d.Service.HandleSupplyRequests)
 		rr.Post("/v1/warehouse/supply-requests", d.Service.HandleSupplyRequests)
+		rr.Get("/v1/warehouse/supply-requests/{id}/qc", d.Service.HandleSupplyRequestQC)
+		rr.Post("/v1/warehouse/supply-requests/{id}/qc", d.Service.HandleSupplyRequestQC)
 		rr.Get("/v1/warehouse/supply-requests/*", d.Service.HandleSupplyRequestByID)
 		rr.Patch("/v1/warehouse/supply-requests/*", d.Service.HandleSupplyRequestByID)
 		rr.Get("/v1/warehouse/dispatch-locks", d.Service.HandleDispatchLocks)

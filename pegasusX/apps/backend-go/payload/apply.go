@@ -9,7 +9,7 @@ import (
 // apply runs a mutation and optional outbox emission through the repository seam.
 func (s *Service) apply(
 	ctx context.Context,
-	mutate func() error,
+	mutate func(tx PayloadTx) error,
 	emit func(outbox.TxnBuffer) error,
 ) error {
 	return s.repo.RunTx(ctx, func(ctx context.Context, tx PayloadTx) error {
@@ -53,7 +53,7 @@ func (s *Service) apply(
 		}
 		s.mu.Unlock()
 
-		if err := mutate(); err != nil {
+		if err := mutate(tx); err != nil {
 			return err
 		}
 

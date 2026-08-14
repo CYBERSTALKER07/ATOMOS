@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
-import { AutoOrderList } from "@/components/auto-order/AutoOrderList";
 import { PageChrome } from "@/components/PageChrome";
 import { useLiveData } from "@/lib/hooks";
 import { apiFetch } from "@/lib/auth";
@@ -24,7 +23,6 @@ import type {
   AutoOrderRun,
   AutoOrderSettings,
   AutoOrderShadowProposal,
-  Prediction,
 } from "@/lib/types";
 
 type RetailerReorderSuggestion = {
@@ -54,10 +52,6 @@ export default function AutoOrderPage() {
     mutate: mutateSettings,
   } = useLiveData<AutoOrderSettings>("/v1/retailer/settings/auto-order");
 
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [predictionsLoading, setPredictionsLoading] = useState(true);
-  const [predictionsError, setPredictionsError] = useState<Error | null>(null);
-
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [runs, setRuns] = useState<AutoOrderRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
@@ -82,22 +76,6 @@ export default function AutoOrderPage() {
     if (m === "off" || m === "shadow" || m === "draft" || m === "place") return m;
     return settings?.global_enabled ? "draft" : "off";
   })();
-
-  const fetchPredictions = useCallback(async () => {
-    if (!retailerId) return;
-    setPredictionsLoading(true);
-    setPredictionsError(null);
-    try {
-      const res = await apiFetch(`/v1/ai/predictions?retailer_id=${retailerId}`);
-      if (!res.ok) throw new Error("Predictions fetch failed");
-      const data = await res.json();
-      setPredictions(Array.isArray(data) ? data : []);
-    } catch (err: unknown) {
-      setPredictionsError(err instanceof Error ? err : new Error("Predictions fetch failed"));
-    } finally {
-      setPredictionsLoading(false);
-    }
-  }, [retailerId]);
 
   const fetchRuns = useCallback(async () => {
     setRunsLoading(true);
@@ -177,10 +155,6 @@ export default function AutoOrderPage() {
   }, [retailerId]);
 
   useEffect(() => {
-    void fetchPredictions();
-  }, [fetchPredictions]);
-
-  useEffect(() => {
     void fetchRuns();
   }, [fetchRuns]);
 
@@ -199,14 +173,12 @@ export default function AutoOrderPage() {
   const refreshAll = useCallback(() => {
     setSyncMessage(null);
     void mutateSettings();
-    void fetchPredictions();
     void fetchRuns();
     void fetchReorderSuggestions();
     void fetchShadowProposals();
     void fetchSoakGate();
   }, [
     mutateSettings,
-    fetchPredictions,
     fetchRuns,
     fetchReorderSuggestions,
     fetchShadowProposals,
@@ -370,7 +342,7 @@ export default function AutoOrderPage() {
     setPendingAction(null);
   };
 
-  const isLoading = settingsLoading || predictionsLoading;
+  const isLoading = settingsLoading;
 
   return (
     <div
@@ -501,15 +473,6 @@ export default function AutoOrderPage() {
             <AlertTriangle size={16} />
             <span className="md-typescale-body-small">
               Settings unavailable: {settingsError.message}
-            </span>
-          </div>
-        )}
-
-        {predictionsError && (
-          <div className="mb-6 flex items-center gap-2 p-3 rounded-xl bg-[var(--desk-warning)]/10 text-[var(--desk-warning)] border border-[var(--desk-warning)]/30">
-            <AlertTriangle size={16} />
-            <span className="md-typescale-body-small">
-              Predictions unavailable: {predictionsError.message}
             </span>
           </div>
         )}
@@ -796,7 +759,6 @@ export default function AutoOrderPage() {
 
         <div className="space-y-6">
           <AutoOrderRules settings={settings ?? undefined} handleToggle={handleToggle} />
-          <AutoOrderList predictions={predictions} />
 
           <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] mt-6">
             <div className="flex items-center gap-2 mb-4">

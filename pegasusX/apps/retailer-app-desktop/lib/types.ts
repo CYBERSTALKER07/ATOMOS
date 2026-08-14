@@ -151,7 +151,7 @@ export interface RetailerAnalytics {
   total_last_month: number;
 }
 
-/* ── AI Predictions ── */
+/* ── AI Predictions (legacy SKU-forecast card — not the live retailer list) ── */
 export interface Prediction {
   id: string;
   retailer_id?: string;
@@ -181,6 +181,48 @@ export function isPredictionBlocked(
   return item.blocked === true
     || item.label === "insufficient_history"
     || Boolean(item.blocked_reason);
+}
+
+/** Live GET /v1/retailer/ai/predictions item — pending AI preorder, not a SKU forecast. */
+export interface RetailerAILineItem {
+  sku: string;
+  name?: string;
+  quantity: number;
+  unit_price_minor: number;
+}
+
+export interface RetailerAIPrediction {
+  order_id: string;
+  order_source?: string;
+  confirmation_status?: string;
+  requested_delivery_date?: string;
+  auto_confirm_at?: string;
+  total_minor: number;
+  currency: string;
+  derived_from_order_id?: string;
+  updated_at: string;
+  line_items?: RetailerAILineItem[];
+}
+
+export interface RetailerAIPredictionsResponse {
+  items: RetailerAIPrediction[];
+}
+
+export function aiPredictionTitle(item: RetailerAIPrediction): string {
+  const first = item.line_items?.[0];
+  const label = first?.name || first?.sku;
+  if (label) return label;
+  return item.order_id;
+}
+
+export function aiPredictionQty(item: RetailerAIPrediction): number {
+  return (item.line_items ?? []).reduce((sum, line) => sum + (line.quantity ?? 0), 0);
+}
+
+export function formatMinorAmount(minor: number, currency?: string): string {
+  const units = (minor ?? 0) / 100;
+  const code = (currency ?? "").trim();
+  return code ? `${units.toLocaleString()} ${code}` : units.toLocaleString();
 }
 
 /* ── Auto-Order Settings ── */
@@ -419,11 +461,11 @@ export interface ActiveFulfillmentsResponse {
 }
 
 export interface PendingPaymentSession {
-  session_id: string;
+  session_id?: string;
   order_id: string;
   retailer_id: string;
   supplier_id: string;
-  gateway: string;
+  gateway?: string;
   locked_amount: number;
   currency: string;
   status: string;

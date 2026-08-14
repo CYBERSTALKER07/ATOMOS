@@ -1188,6 +1188,155 @@ export interface SeasonalEstimateResult {
   persisted_drafts: number;
 }
 
+export interface SupplierCRMRetailer {
+  retailer_id: string;
+  retailer_name: string;
+  phone?: string;
+  lifetime: number;
+  order_count: number;
+  last_order_date?: string;
+  status: "ACTIVE" | "INACTIVE" | string;
+}
+
+export interface SupplierCRMOrder {
+  order_id: string;
+  state: string;
+  amount: number;
+  item_count: number;
+  created_at: string;
+}
+
+export interface SupplierCRMRetailerDetail extends SupplierCRMRetailer {
+  orders: SupplierCRMOrder[];
+}
+
+export interface SupplierCRMListResponse {
+  retailers: SupplierCRMRetailer[];
+}
+
+export interface SupplyRequestQCResponse {
+  request_id: string;
+  result: "" | "PASS" | "FAIL" | string;
+  notes?: string;
+  inspected_by?: string;
+  inspected_at?: string;
+}
+
+export interface SupplyRequestQCRequest {
+  result: "PASS" | "FAIL";
+  notes?: string;
+}
+
+export interface NetworkModeResponse {
+  mode: string;
+  supplier_id: SupplierId;
+  planning_enabled?: boolean;
+}
+
+export interface NetworkModeUpdateRequest {
+  mode: string;
+  reason?: string;
+}
+
+export interface NetworkModeUpdateResponse {
+  old_mode: string;
+  new_mode: string;
+  status: string;
+}
+
+export interface PullMatrixResponse {
+  status: string;
+  transfers: number;
+  skus: number;
+  source: string;
+}
+
+export interface KillSwitchRequest {
+  reason: string;
+}
+
+export interface KillSwitchResponse {
+  status: string;
+  cancelled_transfers: number;
+  mode: string;
+}
+
+export interface PayoutRailInfo {
+  name: string;
+  is_live: boolean;
+  workflow: string;
+  steps?: string[];
+  message?: string;
+}
+
+export interface PayoutBatch {
+  batch_id: string;
+  supplier_id: SupplierId;
+  period_start: string;
+  period_end: string;
+  gross_captured_minor: number;
+  refunded_minor: number;
+  commission_minor: number;
+  net_payout_minor: number;
+  currency: Iso4217;
+  status: string;
+  export_file_uri?: string;
+  rail_reference?: string;
+  idempotency_key?: string;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PayoutBatchListResponse {
+  batches: PayoutBatch[];
+}
+
+export interface PayoutBatchGenerateRequest {
+  period_start: string;
+  period_end: string;
+  supplier_id?: string;
+  idempotency_key?: string;
+}
+
+export interface PayoutBatchGenerateResponse {
+  batch: PayoutBatch;
+  rail: PayoutRailInfo;
+}
+
+export interface PayoutMarkPaidResponse {
+  status: string;
+  batch_id: string;
+  rail: PayoutRailInfo;
+  message?: string;
+}
+
+export interface PayoutDispatchResponse {
+  batch?: PayoutBatch;
+  rail: PayoutRailInfo;
+  error?: string;
+  code?: string;
+  message?: string;
+}
+
+export interface SupplierPayoutPolicy {
+  supplier_id: string;
+  payout_mode: "HQ_SUPPLIER" | "WAREHOUSE_LOCAL" | string;
+  fee_policy_version: string;
+  effective_at?: string;
+  updated_by?: string;
+  updated_by_type?: string;
+  reason?: string;
+  is_active: boolean;
+  source: string;
+}
+
+export interface SupplierPayoutPolicyPatch {
+  payout_mode: string;
+  fee_policy_version?: string;
+  reason: string;
+}
+
 export interface PlanningSignalIngestInput {
   signal_id?: string;
   source: string;
@@ -3447,6 +3596,7 @@ export type EventType =
   | "SUPPLIER_BILLING_UPDATED"
   | "SUPPLIER_BILLING_CONFIGURED"
   | "SUPPLIER_MEMBER_ADDED"
+  | "SUPPLIER_BROADCAST"
   | "RETAILER_REGISTERED"
   | "RETAILER_STAFF_CREATED"
   | "RETAILER_CAPABILITY_PACK_CHANGED"
@@ -3483,6 +3633,7 @@ export type EventType =
   | "VEHICLE_CREATED"
   | "VEHICLE_AVAILABILITY_CHANGED"
   | "WAREHOUSE_CREATED"
+  | "WAREHOUSE_BROADCAST"
   | "WAREHOUSE_LOCATION_UPDATED"
   | "WAREHOUSE_DISPATCH_LOCK_CHANGED"
   | "WAREHOUSE_SUPPLY_REQUEST_OPENED"
@@ -3491,7 +3642,10 @@ export type EventType =
   | "SUPPLY_TRANSFER_APPROACHING"
   | "FACTORY_CREATED"
   | "FACTORY_LOCATION_UPDATED"
+  | "FACTORY_STAFF_CREATED"
+  | "FACTORY_STAFF_PASSWORD_SET"
   | "FACTORY_SUPPLY_REQUEST_UPDATE"
+  | "TRANSFER_CREATED"
   | "ORDER_CREATED"
   | "ORDER_STATUS_CHANGED"
   | "ORDER_VALIDATION_FAILED"
@@ -3506,6 +3660,7 @@ export type EventType =
   | "MANIFEST_LOADING_STARTED"
   | "MANIFEST_ORDER_INJECTED"
   | "MANIFEST_ORDER_EXCEPTION"
+  | "MANIFEST_EXCEPTION_RESOLVED"
   | "MANIFEST_DLQ_ESCALATION"
   | "MANIFEST_REBALANCED"
   | "MANIFEST_CANCELLED"
@@ -3525,6 +3680,7 @@ export type EventType =
   | "PAYOUT_BATCH_EXPORTED"
   | "PAYOUT_BATCH_DISPATCHED"
   | "PAYOUT_BATCH_PAID"
+  | "PAYOUT_POLICY_UPDATED"
   | "FISCAL_RECEIPT_REQUESTED"
   | "FISCAL_RECEIPT_SUCCEEDED"
   | "FISCAL_RECEIPT_FAILED"
@@ -3695,6 +3851,28 @@ export interface FactoryCreated {
   h3_cell: H3Cell;
   lat: number;
   lng: number;
+}
+
+export interface FactoryStaffCreated {
+  factory_id: FactoryId;
+  supplier_id: SupplierId;
+  user_id: string;
+  supplier_role?: string;
+}
+
+export interface FactoryTransferCreated {
+  transfer_id: string;
+  factory_id?: FactoryId;
+  supplier_id: SupplierId;
+  state?: string;
+}
+
+export interface ManifestExceptionResolved {
+  manifest_id: string;
+  exception_id?: string;
+  factory_id?: FactoryId;
+  supplier_id?: SupplierId;
+  reason?: string;
 }
 
 export interface OrderCreated {
@@ -4061,7 +4239,7 @@ export interface WarehouseDemandForecastProduct {
   demand_breakdown?: Record<string, unknown> | null;
 }
 
-/** Mobile/desktop retailer AI prediction card (GET /v1/ai/predictions). */
+/** Legacy SKU-forecast card shape. Not returned by GET /v1/retailer/ai/predictions. */
 export interface RetailerDemandPrediction {
   id: string;
   product_id?: string;
@@ -4616,6 +4794,9 @@ export type WsEvent =
   | WsEventEnvelope<"WAREHOUSE_SUPPLY_REQUEST_OPENED", WarehouseSupplyRequestOpened>
   | WsEventEnvelope<"WAREHOUSE_DISPATCH_LOCK_CHANGED", WarehouseDispatchLockChanged>
   | WsEventEnvelope<"FACTORY_CREATED", FactoryCreated>
+  | WsEventEnvelope<"FACTORY_STAFF_CREATED", FactoryStaffCreated>
+  | WsEventEnvelope<"TRANSFER_CREATED", FactoryTransferCreated>
+  | WsEventEnvelope<"MANIFEST_EXCEPTION_RESOLVED", ManifestExceptionResolved>
   | WsEventEnvelope<"ORDER_CREATED", OrderCreated>
   | WsEventEnvelope<"ORDER_STATUS_CHANGED", OrderStatusChanged>
   | WsEventEnvelope<"ORDER_VALIDATION_FAILED", OrderValidationFailed>

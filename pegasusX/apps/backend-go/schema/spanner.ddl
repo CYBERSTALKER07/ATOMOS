@@ -131,6 +131,7 @@ CREATE TABLE Retailers (
   RetailerId              STRING(36)    NOT NULL,
   Phone                   STRING(32)    NOT NULL,
   Name                    STRING(255),
+  Email                   STRING(320),
   CountryCode             STRING(2)     NOT NULL,
   Lat                     FLOAT64,
   Lng                     FLOAT64,
@@ -461,6 +462,7 @@ CREATE TABLE Factories (
   Address          STRING(MAX),
   PlaceId          STRING(128),
   IsActive         BOOL          NOT NULL,
+  DailyOutputCapacity INT64      NOT NULL DEFAULT (700),
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (FactoryId);
@@ -991,6 +993,7 @@ CREATE TABLE FactoryInternalTransfers (
   SourceInsightId STRING(36),
   WarehouseId     STRING(36),
   TransferMode    STRING(10),
+  Source          STRING(30)  NOT NULL DEFAULT ('MANUAL_EMERGENCY'),
   ReceivedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true),
   CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -1000,6 +1003,7 @@ CREATE INDEX Idx_FactoryTransfers_ByFactoryId ON FactoryInternalTransfers(Factor
 CREATE INDEX Idx_FactoryTransfers_BySupplierId ON FactoryInternalTransfers(SupplierId);
 CREATE INDEX Idx_FactoryTransfers_ByManifestId ON FactoryInternalTransfers(ManifestId);
 CREATE INDEX Idx_FactoryTransfers_BySourceInsight ON FactoryInternalTransfers(SourceInsightId);
+CREATE INDEX Idx_FactoryTransfers_BySupplierSourceState ON FactoryInternalTransfers(SupplierId, Source, State);
 
 -- Predictive / threshold-based replenishment recommendations per warehouse SKU.
 CREATE TABLE ReplenishmentInsights (
@@ -3095,3 +3099,131 @@ CREATE TABLE RetailerStockCountForceAudits (
   LinesJson     JSON        NOT NULL,
   CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (AuditId);
+
+-- P5 factory planning (see schema/migrations/20260813_p5_factory_planning.ddl).
+-- Distinct from GET /v1/supplier/supply-lanes topology utilization cards.
+CREATE TABLE SupplyLanes (
+  LaneId                 STRING(36)  NOT NULL,
+  SupplierId             STRING(36)  NOT NULL,
+  FactoryId              STRING(36)  NOT NULL,
+  WarehouseId            STRING(36)  NOT NULL,
+  TransitTimeHours       FLOAT64     NOT NULL DEFAULT (24),
+  DampenedTransitHours   FLOAT64     NOT NULL DEFAULT (24),
+  FreightCostMinor       INT64       NOT NULL DEFAULT (0),
+  CarbonScoreKg          FLOAT64     NOT NULL DEFAULT (0),
+  IsActive               BOOL        NOT NULL DEFAULT (true),
+  Priority               INT64       NOT NULL DEFAULT (0),
+  LastTransitUpdate      TIMESTAMP,
+  CreatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt              TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, LaneId);
+
+CREATE INDEX Idx_SupplyLanes_ByFactory ON SupplyLanes(SupplierId, FactoryId);
+CREATE INDEX Idx_SupplyLanes_ByWarehouse ON SupplyLanes(SupplierId, WarehouseId);
+CREATE UNIQUE INDEX Idx_SupplyLanes_Edge ON SupplyLanes(SupplierId, FactoryId, WarehouseId);
+
+CREATE TABLE ReplenishmentLocks (
+  LockKey     STRING(200) NOT NULL,
+  AcquiredBy  STRING(36)  NOT NULL,
+  SupplierId  STRING(36)  NOT NULL,
+  Priority    FLOAT64     NOT NULL DEFAULT (0),
+  AcquiredAt  TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ExpiresAt   TIMESTAMP   NOT NULL,
+) PRIMARY KEY (LockKey);
+
+CREATE INDEX Idx_ReplenishmentLocks_ByExpiry ON ReplenishmentLocks(ExpiresAt);
+
+CREATE TABLE NetworkOptimizationMode (
+  SupplierId  STRING(36)  NOT NULL,
+  Mode        STRING(30)  NOT NULL DEFAULT ('BALANCED'),
+  UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedBy   STRING(36)  NOT NULL,
+) PRIMARY KEY (SupplierId);
+
+CREATE TABLE PullMatrixRuns (
+  RunId              STRING(36)  NOT NULL,
+  SupplierId         STRING(36)  NOT NULL,
+  RunAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  TransfersGenerated INT64       NOT NULL DEFAULT (0),
+  SKUsProcessed      INT64       NOT NULL DEFAULT (0),
+  DurationMs         INT64       NOT NULL DEFAULT (0),
+  Source             STRING(30)  NOT NULL DEFAULT ('CRON'),
+  Notes              STRING(MAX),
+) PRIMARY KEY (SupplierId, RunId);
+
+CREATE INDEX Idx_PullMatrixRuns_ByTime ON PullMatrixRuns(SupplierId, RunAt DESC);
+
+CREATE TABLE FactorySLAEvents (
+  EventId                 STRING(36)  NOT NULL,
+  TransferId              STRING(36)  NOT NULL,
+  SupplierId              STRING(36)  NOT NULL,
+  FactoryId               STRING(36)  NOT NULL,
+  WarehouseId             STRING(36)  NOT NULL,
+  EscalationLevel         STRING(20)  NOT NULL,
+  PromisedAt              TIMESTAMP,
+  ActualAt                TIMESTAMP,
+  SLABreachMinutes        INT64       NOT NULL DEFAULT (0),
+  ReplacementTransferId   STRING(36),
+  CreatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (EventId);
+
+CREATE INDEX Idx_FactorySLA_ByTransfer ON FactorySLAEvents(TransferId);
+CREATE INDEX Idx_FactorySLA_ByFactory ON FactorySLAEvents(SupplierId, FactoryId, CreatedAt DESC);
+
+-- P6-F: factory PASS/FAIL inspection per warehouse supply request. Does not change request State.
+CREATE TABLE FactorySupplyRequestQC (
+  RequestId    STRING(36) NOT NULL,
+  Result       STRING(10) NOT NULL,
+  Notes        STRING(MAX),
+  InspectedBy  STRING(36),
+  InspectedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+  CONSTRAINT CHK_FactoryQC_Result CHECK (Result IN ('PASS', 'FAIL')),
+) PRIMARY KEY (RequestId);
+
+CREATE INDEX Idx_FactorySupplyRequestQC_ByInspectedAt ON FactorySupplyRequestQC(InspectedAt DESC);
+
+-- P8/P10: durable ops broadcast (supplier + warehouse). Outbox is canonical; this is the audit row.
+CREATE TABLE OpsBroadcasts (
+  BroadcastId  STRING(36)  NOT NULL,
+  SupplierId   STRING(36)  NOT NULL,
+  WarehouseId  STRING(36),
+  Scope        STRING(16)  NOT NULL,
+  Title        STRING(255) NOT NULL,
+  Body         STRING(MAX) NOT NULL,
+  TargetRole   STRING(32)  NOT NULL,
+  CreatedBy    STRING(128),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (BroadcastId);
+
+CREATE INDEX Idx_OpsBroadcasts_BySupplierCreated ON OpsBroadcasts(SupplierId, CreatedAt DESC);
+CREATE INDEX Idx_OpsBroadcasts_ByWarehouseCreated ON OpsBroadcasts(WarehouseId, CreatedAt DESC);
+
+-- Leftover close: supplier payout destination policy (not a live PSP). Bank-file remains the rail.
+CREATE TABLE SupplierPayoutPolicies (
+  SupplierId       STRING(36)  NOT NULL,
+  PayoutMode       STRING(32)  NOT NULL,
+  FeePolicyVersion STRING(64)  NOT NULL,
+  EffectiveAt      TIMESTAMP   NOT NULL,
+  UpdatedBy        STRING(128),
+  UpdatedByType    STRING(32),
+  Reason           STRING(512) NOT NULL,
+  IsActive         BOOL        NOT NULL DEFAULT (TRUE),
+  CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId);
+
+-- Optional UZ ops-parameter overrides. Checkout gateway selection does not read this table.
+CREATE TABLE SupplierCountryOverrides (
+  SupplierId                    STRING(36)  NOT NULL,
+  CountryCode                   STRING(2)   NOT NULL,
+  BreachRadiusMeters            FLOAT64,
+  ShopClosedGraceMinutes        INT64,
+  ShopClosedEscalationMinutes   INT64,
+  OfflineModeDurationMinutes    INT64,
+  CashCustodyAlertHours         INT64,
+  Reason                        STRING(512) NOT NULL,
+  UpdatedBy                     STRING(128),
+  UpdatedByType                 STRING(32),
+  CreatedAt                     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt                     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, CountryCode);

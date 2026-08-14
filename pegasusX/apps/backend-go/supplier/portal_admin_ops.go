@@ -39,6 +39,7 @@ type PortalOpsConfig struct {
 	FallbackDepotLat     float64
 	FallbackDepotLng     float64
 	ReplenishmentEngine  *replenishment.Engine
+	FactoryPlanning      FactoryPlanner
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
@@ -57,6 +58,7 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.fallbackDepotLat = cfg.FallbackDepotLat
 	s.fallbackDepotLng = cfg.FallbackDepotLng
 	s.replenishmentEngine = cfg.ReplenishmentEngine
+	s.factoryPlanning = cfg.FactoryPlanning
 }
 
 // SetControlTower wires playbook scoring for exception enrichment.
@@ -175,25 +177,72 @@ func (s *Service) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sid := s.scopedSupplierID(r)
+	if s.portalSpanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "broadcast_unavailable"})
+		return
+	}
 	if s.portalSupplierHub == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "broadcast_unavailable"})
 		return
 	}
 
 	targetRole := strings.ToUpper(strings.TrimSpace(req.Role))
+	if targetRole == "" {
+		targetRole = "ALL"
+	}
+	broadcastID := uuid.NewString()
+	nowTS := s.now().UTC()
+	claims, _ := auth.FromContext(r.Context())
+	createdBy := strings.TrimSpace(claims.Subject)
+
+	_, err := s.portalSpanner.ReadWriteTransaction(r.Context(), func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &supplierSpannerTxnBuf{}
+		if err := outbox.EmitJSON(txnCtx, buf, events.AggregateSupplier, sid, events.TopicMain, map[string]any{
+			"type":         events.EventSupplierBroadcast,
+			"broadcast_id": broadcastID,
+			"title":        req.Title,
+			"body":         req.Body,
+			"target_role":  targetRole,
+			"supplier_id":  sid,
+			"timestamp":    nowTS.Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		mutations := []*spanner.Mutation{spanner.InsertMap("OpsBroadcasts", map[string]any{
+			"BroadcastId": broadcastID,
+			"SupplierId":  sid,
+			"Scope":       "SUPPLIER",
+			"Title":       req.Title,
+			"Body":        req.Body,
+			"TargetRole":  targetRole,
+			"CreatedBy":   createdBy,
+			"CreatedAt":   spanner.CommitTimestamp,
+		})}
+		for _, e := range buf.events {
+			mutations = append(mutations, portalOutboxMutation(e))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "broadcast_persist_failed"})
+		return
+	}
+
 	payload, _ := json.Marshal(map[string]any{
-		"type":        "SUPPLIER_BROADCAST",
-		"title":       req.Title,
-		"body":        req.Body,
-		"target_role": targetRole,
-		"supplier_id": sid,
-		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+		"type":         events.EventSupplierBroadcast,
+		"broadcast_id": broadcastID,
+		"title":        req.Title,
+		"body":         req.Body,
+		"target_role":  targetRole,
+		"supplier_id":  sid,
+		"timestamp":    nowTS.Format(time.RFC3339Nano),
 	})
 	s.broadcastAdminMessage(r.Context(), sid, targetRole, payload)
 
 	resp := map[string]any{
-		"status":      "broadcast_sent",
-		"supplier_id": sid,
+		"status":       "broadcast_sent",
+		"supplier_id":  sid,
+		"broadcast_id": broadcastID,
 	}
 	respBytes, _ := json.Marshal(resp)
 	w.Header().Set("Content-Type", "application/json")

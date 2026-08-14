@@ -412,7 +412,7 @@ class HomeViewModel @Inject constructor(
         if (manifestIds.size < 2 || _state.value.batchSealing) return
         _state.update { it.copy(batchSealing = true, error = null, errorExplain = null, batchSealFailures = emptyList()) }
         viewModelScope.launch {
-            runCatching { repository.sealCompletedManifests(manifestIds) }
+            runCatching { repository.sealAllManifests() }
                 .onSuccess { response ->
                     val failures = response.results.filter { it.status.isNotBlank() && it.status != "sealed" }
                     if (failures.isNotEmpty()) {

@@ -60,7 +60,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 	}
 
 	if body.UseDemandForecast {
-		products := s.productDemandForecast(r.Context(), warehouseID, 7)
+		products, _ := s.productDemandForecast(r.Context(), warehouseID, 7)
 		body.Items = make([]supplyRequestItemInput, 0, len(products))
 		for _, p := range products {
 			qty := p.RecommendedQty

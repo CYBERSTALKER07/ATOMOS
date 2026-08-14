@@ -292,10 +292,8 @@ struct ProcurementView: View {
     }
 
     private func loadPredictions() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
         isLoading = true
-        do { let r: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)"); forecasts = r }
-        catch { forecasts = [] }
+        forecasts = []
         do { let p: [Product] = try await api.get(path: "/v1/catalog/products"); products = p }
         catch { products = [] }
         isLoading = false

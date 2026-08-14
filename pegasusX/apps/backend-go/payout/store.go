@@ -89,6 +89,35 @@ func (r *Repository) GetByIdempotencyKey(ctx context.Context, key string) (Batch
 		map[string]any{"k": key})
 }
 
+func (r *Repository) ListBySupplier(ctx context.Context, supplierID string) ([]Batch, error) {
+	rows := []Batch{}
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("payout repository unavailable")
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT ` + batchColumnList() + ` FROM PayoutBatches
+		      WHERE SupplierId = @sid
+		      ORDER BY CreatedAt DESC
+		      LIMIT 100`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		b, err := scanBatch(row)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, b)
+	}
+}
+
 func (r *Repository) findOne(ctx context.Context, sql string, params map[string]any) (Batch, bool, error) {
 	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()

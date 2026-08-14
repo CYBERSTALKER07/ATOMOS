@@ -110,6 +110,9 @@ data class SupplyRequest(
     @SerialName("created_by") val createdBy: String = "",
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("sla_status") val slaStatus: String = "",
+    @SerialName("sla_due_at") val slaDueAt: String? = null,
+    @SerialName("sla_hours_remaining") val slaHoursRemaining: Double? = null,
 )
 
 @Serializable
@@ -133,6 +136,17 @@ data class SupplyFulfillOptions(
     @SerialName("outcome_internal") val outcomeInternal: String = "",
     @SerialName("outcome_truck") val outcomeTruck: String = "",
     @SerialName("linked_driver_eta") val linkedDriverEta: String? = null,
+)
+
+@Serializable
+data class SupplyRequestQCResponse(
+    @SerialName("request_id") val requestId: String = "",
+    val result: String = "",
+)
+
+@Serializable
+data class SupplyRequestQCRequest(
+    val result: String,
 )
 
 // ── Manifests ──

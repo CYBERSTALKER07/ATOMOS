@@ -117,6 +117,9 @@ func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 	if got, _ := body["manifests_created"].(float64); got < 1 {
 		t.Fatalf("expected manifests_created >= 1, got %v", body)
 	}
+	if body["optimizer_class"] != "HEURISTIC" || body["dispatch_algo"] != "pick_n_created_v1" {
+		t.Fatalf("dispatch honesty labels missing: %v", body)
+	}
 }
 
 func TestHandleManifestStartLoading_SeamParity(t *testing.T) {
@@ -169,6 +172,19 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	svc.transfers = append(svc.transfers, TransferRow{
+		TransferID: "tr_dispatch_1",
+		OrderID:    "ord_dispatch_1",
+		State:      "CREATED",
+		TotalVU:    24,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	})
+	svc.mu.Unlock()
+
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"reason":"wave"}`))
 	rr := httptest.NewRecorder()
 
@@ -191,6 +207,9 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 	manifestID, _ := body["manifest_id"].(string)
 	if strings.TrimSpace(manifestID) == "" {
 		t.Fatalf("expected manifest_id in response, got %v", body)
+	}
+	if body["optimizer_class"] != "HEURISTIC" || body["dispatch_algo"] != "pick_n_created_v1" {
+		t.Fatalf("dispatch honesty labels missing: %v", body)
 	}
 
 	assertFactoryCacheDeletedKeys(t, cacheBackend.deletedKeys,
@@ -1069,15 +1088,17 @@ func assertFactoryWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 }
 
 type factoryRepoSpy struct {
-	svc        *Service
-	applyCalls int
-	events     []outbox.Event
+	svc                *Service
+	applyCalls         int
+	events             []outbox.Event
+	savedStaff         []StaffRow
+	resolvedExceptions []ManifestException
 }
 
 func (r *factoryRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx FactoryTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if fn != nil {
-		if err := fn(ctx, &dummyFactoryTx{svc: r.svc}); err != nil {
+		if err := fn(ctx, &dummyFactoryTx{svc: r.svc, spy: r}); err != nil {
 			return err
 		}
 	}
@@ -1178,13 +1199,34 @@ func (r *factoryRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Serv
 	return nil
 }
 
-type dummyFactoryTx struct{ svc *Service }
+type dummyFactoryTx struct {
+	svc *Service
+	spy *factoryRepoSpy
+}
 
 func (d *dummyFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
+	if d.svc == nil {
+		return nil, nil
+	}
 	return append([]ManifestRow(nil), d.svc.manifests...), nil
 }
 func (d *dummyFactoryTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
 func (d *dummyFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, error) {
+	if d.svc == nil {
+		return nil, nil
+	}
 	return append([]TransferRow(nil), d.svc.transfers...), nil
 }
 func (d *dummyFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error { return nil }
+func (d *dummyFactoryTx) SaveStaff(ctx context.Context, row StaffRow) error {
+	if d.spy != nil {
+		d.spy.savedStaff = append(d.spy.savedStaff, row)
+	}
+	return nil
+}
+func (d *dummyFactoryTx) ResolveException(ctx context.Context, row ManifestException, orderID string) error {
+	if d.spy != nil {
+		d.spy.resolvedExceptions = append(d.spy.resolvedExceptions, row)
+	}
+	return nil
+}

@@ -1092,6 +1092,7 @@ struct Retailer: Decodable, Identifiable {
     let name: String
     let totalOrders: Int
     let totalRevenue: Int
+    let lastOrderDate: String
 
     enum CodingKeys: String, CodingKey {
         case retailerId = "retailer_id"
@@ -1101,6 +1102,7 @@ struct Retailer: Decodable, Identifiable {
         case orderCount = "order_count"
         case totalRevenue = "total_revenue"
         case revenueUzs = "revenue_uzs"
+        case lastOrderDate = "last_order_date"
     }
 
     init(from decoder: Decoder) throws {
@@ -1112,6 +1114,7 @@ struct Retailer: Decodable, Identifiable {
             ?? (try c.decodeIfPresent(Int.self, forKey: .orderCount)) ?? 0
         totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue)
             ?? (try c.decodeIfPresent(Int.self, forKey: .revenueUzs)) ?? 0
+        lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
     }
 }
 
@@ -2101,6 +2104,22 @@ struct WarehouseSupplyRequest: Decodable, Identifiable {
         createdBy = try c.decodeIfPresent(String.self, forKey: .createdBy) ?? ""
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+    }
+}
+
+struct SupplyRequestQCResponse: Decodable {
+    let requestId: String
+    let result: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case result
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestId = try c.decodeIfPresent(String.self, forKey: .requestId) ?? ""
+        result = try c.decodeIfPresent(String.self, forKey: .result) ?? ""
     }
 }
 

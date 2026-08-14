@@ -1668,6 +1668,8 @@
   "portal.nav.profile": "Profile",
   "portal.nav.tax_regimes": "Tax Regimes",
   "portal.nav.planning": "Planning",
+  "portal.nav.crm": "CRM",
+  "portal.nav.payouts": "Payouts",
   "portal.nav.return_policy": "Return policy",
   "portal.nav.notifications": "Notifications",
   "portal.nav.integrations": "Integrations",

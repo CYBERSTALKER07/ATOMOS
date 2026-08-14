@@ -56,6 +56,7 @@ export default function SupplyRequestDetailPage() {
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
   const [restricted, setRestricted] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [qcResult, setQcResult] = useState<string>("");
 
   const id = params.id as string;
   const requestId = id === "placeholder" ? "" : id;
@@ -75,6 +76,17 @@ export default function SupplyRequestDetailPage() {
         }
         setReceiveQty(nextQty);
         setRestricted(false);
+        try {
+          const qcRes = await apiFetch(`/v1/warehouse/supply-requests/${requestId}/qc`);
+          if (qcRes.ok) {
+            const qc = (await qcRes.json()) as { result?: string };
+            setQcResult(qc.result || "");
+          } else {
+            setQcResult("");
+          }
+        } catch {
+          setQcResult("");
+        }
       } else if (res.status === 403) {
         setRestricted(true);
         setDetail(null);
@@ -238,6 +250,10 @@ export default function SupplyRequestDetailPage() {
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.supply_requests._id_.text.items")}</div>
           <div className="text-sm font-semibold">{detail.items?.length || 0}</div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
+          <div className="text-xs text-[var(--muted)] mb-1">QC</div>
+          <div className="text-sm font-semibold">{qcResult || "—"}</div>
         </div>
       </div>
 

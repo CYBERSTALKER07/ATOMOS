@@ -171,6 +171,30 @@ class ModelComputedPropsTest {
         assertEquals("89%", f.confidencePercent)
     }
 
+    @Test
+    fun retailerAIPrediction_titleFromFirstLineName() {
+        val item = RetailerAIPrediction(
+            orderId = "ord-1",
+            confirmationStatus = "PENDING",
+            requestedDeliveryDate = "2026-08-20T00:00:00Z",
+            totalMinor = 12500,
+            currency = "UZS",
+            updatedAt = "2026-08-13T00:00:00Z",
+            lineItems = listOf(RetailerAILineItem(sku = "sku-1", name = "Milk 1L", quantity = 4)),
+        )
+        assertEquals("Milk 1L", item.title)
+        assertEquals(4L, item.quantity)
+        assertEquals("2026-08-20", item.deliveryLabel)
+        assertEquals("125 UZS", item.formattedTotal)
+    }
+
+    @Test
+    fun retailerAIPrediction_titleFallsBackToOrderId() {
+        val item = RetailerAIPrediction(orderId = "ord-empty", updatedAt = "")
+        assertEquals("ord-empty", item.title)
+        assertEquals(0L, item.quantity)
+    }
+
     // ── MonthlyExpense ──
 
     @Test

@@ -134,6 +134,18 @@ enum FactoryService {
         try await api.get("v1/factory/supply-requests/\(id)/fulfill-options")
     }
 
+    static func supplyRequestQC(id: String) async throws -> SupplyRequestQCResponse {
+        try await api.get("v1/factory/supply-requests/\(id)/qc")
+    }
+
+    static func postSupplyRequestQC(id: String, result: String) async throws -> SupplyRequestQCResponse {
+        try await api.post(
+            "v1/factory/supply-requests/\(id)/qc",
+            body: SupplyRequestQCRequest(result: result),
+            idempotencyKey: FactoryIdempotency.supplyRequestQC(requestId: id, result: result)
+        )
+    }
+
     // MARK: - Payload Override / Manifests
     static func loadingManifests() async throws -> ManifestListResponse {
         try await api.get("v1/factory/manifests", query: ["state": "LOADING"])
@@ -222,6 +234,16 @@ enum FactoryService {
 
     static func staffDetail(id: String) async throws -> StaffMember {
         try await api.get("v1/factory/staff/\(id)")
+    }
+
+    static func setStaffPassword(id: String, pin: String) async throws {
+        struct Body: Encodable { let pin: String }
+        struct Resp: Decodable { let password_set: Bool? }
+        let _: Resp = try await api.post(
+            "v1/factory/staff/\(id)/set-password",
+            body: Body(pin: pin),
+            idempotencyKey: "factory-staff-set-password:\(id)"
+        )
     }
 
     // MARK: - Insights

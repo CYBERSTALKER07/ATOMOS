@@ -7,6 +7,9 @@
 **Packages:** `apps/backend-go/payload`, `payloaderoutes`, `payloaderoutes` (orphan), factory loading-bay bridge in `factory` / `factoryroutes`  
 **Clients (later):** `payload-terminal` (Expo), `payload-app-android`, `payload-app-ios`
 
+> **STALE AUDIT (2026-08-12).** Do not plan from this file without a code re-verify.  
+> payloaderoutes **is mounted** (`apps/backend-go/main.go` import + `RegisterRoutes`). The P0 “orphan richer package / unregistered” finding is **historical**. Dual-plane and fleet-reassign residuals may still apply — re-open those handlers. Living SoT: [`ROLE_FEATURES_DOCS_VS_CODE.md`](../ROLE_FEATURES_DOCS_VS_CODE.md).
+
 ---
 
 ## Executive summary

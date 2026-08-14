@@ -24,7 +24,9 @@ import com.pegasusx.factory.R
 fun SupplyRequestCard(
     request: SupplyRequest,
     transitioning: Boolean,
+    qcResult: String = "",
     onAction: (String) -> Unit,
+    onQC: (String) -> Unit = {},
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -64,6 +66,21 @@ fun SupplyRequestCard(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (slaBadgeVisible(request.slaStatus)) {
+                        RequestTag(
+                            text = request.slaStatus.replace('_', ' '),
+                            containerColor = when (request.slaStatus.uppercase()) {
+                                "BREACHED" -> MaterialTheme.colorScheme.errorContainer
+                                "AT_RISK" -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            contentColor = when (request.slaStatus.uppercase()) {
+                                "BREACHED" -> MaterialTheme.colorScheme.onErrorContainer
+                                "AT_RISK" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                else -> MaterialTheme.colorScheme.onSecondaryContainer
+                            },
+                        )
+                    }
                 }
             }
 
@@ -73,7 +90,11 @@ fun SupplyRequestCard(
             ) {
                 SupplyMetric("Volume", "${trimDecimal(request.totalVolumeVU)} VU", Modifier.weight(1f))
                 SupplyMetric("Created", formatDate(request.createdAt), Modifier.weight(1f))
-                SupplyMetric("Delivery", formatDate(request.requestedDeliveryDate), Modifier.weight(1f))
+                SupplyMetric(
+                    "Delivery",
+                    listOfNotNull(formatDate(request.requestedDeliveryDate), slaHoursLabel(request.slaHoursRemaining)).joinToString(" · "),
+                    Modifier.weight(1f),
+                )
             }
 
             if (request.notes.isNotBlank()) {
@@ -89,6 +110,29 @@ fun SupplyRequestCard(
                         modifier = Modifier.padding(PegasusSpacing.md),
                     )
                 }
+            }
+
+            if (qcResult.isNotBlank()) {
+                Text(
+                    text = "QC $qcResult",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                FilledTonalButton(
+                    onClick = { onQC("PASS") },
+                    enabled = !transitioning,
+                    modifier = Modifier.weight(1f),
+                ) { Text("PASS") }
+                Button(
+                    onClick = { onQC("FAIL") },
+                    enabled = !transitioning,
+                    modifier = Modifier.weight(1f),
+                ) { Text("FAIL") }
             }
 
             val actions = actionsForState(request.state)

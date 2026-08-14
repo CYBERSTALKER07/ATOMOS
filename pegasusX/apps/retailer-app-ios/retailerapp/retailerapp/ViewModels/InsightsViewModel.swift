@@ -4,7 +4,7 @@ import Foundation
 final class InsightsViewModel {
     var analytics: RetailerAnalytics?
     var detailed: RetailerDetailedAnalytics?
-    var predictions: [DemandForecast] = []
+    var predictions: [RetailerAIPrediction] = []
     var isLoading = false
     var selectedRange: DateRange = .month
     var correctingId: String?
@@ -25,12 +25,7 @@ final class InsightsViewModel {
         } catch {
             analytics = nil
         }
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        do {
-            predictions = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
-        } catch {
-            predictions = []
-        }
+        predictions = []
     }
 
     func loadDetailedAnalytics() async {
@@ -44,23 +39,6 @@ final class InsightsViewModel {
             detailed = try await api.get(path: "/v1/retailer/analytics/detailed?from=\(fromStr)&to=\(toStr)")
         } catch {
             detailed = nil
-        }
-    }
-
-    func dismissPrediction(_ forecast: DemandForecast) async {
-        correctingId = forecast.id
-        defer { correctingId = nil }
-        do {
-            let body: [String: String] = ["status": "REJECTED"]
-            let _: [String: String] = try await api.patch(
-                path: "/v1/ai/predictions/correct?prediction_id=\(forecast.id)",
-                body: body,
-                headers: ["Idempotency-Key": "retailer-prediction-correct:\(forecast.id):rejected"]
-            )
-            Haptics.success()
-            await loadAnalytics()
-        } catch {
-            Haptics.error()
         }
     }
 }

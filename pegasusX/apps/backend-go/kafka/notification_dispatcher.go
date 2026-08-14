@@ -105,7 +105,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleVehicleAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventWarehouseCreated:
 		return d.handleWarehouseCreated(ctx, msg.Value, traceID)
-	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged:
+	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged,
+		events.EventWarehouseBroadcast, events.EventSupplierBroadcast:
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed,
 		events.EventFiscalReceiptRequested, events.EventFiscalReceiptSucceeded, events.EventFiscalReceiptFailed,
@@ -158,7 +159,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleAIRecommendationEvent(ctx, msg.Value, traceID)
 	case events.EventDeliverySessionUpdated:
 		return d.handleDeliverySessionEvent(ctx, msg.Value, traceID)
-	case events.EventFactoryCreated:
+	case events.EventFactoryCreated, events.EventFactoryStaffCreated, events.EventFactoryStaffPasswordSet:
 		return d.handleFactoryCreated(ctx, msg.Value, traceID)
 	case events.EventSupplierCreated:
 		return d.handleSupplierCreated(ctx, msg.Value, traceID)
@@ -215,7 +216,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		// Supply-request family (warehouse + factory) — multi-pod fanout.
 		return d.handleSupplyRequestEvent(ctx, msg.Value, traceID)
 	case events.EventWarehouseTransferCreated, events.EventWarehouseTransferReceived,
-		events.EventSupplyTransferApproaching, events.EventSupplyTransferArrived:
+		events.EventSupplyTransferApproaching, events.EventSupplyTransferArrived,
+		events.EventFactoryTransferCreated:
 		return d.handleTransferEvent(ctx, msg.Value, traceID)
 	// B2 M-P0-3: WMS stock mutations fan to warehouse + supplier rooms.
 	case events.EventInventoryQuantityUpdated, events.EventInventoryPolicyUpdated,
@@ -828,7 +830,15 @@ func (d *NotificationDispatcher) handleFactoryCreated(ctx context.Context, paylo
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode factory created event: %w", err)
 	}
-	if d.dropFanout(events.EventFactoryCreated, traceID, e.FactoryID) {
+	eventType := strings.TrimSpace(e.Type)
+	if eventType == "" {
+		eventType = events.EventFactoryCreated
+	}
+	aggregateID := strings.TrimSpace(e.UserID)
+	if aggregateID == "" {
+		aggregateID = e.FactoryID
+	}
+	if d.dropFanout(eventType, traceID, aggregateID) {
 		return nil
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)

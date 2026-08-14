@@ -17,8 +17,8 @@ val localProps = Properties().also { props ->
     if (f.exists()) props.load(f.inputStream())
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 val firebaseAuthEmulator = localProps.getProperty("firebase.auth.emulator", "false") == "true"
 val firebaseAuthEmulatorHost = localProps.getProperty("firebase.auth.emulator.host", "10.0.2.2")

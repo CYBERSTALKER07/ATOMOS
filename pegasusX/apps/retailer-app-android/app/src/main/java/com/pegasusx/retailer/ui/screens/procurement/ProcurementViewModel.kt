@@ -71,26 +71,17 @@ class ProcurementViewModel @Inject constructor(
             val retailerId = tokenManager.getUserId().orEmpty()
             var issue: ProcurementLoadIssue? = null
 
-            val forecasts = try {
-                api.getPredictions(retailerId)
-            } catch (e: Exception) {
-                issue = resolveLoadIssue(e)
-                emptyList()
-            }
-
             val products = try {
                 api.getCatalogProducts(retailerId = retailerId.takeIf { it.isNotBlank() })
             } catch (e: Exception) {
-                if (issue == null) {
-                    issue = resolveLoadIssue(e)
-                }
+                issue = resolveLoadIssue(e)
                 _uiState.value.products
             }
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    forecasts = forecasts,
+                    forecasts = emptyList(),
                     products = products,
                     loadIssue = issue,
                 )

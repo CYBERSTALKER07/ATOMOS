@@ -40,7 +40,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
-	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -51,6 +50,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
+	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -199,27 +199,27 @@ type App struct {
 	WebhookInbox          *payment.WebhookInboxStore
 	// WebhookReconciler polls stuck payment sessions against the gateway and
 	// advances them through the outbox (P1-8). Started as a background worker.
-	WebhookReconciler      *payment.WebhookReconciler
-	WarehouseService       *warehouse.Service
-	ReturnsService         *returns.Service
-	TaxService             *tax.Service
-	ComplianceService      *compliance.Service
-	ControlTowerService    *controltower.Service
-	ControlTowerHandlers   *controltower.Handlers
-	ControlTowerWorker     *controltower.Worker
-	DemandService          *demand.Service
-	LaborCapacityService   *laborcapacity.Service
-	ETAService             *eta.Service
-	OrderService           *order.Service
-	ClaimsService          *claims.Service
-	CreditService          *credit.Service
-	CreditPolicyService    *credit.PolicyService
-	ARService              *ar.Service
-	CashReconHandlers      *cashrecon.Handlers
-	CashReconService       *cashrecon.Service
-	CashReconEscalation    *cashrecon.EscalationWorker
-	CreditNoteHandlers     *creditnote.Handlers
-	CreditNoteService      *creditnote.Service
+	WebhookReconciler    *payment.WebhookReconciler
+	WarehouseService     *warehouse.Service
+	ReturnsService       *returns.Service
+	TaxService           *tax.Service
+	ComplianceService    *compliance.Service
+	ControlTowerService  *controltower.Service
+	ControlTowerHandlers *controltower.Handlers
+	ControlTowerWorker   *controltower.Worker
+	DemandService        *demand.Service
+	LaborCapacityService *laborcapacity.Service
+	ETAService           *eta.Service
+	OrderService         *order.Service
+	ClaimsService        *claims.Service
+	CreditService        *credit.Service
+	CreditPolicyService  *credit.PolicyService
+	ARService            *ar.Service
+	CashReconHandlers    *cashrecon.Handlers
+	CashReconService     *cashrecon.Service
+	CashReconEscalation  *cashrecon.EscalationWorker
+	CreditNoteHandlers   *creditnote.Handlers
+	CreditNoteService    *creditnote.Service
 	// BuyerAcceptancePoller polls Soliq EHF buyer clearance for MySoliq-fiscalized
 	// orders (P1-6). Nil when Soliq client / credit-note service unavailable.
 	BuyerAcceptancePoller  *order.BuyerAcceptancePoller
@@ -259,6 +259,7 @@ type App struct {
 	OptimizerClient         *optimizerclient.Client
 	DispatchPlanCounters    *plan.SourceCounters
 	ReplenishmentEngine     *replenishment.Engine
+	FactoryPlanning         *factory.PlanningService
 	ReorderSuggestionWorker *replenishment.ReorderSuggestionWorker
 	RouteAnalyticsWorker    *analytics.RouteAnalyticsWorker
 	AnalyticsHandlers       *analytics.Handlers
@@ -730,6 +731,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		paymentRepo = memory.NewPaymentRepo(outboxAppender)
 		log.Warn("payment repository fallback enabled", "backend", "in-memory")
 	}
+	if paymentRepo != nil {
+		repo := paymentRepo
+		retailerSvc.SetPaymentSessionByOrder(func(ctx context.Context, orderID string) (string, string, bool, error) {
+			session, ok, err := repo.GetSessionByOrderID(ctx, orderID)
+			if err != nil || !ok {
+				return "", "", ok, err
+			}
+			return strings.TrimSpace(session.SessionID), strings.TrimSpace(session.Gateway), true, nil
+		})
+	}
 	var creditRepo credit.Repository
 	if spannerClient != nil {
 		creditRepo = credit.NewSpannerRepository(spannerClient)
@@ -765,6 +776,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		feeResolver := billing.NewFeeScheduleResolver(spannerClient)
 		payoutSvc = payout.NewService(payout.NewRepository(spannerClient))
 		payoutSvc.SetCommissionResolver(feeResolver)
+		payoutSvc.SetCache(cacheClient)
 		billingInvoiceWorker = billing.NewInvoiceWorker(spannerClient, arSvc, feeResolver, log)
 	}
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
@@ -876,12 +888,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	dispatchCounters := &plan.SourceCounters{}
 
 	var replenishmentEngine *replenishment.Engine
+	var factoryPlanning *factory.PlanningService
 	var reorderSuggestionWorker *replenishment.ReorderSuggestionWorker
 	var routeAnalyticsWorker *analytics.RouteAnalyticsWorker
 	var analyticsHandlers *analytics.Handlers
 	if spannerClient != nil {
 		replenishmentEngine = replenishment.NewEngine(spannerClient, log)
 		replenishmentEngine.EchelonTargetsEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("MEIO_ECHELON_TARGETS_ENABLED")), "true")
+		factoryPlanning = factory.NewPlanningService(spannerClient, log)
 		reorderSuggestionWorker = replenishment.NewReorderSuggestionWorker(spannerClient)
 		reorderSuggestionWorker.EchelonTargetsEnabled = replenishmentEngine.EchelonTargetsEnabled
 		routeAnalyticsWorker = analytics.NewRouteAnalyticsWorkerFromClient(spannerClient)
@@ -908,6 +922,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
 		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
 		ReplenishmentEngine:  replenishmentEngine,
+		FactoryPlanning:      factoryPlanning,
 	})
 	retailerSvc.SetOrderLifecycle(orderSvc)
 	// Auto-order place mode: real order.Create (never mobile_compat). Flag default off.
@@ -973,6 +988,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 		Idem:           idemStore,
+		Planning:       factoryPlanning,
+		OptimizerClient: optimizerCli,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
 		Repo:           payloadRepo,
@@ -1078,6 +1095,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Cache:                      cacheClient,
 		NotifSvc:                   notifAdapter,
 		OrderList:                  driverOrderList,
+		HistoryQuery:               driverHistoryListQuery(spannerClient),
 		OrderGet:                   driverOrderGet,
 		ProfileLookup:              driverProfileLookup,
 		AvailabilityReader:         driverAvailReader,
@@ -1819,6 +1837,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OptimizerClient:         optimizerCli,
 		DispatchPlanCounters:    dispatchCounters,
 		ReplenishmentEngine:     replenishmentEngine,
+		FactoryPlanning:         factoryPlanning,
 		ReorderSuggestionWorker: reorderSuggestionWorker,
 		RouteAnalyticsWorker:    routeAnalyticsWorker,
 		AnalyticsHandlers:       analyticsHandlers,
@@ -1897,6 +1916,55 @@ func (a *inventoryAdapter) UpsertLevel(ctx context.Context, level supplier.Inven
 		ReorderThreshold: level.ReorderThreshold,
 		Version:          level.Version,
 	})
+}
+
+// driverHistoryListQuery returns completed-window driver history from Orders.
+func driverHistoryListQuery(client *spanner.Client) driver.DriverHistoryQuery {
+	if client == nil {
+		return nil
+	}
+	return func(ctx context.Context, driverID string, since time.Time, limit int) ([]driver.HistoryRow, error) {
+		driverID = strings.TrimSpace(driverID)
+		if driverID == "" {
+			return nil, nil
+		}
+		if limit <= 0 || limit > 100 {
+			limit = 50
+		}
+		stmt := spanner.Statement{
+			SQL: `SELECT o.OrderId, o.Status, o.TotalMinor, o.Currency, o.UpdatedAt
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByDriverCreated} o
+			      WHERE o.DriverId = @did AND o.CreatedAt >= @since
+			        AND o.Status IN ('COMPLETED', 'FISCALIZING', 'FISCAL_FAILED')
+			      ORDER BY o.CreatedAt DESC
+			      LIMIT @lim`,
+			Params: map[string]any{
+				"did":   driverID,
+				"since": since,
+				"lim":   int64(limit),
+			},
+		}
+		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+		defer iter.Stop()
+		rows := make([]driver.HistoryRow, 0)
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return nil, fmt.Errorf("driver history list: %w", err)
+			}
+			var rec driver.HistoryRow
+			var updatedAt time.Time
+			if err := row.Columns(&rec.OrderID, &rec.Status, &rec.TotalMinor, &rec.Currency, &updatedAt); err != nil {
+				return nil, fmt.Errorf("driver history scan: %w", err)
+			}
+			rec.CompletedAt = updatedAt.UTC().Format(time.RFC3339Nano)
+			rows = append(rows, rec)
+		}
+		return rows, nil
+	}
 }
 
 // driverOrderListQuery returns a DriverOrderQuery backed by stale Spanner reads.

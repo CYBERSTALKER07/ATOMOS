@@ -256,13 +256,13 @@ func (s *Service) lookupFactoryName(ctx context.Context, factoryID string) (stri
 func verifyFactoryStaffSecret(storedHash, secret string) bool {
 	storedHash = strings.TrimSpace(storedHash)
 	secret = strings.TrimSpace(secret)
-	if storedHash == "" || secret == "" {
+	if storedHash == "" || secret == "" || strings.EqualFold(storedHash, staffPasswordUnsetSentinel) {
 		return false
 	}
 	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
 		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
 	}
-	return storedHash == secret
+	return false
 }
 
 func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {

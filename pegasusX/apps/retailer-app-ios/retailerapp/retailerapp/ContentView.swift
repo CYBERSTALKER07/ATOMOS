@@ -788,16 +788,17 @@ struct ContentView: View {
                 }
                 return
             }
+            let gateway = session.gateway ?? ""
             paymentEvent = PaymentRequiredEvent(
                 type: "PAYMENT_REQUIRED",
                 orderId: session.orderId,
                 invoiceId: session.invoiceId ?? "",
-                sessionId: session.sessionId,
+                sessionId: session.sessionId ?? "",
                 amountUzs: session.lockedAmount,
                 originalAmountUzs: session.lockedAmount,
-                availableCardGateways: session.gateway == "CASH" ? [] : [session.gateway],
+                availableCardGateways: gateway == "CASH" || gateway.isEmpty ? [] : [gateway],
                 message: "Pending payment requires completion.",
-                paymentMethod: session.gateway == "CASH" ? "CASH" : "CARD"
+                paymentMethod: gateway == "CASH" ? "CASH" : "CARD"
             )
         } catch {
             // WebSocket delivery remains the primary realtime path.

@@ -133,6 +133,7 @@ go test ./apps/backend-go/<pkg>/... -count=1
 
 ## Rules of engagement
 
+0. Load `honest-code-gate`. **"Wired" in a matrix is not production-ready and not a cloud go-ahead.**
 1. **Read source code** — do not trust docs alone; cross-check `ROLE_ROW_PARITY_MATRIX.md` against actual routes and clients.
 2. **No partial slices** — if you change backend behavior, list every client and contract surface that must move in the same batch (per ecosystem alignment rule).
 3. **Be honest about stubs** — `501`, empty lists, `negotiation_disabled`, in-memory fallbacks, and env-gated SSMR markers must be called out.

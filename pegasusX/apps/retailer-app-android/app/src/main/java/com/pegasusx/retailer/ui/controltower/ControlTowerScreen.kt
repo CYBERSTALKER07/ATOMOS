@@ -3,6 +3,7 @@ package com.pegasusx.retailer.ui.controltower
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,8 +39,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.json.*
+import com.pegasusx.retailer.ui.components.PegasusTab
 
-data class PulseTile(val label: String, val value: String)
+data class PulseTile(val label: String, val value: String, val route: String)
 
 @HiltViewModel
 class ControlTowerViewModel @Inject constructor(val api: PegasusApi) : ViewModel()
@@ -47,6 +49,7 @@ class ControlTowerViewModel @Inject constructor(val api: PegasusApi) : ViewModel
 @Composable
 fun ControlTowerScreen(
     viewModel: ControlTowerViewModel = hiltViewModel(),
+    onNavigate: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -67,17 +70,18 @@ fun ControlTowerScreen(
                 val caps = p.getAsJsonArray("capabilities")
                 packs = if (caps != null) caps.joinToString { it.asString } else "CORE"
                 tiles = listOf(
-                    PulseTile("Open orders", "${p.get("open_orders")?.asInt ?: 0}"),
-                    PulseTile("Fulfillment", "${p.get("active_fulfillments")?.asInt ?: 0}"),
-                    PulseTile("Dock pending", "${p.get("dock_pending")?.asInt ?: 0}"),
-                    PulseTile("POS sessions", "${p.get("pos_open_sessions")?.asInt ?: 0}"),
-                    PulseTile("Open shifts", "${p.get("open_shifts")?.asInt ?: 0}"),
-                    PulseTile("Assist", "${p.get("open_assist_tickets")?.asInt ?: 0}"),
-                    PulseTile("Low stock", "${p.get("low_stock_sku_bins")?.asInt ?: 0}"),
-                    PulseTile("Variances", "${p.get("shift_variances_7d")?.asInt ?: 0}"),
+                    PulseTile("Open orders", "${p.get("open_orders")?.asInt ?: 0}", PegasusTab.ORDERS.name),
+                    PulseTile("Fulfillment", "${p.get("active_fulfillments")?.asInt ?: 0}", PegasusTab.MAP.name),
+                    PulseTile("Dock pending", "${p.get("dock_pending")?.asInt ?: 0}", "DOCK"),
+                    PulseTile("POS sessions", "${p.get("pos_open_sessions")?.asInt ?: 0}", "POS"),
+                    PulseTile("Open shifts", "${p.get("open_shifts")?.asInt ?: 0}", "SHIFTS"),
+                    PulseTile("Assist", "${p.get("open_assist_tickets")?.asInt ?: 0}", "ASSIST"),
+                    PulseTile("Low stock", "${p.get("low_stock_sku_bins")?.asInt ?: 0}", "STORE_STOCK"),
+                    PulseTile("Variances", "${p.get("shift_variances_7d")?.asInt ?: 0}", "SHIFTS"),
                     PulseTile(
                         "Sales 7d",
                         "${(p.get("sales_minor_7d")?.asLong ?: 0L) / 100.0}",
+                        "REPORTS_PRO",
                     ),
                 )
             } catch (e: Exception) {
@@ -135,7 +139,10 @@ fun ControlTowerScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(tiles) { tile ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f))) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+                        modifier = Modifier.clickable { onNavigate(tile.route) },
+                    ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(tile.label, color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                             Text(tile.value, color = Color.White, style = MaterialTheme.typography.titleLarge)

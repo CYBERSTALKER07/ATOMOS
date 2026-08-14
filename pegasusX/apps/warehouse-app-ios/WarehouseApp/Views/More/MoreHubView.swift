@@ -72,6 +72,9 @@ struct MoreHubView: View {
                 NavigationLink { ExceptionsView() } label: {
                     Label("portal.nav.exceptions", systemImage: "exclamationmark.triangle")
                 }
+                NavigationLink { WarehouseScoredExceptionsView() } label: {
+                    Label("Control tower", systemImage: "antenna.radiowaves.left.and.right")
+                }
                 NavigationLink { ClaimsView() } label: {
                     Label("portal.nav.claims", systemImage: "doc.text")
                 }
@@ -98,5 +101,100 @@ struct MoreHubView: View {
             }
         }
         .navigationTitle("mobile_warehouse.ui.more")
+    }
+}
+
+struct WarehouseJSONFeedView: View {
+    let title: String
+    let path: String
+    var query: [String: String] = [:]
+    @State private var bodyText = ""
+    @State private var errorText: String?
+    @State private var loading = true
+
+    var body: some View {
+        Group {
+            if loading {
+                ProgressView()
+            } else if let errorText {
+                Text(errorText).padding()
+            } else {
+                ScrollView {
+                    Text(bodyText)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+            }
+        }
+        .navigationTitle(title)
+        .task { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            bodyText = try await APIClient.shared.getJSONString(path, query: query)
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
+struct WarehouseScoredExceptionsView: View {
+    @State private var rows: [ScoredException] = []
+    @State private var errorText: String?
+    @State private var loading = true
+
+    var body: some View {
+        Group {
+            if loading && rows.isEmpty {
+                ProgressView()
+            } else if let errorText, rows.isEmpty {
+                Text(errorText).padding()
+            } else if rows.isEmpty {
+                Text("No open scored exceptions")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.type.isEmpty ? "—" : row.type)
+                            .font(.headline)
+                        Text("score \(row.score) · \(row.severity) · \(row.ageMinutes)m")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !row.orderId.isEmpty {
+                            Text(row.orderId)
+                                .font(.caption)
+                                .foregroundStyle(.tint)
+                        }
+                        if !row.topPlaybookName.isEmpty {
+                            Text(row.topPlaybookName).font(.caption)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Control tower")
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            let resp: ScoredExceptionsResponse = try await APIClient.shared.get(
+                "v1/control-tower/exceptions/scored",
+                query: ["limit": "50"]
+            )
+            rows = resp.exceptions
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
     }
 }

@@ -154,6 +154,12 @@ class PayloadRepository @Inject constructor(
         )
     }
 
+    suspend fun sealAllManifests(): SealCompletedManifestsResponse {
+        return api.sealAllManifests(
+            idempotencyKey = deterministicIdempotencyKey("seal-all", "payloader"),
+        )
+    }
+
     suspend fun sealManifest(manifestId: String, source: String = Manifest.SOURCE_PAYLOADER): SealManifestResponse {
         if (source == Manifest.SOURCE_FACTORY) {
             return api.factorySealManifest(

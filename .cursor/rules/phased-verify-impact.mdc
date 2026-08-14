@@ -1,0 +1,49 @@
+---
+description: Phased execution, blast-radius on every edit, research before inventing, tests after every phase, no done-claim until re-read + tests pass.
+alwaysApply: true
+---
+
+# Phased execution, impact, verify-before-done
+
+## Phased model (every non-trivial task)
+
+1. **Scope** the slice (one module / one role row / one mutator). Deep-dive that slice — do not "implement the whole OS."
+2. **Plan** with code evidence. If the plan cannot succeed as written, say so **before** coding.
+3. **Execute** that phase only.
+4. **Verify** (below). Only then the next phase.
+5. If verify fails → **replan and close gaps**. Do not announce the plan as implemented.
+
+## Impact trace (any create / edit / delete)
+
+Before and after changing apps, backend, clients, UI, infra, or cloud config, check:
+
+- Other files in the same feature (routes, schema, contracts, tests)
+- Other role-row clients (web / Android / iOS)
+- Cloud/K8s/env/example secrets if env or topology changed
+- Downstream features that **read** this state (order, dispatch, payment, WS)
+- Existing tests and CI gates
+
+Partial slices that leave one client or the outbox unwired are unfinished.
+
+## Verify-before-done (mandatory)
+
+After implementation, **do not** report success from the plan. Re-read every edited file. Re-trace the live path. Run:
+
+- Unit tests for touched packages
+- Integration / SSMR / CI-equivalent for the slice (`go test`, app tests, contract gen)
+- Fail closed: if tests were not run, say **unverified**, not done
+
+If the code landed but the behavior is wrong, incomplete, or theatre → **not done**. Report what failed and the replan.
+
+## Research, then invent
+
+1. Load **skills** (project + `~/.cursor/skills` / `~/.agents/skills` / `~/.claude/skills`).
+2. Official docs + web search for the stack in use.
+3. Proven algorithms from big-tech / well-maintained open source (cite repo + adapt; do not paste GPL into this tree without checking license).
+4. If none fit → **design in-house logic**, name it, test it. Do not fake a famous algorithm.
+
+## Agents
+
+Spawn extra agents when parallel role-row or package audits help. Not required. The parent still owns the honesty verdict.
+
+Pair: `honest-code-gate`, `gap-hunter`, `pegasus-doctrine` (when in V.O.I.D / pegasusX).

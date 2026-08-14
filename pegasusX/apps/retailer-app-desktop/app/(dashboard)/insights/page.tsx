@@ -4,41 +4,27 @@ import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
-  TrendingUp,
-  BarChart3,
-  Brain,
-  Zap,
   RefreshCw,
-  ArrowUpRight,
   Package,
   AlertTriangle,
   WifiOff,
-  CheckSquare,
-  Square,
-  Minus,
-  Plus,
-  Loader2,
-  ChevronRight,
 } from "lucide-react";
-import { Chip } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
-import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
-import CountUp from "../../../components/CountUp";
-import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import SpendAnalytics from "./SpendAnalytics";
 import { InsightsSummary } from "../../../components/insights/InsightsSummary";
 import { InsightsSidebar } from "../../../components/insights/InsightsSidebar";
 import { SellThroughPanel } from "../../../components/insights/SellThroughPanel";
 import { useLiveData } from "../../../lib/hooks";
-import { apiFetch } from "../../../lib/auth";
-import { correctPrediction } from "../../../lib/api";
-import { retailerOrderCreateKey } from "@pegasusx/api-client";
+import { confirmAiOrder, rejectAiOrder } from "../../../lib/api";
 import { useOptionalWebSocket } from "../../../lib/ws";
-import { getRetailerId } from "@/lib/retailer-profile";
-import type { Prediction, RetailerAnalytics } from "../../../lib/types";
-import { isPredictionBlocked } from "../../../lib/types";
+import type { RetailerAIPrediction, RetailerAIPredictionsResponse, RetailerAnalytics } from "../../../lib/types";
+import {
+  aiPredictionQty,
+  aiPredictionTitle,
+  formatMinorAmount,
+} from "../../../lib/types";
 
 type LoadIssue = "restricted" | "offline" | "error";
 
@@ -54,14 +40,7 @@ type DetailedAnalytics = {
   to?: string;
 };
 
-const urgencyCfg: Record<
-  string,
-  { color: "danger" | "warning" | "default"; label: string }
-> = {
-  WAITING: { color: "danger", label: "REORDER NOW" },
-  DORMANT: { color: "warning", label: "MONITOR" },
-  EXECUTED: { color: "default", label: "ORDERED" },
-};
+const EMPTY_AI_ITEMS: RetailerAIPrediction[] = [];
 
 export default function InsightsPage() {
   const t = usePortalT();
@@ -71,7 +50,7 @@ export default function InsightsPage() {
     error: predictionsError,
     isRefreshing: isPredictionsRefreshing,
     mutate: refreshPred,
-  } = useLiveData<Prediction[]>("/v1/ai/predictions");
+  } = useLiveData<RetailerAIPredictionsResponse>("/v1/retailer/ai/predictions");
   const {
     data: analytics,
     loading: loadingAnalytics,
@@ -87,15 +66,9 @@ export default function InsightsPage() {
   } = useLiveData<DetailedAnalytics>("/v1/retailer/analytics/detailed");
   const ws = useOptionalWebSocket();
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [correctingId, setCorrectingId] = useState<string | null>(null);
-  const [orderResult, setOrderResult] = useState<"success" | "error" | null>(
-    null,
-  );
+  const [actingId, setActingId] = useState<string | null>(null);
 
-  const predList = predictions ?? [];
+  const predList = predictions?.items ?? EMPTY_AI_ITEMS;
   const topProducts = analytics?.top_products ?? [];
   const totalThisMonth = analytics?.total_this_month ?? 0;
   const monthlyExpenses = analytics?.monthly_expenses ?? [];
@@ -195,43 +168,23 @@ export default function InsightsPage() {
     };
   }, [loadIssue]);
 
-  const toggleSelect = useCallback((id: string, defaultQty: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        setQuantities((q) => ({ ...q, [id]: q[id] ?? defaultQty }));
+  const runAiAction = useCallback(
+    async (orderId: string, action: "confirm" | "reject") => {
+      setActingId(orderId);
+      try {
+        const res =
+          action === "confirm"
+            ? await confirmAiOrder(orderId)
+            : await rejectAiOrder(orderId, "Retailer rejected");
+        if (!res.ok) {
+          throw new Error(`ai_${action}_failed_${res.status}`);
+        }
+        await refreshPred();
+      } finally {
+        setActingId(null);
       }
-      return next;
-    });
-  }, []);
-
-  const selectAll = useCallback(() => {
-    if (selected.size === predList.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(predList.map((p) => p.id)));
-      const qMap: Record<string, number> = {};
-      predList.forEach((p) => {
-        qMap[p.id] =
-          quantities[p.id] ?? p.predicted_quantity ?? p.predictedQuantity ?? 1;
-      });
-      setQuantities(qMap);
-    }
-  }, [predList, selected.size, quantities]);
-
-  const updateQty = useCallback((id: string, delta: number) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [id]: Math.max(1, (prev[id] ?? 1) + delta),
-    }));
-  }, []);
-
-  const totalSelectedUnits = useMemo(
-    () => Array.from(selected).reduce((s, id) => s + (quantities[id] ?? 0), 0),
-    [selected, quantities],
+    },
+    [refreshPred],
   );
 
   const sparkRevenue = useMemo(() => {
@@ -247,82 +200,6 @@ export default function InsightsPage() {
       Array.from({ length: 14 }, (_, i) => 12 + i * 2 + Math.cos(i * 0.7) * 4),
     [],
   );
-
-  const retailerId = getRetailerId();
-
-  const handleCorrectPrediction = useCallback(
-    async (predictionId: string, payload: Record<string, unknown>) => {
-      setCorrectingId(predictionId);
-      try {
-        const res = await correctPrediction(
-          predictionId,
-          payload,
-          `retailer-prediction-correct:${predictionId}`,
-        );
-        if (!res.ok) {
-          throw new Error(`Correction failed with ${res.status}`);
-        }
-        await refreshPred();
-      } finally {
-        setCorrectingId(null);
-      }
-    },
-    [refreshPred],
-  );
-
-  const createOrder = useCallback(async () => {
-    if (selected.size === 0) return;
-
-    setSubmitting(true);
-    setOrderResult(null);
-
-    try {
-      const retailerId = getRetailerId();
-      if (!retailerId) {
-        throw new Error("Retailer profile not found. Please log in again.");
-      }
-
-      const orderItems = predList
-        .filter((item) => selected.has(item.id))
-        .map((item) => ({
-          product_id: item.product_id ?? item.id,
-          quantity:
-            quantities[item.id] ??
-            item.predicted_quantity ??
-            item.predictedQuantity ??
-            1,
-        }));
-
-      const idempotencyKey = retailerOrderCreateKey(
-        orderItems
-          .map((item) => `${item.product_id}:${item.quantity}`)
-          .sort()
-          .join("|"),
-      );
-
-      const res = await apiFetch("/v1/order/create", {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({
-          retailer_id: retailerId,
-          items: orderItems,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error((await res.text()) || "Failed to submit procurement order.");
-      }
-
-      setSelected(new Set());
-      setQuantities({});
-      setOrderResult("success");
-      await refreshPred();
-    } catch {
-      setOrderResult("error");
-    } finally {
-      setSubmitting(false);
-    }
-  }, [predList, quantities, refreshPred, selected]);
 
   const loading = loadingPred || loadingAnalytics;
 
@@ -391,20 +268,6 @@ export default function InsightsPage() {
         </motion.div>
       )}
 
-      {orderResult && (
-        <div className="mb-6">
-          <Chip
-            color={orderResult === "success" ? "success" : "danger"}
-            variant="secondary"
-            className="font-light"
-          >
-            {orderResult === "success"
-              ? "Procurement order submitted. Signals are refreshing."
-              : "Procurement order failed. Retry when the connection is stable."}
-          </Chip>
-        </div>
-      )}
-
       <InsightsSummary
         totalThisMonth={totalThisMonth}
         sparkRevenue={sparkRevenue}
@@ -449,18 +312,8 @@ export default function InsightsPage() {
         <div className="flex-1 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
-              AI Replenishment Picks
+              Pending AI preorders
             </h2>
-            {predList.length > 0 && (
-              <button
-                onClick={selectAll}
-                className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
-              >
-                {selected.size === predList.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </button>
-            )}
           </div>
 
           <AnimatePresence mode="popLayout">
@@ -483,168 +336,67 @@ export default function InsightsPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {predList.map((item) => {
-                  const cfg = urgencyCfg[item.status] || urgencyCfg.DORMANT;
-                  const isSelected = selected.has(item.id);
-                  const qty =
-                    quantities[item.id] ??
-                    item.predicted_quantity ??
-                    item.predictedQuantity ??
-                    1;
-                  return (
+                {predList.map((item) => (
                     <motion.div
-                      key={item.id}
+                      key={item.order_id}
                       layout
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                        isSelected
-                          ? "bg-[var(--desk-surface)] border-[var(--desk-accent)] shadow-md ring-2 ring-[var(--desk-accent-soft)]"
-                          : "bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
-                      }`}
+                      className="flex items-center gap-4 p-4 rounded-2xl border transition-all bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
                     >
-                      <button
-                        onClick={() =>
-                          toggleSelect(
-                            item.id,
-                            item.predicted_quantity ??
-                              item.predictedQuantity ??
-                              1,
-                          )
-                        }
-                        className="shrink-0 text-[var(--desk-text-tertiary)] hover:text-[var(--desk-accent)] transition-colors"
-                      >
-                        {isSelected ? (
-                          <CheckSquare
-                            size={22}
-                            className="text-[var(--desk-accent)]"
-                          />
-                        ) : (
-                          <Square size={22} />
-                        )}
-                      </button>
-
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)]"}`}
-                      >
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)]">
                         <Package size={20} />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
                           <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)] truncate">
-                            {item.product_name ??
-                              item.productName ??
-                              "Predicted Item"}
+                            {aiPredictionTitle(item)}
                           </span>
-                          {isPredictionBlocked(item) ? (
-                            <span className="text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-amber-800">
-                              INSUFFICIENT HISTORY
-                            </span>
-                          ) : (
-                            <span
-                              className={`text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-tertiary)]`}
-                            >
-                              {cfg.label}
-                            </span>
-                          )}
+                          <span className="text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-tertiary)]">
+                            {(item.confirmation_status || "PENDING").replace(/_/g, " ")}
+                          </span>
                         </div>
                         <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
-                          {item.reasoning}
+                          {item.requested_delivery_date
+                            ? item.requested_delivery_date.slice(0, 10)
+                            : item.order_id}
                         </p>
                       </div>
 
-                      {isSelected ? (
-                        <div className="flex items-center gap-3 bg-[var(--desk-canvas)] p-1 rounded-xl">
-                          <button
-                            onClick={() => updateQty(item.id, -1)}
-                            className="w-8 h-8 rounded-lg bg-[var(--desk-surface)] flex items-center justify-center shadow-sm active:scale-90 transition-all"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span className="md-typescale-title-small font-light w-6 text-center tabular-nums">
-                            {qty}
-                          </span>
-                          <button
-                            onClick={() => updateQty(item.id, 1)}
-                            className="w-8 h-8 rounded-lg bg-[var(--desk-surface)] flex items-center justify-center shadow-sm active:scale-90 transition-all"
-                          >
-                            <Plus size={14} />
-                          </button>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
+                            {formatMinorAmount(item.total_minor, item.currency)}
+                          </p>
+                          <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                            {aiPredictionQty(item)} UNITS
+                          </p>
                         </div>
-                      ) : (
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="text-right">
-                            <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                              {(item.predicted_amount ??
-                                item.predictedAmount ??
-                                0
-                              ).toLocaleString()}
-                            </p>
-                            <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                              {item.predicted_quantity ??
-                                item.predictedQuantity ??
-                                1}{" "}
-                              UNITS
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            disabled={correctingId === item.id}
-                            onClick={() =>
-                              void handleCorrectPrediction(item.id, {
-                                status: "REJECTED",
-                              })
-                            }
-                            className="text-[10px] font-light uppercase tracking-wide text-[var(--desk-text-tertiary)] hover:text-red-600"
+                            disabled={actingId === item.order_id}
+                            onClick={() => void runAiAction(item.order_id, "confirm")}
+                            className="text-[10px] font-light uppercase tracking-wide text-[var(--desk-accent)] hover:underline disabled:opacity-50"
                           >
-                            {correctingId === item.id ? "Updating…" : "Dismiss signal"}
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actingId === item.order_id}
+                            onClick={() => void runAiAction(item.order_id, "reject")}
+                            className="text-[10px] font-light uppercase tracking-wide text-[var(--desk-text-tertiary)] hover:text-red-600 disabled:opacity-50"
+                          >
+                            Reject
                           </button>
                         </div>
-                      )}
+                      </div>
                     </motion.div>
-                  );
-                })}
+                ))}
               </div>
             )}
           </AnimatePresence>
-
-          {selected.size > 0 && (
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="sticky bottom-4 p-4 bg-[var(--desk-text-primary)] rounded-2xl shadow-xl flex items-center justify-between text-white border border-white/10 backdrop-blur-md"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-light">
-                  {selected.size}
-                </div>
-                <div>
-                  <p className="text-xs font-light opacity-60 uppercase tracking-widest">
-                    Staged Assets
-                  </p>
-                  <p className="text-sm font-light">
-                    {totalSelectedUnits.toLocaleString()} units total
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void createOrder()}
-                disabled={submitting}
-                className="portal-btn portal-btn--primary font-light h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 size={14} className="mr-2 animate-spin" />
-                    Executing...
-                  </>
-                ) : (
-                  "Execute Procurement"
-                )}
-              </button>
-            </motion.div>
-          )}
         </div>
 
         {/* Sidebar: Analytics */}

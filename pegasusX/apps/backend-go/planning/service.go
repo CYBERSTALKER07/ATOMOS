@@ -14,9 +14,9 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -64,28 +64,28 @@ const (
 
 // ScenarioResult is a what-if projection persisted as DRAFT (also cached 15m).
 type ScenarioResult struct {
-	ScenarioID         string   `json:"scenario_id"`
-	SupplierID         string   `json:"supplier_id"`
-	Version            int64    `json:"version,omitempty"`
-	Status             string   `json:"status,omitempty"`
-	ParentScenarioID   string   `json:"parent_scenario_id,omitempty"`
-	Label              string   `json:"label,omitempty"`
-	HorizonDays        int      `json:"horizon_days,omitempty"`
-	SLARiskPct         float64  `json:"sla_risk_pct"`
-	FleetVolume        int64    `json:"fleet_volume_orders"`
-	StockoutSKUs       []string `json:"stockout_skus"`
-	CapacityBreach     bool     `json:"capacity_breach"`
-	CachedUntil        string   `json:"cached_until,omitempty"`
-	Mode               string   `json:"mode,omitempty"`
-	BaselineSLARiskPct float64  `json:"baseline_sla_risk_pct,omitempty"`
-	RevenueAtRiskMinor int64    `json:"revenue_at_risk_minor,omitempty"`
-	UnitValueSource    string   `json:"unit_value_source,omitempty"`
-	FactoryDowntimeHours int    `json:"factory_downtime_hours,omitempty"`
-	DemandDeltaPct     float64  `json:"demand_delta_pct,omitempty"`
-	CreatedBy          string   `json:"created_by,omitempty"`
-	PublishedBy        string   `json:"published_by,omitempty"`
-	PublishedAt        string   `json:"published_at,omitempty"`
-	UpdatedAt          string   `json:"updated_at,omitempty"`
+	ScenarioID           string   `json:"scenario_id"`
+	SupplierID           string   `json:"supplier_id"`
+	Version              int64    `json:"version,omitempty"`
+	Status               string   `json:"status,omitempty"`
+	ParentScenarioID     string   `json:"parent_scenario_id,omitempty"`
+	Label                string   `json:"label,omitempty"`
+	HorizonDays          int      `json:"horizon_days,omitempty"`
+	SLARiskPct           float64  `json:"sla_risk_pct"`
+	FleetVolume          int64    `json:"fleet_volume_orders"`
+	StockoutSKUs         []string `json:"stockout_skus"`
+	CapacityBreach       bool     `json:"capacity_breach"`
+	CachedUntil          string   `json:"cached_until,omitempty"`
+	Mode                 string   `json:"mode,omitempty"`
+	BaselineSLARiskPct   float64  `json:"baseline_sla_risk_pct,omitempty"`
+	RevenueAtRiskMinor   int64    `json:"revenue_at_risk_minor,omitempty"`
+	UnitValueSource      string   `json:"unit_value_source,omitempty"`
+	FactoryDowntimeHours int      `json:"factory_downtime_hours,omitempty"`
+	DemandDeltaPct       float64  `json:"demand_delta_pct,omitempty"`
+	CreatedBy            string   `json:"created_by,omitempty"`
+	PublishedBy          string   `json:"published_by,omitempty"`
+	PublishedAt          string   `json:"published_at,omitempty"`
+	UpdatedAt            string   `json:"updated_at,omitempty"`
 }
 
 type cachedScenario struct {
@@ -304,6 +304,7 @@ type SAndOPSnapshot struct {
 	UtilizationPct       float64 `json:"utilization_pct"`
 	CapacityAlert        bool    `json:"capacity_alert"`
 	CapacityModel        string  `json:"capacity_model"`
+	CapacitySource       string  `json:"capacity_source"`
 }
 
 // GetSAndOP returns S&OP capacity comparison. Factory capacity comes from a
@@ -312,9 +313,10 @@ type SAndOPSnapshot struct {
 // only — they never overwrite FactoryCapacityUnits.
 func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnapshot, error) {
 	out := SAndOPSnapshot{
-		SupplierID:    supplierID,
-		HorizonDays:   sopHorizonDays(),
-		CapacityModel: "production_lines",
+		SupplierID:     supplierID,
+		HorizonDays:    sopHorizonDays(),
+		CapacityModel:  "production_lines",
+		CapacitySource: "env_default",
 	}
 	if s == nil || s.Spanner == nil {
 		return out, errors.New("planning unavailable")
@@ -344,7 +346,16 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 	whOutDaily := envInt64("SOP_WAREHOUSE_OUTBOUND_DAILY_UNITS", 450)
 	linesPerFactory := envInt64("SOP_LINES_PER_FACTORY", 1)
 	out.ProductionLineCount = factoryCount * linesPerFactory
-	out.FactoryCapacityUnits = out.ProductionLineCount * factoryDaily * int64(out.HorizonDays)
+	var columnSum int64
+	iterCap := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT COALESCE(SUM(DailyOutputCapacity), 0) FROM Factories WHERE SupplierId = @sid AND IsActive = true`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	if row, err := iterCap.Next(); err == nil {
+		_ = row.Columns(&columnSum)
+	}
+	iterCap.Stop()
+	out.FactoryCapacityUnits, out.CapacitySource = sopFactoryCapacity(columnSum, out.ProductionLineCount, factoryDaily, int64(out.HorizonDays))
 	out.WarehouseInboundCap = whCount * whInDaily * int64(out.HorizonDays)
 	out.WarehouseOutboundCap = whCount * whOutDaily * int64(out.HorizonDays)
 
@@ -368,6 +379,13 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 // present; otherwise factory capacity vs warehouse inbound. Alert when demand
 // exceeds factory capacity or warehouse inbound (or factory exceeds inbound when
 // no demand signal).
+func sopFactoryCapacity(columnSum, lineCount, envDaily, horizon int64) (units int64, source string) {
+	if columnSum > 0 {
+		return columnSum * horizon, "factories_column"
+	}
+	return lineCount * envDaily * horizon, "env_default"
+}
+
 func sandopUtilization(projected, factoryCap, whInbound int64) (pct float64, alert bool) {
 	if projected > 0 {
 		if factoryCap > 0 {
@@ -471,7 +489,7 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 	}
 
 	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
+		SQL:    `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
 		Params: map[string]any{"sid": supplierID},
 	})
 	defer iter.Stop()
@@ -647,10 +665,10 @@ func (s *Service) ReadDemandBaseline(ctx context.Context, supplierID, warehouseI
 
 // ZoneOverrideInput is the control-tower polygon mutation body.
 type ZoneOverrideInput struct {
-	WarehouseID      string          `json:"warehouse_id"`
-	Action           string          `json:"action"`
-	PolygonGeoJSON   json.RawMessage `json:"polygon_geojson"`
-	TTLSeconds       int64           `json:"ttl_seconds"`
+	WarehouseID    string          `json:"warehouse_id"`
+	Action         string          `json:"action"`
+	PolygonGeoJSON json.RawMessage `json:"polygon_geojson"`
+	TTLSeconds     int64           `json:"ttl_seconds"`
 }
 
 // ZoneOverrideRow is a persisted override.

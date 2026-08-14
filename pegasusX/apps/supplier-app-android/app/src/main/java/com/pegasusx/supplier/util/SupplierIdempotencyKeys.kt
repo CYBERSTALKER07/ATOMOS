@@ -74,6 +74,17 @@ object SupplierIdempotencyKeys {
 
     fun supplierScopeId(): String = TokenHolder.supplierId?.takeIf { it.isNotBlank() } ?: "supplier"
 
+    fun networkModePut(scopeId: String, mode: String): String =
+        "supplier-network-mode:$scopeId:${mode.trim().uppercase()}"
+
+    fun planningPullMatrix(scopeId: String): String = "supplier-planning-pull-matrix:$scopeId"
+
+    fun planningKillSwitch(scopeId: String, reason: String): String =
+        "supplier-planning-kill-switch:$scopeId:${stableHash(reason)}"
+
+    fun payoutGenerate(scopeId: String, periodStart: String, periodEnd: String): String =
+        "supplier-payout-generate:$scopeId:$periodStart:$periodEnd"
+
     fun profileUpdate(scopeId: String, payloadFingerprint: String): String =
         "supplier-profile-update:$scopeId:${stableHash(payloadFingerprint)}"
 

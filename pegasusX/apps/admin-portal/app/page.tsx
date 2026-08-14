@@ -10,8 +10,9 @@ import AuditPanel from "@/components/AuditPanel";
 import MatchQueuePanel from "@/components/MatchQueuePanel";
 import PartnerPanel from "@/components/PartnerPanel";
 import OpsPanel from "@/components/OpsPanel";
+import BillingPanel from "@/components/BillingPanel";
 
-type Tab = "tenants" | "flags" | "audit" | "match" | "partner" | "ops";
+type Tab = "tenants" | "flags" | "audit" | "match" | "partner" | "ops" | "billing";
 
 type MfaGate =
   | { kind: "ok" }
@@ -214,7 +215,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
         </button>
       </header>
       <nav className="mb-4 flex flex-wrap gap-2 border-b">
-        {(["tenants", "flags", "audit", "match", "partner", "ops"] as Tab[]).map((t) => (
+        {(["tenants", "flags", "audit", "match", "partner", "ops", "billing"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -222,7 +223,15 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
               tab === t ? "border-b-2 border-indigo-600 text-indigo-700" : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t === "match" ? "Match queue" : t === "partner" ? "Partner / dunning" : t === "ops" ? "Ops / outbox" : t}
+            {t === "match"
+              ? "Match queue"
+              : t === "partner"
+                ? "Partner / dunning"
+                : t === "ops"
+                  ? "Ops / outbox"
+                  : t === "billing"
+                    ? "Billing"
+                    : t}
           </button>
         ))}
       </nav>
@@ -232,6 +241,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
       {tab === "match" && <MatchQueuePanel token={token} />}
       {tab === "partner" && <PartnerPanel token={token} />}
       {tab === "ops" && <OpsPanel token={token} />}
+      {tab === "billing" && <BillingPanel token={token} />}
     </main>
   );
 }

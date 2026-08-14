@@ -6,8 +6,12 @@ struct ControlTowerView: View {
     @State private var empty = true
     @State private var generatedAt = ""
     @State private var packs = ""
-    @State private var tiles: [(label: String, value: String)] = []
+    @State private var tiles: [(label: String, value: String, dest: PulseDest)] = []
     private let api = APIClient.shared
+
+    private enum PulseDest {
+        case orders, fulfillment, dock, pos, shifts, assist, stock, reports
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,10 +43,14 @@ struct ControlTowerView: View {
                 } else {
                     Section("Pulse") {
                         ForEach(tiles, id: \.label) { tile in
-                            HStack {
-                                Text(tile.label)
-                                Spacer()
-                                Text(tile.value).fontWeight(.semibold)
+                            NavigationLink {
+                                pulseDestination(tile.dest)
+                            } label: {
+                                HStack {
+                                    Text(tile.label)
+                                    Spacer()
+                                    Text(tile.value).fontWeight(.semibold)
+                                }
                             }
                         }
                     }
@@ -66,18 +74,32 @@ struct ControlTowerView: View {
             generatedAt = String((p.generatedAt ?? "").prefix(19))
             packs = (p.capabilities ?? ["CORE"]).joined(separator: ", ")
             tiles = [
-                ("Open orders", "\(p.openOrders)"),
-                ("Fulfillment", "\(p.activeFulfillments)"),
-                ("Dock pending", "\(p.dockPending)"),
-                ("POS sessions", "\(p.posOpenSessions)"),
-                ("Open shifts", "\(p.openShifts)"),
-                ("Assist", "\(p.openAssistTickets)"),
-                ("Low stock", "\(p.lowStockSkuBins)"),
-                ("Variances", "\(p.shiftVariances7d)"),
-                ("Sales 7d", String(format: "%.2f", Double(p.salesMinor7d) / 100.0)),
+                ("Open orders", "\(p.openOrders)", .orders),
+                ("Fulfillment", "\(p.activeFulfillments)", .fulfillment),
+                ("Dock pending", "\(p.dockPending)", .dock),
+                ("POS sessions", "\(p.posOpenSessions)", .pos),
+                ("Open shifts", "\(p.openShifts)", .shifts),
+                ("Assist", "\(p.openAssistTickets)", .assist),
+                ("Low stock", "\(p.lowStockSkuBins)", .stock),
+                ("Variances", "\(p.shiftVariances7d)", .shifts),
+                ("Sales 7d", String(format: "%.2f", Double(p.salesMinor7d) / 100.0), .reports),
             ]
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    @ViewBuilder
+    private func pulseDestination(_ dest: PulseDest) -> some View {
+        switch dest {
+        case .orders: OrdersView()
+        case .fulfillment: DeliveriesHubView()
+        case .dock: DockView()
+        case .pos: PosView()
+        case .shifts: ShiftsView()
+        case .assist: AssistView()
+        case .stock: StoreStockView()
+        case .reports: ReportsProView()
         }
     }
 }

@@ -120,6 +120,81 @@ extension DemandForecast {
     ]
 }
 
+// MARK: - Retailer AI predictions (pending AI preorders; not SKU DemandForecast)
+
+struct RetailerAILineItem: Codable, Hashable {
+    let sku: String
+    let name: String?
+    let quantity: Int64
+    let unitPriceMinor: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case sku, name, quantity
+        case unitPriceMinor = "unit_price_minor"
+    }
+}
+
+struct RetailerAIPrediction: Codable, Identifiable, Hashable {
+    var id: String { orderId }
+    let orderId: String
+    let supplierId: String?
+    let orderSource: String?
+    let confirmationStatus: String?
+    let requestedDeliveryDate: String?
+    let autoConfirmAt: String?
+    let totalMinor: Int64
+    let currency: String
+    let derivedFromOrderId: String?
+    let updatedAt: String
+    let lineItems: [RetailerAILineItem]?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case supplierId = "supplier_id"
+        case orderSource = "order_source"
+        case confirmationStatus = "confirmation_status"
+        case requestedDeliveryDate = "requested_delivery_date"
+        case autoConfirmAt = "auto_confirm_at"
+        case totalMinor = "total_minor"
+        case currency
+        case derivedFromOrderId = "derived_from_order_id"
+        case updatedAt = "updated_at"
+        case lineItems = "line_items"
+    }
+
+    var title: String {
+        if let first = lineItems?.first {
+            let label = (first.name?.isEmpty == false ? first.name : nil) ?? first.sku
+            if !label.isEmpty { return label }
+        }
+        return orderId
+    }
+
+    var quantity: Int64 {
+        (lineItems ?? []).reduce(0) { $0 + $1.quantity }
+    }
+
+    var statusLabel: String {
+        let raw = (confirmationStatus?.isEmpty == false ? confirmationStatus : nil) ?? "PENDING"
+        return raw.replacingOccurrences(of: "_", with: " ")
+    }
+
+    var deliveryLabel: String {
+        guard let date = requestedDeliveryDate, !date.isEmpty else { return orderId }
+        return String(date.prefix(10))
+    }
+
+    var formattedTotal: String {
+        let units = totalMinor / 100
+        if currency.isEmpty { return "\(units)" }
+        return "\(units) \(currency)"
+    }
+}
+
+struct RetailerAIPredictionsResponse: Codable {
+    let items: [RetailerAIPrediction]
+}
+
 // MARK: - Cart Item
 
 struct CartItem: Identifiable, Hashable {

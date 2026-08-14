@@ -209,6 +209,40 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse> = api.getSeasonalOverrides()
 
+    suspend fun getCrmRetailers(): Response<SupplierCRMListResponse> = api.getCrmRetailers()
+
+    suspend fun getCrmRetailer(retailerId: String): Response<SupplierCRMRetailerDetail> = api.getCrmRetailer(retailerId)
+
+    suspend fun getNetworkMode(): Response<NetworkModeResponse> = api.getNetworkMode()
+
+    suspend fun putNetworkMode(body: NetworkModeUpdateRequest, idempotencyKey: String): Response<NetworkModeUpdateResponse> =
+        api.putNetworkMode(body, idempotencyKey)
+
+    suspend fun postPlanningPullMatrix(idempotencyKey: String): Response<PullMatrixResponse> =
+        api.postPlanningPullMatrix(idempotencyKey)
+
+    suspend fun postPlanningKillSwitch(body: KillSwitchRequest, idempotencyKey: String): Response<KillSwitchResponse> =
+        api.postPlanningKillSwitch(body, idempotencyKey)
+
+    suspend fun getPayoutRail(): Response<PayoutRailInfo> = api.getPayoutRail()
+
+    suspend fun getPayoutPolicy(): Response<SupplierPayoutPolicy> = api.getPayoutPolicy()
+
+    suspend fun patchPayoutPolicy(body: SupplierPayoutPolicyPatch): Response<SupplierPayoutPolicy> =
+        api.patchPayoutPolicy(body)
+
+    suspend fun listPayoutBatches(): Response<PayoutBatchListResponse> = api.listPayoutBatches()
+
+    suspend fun generatePayoutBatch(body: PayoutBatchGenerateRequest, idempotencyKey: String): Response<PayoutBatchGenerateResponse> =
+        api.generatePayoutBatch(body, idempotencyKey)
+
+    suspend fun exportPayoutBatch(batchId: String): Response<okhttp3.ResponseBody> = api.exportPayoutBatch(batchId)
+
+    suspend fun markPayoutBatchPaid(batchId: String): Response<PayoutMarkPaidResponse> = api.markPayoutBatchPaid(batchId)
+
+    suspend fun dispatchPayoutBatch(batchId: String, live: Boolean): Response<PayoutDispatchResponse> =
+        api.dispatchPayoutBatch(batchId, mapOf("live" to live))
+
     suspend fun createSeasonalOverride(
         body: SeasonalOverrideInput,
         idempotencyKey: String,

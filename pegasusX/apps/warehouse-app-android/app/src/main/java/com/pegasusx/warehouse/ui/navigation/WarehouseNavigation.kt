@@ -73,6 +73,7 @@ import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.warehouse.ui.screens.operations.OperationsScreen
+import com.pegasusx.warehouse.ui.screens.ops.WarehouseScoredExceptionsScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
@@ -131,6 +132,7 @@ object WarehouseRoutes {
     const val PAYMENT_CONFIG = "payment_config"
     const val NOTIFICATIONS = "notifications"
     const val OPERATIONS = "operations"
+    const val CONTROL_TOWER = "control_tower"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val SUPPLY_REQUEST_DETAIL = "supply_requests/{id}"
     const val PORTAL_HANDOFF = "portal/{feature}"
@@ -424,6 +426,12 @@ fun WarehouseNavigation(
                         api = api,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.EXCEPTIONS),
+                    )
+                }
+                composable(WarehouseRoutes.CONTROL_TOWER) {
+                    WarehouseScoredExceptionsScreen(
+                        api = api,
+                        onBack = backFor(WarehouseRoutes.CONTROL_TOWER),
                     )
                 }
                 composable(WarehouseRoutes.CLAIMS) {

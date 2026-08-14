@@ -17,7 +17,7 @@ val localProps = Properties().also { props ->
     if (f.exists()) props.load(f.inputStream())
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")

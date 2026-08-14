@@ -3,6 +3,7 @@ package billing
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,11 +17,21 @@ type Handlers struct {
 	Worker *InvoiceWorker
 }
 
-func RegisterRoutes(r chi.Router, h *Handlers) {
+func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http.Handler) {
 	if h == nil || h.Worker == nil {
 		return
 	}
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/admin/billing/run-monthly", h.HandleRunMonthly)
+	r.Route("/v1/admin/billing", func(br chi.Router) {
+		br.Use(auth.RequireRole(auth.RolePlatformAdmin))
+		for _, mw := range stepUp {
+			if mw != nil {
+				br.Use(mw)
+			}
+		}
+		br.Post("/run-monthly", h.HandleRunMonthly)
+		br.Get("/invoices", h.HandleListInvoices)
+		br.Get("/fee-schedules", h.HandleListFeeSchedules)
+	})
 }
 
 func (h *Handlers) HandleRunMonthly(w http.ResponseWriter, r *http.Request) {
@@ -47,4 +58,44 @@ func (h *Handlers) HandleRunMonthly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"billed": billed, "month": month.Format("2006-01")})
+}
+
+func (h *Handlers) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			limit = n
+		}
+	}
+	invoices, err := h.Worker.ListPlatformInvoices(r.Context(), limit)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "billing_unavailable"})
+		return
+	}
+	if invoices == nil {
+		invoices = []PlatformInvoice{}
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"invoices": invoices})
+}
+
+func (h *Handlers) HandleListFeeSchedules(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			limit = n
+		}
+	}
+	schedules, err := h.Worker.ListFeeSchedules(r.Context(), limit)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "billing_unavailable"})
+		return
+	}
+	if schedules == nil {
+		schedules = []FeeScheduleRow{}
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"fee_schedules": schedules})
 }

@@ -23,6 +23,10 @@ func RegisterRoutes(r chi.Router, h *Handlers) {
 		return
 	}
 	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/rail", h.HandleRailInfo)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Patch("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/batches", h.HandleListBatches)
+	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/batches/{batchID}", h.HandleGetBatch)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches", h.HandleGenerate)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/export", h.HandleExport)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/dispatch", h.HandleDispatch)
@@ -42,6 +46,73 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func payoutSupplierID(r *http.Request) string {
+	id := auth.PreferTenantSupplierID(r.Context(), "")
+	if id != "" {
+		return id
+	}
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		return strings.TrimSpace(claims.SupplierID)
+	}
+	return ""
+}
+
+func (h *Handlers) HandleListBatches(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
+		return
+	}
+	supplierID := payoutSupplierID(r)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	rows, err := h.Svc.ListBatches(r.Context(), supplierID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "query_failed"})
+		return
+	}
+	if rows == nil {
+		rows = []Batch{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"batches": rows})
+}
+
+func (h *Handlers) HandleGetBatch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
+		return
+	}
+	supplierID := payoutSupplierID(r)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
+	if batchID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "batch_id_required"})
+		return
+	}
+	b, err := h.Svc.GetBatch(r.Context(), supplierID, batchID)
+	if err != nil {
+		if errors.Is(err, ErrBatchNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "batch_not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "query_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, b)
 }
 
 func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {

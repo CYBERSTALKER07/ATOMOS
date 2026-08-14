@@ -7,6 +7,9 @@
 **Protocol:** [`BACKEND_PARITY_PROTOCOL.md`](./BACKEND_PARITY_PROTOCOL.md)  
 **Clients (later):** `retailer-app-desktop`, `retailer-app-android`, `retailer-app-ios` — one HTTP/WS contract.
 
+> **STALE AUDIT (2026-08-12).** Do not plan from this file without a code re-verify.  
+> cash checkout is **REAL** (B1): `POST /v1/order/cash-checkout` → `SelectCashAtDelivery` → `PENDING_CASH_COLLECTION` + outbox when `PaymentService` is wired (`main.go` + `payment/retailer_checkout.go`). **R-P0-2 “ack-only” is historical.** Saved cards remain **THEATRE**; B2B / request-cancel remain **GONE**. Living SoT: [`ROLE_FEATURES_DOCS_VS_CODE.md`](../ROLE_FEATURES_DOCS_VS_CODE.md).
+
 ## Definition of done (reminder)
 
 JWT-scoped mutation → Spanner RW txn + in-txn outbox → relay → Kafka → declared consumer(s) → WS hub room and/or FCM and/or partner webhook; cache invalidate after commit; idempotency on mutators; no silent Spanner writes; edge cases covered by tests or documented intentional deferral.

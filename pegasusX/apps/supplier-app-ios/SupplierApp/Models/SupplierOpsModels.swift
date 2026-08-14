@@ -2374,3 +2374,448 @@ struct NotificationPreferenceRow: Codable {
         case channel, enabled
     }
 }
+
+// MARK: - P7-C supplier CRM / planning / payouts
+
+struct SupplierCRMRetailer: Decodable, Identifiable {
+    var id: String { retailerId }
+    let retailerId: String
+    let retailerName: String
+    let phone: String
+    let email: String
+    let lifetime: Int64
+    let orderCount: Int64
+    let lastOrderDate: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case retailerName = "retailer_name"
+        case phone
+        case email
+        case lifetime
+        case orderCount = "order_count"
+        case lastOrderDate = "last_order_date"
+        case status
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId) ?? ""
+        retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
+        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime) ?? 0
+        orderCount = try c.decodeIfPresent(Int64.self, forKey: .orderCount) ?? 0
+        lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+    }
+}
+
+struct SupplierCRMOrder: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let state: String
+    let amount: Int64
+    let itemCount: Int64
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case state, amount
+        case itemCount = "item_count"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        state = try c.decodeIfPresent(String.self, forKey: .state) ?? ""
+        amount = try c.decodeIfPresent(Int64.self, forKey: .amount) ?? 0
+        itemCount = try c.decodeIfPresent(Int64.self, forKey: .itemCount) ?? 0
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+    }
+}
+
+struct SupplierCRMRetailerDetail: Decodable {
+    let retailerId: String
+    let retailerName: String
+    let phone: String
+    let email: String
+    let lifetime: Int64
+    let orderCount: Int64
+    let lastOrderDate: String
+    let status: String
+    let orders: [SupplierCRMOrder]
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case retailerName = "retailer_name"
+        case phone, email, lifetime, status, orders
+        case orderCount = "order_count"
+        case lastOrderDate = "last_order_date"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId) ?? ""
+        retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
+        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime) ?? 0
+        orderCount = try c.decodeIfPresent(Int64.self, forKey: .orderCount) ?? 0
+        lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        orders = try c.decodeIfPresent([SupplierCRMOrder].self, forKey: .orders) ?? []
+    }
+}
+
+struct SupplierCRMListResponse: Decodable {
+    let retailers: [SupplierCRMRetailer]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailers = try c.decodeIfPresent([SupplierCRMRetailer].self, forKey: .retailers) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case retailers }
+}
+
+struct NetworkModeResponse: Decodable {
+    let mode: String
+    let supplierId: String
+    let planningEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case mode
+        case supplierId = "supplier_id"
+        case planningEnabled = "planning_enabled"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? ""
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        planningEnabled = try c.decodeIfPresent(Bool.self, forKey: .planningEnabled) ?? false
+    }
+}
+
+struct NetworkModeUpdateRequest: Encodable {
+    let mode: String
+    let reason: String?
+}
+
+struct NetworkModeUpdateResponse: Decodable {
+    let oldMode: String
+    let newMode: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case oldMode = "old_mode"
+        case newMode = "new_mode"
+        case status
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        oldMode = try c.decodeIfPresent(String.self, forKey: .oldMode) ?? ""
+        newMode = try c.decodeIfPresent(String.self, forKey: .newMode) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+    }
+}
+
+struct PullMatrixResponse: Decodable {
+    let status: String
+    let transfers: Int
+    let skus: Int
+    let source: String
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        transfers = try c.decodeIfPresent(Int.self, forKey: .transfers) ?? 0
+        skus = try c.decodeIfPresent(Int.self, forKey: .skus) ?? 0
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+    }
+
+    enum CodingKeys: String, CodingKey { case status, transfers, skus, source }
+}
+
+struct KillSwitchRequest: Encodable {
+    let reason: String
+}
+
+struct KillSwitchResponse: Decodable {
+    let status: String
+    let cancelledTransfers: Int
+    let mode: String
+
+    enum CodingKeys: String, CodingKey {
+        case status, mode
+        case cancelledTransfers = "cancelled_transfers"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        cancelledTransfers = try c.decodeIfPresent(Int.self, forKey: .cancelledTransfers) ?? 0
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? ""
+    }
+}
+
+struct PayoutRailInfo: Decodable {
+    let name: String
+    let isLive: Bool
+    let workflow: String
+    let steps: [String]
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, workflow, steps, message
+        case isLive = "is_live"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        isLive = try c.decodeIfPresent(Bool.self, forKey: .isLive) ?? false
+        workflow = try c.decodeIfPresent(String.self, forKey: .workflow) ?? ""
+        steps = try c.decodeIfPresent([String].self, forKey: .steps) ?? []
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
+    }
+}
+
+struct PayoutBatch: Decodable, Identifiable {
+    var id: String { batchId }
+    let batchId: String
+    let supplierId: String
+    let periodStart: String
+    let periodEnd: String
+    let netPayoutMinor: Int64
+    let currency: String
+    let status: String
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case batchId = "batch_id"
+        case supplierId = "supplier_id"
+        case periodStart = "period_start"
+        case periodEnd = "period_end"
+        case netPayoutMinor = "net_payout_minor"
+        case currency, status
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        batchId = try c.decodeIfPresent(String.self, forKey: .batchId) ?? ""
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        periodStart = try c.decodeIfPresent(String.self, forKey: .periodStart) ?? ""
+        periodEnd = try c.decodeIfPresent(String.self, forKey: .periodEnd) ?? ""
+        netPayoutMinor = try c.decodeIfPresent(Int64.self, forKey: .netPayoutMinor) ?? 0
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+    }
+}
+
+struct PayoutBatchListResponse: Decodable {
+    let batches: [PayoutBatch]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        batches = try c.decodeIfPresent([PayoutBatch].self, forKey: .batches) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case batches }
+}
+
+struct PayoutBatchGenerateRequest: Encodable {
+    let periodStart: String
+    let periodEnd: String
+
+    enum CodingKeys: String, CodingKey {
+        case periodStart = "period_start"
+        case periodEnd = "period_end"
+    }
+}
+
+struct PayoutBatchGenerateResponse: Decodable {
+    let batch: PayoutBatch?
+    let rail: PayoutRailInfo?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        batch = try c.decodeIfPresent(PayoutBatch.self, forKey: .batch)
+        rail = try c.decodeIfPresent(PayoutRailInfo.self, forKey: .rail)
+    }
+
+    enum CodingKeys: String, CodingKey { case batch, rail }
+}
+
+struct PayoutMarkPaidResponse: Decodable {
+    let status: String
+    let batchId: String
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case status, message
+        case batchId = "batch_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        batchId = try c.decodeIfPresent(String.self, forKey: .batchId) ?? ""
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
+    }
+}
+
+struct PayoutDispatchRequest: Encodable {
+    let live: Bool
+}
+
+struct PayoutDispatchResponse: Decodable {
+    let error: String
+    let code: String
+    let message: String
+    let rail: PayoutRailInfo?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        error = try c.decodeIfPresent(String.self, forKey: .error) ?? ""
+        code = try c.decodeIfPresent(String.self, forKey: .code) ?? ""
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
+        rail = try c.decodeIfPresent(PayoutRailInfo.self, forKey: .rail)
+    }
+
+    enum CodingKeys: String, CodingKey { case error, code, message, rail }
+}
+
+struct SupplierPayoutPolicy: Decodable {
+    let supplierId: String
+    let payoutMode: String
+    let feePolicyVersion: String
+    let effectiveAt: String?
+    let updatedBy: String
+    let updatedByType: String
+    let reason: String
+    let isActive: Bool
+    let source: String
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case payoutMode = "payout_mode"
+        case feePolicyVersion = "fee_policy_version"
+        case effectiveAt = "effective_at"
+        case updatedBy = "updated_by"
+        case updatedByType = "updated_by_type"
+        case reason
+        case isActive = "is_active"
+        case source
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        payoutMode = try c.decodeIfPresent(String.self, forKey: .payoutMode) ?? "HQ_SUPPLIER"
+        feePolicyVersion = try c.decodeIfPresent(String.self, forKey: .feePolicyVersion) ?? ""
+        effectiveAt = try c.decodeIfPresent(String.self, forKey: .effectiveAt)
+        updatedBy = try c.decodeIfPresent(String.self, forKey: .updatedBy) ?? ""
+        updatedByType = try c.decodeIfPresent(String.self, forKey: .updatedByType) ?? ""
+        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+    }
+}
+
+struct SupplierPayoutPolicyPatch: Encodable {
+    let payoutMode: String
+    let feePolicyVersion: String?
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case payoutMode = "payout_mode"
+        case feePolicyVersion = "fee_policy_version"
+        case reason
+    }
+}
+
+struct ScoredException: Decodable, Identifiable {
+    var id: String { exceptionId }
+    let exceptionId: String
+    let type: String
+    let severity: String
+    let orderId: String
+    let score: Int64
+    let ageMinutes: Int64
+    let topPlaybookName: String
+
+    enum CodingKeys: String, CodingKey {
+        case exceptionId = "exception_id"
+        case type, severity, score
+        case orderId = "order_id"
+        case ageMinutes = "age_minutes"
+        case topPlaybookName = "top_playbook_name"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptionId = try c.decodeIfPresent(String.self, forKey: .exceptionId) ?? ""
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? ""
+        severity = try c.decodeIfPresent(String.self, forKey: .severity) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        score = try c.decodeIfPresent(Int64.self, forKey: .score) ?? 0
+        ageMinutes = try c.decodeIfPresent(Int64.self, forKey: .ageMinutes) ?? 0
+        topPlaybookName = try c.decodeIfPresent(String.self, forKey: .topPlaybookName) ?? ""
+    }
+}
+
+struct ScoredExceptionsResponse: Decodable {
+    let exceptions: [ScoredException]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptions = try c.decodeIfPresent([ScoredException].self, forKey: .exceptions) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case exceptions }
+}
+
+struct ControlTowerPlaybook: Decodable, Identifiable {
+    var id: String { playbookId }
+    let playbookId: String
+    let name: String
+    let description: String
+    let isActive: Bool
+    let priority: Int64
+    let autoExecute: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case playbookId = "playbook_id"
+        case name, description, priority
+        case isActive = "is_active"
+        case autoExecute = "auto_execute"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        playbookId = try c.decodeIfPresent(String.self, forKey: .playbookId) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
+        priority = try c.decodeIfPresent(Int64.self, forKey: .priority) ?? 0
+        autoExecute = try c.decodeIfPresent(Bool.self, forKey: .autoExecute) ?? false
+    }
+}
+
+struct ControlTowerPlaybooksResponse: Decodable {
+    let playbooks: [ControlTowerPlaybook]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        playbooks = try c.decodeIfPresent([ControlTowerPlaybook].self, forKey: .playbooks) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case playbooks }
+}

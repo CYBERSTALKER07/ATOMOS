@@ -2,7 +2,9 @@
 
 > **Secondary overview — prefer living SoTs.**  
 > Route/nav inventory: [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) · ordered residuals: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · gap register: [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md).  
-> Re-verify client parity claims (control-tower, cold-chain, labor) against shells/section enums before planning.
+> Re-verify client parity claims (control-tower, cold-chain, labor) against shells/section enums before planning.  
+> **P0+P1 honesty (2026-08-13):** factory dispatch is not the warehouse VRP. Optimizer = OR-Tools **or** H3 `fallback_phase1`. Saved cards / `/v1/ai/predictions` alias / request-cancel are **GONE** — see FEATURES tags.  
+> **P6 (2026-08-13):** supplier CRM + factory QC APIs exist. **P7-C PARTIAL (2026-08-13):** portal+native CRM/QC/planning/payouts attached; **not store, not cloud**. **P8:** unused `payloaderoutes` package deleted (live `payloaderoutes`). **P9–P16:** staff login, QC accept-gate, broadcast outbox, S&OP `DailyOutputCapacity`, billing list APIs, seal-all clients, PrivacyInfo in-tree; **not cloud-ready, not store**. Payout-policy, entityresolution, countrycfg (UZ, `checkout_reads_this: false`), SplitManifest naming, loyalty 410, and P5-D `DemandForecastBaseline` grain landed 2026-08-14.
 
 **Audience:** operators, product, engineering  
 **Grounding:** live monorepo (`apps/backend-go`, role apps, contracts); spatial/dispatch bullets re-aligned 2026-08-05  
@@ -119,7 +121,7 @@ Derived from delinquency count + balance vs limit (`deriveRiskTier` / `EvaluateR
 - Retailers sit in **H3 cells**; delivery zone is a precomputed set of cells around supplier center + radius + resolution.  
 - Driver telemetry updates location; proximity / geo-report use H3 aggregates.  
 - Route geometry: **Google Routes → OSRM → dense** (`ROUTING_PROVIDER=auto`); clients render backend polylines.  
-- Dispatch plan: **optimizer-core (OR-Tools)** when `OPTIMIZER_BASE_URL` is healthy — §8.5 constraints/multi-depot/OSRM matrix wired; else H3 BinPack (`fallback_phase1`). **Cloud SSMR/prod: heuristic-only until sidecar image + replicas ≥ 1** (overlay manifests ready). SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md).
+- Dispatch plan: **optimizer-core (OR-Tools)** when `OPTIMIZER_BASE_URL` is healthy — §8.5 constraints/multi-depot/OSRM matrix wired; else H3 BinPack (`fallback_phase1`, `optimizer_class: HEURISTIC`). **Cloud SSMR/prod: heuristic-only until sidecar image + replicas ≥ 1** (overlay manifests ready). SoT: [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md). Factory dispatch is not this engine.
 
 ---
 
@@ -203,22 +205,22 @@ Enforced by `order.ValidateStatusTransition`. Illegal reverse transitions (e.g. 
 
 #### 4.3 Checkout & payment
 
-| Modes | Unified checkout, cash-on-delivery, card (Global Pay initiate/confirm), credit |
-| APIs | `/v1/checkout/*`, `/v1/order/*-checkout`, `/v1/retailer/card/*` |
+| Modes | Unified checkout (`items[]` **REAL** create, no capture), cash-on-delivery **REAL**, card-at-delivery session **REAL**, credit |
+| APIs | `/v1/checkout/unified` + `/v1/order/{cash,card}-checkout`. `/v1/checkout/b2b` **GONE** (`410 payment_before_delivery_removed`). `/v1/retailer/card/*` **GONE** (`410 saved_cards_not_product`). |
 
 **Edges:** card fail → retry; credit limit breach; gateway degraded event; Airwallex flag-gated off by default.
 
 #### 4.4 Orders & tracking
 
-| What | List/detail, cancel request, accept/reject delivery proposal, preorder confirm/edit/reject |
+| What | List/detail, accept/reject delivery proposal, preorder confirm/edit/reject. Cancel **pre-dispatch only**. |
 | Realtime | Pulse + WS silent refresh + tracking API |
 
-**Edges:** cancel only in allowed statuses; proposal expiry; scheduled preorder promote at T-1.
+**Edges:** `POST /v1/orders/request-cancel` **GONE** (`403 cancel_not_allowed`); proposal expiry; scheduled preorder promote at T-1.
 
 #### 4.5 Auto-order & AI
 
 | What | Rules by global/supplier/category/product/variant; AI predictions confirm/reject |
-| APIs | `/v1/retailer/settings/auto-order/*`, `/v1/ai/predictions`, confirm/reject AI order |
+| APIs | `/v1/retailer/settings/auto-order/*`. **REAL** list is `GET /v1/retailer/ai/predictions` (desktop/Android/iOS bind `{items}`). `GET /v1/ai/predictions` **GONE** `410 use_retailer_ai_predictions` (old builds). `PATCH /v1/ai/predictions/correct` **GONE** `410 prediction_correct_unwired`. |
 
 **Edges:** AI synthesis can be disabled (`synthesisDisabled` on ai-worker); low confidence forecasts.
 
@@ -304,7 +306,7 @@ Live operational KPIs and event feed from pulse APIs + WS.
 #### 5.3 Dispatch & fleet
 
 | What | Dispatch preview/execute (often warehouse-scoped), fleet live map, fleet orders, early-complete approve |
-| Algo | Optimizer-core VRPTW-style solve when up; else heuristics; capacity warnings suggest unselect orders |
+| Algo | **Warehouse/supplier last-mile only** — OR-Tools via `optimizer-core` when `OPTIMIZER_BASE_URL` is healthy; else H3 BinPack (`fallback_phase1`). **Not** `POST /v1/factory/dispatch`. Capacity warnings suggest unselect orders. |
 
 #### 5.4 Manifests & exceptions
 
@@ -340,6 +342,9 @@ Org members (FACTORY_ADMIN / WAREHOUSE_ADMIN / …), fleet drivers/vehicles crea
 | **Claim chargebacks** | List `chargeback_clm_*` from claim settle |
 | Earnings | Revenue summaries |
 | Credit collections | List/freeze retailer credit profiles |
+| **Payout batches (P7-C)** | Bank-file generate → export CSV → mark-paid. Live dispatch `no_live_rail`. Portal `/finance/payouts` + native. |
+| **Payout policy (P6-B)** | `HQ_SUPPLIER` vs `WAREHOUSE_LOCAL`. PATCH needs `reason`. Thin portal+native. **Not** a live PSP. |
+| **Supplier CRM (P7-C)** | `/crm` lifetime rollup (`TotalMinor` integer, Email when set). Warehouse `/ops/crm` JSON frozen. |
 
 #### 5.10 Claims queue (adjudication)
 
@@ -350,7 +355,7 @@ Org members (FACTORY_ADMIN / WAREHOUSE_ADMIN / …), fleet drivers/vehicles crea
 
 #### 5.11 Planning / AI / MEIO
 
-Scenarios, seasonal overrides, knowledge graph, replenishment policies, AI recommendations decide accept/reject, sparsity gates, promo simulate.
+Scenarios, seasonal overrides, knowledge graph, replenishment policies, AI recommendations decide accept/reject, sparsity gates, promo simulate. **PARTIAL** — MEIO heuristics exist; factory planning OS is **ported, flags default off** (P5). Env examples/local may set `FACTORY_PLANNING_ENABLED=true` (P7-C) and `FACTORY_BATCHER_ENABLED=true` (P9-D); Go default still false. Factory-ops panel on `/settings/planning` + native PlanningSettings. P5-D `SYSTEM_PREDICTED` from `DemandForecastBaseline` (not `AIPredictions`). `/planning` S&OP reads `Factories.DailyOutputCapacity` when set (P10-B); else env 700.
 
 #### 5.12 Operations
 
@@ -373,7 +378,7 @@ Portal, Android, iOS — home node warehouse-scoped JWT.
 #### 6.1 Dispatch hub (core)
 
 | What | Select orders, smart/manual mode, drivers/trucks, preview routes, execute, locks, runs history, settings |
-| Algo | Optimizer + capacity check + lock exclusion + suggest unselect when overweight |
+| Algo | **Warehouse last-mile VRP** — OR-Tools when sidecar healthy, else H3 heuristic. Capacity check + lock exclusion + suggest unselect when overweight. **Not** factory dispatch. |
 | Locks | Freeze locks prevent concurrent dispatch; ai-worker freeze registry |
 
 **Edges:** driver on active manifest; vehicle capacity VU; warehouse-scoped vs supplier CEO global.
@@ -402,7 +407,7 @@ Insights → request factory supply; transfers receive/force-receive.
 
 #### 6.7 Treasury / payment config / CRM / analytics / demand forecast / staff
 
-Ops board, exceptions, tomorrow board, control tower.
+Ops board, exceptions, tomorrow board, control tower. Warehouse CRM JSON (`business_name` / `total_orders` / `total_revenue` / `last_order_date`) **unchanged**. Portal+native surface last_order and load errors (P7-C chrome parity).
 
 #### 6.8 Broadcast templates
 
@@ -424,7 +429,11 @@ Pulse of production/loading state.
 
 #### 7.2 Loading bay & manifests
 
-Start loading → load orders → seal → dispatch to warehouse/payload chain.
+Start loading → load → seal **REAL** under Spanner. `POST /v1/factory/dispatch` default is first-N DRAFT **stub** (≤2 `CREATED` transfers, **no invent-if-empty** P7-B, `pick_n_created_v1`) — **not** the warehouse/supplier VRP engine. When `FACTORY_BATCHER_ENABLED`: FFD+NN+LIFO, `ffd_nn_lifo_v1`, no invent-if-empty (P5-F). Planning engines exist behind `FACTORY_PLANNING_ENABLED` (default off).
+
+#### 7.2b Staff / exceptions / transfer create (honesty)
+
+Staff POST is in-memory **THEATRE**. Exception resolve drops an in-memory row with **no outbox**. Transfer create persists via `apply` but **`emit=nil`**.
 
 #### 7.3 Payload override / rebalance / cancel transfer
 
@@ -432,7 +441,7 @@ Hot-path corrections when truck contents wrong.
 
 #### 7.4 Supply requests
 
-Accept warehouse requests; fulfill options.
+Accept warehouse requests; fulfill options. QC **PARTIAL** portal+native (P7-C / P9-C): factory `GET/POST …/supply-requests/{id}/qc` on board/list + native cards; warehouse GET+POST. POST does not change request State. Accept **409** unless QC `PASS`.
 
 #### 7.5 Transfers
 
@@ -464,7 +473,7 @@ List trucks/manifests for warehouse; pick truck; see LOADED orders checklist.
 
 #### 8.2 Seal
 
-Per-manifest or seal-all / seal-completed; transitions orders toward driver-ready; emits `MANIFEST_SEALED`.
+Per-manifest or seal-completed; transitions orders toward driver-ready; emits `MANIFEST_SEALED`. Seal-all is a REAL persist API with **no client call sites** (API-only unused).
 
 #### 8.3 Inject order
 
@@ -614,7 +623,7 @@ Driver payouts snapshot; past routes.
 
 | Area | Algorithm / approach |
 |------|----------------------|
-| Dispatch | Code: OR-Tools via `optimizer-core` + `optimizerclient`; cloud often heuristic (`fallback_phase1`) until sidecar deployed. Capacity checks + suggest-unselect. See [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md). |
+| Dispatch | **Warehouse/supplier last-mile only.** Code: OR-Tools via `optimizer-core` + `optimizerclient` when healthy; else H3 BinPack (`fallback_phase1`). Cloud SSMR/prod often heuristic until sidecar replicas ≥ 1. **Factory `POST /v1/factory/dispatch` is a separate pick-N stub — not this engine.** See [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md). |
 | Routing geometry | Google Routes (primary) → OSRM → dense; clients render backend polyline only |
 | Delivery zone | H3 disk/ring precompute around lat/lng/radius/resolution |
 | Demand forecast | History-based series per warehouse SKU (Spanner or scaffold) |

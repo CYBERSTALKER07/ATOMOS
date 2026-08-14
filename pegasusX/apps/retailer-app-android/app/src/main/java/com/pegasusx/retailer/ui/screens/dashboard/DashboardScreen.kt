@@ -76,7 +76,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasus.design.PegasusRuntimeBanner
@@ -232,10 +231,11 @@ fun DashboardScreen(
                         }
                     }
 
-                    items(uiState.predictions, key = { it.id }) { forecast ->
+                    items(uiState.predictions, key = { it.orderId }) { item ->
                         PredictionCard(
-                            forecast = forecast,
-                            onPreorder = { viewModel.requestPreorder(forecast) },
+                            item = item,
+                            onConfirm = { viewModel.confirmAiOrder(item.orderId) },
+                            onReject = { viewModel.rejectAiOrder(item.orderId) },
                         )
                     }
                 }

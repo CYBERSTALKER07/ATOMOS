@@ -175,6 +175,9 @@ struct SupplyRequest: Decodable, Identifiable {
     let createdBy: String
     let createdAt: String
     let updatedAt: String?
+    let slaStatus: String?
+    let slaDueAt: String?
+    let slaHoursRemaining: Double?
 
     enum CodingKeys: String, CodingKey {
         case id = "request_id"
@@ -190,11 +193,53 @@ struct SupplyRequest: Decodable, Identifiable {
         case createdBy = "created_by"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case slaStatus = "sla_status"
+        case slaDueAt = "sla_due_at"
+        case slaHoursRemaining = "sla_hours_remaining"
     }
 }
 
 struct SupplyRequestListResponse: Decodable {
     let requests: [SupplyRequest]
+}
+
+struct SupplyRequestQCResponse: Decodable {
+    let requestId: String
+    let result: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case result
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestId = try c.decodeIfPresent(String.self, forKey: .requestId) ?? ""
+        result = try c.decodeIfPresent(String.self, forKey: .result) ?? ""
+    }
+}
+
+struct SupplyRequestQCRequest: Encodable {
+    let result: String
+}
+
+func slaBadgeVisible(_ status: String?) -> Bool {
+    let normalized = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    return !normalized.isEmpty && normalized != "N/A" && normalized != "MET"
+}
+
+func slaHoursLabel(_ hours: Double?) -> String? {
+    guard let hours else { return nil }
+    return hours > 0 ? "\(Int(hours))h left" : "\(Int(abs(hours)))h overdue"
+}
+
+func supplyDeliveryWithSLA(_ request: SupplyRequest) -> String {
+    let raw = request.requestedDeliveryDate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let date = raw.isEmpty ? "Unscheduled" : String(raw.prefix(10))
+    if let sla = slaHoursLabel(request.slaHoursRemaining) {
+        return "\(date) · \(sla)"
+    }
+    return date
 }
 
 struct SupplyRequestTransitionRequest: Encodable {

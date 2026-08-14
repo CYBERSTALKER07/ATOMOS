@@ -129,6 +129,8 @@ struct WarehouseAdaptiveShell: View {
             LaborCapacityView()
         case .exceptions:
             ExceptionsView()
+        case .controlTower:
+            WarehouseScoredExceptionsView()
         case .claims:
             ClaimsView()
         case .rescues:

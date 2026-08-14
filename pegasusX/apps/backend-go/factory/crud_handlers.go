@@ -46,6 +46,7 @@ func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
 	if req.FactoryID == "" {
 		req.FactoryID = uuid.New().String()
 	}
+	applyFactoryCreateDefaults(&req)
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{
@@ -64,6 +65,15 @@ func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSONResponse(w, http.StatusCreated, req)
+}
+
+func applyFactoryCreateDefaults(f *Factory) {
+	if f == nil {
+		return
+	}
+	if f.DailyOutputCapacity <= 0 {
+		f.DailyOutputCapacity = DefaultDailyOutputCapacity
+	}
 }
 
 // HandleGetFactory serves GET /v1/factories/{factoryId}

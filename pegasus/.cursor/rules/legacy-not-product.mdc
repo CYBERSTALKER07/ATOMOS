@@ -1,0 +1,12 @@
+---
+description: Legacy pegasus/ tree is not the product. Plan and ship only from pegasusX/.
+alwaysApply: true
+---
+
+# Legacy tree — not the product
+
+This folder (`pegasus/`) is a **read-only port source**. The living product is **`../pegasusX/`**.
+
+- Do not plan, implement, or declare production-ready from this tree.
+- Do not treat Copilot runtime notes or docs here as pegasusX status.
+- Honesty gate: `../.github/instructions/honest-code-gate.instructions.md`

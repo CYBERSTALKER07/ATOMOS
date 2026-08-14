@@ -151,6 +151,7 @@ func (s *Service) emitSLABreach(ctx context.Context, requestID, supplierID, ware
 			"supplier_id":  supplierID,
 			"warehouse_id": warehouseID,
 			"state":        state,
+			"kind":         "supply_request",
 			"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
 		}
 		if err := outbox.EmitJSON(ctx, buf, "WarehouseSupplyRequest", requestID, events.TopicMain, payload); err != nil {

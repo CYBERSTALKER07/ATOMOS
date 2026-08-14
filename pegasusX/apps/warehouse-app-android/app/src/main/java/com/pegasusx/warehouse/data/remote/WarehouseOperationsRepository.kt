@@ -158,6 +158,9 @@ class WarehouseOperationsRepository @Inject constructor(
     suspend fun getSupplyRequest(id: String): Response<WarehouseSupplyRequest> =
         api.getSupplyRequest(id)
 
+    suspend fun getSupplyRequestQC(id: String): Response<SupplyRequestQCResponse> =
+        api.getSupplyRequestQC(id)
+
     suspend fun getPaymentConfig(): Response<PaymentConfigResponse> =
         api.getPaymentConfig()
 }

@@ -602,12 +602,12 @@ struct ActiveFulfillmentsResponse: Codable {
 }
 
 struct PendingPaymentSession: Codable, Identifiable, Hashable {
-    var id: String { sessionId }
-    let sessionId: String
+    var id: String { sessionId ?? orderId }
+    let sessionId: String?
     let orderId: String
     let retailerId: String
     let supplierId: String
-    let gateway: String
+    let gateway: String?
     let lockedAmount: Int
     let currency: String
     let status: String

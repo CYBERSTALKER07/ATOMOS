@@ -207,6 +207,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	}
 
 	now := s.now().UTC()
+	assignment.Routes = dispatch.ExpandOversizeRoutes(assignment.Routes, now.UnixMilli())
 	batch := &manifest.SupplierWriteBatch{}
 	committed := make([]DispatchExecuteRoute, 0, len(assignment.Routes))
 	type pendingEvent struct {
@@ -224,7 +225,10 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		}
 		vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
 		manifestID := uuid.NewString()
-		routeID := uuid.NewString()
+		routeID := strings.TrimSpace(route.RouteID)
+		if routeID == "" {
+			routeID = uuid.NewString()
+		}
 		seqBase := int64(0)
 		existingTotalVU := 0.0
 		truckMaxVU := route.MaxVolume

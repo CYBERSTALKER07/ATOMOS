@@ -89,7 +89,59 @@ export default function StaffDetailPage() {
             <p className="text-sm mt-1">{staff.joined_at?.trim() || '—'}</p>
           </div>
         </div>
+        <SetPasswordForm staffId={String(staff.staff_id || staff.id || id)} />
       </PageChrome>
     </PageTransition>
+  );
+}
+
+function SetPasswordForm({ staffId }: { staffId: string }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  return (
+    <form
+      className="desk-card mt-6 p-6 space-y-3 max-w-lg"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setMsg(null);
+        try {
+          const res = await apiFetch(`/v1/factory/staff/${encodeURIComponent(staffId)}/set-password`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": `factory-staff-set-password:${staffId}:${Date.now()}`,
+            },
+            body: JSON.stringify({ pin }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.error || `status_${res.status}`);
+          setMsg("Password set. Staff can log in with this PIN.");
+          setPin("");
+        } catch (err) {
+          setMsg(err instanceof Error ? err.message : "set_password_failed");
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <h2 className="text-sm font-semibold">Set login PIN</h2>
+      <p className="text-xs text-[var(--muted)]">Never stored in plaintext. Invite rows must set a PIN before login.</p>
+      <input
+        type="password"
+        minLength={4}
+        required
+        value={pin}
+        onChange={(e) => setPin(e.target.value)}
+        placeholder="PIN or password (min 4)"
+        className="w-full rounded border px-3 py-2 text-sm"
+      />
+      <button type="submit" disabled={busy || pin.trim().length < 4} className="portal-btn portal-btn--primary text-sm">
+        {busy ? "Saving…" : "Set password"}
+      </button>
+      {msg ? <p className="text-sm">{msg}</p> : null}
+    </form>
   );
 }

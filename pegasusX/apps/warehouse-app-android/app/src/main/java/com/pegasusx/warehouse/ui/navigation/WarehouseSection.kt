@@ -36,6 +36,7 @@ enum class WarehouseSection(
     COLD_CHAIN(WarehouseRoutes.COLD_CHAIN, "Cold chain", Icons.Default.Thermostat),
     LABOR_CAPACITY(WarehouseRoutes.LABOR_CAPACITY, "Labor capacity", Icons.Default.Groups),
     EXCEPTIONS(WarehouseRoutes.EXCEPTIONS, "Exceptions", Icons.Default.Warning),
+    CONTROL_TOWER(WarehouseRoutes.CONTROL_TOWER, "Control tower", Icons.Default.Hub),
     CLAIMS(WarehouseRoutes.CLAIMS, "Claims", Icons.Default.Report),
     RESCUES(WarehouseRoutes.RESCUES, "Rescues", Icons.Default.Build),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
@@ -74,7 +75,7 @@ enum class WarehouseSection(
         )
 
         val operationsSections: List<WarehouseSection> = listOf(
-            RETAILERS, RETURNS, COLD_CHAIN, LABOR_CAPACITY, EXCEPTIONS, CLAIMS, RESCUES, PAYMENT_CONFIG, NOTIFICATIONS,
+            RETAILERS, RETURNS, COLD_CHAIN, LABOR_CAPACITY, EXCEPTIONS, CONTROL_TOWER, CLAIMS, RESCUES, PAYMENT_CONFIG, NOTIFICATIONS,
         )
 
         val portalSections: List<WarehouseSection> = listOf(

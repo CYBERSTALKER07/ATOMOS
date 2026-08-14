@@ -1,3 +1,22 @@
+<!-- HONESTY_OVERRIDE -->
+
+# HONESTY OVERRIDE (absolute — read before all other doctrine)
+
+Living product: **`pegasusX/`**. Do not plan or ship from `pegasus/` or frozen `.docx`.
+Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are **hypotheses — not status**.
+
+1. **Code is SoT.** Live-path trace this session (route → persist or honest fail → outbox/WS → clients). File:line required.
+2. **Forbidden without that proof:** wired, done, implemented, production-ready, cloud-ready, we can start connecting cloud, everything works.
+3. **Docs vs code.** Code wins. Name THEATRE (`{status:ok}`, always-`[]`, in-memory sold as durable) and DOC DRIFT.
+4. **Cloud / API / infra / deploy.** YES only if backend + shipped role-row apps + data flow are REAL and tests passed after re-reading edits. Remaining work must be secrets/env/IAM only. Else NO + ranked blockers.
+5. **Phased execution.** After a plan lands: re-read every edit, re-trace, run unit + integration/CI-equivalent. If it failed, replan — do not announce done.
+6. **Blast radius** on every create/edit: other files, role-row clients, cloud config, downstream features.
+7. **Research:** skills (`honest-code-gate`, `gap-hunter`) → official docs/web → proven OSS/big-tech algorithms. Else invent tested in-house logic.
+
+Full text: `.github/instructions/honest-code-gate.instructions.md`
+
+---
+
 # pegasusX Copilot Instructions
 
 You are operating inside `pegasusX/`, a single-tenant logistics stack and a sibling project to `pegasus/`.
@@ -44,6 +63,7 @@ All other rules persist verbatim:
 
 ## Sync Set (this project)
 Architecturally meaningful changes update, in the same change set:
+- `.github/instructions/honest-code-gate.instructions.md` (do not weaken)
 - `.github/copilot-instructions.md`
 - `.github/gemini-instructions.md`
 - `.github/ACT.md`
@@ -54,11 +74,14 @@ Architecturally meaningful changes update, in the same change set:
 - `context/technology-inventory.json`
 - `context/parity-ledger.md` (when behavior diverges from Pegasus)
 
+Honesty override at the top of this file wins over plan status and additive notes below. Matrix **Wired** is not a go-live certificate.
+
 ## Working Standard
 - Verify the actual `pegasusX/` filesystem before assuming a route, type, or model exists.
 - Use `../pegasus/` only as a reference grep target. Do not re-import code from Pegasus; reimplement locally.
 - Hunt full chain of impact (backend, frontend, mobile, shared contracts, infra) before declaring work done.
-- Treat `context/plan.md` as the execution ledger for phased delivery, roadmap updates, and status reconciliation.
+- Do not declare a plan done until every edit is re-read, the live path is re-traced, and unit + integration/CI-equivalent tests passed.
+- Treat `context/plan.md` as the execution ledger for phased delivery, roadmap updates, and status reconciliation — **plan status is not code status**.
 - Record divergence from Pegasus in `context/parity-ledger.md`.
 
 ## Runtime Additive Note (2026-05-17)

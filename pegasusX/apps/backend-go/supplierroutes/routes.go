@@ -6,15 +6,15 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
-	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
-	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
-	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 // Deps is the narrow dependency contract for this routes package.
@@ -46,7 +46,7 @@ type Deps struct {
 //	GET /v1/supplier/dashboard         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/earnings          (requires session cookie, ADMIN role)
 //	GET/PATCH /v1/supplier/inventory   (requires session cookie, ADMIN role)
-//	GET /v1/supplier/inventory/audit   (requires session cookie, ADMIN role)
+//	GET /v1/supplier/inventory/audit   (410 audit_unwired; P1)
 //	GET /v1/supplier/orders            (requires session cookie, ADMIN role)
 //	POST /v1/supplier/orders/vet       (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/ai/recommendations (requires session cookie, ADMIN role)
@@ -115,6 +115,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/dispatch/tracking", d.Service.HandleDispatchTracking)
 		gr.Get("/v1/supplier/activity", d.Service.HandleActivity)
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
+		gr.Get("/v1/supplier/crm/retailers", d.Service.HandleCRMRetailers)
+		gr.Get("/v1/supplier/crm/retailers/{retailerId}", d.Service.HandleCRMRetailerDetail)
+		gr.Get("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
+		gr.Put("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
+		gr.Post("/v1/supplier/planning/pull-matrix", d.Service.HandlePlanningPullMatrix)
+		gr.Post("/v1/supplier/planning/predictive-push", d.Service.HandlePlanningPredictivePush)
+		gr.Post("/v1/supplier/planning/kill-switch", d.Service.HandlePlanningKillSwitch)
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)
 		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(d.ExceptionResolve))
 		gr.Get("/v1/supplier/ops/exception-map", d.Service.HandleExceptionMap)
@@ -161,7 +168,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)
 			gr.Get("/v1/compliance/export", d.ComplianceHandler.ExportCSV)
 		}
-		
+
 		if d.PayloadService != nil {
 			gr.Post("/v1/supplier/reassign-order", d.PayloadService.HandleApplyReassign)
 			gr.Post("/v1/supplier/recommend-reassign", d.PayloadService.HandleRecommendReassign)

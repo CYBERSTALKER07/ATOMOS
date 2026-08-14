@@ -62,6 +62,7 @@ targets:
       - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: payload-app-ios/Assets.xcassets
       - path: payload-app-ios/GoogleService-Info.plist
+      - path: payload-app-ios/PrivacyInfo.xcprivacy
     info:
       path: payload-app-ios/Info.plist
       properties:

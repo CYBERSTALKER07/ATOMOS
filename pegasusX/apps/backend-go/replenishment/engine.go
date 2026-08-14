@@ -387,6 +387,10 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 		}
 		insightCount++
 
+		if skipPlanningOwnedAutoTransfer(reason) {
+			continue
+		}
+
 		if urgency == "CRITICAL" {
 			if err := e.autoCreateTransfer(ctx, wh, insightID, sku.SkuId, suggestedQty, sku.UnitVolumeVU, wh.PrimaryFactoryId); err != nil {
 				e.Log.Error("replenishment.engine.auto_transfer_failed",

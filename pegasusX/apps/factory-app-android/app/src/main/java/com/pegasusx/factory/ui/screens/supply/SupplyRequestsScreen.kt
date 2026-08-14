@@ -60,6 +60,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
 import com.pegasusx.factory.data.model.SupplyRequest
 import com.pegasusx.factory.data.model.SupplyFulfillOptions
+import com.pegasusx.factory.data.model.SupplyRequestQCRequest
 import com.pegasusx.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
@@ -74,6 +75,9 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.ui.screens.supply.components.*
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -92,6 +96,7 @@ fun SupplyRequestsScreen(
     var viewMode by remember { mutableStateOf("TABLE") }
     var fulfillModal by remember { mutableStateOf<Pair<SupplyRequest, SupplyFulfillOptions>?>(null) }
     var transitioningId by remember { mutableStateOf<String?>(null) }
+    var qcById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var refreshing by remember { mutableStateOf(false) }
     var staleMessage by remember { mutableStateOf<String?>(null) }
     var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
@@ -116,6 +121,19 @@ fun SupplyRequestsScreen(
                     lastSyncedAt = System.currentTimeMillis()
                     staleMessage = null
                     error = null
+                    val ids = requests.map { it.id }
+                    qcById = try {
+                        coroutineScope {
+                            ids.map { id ->
+                                async {
+                                    val qc = api.getSupplyRequestQC(id)
+                                    id to (qc.body()?.result.orEmpty())
+                                }
+                            }.awaitAll().toMap()
+                        }
+                    } catch (_: Exception) {
+                        emptyMap()
+                    }
                 } else {
                     val message = "Failed (${resp.code()})"
                     if (requests.isEmpty()) {
@@ -179,6 +197,29 @@ fun SupplyRequestsScreen(
             return
         }
         runTransition(request, action)
+    }
+
+    fun onQC(request: SupplyRequest, result: String) {
+        transitioningId = request.id
+        scope.launch {
+            try {
+                val resp = api.postSupplyRequestQC(
+                    request.id,
+                    FactoryIdempotencyKeys.supplyRequestQC(request.id, result),
+                    SupplyRequestQCRequest(result = result),
+                )
+                if (resp.isSuccessful) {
+                    qcById = qcById + (request.id to result)
+                    snackbarHostState.showSnackbar("QC $result")
+                } else {
+                    snackbarHostState.showSnackbar("QC failed (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "QC failed")
+            } finally {
+                transitioningId = null
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -357,7 +398,9 @@ fun SupplyRequestsScreen(
                         SupplyBoard(
                             requests = filteredRequests,
                             transitioningId = transitioningId,
+                            qcById = qcById,
                             onAction = { request, action -> onAction(request, action) },
+                            onQC = { request, result -> onQC(request, result) },
                         )
                     }
                 } else {
@@ -365,7 +408,9 @@ fun SupplyRequestsScreen(
                     SupplyRequestCard(
                         request = request,
                         transitioning = transitioningId == request.id,
+                        qcResult = qcById[request.id].orEmpty(),
                         onAction = { action -> onAction(request, action) },
+                        onQC = { result -> onQC(request, result) },
                     )
                 }
                 }

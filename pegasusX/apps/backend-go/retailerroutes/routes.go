@@ -249,6 +249,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/retailer/settings/auto-order/variant/{variantID}", d.Service.HandleAutoOrderPatch)
 
 		rr.Get("/v1/retailer/cards", d.Service.HandleRetailerCards)
+		rr.Get("/v1/retailer/loyalty/tier", d.Service.HandleLoyaltyNotProduct)
 		rr.Post("/v1/retailer/card/initiate", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/confirm", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/deactivate", d.Service.HandleRetailerCardMutation)

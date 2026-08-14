@@ -16,20 +16,22 @@ import (
 )
 
 type factoryLocationResponse struct {
-	FactoryID string  `json:"factory_id"`
-	Name      string  `json:"name"`
-	Address   string  `json:"address,omitempty"`
-	PlaceID   string  `json:"place_id,omitempty"`
-	Lat       float64 `json:"lat"`
-	Lng       float64 `json:"lng"`
-	UpdatedAt string  `json:"updated_at,omitempty"`
+	FactoryID             string  `json:"factory_id"`
+	Name                  string  `json:"name"`
+	Address               string  `json:"address,omitempty"`
+	PlaceID               string  `json:"place_id,omitempty"`
+	Lat                   float64 `json:"lat"`
+	Lng                   float64 `json:"lng"`
+	DailyOutputCapacity   int64   `json:"daily_output_capacity"`
+	UpdatedAt             string  `json:"updated_at,omitempty"`
 }
 
 type factoryLocationPatch struct {
-	Address string  `json:"address"`
-	PlaceID string  `json:"place_id,omitempty"`
-	Lat     float64 `json:"lat"`
-	Lng     float64 `json:"lng"`
+	Address               string `json:"address"`
+	PlaceID               string `json:"place_id,omitempty"`
+	Lat                   float64 `json:"lat"`
+	Lng                   float64 `json:"lng"`
+	DailyOutputCapacity   *int64 `json:"daily_output_capacity,omitempty"`
 }
 
 // HandleOpsLocation serves GET/PATCH /v1/factory/ops/location.
@@ -118,6 +120,13 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 	} else {
 		update["H3Cell"] = nil
 	}
+	if req.DailyOutputCapacity != nil {
+		if *req.DailyOutputCapacity < 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "daily_output_capacity_invalid"})
+			return
+		}
+		update["DailyOutputCapacity"] = *req.DailyOutputCapacity
+	}
 
 	err = spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		eventPayload := events.FactoryEvent{
@@ -191,7 +200,7 @@ func (s *Service) scopedFactoryID(r *http.Request) (string, bool) {
 
 func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (factoryLocationResponse, error) {
 	supplierID := strings.TrimSpace(s.resolveSupplierScope(ctx))
-	sql := `SELECT FactoryId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0), UpdatedAt
+	sql := `SELECT FactoryId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0), DailyOutputCapacity, UpdatedAt
 		      FROM Factories WHERE FactoryId = @fid`
 	params := map[string]any{"fid": factoryID}
 	if supplierID != "" {
@@ -207,7 +216,7 @@ func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (fa
 	}
 	var resp factoryLocationResponse
 	var updatedAt time.Time
-	if err := row.Columns(&resp.FactoryID, &resp.Name, &resp.Address, &resp.PlaceID, &resp.Lat, &resp.Lng, &updatedAt); err != nil {
+	if err := row.Columns(&resp.FactoryID, &resp.Name, &resp.Address, &resp.PlaceID, &resp.Lat, &resp.Lng, &resp.DailyOutputCapacity, &updatedAt); err != nil {
 		return factoryLocationResponse{}, err
 	}
 	resp.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)

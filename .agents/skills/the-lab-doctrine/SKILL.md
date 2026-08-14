@@ -17,7 +17,7 @@ Invoke at the start of any of these:
 - User asks to test locally or on a physical device.
 - Before declaring any cross-cutting feature "done" — run the Feature Implementation Checklist at the end of this skill.
 
-Pair with `efficient-code` for code-quality gates and `gap-hunter` for post-change drift sweeps.
+Pair with `honest-code-gate` (code is SoT; no done/cloud-ready claim without live-path proof) and `gap-hunter` for post-change drift sweeps. `efficient-code` for code-quality gates.
 
 ## 1. The Role → App Matrix (canonical)
 

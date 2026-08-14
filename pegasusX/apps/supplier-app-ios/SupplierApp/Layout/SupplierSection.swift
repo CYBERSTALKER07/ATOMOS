@@ -47,7 +47,17 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case replenishmentPolicies = "Replenishment policies"
     case factories = "Factories"
     case warehouses = "Warehouses"
-    case catalogDetail = "Catalog detail"
+        case crm = "CRM"
+        case payouts = "Payouts"
+        case catalogDetail = "Catalog detail"
+        case controlTower = "Control tower"
+        case playbooks = "Playbooks"
+        case segmentation = "Segmentation"
+        case taxRegimes = "Tax regimes"
+        case creditPolicy = "Credit policy"
+        case creditAdminDisable = "Credit admin disable"
+        case flywheel = "POS flywheel"
+        case paydayCalendar = "Payday calendar"
 
     var id: String { rawValue }
 
@@ -99,7 +109,17 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .replenishmentPolicies: "doc.text"
         case .factories: "building.2"
         case .warehouses: "shippingbox.fill"
+        case .crm: "person.2"
+        case .payouts: "banknote"
         case .catalogDetail: "square.grid.2x2.fill"
+        case .controlTower: "antenna.radiowaves.left.and.right"
+        case .playbooks: "book"
+        case .segmentation: "square.grid.3x3"
+        case .taxRegimes: "building.columns"
+        case .creditPolicy: "creditcard"
+        case .creditAdminDisable: "exclamationmark.octagon"
+        case .flywheel: "arrow.triangle.2.circlepath"
+        case .paydayCalendar: "calendar"
         }
     }
 
@@ -116,19 +136,19 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     static var opsSections: [SupplierSection] {
         [
             .manifests, .dispatchPreview, .activity,
-            .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
+            .fleetOrders, .orgFleet, .treasury, .payouts, .ledger, .payments, .chargebacks,
             .claims, .claimChargebacks,
             .reconciliation, .compliance, .operations, .replenishmentPolicies,
-            .exceptions,
+            .exceptions, .creditPolicy, .creditAdminDisable, .taxRegimes,
         ]
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings, .returnPolicy]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings, .returnPolicy, .controlTower, .playbooks, .flywheel, .paydayCalendar]
     }
 
     static var networkSections: [SupplierSection] {
-        [.topology, .factories, .warehouses, .deliveryZones, .supplyLanes]
+        [.topology, .factories, .warehouses, .crm, .segmentation, .deliveryZones, .supplyLanes]
     }
 
     static var accountSections: [SupplierSection] {

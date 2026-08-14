@@ -55,6 +55,9 @@ object FactoryIdempotencyKeys {
     fun supplyRequestAccept(requestId: String): String =
         "factory-supply-accept:$requestId"
 
+    fun supplyRequestQC(requestId: String, result: String): String =
+        "factory-supply-qc:$requestId:${result.trim().uppercase()}"
+
     fun opsLocation(lat: Double, lng: Double, placeId: String? = null): String {
         val fingerprint = stableHash("${"%.6f".format(lat)}:${"%.6f".format(lng)}:${placeId.orEmpty()}")
         return "factory-ops-location:${factoryId()}:$fingerprint"

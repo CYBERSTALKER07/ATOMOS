@@ -241,6 +241,62 @@ interface SupplierApi {
     @GET("v1/supplier/planning/seasonal-overrides")
     suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse>
 
+    @GET("v1/supplier/crm/retailers")
+    suspend fun getCrmRetailers(): Response<SupplierCRMListResponse>
+
+    @GET("v1/supplier/crm/retailers/{retailerId}")
+    suspend fun getCrmRetailer(@Path("retailerId") retailerId: String): Response<SupplierCRMRetailerDetail>
+
+    @GET("v1/supplier/network-mode")
+    suspend fun getNetworkMode(): Response<NetworkModeResponse>
+
+    @PUT("v1/supplier/network-mode")
+    suspend fun putNetworkMode(
+        @Body body: NetworkModeUpdateRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<NetworkModeUpdateResponse>
+
+    @POST("v1/supplier/planning/pull-matrix")
+    suspend fun postPlanningPullMatrix(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PullMatrixResponse>
+
+    @POST("v1/supplier/planning/kill-switch")
+    suspend fun postPlanningKillSwitch(
+        @Body body: KillSwitchRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<KillSwitchResponse>
+
+    @GET("v1/supplier/payouts/rail")
+    suspend fun getPayoutRail(): Response<PayoutRailInfo>
+
+    @GET("v1/supplier/payout-policy")
+    suspend fun getPayoutPolicy(): Response<SupplierPayoutPolicy>
+
+    @PATCH("v1/supplier/payout-policy")
+    suspend fun patchPayoutPolicy(@Body body: SupplierPayoutPolicyPatch): Response<SupplierPayoutPolicy>
+
+    @GET("v1/supplier/payouts/batches")
+    suspend fun listPayoutBatches(): Response<PayoutBatchListResponse>
+
+    @POST("v1/supplier/payouts/batches")
+    suspend fun generatePayoutBatch(
+        @Body body: PayoutBatchGenerateRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PayoutBatchGenerateResponse>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/export")
+    suspend fun exportPayoutBatch(@Path("batchID") batchId: String): Response<okhttp3.ResponseBody>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/mark-paid")
+    suspend fun markPayoutBatchPaid(@Path("batchID") batchId: String): Response<PayoutMarkPaidResponse>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/dispatch")
+    suspend fun dispatchPayoutBatch(
+        @Path("batchID") batchId: String,
+        @Body body: Map<String, Boolean>,
+    ): Response<PayoutDispatchResponse>
+
     @POST("v1/supplier/planning/seasonal-overrides")
     suspend fun createSeasonalOverride(
         @Body body: SeasonalOverrideInput,
@@ -591,4 +647,38 @@ interface SupplierApi {
         @Header("X-Idempotency-Key") idempotencyKey: String,
         @Body body: WarehouseOrderMutationRequest,
     ): Response<WarehouseOrderMutationResponse>
+
+    @GET("v1/control-tower/exceptions/scored")
+    suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
+
+    @GET("v1/control-tower/playbooks")
+    suspend fun listPlaybooks(): Response<ControlTowerPlaybooksResponse>
+
+    @GET("v1/supplier/segmentation/retailers")
+    suspend fun listRetailerSegments(): Response<JsonElement>
+
+    @GET("v1/admin/tax-regimes")
+    suspend fun listTaxRegimes(@Query("country") country: String = "UZ", @Query("limit") limit: Int = 50): Response<JsonElement>
+
+    @GET("v1/supplier/credit-program")
+    suspend fun getCreditProgram(): Response<JsonElement>
+
+    @GET("v1/supplier/analytics/demand/flywheel")
+    suspend fun getDemandFlywheel(@Query("days") days: Int = 7): Response<JsonElement>
+
+    @GET("v1/demand/signals")
+    suspend fun getDemandSignals(@Query("type") type: String? = null): Response<JsonElement>
+
+    @POST("v1/admin/credit-relationships/{supplierId}/{retailerId}/disable")
+    suspend fun adminDisableCreditRelationship(
+        @Path("supplierId") supplierId: String,
+        @Path("retailerId") retailerId: String,
+        @Body body: CreditAdminDisableRequest,
+    ): Response<JsonElement>
+
+    @POST("v1/admin/credit-program/{supplierId}/disable")
+    suspend fun adminDisableCreditProgram(
+        @Path("supplierId") supplierId: String,
+        @Body body: CreditAdminDisableRequest,
+    ): Response<JsonElement>
 }

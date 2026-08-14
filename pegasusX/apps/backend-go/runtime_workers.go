@@ -91,6 +91,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		app.ReplenishmentEngine.StartCron(ctx)
 		slog.Info("replenishment engine cron started")
 	}
+	if app.FactoryPlanning != nil {
+		app.FactoryPlanning.StartPlanningCron(ctx)
+		slog.Info("factory planning cron started")
+	}
 	if app.LaborCapacityService != nil {
 		go app.LaborCapacityService.RunDriverScoreWorker(ctx, 24*time.Hour)
 		go app.LaborCapacityService.RunCapacitySnapshotWorker(ctx, 1*time.Hour)

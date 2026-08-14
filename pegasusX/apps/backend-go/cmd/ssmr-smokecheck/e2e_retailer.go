@@ -153,8 +153,11 @@ func runRetailerCardInitiateE2E(ctx context.Context, client *http.Client, base, 
 	if err != nil {
 		return err
 	}
-	if status != http.StatusOK && status != http.StatusServiceUnavailable {
-		return fmt.Errorf("POST retailer/card/initiate status %d body %s", status, string(body))
+	if status != http.StatusGone {
+		return fmt.Errorf("POST retailer/card/initiate want 410 saved_cards_not_product, got %d body %s", status, string(body))
+	}
+	if !bytes.Contains(body, []byte("saved_cards_not_product")) {
+		return fmt.Errorf("POST retailer/card/initiate 410 body missing saved_cards_not_product: %s", string(body))
 	}
 	fmt.Println("PX_E2E_RETAILER_CARD_INITIATE_OK")
 	return nil

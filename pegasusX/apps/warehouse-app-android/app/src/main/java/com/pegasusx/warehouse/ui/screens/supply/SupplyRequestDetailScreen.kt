@@ -33,6 +33,7 @@ fun SupplyRequestDetailScreen(
     onBack: (() -> Unit)? = null,
 ) {
     var request by remember { mutableStateOf<WarehouseSupplyRequest?>(null) }
+    var qcResult by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -47,6 +48,8 @@ fun SupplyRequestDetailScreen(
                 val resp = opsRepository.getSupplyRequest(requestId)
                 if (resp.isSuccessful) {
                     request = resp.body()
+                    val qc = opsRepository.getSupplyRequestQC(requestId)
+                    qcResult = if (qc.isSuccessful) qc.body()?.result.orEmpty() else ""
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -146,6 +149,7 @@ fun SupplyRequestDetailScreen(
                     DetailRow("Volume (VU)", row.totalVolumeVu.toString())
                     DetailRow("Transfer order", row.transferOrderId ?: "—")
                     DetailRow("Created", row.createdAt)
+                    DetailRow("QC", qcResult.ifBlank { "—" })
                     if (row.notes.isNotBlank()) {
                         DetailRow("Notes", row.notes)
                     }

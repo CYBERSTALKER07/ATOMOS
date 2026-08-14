@@ -96,6 +96,22 @@ enum SupplierIdempotencyKeys {
         "supplier-seasonal-override:\(scopeId):\(stableHash("\(startDate):\(endDate)"))"
     }
 
+    static func networkModePut(scopeId: String, mode: String) -> String {
+        "supplier-network-mode:\(scopeId):\(mode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
+    static func planningPullMatrix(scopeId: String) -> String {
+        "supplier-planning-pull-matrix:\(scopeId)"
+    }
+
+    static func planningKillSwitch(scopeId: String, reason: String) -> String {
+        "supplier-planning-kill-switch:\(scopeId):\(stableHash(reason.trimmingCharacters(in: .whitespacesAndNewlines)))"
+    }
+
+    static func payoutGenerate(scopeId: String, periodStart: String, periodEnd: String) -> String {
+        "supplier-payout-generate:\(scopeId):\(periodStart):\(periodEnd)"
+    }
+
     static func returnPolicyPut(scopeId: String, hours: Int64) -> String {
         "supplier-return-policy:\(scopeId):\(hours)"
     }

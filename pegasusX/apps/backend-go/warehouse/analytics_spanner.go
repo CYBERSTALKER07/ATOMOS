@@ -107,20 +107,22 @@ func (s *Service) loadOpsAnalytics(ctx context.Context, warehouseID, period, sup
 	}
 
 	return map[string]any{
-		"warehouse_id":         warehouseID,
-		"period":               periodLabel,
-		"total_orders":         totalOrders,
-		"total_revenue":        totalRevenue,
-		"completed_orders":     completedOrders,
-		"cancelled_orders":     cancelledOrders,
-		"avg_order_value":      avgOrderValue,
-		"top_products":         topProducts,
-		"daily_breakdown":      dailyBreakdown,
-		"daily":                dailyBreakdown,
-		"fleet_utilization":    fleetUtil,
-		"fleet_utilization_pct": fleetUtil["utilization_pct"],
-		"import_freshness":     importFreshness,
-		"import_anomaly_queue": importAnomaly,
+		"warehouse_id":              warehouseID,
+		"period":                    periodLabel,
+		"total_orders":              totalOrders,
+		"total_revenue":             totalRevenue,
+		"completed_orders":          completedOrders,
+		"cancelled_orders":          cancelledOrders,
+		"avg_order_value":           avgOrderValue,
+		"top_products":              topProducts,
+		"top_products_available":    true,
+		"daily_breakdown":           dailyBreakdown,
+		"daily_breakdown_available": true,
+		"daily":                     dailyBreakdown,
+		"fleet_utilization":         fleetUtil,
+		"fleet_utilization_pct":     fleetUtil["utilization_pct"],
+		"import_freshness":          importFreshness,
+		"import_anomaly_queue":      importAnomaly,
 	}, nil
 }
 
@@ -302,9 +304,9 @@ func (s *Service) loadAnalyticsFleetUtilization(ctx context.Context, txn *spanne
 		utilPct = float64(activeDrivers) / float64(totalDrivers) * 100
 	}
 	return map[string]any{
-		"total_drivers":    totalDrivers,
-		"active_drivers":   activeDrivers,
-		"utilization_pct":  utilPct,
+		"total_drivers":     totalDrivers,
+		"active_drivers":    activeDrivers,
+		"utilization_pct":   utilPct,
 		"avg_stops_per_day": 0.0,
 	}, nil
 }

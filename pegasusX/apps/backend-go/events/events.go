@@ -94,14 +94,22 @@ const (
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
 	EventWarehouseLocationUpdated     = "WAREHOUSE_LOCATION_UPDATED"
 	EventWarehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"
+	EventWarehouseBroadcast           = "WAREHOUSE_BROADCAST"
+	EventSupplierBroadcast            = "SUPPLIER_BROADCAST"
 
 	// @Sync(SupplyRequestEvent)
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventSupplyRequestAccepted        = "SUPPLY_REQUEST_ACCEPTED"
 	EventSupplyRequestUpdate          = "SUPPLY_REQUEST_UPDATE"
 	EventFactorySupplyRequestUpdate   = "FACTORY_SUPPLY_REQUEST_UPDATE"
-	// EventFactorySLABreach is emitted when an open supply request passes sla_due_at (G7.1).
+	// EventFactorySLABreach is emitted when an open supply request passes sla_due_at (G7.1)
+	// or a factory transfer misses dampened transit (P5-E). Payload includes kind:
+	// supply_request | transfer_transit.
 	EventFactorySLABreach = "FACTORY_SLA_BREACH"
+	// P5 planning — names already on generated client WS enums; emit for real.
+	EventPullMatrixCompleted  = "PULL_MATRIX_COMPLETED"
+	EventLookAheadCompleted   = "LOOK_AHEAD_COMPLETED"
+	EventNetworkModeChanged   = "NETWORK_MODE_CHANGED"
 
 	// @Sync(SystemEvent)
 	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"
@@ -125,6 +133,11 @@ const (
 	// @Sync(FactoryEvent)
 	EventFactoryCreated         = "FACTORY_CREATED"
 	EventFactoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
+	EventFactoryStaffCreated    = "FACTORY_STAFF_CREATED"
+	EventFactoryStaffPasswordSet = "FACTORY_STAFF_PASSWORD_SET"
+	// EventFactoryTransferCreated is factory-plane internal transfer create (P3-C).
+	// @Sync(WarehouseTransferEvent)
+	EventFactoryTransferCreated = "TRANSFER_CREATED"
 
 	// @Sync(OrderEvent)
 	EventOrderCreated               = "ORDER_CREATED"
@@ -200,16 +213,17 @@ const (
 	EventLogisticsTelemetry         = "LOGISTICS_TELEMETRY"
 
 	// @Sync(ManifestEvent)
-	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
-	EventManifestLoadingStarted = "MANIFEST_LOADING_STARTED"
-	EventManifestOrderInjected  = "MANIFEST_ORDER_INJECTED"
-	EventManifestOrderException = "MANIFEST_ORDER_EXCEPTION"
-	EventManifestDLQEscalation  = "MANIFEST_DLQ_ESCALATION"
-	EventManifestRebalanced     = "MANIFEST_REBALANCED"
-	EventManifestCancelled      = "MANIFEST_CANCELLED"
-	EventManifestSealed         = "MANIFEST_SEALED"
-	EventManifestDispatched     = "MANIFEST_DISPATCHED"
-	EventManifestCompleted      = "MANIFEST_COMPLETED"
+	EventManifestDraftCreated      = "MANIFEST_DRAFT_CREATED"
+	EventManifestLoadingStarted    = "MANIFEST_LOADING_STARTED"
+	EventManifestOrderInjected     = "MANIFEST_ORDER_INJECTED"
+	EventManifestOrderException    = "MANIFEST_ORDER_EXCEPTION"
+	EventManifestExceptionResolved = "MANIFEST_EXCEPTION_RESOLVED"
+	EventManifestDLQEscalation     = "MANIFEST_DLQ_ESCALATION"
+	EventManifestRebalanced        = "MANIFEST_REBALANCED"
+	EventManifestCancelled         = "MANIFEST_CANCELLED"
+	EventManifestSealed            = "MANIFEST_SEALED"
+	EventManifestDispatched        = "MANIFEST_DISPATCHED"
+	EventManifestCompleted         = "MANIFEST_COMPLETED"
 
 	// @Sync(SplitShipmentEvent)
 	// EventSplitShipmentCreated fires when a warehouse admin approves splitting
@@ -298,6 +312,7 @@ const (
 	EventPayoutBatchExported   = "PAYOUT_BATCH_EXPORTED"
 	EventPayoutBatchDispatched = "PAYOUT_BATCH_DISPATCHED"
 	EventPayoutBatchPaid       = "PAYOUT_BATCH_PAID"
+	EventPayoutPolicyUpdated   = "PAYOUT_POLICY_UPDATED"
 
 	// @Sync(ProductEvent)
 	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
@@ -315,10 +330,10 @@ const (
 	EventPreOrderDateRejected = "PRE_ORDER_DATE_REJECTED"
 
 	// @Sync(PlanningEvent)
-	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
-	EventReplenishmentInsightCreated  = "REPLENISHMENT_INSIGHT_CREATED"
+	EventReplenishmentAutoApproved   = "REPLENISHMENT_AUTO_APPROVED"
+	EventReplenishmentInsightCreated = "REPLENISHMENT_INSIGHT_CREATED"
 	// S-P1-2: supplier PATCH /v1/supplier/replenishment/policies bus event.
-	EventReplenishmentPolicyUpdated = "REPLENISHMENT_POLICY_UPDATED"
+	EventReplenishmentPolicyUpdated   = "REPLENISHMENT_POLICY_UPDATED"
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
 	EventPlanningScenarioPublished    = "planning.scenario.published.v1"
@@ -361,6 +376,8 @@ const (
 	AggregateDemandSignal          = "DemandSignal"
 	AggregateARInvoice             = "ARInvoice"
 	AggregatePayoutBatch           = "PayoutBatch"
+	AggregatePayoutPolicy          = "PayoutPolicy"
+	AggregateCountryOverride       = "CountryOverride"
 )
 
 func topicFromEnv(key string, fallback string) string {

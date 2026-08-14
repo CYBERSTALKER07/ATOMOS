@@ -180,6 +180,7 @@ struct SupplyRequestsView: View {
     @State private var viewMode = "TABLE"
     @State private var fulfillModal: (SupplyRequest, SupplyFulfillOptions)?
     @State private var transitioningID: String?
+    @State private var qcById: [String: String] = [:]
     @State private var refreshing = false
     @State private var staleMessage: String?
     @State private var lastSyncedAt: Date?
@@ -281,8 +282,12 @@ struct SupplyRequestsView: View {
                                 SupplyBoard(
                                     requests: filteredRequests,
                                     transitioningID: transitioningID,
+                                    qcById: qcById,
                                     onAction: { request, action in
                                         Task { await handleAction(request: request, action: action) }
+                                    },
+                                    onQC: { request, result in
+                                        Task { await handleQC(request: request, result: result) }
                                     }
                                 )
                             } else {
@@ -291,8 +296,12 @@ struct SupplyRequestsView: View {
                                     SupplyRequestCard(
                                         request: request,
                                         transitioning: transitioningID == request.id,
+                                        qcResult: qcById[request.id] ?? "",
                                         onAction: { action in
                                             Task { await handleAction(request: request, action: action) }
+                                        },
+                                        onQC: { result in
+                                            Task { await handleQC(request: request, result: result) }
                                         }
                                     )
                                     .staggeredAppear(index: index)
@@ -404,6 +413,18 @@ struct SupplyRequestsView: View {
     }
 
     @MainActor
+    private func handleQC(request: SupplyRequest, result: String) async {
+        transitioningID = request.id
+        defer { transitioningID = nil }
+        do {
+            _ = try await FactoryService.postSupplyRequestQC(id: request.id, result: result)
+            qcById[request.id] = result
+        } catch {
+            staleMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
     private func load(background: Bool = false) async {
         if background {
             refreshing = true
@@ -417,6 +438,13 @@ struct SupplyRequestsView: View {
             staleMessage = nil
             error = nil
             lastSyncedAt = Date()
+            var next: [String: String] = [:]
+            for request in requests {
+                if let qc = try? await FactoryService.supplyRequestQC(id: request.id) {
+                    next[request.id] = qc.result
+                }
+            }
+            qcById = next
         } catch {
             let message = error.localizedDescription
             if requests.isEmpty {
@@ -519,7 +547,9 @@ private struct SupplyViewModeRow: View {
 private struct SupplyBoard: View {
     let requests: [SupplyRequest]
     let transitioningID: String?
+    let qcById: [String: String]
     let onAction: (SupplyRequest, String) -> Void
+    let onQC: (SupplyRequest, String) -> Void
 
     private let lanes = ["SUBMITTED", "ACKNOWLEDGED", "IN_PRODUCTION", "READY"]
 
@@ -537,11 +567,23 @@ private struct SupplyBoard: View {
                                 Text(request.priority.isEmpty ? "NORMAL" : request.priority)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if let qc = qcById[request.id], !qc.isEmpty {
+                                    Text("QC \(qc)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                                 ForEach(requestActions(for: request.state), id: \.action) { action in
                                     SupplyActionButton(action: action, transitioning: transitioningID == request.id) {
                                         onAction(request, action.action)
                                     }
                                 }
+                                HStack {
+                                    Button("PASS") { onQC(request, "PASS") }
+                                        .disabled(transitioningID == request.id)
+                                    Button("FAIL", role: .destructive) { onQC(request, "FAIL") }
+                                        .disabled(transitioningID == request.id)
+                                }
+                                .font(.caption)
                             }
                             .frame(width: 220, alignment: .leading)
                             .labCard()
@@ -556,7 +598,9 @@ private struct SupplyBoard: View {
 private struct SupplyRequestCard: View {
     let request: SupplyRequest
     let transitioning: Bool
+    let qcResult: String
     let onAction: (String) -> Void
+    let onQC: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
@@ -572,13 +616,16 @@ private struct SupplyRequestCard: View {
                 VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
                     SupplyTag(text: request.state, emphasized: true)
                     SupplyTag(text: request.priority.isEmpty ? "NORMAL" : request.priority, emphasized: false)
+                    if slaBadgeVisible(request.slaStatus) {
+                        SupplyTag(text: (request.slaStatus ?? "").replacingOccurrences(of: "_", with: " "), emphasized: request.slaStatus == "BREACHED")
+                    }
                 }
             }
 
             HStack(spacing: LabTheme.spacingSM) {
                 SupplyMetric(label: "Volume", value: supplyVolumeLabel(request.totalVolumeVU))
                 SupplyMetric(label: "Created", value: supplyShortDate(request.createdAt))
-                SupplyMetric(label: "Delivery", value: supplyShortDate(request.requestedDeliveryDate))
+                SupplyMetric(label: "Delivery", value: supplyDeliveryWithSLA(request))
             }
 
             if !request.notes.isEmpty {
@@ -588,6 +635,18 @@ private struct SupplyRequestCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LabTheme.spacingMD)
                     .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            }
+
+            if !qcResult.isEmpty {
+                Text("QC \(qcResult)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: LabTheme.spacingSM) {
+                Button("PASS") { onQC("PASS") }
+                    .disabled(transitioning)
+                Button("FAIL", role: .destructive) { onQC("FAIL") }
+                    .disabled(transitioning)
             }
 
             let actions = requestActions(for: request.state)

@@ -830,20 +830,7 @@ struct AutoOrderView: View {
     }
 
     private func loadForecasts() async -> ([DemandForecast], String?) {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        do {
-            return (try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)"), nil)
-        } catch {
-            return (
-                [],
-                RetailerErrorSupport.message(
-                    for: error,
-                    restricted: "Prediction access is restricted for this account.",
-                    offline: "Offline mode active. Predictions will resume after reconnect.",
-                    fallback: "Predictions sync is degraded. Retry is available.",
-                )
-            )
-        }
+        return ([], nil)
     }
 
     private func enableGlobal(useHistory: Bool) async {

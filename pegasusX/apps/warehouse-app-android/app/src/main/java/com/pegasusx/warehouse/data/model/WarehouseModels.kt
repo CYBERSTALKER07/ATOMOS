@@ -772,6 +772,12 @@ data class WarehouseSupplyRequest(
 )
 
 @Serializable
+data class SupplyRequestQCResponse(
+    @SerialName("request_id") val requestId: String = "",
+    val result: String = "",
+)
+
+@Serializable
 data class WarehouseDispatchLock(
     @SerialName("lock_id") val lockId: String,
     @SerialName("supplier_id") val supplierId: String = "",

@@ -2,7 +2,7 @@ import { authFetch } from './authSession';
 import { readApiError } from './explainBanner';
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
-  (__DEV__ ? 'http://localhost:8180' : 'https://api.pegasus.uz');
+  (__DEV__ ? 'http://localhost:8180' : (process.env.EXPO_PUBLIC_RELEASE_API_URL?.trim() || 'https://api.pegasusx.app'));
 
 /**
  * Payload Terminal API
@@ -169,6 +169,18 @@ export const PayloadTerminalApi = {
             method: 'POST',
             headers,
             body: JSON.stringify({ manifest_ids: manifestIds }),
+        });
+        if (!res.ok) throw await readApiError(res);
+        return res.json();
+    },
+
+    sealAllManifests: async (_token: string, idempotencyKey?: string) => {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+        const res = await authFetch('/v1/payloader/manifests/seal-all', {
+            method: 'POST',
+            headers,
+            body: '{}',
         });
         if (!res.ok) throw await readApiError(res);
         return res.json();

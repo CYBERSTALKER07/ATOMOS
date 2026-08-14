@@ -71,27 +71,29 @@ type WarehouseOpsVehiclesQuery func(ctx context.Context, warehouseID string) ([]
 
 // Service stores additive in-memory data for warehouse operational surfaces.
 type Service struct {
-	repo           Repository
-	planner        DemandPlanner
-	analyticsQuery WarehouseAnalyticsQuery
-	opsOrders      WarehouseOpsOrdersQuery
-	opsDrivers     WarehouseOpsDriversQuery
-	opsVehicles    WarehouseOpsVehiclesQuery
-	cache          *cache.Cache
-	idem           idempotency.Store
-	spannerClient  *spanner.Client
-	manifestStore  *manifest.Store
+	repo                 Repository
+	planner              DemandPlanner
+	analyticsQuery       WarehouseAnalyticsQuery
+	opsOrders            WarehouseOpsOrdersQuery
+	opsDrivers           WarehouseOpsDriversQuery
+	opsVehicles            WarehouseOpsVehiclesQuery
+	gatewayBreakdownQuery  func(ctx context.Context, warehouseID, period string) ([]map[string]any, bool)
+	platformFeeQuery       func(ctx context.Context, warehouseID, period string) (int64, bool)
+	cache                  *cache.Cache
+	idem                 idempotency.Store
+	spannerClient        *spanner.Client
+	manifestStore        *manifest.Store
 	routeGeometryBuilder *routing.GeometryBuilder
 	locations            telemetry.LastLocationReader
 	supplierHub          *ws.Hub
 	warehouseHub         *ws.Hub
-	driverHub              *ws.Hub
-	retailerHub            *ws.Hub
-	log            *slog.Logger
+	driverHub            *ws.Hub
+	retailerHub          *ws.Hub
+	log                  *slog.Logger
 
 	seedSupplierID string
-	currency   string
-	now        func() time.Time
+	currency       string
+	now            func() time.Time
 
 	mu     sync.RWMutex
 	orders []OrderRow
@@ -103,31 +105,31 @@ type Service struct {
 	fallbackDepotLat float64
 	fallbackDepotLng float64
 
-	portalSeeded      bool
-	drivers           []PortalDriver
-	vehicles          []PortalVehicle
-	staff             []portalStaff
-	products          []portalProduct
-	manifests         []portalManifest
-	retailers         []portalRetailer
-	returns           []portalReturnItem
-	insights          []replenishmentInsight
-	internalTransfers map[string]memoryTransferRow
+	portalSeeded          bool
+	drivers               []PortalDriver
+	vehicles              []PortalVehicle
+	staff                 []portalStaff
+	products              []portalProduct
+	manifests             []portalManifest
+	retailers             []portalRetailer
+	returns               []portalReturnItem
+	insights              []replenishmentInsight
+	internalTransfers     map[string]memoryTransferRow
 	broadcastTemplatesMem map[string][]customBroadcastTemplateRow
-	firebaseVerifier  auth.FirebaseVerifier
-	orderStock        OrderStockReader
+	firebaseVerifier      auth.FirebaseVerifier
+	orderStock            OrderStockReader
 }
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo           Repository
-	Planner        DemandPlanner
-	AnalyticsQuery WarehouseAnalyticsQuery
-	OpsOrders      WarehouseOpsOrdersQuery
-	OpsDrivers     WarehouseOpsDriversQuery
-	OpsVehicles    WarehouseOpsVehiclesQuery
-	Cache          *cache.Cache
-	Idem           idempotency.Store
+	Repo                 Repository
+	Planner              DemandPlanner
+	AnalyticsQuery       WarehouseAnalyticsQuery
+	OpsOrders            WarehouseOpsOrdersQuery
+	OpsDrivers           WarehouseOpsDriversQuery
+	OpsVehicles          WarehouseOpsVehiclesQuery
+	Cache                *cache.Cache
+	Idem                 idempotency.Store
 	Spanner              *spanner.Client
 	ManifestStore        *manifest.Store
 	RouteGeometryBuilder *routing.GeometryBuilder
@@ -136,7 +138,7 @@ type ServiceConfig struct {
 	WarehouseHub         *ws.Hub
 	DriverHub            *ws.Hub
 	RetailerHub          *ws.Hub
-	Log            *slog.Logger
+	Log                  *slog.Logger
 
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
 	SeedSupplierID string
@@ -160,7 +162,7 @@ type InventoryRow struct {
 	ProductName      string `json:"product_name"`
 	Quantity         int64  `json:"quantity"`
 	QuantityOnHand   int64  `json:"quantity_on_hand"`
-	ReorderThreshold   int64  `json:"reorder_threshold"`
+	ReorderThreshold int64  `json:"reorder_threshold"`
 	OutOfStockPolicy string `json:"out_of_stock_policy"`
 	EffectivePolicy  string `json:"effective_policy"`
 	UpdatedAt        string `json:"updated_at"`
@@ -217,14 +219,14 @@ func NewService(c ServiceConfig) *Service {
 		seedID = strings.TrimSpace(c.SupplierID)
 	}
 	return &Service{
-		repo:             c.Repo,
-		planner:          c.Planner,
-		analyticsQuery:   c.AnalyticsQuery,
-		opsOrders:        c.OpsOrders,
-		opsDrivers:       c.OpsDrivers,
-		opsVehicles:      c.OpsVehicles,
-		cache:            c.Cache,
-		idem:             c.Idem,
+		repo:                 c.Repo,
+		planner:              c.Planner,
+		analyticsQuery:       c.AnalyticsQuery,
+		opsOrders:            c.OpsOrders,
+		opsDrivers:           c.OpsDrivers,
+		opsVehicles:          c.OpsVehicles,
+		cache:                c.Cache,
+		idem:                 c.Idem,
 		spannerClient:        c.Spanner,
 		manifestStore:        c.ManifestStore,
 		routeGeometryBuilder: c.RouteGeometryBuilder,
@@ -233,17 +235,17 @@ func NewService(c ServiceConfig) *Service {
 		warehouseHub:         c.WarehouseHub,
 		driverHub:            c.DriverHub,
 		retailerHub:          c.RetailerHub,
-		log:              c.Log,
-		seedSupplierID: seedID,
-		currency:         c.Currency,
-		now:              c.Now,
-		jwtSecret:        c.JWTSecret,
-		jwtIssuer:        c.JWTIssuer,
-		optimizerClient:  c.OptimizerClient,
-		planCounters:     c.PlanCounters,
-		fallbackDepotLat: c.FallbackDepotLat,
-		fallbackDepotLng: c.FallbackDepotLng,
-		firebaseVerifier: c.FirebaseVerifier,
+		log:                  c.Log,
+		seedSupplierID:       seedID,
+		currency:             c.Currency,
+		now:                  c.Now,
+		jwtSecret:            c.JWTSecret,
+		jwtIssuer:            c.JWTIssuer,
+		optimizerClient:      c.OptimizerClient,
+		planCounters:         c.PlanCounters,
+		fallbackDepotLat:     c.FallbackDepotLat,
+		fallbackDepotLng:     c.FallbackDepotLng,
+		firebaseVerifier:     c.FirebaseVerifier,
 	}
 }
 
@@ -324,13 +326,14 @@ func (s *Service) HandleDemandForecast(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	products := s.productDemandForecast(r.Context(), warehouseID, days)
+	products, source := s.productDemandForecast(r.Context(), warehouseID, days)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"warehouse_id":  warehouseID,
 		"forecast_days": days,
 		"generated_at":  s.now().UTC().Format(time.RFC3339Nano),
 		"series":        series,
 		"products":      products,
+		"source":        source,
 	})
 }
 
@@ -427,15 +430,15 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	eventPayload := events.WarehouseEvent{
-		BaseEvent:   events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
-		RequestID:   req.RequestID,
-		SupplierID:  s.resolveSupplierScope(r.Context()),
-		WarehouseID: req.WarehouseID,
-		FactoryID:   req.FactoryID,
-		TransferMode: req.TransferMode,
-		Status:      req.Status,
-		Projected:   req.ProjectedUnits,
-		Committed:   req.CommittedUnits,
+		BaseEvent:         events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
+		RequestID:         req.RequestID,
+		SupplierID:        s.resolveSupplierScope(r.Context()),
+		WarehouseID:       req.WarehouseID,
+		FactoryID:         req.FactoryID,
+		TransferMode:      req.TransferMode,
+		Status:            req.Status,
+		Projected:         req.ProjectedUnits,
+		Committed:         req.CommittedUnits,
 		Pending:           req.PendingConfirmationUnits,
 		RequestedBy:       req.RequestedBy,
 		CoverageDays:      int64(req.CoverageDays),

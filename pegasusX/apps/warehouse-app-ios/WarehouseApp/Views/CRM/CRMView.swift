@@ -36,6 +36,11 @@ struct CRMView: View {
                                 Text(L10n.format("mobile_warehouse.ui.formatted_uzs", "\(retailer.totalRevenue.formatted())"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if !retailer.lastOrderDate.isEmpty {
+                                    Text(retailer.lastOrderDate)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }

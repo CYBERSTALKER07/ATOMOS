@@ -99,6 +99,11 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): SealCompletedManifestsResponse
 
+    @POST("v1/payloader/manifests/seal-all")
+    suspend fun sealAllManifests(
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealCompletedManifestsResponse
+
     @POST("v1/payloader/manifests/{id}/seal")
     suspend fun sealManifest(
         @Path("id") manifestId: String,

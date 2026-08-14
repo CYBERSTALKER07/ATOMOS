@@ -65,6 +65,25 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
 			return FormatManifestOrderException(e.ManifestID, e.OrderID, e.Reason)
 		}
+	case events.EventManifestExceptionResolved:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestExceptionResolved(e.ManifestID, e.Reason)
+		}
+	case events.EventFactoryStaffCreated:
+		var e events.FactoryEvent
+		if json.Unmarshal(payload, &e) == nil && e.UserID != "" {
+			return FormatFactoryStaffCreated(e.UserID, e.FactoryID)
+		}
+	case events.EventFactoryTransferCreated:
+		var e events.WarehouseTransferEvent
+		if json.Unmarshal(payload, &e) == nil && e.TransferID != "" {
+			return FormatFactoryTransferCreated(e.TransferID)
+		}
+		var wh events.WarehouseEvent
+		if json.Unmarshal(payload, &wh) == nil && wh.TransferID != "" {
+			return FormatFactoryTransferCreated(wh.TransferID)
+		}
 	case events.EventManifestDLQEscalation:
 		var e events.ManifestEvent
 		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {

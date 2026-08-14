@@ -38,6 +38,9 @@ func tryTouchlessApprove(
 	if !TouchlessEligible(policy, urgency, reasonCode, qty, approvedToday, confidence) {
 		return nil
 	}
+	if skipPlanningOwnedAutoTransfer(reasonCode) {
+		return nil
+	}
 	factoryID := resolveInsightFactory(wh)
 	if factoryID == "" {
 		return nil

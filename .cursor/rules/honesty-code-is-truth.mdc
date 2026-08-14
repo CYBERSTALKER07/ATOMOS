@@ -1,0 +1,39 @@
+---
+description: Code is the only truth. Never claim wired/done/ready from docs, matrices, or prior chat. Compare docs to real code on every status question.
+alwaysApply: true
+---
+
+# Honesty — code is truth
+
+Docs, matrices, plans, AGENTS.md runtime notes, and prior assistant messages are **hypotheses**. Status answers come from **current source**: handlers, persistence, clients, tests.
+
+## Forbidden without file:line proof from this session
+
+Do not say **wired**, **done**, **implemented**, **production-ready**, **cloud-ready**, **we can start connecting cloud**, **everything works**, or **fully E2E** unless you opened the live path this session.
+
+A route existing, a UI screen existing, or a doc row labeled Wired is **not** proof.
+
+## Docs vs code (every status / feature / readiness question)
+
+1. Read the claimed doc (if any).
+2. Trace the live path in code: route mount → auth → service → Spanner/Redis write or honest fail → outbox/Kafka/WS if mutation → **every client that calls it**.
+3. Report **REAL / PARTIAL / THEATRE / GONE / DOC DRIFT**.
+4. If docs and code disagree, **code wins**. Name the drift. Do not "fix" the answer to match the doc.
+
+## Theatre (never advertise as a feature)
+
+- `{status: ok}` / always-`[]` / in-memory-only sold as durable
+- 410/403/501/empty scaffold advertised as live
+- Alias route that returns a dummy while the real path is unused
+- Tests that assert theatre
+
+## pegasusX specifics
+
+- Canonical tree: `pegasusX/`. Do not plan or ship from `pegasus/` or frozen `.docx`.
+- `docs/ROLE_FEATURES_DOCS_VS_CODE.md` and `ROLE_ROW_PARITY_MATRIX.md` **"Wired"** are **not** a go-live certificate. Re-verify in code; those files go stale.
+- Load skill `honest-code-gate` for the verdict template.
+
+```text
+❌ "Retailer payment is wired per the matrix."
+✅ "Card checkout persists via SelectCashAtDelivery in order/service.go:N; saved-cards POST still returns {status:ok} with no store — THEATRE."
+```

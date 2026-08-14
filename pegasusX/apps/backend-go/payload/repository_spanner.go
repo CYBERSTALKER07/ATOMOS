@@ -2,6 +2,7 @@ package payload
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -329,6 +330,38 @@ func (tx *spannerPayloadTx) SaveException(ctx context.Context, e ManifestExcepti
 	}
 	mut := spanner.InsertOrUpdateMap("ManifestExceptions", row)
 	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+}
+
+func (tx *spannerPayloadTx) UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error {
+	orderID = strings.TrimSpace(orderID)
+	routeID = strings.TrimSpace(routeID)
+	driverID = strings.TrimSpace(driverID)
+	if orderID == "" {
+		return fmt.Errorf("order_id_required")
+	}
+	if tx.txn == nil {
+		return fmt.Errorf("order assignment: missing transaction")
+	}
+	row, err := tx.txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"SupplierId"})
+	if err != nil {
+		return fmt.Errorf("order assignment read: %w", err)
+	}
+	var supplierID string
+	if err := row.Columns(&supplierID); err != nil {
+		return fmt.Errorf("order assignment scan: %w", err)
+	}
+	if tx.supplierID != "" && supplierID != tx.supplierID {
+		return fmt.Errorf("order_supplier_mismatch")
+	}
+	cols := map[string]interface{}{
+		"OrderId":   orderID,
+		"RouteId":   spanner.NullString{StringVal: routeID, Valid: routeID != ""},
+		"UpdatedAt": spanner.CommitTimestamp,
+	}
+	if driverID != "" {
+		cols["DriverId"] = driverID
+	}
+	return tx.txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("Orders", cols)})
 }
 
 func parseTime(s string) time.Time {

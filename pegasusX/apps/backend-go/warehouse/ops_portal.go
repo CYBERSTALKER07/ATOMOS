@@ -741,18 +741,18 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":         whID,
-		"period":               period,
-		"total_orders":         totalOrders,
-		"total_revenue":        totalRevenue,
-		"completed_orders":     completedOrders,
-		"cancelled_orders":     cancelledOrders,
-		"avg_order_value":      avgOrderValue,
-		"top_products":         []any{},
-		"daily_breakdown":      []any{},
-		"fleet_utilization":    map[string]any{"utilization_pct": 0},
-		"import_freshness":     map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
-		"import_anomaly_queue": map[string]any{"open_rows_30d": 0},
+		"warehouse_id":              whID,
+		"period":                    period,
+		"total_orders":              totalOrders,
+		"total_revenue":             totalRevenue,
+		"completed_orders":          completedOrders,
+		"cancelled_orders":          cancelledOrders,
+		"avg_order_value":           avgOrderValue,
+		"top_products_available":    false,
+		"daily_breakdown_available": false,
+		"fleet_utilization":         map[string]any{"utilization_pct": 0},
+		"import_freshness":          map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
+		"import_anomaly_queue":      map[string]any{"open_rows_30d": 0},
 	})
 }
 
@@ -766,9 +766,18 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 	if view == "" {
 		view = "overview"
 	}
-	// Fail-closed honesty: never return hardcoded fake invoices/totals.
+	// Fail-closed honesty: [] only when the warehouse-scoped query is empty.
 	if view == "invoices" {
-		writeJSON(w, http.StatusOK, map[string]any{"invoices": []any{}})
+		sid := s.resolveAnalyticsSupplierID(r)
+		rows, err := s.loadWarehouseTreasuryInvoices(r.Context(), whID, sid)
+		if err != nil {
+			if s.log != nil {
+				s.log.WarnContext(r.Context(), "warehouse treasury invoices read failed", "warehouse_id", whID, "err", err)
+			}
+			writeTreasuryInvoicesUnavailable(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"invoices": rows})
 		return
 	}
 	if s.spannerClient != nil && !s.portalSeedEnabled() {

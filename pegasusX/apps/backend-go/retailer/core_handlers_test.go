@@ -1057,6 +1057,56 @@ func TestHandlePendingPaymentsFiltersPaymentStates(t *testing.T) {
 	if first["status"] != "AWAITING_PAYMENT" || second["status"] != "PENDING_CASH_COLLECTION" {
 		t.Fatalf("pending statuses=%v %v", first["status"], second["status"])
 	}
+	for _, raw := range pending {
+		row := raw.(map[string]any)
+		if sid, _ := row["session_id"].(string); strings.HasPrefix(sid, "sess_") {
+			t.Fatalf("invented session_id=%q", sid)
+		}
+		if gw, _ := row["gateway"].(string); strings.EqualFold(gw, "payme") {
+			t.Fatalf("invented gateway=%q", gw)
+		}
+		if _, ok := row["session_id"]; ok {
+			t.Fatalf("session_id must be omitted without a real session: %v", row)
+		}
+		if _, ok := row["gateway"]; ok {
+			t.Fatalf("gateway must be omitted without a real session: %v", row)
+		}
+	}
+}
+
+func TestHandlePendingPaymentsUsesRealSession(t *testing.T) {
+	repo := &testRetailerRepo{tracking: []TrackingOrder{
+		{OrderID: "ord-2", SupplierID: "sup-1", RetailerID: "ret-1", Status: "AWAITING_PAYMENT", TrackingStatus: "assigned", Items: []TrackingLineItem{}},
+	}}
+	svc := NewService(ServiceConfig{
+		Repo:       repo,
+		SupplierID: "sup-1",
+		PaymentSessionByOrder: func(_ context.Context, orderID string) (string, string, bool, error) {
+			if orderID != "ord-2" {
+				t.Fatalf("orderID=%s", orderID)
+			}
+			return "ps_real_1", "GLOBAL_PAY", true, nil
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/retailer/pending-payments", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	rr := httptest.NewRecorder()
+	svc.HandlePendingPayments(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	pending := payload["pending"].([]any)
+	row := pending[0].(map[string]any)
+	if row["session_id"] != "ps_real_1" || row["gateway"] != "GLOBAL_PAY" {
+		t.Fatalf("row=%v", row)
+	}
+	if payload["pending_payments"] == nil {
+		t.Fatal("pending_payments alias missing")
+	}
 }
 
 func TestHandleTrackingIncludesScopedFreshLocation(t *testing.T) {

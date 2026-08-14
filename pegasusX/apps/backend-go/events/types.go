@@ -273,7 +273,7 @@ const (
 // ManifestDomain disambiguates shared event type names across the dual plane.
 type ManifestEvent struct {
 	BaseEvent
-	ManifestID     string `json:"manifest_id"`
+	ManifestID string `json:"manifest_id"`
 	// ManifestDomain is FACTORY | SUPPLIER (G2.D). Omitempty keeps older producers valid;
 	// new emits always set it.
 	ManifestDomain string `json:"manifest_domain,omitempty"`
@@ -497,6 +497,9 @@ type WarehouseTransferEvent struct {
 	FromWarehouse string `json:"from_warehouse,omitempty"`
 	ToWarehouse   string `json:"to_warehouse,omitempty"`
 	Status        string `json:"status,omitempty"`
+	FactoryID     string `json:"factory_id,omitempty"`
+	SupplierID    string `json:"supplier_id,omitempty"`
+	State         string `json:"state,omitempty"`
 }
 
 // DeliverySessionEvent handles driver delivery sessions.

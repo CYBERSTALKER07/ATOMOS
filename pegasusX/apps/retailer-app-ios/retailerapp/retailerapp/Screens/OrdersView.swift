@@ -34,7 +34,7 @@ struct OrdersView: View {
 
     private var activeOrders: [Order] { vm.activeOrders }
     private var pendingOrders: [Order] { vm.pendingOrders }
-    private var predictions: [DemandForecast] { vm.predictions }
+    private var predictions: [RetailerAIPrediction] { vm.predictions }
 
     var body: some View {
         ZStack {
@@ -240,11 +240,15 @@ struct OrdersView: View {
         ScrollView {
             if vm.isLoading && predictions.isEmpty {
             } else if predictions.isEmpty {
-                tabEmptyState(icon: "sparkles", title: "No AI Predictions", message: "AI-predicted orders based on your history will appear here")
+                tabEmptyState(icon: "sparkles", title: "No pending AI preorders", message: "AI restock preorders waiting for confirm or reject will appear here")
             } else {
                 LazyVStack(spacing: AppTheme.spacingMD) {
-                    ForEach(Array(predictions.enumerated()), id: \.element.id) { index, forecast in
-                        AiPlannedCard(forecast: forecast, onPreorder: { Task { await vm.preorder(forecast) } })
+                    ForEach(Array(predictions.enumerated()), id: \.element.id) { index, item in
+                        AiPlannedCard(
+                            item: item,
+                            onConfirm: { Task { await vm.confirmAiOrder(item.orderId) } },
+                            onReject: { Task { await vm.rejectAiOrder(item.orderId) } }
+                        )
                             .staggeredSlideIn(index: index)
                     }
                 }

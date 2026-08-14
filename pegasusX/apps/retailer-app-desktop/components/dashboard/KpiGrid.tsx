@@ -72,7 +72,9 @@ export function KpiGrid({
         sub={
           blockedPredictionCount > 0
             ? `${blockedPredictionCount} blocked (sparse history)`
-            : "Restock Ready"
+            : predictionListLength === 0
+              ? "None pending"
+              : "Pending confirm"
         }
         icon={<Brain size={18} style={{ color: "var(--desk-info)" }} />}
       />

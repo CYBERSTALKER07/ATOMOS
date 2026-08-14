@@ -19,7 +19,15 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL = URL(string: "https://api.pegasus.uz/")!
+    private let baseURL: URL = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let s: String
+        if raw.isEmpty { s = "https://api.pegasusx.app/" }
+        else if raw.hasSuffix("/") { s = raw }
+        else { s = raw + "/" }
+        return URL(string: s)!
+    }()
     #endif
 
     private let session: URLSession

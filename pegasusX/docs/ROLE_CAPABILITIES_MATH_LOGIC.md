@@ -218,7 +218,7 @@ Canonical transitions only (full table in ORDER_FLOW doc). Same-status allowed. 
 
 | Capability | What / solution | Logic / math | Edges | Evidence |
 |------------|-----------------|--------------|-------|----------|
-| Seal / seal-completed / seal-all | Driver-ready truck | Manifest seal transitions | seal-all registered; verify client use | `payloaderroutes` |
+| Seal / seal-completed / seal-all | Driver-ready truck | Manifest seal transitions | seal-all REAL; terminal+Android+iOS (P13-A) | `payloaderoutes` |
 | Inject order | Late add | Capacity `GET /v1/payload/capacity/{vehicleID}` | Over VU | payload capacity + inject |
 | Reassign | Suggest/apply truck move | Capacity + recommend | After seal | recommend/reassign routes |
 | Exceptions | Cannot-load etc. | Exception rows + optional delivery exception-report | Dual paths | payload manifest-exception |

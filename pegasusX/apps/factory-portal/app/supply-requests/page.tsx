@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
-import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-client';
+import { usePolling, factorySupplyRequestTransitionKey, factorySupplyRequestQCKey } from '@pegasusx/api-client';
 import type { SupplyFulfillOptions } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -54,8 +54,32 @@ export default function SupplyRequestsPage() {
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [qcById, setQcById] = useState<Record<string, string>>({});
   const [batchTransitioning, setBatchTransitioning] = useState<string | null>(null);
   const previousSignatureRef = useRef('');
+
+  const loadQC = useCallback(async (ids: string[]) => {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (unique.length === 0) {
+      return;
+    }
+    const next: Record<string, string> = {};
+    await Promise.all(
+      unique.map(async (id) => {
+        try {
+          const res = await apiFetch(`/v1/factory/supply-requests/${id}/qc`);
+          if (!res.ok) {
+            return;
+          }
+          const row = (await res.json()) as { result?: string };
+          next[id] = row.result || "";
+        } catch {
+          /* missing QC stays blank — GET "" is not PASS */
+        }
+      }),
+    );
+    setQcById((prev) => ({ ...prev, ...next }));
+  }, []);
 
   const fetchRequests = useCallback(async (options?: { background?: boolean; silent?: boolean }) => {
     const background = options?.background ?? false;
@@ -86,6 +110,7 @@ export default function SupplyRequestsPage() {
       setLastSyncedAt(Date.now());
       setError(null);
       setIsOffline(false);
+      void loadQC(next.map((row: SupplyRequest) => row.request_id));
     } catch {
       const message = isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)
         ? 'Offline. Showing the last synced supply queue.'
@@ -107,7 +132,7 @@ export default function SupplyRequestsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isOffline, requests.length, toast]);
+  }, [isOffline, loadQC, requests.length, toast]);
 
   useEffect(() => {
     void fetchRequests();
@@ -225,6 +250,29 @@ export default function SupplyRequestsPage() {
       return;
     }
     await runTransition(request, action);
+  };
+
+  const handleQC = async (request: SupplyRequest, result: "PASS" | "FAIL") => {
+    setTransitioning(request.request_id);
+    try {
+      const res = await apiFetch(`/v1/factory/supply-requests/${request.request_id}/qc`, {
+        method: "POST",
+        headers: {
+          "Idempotency-Key": factorySupplyRequestQCKey(request.request_id, result),
+        },
+        body: JSON.stringify({ result }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast((err as { error?: string }).error || "QC failed", "error");
+        return;
+      }
+      setQcById((prev) => ({ ...prev, [request.request_id]: result }));
+    } catch {
+      toast("QC failed", "error");
+    } finally {
+      setTransitioning(null);
+    }
   };
 
   const runTransition = async (request: SupplyRequest, action: string) => {
@@ -379,7 +427,7 @@ export default function SupplyRequestsPage() {
             onAction={filter === 'ALL' ? undefined : () => setFilter('ALL')}
           />
         ) : viewMode === 'board' ? (
-          <SupplyRequestBoard filtered={filtered} transitioning={transitioning} handleTransition={handleTransition} />
+          <SupplyRequestBoard filtered={filtered} transitioning={transitioning} handleTransition={handleTransition} qcById={qcById} onQC={handleQC} />
         ) : (
           <>
             <ListToolbar
@@ -409,7 +457,7 @@ export default function SupplyRequestsPage() {
                 </div>
               </div>
             )}
-            <SupplyRequestList pageItems={pageItems} selectedIds={selectedIds} transitioning={transitioning} handleToggleAll={handleToggleAll} handleToggleOne={handleToggleOne} handleTransition={handleTransition} />
+            <SupplyRequestList pageItems={pageItems} selectedIds={selectedIds} transitioning={transitioning} handleToggleAll={handleToggleAll} handleToggleOne={handleToggleOne} handleTransition={handleTransition} qcById={qcById} onQC={handleQC} />
           </>
         )}
         {fulfillModal ? (

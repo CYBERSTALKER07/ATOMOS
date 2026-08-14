@@ -10,6 +10,7 @@ import { isIOS } from '../theme';
 import {
   payloadManifestExceptionKey,
   payloadOrderSealKey,
+  payloadSealAllKey,
   payloadSealCompletedKey,
   payloadSupplierInjectKey,
   payloadSupplierStartLoadingKey,
@@ -398,13 +399,12 @@ export function useManifestActions({
     setBatchSealFailures([]);
     const manifestCount = batchReadyManifestIds.length;
     try {
-      const data = await PayloadTerminalApi.sealCompletedManifests(
+      const data = await PayloadTerminalApi.sealAllManifests(
         token,
-        batchReadyManifestIds,
-        payloadSealCompletedKey(batchReadyManifestIds),
+        payloadSealAllKey('payloader'),
       );
       const failures = Array.isArray(data.results)
-        ? data.results.filter((row: { status?: string }) => row.status && row.status !== 'sealed')
+        ? data.results.filter((row: { status?: string }) => row.status && row.status !== 'sealed' && row.status !== 'already_sealed')
         : [];
       if (failures.length > 0) {
         setBatchSealFailures(failures);

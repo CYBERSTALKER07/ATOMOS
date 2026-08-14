@@ -5,6 +5,7 @@ struct SupplyRequestDetailView: View {
 
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var request: WarehouseSupplyRequest?
+    @State private var qcResult = ""
     @State private var loading = true
     @State private var error: String?
     @State private var busy = false
@@ -36,6 +37,7 @@ struct SupplyRequestDetailView: View {
                         LabKeyValueRow(label: "Volume (VU)", value: String(format: "%.1f", request.totalVolumeVu))
                         LabKeyValueRow(label: "Transfer order", value: request.transferOrderId ?? "—")
                         LabKeyValueRow(label: "Created", value: request.createdAt)
+                        LabKeyValueRow(label: "QC", value: qcResult.isEmpty ? "—" : qcResult)
                         if !request.notes.isEmpty {
                             LabKeyValueRow(label: "Notes", value: request.notes)
                         }
@@ -77,6 +79,11 @@ struct SupplyRequestDetailView: View {
         Task {
             do {
                 request = try await WarehouseService.supplyRequest(id: requestId)
+                if let qc = try? await WarehouseService.supplyRequestQC(id: requestId) {
+                    qcResult = qc.result
+                } else {
+                    qcResult = ""
+                }
             } catch {
                 if !silent { self.error = error.localizedDescription }
             }

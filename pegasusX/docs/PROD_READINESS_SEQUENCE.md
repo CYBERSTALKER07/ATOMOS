@@ -90,11 +90,11 @@ Do not env-flip place without R3.3–R3.4.
 
 | Order | Item | Owner | Why this order |
 |-------|------|-------|----------------|
-| R4.1 ✅ | Warehouse Android/iOS: cold-chain + labor-capacity (Control Tower pulse still portal-primary) | Eng | Shipped 2026-08-12 — native screens + nav; portal already Class A |
+| R4.1 ✅ | Warehouse Android/iOS: cold-chain + labor-capacity + typed Control Tower scored list | Eng | Shipped 2026-08-12 screens; typed CT list 2026-08-14 |
 | R4.2 ✅ | Retailer desktop: add `/control-tower` to `RetailerShell` nav | Eng | Shipped 2026-08-12 — discoverability; API already live |
-| R4.3 | Admin billing / platform analytics depth (P1-16 follow-on) | Eng | Governance after partner/match tabs |
-| R4.4 | Payload clients: wire `seal-all` and/or capacity **or** remove from FEATURES as API-only | Eng | No half-advertised APIs |
-| R4.5 | Retailer desktop Control Tower depth vs mobile | Eng | Only after R4.2 proves demand |
+| R4.3 ✅ | Admin billing list APIs + portal tab (P12) | Eng | `GET /v1/admin/billing/invoices` + fee-schedules; CronJob YAML **unapplied**; worker still needs `AR_INVOICES_ENABLED` |
+| R4.4 ✅ | Payload `seal-all` on terminal+Android+iOS (P13-A). Capacity stays **GONE** `410 capacity_unwired` | Eng | No half-advertised live capacity API |
+| R4.5 ✅ | Retailer Control Tower tile navigation (P13-E) | Eng | Android/iOS tiles match desktop hrefs (2026-08-14) |
 
 Each item must ship Class A (API + clients + gap-register update).
 
@@ -134,4 +134,4 @@ Not required for single-distributor legal launch if R1–R3 pass.
 
 ## Next eng slice after this SoT
 
-Default after R4.2: **R4.3** admin billing / platform analytics depth, or ops **R1–R2** in parallel.
+Default after R4.5: ops **R1–R2** in parallel, or partner **R5** when keys exist. **P15 not cloud-ready. P16 not store.**

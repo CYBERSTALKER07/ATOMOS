@@ -361,6 +361,19 @@ func routeIDForManifest(m ManifestRow) string {
 	return "route_" + m.ManifestID
 }
 
+func (s *Service) driverIDForRouteLocked(routeID string) string {
+	routeID = strings.TrimSpace(routeID)
+	if routeID == "" {
+		return ""
+	}
+	for i := range s.manifests {
+		if routeIDForManifest(s.manifests[i]) == routeID {
+			return strings.TrimSpace(s.manifests[i].DriverID)
+		}
+	}
+	return ""
+}
+
 // portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
 // unless PAYLOAD_PORTAL_SEED=true is set explicitly for local scaffold runs.
 func (s *Service) portalSeedEnabled() bool {
@@ -810,7 +823,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -925,7 +938,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1066,7 +1079,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 	}
 
 	var exception ManifestException
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1366,7 +1379,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reassignment Reassignment
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(tx PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1582,6 +1595,9 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			AppliedAt:      now,
 		}
 		s.reassignments = append(s.reassignments, reassignment)
+		if err := tx.UpdateOrderAssignment(r.Context(), req.OrderID, targetRouteID, targetDriverID); err != nil {
+			return err
+		}
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		aggregateID := coalesceString(reassignment.ManifestID, reassignment.FromManifestID, "payload-reassign")
@@ -1719,7 +1735,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 			continue
 		}
 		var manifest ManifestRow
-		err := s.apply(r.Context(), func() error {
+		err := s.apply(r.Context(), func(_ PayloadTx) error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.ensureDemoDataLocked()
@@ -1827,7 +1843,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var manifest ManifestRow
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1963,7 +1979,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var manifest ManifestRow
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -2105,7 +2121,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		var sealed ManifestRow
-		sealErr := s.apply(r.Context(), func() error {
+		sealErr := s.apply(r.Context(), func(_ PayloadTx) error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			var e error

@@ -4,7 +4,7 @@ import SwiftData
 @Observable
 final class OrdersViewModel {
     var allOrders: [Order] = []
-    var predictions: [DemandForecast] = []
+    var predictions: [RetailerAIPrediction] = []
     var isLoading = false
     var loadError: String?
     var orderActionPending = false
@@ -37,8 +37,7 @@ final class OrdersViewModel {
             }
         }
         do {
-            let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
-            predictions = forecasts
+            predictions = try await api.getRetailerAIPredictions()
         } catch {
             if !silent { predictions = [] }
         }
@@ -116,11 +115,27 @@ final class OrdersViewModel {
     }
 
     func confirmAiOrder(_ orderId: String) async {
-        loadError = "AI orders are not available"
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.confirmAiOrder(orderId: orderId)
+            await loadData()
+        } catch {
+            loadError = "Failed to confirm AI order"
+        }
     }
 
     func rejectAiOrder(_ orderId: String) async {
-        loadError = "AI orders are not available"
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
+            await loadData()
+        } catch {
+            loadError = "Failed to reject AI order"
+        }
     }
 
     func confirmPreorder(_ orderId: String) async {
@@ -179,24 +194,6 @@ final class OrdersViewModel {
             await loadData()
         } catch {
             loadError = "Failed to edit preorder"
-        }
-    }
-
-    func preorder(_ forecast: DemandForecast) async {
-        do {
-            struct PreorderBody: Codable {
-                let productId: String
-                let quantity: Int
-                enum CodingKeys: String, CodingKey { case productId = "product_id"; case quantity }
-            }
-            let _: Order = try await api.post(
-                path: "/v1/ai/preorder",
-                body: PreorderBody(productId: forecast.productId, quantity: forecast.predictedQuantity),
-                headers: ["Idempotency-Key": "retailer-ai-preorder:\(forecast.id):\(forecast.predictedQuantity)"]
-            )
-            Haptics.success()
-        } catch {
-            Haptics.error()
         }
     }
 

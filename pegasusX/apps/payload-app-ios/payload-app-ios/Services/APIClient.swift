@@ -45,7 +45,12 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let baseURL = "https://api.pegasus.uz"
+    let baseURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
@@ -226,6 +231,14 @@ final class APIClient: @unchecked Sendable {
             "v1/payloader/manifests/seal-completed",
             body: SealCompletedManifestsRequest(manifestIds: ids),
             idempotencyKey: PayloadIdempotency.sealCompleted(manifestIds: ids)
+        )
+    }
+
+    func sealAllManifests() async throws -> SealCompletedManifestsResponse {
+        try await post(
+            "v1/payloader/manifests/seal-all",
+            body: EmptyBody(),
+            idempotencyKey: PayloadIdempotency.key(action: "seal-all", entityId: "payloader")
         )
     }
 

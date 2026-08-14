@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -36,22 +37,22 @@ var (
 )
 
 type Batch struct {
-	BatchID            string
-	SupplierID         string
-	PeriodStart        time.Time
-	PeriodEnd          time.Time
-	GrossCapturedMinor int64
-	RefundedMinor      int64
-	CommissionMinor    int64
-	NetPayoutMinor     int64
-	Currency           string
-	Status             string
-	ExportFileURI      string
-	RailReference      string
-	IdempotencyKey     string
-	CreatedBy          string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	BatchID            string    `json:"batch_id"`
+	SupplierID         string    `json:"supplier_id"`
+	PeriodStart        time.Time `json:"period_start"`
+	PeriodEnd          time.Time `json:"period_end"`
+	GrossCapturedMinor int64     `json:"gross_captured_minor"`
+	RefundedMinor      int64     `json:"refunded_minor"`
+	CommissionMinor    int64     `json:"commission_minor"`
+	NetPayoutMinor     int64     `json:"net_payout_minor"`
+	Currency           string    `json:"currency"`
+	Status             string    `json:"status"`
+	ExportFileURI      string    `json:"export_file_uri,omitempty"`
+	RailReference      string    `json:"rail_reference,omitempty"`
+	IdempotencyKey     string    `json:"idempotency_key,omitempty"`
+	CreatedBy          string    `json:"created_by,omitempty"`
+	CreatedAt          time.Time `json:"created_at,omitempty"`
+	UpdatedAt          time.Time `json:"updated_at,omitempty"`
 }
 
 // CommissionResolver prices the platform commission for a batch. Implemented
@@ -71,6 +72,7 @@ type Service struct {
 	repo       *Repository
 	commission CommissionResolver
 	rail       Rail
+	cache      *cache.Cache
 	now        func() time.Time
 	newID      func() string
 }
@@ -96,6 +98,12 @@ func (s *Service) SetRail(r Rail) {
 func (s *Service) SetCommissionResolver(r CommissionResolver) {
 	if r != nil {
 		s.commission = r
+	}
+}
+
+func (s *Service) SetCache(c *cache.Cache) {
+	if s != nil {
+		s.cache = c
 	}
 }
 
@@ -206,6 +214,38 @@ func (s *Service) MarkPaid(ctx context.Context, batchID string) error {
 		return fmt.Errorf("batch %s must be EXPORTED before PAID (current %s)", batchID, b.Status)
 	}
 	return s.repo.UpdateStatus(ctx, batchID, StatusPaid, "")
+}
+
+// ListBatches returns supplier-scoped payout batches, newest first.
+func (s *Service) ListBatches(ctx context.Context, supplierID string) ([]Batch, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("payout service unavailable")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return nil, fmt.Errorf("supplier_id required")
+	}
+	return s.repo.ListBySupplier(ctx, supplierID)
+}
+
+// GetBatch returns one batch if it belongs to supplierID.
+func (s *Service) GetBatch(ctx context.Context, supplierID, batchID string) (Batch, error) {
+	if s == nil || s.repo == nil {
+		return Batch{}, fmt.Errorf("payout service unavailable")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	batchID = strings.TrimSpace(batchID)
+	if supplierID == "" || batchID == "" {
+		return Batch{}, ErrBatchNotFound
+	}
+	b, found, err := s.repo.Get(ctx, batchID)
+	if err != nil {
+		return Batch{}, err
+	}
+	if !found || b.SupplierID != supplierID {
+		return Batch{}, ErrBatchNotFound
+	}
+	return b, nil
 }
 
 // Repository is the Spanner store for payout batches.

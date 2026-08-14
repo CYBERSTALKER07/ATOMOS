@@ -1,0 +1,36 @@
+---
+description: Cloud, API, infra, and deploy questions require a codebase readiness gate. Say YES to wiring cloud only if apps, backend, and data flow actually work.
+alwaysApply: true
+---
+
+# Production / cloud wiring gate
+
+When the user asks to **wire cloud**, **connect APIs**, **deploy**, **GCP/GKE/Terraform**, **infra**, **third-party keys**, or **is this production-ready** — analyze the **codebase first**. Do not start cloud work because a plan or matrix looks complete.
+
+## YES to cloud wiring only if ALL are true (proved this session)
+
+1. **Product spine works in code** — order → dispatch → payload/driver → pay-at-delivery → fiscal/settlement (or the product's real spine) is REAL, not THEATRE, on the claimed path.
+2. **Data plane** — mutations use durable SoT (Spanner RW + same-txn outbox, not memory/`Apply` theatre). Consumers and WS fanout exist for user-visible state.
+3. **All shipped role-row clients** call the live API (or are explicitly deferred in code comments + ledger, not silently missing).
+4. **Tests** — unit + integration (or SSMR/CI-equivalent) for the spine are green **after** a re-read of the edited files.
+5. Remaining work is **secrets, env, DNS, IAM** — not new product logic.
+
+If any item fails → **NO**. List blockers ranked. Offer the next **code** phase, not a cloud checklist.
+
+## Hard split
+
+| Layer A (code) | Layer B (cloud) |
+|---|---|
+| State machines, clients, events, honesty of empty/error | GSM secrets, PSP/OFD keys, GKE, Terraform apply |
+
+Cloud day must not invent features. If connecting a key would require new business logic, **you are not ready**.
+
+## pegasusX
+
+- Follow `gap-hunter` + `docs/SUBSTANCE_GATE.md` + `docs/PROD_READINESS_SEQUENCE.md`.
+- Residual registers (Soliq, FCM, OR-Tools pods) are **ops**, not proof the apps are done — and ops does not override missing code.
+
+```text
+❌ "Parity matrix is green, we can wire GCP now."
+✅ "NO. Factory dispatch is a stub (≤2 CREATED transfers). Warehouse treasury invoices always []. Close those before Layer B keys."
+```

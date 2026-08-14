@@ -157,6 +157,25 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SeasonalOverrideRow,
   SeasonalEstimateResult,
   SeasonalTemplatesResponse,
+  SupplierCRMListResponse,
+  SupplierCRMRetailerDetail,
+  SupplyRequestQCResponse,
+  SupplyRequestQCRequest,
+  NetworkModeResponse,
+  NetworkModeUpdateRequest,
+  NetworkModeUpdateResponse,
+  PullMatrixResponse,
+  KillSwitchRequest,
+  KillSwitchResponse,
+  PayoutRailInfo,
+  PayoutBatch,
+  PayoutBatchListResponse,
+  PayoutBatchGenerateRequest,
+  PayoutBatchGenerateResponse,
+  PayoutMarkPaidResponse,
+  PayoutDispatchResponse,
+  SupplierPayoutPolicy,
+  SupplierPayoutPolicyPatch,
   ForecastAccuracyResponse,
   PlanningSignalIngestInput,
   SparsityGateResult,
@@ -394,6 +413,11 @@ export {
   factoryTransferTransitionKey,
   factorySupplyRequestTransitionKey,
   factorySupplyRequestAcceptKey,
+  factorySupplyRequestQCKey,
+  supplierPlanningKillSwitchKey,
+  supplierPlanningPullMatrixKey,
+  supplierPayoutGenerateKey,
+  supplierNetworkModePutKey,
   factoryOpsLocationKey,
   warehouseInboundScanKey,
   warehouseInboundConfirmKey,
@@ -1040,6 +1064,17 @@ export class ApiClient {
     });
   }
 
+  async setFactoryStaffPassword(
+    staffId: string,
+    body: { pin?: string; password?: string },
+    idempotencyKey: string,
+  ): Promise<{ staff_id: string; password_set: boolean }> {
+    return this.request(`/v1/factory/staff/${encodeURIComponent(staffId)}/set-password`, "POST", {
+      body,
+      idempotencyKey,
+    });
+  }
+
   async getSupplierManifestExceptions(params?: { escalated?: boolean }): Promise<SupplierManifestExceptionsResponse> {
     const query = new URLSearchParams();
     if (params?.escalated) query.set("escalated", "true");
@@ -1411,13 +1446,24 @@ export class ApiClient {
     return this.request(`/v1/supplier/ar/invoices${suffix}`, "GET");
   }
 
-  async adminDisableCreditRelationship(
+    async adminDisableCreditRelationship(
     supplierId: string,
     retailerId: string,
     body: { ticket_id: string; reason: string },
   ): Promise<StatusResponse> {
     return this.request(
       `/v1/admin/credit-relationships/${encodeURIComponent(supplierId)}/${encodeURIComponent(retailerId)}/disable`,
+      "POST",
+      { body },
+    );
+  }
+
+  async adminDisableCreditProgram(
+    supplierId: string,
+    body: { ticket_id: string; reason: string },
+  ): Promise<StatusResponse> {
+    return this.request(
+      `/v1/admin/credit-program/${encodeURIComponent(supplierId)}/disable`,
       "POST",
       { body },
     );
@@ -1707,6 +1753,131 @@ export class ApiClient {
 
   async getPlanningSignalStatus(): Promise<PlanningSignalIngestStatus> {
     return this.request<PlanningSignalIngestStatus>("/v1/supplier/planning/signals/status", "GET");
+  }
+
+  async getSupplierCRMRetailers(): Promise<SupplierCRMListResponse> {
+    return this.request<SupplierCRMListResponse>("/v1/supplier/crm/retailers", "GET");
+  }
+
+  async getSupplierCRMRetailer(retailerId: string): Promise<SupplierCRMRetailerDetail> {
+    return this.request<SupplierCRMRetailerDetail>(
+      `/v1/supplier/crm/retailers/${encodeURIComponent(retailerId)}`,
+      "GET",
+    );
+  }
+
+  async getNetworkMode(): Promise<NetworkModeResponse> {
+    return this.request<NetworkModeResponse>("/v1/supplier/network-mode", "GET");
+  }
+
+  async putNetworkMode(
+    request: NetworkModeUpdateRequest,
+    idempotencyKey: string,
+  ): Promise<NetworkModeUpdateResponse> {
+    return this.request<NetworkModeUpdateResponse>("/v1/supplier/network-mode", "PUT", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async postPlanningPullMatrix(idempotencyKey: string): Promise<PullMatrixResponse> {
+    return this.request<PullMatrixResponse>("/v1/supplier/planning/pull-matrix", "POST", {
+      body: {},
+      idempotencyKey,
+    });
+  }
+
+  async postPlanningKillSwitch(
+    request: KillSwitchRequest,
+    idempotencyKey: string,
+  ): Promise<KillSwitchResponse> {
+    return this.request<KillSwitchResponse>("/v1/supplier/planning/kill-switch", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async getFactorySupplyRequestQC(requestId: string): Promise<SupplyRequestQCResponse> {
+    return this.request<SupplyRequestQCResponse>(
+      `/v1/factory/supply-requests/${encodeURIComponent(requestId)}/qc`,
+      "GET",
+    );
+  }
+
+  async postFactorySupplyRequestQC(
+    requestId: string,
+    body: SupplyRequestQCRequest,
+    idempotencyKey: string,
+  ): Promise<SupplyRequestQCResponse> {
+    return this.request<SupplyRequestQCResponse>(
+      `/v1/factory/supply-requests/${encodeURIComponent(requestId)}/qc`,
+      "POST",
+      { body, idempotencyKey },
+    );
+  }
+
+  async getWarehouseSupplyRequestQC(requestId: string): Promise<SupplyRequestQCResponse> {
+    return this.request<SupplyRequestQCResponse>(
+      `/v1/warehouse/supply-requests/${encodeURIComponent(requestId)}/qc`,
+      "GET",
+    );
+  }
+
+  async getPayoutRail(): Promise<PayoutRailInfo> {
+    return this.request<PayoutRailInfo>("/v1/supplier/payouts/rail", "GET");
+  }
+
+  async getPayoutPolicy(): Promise<SupplierPayoutPolicy> {
+    return this.request<SupplierPayoutPolicy>("/v1/supplier/payout-policy", "GET");
+  }
+
+  async patchPayoutPolicy(body: SupplierPayoutPolicyPatch): Promise<SupplierPayoutPolicy> {
+    return this.request<SupplierPayoutPolicy>("/v1/supplier/payout-policy", "PATCH", { body });
+  }
+
+  async listPayoutBatches(): Promise<PayoutBatchListResponse> {
+    return this.request<PayoutBatchListResponse>("/v1/supplier/payouts/batches", "GET");
+  }
+
+  async getPayoutBatch(batchId: string): Promise<PayoutBatch> {
+    return this.request<PayoutBatch>(
+      `/v1/supplier/payouts/batches/${encodeURIComponent(batchId)}`,
+      "GET",
+    );
+  }
+
+  async generatePayoutBatch(
+    request: PayoutBatchGenerateRequest,
+    idempotencyKey: string,
+  ): Promise<PayoutBatchGenerateResponse> {
+    return this.request<PayoutBatchGenerateResponse>("/v1/supplier/payouts/batches", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async exportPayoutBatch(batchId: string): Promise<string> {
+    return this.requestText(
+      `/v1/supplier/payouts/batches/${encodeURIComponent(batchId)}/export`,
+      "POST",
+      { body: {} },
+    );
+  }
+
+  async dispatchPayoutBatch(batchId: string, live: boolean): Promise<PayoutDispatchResponse> {
+    return this.request<PayoutDispatchResponse>(
+      `/v1/supplier/payouts/batches/${encodeURIComponent(batchId)}/dispatch`,
+      "POST",
+      { body: { live } },
+    );
+  }
+
+  async markPayoutBatchPaid(batchId: string): Promise<PayoutMarkPaidResponse> {
+    return this.request<PayoutMarkPaidResponse>(
+      `/v1/supplier/payouts/batches/${encodeURIComponent(batchId)}/mark-paid`,
+      "POST",
+      { body: {} },
+    );
   }
 
   async checkPlanningSparsity(retailerId: string): Promise<SparsityGateResult> {

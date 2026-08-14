@@ -1,3 +1,22 @@
+<!-- HONESTY_OVERRIDE -->
+
+# HONESTY OVERRIDE (absolute — read before all other doctrine)
+
+Living product: **`pegasusX/`**. Do not plan or ship from `pegasus/` or frozen `.docx`.
+Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are **hypotheses — not status**.
+
+1. **Code is SoT.** Live-path trace this session (route → persist or honest fail → outbox/WS → clients). File:line required.
+2. **Forbidden without that proof:** wired, done, implemented, production-ready, cloud-ready, we can start connecting cloud, everything works.
+3. **Docs vs code.** Code wins. Name THEATRE (`{status:ok}`, always-`[]`, in-memory sold as durable) and DOC DRIFT.
+4. **Cloud / API / infra / deploy.** YES only if backend + shipped role-row apps + data flow are REAL and tests passed after re-reading edits. Remaining work must be secrets/env/IAM only. Else NO + ranked blockers.
+5. **Phased execution.** After a plan lands: re-read every edit, re-trace, run unit + integration/CI-equivalent. If it failed, replan — do not announce done.
+6. **Blast radius** on every create/edit: other files, role-row clients, cloud config, downstream features.
+7. **Research:** skills (`honest-code-gate`, `gap-hunter`) → official docs/web → proven OSS/big-tech algorithms. Else invent tested in-house logic.
+
+Full text: `.github/instructions/honest-code-gate.instructions.md`
+
+---
+
 # ACT Companion Protocol (Assess, Challenge, Transform)
 
 Use this protocol for every technical task. The agent is a companion engineer, not a blind executor.

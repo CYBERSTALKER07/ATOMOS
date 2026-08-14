@@ -90,6 +90,44 @@ func FormatManifestOrderInjected(manifestID, orderID string) FormattedNotificati
 	return formatManifestNotification("Order Injected", body, manifestID, "normal")
 }
 
+// FormatManifestExceptionResolved produces a notification when a factory exception is resolved.
+func FormatManifestExceptionResolved(manifestID, resolution string) FormattedNotification {
+	body := "Manifest exception resolved on " + manifestID
+	if resolution != "" {
+		body += ": " + resolution
+	}
+	return FormattedNotification{
+		Title:    "Exception Resolved",
+		Body:     body,
+		DeepLink: "/manifest-exceptions",
+		Priority: "normal",
+	}
+}
+
+// FormatFactoryStaffCreated produces a notification for factory staff create.
+func FormatFactoryStaffCreated(staffID, factoryID string) FormattedNotification {
+	body := "Factory staff " + staffID + " created"
+	if factoryID != "" {
+		body += " at " + factoryID
+	}
+	return FormattedNotification{
+		Title:    "Factory Staff",
+		Body:     body,
+		DeepLink: "/staff",
+		Priority: "normal",
+	}
+}
+
+// FormatFactoryTransferCreated produces a notification for factory transfer create.
+func FormatFactoryTransferCreated(transferID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Transfer Created",
+		Body:     "Factory transfer " + transferID + " created",
+		DeepLink: "/transfers",
+		Priority: "normal",
+	}
+}
+
 // FormatManifestOrderException produces a notification for a manifest gate exception.
 func FormatManifestOrderException(manifestID, orderID, reason string) FormattedNotification {
 	body := "Manifest gate exception on " + manifestID

@@ -68,22 +68,6 @@ export async function rejectDeliveryProposal(orderId: string, reason: string): P
   });
 }
 
-export async function correctPrediction(
-  predictionId: string,
-  payload: Record<string, unknown>,
-  idempotencyKey?: string
-): Promise<Response> {
-  const headers: Record<string, string> = {};
-  if (idempotencyKey) {
-    headers['Idempotency-Key'] = idempotencyKey;
-  }
-  return apiFetch(`/v1/ai/predictions/correct?prediction_id=${encodeURIComponent(predictionId)}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(payload),
-  });
-}
-
 // ── Retailer Setup & Profile ──
 
 export async function setupRetailer(

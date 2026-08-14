@@ -34,9 +34,8 @@ struct RetailerServiceTests {
     }
 
     @Test func predictionsEndpoint() {
-        let retailerId = "r-123"
-        let path = "/v1/ai/predictions?retailer_id=\(retailerId)"
-        #expect(path.contains("predictions"))
+        let path = "/v1/retailer/ai/predictions"
+        #expect(path == "/v1/retailer/ai/predictions")
     }
 
     @Test func unifiedCheckoutEndpoint() {

@@ -465,6 +465,10 @@ enum WarehouseService {
         try await api.get("v1/warehouse/supply-requests/\(id)")
     }
 
+    static func supplyRequestQC(id: String) async throws -> SupplyRequestQCResponse {
+        try await api.get("v1/warehouse/supply-requests/\(id)/qc")
+    }
+
     static func demandForecast(days: Int = 7) async throws -> DemandForecastResponse {
         try await api.get("v1/warehouse/demand/forecast", query: ["days": "\(days)"])
     }

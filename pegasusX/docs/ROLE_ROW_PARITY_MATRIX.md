@@ -1,6 +1,6 @@
 # pegasusX Role-Row Parity Matrix
 
-**Last updated:** 2026-08-13 (G7: factory SLA board + admin OutboxDeadLetters; G1–G6 honesty residuals)  
+**Last updated:** 2026-08-14 (leftover close: payout-policy/entityresolution/countrycfg/SplitManifest; typed CT lists; retailer CT tiles; **not cloud, not store**)  
 **Primary inventory:** [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md)  
 **Narrative secondary:** [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md)  
 **Optimizer + maps runtime:** [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md)  
@@ -14,12 +14,12 @@
 
 | Role | Clients | Backend | UI parity | E2E / notes |
 |------|---------|---------|-----------|-------------|
-| SUPPLIER | portal (Tauri desktop), Android, iOS | supplierroutes + finance/claims/pulse + return-policy + planning | **Wired** | Desktop = `supplier-portal` Tauri; `/planning` web; negotiations product-deferred |
-| RETAILER | desktop, Android, iOS | retailerroutes, order, payment, credit + Retail OS packs 0–6 | **Wired** | HQ / Credit-AR / CT on all 3; AUTHORIZE_BYPASS photo wired |
+| SUPPLIER | portal (Tauri desktop), Android, iOS | supplierroutes + finance/claims/pulse + return-policy + planning | **Wired** | Desktop = `supplier-portal` Tauri; `/planning` web; CT scored+playbooks typed native; payout-policy thin UI, rail `no_live_rail`; negotiations product-deferred |
+| RETAILER | desktop, Android, iOS | retailerroutes, order, payment, credit + Retail OS packs 0–6 | **Wired** | HQ / Credit-AR / CT on all 3; CT tiles navigate (P13-E); AUTHORIZE_BYPASS photo wired |
 | DRIVER | Android, iOS | driverroutes, delivery, telemetry | **Wired** | P0-4 offline classifier fixed; PoD required for credit leave; §8.8 kit |
-| WAREHOUSE | portal, Android, iOS | warehouseroutes + WMS + return-policy | **Wired** | Portal: bins/pick-waves/cycle/cold/labor; mobile pick/cycle under Transfer Actions; CT portal-primary |
-| FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Staff POST + exception resolve; loading bay ↔ payload Class A; **G7 SLA board + badges on portal** (mobile shows supply list `sla_*` when present) |
-| PAYLOAD | Expo terminal + Android + iOS | payloaderoutes + factory manifests bridge | **Wired** | Seal/inject/reassign/returns; factory loading-bay APIs on all three |
+| WAREHOUSE | portal, Android, iOS | warehouseroutes + WMS + return-policy | **Wired** | Portal: bins/pick-waves/cycle/cold/labor; mobile pick/cycle under Transfer Actions; Control Tower typed scored list (P13-C) + portal |
+| FACTORY | portal, Android, iOS | factoryroutes | **Wired** | Loading-bay start/seal **REAL** ↔ payload Class A; **G7 SLA board + badges on portal** (mobile shows supply list `sla_*` when present). `POST /v1/factory/dispatch` is a **STUB** default (`pick_n_created_v1`; FFD+NN+LIFO behind `FACTORY_BATCHER_ENABLED`) — not warehouse VRP. Staff POST + exception resolve are **Class A persist + outbox** (P3); resolve lookup **Spanner-first** (P9-B). Staff `PasswordHash` is bcrypt/invite (P9-A), not `unset`. |
+| PAYLOAD | Expo terminal + Android + iOS | payloaderoutes + factory manifests bridge | **Wired** | Seal/inject/reassign/returns; **seal-all** on terminal+Android+iOS (P13-A); factory loading-bay APIs on all three. Capacity 410. |
 | PLATFORM_ADMIN | `admin-portal` (web only) | platformadmin + featureflags + partner admin | **Wired** | Login+MFA; tenants/flags dual-control/audit/match/partner; **ops outbox + Spanner dead-letters**; no mobile by design |
 
 ## Cross-role spine status
@@ -47,3 +47,5 @@
 ## Legend
 
 **Wired** = Class A path exists in code on the clients listed. Does **not** mean owner keys, legal OFD, or prod optimizer pods are live — see [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md).
+
+**Wired = happy path, not every FEATURES row.** A Wired role row does not make saved cards, `/v1/ai/predictions` alias, inventory audit, request-cancel, negotiations, or factory dispatch live. Cards/AI-alias/audit are **GONE** 410 (P1). Factory dispatch stays STUB. See [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) and [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md).

@@ -17,6 +17,7 @@ type PayloadTx interface {
 	SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error
 	ListExceptions(ctx context.Context) ([]ManifestException, error)
 	SaveException(ctx context.Context, e ManifestException) error
+	UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error
 }
 
 // Repository is the mutation seam for payload write paths.
@@ -56,6 +57,9 @@ func (emptyPayloadTx) ListManifestOrders(context.Context, string) ([]ManifestOrd
 func (emptyPayloadTx) SaveManifestOrder(context.Context, ManifestOrder, int64) error { return nil }
 func (emptyPayloadTx) ListExceptions(context.Context) ([]ManifestException, error) { return nil, nil }
 func (emptyPayloadTx) SaveException(context.Context, ManifestException) error     { return nil }
+func (emptyPayloadTx) UpdateOrderAssignment(context.Context, string, string, string) error {
+	return nil
+}
 
 // discardTxnBuffer accepts outbox events without durability (local only).
 type discardTxnBuffer struct{}

@@ -56,6 +56,7 @@ export default function AnalyticsPage() {
   const fmtCurrency = (n: number) => new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(n);
 
   const d = data || { period: '30d', total_revenue: 0, total_orders: 0, avg_order_value: 0, top_products: [], daily: [], fleet_utilization_pct: 0 };
+  const topProducts = d.top_products ?? [];
   const dailySeries = d.daily_breakdown || d.daily || [];
   const fleetUtilizationPct = d.fleet_utilization?.utilization_pct ?? d.fleet_utilization_pct ?? 0;
   const importFreshness = d.import_freshness || {
@@ -175,7 +176,7 @@ export default function AnalyticsPage() {
       <AnalyticsChartGrid dailySeries={dailySeries} fmtCurrency={fmtCurrency} />
 
       {/* Top Products */}
-      {d.top_products.length > 0 && (
+      {topProducts.length > 0 && (
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <h2 className="text-sm font-semibold mb-3">{t("warehouse_portal.analytics.text.top_products")}</h2>
           <div className="overflow-x-auto">
@@ -188,7 +189,7 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {d.top_products.map((p, i) => (
+                {topProducts.map((p, i) => (
                   <tr key={i} className="border-b border-[var(--border)]">
                     <td className="py-2 px-3">{p.product_name}</td>
                     <td className="py-2 px-3 text-right font-mono">{fmt(p.total_sold ?? p.total_qty ?? 0)}</td>

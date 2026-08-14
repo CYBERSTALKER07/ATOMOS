@@ -16,7 +16,15 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL = URL(string: "https://api.pegasus.uz/")!
+    private let baseURL: URL = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let s: String
+        if raw.isEmpty { s = "https://api.pegasusx.app/" }
+        else if raw.hasSuffix("/") { s = raw }
+        else { s = raw + "/" }
+        return URL(string: s)!
+    }()
     #endif
 
     private var session: URLSession
@@ -48,6 +56,31 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
+    func getJSONString(_ path: String, query: [String: String] = [:]) async throws -> String {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        await attachToken(&request)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            await MainActor.run { TokenStore.shared.clear() }
+            throw APIError.unauthorized
+        }
+        guard (200...299).contains(http.statusCode) else {
+            if let err = try? decoder.decode(APIErrorBody.self, from: data) {
+                throw APIError.server(err.error)
+            }
+            throw APIError.httpError(http.statusCode)
+        }
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
     func post<B: Encodable, T: Decodable>(
         _ path: String,
         body: B,
@@ -76,6 +109,31 @@ final class APIClient: Sendable {
             await attachToken(&request)
         }
         return try await execute(request)
+    }
+
+    func postText(_ path: String, authenticated: Bool = true) async throws -> String {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data("{}".utf8)
+        if authenticated {
+            await attachToken(&request)
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            await MainActor.run { TokenStore.shared.clear() }
+            throw APIError.unauthorized
+        }
+        guard (200...299).contains(http.statusCode) else {
+            if let err = try? decoder.decode(APIErrorBody.self, from: data) {
+                throw APIError.server(err.error)
+            }
+            throw APIError.httpError(http.statusCode)
+        }
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
     func put<B: Encodable, T: Decodable>(

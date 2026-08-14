@@ -58,7 +58,12 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let apiBaseURL = "https://api.pegasus.uz"
+    let apiBaseURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
 
     private var baseURL: String { apiBaseURL }

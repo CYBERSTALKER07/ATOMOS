@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -24,6 +26,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -39,16 +42,20 @@ const (
 
 // Service stores additive in-memory data for factory operational surfaces.
 type Service struct {
-	repo          Repository
-	cache         *cache.Cache
-	supplierHub   *ws.Hub
-	factoryHub    *ws.Hub
-	log           *slog.Logger
-	spannerClient *spanner.Client
-	idem          idempotency.Store
-	locations     telemetry.LastLocationReader
+	repo            Repository
+	cache           *cache.Cache
+	supplierHub     *ws.Hub
+	factoryHub      *ws.Hub
+	log             *slog.Logger
+	spannerClient   *spanner.Client
+	optimizerClient *optimizerclient.Client
+	idem            idempotency.Store
+	locations       telemetry.LastLocationReader
+	planning        *PlanningService
+	qcRepo          supplyQCRepo
+	exceptionRepo   factoryExceptionBackend
 
-	seedSupplierID       string
+	seedSupplierID   string
 	factoryNodeID    string
 	currency         string
 	jwtSecret        string
@@ -92,6 +99,8 @@ type ServiceConfig struct {
 	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
 	Idem             idempotency.Store
+	Planning         *PlanningService
+	OptimizerClient  *optimizerclient.Client
 }
 
 // TransferRow represents one factory transfer record.
@@ -111,13 +120,13 @@ type TransferRow struct {
 
 // ManifestRow represents one manifest record.
 type ManifestRow struct {
-	ManifestID         string `json:"manifest_id"`
-	State              string `json:"state"`
-	TransferCnt        int    `json:"transfer_count"`
-	TotalVolumeVU      int64  `json:"total_volume_vu"`
-	MaxVolumeVU        int64  `json:"max_volume_vu"`
-	DriverID           string `json:"driver_id,omitempty"`
-	VehicleID          string `json:"vehicle_id,omitempty"`
+	ManifestID    string `json:"manifest_id"`
+	State         string `json:"state"`
+	TransferCnt   int    `json:"transfer_count"`
+	TotalVolumeVU int64  `json:"total_volume_vu"`
+	MaxVolumeVU   int64  `json:"max_volume_vu"`
+	DriverID      string `json:"driver_id,omitempty"`
+	VehicleID     string `json:"vehicle_id,omitempty"`
 	// TruckID mirrors vehicle_id for payload-terminal / Wire compatibility (P1-18).
 	TruckID            string `json:"truck_id,omitempty"`
 	StopCount          int    `json:"stop_count,omitempty"`
@@ -208,9 +217,11 @@ type FleetVehicle struct {
 
 // StaffRow represents one staff member row.
 type StaffRow struct {
-	StaffID string `json:"staff_id"`
-	Name    string `json:"name"`
-	Role    string `json:"role"`
+	StaffID      string `json:"staff_id"`
+	Name         string `json:"name"`
+	Role         string `json:"role"`
+	Phone        string `json:"phone,omitempty"`
+	PasswordHash string `json:"-"`
 }
 
 // SupplyRequest represents one supply request row.
@@ -273,7 +284,7 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:           c.SupplierHub,
 		factoryHub:            c.FactoryHub,
 		log:                   c.Log,
-		seedSupplierID: seedID,
+		seedSupplierID:        seedID,
 		factoryNodeID:         factoryNodeID,
 		currency:              c.Currency,
 		jwtSecret:             c.JWTSecret,
@@ -281,8 +292,10 @@ func NewService(c ServiceConfig) *Service {
 		now:                   c.Now,
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
+		optimizerClient:       c.OptimizerClient,
 		idem:                  c.Idem,
 		locations:             c.Locations,
+		planning:              c.Planning,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),
@@ -293,7 +306,6 @@ func NewService(c ServiceConfig) *Service {
 func (s *Service) resolveSupplierScope(ctx context.Context) string {
 	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
-
 
 type transferCreateRequest struct {
 	OrderID   string `json:"order_id"`
@@ -372,6 +384,16 @@ func (s *Service) ensureDemoDataLocked() {
 	if !s.portalSeedEnabled() {
 		return
 	}
+	nowFn := s.clock()
+	if s.manifestTransfers == nil {
+		s.manifestTransfers = make(map[string][]TransferRow)
+	}
+	if s.manifestTransitions == nil {
+		s.manifestTransitions = make(map[string][]ManifestTransition)
+	}
+	if s.manifestReassignments == nil {
+		s.manifestReassignments = make(map[string][]ManifestReassignment)
+	}
 	if len(s.fleetDrivers) == 0 {
 		s.fleetDrivers = []FleetDriver{
 			{DriverID: "drv_factory_1", Name: "Factory Driver 1", OnShift: true},
@@ -391,20 +413,20 @@ func (s *Service) ensureDemoDataLocked() {
 		}
 	}
 	if len(s.supplyRequests) == 0 {
-		now := s.now().Format(time.RFC3339Nano)
+		now := nowFn().Format(time.RFC3339Nano)
 		s.supplyRequests = []SupplyRequest{
 			{RequestID: "srq_factory_1", Status: "SUBMITTED", WarehouseID: "wh-demo-1", CreatedAt: now, UpdatedAt: now},
 		}
 	}
 	if len(s.transfers) == 0 {
-		now := s.now().Format(time.RFC3339Nano)
+		now := nowFn().Format(time.RFC3339Nano)
 		s.transfers = []TransferRow{
 			{TransferID: "tr_factory_1", OrderID: "ord_factory_1", State: "CREATED", TotalVU: 42, CreatedAt: now, UpdatedAt: now},
 			{TransferID: "tr_factory_2", OrderID: "ord_factory_2", State: "CREATED", TotalVU: 37, CreatedAt: now, UpdatedAt: now},
 		}
 	}
 	if len(s.manifests) == 0 {
-		now := s.now().Format(time.RFC3339Nano)
+		now := nowFn().Format(time.RFC3339Nano)
 		manifest := ManifestRow{
 			ManifestID:    "mf_factory_1",
 			State:         manifestStateDraft,
@@ -445,11 +467,18 @@ func (s *Service) ensureDemoDataLocked() {
 	}
 }
 
+func (s *Service) clock() func() time.Time {
+	if s != nil && s.now != nil {
+		return s.now
+	}
+	return func() time.Time { return time.Now().UTC() }
+}
+
 func (s *Service) ensureDemoManifestExceptionsLocked() {
 	if len(s.manifestExceptions) > 0 || len(s.manifests) == 0 {
 		return
 	}
-	now := s.now().Format(time.RFC3339Nano)
+	now := s.clock()().Format(time.RFC3339Nano)
 	s.manifestExceptions = []ManifestException{{
 		ExceptionID:  "mex_factory_demo_1",
 		ManifestID:   s.manifests[0].ManifestID,
@@ -473,7 +502,7 @@ func (s *Service) ensureLoadingBayDemoTransfersLocked() {
 	if hasBay {
 		return
 	}
-	now := s.now().Format(time.RFC3339Nano)
+	now := s.clock()().Format(time.RFC3339Nano)
 	s.transfers = append(s.transfers,
 		TransferRow{TransferID: "tr_bay_1", OrderID: "ord_bay_1", State: "APPROVED", TotalVU: 28, CreatedAt: now, UpdatedAt: now},
 		TransferRow{TransferID: "tr_bay_2", OrderID: "ord_bay_2", State: "LOADING", TotalVU: 31, CreatedAt: now, UpdatedAt: now},
@@ -788,6 +817,10 @@ func factoryExceptionListKey(supplierID string) string {
 	return "factory:manifest_exceptions:" + supplierID
 }
 
+func factoryStaffListKey(supplierID string) string {
+	return "factory:staff:" + supplierID
+}
+
 // HandleAnalyticsOverview serves GET /v1/factory/analytics/overview.
 func (s *Service) HandleAnalyticsOverview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -865,26 +898,27 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 		limit := parseTransferLimit(r.URL.Query().Get("limit"))
 		offset := parseTransferOffset(r.URL.Query().Get("offset"))
 
+		if s.spannerClient != nil {
+			rows, err := s.loadFactoryTransfersFromSpanner(r.Context())
+			if err != nil {
+				s.log.WarnContext(r.Context(), "factory transfer list failed", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_list_failed"})
+				return
+			}
+			if len(rows) > 0 || !s.portalSeedEnabled() {
+				s.writeTransferList(w, filterTransferRows(rows, stateFilters), limit, offset)
+				return
+			}
+		}
+
 		s.mu.Lock()
 		s.ensureDemoDataLocked()
 		rows := filterTransferRows(append([]TransferRow(nil), s.transfers...), stateFilters)
 		s.mu.Unlock()
-
-		sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
-		total := len(rows)
-		if offset >= len(rows) {
+		if !s.portalSeedEnabled() && s.spannerClient == nil {
 			rows = nil
-		} else {
-			rows = rows[offset:]
 		}
-		if len(rows) > limit {
-			rows = rows[:limit]
-		}
-		mapped := make([]map[string]any, len(rows))
-		for i := range rows {
-			mapped[i] = s.iosTransferPayload(rows[i])
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"transfers": mapped, "total": total})
+		s.writeTransferList(w, rows, limit, offset)
 	case http.MethodPost:
 		body, err := readLimitedBody(r, 64*1024)
 		if err != nil {
@@ -911,6 +945,8 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 		}
 		var row TransferRow
 		now := ""
+		factoryID := s.resolveFactoryNode(r.Context())
+		supplierID := s.resolveSupplierScope(r.Context())
 		err = s.apply(r.Context(), func() error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
@@ -928,17 +964,99 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			}
 			s.transfers = append(s.transfers, row)
 			return nil
-		}, nil)
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateFactory, row.TransferID, events.TopicMain, events.WarehouseTransferEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventFactoryTransferCreated},
+				TransferID: row.TransferID,
+				FactoryID:  factoryID,
+				SupplierID: supplierID,
+				State:      row.State,
+				Status:     row.State,
+			})
+		})
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_create_failed"})
 			return
 		}
-		s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
+		s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(supplierID))
+		s.broadcastFactoryEvent(r.Context(), events.EventFactoryTransferCreated, map[string]any{
+			"transfer_id": row.TransferID,
+			"factory_id":  factoryID,
+			"supplier_id": supplierID,
+			"state":       row.State,
+		})
+		s.log.InfoContext(r.Context(), "factory.transfer_created", "transfer_id", row.TransferID, "factory_id", factoryID)
 		idemCommitted = true
 		s.writeIdempotentJSON(w, r, body, http.StatusCreated, row)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+func (s *Service) writeTransferList(w http.ResponseWriter, rows []TransferRow, limit, offset int) {
+	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
+	total := len(rows)
+	if offset >= len(rows) {
+		rows = nil
+	} else {
+		rows = rows[offset:]
+	}
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	mapped := make([]map[string]any, len(rows))
+	for i := range rows {
+		mapped[i] = s.iosTransferPayload(rows[i])
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"transfers": mapped, "total": total})
+}
+
+func (s *Service) loadFactoryTransfersFromSpanner(ctx context.Context) ([]TransferRow, error) {
+	fid := strings.TrimSpace(s.resolveFactoryNode(ctx))
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
+	if fid == "" || sid == "" || s.spannerClient == nil {
+		return nil, fmt.Errorf("factory transfer scope required")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT TransferId, OrderId, ManifestId, State, TotalVolumeVU,
+		      DriverId, VehicleId, ReassignDepth, ExceptionCount, CreatedAt, UpdatedAt
+		      FROM FactoryInternalTransfers@{FORCE_INDEX=Idx_FactoryTransfers_ByFactoryId}
+		      WHERE FactoryId = @fid AND SupplierId = @sid
+		      ORDER BY UpdatedAt DESC`,
+		Params: map[string]any{"fid": fid, "sid": sid},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var out []TransferRow
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			if err == iterator.Done {
+				break
+			}
+			return nil, fmt.Errorf("factory transfer query: %w", err)
+		}
+		var t TransferRow
+		var orderID, manifestID, driverID, vehicleID spanner.NullString
+		var totalVolume float64
+		var reassignDepth, exceptionCount int64
+		var createdAt, updatedAt time.Time
+		if err := row.Columns(&t.TransferID, &orderID, &manifestID, &t.State, &totalVolume, &driverID, &vehicleID,
+			&reassignDepth, &exceptionCount, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("factory transfer scan: %w", err)
+		}
+		t.OrderID = orderID.StringVal
+		t.ManifestID = manifestID.StringVal
+		t.TotalVU = int64(totalVolume)
+		t.DriverID = driverID.StringVal
+		t.VehicleID = vehicleID.StringVal
+		t.ReassignDepth = int(reassignDepth)
+		t.ExceptionCount = exceptionCount
+		t.CreatedAt = createdAt.Format(time.RFC3339Nano)
+		t.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
+		out = append(out, t)
+	}
+	return out, nil
 }
 
 // HandleManifests serves GET /v1/factory/manifests.
@@ -1153,15 +1271,7 @@ func (s *Service) HandleFleetVehicles(w http.ResponseWriter, r *http.Request) {
 func (s *Service) HandleStaff(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		s.mu.Lock()
-		s.ensureDemoDataLocked()
-		rows := append([]StaffRow(nil), s.staff...)
-		mapped := make([]map[string]any, len(rows))
-		for i := range rows {
-			mapped[i] = iosStaffMemberPayload(rows[i])
-		}
-		s.mu.Unlock()
-		writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
+		s.handleListStaff(w, r)
 		return
 	case http.MethodPost:
 		s.handleCreateStaff(w, r)
@@ -1171,15 +1281,85 @@ func (s *Service) HandleStaff(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Service) handleListStaff(w http.ResponseWriter, r *http.Request) {
+	if s.spannerClient != nil {
+		rows, err := s.loadFactoryStaffFromSpanner(r.Context())
+		if err != nil {
+			s.log.WarnContext(r.Context(), "factory staff list failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "staff_list_failed"})
+			return
+		}
+		if len(rows) > 0 || !s.portalSeedEnabled() {
+			mapped := make([]map[string]any, len(rows))
+			for i := range rows {
+				mapped[i] = iosStaffMemberPayload(rows[i])
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
+			return
+		}
+	}
+	s.mu.Lock()
+	s.ensureDemoDataLocked()
+	rows := append([]StaffRow(nil), s.staff...)
+	s.mu.Unlock()
+	if !s.portalSeedEnabled() && s.spannerClient == nil {
+		rows = nil
+	}
+	mapped := make([]map[string]any, len(rows))
+	for i := range rows {
+		mapped[i] = iosStaffMemberPayload(rows[i])
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
+}
+
+func (s *Service) loadFactoryStaffFromSpanner(ctx context.Context) ([]StaffRow, error) {
+	fid := strings.TrimSpace(s.resolveFactoryNode(ctx))
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
+	if fid == "" || sid == "" || s.spannerClient == nil {
+		return nil, fmt.Errorf("factory staff scope required")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT UserId, Name, COALESCE(Phone, ''), SupplierRole
+		      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_BySupplierUpdated}
+		      WHERE SupplierId = @sid AND AssignedFactoryId = @fid AND IsActive = true
+		      ORDER BY UpdatedAt DESC`,
+		Params: map[string]any{"sid": sid, "fid": fid},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var out []StaffRow
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			if err == iterator.Done {
+				break
+			}
+			return nil, fmt.Errorf("factory staff query: %w", err)
+		}
+		var rec StaffRow
+		if err := row.Columns(&rec.StaffID, &rec.Name, &rec.Phone, &rec.Role); err != nil {
+			return nil, fmt.Errorf("factory staff scan: %w", err)
+		}
+		out = append(out, rec)
+	}
+	return out, nil
+}
+
 func (s *Service) handleCreateStaff(w http.ResponseWriter, r *http.Request) {
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
-		Name string `json:"name"`
-		Role string `json:"role"`
+		Name     string `json:"name"`
+		Role     string `json:"role"`
+		Phone    string `json:"phone"`
+		PIN      string `json:"pin"`
+		Password string `json:"password"`
 	}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &req); err != nil {
@@ -1189,6 +1369,7 @@ func (s *Service) handleCreateStaff(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Name = strings.TrimSpace(req.Name)
 	req.Role = strings.TrimSpace(req.Role)
+	req.Phone = strings.TrimSpace(req.Phone)
 	if req.Name == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
 		return
@@ -1196,17 +1377,119 @@ func (s *Service) handleCreateStaff(w http.ResponseWriter, r *http.Request) {
 	if req.Role == "" {
 		req.Role = "FACTORY_OPERATOR"
 	}
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	row := StaffRow{
-		StaffID: s.nextIDLocked("stf"),
-		Name:    req.Name,
-		Role:    req.Role,
+	if !factoryStaffRoleAllowed(req.Role) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "role_invalid"})
+		return
 	}
-	s.staff = append(s.staff, row)
+	secret, invite, err := resolveStaffSecret(req.PIN, req.Password)
+	if err != nil {
+		if errors.Is(err, errStaffSecretTooShort) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "pin_or_password_too_short"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "staff_secret_failed"})
+		return
+	}
+	hash, err := hashFactoryStaffSecret(secret)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "staff_password_hash_failed"})
+		return
+	}
+
+	supplierID := s.resolveSupplierScope(r.Context())
+	factoryID := s.resolveFactoryNode(r.Context())
+	var row StaffRow
+	err = s.repo.RunTx(r.Context(), func(ctx context.Context, tx FactoryTx) error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		row = StaffRow{
+			StaffID:      s.nextIDLocked("stf"),
+			Name:         req.Name,
+			Role:         req.Role,
+			Phone:        req.Phone,
+			PasswordHash: hash,
+		}
+		if err := tx.SaveStaff(ctx, row); err != nil {
+			return err
+		}
+		s.staff = append(s.staff, row)
+		return nil
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateFactory, row.StaffID, events.TopicMain, events.FactoryEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventFactoryStaffCreated},
+			FactoryID:    factoryID,
+			SupplierID:   supplierID,
+			UserID:       row.StaffID,
+			SupplierRole: row.Role,
+		})
+	})
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "factory staff create failed", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "staff_create_failed"})
+		return
+	}
+	s.invalidateFactoryKeys(r.Context(), factoryStaffListKey(supplierID))
+	s.broadcastFactoryEvent(r.Context(), events.EventFactoryStaffCreated, map[string]any{
+		"staff_id":    row.StaffID,
+		"factory_id":  factoryID,
+		"supplier_id": supplierID,
+		"role":        row.Role,
+	})
+	s.log.InfoContext(r.Context(), "factory.staff_created", "staff_id", row.StaffID, "factory_id", factoryID)
 	payload := iosStaffMemberPayload(row)
-	s.mu.Unlock()
-	writeJSON(w, http.StatusCreated, payload)
+	payload["must_set_password"] = invite != ""
+	if invite != "" {
+		payload["invite_token"] = invite
+	}
+	s.writeIdempotentJSON(w, r, body, http.StatusCreated, payload)
+}
+
+func factoryStaffRoleAllowed(role string) bool {
+	switch strings.ToUpper(strings.TrimSpace(role)) {
+	case "FACTORY", "FACTORY_ADMIN", "FACTORY_STAFF", "FACTORY_OPERATOR", "FACTORY_DRIVER":
+		return true
+	default:
+		return false
+	}
+}
+
+var errNoDispatchableTransfers = errors.New("no_dispatchable_transfers")
+
+func pickDispatchTransfers(transfers []TransferRow, req dispatchRequest) []TransferRow {
+	available := make([]TransferRow, 0)
+	for i := range transfers {
+		if transfers[i].State == "CREATED" {
+			available = append(available, transfers[i])
+		}
+	}
+	selected := make([]TransferRow, 0)
+	if len(req.TransferIDs) > 0 {
+		for _, id := range req.TransferIDs {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			for i := range transfers {
+				if transfers[i].TransferID != id {
+					continue
+				}
+				if dispatchableTransferState(transfers[i].State) && strings.TrimSpace(transfers[i].ManifestID) == "" {
+					selected = append(selected, transfers[i])
+				}
+				break
+			}
+		}
+	}
+	if len(selected) == 0 {
+		limit := len(available)
+		if limit > 2 {
+			limit = 2
+		}
+		if limit > 0 {
+			selected = append(selected, available[:limit]...)
+		}
+	}
+	return selected
 }
 
 // HandleDispatch serves POST /v1/factory/dispatch.
@@ -1223,10 +1506,34 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	if s.spannerClient != nil {
+		s.handleSolverDispatch(w, r, body)
+		return
+	}
 	var req dispatchRequest
 	if len(body) > 0 {
 		_ = json.Unmarshal(body, &req)
 	}
+
+	s.mu.Lock()
+	s.ensureDemoDataLocked()
+	preview := pickDispatchTransfers(s.transfers, req)
+	s.mu.Unlock()
+	if len(preview) == 0 {
+		nowTS := s.now().Format(time.RFC3339Nano)
+		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
+			"status":                 "dispatch_planned",
+			"created_manifest_count": 0,
+			"manifests_created":      0,
+			"manifest_id":            "",
+			"transfer_count":         0,
+			"updated_at":             nowTS,
+			"optimizer_class":        OptimizerHeuristic,
+			"dispatch_algo":          DispatchAlgoPickN,
+		})
+		return
+	}
+
 	var manifest ManifestRow
 	selectedCount := 0
 	now := ""
@@ -1236,59 +1543,25 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		s.ensureDemoDataLocked()
 		now = s.now().Format(time.RFC3339Nano)
 
-		available := make([]TransferRow, 0)
-		for i := range s.transfers {
-			if s.transfers[i].State == "CREATED" {
-				available = append(available, s.transfers[i])
-			}
-		}
-		if len(available) == 0 {
-			transfer := TransferRow{
-				TransferID: s.nextIDLocked("tr"),
-				OrderID:    s.nextIDLocked("ord"),
-				State:      "CREATED",
-				TotalVU:    20,
-				CreatedAt:  now,
-				UpdatedAt:  now,
-			}
-			s.transfers = append(s.transfers, transfer)
-			available = append(available, transfer)
+		selected := pickDispatchTransfers(s.transfers, req)
+		if len(selected) == 0 {
+			return errNoDispatchableTransfers
 		}
 
 		if req.MaxVolumeVU <= 0 {
 			req.MaxVolumeVU = 180
 		}
 		if strings.TrimSpace(req.DriverID) == "" {
+			if len(s.fleetDrivers) == 0 {
+				return errNoDispatchableTransfers
+			}
 			req.DriverID = s.fleetDrivers[0].DriverID
 		}
 		if strings.TrimSpace(req.VehicleID) == "" {
+			if len(s.fleetVehicles) == 0 {
+				return errNoDispatchableTransfers
+			}
 			req.VehicleID = s.fleetVehicles[0].VehicleID
-		}
-
-		selected := make([]TransferRow, 0)
-		if len(req.TransferIDs) > 0 {
-			for _, id := range req.TransferIDs {
-				id = strings.TrimSpace(id)
-				if id == "" {
-					continue
-				}
-				for i := range s.transfers {
-					if s.transfers[i].TransferID != id {
-						continue
-					}
-					if dispatchableTransferState(s.transfers[i].State) && strings.TrimSpace(s.transfers[i].ManifestID) == "" {
-						selected = append(selected, s.transfers[i])
-					}
-					break
-				}
-			}
-		}
-		if len(selected) == 0 {
-			limit := len(available)
-			if limit > 2 {
-				limit = 2
-			}
-			selected = append(selected, available[:limit]...)
 		}
 
 		manifestID := s.nextIDLocked("mf")
@@ -1342,6 +1615,20 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 			VehicleID:     manifest.VehicleID,
 		})
 	})
+	if errors.Is(err, errNoDispatchableTransfers) {
+		nowTS := s.now().Format(time.RFC3339Nano)
+		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
+			"status":                 "dispatch_planned",
+			"created_manifest_count": 0,
+			"manifests_created":      0,
+			"manifest_id":            "",
+			"transfer_count":         0,
+			"updated_at":             nowTS,
+			"optimizer_class":        OptimizerHeuristic,
+			"dispatch_algo":          DispatchAlgoPickN,
+		})
+		return
+	}
 	if err != nil {
 		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "dispatch_failed", err)
 		return
@@ -1366,6 +1653,43 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		"manifest_id":            manifest.ManifestID,
 		"transfer_count":         selectedCount,
 		"updated_at":             now,
+		"optimizer_class":        OptimizerHeuristic,
+		"dispatch_algo":          DispatchAlgoPickN,
+	})
+}
+
+// SetPlanning attaches the P5 planning engine (batcher / SLA / pull matrix).
+func (s *Service) SetPlanning(p *PlanningService) {
+	if s != nil {
+		s.planning = p
+	}
+}
+
+func (s *Service) handleBatcherDispatch(w http.ResponseWriter, r *http.Request, body []byte) {
+	if s.planning == nil || s.planning.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "batcher_unavailable"})
+		return
+	}
+	factoryID := s.resolveFactoryNode(r.Context())
+	supplierID := s.resolveSupplierScope(r.Context())
+	result, err := s.planning.RunBatchDispatch(r.Context(), factoryID, supplierID)
+	if err != nil {
+		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "dispatch_failed", err)
+		return
+	}
+	manifestID := ""
+	if len(result.ManifestIDs) > 0 {
+		manifestID = result.ManifestIDs[0]
+	}
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
+		"status":                 "dispatch_planned",
+		"created_manifest_count": result.CreatedManifestCount,
+		"manifests_created":      result.CreatedManifestCount,
+		"manifest_id":            manifestID,
+		"manifest_ids":           result.ManifestIDs,
+		"unassigned":             result.Unassigned,
+		"optimizer_class":        result.OptimizerClass,
+		"dispatch_algo":          result.DispatchAlgo,
 	})
 }
 
@@ -1850,23 +2174,28 @@ func (s *Service) HandleManifestExceptions(w http.ResponseWriter, r *http.Reques
 	}
 	escalatedOnly := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("escalated")), "true")
 
+	backend := s.exceptionBackend()
+	if backend != nil {
+		rows, err := backend.List(r.Context(), s.resolveSupplierScope(r.Context()), strings.TrimSpace(s.resolveFactoryNode(r.Context())))
+		if err != nil {
+			s.log.WarnContext(r.Context(), "factory exception list failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "exception_list_failed"})
+			return
+		}
+		if len(rows) > 0 || !s.portalSeedEnabled() {
+			writeFactoryExceptionList(w, rows, escalatedOnly)
+			return
+		}
+	}
+
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	rows := append([]ManifestException(nil), s.manifestExceptions...)
 	s.mu.Unlock()
-
-	if escalatedOnly {
-		filtered := make([]ManifestException, 0, len(rows))
-		for i := range rows {
-			if rows[i].Escalated {
-				filtered = append(filtered, rows[i])
-			}
-		}
-		rows = filtered
+	if !s.portalSeedEnabled() && s.spannerClient == nil && backend == nil {
+		rows = nil
 	}
-
-	sort.Slice(rows, func(i, j int) bool { return rows[i].CreatedAt > rows[j].CreatedAt })
-	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
+	writeFactoryExceptionList(w, rows, escalatedOnly)
 }
 
 // HandleResolveManifestException serves POST /v1/factory/manifest-exceptions/{exceptionID}/resolve.
@@ -1880,7 +2209,14 @@ func (s *Service) HandleResolveManifestException(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "exception_id_required"})
 		return
 	}
-	body, _ := readLimitedBody(r, 64*1024)
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
 		Resolution string `json:"resolution"`
 		Note       string `json:"note"`
@@ -1893,26 +2229,58 @@ func (s *Service) HandleResolveManifestException(w http.ResponseWriter, r *http.
 		req.Resolution = "RESOLVED"
 	}
 
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	found := -1
-	for i := range s.manifestExceptions {
-		if s.manifestExceptions[i].ExceptionID == exceptionID {
-			found = i
-			break
-		}
+	row, fromMemory, found, lookupErr := s.lookupManifestException(r.Context(), exceptionID)
+	if lookupErr != nil {
+		s.log.ErrorContext(r.Context(), "factory exception lookup failed", "err", lookupErr)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "exception_resolve_failed"})
+		return
 	}
-	if found < 0 {
-		s.mu.Unlock()
+	if !found {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "exception_not_found"})
 		return
 	}
-	row := s.manifestExceptions[found]
-	// Drop from open queue after resolve.
-	s.manifestExceptions = append(s.manifestExceptions[:found], s.manifestExceptions[found+1:]...)
-	s.mu.Unlock()
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	var orderID string
+	err = s.repo.RunTx(r.Context(), func(ctx context.Context, tx FactoryTx) error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.ensureDemoDataLocked()
+		if fromMemory {
+			s.manifestExceptions = removeMemoryExceptionLocked(s.manifestExceptions, exceptionID)
+		}
+		for i := range s.transfers {
+			if s.transfers[i].TransferID == row.TransferID {
+				orderID = s.transfers[i].OrderID
+				break
+			}
+		}
+		if strings.TrimSpace(orderID) == "" {
+			orderID = row.TransferID
+		}
+		return tx.ResolveException(ctx, row, orderID)
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, row.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestExceptionResolved},
+			ManifestID:     row.ManifestID,
+			ManifestDomain: events.ManifestDomainFactory,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			FactoryID:      s.resolveFactoryNode(r.Context()),
+			TransferID:     row.TransferID,
+			Reason:         req.Resolution,
+		})
+	})
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "factory exception resolve failed", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "exception_resolve_failed"})
+		return
+	}
+	s.invalidateFactoryKeys(r.Context(), factoryExceptionListKey(s.resolveSupplierScope(r.Context())), factoryManifestKey(row.ManifestID))
+	s.broadcastFactoryEvent(r.Context(), events.EventManifestExceptionResolved, map[string]any{
+		"exception_id": row.ExceptionID,
+		"manifest_id":  row.ManifestID,
+		"resolution":   req.Resolution,
+	})
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"exception_id": row.ExceptionID,
 		"manifest_id":  row.ManifestID,
 		"resolution":   req.Resolution,
@@ -1980,8 +2348,8 @@ func (s *Service) HandleSLABoard(w http.ResponseWriter, r *http.Request) {
 		"items":   items,
 		"as_of":   now.UTC().Format(time.RFC3339Nano),
 		"config": map[string]any{
-			"default_hours":  FactorySLADefaultHours(),
-			"at_risk_hours":  FactorySLAAtRiskHours(),
+			"default_hours": FactorySLADefaultHours(),
+			"at_risk_hours": FactorySLAAtRiskHours(),
 		},
 	})
 }
@@ -2090,6 +2458,14 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_state_transition"})
 			return
 		}
+		if err := s.requireSupplyQCPass(r.Context(), requestID); err != nil {
+			if errors.Is(err, errQCPassRequired) {
+				writeJSON(w, http.StatusConflict, map[string]string{"error": "qc_pass_required"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "qc_read_failed"})
+			return
+		}
 		err = s.transitionSupplyRequestSpanner(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
 				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestAccepted, Timestamp: nowTS},
@@ -2132,6 +2508,16 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_state_transition"})
 		return
 	}
+	s.mu.Unlock()
+	if err := s.requireSupplyQCPass(r.Context(), requestID); err != nil {
+		if errors.Is(err, errQCPassRequired) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "qc_pass_required"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "qc_read_failed"})
+		return
+	}
+	s.mu.Lock()
 	req.Status = nextState
 	req.UpdatedAt = nowTS
 	s.mu.Unlock()

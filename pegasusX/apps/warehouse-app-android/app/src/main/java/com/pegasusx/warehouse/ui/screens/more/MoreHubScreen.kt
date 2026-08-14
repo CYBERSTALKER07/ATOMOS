@@ -60,6 +60,7 @@ private val operations = listOf(
     MoreDestination("Cold chain", "Manifest temp readings + ingest", Icons.Default.Thermostat, WarehouseRoutes.COLD_CHAIN),
     MoreDestination("Labor capacity", "Zone capacity + driver availability", Icons.Default.Groups, WarehouseRoutes.LABOR_CAPACITY),
     MoreDestination("Exceptions", "Manifest / delay / lock triage", Icons.Default.Warning, WarehouseRoutes.EXCEPTIONS),
+    MoreDestination("Control tower", "Scored exceptions", Icons.Default.Hub, WarehouseRoutes.CONTROL_TOWER),
     MoreDestination("Claims", "Reverse-logistics prep (read-only)", Icons.Default.Report, WarehouseRoutes.CLAIMS),
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),
     MoreDestination("Treasury", "Ledger overview", Icons.Default.AccountBalance, WarehouseRoutes.TREASURY),

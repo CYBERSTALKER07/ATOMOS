@@ -326,7 +326,7 @@ func iosStaffMemberPayload(row StaffRow) map[string]any {
 		"staff_id":  row.StaffID,
 		"name":      row.Name,
 		"role":      row.Role,
-		"phone":     "",
+		"phone":     row.Phone,
 		"status":    "ACTIVE",
 		"joined_at": "",
 	}

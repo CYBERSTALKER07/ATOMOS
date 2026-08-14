@@ -18,12 +18,10 @@ import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { getRetailerId } from "@/lib/retailer-profile";
-import type { Order, Prediction, Product } from "../../../lib/types";
-import { isPredictionBlocked } from "../../../lib/types";
+import type { Order, Product, RetailerAIPredictionsResponse } from "../../../lib/types";
 import { usePortalT } from "@/lib/i18n";
 
 const EMPTY_ORDERS: Order[] = [];
-const EMPTY_PREDICTIONS: Prediction[] = [];
 const EMPTY_PRODUCTS: Product[] = [];
 
 type LoadIssue = "restricted" | "offline" | "error";
@@ -48,7 +46,7 @@ export default function DashboardPage() {
     error: predictionsError,
     isRefreshing: isPredictionsRefreshing,
     mutate: refreshPredictions,
-  } = useLiveData<Prediction[]>("/v1/ai/predictions");
+  } = useLiveData<RetailerAIPredictionsResponse>("/v1/retailer/ai/predictions");
   const {
     data: products,
     loading: loadingProducts,
@@ -60,7 +58,7 @@ export default function DashboardPage() {
   const { addToCart, items } = useCart();
 
   const orderList = orders ?? EMPTY_ORDERS;
-  const predictionList = predictions ?? EMPTY_PREDICTIONS;
+  const predictionList = predictions?.items ?? [];
   const productList = products ?? EMPTY_PRODUCTS;
   const cartQuantity = items.reduce((total, item) => total + item.quantity, 0);
   const isRefreshing =
@@ -84,11 +82,6 @@ export default function DashboardPage() {
     [orderList],
   );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
-  const blockedPredictionCount = useMemo(
-    () => predictionList.filter((item) => isPredictionBlocked(item)).length,
-    [predictionList],
-  );
-
   const loading = loadingOrders || loadingPred || loadingProducts;
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
@@ -237,7 +230,7 @@ export default function DashboardPage() {
               productListLength={productList.length}
               cartQuantity={cartQuantity}
               completedOrdersLength={completedOrders.length}
-              blockedPredictionCount={blockedPredictionCount}
+              blockedPredictionCount={0}
               uniqueSuppliersCount={new Set(productList.map((p) => p.supplier_id)).size}
             />
 

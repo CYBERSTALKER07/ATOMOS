@@ -209,41 +209,41 @@ type TrackingReceiptDossier struct {
 
 // TrackingOrder is the retailer-facing active delivery tracking projection.
 type TrackingOrder struct {
-	OrderID               string                   `json:"order_id"`
-	SupplierID            string                   `json:"supplier_id"`
-	RetailerID            string                   `json:"retailer_id"`
-	ParentOrderID         string                   `json:"parent_order_id,omitempty"`
-	WarehouseID           string                   `json:"warehouse_id,omitempty"`
-	DriverID              string                   `json:"driver_id,omitempty"`
-	VehicleID             string                   `json:"vehicle_id,omitempty"`
-	LicensePlate          string                   `json:"license_plate,omitempty"`
-	RouteID               string                   `json:"route_id,omitempty"`
-	ManifestID            string                   `json:"manifest_id,omitempty"`
-	Status                string                   `json:"status"`
-	TrackingStatus        string                   `json:"tracking_status"`
-	TotalMinor            int64                    `json:"total_minor"`
-	Currency              string                   `json:"currency"`
-	LiveLocationAvailable bool                     `json:"live_location_available"`
+	OrderID               string `json:"order_id"`
+	SupplierID            string `json:"supplier_id"`
+	RetailerID            string `json:"retailer_id"`
+	ParentOrderID         string `json:"parent_order_id,omitempty"`
+	WarehouseID           string `json:"warehouse_id,omitempty"`
+	DriverID              string `json:"driver_id,omitempty"`
+	VehicleID             string `json:"vehicle_id,omitempty"`
+	LicensePlate          string `json:"license_plate,omitempty"`
+	RouteID               string `json:"route_id,omitempty"`
+	ManifestID            string `json:"manifest_id,omitempty"`
+	Status                string `json:"status"`
+	TrackingStatus        string `json:"tracking_status"`
+	TotalMinor            int64  `json:"total_minor"`
+	Currency              string `json:"currency"`
+	LiveLocationAvailable bool   `json:"live_location_available"`
 	// LocationFreshness: LIVE | LAST_KNOWN | AWAITING_TELEMETRY (G3.C honesty).
-	LocationFreshness     string                   `json:"location_freshness,omitempty"`
-	DriverLocation        *TrackingLocation        `json:"driver_location,omitempty"`
+	LocationFreshness string            `json:"location_freshness,omitempty"`
+	DriverLocation    *TrackingLocation `json:"driver_location,omitempty"`
 	// RouteGeometry is the planned sealed-route overlay (from SupplierTruckManifests).
-	RouteGeometry         *routing.RouteGeometryWire `json:"route_geometry,omitempty"`
-	PaymentEvidence       *TrackingPaymentEvidence `json:"payment_evidence,omitempty"`
-	ReceiptDossier        *TrackingReceiptDossier  `json:"receipt_dossier,omitempty"`
-	CreatedAt             string                   `json:"created_at"`
-	UpdatedAt             string                   `json:"updated_at"`
-	Items                 []TrackingLineItem       `json:"items"`
-	DeliveryToken         string                   `json:"delivery_token,omitempty"`
-	DeliveryExpectation   *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
-	IsApproaching         bool                     `json:"is_approaching"`
-	PaymentStatus         string                   `json:"payment_status,omitempty"`
+	RouteGeometry       *routing.RouteGeometryWire `json:"route_geometry,omitempty"`
+	PaymentEvidence     *TrackingPaymentEvidence   `json:"payment_evidence,omitempty"`
+	ReceiptDossier      *TrackingReceiptDossier    `json:"receipt_dossier,omitempty"`
+	CreatedAt           string                     `json:"created_at"`
+	UpdatedAt           string                     `json:"updated_at"`
+	Items               []TrackingLineItem         `json:"items"`
+	DeliveryToken       string                     `json:"delivery_token,omitempty"`
+	DeliveryExpectation *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
+	IsApproaching       bool                       `json:"is_approaching"`
+	PaymentStatus       string                     `json:"payment_status,omitempty"`
 	// ADR-009 fiscal hard-gate fields for receipt / tracking surfaces.
-	FiscalStatus          string                   `json:"fiscal_status,omitempty"`
-	FiscalQR              string                   `json:"fiscal_qr,omitempty"`
-	LatestFiscalReceiptID string                   `json:"latest_fiscal_receipt_id,omitempty"`
-	DeliveryLat           float64                  `json:"-"`
-	DeliveryLng           float64                  `json:"-"`
+	FiscalStatus          string  `json:"fiscal_status,omitempty"`
+	FiscalQR              string  `json:"fiscal_qr,omitempty"`
+	LatestFiscalReceiptID string  `json:"latest_fiscal_receipt_id,omitempty"`
+	DeliveryLat           float64 `json:"-"`
+	DeliveryLng           float64 `json:"-"`
 }
 
 type TrackingEventType string
@@ -301,21 +301,21 @@ type NotificationWriter interface {
 
 // Service wires repository, cache, idempotency and outbox dependencies.
 type Service struct {
-	repo        Repository
-	orders      OrderLifecycle
-	cartRepo    CartRepository
-	notifSvc    NotificationReader
-	cache       *cache.Cache
-	idem        idempotency.Store
-	proximity   *RetailerProximityService
-	locations   telemetry.LastLocationReader
-	seedSupplierID  string
-	countryCode string
-	jwtSecret   string
-	jwtIssuer   string
-	log         *slog.Logger
-	now         func() time.Time
-	newID       func() string
+	repo           Repository
+	orders         OrderLifecycle
+	cartRepo       CartRepository
+	notifSvc       NotificationReader
+	cache          *cache.Cache
+	idem           idempotency.Store
+	proximity      *RetailerProximityService
+	locations      telemetry.LastLocationReader
+	seedSupplierID string
+	countryCode    string
+	jwtSecret      string
+	jwtIssuer      string
+	log            *slog.Logger
+	now            func() time.Time
+	newID          func() string
 
 	mu                  sync.RWMutex
 	autoOrderMu         sync.RWMutex
@@ -343,10 +343,10 @@ type Service struct {
 	timeEntries map[string]TimeEntryDTO // entryID -> entry
 	shifts      map[string]ShiftDTO
 	// Phase 6 sections + assist memory
-	sections         map[string]SectionDTO
-	sectionSkus      map[string]map[string]bool // sectionID -> sku set
-	staffSections    map[string]map[string]bool // sectionID -> userID set
-	assistTickets    map[string]AssistTicketDTO
+	sections      map[string]SectionDTO
+	sectionSkus   map[string]map[string]bool // sectionID -> sku set
+	staffSections map[string]map[string]bool // sectionID -> userID set
+	assistTickets map[string]AssistTicketDTO
 	// Close-out: auto-order execution
 	autoOrderWorker     *autoOrderWorkerState
 	autoOrderCandidates map[string][]AutoOrderCandidate
@@ -391,34 +391,35 @@ type Service struct {
 	assistSLAOverride *bool
 	assistSLANotified map[string]bool // ticketID → notified (pre-column fallback)
 
-	firebaseVerifier auth.FirebaseVerifier
-	spannerClient    *spanner.Client
+	firebaseVerifier      auth.FirebaseVerifier
+	spannerClient         *spanner.Client
+	paymentSessionByOrder PaymentSessionByOrder
 }
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo                 Repository
-	CartRepo             CartRepository
-	NotifSvc             NotificationReader
-	Orders               OrderLifecycle
-	OrderCreator         OrderCreator // optional; required for mode=place
+	Repo                  Repository
+	CartRepo              CartRepository
+	NotifSvc              NotificationReader
+	Orders                OrderLifecycle
+	OrderCreator          OrderCreator // optional; required for mode=place
 	AutoOrderPlaceEnabled bool
-	Cache                *cache.Cache
-	Idem                 idempotency.Store
-	Proximity            *RetailerProximityService
-	Locations            telemetry.LastLocationReader
+	Cache                 *cache.Cache
+	Idem                  idempotency.Store
+	Proximity             *RetailerProximityService
+	Locations             telemetry.LastLocationReader
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
-	SeedSupplierID       string
+	SeedSupplierID string
 	// SupplierID is deprecated; use SeedSupplierID.
-	SupplierID           string
-	CountryCode          string
-	JWTSecret            string
-	JWTIssuer            string
-	Log                  *slog.Logger
-	Now                  func() time.Time
-	NewID                func() string
-	FirebaseVerifier     auth.FirebaseVerifier
-	Spanner              *spanner.Client
+	SupplierID       string
+	CountryCode      string
+	JWTSecret        string
+	JWTIssuer        string
+	Log              *slog.Logger
+	Now              func() time.Time
+	NewID            func() string
+	FirebaseVerifier auth.FirebaseVerifier
+	Spanner          *spanner.Client
 	// MultiOrgLoginEnabled overrides MULTI_ORG_LOGIN_ENABLED for tests (nil = env).
 	MultiOrgLoginEnabled *bool
 	// PosHoldsEnabled overrides POS_HOLDS_ENABLED for tests (nil = env).
@@ -429,6 +430,8 @@ type ServiceConfig struct {
 	OfflineCountEnabled *bool
 	// AssistSLAEnabled overrides ASSIST_SLA_ENABLED for tests (nil = env).
 	AssistSLAEnabled *bool
+	// PaymentSessionByOrder looks up a real PaymentSessions row by order id.
+	PaymentSessionByOrder PaymentSessionByOrder
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -447,19 +450,19 @@ func NewService(c ServiceConfig) *Service {
 		seedID = strings.TrimSpace(c.SupplierID)
 	}
 	return &Service{
-		repo:                c.Repo,
-		cartRepo:            c.CartRepo,
-		notifSvc:            c.NotifSvc,
+		repo:                  c.Repo,
+		cartRepo:              c.CartRepo,
+		notifSvc:              c.NotifSvc,
 		orders:                c.Orders,
 		orderCreator:          c.OrderCreator,
 		autoOrderPlaceEnabled: c.AutoOrderPlaceEnabled,
 		autoOrderBucket:       make(map[string]string),
 		cache:                 c.Cache,
-		idem:                c.Idem,
-		proximity:           c.Proximity,
-		locations:           c.Locations,
-		seedSupplierID: seedID,
-		countryCode:         c.CountryCode,
+		idem:                  c.Idem,
+		proximity:             c.Proximity,
+		locations:             c.Locations,
+		seedSupplierID:        seedID,
+		countryCode:           c.CountryCode,
 		jwtSecret:             c.JWTSecret,
 		jwtIssuer:             c.JWTIssuer,
 		log:                   c.Log,
@@ -475,34 +478,46 @@ func NewService(c ServiceConfig) *Service {
 		stockVersionByLoc:     make(map[stockVersionKey]int64),
 		assistSLAOverride:     c.AssistSLAEnabled,
 		assistSLANotified:     make(map[string]bool),
-		favoriteSuppliers:   make(map[string]map[string]bool),
-		familyByRetailer:    make(map[string][]FamilyMember),
-		familyWritesGone:    make(map[string]bool),
-		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
-		ownerByRetailer:     make(map[string]RetailerUser),
-		staffByRetailer:     make(map[string][]RetailerUser),
-		packsByRetailer:     make(map[string]map[string]bool),
-		locationsByRetailer: make(map[string][]RetailerLocation),
-		userLocations:       make(map[string][]string),
-		stockBalances:       make(map[stockBalanceKey]memStockBalance),
-		receiveSessions:     make(map[string]ReceiveSessionDTO),
-		receiveByOrder:      make(map[string]string),
-		posRegisters:        make(map[string]RegisterDTO),
-		posSessions:         make(map[string]PosSessionDTO),
-		posSales:            make(map[string]PosSaleDTO),
-		posSalesByClient:    make(map[string]string),
-		timeEntries:         make(map[string]TimeEntryDTO),
-		shifts:              make(map[string]ShiftDTO),
-		sections:            make(map[string]SectionDTO),
-		sectionSkus:         make(map[string]map[string]bool),
-		staffSections:       make(map[string]map[string]bool),
-		assistTickets:       make(map[string]AssistTicketDTO),
+		favoriteSuppliers:     make(map[string]map[string]bool),
+		familyByRetailer:      make(map[string][]FamilyMember),
+		familyWritesGone:      make(map[string]bool),
+		autoOrderByRetailer:   make(map[string]*AutoOrderSettings),
+		ownerByRetailer:       make(map[string]RetailerUser),
+		staffByRetailer:       make(map[string][]RetailerUser),
+		packsByRetailer:       make(map[string]map[string]bool),
+		locationsByRetailer:   make(map[string][]RetailerLocation),
+		userLocations:         make(map[string][]string),
+		stockBalances:         make(map[stockBalanceKey]memStockBalance),
+		receiveSessions:       make(map[string]ReceiveSessionDTO),
+		receiveByOrder:        make(map[string]string),
+		posRegisters:          make(map[string]RegisterDTO),
+		posSessions:           make(map[string]PosSessionDTO),
+		posSales:              make(map[string]PosSaleDTO),
+		posSalesByClient:      make(map[string]string),
+		timeEntries:           make(map[string]TimeEntryDTO),
+		shifts:                make(map[string]ShiftDTO),
+		sections:              make(map[string]SectionDTO),
+		sectionSkus:           make(map[string]map[string]bool),
+		staffSections:         make(map[string]map[string]bool),
+		assistTickets:         make(map[string]AssistTicketDTO),
 		sellThroughDaily:      make(map[sellThroughKey]SellThroughDayDTO),
 		sellThroughFactors:    make(map[string]float64),
 		reorderSuggestionSeed: make(map[string][]RetailerReorderSuggestion),
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
+		paymentSessionByOrder: c.PaymentSessionByOrder,
 	}
+}
+
+// PaymentSessionByOrder resolves a durable checkout session for an order.
+type PaymentSessionByOrder func(ctx context.Context, orderID string) (sessionID, gateway string, ok bool, err error)
+
+// SetPaymentSessionByOrder wires session lookup after payment repo construction.
+func (s *Service) SetPaymentSessionByOrder(fn PaymentSessionByOrder) {
+	if s == nil {
+		return
+	}
+	s.paymentSessionByOrder = fn
 }
 
 // resolveSupplierScope prefers request TenantContext over the bootstrap seed.

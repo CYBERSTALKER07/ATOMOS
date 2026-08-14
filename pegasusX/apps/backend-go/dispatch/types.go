@@ -62,6 +62,8 @@ type DispatchRoute struct {
 	Orders       []GeoOrder
 	// SplitGroupID is non-empty when this route is one leg of a split-retailer delivery.
 	SplitGroupID string
+	// RouteID is set by SplitManifest for overflow chunks (AUTO-{driver}-{ts}-A/B).
+	RouteID string
 }
 
 // VehicleMatch is the result of SelectBestVehicle.

@@ -90,12 +90,12 @@ data class NavigationUiState(
 }
 
 private fun PendingPaymentSession.toRetailerPaymentEvent(): RetailerWSMessage {
-    val normalizedGateway = gateway.ifBlank { "GLOBAL_PAY" }
+    val normalizedGateway = gateway.orEmpty().ifBlank { "GLOBAL_PAY" }
     return RetailerWSMessage(
         type = "PAYMENT_REQUIRED",
         orderId = orderId,
         invoiceId = invoiceId ?: "",
-        sessionId = sessionId,
+        sessionId = sessionId.orEmpty(),
         amount = lockedAmount,
         originalAmount = lockedAmount,
         availableCardGateways = if (normalizedGateway == "CASH") emptyList() else listOf(normalizedGateway),

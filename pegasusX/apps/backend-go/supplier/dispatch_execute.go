@@ -316,6 +316,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	now := s.now().UTC()
+	assignment.Routes = dispatch.ExpandOversizeRoutes(assignment.Routes, now.UnixMilli())
 	lockID := ""
 	if lockWarehouseID != "" {
 		lockID, err = dispatch.AcquireManualDispatchLock(ctx, s.portalSpanner, lockWarehouseID, supplierID, supplierID, now)
@@ -366,7 +367,10 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					continue
 				}
 				manifestID := uuid.NewString()
-				routeID := uuid.NewString()
+				routeID := strings.TrimSpace(route.RouteID)
+				if routeID == "" {
+					routeID = uuid.NewString()
+				}
 				vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
 
 				orderIDs := make([]string, 0, len(route.Orders))

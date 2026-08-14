@@ -42,6 +42,31 @@ func TestSandopUtilizationNoDemandFallsBackToCapVsInbound(t *testing.T) {
 	}
 }
 
+func TestSAndOPSnapshotLabelsEnvDefaultCapacity(t *testing.T) {
+	svc := &Service{}
+	out, err := svc.GetSAndOP(t.Context(), "sup-1")
+	if err == nil {
+		t.Fatal("expected planning unavailable without Spanner")
+	}
+	if out.CapacitySource != "env_default" {
+		t.Fatalf("capacity_source=%q want env_default", out.CapacitySource)
+	}
+	if out.CapacityModel != "production_lines" {
+		t.Fatalf("capacity_model=%q want production_lines", out.CapacityModel)
+	}
+}
+
+func TestSopFactoryCapacityColumnWinsEnv(t *testing.T) {
+	units, src := sopFactoryCapacity(1200, 2, 700, 7)
+	if src != "factories_column" || units != 1200*7 {
+		t.Fatalf("got units=%d src=%s", units, src)
+	}
+	units, src = sopFactoryCapacity(0, 2, 700, 7)
+	if src != "env_default" || units != 2*700*7 {
+		t.Fatalf("env fallback units=%d src=%s", units, src)
+	}
+}
+
 func TestSopHorizonDays(t *testing.T) {
 	t.Setenv("SOP_HORIZON_DAYS", "")
 	if got := sopHorizonDays(); got != 7 {

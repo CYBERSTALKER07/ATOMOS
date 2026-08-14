@@ -20,15 +20,23 @@ export default function CRMPage() {
   const t = usePortalT();
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await apiFetch('/v1/warehouse/ops/crm');
       if (res.ok) {
         const data = await res.json();
         setRetailers(data.retailers || []);
+      } else {
+        setRetailers([]);
+        setError(`CRM unavailable (${res.status})`);
       }
-    } catch { /* handled */ }
+    } catch {
+      setRetailers([]);
+      setError('CRM unavailable');
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -42,6 +50,8 @@ export default function CRMPage() {
         icon="crm"
         title={t("warehouse_portal.crm.text.retailer_crm")}
         description={t("warehouse_portal.residual.text.retailer_relationships_order_volume_and_revenue_for_this_warehou")}
+        loading={loading}
+        error={error}
         actions={
           <button type="button" onClick={() => { setLoading(true); load(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -53,7 +63,7 @@ export default function CRMPage() {
         <div className="space-y-1">
           {Array.from({ length: 5 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
         </div>
-      ) : retailers.length === 0 ? (
+      ) : error ? null : retailers.length === 0 ? (
         <EmptyState 
           variant="no-data" 
           headline={t("warehouse_portal.residual.text.no_buyer_data_to_analyze_yet")} 

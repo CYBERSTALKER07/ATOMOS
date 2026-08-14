@@ -100,17 +100,6 @@ class AutoOrderViewModel @Inject constructor(
                 nextError = resolveErrorMessage(e, nextIssue)
             }
 
-            val rid = tokenManager.getUserId().orEmpty()
-            val nextForecasts = try {
-                api.getPredictions(rid)
-            } catch (e: Exception) {
-                if (nextIssue == null) {
-                    nextIssue = resolveLoadIssue(e)
-                    nextError = resolveErrorMessage(e, nextIssue)
-                }
-                _uiState.value.forecasts
-            }
-
             val nextRuns = loadRunsInternal()
             val nextSuggestions = loadSuggestionsInternal()
             val nextShadow = loadShadowInternal()
@@ -122,7 +111,7 @@ class AutoOrderViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     settings = effectiveSettings,
-                    forecasts = nextForecasts,
+                    forecasts = emptyList(),
                     reorderSuggestions = nextSuggestions,
                     shadowProposals = nextShadow,
                     soakGate = nextSoak,

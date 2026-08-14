@@ -308,6 +308,9 @@ interface WarehouseApi {
     @GET("v1/warehouse/supply-requests/{id}")
     suspend fun getSupplyRequest(@Path("id") id: String): Response<WarehouseSupplyRequest>
 
+    @GET("v1/warehouse/supply-requests/{id}/qc")
+    suspend fun getSupplyRequestQC(@Path("id") id: String): Response<SupplyRequestQCResponse>
+
     @GET("v1/warehouse/ops/preorders")
     suspend fun getPreorders(): Response<com.pegasusx.warehouse.data.model.WarehousePreordersResponse>
 
@@ -547,4 +550,7 @@ interface WarehouseApi {
     suspend fun registerDeviceToken(
         @Body body: Map<String, String>,
     ): Response<Map<String, String>>
+
+    @GET("v1/control-tower/exceptions/scored")
+    suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
 }

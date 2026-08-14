@@ -214,52 +214,6 @@ struct InsightsView: View {
                     .padding(.horizontal, AppTheme.spacingLG)
                 }
 
-                if !vm.predictions.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("mobile_retailer.ui.ai_demand_signals")
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .padding(.horizontal, AppTheme.spacingLG)
-
-                        ForEach(vm.predictions) { forecast in
-                            HStack(spacing: AppTheme.spacingMD) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack(spacing: 6) {
-                                        Text(forecast.productName)
-                                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                            .foregroundStyle(AppTheme.textPrimary)
-                                        if forecast.isBlocked {
-                                            Text("mobile_retailer.ui.insufficient_history")
-                                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                                .foregroundStyle(AppTheme.warning)
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 3)
-                                                .background(AppTheme.warning.opacity(0.12))
-                                                .clipShape(Capsule())
-                                        }
-                                    }
-                                    Text(L10n.format("mobile_retailer.ui.predictedquantity_units_confidencepercent", "\(forecast.predictedQuantity)", "\(forecast.confidencePercent)"))
-                                        .font(.system(.caption, design: .rounded))
-                                        .foregroundStyle(AppTheme.textTertiary)
-                                }
-                                Spacer()
-                                Button {
-                                    Task { await vm.dismissPrediction(forecast) }
-                                } label: {
-                                    Text(vm.correctingId == forecast.id ? "Updating…" : "Dismiss")
-                                        .font(.system(.caption, design: .rounded, weight: .bold))
-                                        .foregroundStyle(AppTheme.destructive)
-                                }
-                                .disabled(vm.correctingId == forecast.id)
-                            }
-                            .padding(AppTheme.spacingMD)
-                            .background(AppTheme.cardBackground)
-                            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-                            .padding(.horizontal, AppTheme.spacingLG)
-                        }
-                    }
-                }
-
                 // Monthly Trend Chart
                 if let expenses = vm.analytics?.monthlyExpenses, !expenses.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {

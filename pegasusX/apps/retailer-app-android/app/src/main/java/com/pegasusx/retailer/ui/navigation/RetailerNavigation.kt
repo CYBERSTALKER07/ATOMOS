@@ -528,7 +528,19 @@ fun RetailerNavigation(
                 composable("ANALYTICS") { Box(Modifier.fillMaxSize()) { AnalyticsScreen() } }
                 composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
-                composable("CONTROL_TOWER") { Box(Modifier.fillMaxSize()) { ControlTowerScreen() } }
+                composable("CONTROL_TOWER") {
+                    Box(Modifier.fillMaxSize()) {
+                        ControlTowerScreen(
+                            onNavigate = { route ->
+                                when (route) {
+                                    PegasusTab.ORDERS.name -> currentTab = PegasusTab.ORDERS
+                                    PegasusTab.MAP.name -> currentTab = PegasusTab.MAP
+                                }
+                                navController.navigate(route)
+                            },
+                        )
+                    }
+                }
                 composable("CREDIT") {
                     Box(Modifier.fillMaxSize()) {
                         com.pegasusx.retailer.ui.screens.credit.CreditScreen(

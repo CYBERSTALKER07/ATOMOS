@@ -755,6 +755,30 @@ export function factorySupplyRequestAcceptKey(requestId: string): string {
   return `factory-supply-accept:${requestId}`;
 }
 
+export function factorySupplyRequestQCKey(requestId: string, result: string): string {
+  return `factory-supply-qc:${requestId}:${result.trim().toUpperCase()}`;
+}
+
+export function supplierPlanningKillSwitchKey(supplierId: string, reason: string): string {
+  return `supplier-planning-kill-switch:${supplierId}:${stableHash(reason.trim())}`;
+}
+
+export function supplierPlanningPullMatrixKey(supplierId: string): string {
+  return `supplier-planning-pull-matrix:${supplierId}`;
+}
+
+export function supplierPayoutGenerateKey(
+  supplierId: string,
+  periodStart: string,
+  periodEnd: string,
+): string {
+  return `supplier-payout-generate:${supplierId}:${periodStart}:${periodEnd}`;
+}
+
+export function supplierNetworkModePutKey(supplierId: string, mode: string): string {
+  return `supplier-network-mode:${supplierId}:${mode.trim().toUpperCase()}`;
+}
+
 export function factoryOpsLocationKey(
   factoryId: string,
   lat: number,

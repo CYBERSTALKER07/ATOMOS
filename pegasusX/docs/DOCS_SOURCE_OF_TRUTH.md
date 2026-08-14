@@ -3,6 +3,8 @@
 **Date:** 2026-08-12  
 **Rule:** Prefer the living SoTs below. Historical reports keep evidence value but must not drive planning without a code re-verify.
 
+**Agent honesty:** Status and cloud-readiness answers come from **current code**, not these docs. Always-on rules: `honest-code-gate` skill + `.cursor/rules/{honesty-code-is-truth,production-cloud-gate,phased-verify-impact}.mdc`. Matrix **"Wired"** and this file are not permission to wire cloud.
+
 **Formats:** Living specs are **Markdown**. Three historical **`.docx`** exports exist (End Product Reality Report); each is frozen and has a README sidecar — do not treat Word as SoT.
 
 ## Living SoTs (plan from these)
@@ -14,7 +16,7 @@
 | [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) | Evidence backlog + Part 5 re-verify notes |
 | [`session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md) | Docs↔code↔role×platform alignment |
 | [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) | Routes + client nav inventory |
-| [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md) | Docs vs code + **phased modular plan** (P0–P6) |
+| [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md) | Docs vs code + **phased modular plan** (P0–P16). Evidence only — **re-verify in code**; not a cloud go-live certificate |
 | [`ROLE_ROW_PARITY_MATRIX.md`](./ROLE_ROW_PARITY_MATRIX.md) | Role×platform parity matrix |
 | [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) | Platform audit (R0 banner + §8 often current; frozen §0/§3/§5 need care) |
 | [`AUTO_ORDER.md`](./AUTO_ORDER.md) | Auto-order wiring SoT |

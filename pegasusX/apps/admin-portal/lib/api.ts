@@ -193,4 +193,33 @@ export const api = {
 
   wsSession: (token: string) =>
     req<{ token: string; expires_at: string }>(token, "GET", "/v1/platform-admin/ws-session"),
+
+  listBillingInvoices: (token: string) =>
+    req<{ invoices: BillingInvoice[] }>(token, "GET", "/v1/admin/billing/invoices"),
+  listBillingFeeSchedules: (token: string) =>
+    req<{ fee_schedules: BillingFeeSchedule[] }>(token, "GET", "/v1/admin/billing/fee-schedules"),
+  runMonthlyBilling: (token: string, month?: string) =>
+    req<{ billed: number; month: string }>(token, "POST", "/v1/admin/billing/run-monthly", month ? { month } : {}),
 };
+
+export interface BillingInvoice {
+  invoice_id: string;
+  billed_supplier_id: string;
+  order_id: string;
+  status: string;
+  principal_minor: number;
+  balance_minor: number;
+  currency: string;
+  due_at: string;
+  created_at: string;
+}
+
+export interface BillingFeeSchedule {
+  fee_schedule_id: string;
+  supplier_id: string;
+  tier: string;
+  per_order_minor: number;
+  gmv_bps: number;
+  monthly_subscription_minor: number;
+  currency: string;
+}
