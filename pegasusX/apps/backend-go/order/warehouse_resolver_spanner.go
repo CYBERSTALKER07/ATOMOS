@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"google.golang.org/api/iterator"
 )
 
-// SpannerWarehouseResolver resolves the nearest active warehouse for a supplier
-// based on retailer coordinates.
+// SpannerWarehouseResolver resolves the nearest covering warehouse for a supplier.
 type SpannerWarehouseResolver struct {
 	client *spanner.Client
 }
@@ -22,15 +21,14 @@ func NewSpannerWarehouseResolver(client *spanner.Client) *SpannerWarehouseResolv
 	return &SpannerWarehouseResolver{client: client}
 }
 
-// ResolveNearestWarehouseID returns the closest warehouse id for the supplier.
-// It only returns warehouses where distance <= coverage radius.
-// When no active on-shift warehouse covers the coordinate, it returns empty,
-// allowing callers to fail closed with a zone-miss contract.
+// ResolveNearestWarehouseID returns the closest warehouse that covers the retailer.
+// Hybrid: no coverage cells → whole warehouse country; cells set → H3 membership.
 func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	ctx context.Context,
 	supplierID string,
 	retailerLat float64,
 	retailerLng float64,
+	retailerCountry string,
 ) (string, error) {
 	if r == nil || r.client == nil {
 		return "", fmt.Errorf("spanner warehouse resolver: nil client")
@@ -43,60 +41,20 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 		return "", nil
 	}
 
-	neighborCells, _ := proximity.CellsInRadius(retailerLat, retailerLng, 9, proximity.DefaultNeighborK())
-	if len(neighborCells) > 0 {
-		if id, err := r.resolveFromH3Candidates(ctx, supplierID, retailerLat, retailerLng, neighborCells); err != nil {
-			return "", err
-		} else if id != "" {
-			return id, nil
-		}
+	cellsByWH, err := r.loadCoverageCells(ctx, supplierID)
+	if err != nil {
+		return "", err
 	}
+	retailerCell := dispatch.H3CellLookup(retailerLat, retailerLng)
 
-	return r.resolveFromFullScan(ctx, supplierID, retailerLat, retailerLng)
-}
-
-func (r *SpannerWarehouseResolver) resolveFromH3Candidates(
-	ctx context.Context,
-	supplierID string,
-	retailerLat, retailerLng float64,
-	neighborCells []string,
-) (string, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm
-		      FROM Warehouses
-		      WHERE SupplierId = @supplierId
-		        AND IsActive = true
-		        AND COALESCE(IsOnShift, true) = true
-		        AND H3Cell IN UNNEST(@cells)`,
-		Params: map[string]any{
-			"supplierId": supplierID,
-			"cells":      neighborCells,
-		},
-	}
-	return r.scanWarehouseCandidates(ctx, stmt, retailerLat, retailerLng)
-}
-
-func (r *SpannerWarehouseResolver) resolveFromFullScan(
-	ctx context.Context,
-	supplierID string,
-	retailerLat, retailerLng float64,
-) (string, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm
+		SQL: `SELECT WarehouseId, Lat, Lng, COALESCE(CountryCode, '')
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId
 		        AND IsActive = true
 		        AND COALESCE(IsOnShift, true) = true`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	return r.scanWarehouseCandidates(ctx, stmt, retailerLat, retailerLng)
-}
-
-func (r *SpannerWarehouseResolver) scanWarehouseCandidates(
-	ctx context.Context,
-	stmt spanner.Statement,
-	retailerLat, retailerLng float64,
-) (string, error) {
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -111,32 +69,48 @@ func (r *SpannerWarehouseResolver) scanWarehouseCandidates(
 		if err != nil {
 			return "", fmt.Errorf("query warehouses: %w", err)
 		}
-
-		var warehouseID string
-		var lat, lng, radius spanner.NullFloat64
-		if err := row.Columns(&warehouseID, &lat, &lng, &radius); err != nil {
+		var warehouseID, country string
+		var lat, lng spanner.NullFloat64
+		if err := row.Columns(&warehouseID, &lat, &lng, &country); err != nil {
 			continue
 		}
 		if !lat.Valid || !lng.Valid {
 			continue
 		}
-
-		distance := haversineKm(retailerLat, retailerLng, lat.Float64, lng.Float64)
-
-		effectiveRadius := math.MaxFloat64
-		if radius.Valid && radius.Float64 > 0 {
-			effectiveRadius = radius.Float64
+		if !WarehouseCoversRetailer(country, cellsByWH[warehouseID], retailerCountry, retailerCell) {
+			continue
 		}
-		if distance <= effectiveRadius && isCloserWarehouse(distance, warehouseID, coveredDist, coveredID) {
+		distance := haversineKm(retailerLat, retailerLng, lat.Float64, lng.Float64)
+		if isCloserWarehouse(distance, warehouseID, coveredDist, coveredID) {
 			coveredDist = distance
 			coveredID = warehouseID
 		}
 	}
+	return coveredID, nil
+}
 
-	if coveredID != "" {
-		return coveredID, nil
+func (r *SpannerWarehouseResolver) loadCoverageCells(ctx context.Context, supplierID string) (map[string][]string, error) {
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT WarehouseId, H3Cell FROM WarehouseCoverageCells WHERE SupplierId = @sid`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	out := map[string][]string{}
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query coverage cells: %w", err)
+		}
+		var wid, cell string
+		if err := row.Columns(&wid, &cell); err != nil {
+			continue
+		}
+		out[wid] = append(out[wid], cell)
 	}
-	return "", nil
+	return out, nil
 }
 
 func isCloserWarehouse(distance float64, warehouseID string, bestDistance float64, bestID string) bool {
@@ -153,15 +127,29 @@ func isCloserWarehouse(distance float64, warehouseID string, bestDistance float6
 }
 
 func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
-	const earthRadiusKm = 6371.0
-	lat1Rad := lat1 * math.Pi / 180
-	lat2Rad := lat2 * math.Pi / 180
-	deltaLat := (lat2 - lat1) * math.Pi / 180
-	deltaLng := (lng2 - lng1) * math.Pi / 180
+	const earthKm = 6371.0
+	toRad := func(d float64) float64 { return d * math.Pi / 180 }
+	dLat := toRad(lat2 - lat1)
+	dLng := toRad(lng2 - lng1)
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(toRad(lat1))*math.Cos(toRad(lat2))*math.Sin(dLng/2)*math.Sin(dLng/2)
+	return 2 * earthKm * math.Asin(math.Min(1, math.Sqrt(a)))
+}
 
-	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) +
-		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
-			math.Sin(deltaLng/2)*math.Sin(deltaLng/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	return earthRadiusKm * c
+func (s *Service) lookupRetailerCountry(ctx context.Context, retailerID string) string {
+	if s == nil || s.spannerClient == nil {
+		return ""
+	}
+	retailerID = strings.TrimSpace(retailerID)
+	if retailerID == "" {
+		return ""
+	}
+	row, err := s.spannerClient.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"CountryCode"})
+	if err != nil {
+		return ""
+	}
+	var code spanner.NullString
+	if err := row.Column(0, &code); err != nil || !code.Valid {
+		return ""
+	}
+	return strings.ToUpper(strings.TrimSpace(code.StringVal))
 }

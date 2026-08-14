@@ -110,6 +110,7 @@ const (
 	EventPullMatrixCompleted  = "PULL_MATRIX_COMPLETED"
 	EventLookAheadCompleted   = "LOOK_AHEAD_COMPLETED"
 	EventNetworkModeChanged   = "NETWORK_MODE_CHANGED"
+	EventLoyaltyPointsEarned  = "LOYALTY_POINTS_EARNED"
 
 	// @Sync(SystemEvent)
 	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"

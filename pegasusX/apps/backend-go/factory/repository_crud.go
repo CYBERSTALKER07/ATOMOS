@@ -21,6 +21,7 @@ type Factory struct {
 	PlaceID    *string   `json:"place_id,omitempty" spanner:"PlaceId"`
 	IsActive            bool      `json:"is_active" spanner:"IsActive"`
 	DailyOutputCapacity int64     `json:"daily_output_capacity" spanner:"DailyOutputCapacity"`
+	CountryCode         string    `json:"country_code,omitempty" spanner:"CountryCode"`
 	CreatedAt           time.Time `json:"created_at" spanner:"CreatedAt"`
 	UpdatedAt           time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
@@ -51,7 +52,7 @@ func (r *SpannerRepository) CreateFactory(ctx context.Context, f Factory, emit f
 func (r *SpannerRepository) GetFactory(ctx context.Context, factoryID string) (Factory, error) {
 	row, err := r.client.Single().ReadRow(ctx, "Factories", spanner.Key{factoryID}, []string{
 		"FactoryId", "SupplierId", "Name", "Lat", "Lng", "H3Cell", "Address", "PlaceId",
-		"IsActive", "DailyOutputCapacity", "CreatedAt", "UpdatedAt",
+		"IsActive", "DailyOutputCapacity", "CountryCode", "CreatedAt", "UpdatedAt",
 	})
 	if err != nil {
 		return Factory{}, err

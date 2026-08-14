@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -74,6 +75,7 @@ func applyFactoryCreateDefaults(f *Factory) {
 	if f.DailyOutputCapacity <= 0 {
 		f.DailyOutputCapacity = DefaultDailyOutputCapacity
 	}
+	f.CountryCode = strings.ToUpper(strings.TrimSpace(f.CountryCode))
 }
 
 // HandleGetFactory serves GET /v1/factories/{factoryId}
@@ -135,6 +137,7 @@ func (s *Service) HandleUpdateFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.SupplierID = supplierID
+	req.CountryCode = strings.ToUpper(strings.TrimSpace(req.CountryCode))
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{

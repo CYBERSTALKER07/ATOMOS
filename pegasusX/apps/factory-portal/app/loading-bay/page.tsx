@@ -4,7 +4,8 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
-import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { factoryBatchDispatchKey } from '@pegasusx/api-client';
+import { factoryOperatorId } from '@/lib/factory-scope';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
@@ -40,6 +41,15 @@ export default function LoadingBayPage() {
   const [loading, setLoading] = useState(true);
   const [dispatching, setDispatching] = useState(false);
   const [dispatchExplain, setDispatchExplain] = useState<StatusExplain | null>(null);
+  const [forceCapacity, setForceCapacity] = useState(false);
+  const [acceptPartial, setAcceptPartial] = useState(false);
+  const [lastDispatch, setLastDispatch] = useState<{
+    created_manifest_count?: number;
+    optimizer_class?: string;
+    dispatch_algo?: string;
+    unassigned?: string[];
+    status?: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -104,15 +114,33 @@ export default function LoadingBayPage() {
     setDispatching(true);
     setDispatchExplain(null);
     try {
-      const res = await apiFetch('/v1/factory/dispatch', { method: 'POST' });
+      const transferIds = grouped.find((column) => column.key === 'APPROVED')?.items.map((t) => t.id) ?? [];
+      const res = await apiFetch('/v1/factory/dispatch', {
+        method: 'POST',
+        headers: {
+          'Idempotency-Key': factoryBatchDispatchKey(factoryOperatorId(), transferIds),
+        },
+        body: JSON.stringify({
+          mode: 'AUTO',
+          transfer_ids: transferIds,
+          force_capacity: forceCapacity,
+          accept_partial: acceptPartial,
+          reason: 'factory-portal-loading-bay',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
-        toast(`Dispatched ${data.manifests_created || 0} manifest(s)`, 'success');
+        setLastDispatch(data);
+        const count = data.created_manifest_count ?? data.manifests_created ?? 0;
+        if (count === 0) {
+          toast('No transfers to dispatch', 'info');
+        } else {
+          toast(`Dispatched ${count} manifest(s) · ${data.dispatch_algo || data.optimizer_class || 'solver'}`, 'success');
+        }
         load();
       } else {
-        const err = await res.json().catch(() => ({}));
-        setDispatchExplain(explainFromApiError(err));
-        toast(err.error || 'Dispatch failed', 'error');
+        setDispatchExplain(explainFromApiError(data));
+        toast(data.error || 'Dispatch failed', 'error');
       }
     } catch {
       toast('Dispatch request failed', 'error');
@@ -140,6 +168,24 @@ export default function LoadingBayPage() {
         {dispatchExplain ? (
           <ExplainStatusBanner explain={dispatchExplain} className="mb-4" />
         ) : null}
+        <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" checked={forceCapacity} onChange={(e) => setForceCapacity(e.target.checked)} />
+            Force capacity
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" checked={acceptPartial} onChange={(e) => setAcceptPartial(e.target.checked)} />
+            Accept partial (orphans)
+          </label>
+        </div>
+        {lastDispatch ? (
+          <p className="mb-4 text-sm text-[var(--desk-text-secondary)]">
+            Last AUTO: {lastDispatch.status || 'ok'} · {lastDispatch.dispatch_algo || '—'} · class {lastDispatch.optimizer_class || '—'}
+            {lastDispatch.unassigned && lastDispatch.unassigned.length > 0
+              ? ` · unassigned ${lastDispatch.unassigned.length}`
+              : ''}
+          </p>
+        ) : null}
         <KpiStatGrid columns={4}>
           <KpiStatCard label={t("factory_portal.residual.text.ready_to_load")} value={readyCount} sub="Awaiting operator attention" />
           <KpiStatCard label={t("factory_portal.residual.text.now_loading")} value={loadingCount} sub="Active bay work" />
@@ -163,7 +209,7 @@ export default function LoadingBayPage() {
           <EmptyState
             imageUrl="/images/empty-production-line.png"
             headline={t("factory_portal.residual.text.no_active_transfers_in_the_loading_bay")}
-            body={t("factory_portal.residual.text.approved_transfers_will_appear_here_as_soon_as_warehouse_demand_")}
+            body="Approved factory→warehouse transfers appear here. AUTO dispatch with an empty queue is a no-op (no invented manifests)."
           />
         ) : (
           <LoadingBayGrid grouped={grouped} />

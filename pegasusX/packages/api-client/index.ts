@@ -167,6 +167,14 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   PullMatrixResponse,
   KillSwitchRequest,
   KillSwitchResponse,
+  LoyaltyProgram,
+  LoyaltyTierView,
+  LoyaltyLedgerResponse,
+  EntityResolutionResolveRequest,
+  EntityResolutionResolveResponse,
+  EntityResolutionExplainRequest,
+  EntityResolutionExplainResponse,
+  PredictivePushResponse,
   PayoutRailInfo,
   PayoutBatch,
   PayoutBatchListResponse,
@@ -416,6 +424,8 @@ export {
   factorySupplyRequestQCKey,
   supplierPlanningKillSwitchKey,
   supplierPlanningPullMatrixKey,
+  supplierPlanningPredictivePushKey,
+  supplierLoyaltyProgramPatchKey,
   supplierPayoutGenerateKey,
   supplierNetworkModePutKey,
   factoryOpsLocationKey,
@@ -1764,6 +1774,44 @@ export class ApiClient {
       `/v1/supplier/crm/retailers/${encodeURIComponent(retailerId)}`,
       "GET",
     );
+  }
+
+  async getSupplierLoyaltyProgram(): Promise<LoyaltyProgram> {
+    return this.request<LoyaltyProgram>("/v1/supplier/loyalty/program", "GET");
+  }
+
+  async patchSupplierLoyaltyProgram(request: LoyaltyProgram, idempotencyKey: string): Promise<LoyaltyProgram> {
+    return this.request<LoyaltyProgram>("/v1/supplier/loyalty/program", "PATCH", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async getRetailerLoyaltyTier(): Promise<LoyaltyTierView> {
+    return this.request<LoyaltyTierView>("/v1/retailer/loyalty/tier", "GET");
+  }
+
+  async getRetailerLoyaltyLedger(): Promise<LoyaltyLedgerResponse> {
+    return this.request<LoyaltyLedgerResponse>("/v1/retailer/loyalty/ledger", "GET");
+  }
+
+  async resolveSupplierEntity(request: EntityResolutionResolveRequest): Promise<EntityResolutionResolveResponse> {
+    return this.request<EntityResolutionResolveResponse>("/v1/supplier/entity-resolution/resolve", "POST", {
+      body: request,
+    });
+  }
+
+  async explainSupplierEntity(request: EntityResolutionExplainRequest): Promise<EntityResolutionExplainResponse> {
+    return this.request<EntityResolutionExplainResponse>("/v1/supplier/entity-resolution/explain", "POST", {
+      body: request,
+    });
+  }
+
+  async postPlanningPredictivePush(idempotencyKey: string): Promise<PredictivePushResponse> {
+    return this.request<PredictivePushResponse>("/v1/supplier/planning/predictive-push", "POST", {
+      body: {},
+      idempotencyKey,
+    });
   }
 
   async getNetworkMode(): Promise<NetworkModeResponse> {

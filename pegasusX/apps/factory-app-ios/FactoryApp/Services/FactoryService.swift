@@ -103,7 +103,7 @@ enum FactoryService {
     static func dispatch(transferIds: [String]) async throws -> DispatchResponse {
         try await api.post(
             "v1/factory/dispatch",
-            body: DispatchRequest(transferIds: transferIds),
+            body: DispatchRequest(mode: "AUTO", transferIds: transferIds, reason: "factory-loading-bay"),
             idempotencyKey: FactoryIdempotency.batchDispatch(transferIds: transferIds)
         )
     }

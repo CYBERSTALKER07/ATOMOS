@@ -55,6 +55,8 @@ const NAV: NavSection[] = [
     items: [
       { href: "/topology", icon: "topology", labelKey: "portal.nav.topology" },
       { href: "/crm", icon: "crm", labelKey: "portal.nav.crm" },
+      { href: "/loyalty", icon: "pricing", labelKey: "portal.nav.loyalty" },
+      { href: "/entity-resolution", icon: "topology", labelKey: "portal.nav.entity_resolution" },
       { href: "/factories", icon: "factory", labelKey: "portal.nav.factories" },
       { href: "/warehouses", icon: "warehouse", labelKey: "portal.nav.warehouses" },
       { href: "/delivery-zones", icon: "global", labelKey: "portal.nav.delivery_zones" },

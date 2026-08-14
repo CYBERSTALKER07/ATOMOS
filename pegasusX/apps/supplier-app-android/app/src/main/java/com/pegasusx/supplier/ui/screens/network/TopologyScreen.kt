@@ -122,6 +122,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 }
                 val request = SupplierTopologyUpdateRequest(
                     warehouses = warehouseDrafts.map { draft ->
+                        val existing = topology?.warehouses?.firstOrNull { it.warehouseId == draft.warehouseId }
                         SupplierTopologyWarehouseInput(
                             warehouseId = draft.warehouseId,
                             name = draft.name.trim(),
@@ -131,15 +132,23 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                             isActive = draft.isActive,
                             isOnShift = draft.isOnShift,
                             transferMode = draft.transferMode,
+                            coLocateWithFactoryId = existing?.coLocateWithFactoryId,
+                            primaryFactoryId = existing?.primaryFactoryId,
+                            secondaryFactoryId = existing?.secondaryFactoryId,
+                            assignedFactoryIds = existing?.assignedFactoryIds?.takeIf { it.isNotEmpty() },
+                            countryCode = existing?.countryCode?.takeIf { it.isNotBlank() },
+                            coverageCities = existing?.coverageCities?.takeIf { it.isNotEmpty() },
                         )
                     },
                     factories = factoryDrafts.map { draft ->
+                        val existing = topology?.factories?.firstOrNull { it.factoryId == draft.factoryId }
                         SupplierTopologyFactoryInput(
                             factoryId = draft.factoryId,
                             name = draft.name.trim(),
                             lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
                             lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
                             isActive = draft.isActive,
+                            countryCode = existing?.countryCode?.takeIf { it.isNotBlank() },
                         )
                     },
                 )

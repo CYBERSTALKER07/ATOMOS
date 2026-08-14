@@ -178,6 +178,14 @@ data class CreateRetailerPriceOverrideResponse(
 )
 
 @Serializable
+@Serializable
+data class SupplierCoverageCity(
+    val name: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+)
+
+@Serializable
 data class SupplierTopologyWarehouse(
     @SerialName("warehouse_id") val warehouseId: String,
     val name: String = "",
@@ -190,6 +198,11 @@ data class SupplierTopologyWarehouse(
     @SerialName("is_on_shift") val isOnShift: Boolean = true,
     @SerialName("transfer_mode") val transferMode: String = "TRUCK",
     @SerialName("co_locate_with_factory_id") val coLocateWithFactoryId: String? = null,
+    @SerialName("primary_factory_id") val primaryFactoryId: String? = null,
+    @SerialName("secondary_factory_id") val secondaryFactoryId: String? = null,
+    @SerialName("assigned_factory_ids") val assignedFactoryIds: List<String> = emptyList(),
+    @SerialName("country_code") val countryCode: String = "",
+    @SerialName("coverage_cities") val coverageCities: List<SupplierCoverageCity> = emptyList(),
 )
 
 @Serializable
@@ -201,6 +214,7 @@ data class SupplierTopologyFactory(
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("country_code") val countryCode: String = "",
 )
 
 @Serializable
@@ -216,6 +230,11 @@ data class SupplierTopologyWarehouseInput(
     @SerialName("is_on_shift") val isOnShift: Boolean? = null,
     @SerialName("transfer_mode") val transferMode: String? = null,
     @SerialName("co_locate_with_factory_id") val coLocateWithFactoryId: String? = null,
+    @SerialName("primary_factory_id") val primaryFactoryId: String? = null,
+    @SerialName("secondary_factory_id") val secondaryFactoryId: String? = null,
+    @SerialName("assigned_factory_ids") val assignedFactoryIds: List<String>? = null,
+    @SerialName("country_code") val countryCode: String? = null,
+    @SerialName("coverage_cities") val coverageCities: List<SupplierCoverageCity>? = null,
 )
 
 @Serializable
@@ -227,6 +246,7 @@ data class SupplierTopologyFactoryInput(
     val lat: Double,
     val lng: Double,
     @SerialName("is_active") val isActive: Boolean? = null,
+    @SerialName("country_code") val countryCode: String? = null,
 )
 
 @Serializable
@@ -1191,6 +1211,15 @@ data class SupplierCRMOrder(
     val amount: Long = 0,
     @SerialName("item_count") val itemCount: Long = 0,
     @SerialName("created_at") val createdAt: String = "",
+    val lines: List<SupplierCRMOrderLine> = emptyList(),
+)
+
+@Serializable
+data class SupplierCRMOrderLine(
+    val sku: String = "",
+    @SerialName("product_name") val productName: String = "",
+    val qty: Long = 0,
+    @SerialName("amount_minor") val amountMinor: Long = 0,
 )
 
 @Serializable

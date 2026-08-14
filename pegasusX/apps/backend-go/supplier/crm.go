@@ -24,12 +24,20 @@ type crmRetailer struct {
 	Status        string `json:"status"`
 }
 
+type crmOrderLine struct {
+	SKU         string `json:"sku,omitempty"`
+	ProductName string `json:"product_name,omitempty"`
+	Qty         int64  `json:"qty"`
+	AmountMinor int64  `json:"amount_minor,omitempty"`
+}
+
 type crmOrder struct {
-	OrderID   string `json:"order_id"`
-	State     string `json:"state"`
-	Amount    int64  `json:"amount"`
-	ItemCount int64  `json:"item_count"`
-	CreatedAt string `json:"created_at"`
+	OrderID   string         `json:"order_id"`
+	State     string         `json:"state"`
+	Amount    int64          `json:"amount"`
+	ItemCount int64          `json:"item_count"`
+	CreatedAt string         `json:"created_at"`
+	Lines     []crmOrderLine `json:"lines,omitempty"`
 }
 
 type crmRetailerDetail struct {
@@ -58,6 +66,50 @@ func countCRMLineItems(raw []byte) int64 {
 		return 0
 	}
 	return int64(len(items))
+}
+
+func parseCRMLines(raw []byte) []crmOrderLine {
+	if len(raw) == 0 {
+		return nil
+	}
+	var items []struct {
+		SKU            string `json:"sku"`
+		ProductID      string `json:"product_id"`
+		ProductName    string `json:"product_name"`
+		Name           string `json:"name"`
+		Qty            int64  `json:"qty"`
+		Quantity       int64  `json:"quantity"`
+		UnitPrice      int64  `json:"unit_price"`
+		LineTotal      int64  `json:"line_total"`
+		UnitPriceMinor int64  `json:"unit_price_minor"`
+	}
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return nil
+	}
+	out := make([]crmOrderLine, 0, len(items))
+	for _, it := range items {
+		qty := it.Qty
+		if qty == 0 {
+			qty = it.Quantity
+		}
+		name := strings.TrimSpace(it.ProductName)
+		if name == "" {
+			name = strings.TrimSpace(it.Name)
+		}
+		sku := strings.TrimSpace(it.SKU)
+		if sku == "" {
+			sku = strings.TrimSpace(it.ProductID)
+		}
+		amount := it.LineTotal
+		if amount == 0 && it.UnitPriceMinor != 0 {
+			amount = it.UnitPriceMinor * qty
+		}
+		if amount == 0 && it.UnitPrice != 0 {
+			amount = it.UnitPrice * qty
+		}
+		out = append(out, crmOrderLine{SKU: sku, ProductName: name, Qty: qty, AmountMinor: amount})
+	}
+	return out
 }
 
 func (s *Service) crmNow() time.Time {
@@ -232,6 +284,10 @@ func (s *Service) listCRMOrders(ctx context.Context, supplierID, retailerID stri
 			continue
 		}
 		rec.ItemCount = countCRMLineItems(raw)
+		rec.Lines = parseCRMLines(raw)
+		if rec.ItemCount == 0 {
+			rec.ItemCount = int64(len(rec.Lines))
+		}
 		rec.CreatedAt = created.UTC().Format(time.RFC3339)
 		out = append(out, rec)
 	}

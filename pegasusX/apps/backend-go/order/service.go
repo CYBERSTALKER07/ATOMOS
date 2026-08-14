@@ -31,6 +31,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
@@ -301,7 +302,7 @@ type Repository interface {
 // WarehouseResolver resolves the best supplier warehouse for retailer
 // coordinates at order-create time.
 type WarehouseResolver interface {
-	ResolveNearestWarehouseID(ctx context.Context, supplierID string, retailerLat, retailerLng float64) (string, error)
+	ResolveNearestWarehouseID(ctx context.Context, supplierID string, retailerLat, retailerLng float64, retailerCountry string) (string, error)
 }
 
 // PaymentCapturer allows the order service to trigger synchronous card captures.
@@ -1251,7 +1252,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
 
-	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, req.Lat, req.Lng)
+	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, req.Lat, req.Lng, s.lookupRetailerCountry(ctx, retailerID))
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
 	}
@@ -2198,6 +2199,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 					orderRecord.RetailerID, orderRecord.SupplierID, req.OrderID, clearAmt); err != nil {
 					return err
 				}
+			}
+			if err := loyalty.EarnInTxn(txnCtx, txn, nil, orderRecord.SupplierID, orderRecord.RetailerID, req.OrderID, receivedMinor); err != nil {
+				return err
 			}
 			return nil
 		},

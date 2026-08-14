@@ -413,6 +413,11 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
     let isOnShift: Bool
     let transferMode: String?
     let coLocateWithFactoryId: String?
+    let primaryFactoryId: String?
+    let secondaryFactoryId: String?
+    let assignedFactoryIds: [String]
+    let countryCode: String
+    let coverageCities: [SupplierCoverageCity]
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
@@ -424,6 +429,11 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
         case isOnShift = "is_on_shift"
         case transferMode = "transfer_mode"
         case coLocateWithFactoryId = "co_locate_with_factory_id"
+        case primaryFactoryId = "primary_factory_id"
+        case secondaryFactoryId = "secondary_factory_id"
+        case assignedFactoryIds = "assigned_factory_ids"
+        case countryCode = "country_code"
+        case coverageCities = "coverage_cities"
     }
 
     init(from decoder: Decoder) throws {
@@ -439,7 +449,18 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
         isOnShift = try container.decodeIfPresent(Bool.self, forKey: .isOnShift) ?? true
         transferMode = try container.decodeIfPresent(String.self, forKey: .transferMode)
         coLocateWithFactoryId = try container.decodeIfPresent(String.self, forKey: .coLocateWithFactoryId)
+        primaryFactoryId = try container.decodeIfPresent(String.self, forKey: .primaryFactoryId)
+        secondaryFactoryId = try container.decodeIfPresent(String.self, forKey: .secondaryFactoryId)
+        assignedFactoryIds = try container.decodeIfPresent([String].self, forKey: .assignedFactoryIds) ?? []
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
+        coverageCities = try container.decodeIfPresent([SupplierCoverageCity].self, forKey: .coverageCities) ?? []
     }
+}
+
+struct SupplierCoverageCity: Codable {
+    let name: String
+    let lat: Double
+    let lng: Double
 }
 
 struct SupplierTopologyFactory: Decodable, Identifiable {
@@ -451,6 +472,7 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
     let lat: Double
     let lng: Double
     let isActive: Bool
+    let countryCode: String
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
@@ -458,6 +480,7 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
         case placeId = "place_id"
         case lat, lng
         case isActive = "is_active"
+        case countryCode = "country_code"
     }
 
     init(from decoder: Decoder) throws {
@@ -469,6 +492,7 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
         lat = try container.decode(Double.self, forKey: .lat)
         lng = try container.decode(Double.self, forKey: .lng)
         isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
     }
 }
 
@@ -483,6 +507,10 @@ struct SupplierTopologyWarehouseInput: Encodable {
     let isActive: Bool?
     let isOnShift: Bool?
     let transferMode: String?
+    var primaryFactoryId: String? = nil
+    var countryCode: String? = nil
+    var coverageCities: [SupplierCoverageCity]? = nil
+    var assignedFactoryIds: [String]? = nil
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
@@ -493,6 +521,28 @@ struct SupplierTopologyWarehouseInput: Encodable {
         case isActive = "is_active"
         case isOnShift = "is_on_shift"
         case transferMode = "transfer_mode"
+        case primaryFactoryId = "primary_factory_id"
+        case countryCode = "country_code"
+        case coverageCities = "coverage_cities"
+        case assignedFactoryIds = "assigned_factory_ids"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(warehouseId, forKey: .warehouseId)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(address, forKey: .address)
+        try c.encodeIfPresent(placeId, forKey: .placeId)
+        try c.encode(lat, forKey: .lat)
+        try c.encode(lng, forKey: .lng)
+        try c.encodeIfPresent(coverageRadiusKm, forKey: .coverageRadiusKm)
+        try c.encodeIfPresent(isActive, forKey: .isActive)
+        try c.encodeIfPresent(isOnShift, forKey: .isOnShift)
+        try c.encodeIfPresent(transferMode, forKey: .transferMode)
+        try c.encodeIfPresent(primaryFactoryId, forKey: .primaryFactoryId)
+        try c.encodeIfPresent(countryCode, forKey: .countryCode)
+        try c.encodeIfPresent(coverageCities, forKey: .coverageCities)
+        try c.encodeIfPresent(assignedFactoryIds, forKey: .assignedFactoryIds)
     }
 }
 
@@ -504,6 +554,7 @@ struct SupplierTopologyFactoryInput: Encodable {
     let lat: Double
     let lng: Double
     let isActive: Bool?
+    var countryCode: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
@@ -511,6 +562,19 @@ struct SupplierTopologyFactoryInput: Encodable {
         case placeId = "place_id"
         case lat, lng
         case isActive = "is_active"
+        case countryCode = "country_code"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(factoryId, forKey: .factoryId)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(address, forKey: .address)
+        try c.encodeIfPresent(placeId, forKey: .placeId)
+        try c.encode(lat, forKey: .lat)
+        try c.encode(lng, forKey: .lng)
+        try c.encodeIfPresent(isActive, forKey: .isActive)
+        try c.encodeIfPresent(countryCode, forKey: .countryCode)
     }
 }
 

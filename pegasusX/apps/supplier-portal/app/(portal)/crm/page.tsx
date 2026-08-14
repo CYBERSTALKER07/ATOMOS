@@ -174,6 +174,16 @@ export default function SupplierCRMPage() {
                           {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
                         </td>
                       </tr>
+                      {(order.lines ?? []).map((line, idx) => (
+                        <tr key={`${order.order_id}-line-${idx}`} className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                          <td className="py-1 px-3 pl-8 text-xs" colSpan={2}>
+                            {line.product_name || line.sku || "SKU"}
+                          </td>
+                          <td className="py-1 px-3 text-right font-mono text-xs">{fmtMinor(line.amount_minor ?? 0)}</td>
+                          <td className="py-1 px-3 text-right font-mono text-xs">{line.qty}</td>
+                          <td className="py-1 px-3 text-right text-xs text-[var(--muted)]">line</td>
+                        </tr>
+                      ))}
                     ))}
                   </tbody>
                 </table>

@@ -8,6 +8,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
@@ -117,6 +118,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
 		gr.Get("/v1/supplier/crm/retailers", d.Service.HandleCRMRetailers)
 		gr.Get("/v1/supplier/crm/retailers/{retailerId}", d.Service.HandleCRMRetailerDetail)
+		gr.Get("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
+		gr.Patch("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
 		gr.Get("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
 		gr.Put("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
 		gr.Post("/v1/supplier/planning/pull-matrix", d.Service.HandlePlanningPullMatrix)

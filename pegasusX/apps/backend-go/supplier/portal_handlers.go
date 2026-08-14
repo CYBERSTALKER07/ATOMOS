@@ -13,6 +13,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
@@ -173,6 +174,11 @@ type topologyWarehouseInput struct {
 	IsOnShift             *bool                     `json:"is_on_shift,omitempty"`
 	TransferMode          string                    `json:"transfer_mode,omitempty"`
 	CoLocateWithFactoryID string                    `json:"co_locate_with_factory_id,omitempty"`
+	PrimaryFactoryID      string                    `json:"primary_factory_id,omitempty"`
+	SecondaryFactoryID    string                    `json:"secondary_factory_id,omitempty"`
+	AssignedFactoryIDs    []string                  `json:"assigned_factory_ids,omitempty"`
+	CountryCode           string                    `json:"country_code,omitempty"`
+	CoverageCities        []order.CoverageCity      `json:"coverage_cities,omitempty"`
 	DefaultOutOfStockPolicy string                  `json:"default_out_of_stock_policy,omitempty"`
 	OperatingSchedule     json.RawMessage           `json:"operating_schedule,omitempty"`
 	InitialInventory      []topologyInventorySeed   `json:"initial_inventory,omitempty"`
@@ -184,13 +190,14 @@ type topologyInventorySeed struct {
 }
 
 type topologyFactoryInput struct {
-	FactoryID string  `json:"factory_id,omitempty"`
-	Name      string  `json:"name"`
-	Lat       float64 `json:"lat"`
-	Lng       float64 `json:"lng"`
-	Address   string  `json:"address,omitempty"`
-	PlaceID   string  `json:"place_id,omitempty"`
-	IsActive  *bool   `json:"is_active,omitempty"`
+	FactoryID   string  `json:"factory_id,omitempty"`
+	Name        string  `json:"name"`
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	Address     string  `json:"address,omitempty"`
+	PlaceID     string  `json:"place_id,omitempty"`
+	CountryCode string  `json:"country_code,omitempty"`
+	IsActive    *bool   `json:"is_active,omitempty"`
 }
 
 type topologyUpdateRequest struct {
@@ -545,7 +552,12 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			PlaceID:                 strings.TrimSpace(wh.PlaceID),
 			CoverageRadiusKm:        coverage,
 			TransferMode:            normalizeTransferMode(wh.TransferMode),
-			CoLocateWithFactoryID:     strings.TrimSpace(wh.CoLocateWithFactoryID),
+			CoLocateWithFactoryID:   strings.TrimSpace(wh.CoLocateWithFactoryID),
+			PrimaryFactoryID:        strings.TrimSpace(wh.PrimaryFactoryID),
+			SecondaryFactoryID:      strings.TrimSpace(wh.SecondaryFactoryID),
+			AssignedFactoryIDs:      append([]string(nil), wh.AssignedFactoryIDs...),
+			CountryCode:             strings.ToUpper(strings.TrimSpace(wh.CountryCode)),
+			CoverageCities:          append([]order.CoverageCity(nil), wh.CoverageCities...),
 			IsActive:                isActive,
 			IsOnShift:               isOnShift,
 			DefaultOutOfStockPolicy: strings.TrimSpace(wh.DefaultOutOfStockPolicy),
@@ -575,13 +587,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 
 		topology.Factories = append(topology.Factories, FactoryNode{
-			FactoryID: strings.TrimSpace(fc.FactoryID),
-			Name:      name,
-			Lat:       fc.Lat,
-			Lng:       fc.Lng,
-			Address:   strings.TrimSpace(fc.Address),
-			PlaceID:   strings.TrimSpace(fc.PlaceID),
-			IsActive:  isActive,
+			FactoryID:   strings.TrimSpace(fc.FactoryID),
+			Name:        name,
+			Lat:         fc.Lat,
+			Lng:         fc.Lng,
+			Address:     strings.TrimSpace(fc.Address),
+			PlaceID:     strings.TrimSpace(fc.PlaceID),
+			CountryCode: strings.ToUpper(strings.TrimSpace(fc.CountryCode)),
+			IsActive:    isActive,
 		})
 	}
 

@@ -35,6 +35,7 @@ type Config struct {
 	CashCustodyAlertHours       int64    `json:"cash_custody_alert_hours"`
 	PaymentGatewaysListed       []string `json:"payment_gateways_listed"`
 	CheckoutReadsThis           bool     `json:"checkout_reads_this"`
+	OpsReadsThis                bool     `json:"ops_reads_this"`
 	Source                      string   `json:"source"`
 }
 
@@ -67,6 +68,7 @@ func UZDefault() Config {
 		CashCustodyAlertHours:       24,
 		PaymentGatewaysListed:       []string{"GLOBAL_PAY", "CASH"},
 		CheckoutReadsThis:           false,
+		OpsReadsThis:                true,
 		Source:                      "uz_seed",
 	}
 }
@@ -95,11 +97,12 @@ func (h *Handlers) HandleCountryConfig(w http.ResponseWriter, r *http.Request) {
 	if code == "" {
 		code = DefaultCountry
 	}
-	if code != DefaultCountry {
+	cfg, ok := Lookup(code)
+	if !ok {
 		web.JSONError(w, "country_not_supported", http.StatusNotFound)
 		return
 	}
-	web.JSONResponse(w, http.StatusOK, UZDefault())
+	web.JSONResponse(w, http.StatusOK, cfg)
 }
 
 func (h *Handlers) HandleCountryOverride(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +115,7 @@ func (h *Handlers) HandleCountryOverride(w http.ResponseWriter, r *http.Request)
 	if code == "" {
 		code = DefaultCountry
 	}
-	if code != DefaultCountry {
+	if _, ok := Lookup(code); !ok {
 		web.JSONError(w, "country_not_supported", http.StatusNotFound)
 		return
 	}

@@ -9,6 +9,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
     case location = "Location"
     case supplyRequests = "Supply requests"
     case payloadOverride = "Override"
+    case payloadLoad = "Payload / Load"
     case manifests = "Manifests"
     case manifestExceptions = "Exceptions"
     case insights = "Insights"
@@ -27,6 +28,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
         case .location: "mappin.and.ellipse"
         case .supplyRequests: "checklist"
         case .payloadOverride: "arrow.left.arrow.right.square"
+        case .payloadLoad: "shippingbox.fill"
         case .manifests: "doc.text"
         case .manifestExceptions: "exclamationmark.triangle"
         case .insights: "chart.bar.xaxis"
@@ -42,7 +44,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
     }
 
     static var operationsSections: [FactorySection] {
-        [.supplyRequests, .payloadOverride, .manifests, .manifestExceptions]
+        [.supplyRequests, .payloadLoad, .payloadOverride, .manifests, .manifestExceptions]
     }
 
     static var intelligenceSections: [FactorySection] {

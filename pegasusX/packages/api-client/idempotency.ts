@@ -767,6 +767,14 @@ export function supplierPlanningPullMatrixKey(supplierId: string): string {
   return `supplier-planning-pull-matrix:${supplierId}`;
 }
 
+export function supplierPlanningPredictivePushKey(supplierId: string): string {
+  return `supplier-planning-predictive-push:${supplierId}`;
+}
+
+export function supplierLoyaltyProgramPatchKey(supplierId: string, reason: string): string {
+  return `supplier-loyalty-program:${supplierId}:${stableHash(reason.trim())}`;
+}
+
 export function supplierPayoutGenerateKey(
   supplierId: string,
   periodStart: string,

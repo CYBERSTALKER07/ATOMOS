@@ -132,7 +132,10 @@ struct LoadingBayView: View {
 
         do {
             let ids = loadingState.map(\.id)
-            _ = try await FactoryService.dispatch(transferIds: ids)
+            let result = try await FactoryService.dispatch(transferIds: ids)
+            if result.createdManifestCount == 0 {
+                self.error = "No transfers to dispatch"
+            }
             await load()
         } catch {
             self.error = error.localizedDescription

@@ -168,6 +168,20 @@ fun SupplierCRMScreen(
                                     "${detail.orders.size} recent orders",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                detail.orders.forEach { order ->
+                                    Text(
+                                        "${order.orderId.take(8)} · ${order.state} · ${order.amount} · ${order.itemCount} items",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    order.lines.forEach { line ->
+                                        Text(
+                                            "  ${line.productName.ifBlank { line.sku }} × ${line.qty} · ${line.amountMinor}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

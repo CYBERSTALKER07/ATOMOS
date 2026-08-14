@@ -1198,12 +1198,20 @@ export interface SupplierCRMRetailer {
   status: "ACTIVE" | "INACTIVE" | string;
 }
 
+export interface SupplierCRMOrderLine {
+  sku?: string;
+  product_name?: string;
+  qty: number;
+  amount_minor?: number;
+}
+
 export interface SupplierCRMOrder {
   order_id: string;
   state: string;
   amount: number;
   item_count: number;
   created_at: string;
+  lines?: SupplierCRMOrderLine[];
 }
 
 export interface SupplierCRMRetailerDetail extends SupplierCRMRetailer {
@@ -1259,6 +1267,93 @@ export interface KillSwitchResponse {
   status: string;
   cancelled_transfers: number;
   mode: string;
+}
+
+export interface LoyaltyTier {
+  name: string;
+  min_points: number;
+}
+
+export interface LoyaltyProgram {
+  supplier_id: string;
+  earn_bps: number;
+  tiers: LoyaltyTier[];
+  reason?: string;
+  source?: string;
+}
+
+export interface LoyaltyTierView {
+  enrolled: boolean;
+  tier?: string;
+  lifetime_points: number;
+  available_points: number;
+  next_tier?: string;
+  points_to_next?: number;
+  earn_bps?: number;
+  supplier_id?: string;
+}
+
+export interface LoyaltyLedgerEntry {
+  ledger_id: string;
+  order_id: string;
+  points: number;
+  earn_bps: number;
+  amount_minor: number;
+  created_at: string;
+}
+
+export interface LoyaltyLedgerResponse {
+  entries: LoyaltyLedgerEntry[];
+}
+
+export interface EntityResolutionCandidate {
+  node_id: string;
+  entity_type: string;
+  entity_id: string;
+  label: string;
+  score: number;
+  confidence_class: string;
+  deterministic: boolean;
+  reasons?: string[];
+  metadata?: Record<string, string>;
+}
+
+export interface EntityResolutionResolveRequest {
+  entity_type?: string;
+  entity_id?: string;
+  query?: string;
+  max_candidates?: number;
+}
+
+export interface EntityResolutionResolveResponse {
+  scope_supplier_id: string;
+  requested_type: string;
+  query?: string;
+  resolved?: EntityResolutionCandidate;
+  candidates: EntityResolutionCandidate[];
+}
+
+export interface EntityResolutionExplainRequest {
+  entity_type: string;
+  entity_id: string;
+}
+
+export interface EntityResolutionExplainResponse {
+  scope_supplier_id: string;
+  source: EntityResolutionCandidate;
+  projection: {
+    nodes: Array<{ node_id: string; entity_type: string; entity_id: string; label: string }>;
+    edges: Array<{ from: string; to: string; relation: string; confidence: number }>;
+  };
+}
+
+export interface PredictivePushResponse {
+  transfers: number;
+  skus: number;
+  source: string;
+  grain?: string;
+  not_from?: string;
+  error?: string;
 }
 
 export interface PayoutRailInfo {
@@ -2091,6 +2186,12 @@ export interface SupplierTopologyInventorySeed {
   quantity: number;
 }
 
+export interface SupplierTopologyCoverageCity {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export interface SupplierTopologyWarehouseInput {
   warehouse_id?: WarehouseId;
   name: string;
@@ -2103,6 +2204,11 @@ export interface SupplierTopologyWarehouseInput {
   is_on_shift?: boolean;
   transfer_mode?: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id?: FactoryId;
+  primary_factory_id?: FactoryId;
+  secondary_factory_id?: FactoryId;
+  assigned_factory_ids?: FactoryId[];
+  country_code?: string;
+  coverage_cities?: SupplierTopologyCoverageCity[];
   default_out_of_stock_policy?: OutOfStockPolicy;
   operating_schedule?: Record<string, unknown>;
   initial_inventory?: SupplierTopologyInventorySeed[];
@@ -2115,6 +2221,7 @@ export interface SupplierTopologyFactoryInput {
   lng: number;
   address?: string;
   place_id?: string;
+  country_code?: string;
   is_active?: boolean;
 }
 
@@ -2136,6 +2243,10 @@ export interface SupplierTopologyWarehouse {
   transfer_mode?: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id?: FactoryId;
   primary_factory_id?: FactoryId;
+  secondary_factory_id?: FactoryId;
+  assigned_factory_ids?: FactoryId[];
+  country_code?: string;
+  coverage_cities?: SupplierTopologyCoverageCity[];
   default_out_of_stock_policy?: OutOfStockPolicy;
   operating_schedule?: Record<string, unknown>;
   initial_inventory?: SupplierTopologyInventorySeed[];
@@ -2162,6 +2273,7 @@ export interface SupplierTopologyFactory {
   lng: number;
   address?: string;
   place_id?: string;
+  country_code?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

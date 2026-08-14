@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
@@ -353,9 +354,9 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 	warehouseStmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Name, Lat, Lng, Address, PlaceId, CoverageRadiusKm, IsActive, IsOnShift,
-		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId,
+		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId, SecondaryFactoryId,
 		      COALESCE(DefaultOutOfStockPolicy, 'REJECT'), OperatingSchedule,
-		      CreatedAt, UpdatedAt
+		      COALESCE(CountryCode, ''), CreatedAt, UpdatedAt
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId
 		      ORDER BY WarehouseId`,
@@ -375,9 +376,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		var node WarehouseNode
 		var lat, lng, coverage spanner.NullFloat64
 		var address, placeID spanner.NullString
-		var transferMode, coLocate, primaryFactory spanner.NullString
+		var transferMode, coLocate, primaryFactory, secondaryFactory spanner.NullString
 		var policy spanner.NullString
 		var schedule spanner.NullJSON
+		var country string
 		if err := row.Columns(
 			&node.WarehouseID,
 			&node.Name,
@@ -391,8 +393,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&transferMode,
 			&coLocate,
 			&primaryFactory,
+			&secondaryFactory,
 			&policy,
 			&schedule,
+			&country,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -424,6 +428,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		if primaryFactory.Valid {
 			node.PrimaryFactoryID = primaryFactory.StringVal
 		}
+		if secondaryFactory.Valid {
+			node.SecondaryFactoryID = secondaryFactory.StringVal
+		}
+		node.CountryCode = strings.ToUpper(strings.TrimSpace(country))
 		if policy.Valid {
 			node.DefaultOutOfStockPolicy = normalizeOutOfStockPolicy(policy.StringVal)
 		}
@@ -436,7 +444,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	}
 
 	factoryStmt := spanner.Statement{
-		SQL: `SELECT FactoryId, Name, Lat, Lng, Address, PlaceId, IsActive, CreatedAt, UpdatedAt
+		SQL: `SELECT FactoryId, Name, Lat, Lng, Address, PlaceId, IsActive,
+		      COALESCE(CountryCode, ''), CreatedAt, UpdatedAt
 		      FROM Factories
 		      WHERE SupplierId = @supplierId
 		      ORDER BY FactoryId`,
@@ -456,6 +465,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		var node FactoryNode
 		var lat, lng spanner.NullFloat64
 		var address, placeID spanner.NullString
+		var country string
 		if err := row.Columns(
 			&node.FactoryID,
 			&node.Name,
@@ -464,6 +474,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&address,
 			&placeID,
 			&node.IsActive,
+			&country,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -481,10 +492,79 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		if placeID.Valid {
 			node.PlaceID = placeID.StringVal
 		}
+		node.CountryCode = strings.ToUpper(strings.TrimSpace(country))
 		result.Factories = append(result.Factories, node)
 	}
 
+	if err := r.attachTopologyGraph(ctx, supplierID, &result); err != nil {
+		return SupplierTopology{}, err
+	}
 	return result, nil
+}
+
+func (r *SpannerRepository) attachTopologyGraph(ctx context.Context, supplierID string, result *SupplierTopology) error {
+	if r == nil || r.client == nil || result == nil {
+		return nil
+	}
+	cityIter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT WarehouseId, CityName, Lat, Lng FROM WarehouseCoverageCities WHERE SupplierId = @sid`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer cityIter.Stop()
+	cities := map[string][]order.CoverageCity{}
+	for {
+		row, err := cityIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query warehouse coverage cities: %w", err)
+		}
+		var wid, name string
+		var lat, lng float64
+		if err := row.Columns(&wid, &name, &lat, &lng); err != nil {
+			continue
+		}
+		cities[wid] = append(cities[wid], order.CoverageCity{Name: name, Lat: lat, Lng: lng})
+	}
+
+	laneIter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT WarehouseId, FactoryId, COALESCE(Priority, 0)
+		      FROM SupplyLanes WHERE SupplierId = @sid AND COALESCE(IsActive, true) = true
+		      ORDER BY WarehouseId, Priority, FactoryId`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer laneIter.Stop()
+	lanes := map[string][]string{}
+	secondary := map[string]string{}
+	for {
+		row, err := laneIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query supply lanes: %w", err)
+		}
+		var wid, fid string
+		var priority int64
+		if err := row.Columns(&wid, &fid, &priority); err != nil {
+			continue
+		}
+		lanes[wid] = append(lanes[wid], fid)
+		if priority == 1 && secondary[wid] == "" {
+			secondary[wid] = fid
+		}
+	}
+
+	for i := range result.Warehouses {
+		wid := result.Warehouses[i].WarehouseID
+		result.Warehouses[i].CoverageCities = cities[wid]
+		result.Warehouses[i].AssignedFactoryIDs = lanes[wid]
+		if result.Warehouses[i].SecondaryFactoryID == "" {
+			result.Warehouses[i].SecondaryFactoryID = secondary[wid]
+		}
+	}
+	return nil
 }
 
 // GetPricingRule fetches one supplier pricing authority row.
@@ -862,6 +942,18 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 		}
 
 		if _, err := txn.Update(ctx, spanner.Statement{
+			SQL:    `DELETE FROM WarehouseCoverageCells WHERE SupplierId = @supplierId`,
+			Params: map[string]any{"supplierId": supplierID},
+		}); err != nil {
+			return fmt.Errorf("delete warehouse coverage cells: %w", err)
+		}
+		if _, err := txn.Update(ctx, spanner.Statement{
+			SQL:    `DELETE FROM WarehouseCoverageCities WHERE SupplierId = @supplierId`,
+			Params: map[string]any{"supplierId": supplierID},
+		}); err != nil {
+			return fmt.Errorf("delete warehouse coverage cities: %w", err)
+		}
+		if _, err := txn.Update(ctx, spanner.Statement{
 			SQL:    `DELETE FROM Warehouses WHERE SupplierId = @supplierId`,
 			Params: map[string]any{"supplierId": supplierID},
 		}); err != nil {
@@ -906,17 +998,18 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Factories", map[string]any{
-				"FactoryId":  id,
-				"SupplierId": supplierID,
-				"Name":       name,
-				"Lat":        nullableFloat(fc.Lat),
-				"Lng":        nullableFloat(fc.Lng),
-				"H3Cell":     topologyH3CellString(fc.Lat, fc.Lng),
-				"Address":    nullableString(strings.TrimSpace(fc.Address)),
-				"PlaceId":    nullableString(strings.TrimSpace(fc.PlaceID)),
-				"IsActive":   fc.IsActive,
-				"CreatedAt":  createdAt,
-				"UpdatedAt":  now,
+				"FactoryId":   id,
+				"SupplierId":  supplierID,
+				"Name":        name,
+				"Lat":         nullableFloat(fc.Lat),
+				"Lng":         nullableFloat(fc.Lng),
+				"H3Cell":      topologyH3CellString(fc.Lat, fc.Lng),
+				"Address":     nullableString(strings.TrimSpace(fc.Address)),
+				"PlaceId":     nullableString(strings.TrimSpace(fc.PlaceID)),
+				"CountryCode": nullableString(strings.ToUpper(strings.TrimSpace(fc.CountryCode))),
+				"IsActive":    fc.IsActive,
+				"CreatedAt":   createdAt,
+				"UpdatedAt":   now,
 			}))
 		}
 
@@ -958,13 +1051,32 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			if coLocate := strings.TrimSpace(wh.CoLocateWithFactoryID); coLocate != "" {
 				row["CoLocateWithFactoryId"] = coLocate
 			}
-			if primaryFactoryID != "" {
-				row["PrimaryFactoryId"] = primaryFactoryID
+			primary := strings.TrimSpace(wh.PrimaryFactoryID)
+			if primary == "" {
+				primary = primaryFactoryID
+			}
+			if primary != "" {
+				row["PrimaryFactoryId"] = primary
+			}
+			if sec := strings.TrimSpace(wh.SecondaryFactoryID); sec != "" {
+				row["SecondaryFactoryId"] = sec
+			}
+			if cc := strings.ToUpper(strings.TrimSpace(wh.CountryCode)); cc != "" {
+				row["CountryCode"] = cc
 			}
 			if sched := strings.TrimSpace(wh.OperatingSchedule); sched != "" {
 				row["OperatingSchedule"] = spanner.NullJSON{Value: json.RawMessage(sched), Valid: true}
 			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Warehouses", row))
+			laneIDs := append([]string(nil), wh.AssignedFactoryIDs...)
+			if primary != "" {
+				laneIDs = append([]string{primary}, laneIDs...)
+			}
+			if sec := strings.TrimSpace(wh.SecondaryFactoryID); sec != "" {
+				laneIDs = append(laneIDs, sec)
+			}
+			mutations = append(mutations, order.SupplyLaneMutations(supplierID, id, laneIDs, now)...)
+			mutations = append(mutations, order.CoverageMutations(supplierID, id, wh.CoverageCities, now)...)
 
 			for _, seed := range wh.InitialInventory {
 				if seed.Quantity <= 0 || strings.TrimSpace(seed.ProductID) == "" {

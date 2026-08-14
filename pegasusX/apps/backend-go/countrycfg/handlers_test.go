@@ -40,11 +40,30 @@ func TestHandleCountryConfig_UZ(t *testing.T) {
 	}
 }
 
-func TestHandleCountryConfig_Unknown404(t *testing.T) {
+func TestHandleCountryConfig_US(t *testing.T) {
 	h := &Handlers{}
 	r := chi.NewRouter()
 	r.Get("/v1/country-configs/{code}", h.HandleCountryConfig)
 	req := httptest.NewRequest(http.MethodGet, "/v1/country-configs/US", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var cfg Config
+	if err := json.Unmarshal(rr.Body.Bytes(), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CheckoutReadsThis || !cfg.OpsReadsThis || cfg.CurrencyCode != "USD" {
+		t.Fatalf("%+v", cfg)
+	}
+}
+
+func TestHandleCountryConfig_Unknown404(t *testing.T) {
+	h := &Handlers{}
+	r := chi.NewRouter()
+	r.Get("/v1/country-configs/{code}", h.HandleCountryConfig)
+	req := httptest.NewRequest(http.MethodGet, "/v1/country-configs/XX", nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound {

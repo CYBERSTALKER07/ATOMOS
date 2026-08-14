@@ -2,9 +2,11 @@ package warehouse
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
@@ -40,6 +42,9 @@ type Warehouse struct {
 	UpdatedAt                  time.Time `json:"updated_at" spanner:"UpdatedAt"`
 	H3Cell                     *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
 	Gln                        *string   `json:"gln,omitempty" spanner:"Gln"`
+	CountryCode                string    `json:"country_code,omitempty" spanner:"CountryCode"`
+	CoverageCities             []order.CoverageCity `json:"coverage_cities,omitempty" spanner:"-"`
+	AssignedFactoryIDs         []string  `json:"assigned_factory_ids,omitempty" spanner:"-"`
 }
 
 // CreateWarehouse inserts a new warehouse record and emits a WAREHOUSE_CREATED event atomically.
@@ -52,6 +57,7 @@ func (r *SpannerRepository) CreateWarehouse(ctx context.Context, w Warehouse, em
 	}
 	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{m}
+		muts = append(muts, warehouseGraphMutations(w)...)
 		if emit != nil {
 			buf := &spannerTxnBuffer{}
 			if err := emit(buf); err != nil {
@@ -64,7 +70,17 @@ func (r *SpannerRepository) CreateWarehouse(ctx context.Context, w Warehouse, em
 	return err
 }
 
-// GetWarehouse retrieves a warehouse by its ID.
+func warehouseGraphMutations(w Warehouse) []*spanner.Mutation {
+	laneIDs := append([]string(nil), w.AssignedFactoryIDs...)
+	if w.PrimaryFactoryID != nil {
+		laneIDs = append(laneIDs, strings.TrimSpace(*w.PrimaryFactoryID))
+	}
+	if w.SecondaryFactoryID != nil {
+		laneIDs = append(laneIDs, strings.TrimSpace(*w.SecondaryFactoryID))
+	}
+	muts := order.CoverageMutations(w.SupplierID, w.WarehouseID, w.CoverageCities, time.Time{})
+	return append(muts, order.SupplyLaneMutations(w.SupplierID, w.WarehouseID, laneIDs, time.Time{})...)
+}
 func (r *SpannerRepository) GetWarehouse(ctx context.Context, warehouseID string) (Warehouse, error) {
 	row, err := r.client.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{
 		"WarehouseId", "SupplierId", "Name", "Lat", "Lng", "Address", "PlaceId",
@@ -72,7 +88,7 @@ func (r *SpannerRepository) GetWarehouse(ctx context.Context, warehouseID string
 		"CoLocateWithFactoryId", "IsActive", "IsOnShift", "RegionId", "PaymentConfigId",
 		"AutoDispatchEnabled", "DefaultOutOfStockPolicy", "ShowStockCountsToRetailers",
 		"PreorderMinLeadDays", "PreorderMaxLeadDays", "OrderLineMinQuantity", "OrderLineMaxQuantity",
-		"DeliveryFeeRules", "OperatingSchedule", "CreatedAt", "UpdatedAt", "H3Cell", "Gln",
+		"DeliveryFeeRules", "OperatingSchedule", "CreatedAt", "UpdatedAt", "H3Cell", "Gln", "CountryCode",
 	})
 	if err != nil {
 		return Warehouse{}, err
@@ -81,7 +97,36 @@ func (r *SpannerRepository) GetWarehouse(ctx context.Context, warehouseID string
 	if err := row.ToStruct(&w); err != nil {
 		return Warehouse{}, err
 	}
+	w.CoverageCities = r.loadCoverageCities(ctx, w.WarehouseID)
 	return w, nil
+}
+
+func (r *SpannerRepository) loadCoverageCities(ctx context.Context, warehouseID string) []order.CoverageCity {
+	if r == nil || r.client == nil || strings.TrimSpace(warehouseID) == "" {
+		return nil
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT CityName, Lat, Lng FROM WarehouseCoverageCities WHERE WarehouseId = @wid ORDER BY CityName`,
+		Params: map[string]any{"wid": warehouseID},
+	})
+	defer iter.Stop()
+	var out []order.CoverageCity
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return out
+		}
+		var name string
+		var lat, lng float64
+		if err := row.Columns(&name, &lat, &lng); err != nil {
+			continue
+		}
+		out = append(out, order.CoverageCity{Name: name, Lat: lat, Lng: lng})
+	}
+	return out
 }
 
 // UpdateWarehouse updates an existing warehouse record and emits a WAREHOUSE_LOCATION_UPDATED event atomically.
@@ -93,6 +138,7 @@ func (r *SpannerRepository) UpdateWarehouse(ctx context.Context, w Warehouse, em
 	}
 	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{m}
+		muts = append(muts, warehouseGraphMutations(w)...)
 		if emit != nil {
 			buf := &spannerTxnBuffer{}
 			if err := emit(buf); err != nil {

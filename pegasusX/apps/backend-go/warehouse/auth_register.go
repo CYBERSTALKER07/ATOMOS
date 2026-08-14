@@ -45,6 +45,7 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
 	warehouseID := strings.TrimSpace(req.AssignedWarehouseID)
+	country := ""
 
 	if req.Account != nil {
 		if name == "" {
@@ -56,6 +57,7 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 		if phone == "" {
 			phone = strings.TrimSpace(req.Account.Phone)
 		}
+		country = strings.ToUpper(strings.TrimSpace(req.Account.Country))
 	}
 
 	idToken := strings.TrimSpace(req.IDToken)
@@ -108,8 +110,16 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 		[]string{"UserId", "SupplierId", "Name", "Phone", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
 		[]any{userID, s.resolveSupplierScope(r.Context()), name, phone, passwordHash, "WAREHOUSE", assignedWarehouse, true, now, now},
 	)
+	muts := []*spanner.Mutation{m}
+	if warehouseID != "" && country != "" {
+		muts = append(muts, spanner.UpdateMap("Warehouses", map[string]any{
+			"WarehouseId": warehouseID,
+			"CountryCode": country,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}))
+	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.spannerClient.Apply(r.Context(), muts); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to register warehouse user", "err", err)
 		web.JSONError(w, "Failed to register warehouse user", http.StatusInternalServerError)
 		return

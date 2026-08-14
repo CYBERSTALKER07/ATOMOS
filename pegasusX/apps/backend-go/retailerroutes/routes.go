@@ -5,8 +5,10 @@ package retailerroutes
 import (
 	"net/http"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
@@ -28,6 +30,7 @@ type Deps struct {
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 	AllowAuthBypass     bool
+	Spanner             *spanner.Client
 }
 
 // RegisterRoutes mounts the retailer role-row surface.
@@ -249,7 +252,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/retailer/settings/auto-order/variant/{variantID}", d.Service.HandleAutoOrderPatch)
 
 		rr.Get("/v1/retailer/cards", d.Service.HandleRetailerCards)
-		rr.Get("/v1/retailer/loyalty/tier", d.Service.HandleLoyaltyNotProduct)
+		loyaltyH := &loyalty.Handlers{Spanner: d.Spanner}
+		rr.Get("/v1/retailer/loyalty/tier", loyaltyH.HandleRetailerTier)
+		rr.Get("/v1/retailer/loyalty/ledger", loyaltyH.HandleRetailerLedger)
 		rr.Post("/v1/retailer/card/initiate", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/confirm", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/deactivate", d.Service.HandleRetailerCardMutation)

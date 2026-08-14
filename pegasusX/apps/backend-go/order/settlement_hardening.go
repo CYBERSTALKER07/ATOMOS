@@ -360,7 +360,11 @@ func (s *Service) finalizeCardSettlement(ctx context.Context, orderRecord Order,
 				return err
 			}
 		}
-		return nil
+		amt := orderRecord.TotalMinor
+		if leg != nil && leg.AmountMinor > 0 {
+			amt = leg.AmountMinor
+		}
+		return loyalty.EarnInTxn(ctx, txn, nil, orderRecord.SupplierID, orderRecord.RetailerID, orderRecord.OrderID, amt)
 	})
 	return err
 }

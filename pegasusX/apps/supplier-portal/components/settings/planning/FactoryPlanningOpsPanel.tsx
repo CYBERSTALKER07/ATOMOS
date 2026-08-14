@@ -9,6 +9,7 @@ import {
   supplierNetworkModePutKey,
   supplierPlanningKillSwitchKey,
   supplierPlanningPullMatrixKey,
+  supplierPlanningPredictivePushKey,
 } from "@pegasusx/api-client/idempotency";
 import type { NetworkModeResponse, PullMatrixResponse, KillSwitchResponse } from "@pegasusx/types";
 
@@ -70,6 +71,20 @@ export default function FactoryPlanningOpsPanel() {
     }
   }
 
+  async function runPredictivePush() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const scope = supplierScopeId();
+      const resp = await api.postPlanningPredictivePush(supplierPlanningPredictivePushKey(scope));
+      setStatus(`Predictive-push ${resp.source}: ${resp.transfers} transfers, ${resp.skus} SKUs (${resp.grain || "baseline"})`);
+    } catch (err) {
+      setStatus(planningDisabledMessage(err) || (err instanceof Error ? err.message : "Predictive-push failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function runPullMatrix() {
     setBusy(true);
     setStatus(null);
@@ -114,7 +129,7 @@ export default function FactoryPlanningOpsPanel() {
     <section className="desk-card p-6 mt-6">
       <h2 className="bento-card-title">Factory network ops</h2>
       <p className="md-typescale-body-small mt-1" style={{ color: "var(--desk-text-secondary)" }}>
-        Network mode, pull-matrix, and ADMIN kill-switch. Pull-matrix creates SYSTEM_THRESHOLD transfers only when FACTORY_PLANNING_ENABLED is on. Kill-switch cancels system drafts. Does not change S&amp;OP on /planning.
+        Network mode, pull-matrix, predictive-push, and ADMIN kill-switch. Predictive-push and pull-matrix 409 factory_planning_disabled when FACTORY_PLANNING_ENABLED is off. Does not change S&amp;OP on /planning.
       </p>
 
       {error ? (
@@ -154,6 +169,9 @@ export default function FactoryPlanningOpsPanel() {
           <div className="flex flex-wrap gap-2">
             <button type="button" className="portal-btn portal-btn--primary text-xs" disabled={busy} onClick={() => void runPullMatrix()}>
               Run pull-matrix
+            </button>
+            <button type="button" className="portal-btn portal-btn--ghost text-xs" disabled={busy} onClick={() => void runPredictivePush()}>
+              Predictive push
             </button>
           </div>
 

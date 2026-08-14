@@ -98,6 +98,8 @@ struct FactoryAdaptiveShell: View {
             SupplyRequestsView()
         case .payloadOverride:
             PayloadOverrideView()
+        case .payloadLoad:
+            PayloadLoadView()
         case .manifests:
             ManifestsView()
         case .manifestExceptions:

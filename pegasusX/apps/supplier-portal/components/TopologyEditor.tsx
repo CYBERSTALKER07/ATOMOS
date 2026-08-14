@@ -5,12 +5,15 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type {
   OutOfStockPolicy,
+  SupplierTopologyCoverageCity,
   SupplierTopologyFactory,
   SupplierTopologyInventorySeed,
   SupplierTopologyResponse,
   SupplierTopologyUpdateRequest,
   SupplierTopologyWarehouse,
 } from "@pegasusx/types";
+import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
+import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { createSupplierApi } from "@/lib/api";
 import { LocationPicker } from "@/components/LocationPicker";
 import { useToast } from "@/components/Toast";
@@ -36,6 +39,11 @@ type WarehouseDraft = {
   is_on_shift: boolean;
   transfer_mode: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id: string;
+  primary_factory_id: string;
+  secondary_factory_id: string;
+  assigned_factory_ids: string[];
+  country_code: string;
+  coverage_cities: SupplierTopologyCoverageCity[];
   default_out_of_stock_policy: OutOfStockPolicy;
   initial_inventory: InventorySeedDraft[];
 };
@@ -48,6 +56,7 @@ type FactoryDraft = {
   place_id?: string;
   lat: string;
   lng: string;
+  country_code: string;
   is_active: boolean;
 };
 
@@ -67,6 +76,11 @@ function warehouseDraftFromNode(node: SupplierTopologyWarehouse, key: string): W
     is_on_shift: node.is_on_shift,
     transfer_mode: node.transfer_mode === "INTERNAL" ? "INTERNAL" : "TRUCK",
     co_locate_with_factory_id: node.co_locate_with_factory_id ?? "",
+    primary_factory_id: node.primary_factory_id ?? "",
+    secondary_factory_id: node.secondary_factory_id ?? "",
+    assigned_factory_ids: node.assigned_factory_ids ?? [],
+    country_code: node.country_code ?? "",
+    coverage_cities: node.coverage_cities ?? [],
     default_out_of_stock_policy: policy,
     initial_inventory: (node.initial_inventory ?? []).map((seed, index) => ({
       key: `${key}-seed-${index}`,
@@ -98,6 +112,7 @@ function factoryDraftFromNode(node: SupplierTopologyFactory, key: string): Facto
     place_id: node.place_id,
     lat: String(node.lat),
     lng: String(node.lng),
+    country_code: node.country_code ?? "",
     is_active: node.is_active,
   };
 }
@@ -165,6 +180,23 @@ function buildUpdateRequest(warehouses: WarehouseDraft[], factories: FactoryDraf
       if (coLocate) {
         body.co_locate_with_factory_id = coLocate;
       }
+      const primary = draft.primary_factory_id.trim();
+      if (primary) {
+        body.primary_factory_id = primary;
+      }
+      const secondary = draft.secondary_factory_id.trim();
+      if (secondary) {
+        body.secondary_factory_id = secondary;
+      }
+      if (draft.assigned_factory_ids.length > 0) {
+        body.assigned_factory_ids = draft.assigned_factory_ids;
+      }
+      if (draft.country_code.trim()) {
+        body.country_code = draft.country_code.trim().toUpperCase();
+      }
+      if (draft.coverage_cities.length > 0) {
+        body.coverage_cities = draft.coverage_cities;
+      }
       body.default_out_of_stock_policy = draft.default_out_of_stock_policy;
       const seeds = inventorySeedsFromDrafts(draft.initial_inventory);
       if (seeds.length > 0) {
@@ -198,6 +230,9 @@ function buildUpdateRequest(warehouses: WarehouseDraft[], factories: FactoryDraf
       };
       if (draft.factory_id) {
         body.factory_id = draft.factory_id;
+      }
+      if (draft.country_code.trim()) {
+        body.country_code = draft.country_code.trim().toUpperCase();
       }
       return body;
     }),
@@ -281,6 +316,11 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   is_on_shift: true,
                   transfer_mode: "TRUCK",
                   co_locate_with_factory_id: "",
+                  primary_factory_id: "",
+                  secondary_factory_id: "",
+                  assigned_factory_ids: [],
+                  country_code: "",
+                  coverage_cities: [],
                   default_out_of_stock_policy: "REJECT",
                   initial_inventory: [],
                 },
@@ -356,6 +396,91 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   )
                 }
               />
+              <SelectField
+                label="Country"
+                value={warehouse.country_code}
+                options={[
+                  { value: "", label: "Unset (covers any country until set)" },
+                  ...AUTH_COUNTRIES.map((c) => ({ value: c.code, label: `${c.name} (${c.code})` })),
+                ]}
+                onChange={(value) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) => (row.key === warehouse.key ? { ...row, country_code: value } : row)),
+                  )
+                }
+              />
+              <CoverageCityChips
+                cities={warehouse.coverage_cities}
+                onChange={(coverage_cities) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) => (row.key === warehouse.key ? { ...row, coverage_cities } : row)),
+                  )
+                }
+              />
+              <SelectField
+                label="Primary factory"
+                value={warehouse.primary_factory_id}
+                options={[
+                  { value: "", label: t("supplier_portal.residual.text.none") },
+                  ...factoryOptions.map((factory) => ({ value: factory.id, label: factory.name })),
+                ]}
+                onChange={(value) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) =>
+                      row.key === warehouse.key
+                        ? {
+                            ...row,
+                            primary_factory_id: value,
+                            assigned_factory_ids: value
+                              ? Array.from(new Set([value, ...row.assigned_factory_ids.filter((id) => id !== value)]))
+                              : row.assigned_factory_ids,
+                          }
+                        : row,
+                    ),
+                  )
+                }
+              />
+              <SelectField
+                label="Secondary factory"
+                value={warehouse.secondary_factory_id}
+                options={[
+                  { value: "", label: t("supplier_portal.residual.text.none") },
+                  ...factoryOptions.map((factory) => ({ value: factory.id, label: factory.name })),
+                ]}
+                onChange={(value) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) => (row.key === warehouse.key ? { ...row, secondary_factory_id: value } : row)),
+                  )
+                }
+              />
+              <div className="space-y-1">
+                <span className="md-typescale-label-medium">Assigned factories</span>
+                <div className="flex flex-wrap gap-2">
+                  {factoryOptions.map((factory) => {
+                    const checked = warehouse.assigned_factory_ids.includes(factory.id);
+                    return (
+                      <label key={factory.id} className="inline-flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setWarehouses((prev) =>
+                              prev.map((row) => {
+                                if (row.key !== warehouse.key) return row;
+                                const next = checked
+                                  ? row.assigned_factory_ids.filter((id) => id !== factory.id)
+                                  : [...row.assigned_factory_ids, factory.id];
+                                return { ...row, assigned_factory_ids: next };
+                              }),
+                            )
+                          }
+                        />
+                        {factory.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <SelectField
                   label={t("supplier_portal.residual.text.transfer_mode")}
@@ -536,6 +661,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   address: "",
                   lat: "41.3111",
                   lng: "69.2797",
+                  country_code: "",
                   is_active: true,
                 },
               ])
@@ -599,6 +725,19 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                           }
                         : row,
                     ),
+                  )
+                }
+              />
+              <SelectField
+                label="Country"
+                value={factory.country_code}
+                options={[
+                  { value: "", label: "Unset" },
+                  ...AUTH_COUNTRIES.map((c) => ({ value: c.code, label: `${c.name} (${c.code})` })),
+                ]}
+                onChange={(value) =>
+                  setFactories((prev) =>
+                    prev.map((row) => (row.key === factory.key ? { ...row, country_code: value } : row)),
                   )
                 }
               />

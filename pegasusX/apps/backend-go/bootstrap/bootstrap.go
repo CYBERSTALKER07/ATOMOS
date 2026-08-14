@@ -30,6 +30,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
+	"github.com/pegasusx/pegasusx/apps/backend-go/countrycfg"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
@@ -2694,11 +2695,14 @@ func envInt64(key string, fallback int64) int64 {
 }
 
 func shopClosedGraceDuration() time.Duration {
-	minutes := envInt("SHOP_CLOSED_GRACE_MINUTES", 5)
-	if minutes < 1 {
-		minutes = 5
+	if _, ok := os.LookupEnv("SHOP_CLOSED_GRACE_MINUTES"); ok {
+		minutes := envInt("SHOP_CLOSED_GRACE_MINUTES", 5)
+		if minutes < 1 {
+			minutes = 5
+		}
+		return time.Duration(minutes) * time.Minute
 	}
-	return time.Duration(minutes) * time.Minute
+	return time.Duration(countrycfg.UZDefault().ShopClosedGraceMinutes) * time.Minute
 }
 
 func splitAndTrimCSV(value string) []string {

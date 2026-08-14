@@ -761,22 +761,52 @@ struct ResolveManifestExceptionResponse: Decodable {
 
 // MARK: - Dispatch
 struct DispatchRequest: Encodable {
+    var mode: String = "AUTO"
     let transferIds: [String]
+    var forceCapacity: Bool = false
+    var acceptPartial: Bool = false
+    var reason: String = "factory-app-ios"
 
     enum CodingKeys: String, CodingKey {
+        case mode
         case transferIds = "transfer_ids"
+        case forceCapacity = "force_capacity"
+        case acceptPartial = "accept_partial"
+        case reason
     }
 }
 
 struct DispatchResponse: Decodable {
+    let status: String
     let manifestId: String
     let truckPlate: String
     let stopCount: Int
+    let createdManifestCount: Int
+    let optimizerClass: String
+    let dispatchAlgo: String
+    let unassigned: [String]
 
     enum CodingKeys: String, CodingKey {
+        case status
         case manifestId = "manifest_id"
         case truckPlate = "truck_plate"
         case stopCount = "stop_count"
+        case createdManifestCount = "created_manifest_count"
+        case optimizerClass = "optimizer_class"
+        case dispatchAlgo = "dispatch_algo"
+        case unassigned
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        truckPlate = try c.decodeIfPresent(String.self, forKey: .truckPlate) ?? ""
+        stopCount = try c.decodeIfPresent(Int.self, forKey: .stopCount) ?? 0
+        createdManifestCount = try c.decodeIfPresent(Int.self, forKey: .createdManifestCount) ?? 0
+        optimizerClass = try c.decodeIfPresent(String.self, forKey: .optimizerClass) ?? ""
+        dispatchAlgo = try c.decodeIfPresent(String.self, forKey: .dispatchAlgo) ?? ""
+        unassigned = try c.decodeIfPresent([String].self, forKey: .unassigned) ?? []
     }
 }
 

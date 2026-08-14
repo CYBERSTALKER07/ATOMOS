@@ -4,17 +4,18 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
-import type { SupplierTopologyWarehouse, SupplierTopologyUpdateRequest } from "@pegasusx/types";
+import type { SupplierTopologyCoverageCity, SupplierTopologyResponse, SupplierTopologyUpdateRequest } from "@pegasusx/types";
 import { type LocationValue } from "@/components/LocationPicker";
 import { PageChrome } from "@/components/PageChrome";
 import { WarehouseForm } from "./components/WarehouseForm";
 import { WarehouseList } from "./components/WarehouseList";
+import { factoryToTopologyInput, warehouseToTopologyInput } from "@/lib/topology";
 
 const api = createSupplierApi();
 
 export default function WarehousesPage() {
   const t = usePortalT();
-  const [topology, setTopology] = useState<{ warehouses: SupplierTopologyWarehouse[]; factories: SupplierTopologyUpdateRequest["factories"] } | null>(null);
+  const [topology, setTopology] = useState<SupplierTopologyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
@@ -26,7 +27,7 @@ export default function WarehousesPage() {
     setError(null);
     api
       .getSupplierTopology()
-      .then((t) => setTopology({ warehouses: t.warehouses, factories: t.factories }))
+      .then((t) => setTopology(t))
       .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_warehouses_failed")))
       .finally(() => setLoading(false));
   };
@@ -35,23 +36,17 @@ export default function WarehousesPage() {
     load();
   }, [refreshTick]);
 
-  const addWarehouse = async (name: string, location: LocationValue, radius: number) => {
+  const addWarehouse = async (
+    name: string,
+    location: LocationValue,
+    radius: number,
+    extras: { country_code: string; coverage_cities: SupplierTopologyCoverageCity[]; primary_factory_id: string },
+  ) => {
     if (!topology) return;
     
     const body: SupplierTopologyUpdateRequest = {
       warehouses: [
-        ...topology.warehouses.map((w) => ({
-          warehouse_id: w.warehouse_id,
-          name: w.name,
-          address: w.address,
-          place_id: w.place_id,
-          lat: w.lat,
-          lng: w.lng,
-          coverage_radius_km: w.coverage_radius_km,
-          is_active: w.is_active,
-          is_on_shift: w.is_on_shift,
-          transfer_mode: w.transfer_mode,
-        })),
+        ...topology.warehouses.map(warehouseToTopologyInput),
         {
           name,
           address: location.address.trim(),
@@ -62,9 +57,13 @@ export default function WarehousesPage() {
           is_active: true,
           is_on_shift: true,
           transfer_mode: "TRUCK",
+          country_code: extras.country_code || undefined,
+          coverage_cities: extras.coverage_cities.length ? extras.coverage_cities : undefined,
+          primary_factory_id: extras.primary_factory_id || undefined,
+          assigned_factory_ids: extras.primary_factory_id ? [extras.primary_factory_id] : undefined,
         },
       ],
-      factories: topology.factories,
+      factories: topology.factories.map(factoryToTopologyInput),
     };
     
     await api.updateSupplierTopology(body);
@@ -93,6 +92,7 @@ export default function WarehousesPage() {
         <WarehouseForm
           onSave={addWarehouse}
           onCancel={() => setShowForm(false)}
+          factoryOptions={(topology?.factories ?? []).map((f) => ({ id: f.factory_id, name: f.name }))}
         />
       )}
 

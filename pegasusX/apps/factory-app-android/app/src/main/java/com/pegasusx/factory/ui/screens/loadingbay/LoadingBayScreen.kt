@@ -126,11 +126,17 @@ fun LoadingBayScreen(
                                 try {
                                     val ids = loadingState.map { it.id }
                                     val resp = api.dispatch(
-                                        DispatchRequest(transferIds = ids),
+                                        DispatchRequest(mode = "AUTO", transferIds = ids, reason = "factory-loading-bay"),
                                         FactoryIdempotencyKeys.batchDispatch(ids),
                                     )
                                     if (resp.isSuccessful) {
-                                        snackbarHostState.showSnackbar("Dispatched ${ids.size} transfers")
+                                        val body = resp.body()
+                                        val count = body?.createdManifestCount ?: body?.manifestsCreated ?: ids.size
+                                        val algo = body?.dispatchAlgo?.ifBlank { body.optimizerClass } ?: ""
+                                        snackbarHostState.showSnackbar(
+                                            if (count == 0) "No transfers to dispatch"
+                                            else "Dispatched $count · $algo"
+                                        )
                                         load()
                                     } else {
                                         snackbarHostState.showSnackbar("Dispatch failed (${resp.code()})")

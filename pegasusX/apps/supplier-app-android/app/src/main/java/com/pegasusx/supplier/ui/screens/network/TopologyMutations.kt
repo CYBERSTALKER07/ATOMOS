@@ -29,6 +29,12 @@ suspend fun appendWarehouseNode(
             isActive = node.isActive,
             isOnShift = node.isOnShift,
             transferMode = node.transferMode.ifBlank { "TRUCK" },
+            coLocateWithFactoryId = node.coLocateWithFactoryId,
+            primaryFactoryId = node.primaryFactoryId,
+            secondaryFactoryId = node.secondaryFactoryId,
+            assignedFactoryIds = node.assignedFactoryIds.takeIf { it.isNotEmpty() },
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
+            coverageCities = node.coverageCities.takeIf { it.isNotEmpty() },
         )
     } + SupplierTopologyWarehouseInput(
         warehouseId = null,
@@ -51,6 +57,7 @@ suspend fun appendWarehouseNode(
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
         )
     }
     val resp = ops.updateTopology(SupplierTopologyUpdateRequest(warehouses = warehouses, factories = factories))
@@ -77,6 +84,12 @@ suspend fun appendFactoryNode(
             isActive = node.isActive,
             isOnShift = node.isOnShift,
             transferMode = node.transferMode.ifBlank { "TRUCK" },
+            coLocateWithFactoryId = node.coLocateWithFactoryId,
+            primaryFactoryId = node.primaryFactoryId,
+            secondaryFactoryId = node.secondaryFactoryId,
+            assignedFactoryIds = node.assignedFactoryIds.takeIf { it.isNotEmpty() },
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
+            coverageCities = node.coverageCities.takeIf { it.isNotEmpty() },
         )
     }
     val factories = topology.factories.map { node ->
@@ -88,6 +101,7 @@ suspend fun appendFactoryNode(
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
         )
     } + SupplierTopologyFactoryInput(
         factoryId = null,

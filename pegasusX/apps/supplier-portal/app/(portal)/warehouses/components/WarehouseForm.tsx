@@ -4,9 +4,23 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
+import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
+import { CoverageCityChips } from "@/components/CoverageCityChips";
+import type { SupplierTopologyCoverageCity } from "@pegasusx/types";
+
 interface WarehouseFormProps {
-  onSave: (name: string, location: LocationValue, radius: number) => Promise<void>;
+  onSave: (
+    name: string,
+    location: LocationValue,
+    radius: number,
+    extras: {
+      country_code: string;
+      coverage_cities: SupplierTopologyCoverageCity[];
+      primary_factory_id: string;
+    },
+  ) => Promise<void>;
   onCancel: () => void;
+  factoryOptions?: Array<{ id: string; name: string }>;
 }
 
 const DEFAULT_LOCATION: LocationValue = {
@@ -15,13 +29,16 @@ const DEFAULT_LOCATION: LocationValue = {
   lng: "69.2401",
 };
 
-export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
+export function WarehouseForm({ onSave, onCancel, factoryOptions = [] }: WarehouseFormProps) {
   const t = usePortalT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
   const [radius, setRadius] = useState("50");
+  const [country, setCountry] = useState("");
+  const [cities, setCities] = useState<SupplierTopologyCoverageCity[]>([]);
+  const [primaryFactory, setPrimaryFactory] = useState("");
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -37,7 +54,11 @@ export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
     setSaving(true);
     setError(null);
     try {
-      await onSave(trimmed, location, Number.isFinite(radiusValue) && radiusValue > 0 ? radiusValue : 50);
+      await onSave(trimmed, location, Number.isFinite(radiusValue) && radiusValue > 0 ? radiusValue : 50, {
+        country_code: country,
+        coverage_cities: cities,
+        primary_factory_id: primaryFactory,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_warehouse_failed"));
     } finally {
@@ -54,6 +75,27 @@ export function WarehouseForm({ onSave, onCancel }: WarehouseFormProps) {
         <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.warehouses.components.warehouse_form.text.main_warehouse")} />
       </label>
       <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.warehouse_address")} />
+      <label className="block space-y-1">
+        <span className="md-typescale-label-medium">Country</span>
+        <select className="md-input w-full max-w-xs" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <option value="">Unset (whole-country cover once set on node)</option>
+          {AUTH_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+          ))}
+        </select>
+      </label>
+      <CoverageCityChips cities={cities} onChange={setCities} />
+      {factoryOptions.length > 0 ? (
+        <label className="block space-y-1">
+          <span className="md-typescale-label-medium">Primary factory</span>
+          <select className="md-input w-full max-w-xs" value={primaryFactory} onChange={(e) => setPrimaryFactory(e.target.value)}>
+            <option value="">Closest factory (default)</option>
+            {factoryOptions.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">{t("supplier_portal.warehouses.components.warehouse_form.text.coverage_km")}</span>
         <input className="md-input w-full max-w-xs" value={radius} onChange={(e) => setRadius(e.target.value)} />

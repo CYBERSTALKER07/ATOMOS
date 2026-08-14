@@ -437,14 +437,24 @@ data class FleetVehicleListResponse(
 // ── Dispatch ──
 @Serializable
 data class DispatchRequest(
-    @SerialName("transfer_ids") val transferIds: List<String>,
+    val mode: String = "AUTO",
+    @SerialName("transfer_ids") val transferIds: List<String> = emptyList(),
+    @SerialName("force_capacity") val forceCapacity: Boolean = false,
+    @SerialName("accept_partial") val acceptPartial: Boolean = false,
+    val reason: String = "factory-app-android",
 )
 
 @Serializable
 data class DispatchResponse(
-    @SerialName("manifest_id") val manifestId: String,
+    val status: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
     @SerialName("truck_plate") val truckPlate: String = "",
     @SerialName("stop_count") val stopCount: Int = 0,
+    @SerialName("created_manifest_count") val createdManifestCount: Int = 0,
+    @SerialName("manifests_created") val manifestsCreated: Int = 0,
+    @SerialName("optimizer_class") val optimizerClass: String = "",
+    @SerialName("dispatch_algo") val dispatchAlgo: String = "",
+    val unassigned: List<String> = emptyList(),
 )
 
 // ── Notifications + client policy ──

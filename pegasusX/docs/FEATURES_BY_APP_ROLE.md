@@ -320,7 +320,7 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 
 | Package | Routes |
 |---------|--------|
-| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh |
+| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh/logout, **GS-A** `GET /v1/auth/session` (JWT + market pack; `checkout_reads_this: false`), `GET /v1/platform/market-packs` (+ `/{code}`) |
 | `webhookroutes` | global-pay, adyen, stripe, payme, click |
 | `updateroutes` | iOS plist + desktop updater.json |
 | `infraroutes` | healthz/ready (+ G4 `GET /v1/health/capabilities` optimizer honesty) |

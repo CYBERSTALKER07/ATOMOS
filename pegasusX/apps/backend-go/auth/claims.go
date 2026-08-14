@@ -85,6 +85,11 @@ type Claims struct {
 
 	// MFAVerified is set after PLATFORM_ADMIN TOTP step-up (claim mfa_verified).
 	MFAVerified bool
+
+	// MarketCode is the tenant market pack (UZ shipped; others planned). Empty → DEFAULT_MARKET_CODE.
+	MarketCode string
+	// HomeCell is the regional cell id (cell-uz, cell-eu, …). Empty → pack default.
+	HomeCell string
 }
 
 // IsPendingOrgSelect reports whether claims are intermediate multi-org tokens.
@@ -177,6 +182,21 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 			}
 			if _, allowed := allow[c.Role]; !allowed {
 				http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyAuthenticated allows any role with a session (including PendingOrgSelect).
+// Used by GET /v1/auth/session so multi-org login can read the market pack before select-org.
+func RequireAnyAuthenticated() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c, ok := FromContext(r.Context())
+			if !ok || strings.TrimSpace(c.Subject) == "" {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r)

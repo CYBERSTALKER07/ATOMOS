@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory, SupplierTopologyUpdateRequest, SupplierTopologyWarehouse } from "@pegasusx/types";
+import { factoryToTopologyInput, warehouseToTopologyInput } from "@/lib/topology";
 import { type LocationValue } from "@/components/LocationPicker";
 import { PageChrome } from "@/components/PageChrome";
 import { FactoryForm } from "./components/FactoryForm";
@@ -39,40 +40,22 @@ export default function FactoriesPage() {
     load();
   }, [refreshTick]);
 
-  const addFactory = async (name: string, location: LocationValue) => {
+  const addFactory = async (name: string, location: LocationValue, extras: { country_code: string }) => {
     if (warehouses.length === 0) {
       throw new Error("Add at least one warehouse before creating factories.");
     }
     
     const body: SupplierTopologyUpdateRequest = {
-      warehouses: warehouses.map((w) => ({
-        warehouse_id: w.warehouse_id,
-        name: w.name,
-        address: w.address,
-        place_id: w.place_id,
-        lat: w.lat,
-        lng: w.lng,
-        coverage_radius_km: w.coverage_radius_km,
-        is_active: w.is_active,
-        is_on_shift: w.is_on_shift,
-        transfer_mode: w.transfer_mode,
-      })),
+      warehouses: warehouses.map(warehouseToTopologyInput),
       factories: [
-        ...factories.map((f) => ({
-          factory_id: f.factory_id,
-          name: f.name,
-          address: f.address,
-          place_id: f.place_id,
-          lat: f.lat,
-          lng: f.lng,
-          is_active: f.is_active,
-        })),
+        ...factories.map(factoryToTopologyInput),
         {
           name,
           address: location.address.trim(),
           place_id: location.place_id,
           lat: Number.parseFloat(location.lat),
           lng: Number.parseFloat(location.lng),
+          country_code: extras.country_code || undefined,
           is_active: true,
         },
       ],

@@ -218,6 +218,7 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Spanner:             app.Spanner,
 	})
 	driverroutes.RegisterRoutes(r, driverroutes.Deps{
 		Service:             app.DriverService,

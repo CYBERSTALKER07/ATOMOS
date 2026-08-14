@@ -39,6 +39,7 @@ const NAV: NavSection[] = [
     labelKey: 'portal.nav.section.supply_chain',
     items: [
       { href: '/supply-requests', icon: 'transfers', labelKey: 'portal.nav.supply_requests' },
+      { href: '/payload', icon: 'loadingBay', labelKey: 'portal.nav.payload' },
       { href: '/payload-override', icon: 'loadingBay', labelKey: 'portal.nav.payload_override' },
       { href: '/manifests', icon: 'manifests', labelKey: 'portal.nav.manifests' },
       { href: '/manifest-exceptions', icon: 'insights', labelKey: 'portal.nav.gate_exceptions' },

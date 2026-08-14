@@ -2,6 +2,8 @@
 package platformroutes
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
@@ -36,5 +38,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	if d.JWTSecret != "" {
 		r.Post("/v1/auth/refresh", auth.HandleTokenRefresh(d.JWTSecret, d.JWTIssuer))
 		r.Post("/v1/auth/logout", auth.HandleLogout(d.JWTSecret))
+		// GS-A: session + market pack (any authenticated role).
+		r.With(auth.RequireAnyAuthenticated()).Get("/v1/auth/session", auth.HandleSession)
 	}
+	r.Get("/v1/platform/market-packs", auth.HandleListMarketPacks)
+	r.Get("/v1/platform/market-packs/{code}", func(w http.ResponseWriter, req *http.Request) {
+		auth.HandleGetMarketPack(chi.URLParam(req, "code"))(w, req)
+	})
 }

@@ -77,7 +77,7 @@ type testWarehouseResolver struct {
 	calls       int
 }
 
-func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _, _ float64) (string, error) {
+func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _, _ float64, _ string) (string, error) {
 	r.calls++
 	if r.err != nil {
 		return "", r.err

@@ -45,6 +45,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
 	factoryID := strings.TrimSpace(req.AssignedFactoryID)
+	country := ""
 
 	if req.Account != nil {
 		if name == "" {
@@ -56,6 +57,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		if phone == "" {
 			phone = strings.TrimSpace(req.Account.Phone)
 		}
+		country = strings.ToUpper(strings.TrimSpace(req.Account.Country))
 	}
 
 	idToken := strings.TrimSpace(req.IDToken)
@@ -99,8 +101,16 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		[]string{"UserId", "SupplierId", "Name", "Phone", "PasswordHash", "SupplierRole", "AssignedFactoryId", "IsActive", "CreatedAt", "UpdatedAt"},
 		[]any{userID, s.resolveSupplierScope(r.Context()), name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
 	)
+	muts := []*spanner.Mutation{m}
+	if factoryID != "" && country != "" {
+		muts = append(muts, spanner.UpdateMap("Factories", map[string]any{
+			"FactoryId":   factoryID,
+			"CountryCode": country,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}))
+	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.spannerClient.Apply(r.Context(), muts); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to register factory user", "err", err)
 		web.JSONError(w, "Failed to register factory user", http.StatusInternalServerError)
 		return

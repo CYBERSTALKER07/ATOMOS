@@ -133,7 +133,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	if s.warehouse == nil {
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
-	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.resolveSupplierScope(ctx), lat, lng)
+	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.resolveSupplierScope(ctx), lat, lng, s.lookupRetailerCountry(ctx, retailerID))
 	if err != nil {
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
 	}

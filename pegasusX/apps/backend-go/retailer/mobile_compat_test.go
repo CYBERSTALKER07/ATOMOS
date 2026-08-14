@@ -51,14 +51,6 @@ func TestTheatreKillP1Gone(t *testing.T) {
 			wantError:  "prediction_correct_unwired",
 			wantStatus: http.StatusGone,
 		},
-		{
-			name:       "loyalty GET",
-			method:     http.MethodGet,
-			path:       "/v1/retailer/loyalty/tier",
-			handle:     svc.HandleLoyaltyNotProduct,
-			wantError:  "loyalty_not_product",
-			wantStatus: http.StatusGone,
-		},
 	}
 
 	for _, tt := range tests {

@@ -63,6 +63,8 @@ type jwtPayload struct {
 	ActiveLocationID string   `json:"active_location_id,omitempty"`
 	CapabilityPacks  []string `json:"capability_packs,omitempty"`
 	MFAVerified      bool     `json:"mfa_verified,omitempty"`
+	MarketCode       string   `json:"market_code,omitempty"`
+	HomeCell         string   `json:"home_cell,omitempty"`
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
@@ -104,6 +106,8 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		ActiveLocationID: c.ActiveLocationID,
 		CapabilityPacks:  c.CapabilityPacks,
 		MFAVerified:      c.MFAVerified,
+		MarketCode:       c.MarketCode,
+		HomeCell:         c.HomeCell,
 	})
 	head := b64(h) + "." + b64(p)
 	sig := sign(head, opts.Secret)
@@ -189,6 +193,8 @@ func Parse(token, secret string) (Claims, error) {
 		ActiveLocationID: p.ActiveLocationID,
 		CapabilityPacks:  p.CapabilityPacks,
 		MFAVerified:      p.MFAVerified,
+		MarketCode:       p.MarketCode,
+		HomeCell:         p.HomeCell,
 	}, nil
 }
 

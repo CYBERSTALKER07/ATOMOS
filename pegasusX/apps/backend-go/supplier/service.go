@@ -28,6 +28,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -127,6 +128,10 @@ type WarehouseNode struct {
 	TransferMode          string    `json:"transfer_mode,omitempty"`
 	CoLocateWithFactoryID string    `json:"co_locate_with_factory_id,omitempty"`
 	PrimaryFactoryID      string    `json:"primary_factory_id,omitempty"`
+	SecondaryFactoryID    string    `json:"secondary_factory_id,omitempty"`
+	AssignedFactoryIDs    []string  `json:"assigned_factory_ids,omitempty"`
+	CountryCode           string    `json:"country_code,omitempty"`
+	CoverageCities        []order.CoverageCity `json:"coverage_cities,omitempty"`
 	IsActive              bool      `json:"is_active"`
 	IsOnShift             bool      `json:"is_on_shift"`
 	DefaultOutOfStockPolicy string  `json:"default_out_of_stock_policy,omitempty"`
@@ -144,13 +149,14 @@ type InventorySeed struct {
 
 // FactoryNode is one supplier-owned factory topology node.
 type FactoryNode struct {
-	FactoryID string    `json:"factory_id"`
-	Name      string    `json:"name"`
-	Lat       float64   `json:"lat"`
-	Lng       float64   `json:"lng"`
-	Address   string    `json:"address,omitempty"`
-	PlaceID   string    `json:"place_id,omitempty"`
-	IsActive  bool      `json:"is_active"`
+	FactoryID   string    `json:"factory_id"`
+	Name        string    `json:"name"`
+	Lat         float64   `json:"lat"`
+	Lng         float64   `json:"lng"`
+	Address     string    `json:"address,omitempty"`
+	PlaceID     string    `json:"place_id,omitempty"`
+	CountryCode string    `json:"country_code,omitempty"`
+	IsActive    bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
