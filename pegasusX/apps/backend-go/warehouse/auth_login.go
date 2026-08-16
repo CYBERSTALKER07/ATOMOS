@@ -221,7 +221,7 @@ func verifyWarehouseStaffSecret(storedHash, secret string) bool {
 	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
 		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
 	}
-	return storedHash == secret
+	return false
 }
 
 // HandleWarehouseRefresh re-issues access tokens from a refresh JWT.

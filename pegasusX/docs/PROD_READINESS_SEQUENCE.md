@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-12  
 **Status:** Source of truth for **ordered residuals** after in-tree waves W0–W5 closed.  
-**Goal SoT:** [`PROD_ECOSYSTEM_GOAL.md`](./PROD_ECOSYSTEM_GOAL.md)  
+**Destination goal:** [`.agents/memory/GOAL.md`](../../.agents/memory/GOAL.md) — [`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md) + [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md)  
+**Class A / prod-ready definition:** [`PROD_ECOSYSTEM_GOAL.md`](./PROD_ECOSYSTEM_GOAL.md)  
 **Evidence backlog:** [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md)
 
 W0–W5 are **closed in code/simulator**. What remains is **Class D ops enablement** plus a short **Class B/C client parity** list. This order matches prod pillars: money/law before touchless place; ops truth before scale; Class A before partner cert theater.

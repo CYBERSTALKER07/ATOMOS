@@ -7,13 +7,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tenantreg"
 )
 
 // Deps supplies platform handlers.
 type Deps struct {
 	Handler        *platform.Handler
 	GeocodeHandler *geolocation.Handler
+	TenantRegister *tenantreg.Service
 	JWTSecret      string
 	JWTIssuer      string
 }
@@ -41,8 +44,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		// GS-A: session + market pack (any authenticated role).
 		r.With(auth.RequireAnyAuthenticated()).Get("/v1/auth/session", auth.HandleSession)
 	}
+	if d.TenantRegister != nil {
+		r.Post("/v1/platform/tenants/register", d.TenantRegister.HandleRegister)
+	}
+	r.Get("/v1/platform/cells", auth.HandleListCells)
 	r.Get("/v1/platform/market-packs", auth.HandleListMarketPacks)
 	r.Get("/v1/platform/market-packs/{code}", func(w http.ResponseWriter, req *http.Request) {
 		auth.HandleGetMarketPack(chi.URLParam(req, "code"))(w, req)
 	})
+	r.Get("/v1/platform/partner-dialects", partner.HandleListPartnerDialects)
 }

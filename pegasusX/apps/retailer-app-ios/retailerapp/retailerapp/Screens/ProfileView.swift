@@ -18,6 +18,7 @@ struct ProfileView: View {
     @State private var creditLoading = true
     @State private var creditMissing = false
     @State private var creditError: String?
+    @State private var loyaltySummary: String = ""
 
     @Environment(AuthManager.self) private var auth
 
@@ -41,6 +42,19 @@ struct ProfileView: View {
                     missing: creditMissing,
                     error: creditError
                 ).slideIn(delay: 0.06)
+
+                if !loyaltySummary.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Loyalty")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        Text(loyaltySummary)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, AppTheme.spacingLG)
+                    .slideIn(delay: 0.065)
+                }
 
                 // Order History link
                 OrderHistoryLink(orderCount: orderCount).slideIn(delay: 0.07)
@@ -109,15 +123,18 @@ struct ProfileView: View {
         .task { await loadProfile() }
         .task { await loadStats() }
         .task { await loadCreditProfile() }
+        .task { await loadLoyalty() }
         .task(id: refreshCenter.refreshToken) {
             await loadProfile()
             await loadStats()
             await loadCreditProfile()
+            await loadLoyalty()
         }
         .refreshable {
             await loadProfile()
             await loadStats()
             await loadCreditProfile()
+            await loadLoyalty()
         }
     }
 
@@ -157,7 +174,7 @@ struct ProfileView: View {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             orderCount = orders.count
             totalSpent = orders.reduce(0) { $0 + $1.totalAmount }
-            totalSpentCurrency = orders.first?.currency ?? "UZS"
+            totalSpentCurrency = orders.first?.currency ?? packCurrency(MarketPackStore.pack)
             
             // Also fetch settings so toggles are perfectly in sync
             let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")
@@ -183,6 +200,23 @@ struct ProfileView: View {
             creditError = "Credit unavailable"
         }
         creditLoading = false
+    }
+
+    private func loadLoyalty() async {
+        do {
+            let tier = try await api.getLoyaltyTier()
+            if !tier.enrolled {
+                loyaltySummary = "Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet."
+            } else {
+                var text = "\(tier.tier.isEmpty ? "Member" : tier.tier) · \(tier.lifetimePoints) lifetime · \(tier.availablePoints) available"
+                if !tier.nextTier.isEmpty {
+                    text += " · \(tier.pointsToNext) to \(tier.nextTier)"
+                }
+                loyaltySummary = text
+            }
+        } catch {
+            loyaltySummary = "Loyalty unavailable"
+        }
     }
 
     private func toggleGlobalAutoOrder(enabled: Bool, useHistory: Bool) async {

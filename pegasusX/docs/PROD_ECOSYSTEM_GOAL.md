@@ -1,5 +1,7 @@
 # PegasusX — Production Ecosystem Goal
 
+**2026-08-16:** Destination goal moved to `.agents/memory/GOAL.md` — program files [`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md) + [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md). This file remains the **Class A coverage / “prod ready” definition**. It is not a competing north star.
+
 **Date:** 2026-08-12  
 **Status:** Source of truth for what “prod ready” means for the ATOMOS / PegasusX ecosystem.
 

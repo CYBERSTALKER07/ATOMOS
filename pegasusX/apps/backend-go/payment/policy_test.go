@@ -1,6 +1,10 @@
 package payment
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+)
 
 func TestNormalizeGatewayPolicy_DefaultsCashAndGlobalPay(t *testing.T) {
 	t.Parallel()
@@ -33,5 +37,24 @@ func TestGatewayPolicy_CardGatewaysExcludesCash(t *testing.T) {
 	card := policy.CardGateways()
 	if len(card) != 1 || card[0] != "GLOBAL_PAY" {
 		t.Fatalf("card gateways = %#v", card)
+	}
+}
+
+func TestApplyPackToGatewayPolicy_DropsUnknownPSP(t *testing.T) {
+	t.Parallel()
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	if !ok {
+		t.Fatal("uz pack")
+	}
+	policy := NormalizeGatewayPolicy(PaymentAcceptorSupplier, []string{"GLOBAL_PAY", "STRIPE", "CASH"}, "SUPPLIER_DEFAULT")
+	got := applyPackToGatewayPolicy(policy, pack)
+	if got.PolicySource != "MARKET_PACK" {
+		t.Fatalf("source=%s", got.PolicySource)
+	}
+	if err := got.ValidateCardGateway("STRIPE"); err == nil {
+		t.Fatal("STRIPE must be dropped by pack intersect")
+	}
+	if err := got.ValidateCardGateway("GLOBAL_PAY"); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -35,14 +35,14 @@ type Program struct {
 }
 
 type TierView struct {
-	Enrolled          bool   `json:"enrolled"`
-	Tier              string `json:"tier,omitempty"`
-	LifetimePoints    int64  `json:"lifetime_points"`
-	AvailablePoints   int64  `json:"available_points"`
-	NextTier          string `json:"next_tier,omitempty"`
-	PointsToNext      int64  `json:"points_to_next,omitempty"`
-	EarnBps           int64  `json:"earn_bps,omitempty"`
-	SupplierID        string `json:"supplier_id,omitempty"`
+	Enrolled        bool   `json:"enrolled"`
+	Tier            string `json:"tier,omitempty"`
+	LifetimePoints  int64  `json:"lifetime_points"`
+	AvailablePoints int64  `json:"available_points"`
+	NextTier        string `json:"next_tier,omitempty"`
+	PointsToNext    int64  `json:"points_to_next,omitempty"`
+	EarnBps         int64  `json:"earn_bps,omitempty"`
+	SupplierID      string `json:"supplier_id,omitempty"`
 }
 
 type LedgerEntry struct {

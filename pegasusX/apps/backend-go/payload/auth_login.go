@@ -1,6 +1,7 @@
 package payload
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -8,7 +9,29 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// PayloadStaffRecord is the SupplierUsers PAYLOADER slice used at login (GS-T5).
+type PayloadStaffRecord struct {
+	UserID       string
+	Name         string
+	Phone        string
+	PasswordHash string
+	SupplierID   string
+	WarehouseID  string
+}
+
+// PayloadStaffLookup finds an active payloader by phone.
+type PayloadStaffLookup func(ctx context.Context, phone string) (PayloadStaffRecord, bool, error)
+
+// SetStaffLookup wires GS-T5 staff-row login (bootstrap: SupplierUsers).
+func (s *Service) SetStaffLookup(fn PayloadStaffLookup) {
+	if s != nil {
+		s.staffLookup = fn
+	}
+}
 
 // HandlePayloaderLogin authenticates payload terminal staff (phone + PIN).
 // POST /v1/auth/payloader/login
@@ -28,6 +51,9 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+
+	phone := strings.TrimSpace(req.Phone)
+	pin := strings.TrimSpace(req.PIN)
 	idToken := strings.TrimSpace(req.IDToken)
 
 	if idToken != "" && s.firebaseVerifier != nil {
@@ -41,39 +67,82 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
 			return
 		}
-		// In a real DB, check if payload worker with claims.PhoneNumber exists
-		// For scaffold, we check against the demo phone
-		expectPhone := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901110022"
+		phone = claims.PhoneNumber
+		rec, found, err := s.lookupPayloadStaff(r.Context(), phone)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "payload login lookup failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
 		}
-		if claims.PhoneNumber != expectPhone {
-			// Unregistered phone numbers are BLOCKED pending admin approval.
+		if !found {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
 			return
 		}
-	} else {
-		phone := strings.TrimSpace(req.Phone)
-		pin := strings.TrimSpace(req.PIN)
-		if phone == "" || pin == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
-			return
-		}
+		s.issuePayloaderToken(w, r, rec)
+		return
+	}
 
-		expectPhone := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901110022"
-		}
-		expectPIN := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PIN"))
-		if expectPIN == "" {
-			expectPIN = "33333333"
-		}
-		if phone != expectPhone || pin != expectPIN {
+	if phone == "" || pin == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
+		return
+	}
+
+	rec, found, err := s.lookupPayloadStaff(r.Context(), phone)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "payload login lookup failed", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+		return
+	}
+	if found {
+		if !verifyPayloadSecret(rec.PasswordHash, pin) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 			return
 		}
+		s.issuePayloaderToken(w, r, rec)
+		return
 	}
+	if rec, ok := s.ssmrDemoPayloader(phone, pin); ok {
+		s.issuePayloaderToken(w, r, rec)
+		return
+	}
+	if s.staffLookup == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payload_lookup_not_configured"})
+		return
+	}
+	writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+}
 
+func (s *Service) lookupPayloadStaff(ctx context.Context, phone string) (PayloadStaffRecord, bool, error) {
+	if s.staffLookup == nil {
+		return PayloadStaffRecord{}, false, nil
+	}
+	return s.staffLookup(ctx, phone)
+}
+
+func verifyPayloadSecret(storedHash, secret string) bool {
+	storedHash = strings.TrimSpace(storedHash)
+	secret = strings.TrimSpace(secret)
+	if storedHash == "" || secret == "" {
+		return false
+	}
+	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
+		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
+	}
+	return false
+}
+
+func (s *Service) ssmrDemoPayloader(phone, pin string) (PayloadStaffRecord, bool) {
+	if !staffinvite.DemoScaffoldAllowed() {
+		return PayloadStaffRecord{}, false
+	}
+	expectPhone := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PHONE"))
+	if expectPhone == "" || phone != expectPhone {
+		return PayloadStaffRecord{}, false
+	}
+	expectPIN := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PIN"))
+	if expectPIN == "" || pin != expectPIN {
+		return PayloadStaffRecord{}, false
+	}
 	warehouseID := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_WAREHOUSE_ID"))
 	if warehouseID == "" {
 		warehouseID = strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID"))
@@ -81,34 +150,43 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 	if warehouseID == "" {
 		warehouseID = strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))
 	}
-	if warehouseID == "" {
-		if strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr") {
-			warehouseID = "ssmr-warehouse-1"
-		} else {
-			warehouseID = "warehouse-demo-1"
-		}
-	}
-	warehouseName := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_WAREHOUSE_NAME"))
-	if warehouseName == "" {
-		warehouseName = "PegasusX Demo Warehouse"
-	}
 	workerID := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_WORKER_ID"))
 	if workerID == "" {
 		workerID = "payloader-demo-1"
 	}
+	return PayloadStaffRecord{
+		UserID:      workerID,
+		Name:        "SSMR Demo Payloader",
+		Phone:       phone,
+		SupplierID:  s.seedSupplierID,
+		WarehouseID: warehouseID,
+	}, true
+}
+
+func (s *Service) issuePayloaderToken(w http.ResponseWriter, r *http.Request, rec PayloadStaffRecord) {
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return
 	}
-
+	supplierID := strings.TrimSpace(rec.SupplierID)
+	if supplierID == "" {
+		supplierID = s.seedSupplierID
+	}
+	workerID := strings.TrimSpace(rec.UserID)
+	warehouseID := strings.TrimSpace(rec.WarehouseID)
+	name := strings.TrimSpace(rec.Name)
+	if name == "" {
+		name = workerID
+	}
 	claims := auth.Claims{
 		Subject:      workerID,
 		Role:         auth.RolePayload,
-		SupplierID:   s.resolveSupplierScope(r.Context()),
+		SupplierID:   supplierID,
 		SupplierRole: auth.RoleWarehouseAdmin,
 		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   warehouseID,
 		IsConfigured: true,
+		PhoneNumber:  rec.Phone,
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
@@ -122,21 +200,18 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"token":          token,
-		"refresh_token":  refresh,
-		"worker_id":      workerID,
-		"supplier_id":    s.resolveSupplierScope(r.Context()),
-		"role":           string(auth.RolePayload),
-		"name":           "Demo Payloader",
-		"warehouse_id":   warehouseID,
-		"warehouse_name": warehouseName,
-		"warehouse_lat":  41.3111,
-		"warehouse_lng":  69.2797,
+		"token":         token,
+		"refresh_token": refresh,
+		"worker_id":     workerID,
+		"supplier_id":   supplierID,
+		"role":          string(auth.RolePayload),
+		"name":          name,
+		"warehouse_id":  warehouseID,
 	}
 	if fbToken, err := auth.MintCustomToken(r.Context(), workerID, map[string]interface{}{
 		"role":        string(auth.RolePayload),
 		"worker_id":   workerID,
-		"supplier_id": s.resolveSupplierScope(r.Context()),
+		"supplier_id": supplierID,
 	}); err != nil {
 		s.log.Warn("firebase custom token mint failed", "err", err)
 	} else if fbToken != "" {

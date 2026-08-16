@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
 
@@ -595,12 +596,26 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		staffID := "stf-" + uuid.NewString()[:8]
+		plainPin, err := generateOpsDriverPIN(4)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_generate_failed"})
+			return
+		}
+		pinHash, err := bcrypt.GenerateFromPassword([]byte(plainPin), bcrypt.DefaultCost)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_hash_failed"})
+			return
+		}
+		role := strings.TrimSpace(req.Role)
+		if role == "" {
+			role = "WAREHOUSE_STAFF"
+		}
 
 		if s.spannerClient != nil {
 			now := s.now().UTC()
 			m := spanner.Insert("SupplierUsers",
 				[]string{"UserId", "SupplierId", "Phone", "Name", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
-				[]any{staffID, s.resolveSupplierScope(r.Context()), strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), "password_hash", strings.TrimSpace(req.Role), warehouseIDFromRequest(r), true, now, now},
+				[]any{staffID, s.resolveSupplierScope(r.Context()), strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), string(pinHash), role, warehouseIDFromRequest(r), true, now, now},
 			)
 			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create staff", "err", err)
@@ -608,13 +623,13 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			row := portalStaff{StaffID: staffID, Name: req.Name, Phone: req.Phone, Role: req.Role}
+			row := portalStaff{StaffID: staffID, Name: req.Name, Phone: req.Phone, Role: role}
 			s.mu.Lock()
 			s.staff = append(s.staff, row)
 			s.mu.Unlock()
 		}
 
-		resp := map[string]any{"staff_id": staffID, "pin": "5678"}
+		resp := map[string]any{"staff_id": staffID, "pin": plainPin}
 		respBytes, _ := json.Marshal(resp)
 		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
 		idemCommitted = true

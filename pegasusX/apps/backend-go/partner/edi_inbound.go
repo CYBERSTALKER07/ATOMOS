@@ -508,7 +508,7 @@ func (w *EdiInboundWorker) ingestPRICAT(ctx context.Context, cfg SftpConfig, rem
 		for _, ln := range msg.Lines {
 			cur := ln.Currency
 			if cur == "" {
-				cur = "UZS"
+				cur = currencyFromTenantOrEmpty(cfg.TenantType, cfg.TenantID)
 			}
 			items = append(items, PriceUpsertItem{
 				ExternalID: ln.SKU, PriceMinor: ln.PriceMinor, Currency: cur,

@@ -164,6 +164,25 @@ func defaultFiscalProvider() FiscalProvider {
 	return ProviderFromEnv()
 }
 
+// requireFiscalPack fails closed when the shipped pack cannot fiscalize (GS-M2).
+// Pack fiscal_adapter is the law (PEPPOL/planned → unimplemented). Cell runtime
+// PEGASUS/FAKE is still allowed outside production — that disagreement keeps
+// checkout_reads_this false.
+func (s *Service) requireFiscalPack(ctx context.Context, supplierID string) error {
+	pack, err := auth.FiscalPackFromContext(ctx, supplierID)
+	if err != nil {
+		return err
+	}
+	if _, err := auth.PackFiscalAdapter(pack); err != nil {
+		return err
+	}
+	runtime := FiscalProviderPegasus
+	if s != nil {
+		runtime = s.ProviderName()
+	}
+	return auth.AssertFiscalRuntime(pack, runtime)
+}
+
 func (s *Service) fiscalProvider() FiscalProvider {
 	if s != nil && s.ofd != nil {
 		return s.ofd
@@ -204,7 +223,7 @@ func (s *Service) ProviderName() string {
 
 // newFiscalPendingRow builds a PENDING supplier-leg attempt for capture txn.
 // amountMinor is the fiscalized cash/card amount (received cash or order total).
-func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptID string, amountMinor int64) FiscalReceiptRow {
+func (s *Service) newFiscalPendingRow(ctx context.Context, orderRecord Order, paymentMethod, attemptID string, amountMinor int64) FiscalReceiptRow {
 	now := time.Now().UTC()
 	if s != nil && s.now != nil {
 		now = s.now().UTC()
@@ -218,7 +237,9 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 	}
 	currency := strings.TrimSpace(orderRecord.Currency)
 	if currency == "" {
-		currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			currency = cur
+		}
 	}
 	if amountMinor < 0 {
 		amountMinor = 0
@@ -248,7 +269,9 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 func emitCashVariance(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, driverID string, expected, received int64, note string) error {
 	currency := strings.TrimSpace(orderRecord.Currency)
 	if currency == "" {
-		currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			currency = cur
+		}
 	}
 	shortfall := expected - received
 	if shortfall < 0 {
@@ -470,17 +493,25 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		LineItems:     orderRecord.LineItems,
 	}
 	if req.Currency == "" {
-		req.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			req.Currency = cur
+		}
 	}
 
-	ofdCtx, cancel := context.WithTimeout(ctx, FiscalOFDTimeout)
-	defer cancel()
-	result, provErr := s.fiscalProvider().CreateReceipt(ofdCtx, req)
-	if provErr == nil && ofdCtx.Err() != nil {
-		provErr = ofdCtx.Err()
-	}
-	if provErr != nil && errors.Is(ofdCtx.Err(), context.DeadlineExceeded) {
-		provErr = fmt.Errorf("ofd_timeout: %w", ofdCtx.Err())
+	var result FiscalCreateResult
+	var provErr error
+	if packErr := s.requireFiscalPack(ctx, orderRecord.SupplierID); packErr != nil {
+		provErr = packErr
+	} else {
+		ofdCtx, cancel := context.WithTimeout(ctx, FiscalOFDTimeout)
+		result, provErr = s.fiscalProvider().CreateReceipt(ofdCtx, req)
+		if provErr == nil && ofdCtx.Err() != nil {
+			provErr = ofdCtx.Err()
+		}
+		if provErr != nil && errors.Is(ofdCtx.Err(), context.DeadlineExceeded) {
+			provErr = fmt.Errorf("ofd_timeout: %w", ofdCtx.Err())
+		}
+		cancel()
 	}
 
 	now := s.now().UTC()
@@ -501,7 +532,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 
 	if provErr != nil {
 		row.Status = FiscalAttemptFailed
-		if errors.Is(ofdCtx.Err(), context.DeadlineExceeded) || strings.Contains(provErr.Error(), "ofd_timeout") {
+		if strings.Contains(provErr.Error(), "ofd_timeout") || errors.Is(provErr, context.DeadlineExceeded) {
 			row.ErrorCode = "OFD_TIMEOUT"
 		} else {
 			row.ErrorCode = "OFD_ERROR"
@@ -641,6 +672,9 @@ func (s *Service) RetryFiscal(ctx context.Context, claims auth.Claims, orderID s
 	if orderRecord.Status != StatusFiscalFailed {
 		return CollectCashResponse{}, ErrFiscalNotFailed
 	}
+	if err := s.requireFiscalPack(ctx, orderRecord.SupplierID); err != nil {
+		return CollectCashResponse{}, err
+	}
 	if claims.Role == auth.RoleDriver {
 		if strings.TrimSpace(orderRecord.DriverID) == "" || strings.TrimSpace(orderRecord.DriverID) != strings.TrimSpace(claims.Subject) {
 			return CollectCashResponse{}, ErrOrderForbidden
@@ -665,7 +699,7 @@ func (s *Service) RetryFiscal(ctx context.Context, claims auth.Claims, orderID s
 		}
 	}
 	attemptID := s.newID()
-	row := s.newFiscalPendingRow(orderRecord, payMethod, attemptID, amountMinor)
+	row := s.newFiscalPendingRow(ctx, orderRecord, payMethod, attemptID, amountMinor)
 	previousStatus := orderRecord.Status
 	orderRecord.Status = StatusFiscalizing
 	orderRecord.FiscalStatus = FiscalStatusPending
@@ -705,9 +739,9 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 		return nil
 	}
 
-	countryCode := "UZ"
-	if orderRecord.Currency == "KZT" {
-		countryCode = "KZ"
+	countryCode, err := auth.CountryFromContext(ctx, orderRecord.SupplierID)
+	if err != nil {
+		return err
 	}
 
 	regime, found, err := s.taxSvc.Repo().GetActiveRegime(ctx, txn, countryCode, time.Now().UTC())
@@ -812,7 +846,9 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 		UpdatedAt:     now,
 	}
 	if row.Currency == "" {
-		row.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			row.Currency = cur
+		}
 	}
 
 	previousStatus := orderRecord.Status

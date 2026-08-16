@@ -15,7 +15,7 @@ final class APIClient {
     // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42).
     // PEGASUS_DEV_HOST remains as a legacy fallback for existing schemes.
     // for backend reachability over Wi-Fi.
-    var baseURL: String = {
+    var bootstrapURL: String = {
         let env = ProcessInfo.processInfo.environment
         let raw = (env["LAB_DEV_HOST"] ?? env["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
@@ -24,13 +24,21 @@ final class APIClient {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    var baseURL: String = {
+    var bootstrapURL: String = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "https://api.pegasusx.app" }
         return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
     }()
     #endif
+
+    var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: bootstrapURL,
+            homeCell: CellApi.homeCellFromJwt(authToken),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -49,8 +57,11 @@ final class APIClient {
         set {
             if let newValue {
                 KeychainHelper.save(key: "auth_token", value: newValue)
+                CellTokenCache.token = newValue
             } else {
                 KeychainHelper.delete(key: "auth_token")
+                CellTokenCache.token = ""
+                MarketPackStore.clear()
             }
         }
     }
@@ -470,6 +481,10 @@ final class APIClient {
 
     func getCreditProfile() async throws -> CreditProfile {
         try await get(path: "/v1/retailer/credit-profile")
+    }
+
+    func getLoyaltyTier() async throws -> LoyaltyTierView {
+        try await get(path: "/v1/retailer/loyalty/tier")
     }
 
     func getCreditRelationships() async throws -> [CreditRelationshipWire] {

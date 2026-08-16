@@ -52,7 +52,7 @@ export default function FactoryLoginPage() {
     try {
       const phone = `${dialCode}${phoneLocal}`;
       const idToken = await verifyPhoneOtp(otpCode);
-      const res = await fetch(`${factoryApiBaseUrl}/v1/auth/factory/login`, {
+      const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken }),

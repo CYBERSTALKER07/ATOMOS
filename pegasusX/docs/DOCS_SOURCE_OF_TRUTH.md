@@ -1,6 +1,6 @@
 # Documentation source of truth (living vs frozen)
 
-**Date:** 2026-08-12  
+**Date:** 2026-08-12 (goal rows retargeted 2026-08-16)  
 **Rule:** Prefer the living SoTs below. Historical reports keep evidence value but must not drive planning without a code re-verify.
 
 **Agent honesty:** Status and cloud-readiness answers come from **current code**, not these docs. Always-on rules: `honest-code-gate` skill + `.cursor/rules/{honesty-code-is-truth,production-cloud-gate,phased-verify-impact}.mdc`. Matrix **"Wired"** and this file are not permission to wire cloud.
@@ -11,13 +11,15 @@
 
 | Doc | Role |
 |-----|------|
+| [`.agents/memory/GOAL.md`](../../.agents/memory/GOAL.md) | **Final goal** (load every session) |
+| [`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md) | Destination program: register + pack + cells (GS-A/T/M/C/I/R/P) |
+| [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | Destination program: local-first matching + pack PSP (GS-L/K, W1–W26) |
 | [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) | Ordered residuals R0–R6 after W0–W5 |
-| [`PROD_ECOSYSTEM_GOAL.md`](./PROD_ECOSYSTEM_GOAL.md) | North-star product goal |
+| [`PROD_ECOSYSTEM_GOAL.md`](./PROD_ECOSYSTEM_GOAL.md) | Class A coverage / “prod ready” definition — **not** the destination |
 | [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) | Evidence backlog + Part 5 re-verify notes |
 | [`session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md) | Docs↔code↔role×platform alignment |
 | [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) | Routes + client nav inventory |
 | [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md) | Docs vs code + **phased modular plan** (P0–P16). Evidence only — **re-verify in code**; not a cloud go-live certificate |
-| [`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md) | Global register + market packs + cells; **GS-A** session/JWT pack |
 | [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md) | Enterprise backend + infra plan (4-agent audit) |
 | [`ROLE_ROW_PARITY_MATRIX.md`](./ROLE_ROW_PARITY_MATRIX.md) | Role×platform parity matrix |
 | [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) | Platform audit (R0 banner + §8 often current; frozen §0/§3/§5 need care) |

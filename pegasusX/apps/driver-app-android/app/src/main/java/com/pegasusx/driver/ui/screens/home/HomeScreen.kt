@@ -96,6 +96,13 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.pegasusx.driver.R
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PackBanner
+import com.pegasusx.driver.BuildConfig
+import com.pegasusx.driver.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeScreen(
@@ -115,6 +122,7 @@ fun HomeScreen(
     var pulseEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
     var showRescueSheet by remember { mutableStateOf(false) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
 
     if (showRescueSheet) {
         RequestRescueSheet(
@@ -124,6 +132,9 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
         pulseLoading = true
         try {
             val response = api.getPulse()
@@ -173,6 +184,7 @@ fun HomeScreen(
             .padding(horizontal = PegasusSpacing.s16)
             .padding(bottom = 100.dp)
     ) {
+        PackBanner(pack, modifier = Modifier.padding(top = PegasusSpacing.s16))
         // MARK: - Greeting + Notification Bell
         StaggeredAppear(index = 0) {
             Row(

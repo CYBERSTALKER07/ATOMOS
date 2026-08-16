@@ -71,7 +71,7 @@ func (s *PolicyService) HandleGetCreditProgram(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if !found {
-		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: "Asia/Tashkent"})
+		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: packCreditTimezone(r.Context(), sid)})
 		return
 	}
 	writeJSON(w, http.StatusOK, p)

@@ -7,6 +7,7 @@ import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { apiFetch, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
+import { SessionPackChip } from './SessionPackChip';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import NotificationPanel from './NotificationPanel';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -325,6 +326,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
           </div>
 
           <div className="desk-topbar-right">
+            <SessionPackChip />
             <div className="desk-live-indicator hidden lg:inline-flex">
               <span className="desk-live-dot" />
               Factory network live

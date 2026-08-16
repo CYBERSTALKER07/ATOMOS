@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
@@ -266,6 +267,9 @@ func verifyFactoryStaffSecret(storedHash, secret string) bool {
 }
 
 func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {
+	if !staffinvite.DemoScaffoldAllowed() {
+		return false
+	}
 	if !s.verifyFactoryDemoPhone(phone) {
 		return false
 	}
@@ -274,15 +278,18 @@ func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {
 		expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
 	}
 	if expectSecret == "" {
-		expectSecret = "1234"
+		return false
 	}
 	return secret == expectSecret
 }
 
 func (s *Service) verifyFactoryDemoPhone(phone string) bool {
+	if !staffinvite.DemoScaffoldAllowed() {
+		return false
+	}
 	expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
 	if expectPhone == "" {
-		expectPhone = "+998901000099"
+		return false
 	}
 	return phone == expectPhone
 }

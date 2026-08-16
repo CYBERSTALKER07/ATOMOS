@@ -89,45 +89,45 @@ variable "kafka_bootstrap_servers" {
 }
 
 variable "kafka_topic_main" {
-  description = "Default Kafka topic used by backend-go outbox relay for order and state events."
+  description = "Default Kafka topic used by backend-go outbox relay. Empty derives cell-<cell_id>.events.orders."
   type        = string
-  default     = "ssmr.events.orders"
+  default     = ""
 }
 
 variable "kafka_topic_spatial" {
-  description = "Kafka topic reserved for spatial or H3 fanout workloads."
+  description = "Kafka topic reserved for spatial or H3 fanout. Empty derives cell-<cell_id>.events.spatial."
   type        = string
-  default     = "ssmr.events.spatial"
+  default     = ""
 }
 
 variable "kafka_topic_realtime" {
-  description = "Kafka topic reserved for realtime socket and fleet fanout."
+  description = "Kafka topic reserved for realtime socket and fleet fanout. Empty derives cell-<cell_id>.events.realtime."
   type        = string
-  default     = "ssmr.events.realtime"
+  default     = ""
 }
 
 variable "kafka_topic_webhooks" {
-  description = "Kafka topic reserved for outbound webhook delivery work."
+  description = "Kafka topic reserved for outbound webhook delivery. Empty derives cell-<cell_id>.events.webhooks."
   type        = string
-  default     = "ssmr.events.webhooks"
+  default     = ""
 }
 
 variable "kafka_topic_main_dlq" {
-  description = "Kafka topic for main-topic consumer / outbox poison messages."
+  description = "Kafka topic for main-topic consumer / outbox poison messages. Empty derives cell-<cell_id>.events.orders-dlq."
   type        = string
-  default     = "ssmr.events.orders-dlq"
+  default     = ""
 }
 
 variable "kafka_topic_freeze_locks" {
-  description = "Kafka topic for freeze-lock fanout."
+  description = "Kafka topic for freeze-lock fanout. Empty derives cell-<cell_id>.events.freeze-locks."
   type        = string
-  default     = "pegasusx-freeze-locks"
+  default     = ""
 }
 
 variable "kafka_topic_inventory_import" {
-  description = "Kafka topic for inventory import jobs."
+  description = "Kafka topic for inventory import jobs. Empty derives cell-<cell_id>.events.inventory-import."
   type        = string
-  default     = "pegasusx-inventory-import"
+  default     = ""
 }
 
 variable "firebase_project_id" {

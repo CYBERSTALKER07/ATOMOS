@@ -45,7 +45,7 @@ func (s *Service) VerifyHandshake(ctx context.Context, claims auth.Claims, req V
 	}
 
 	// Geofence (Haversine) check
-	distanceM, err := validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	distanceM, err := validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return VerifyHandshakeResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
@@ -97,7 +97,7 @@ func (s *Service) UpdateOrderDuringDelivery(ctx context.Context, claims auth.Cla
 	}
 
 	// Geofence check (validates spoofing even when the mutator is not implemented).
-	_, err = validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	_, err = validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return UpdateOrderDuringDeliveryResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}

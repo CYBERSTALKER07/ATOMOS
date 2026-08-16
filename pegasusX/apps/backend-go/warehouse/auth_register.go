@@ -10,22 +10,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 )
 
 // HandleWarehouseRegister serves POST /v1/auth/warehouse/register
 // Accepts legacy {name, phone, password} and portal {account, id_token} shapes.
 func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request) {
-	if s.spannerClient == nil {
-		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
-		return
-	}
-
 	var req struct {
 		Name                string `json:"name"`
 		Phone               string `json:"phone"`
 		Password            string `json:"password"`
 		AssignedWarehouseID string `json:"assigned_warehouse_id"`
+		InviteToken         string `json:"invite_token"`
 		IDToken             string `json:"id_token"`
 		Account             *struct {
 			LegalName   string `json:"legalName"`
@@ -78,24 +74,33 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	passwordHash := password
-	if passwordHash == "" {
-		seed := uuid.NewString()
-		hashed, err := bcrypt.GenerateFromPassword([]byte(seed), bcrypt.DefaultCost)
-		if err != nil {
-			web.JSONError(w, "Failed to register warehouse user", http.StatusInternalServerError)
-			return
-		}
-		passwordHash = string(hashed)
-	} else if strings.HasPrefix(passwordHash, "$2a$") || strings.HasPrefix(passwordHash, "$2b$") || strings.HasPrefix(passwordHash, "$2y$") {
-		// already hashed
-	} else {
-		hashed, err := bcrypt.GenerateFromPassword([]byte(passwordHash), bcrypt.DefaultCost)
-		if err != nil {
-			web.JSONError(w, "Failed to register warehouse user", http.StatusInternalServerError)
-			return
-		}
-		passwordHash = string(hashed)
+	admin, _ := staffinvite.ParseBearer(r.Header.Get("Authorization"), s.jwtSecret)
+	scope, err := staffinvite.ResolveRegister(staffinvite.ResolveOpts{
+		Secret:         s.jwtSecret,
+		InviteToken:    req.InviteToken,
+		WantRole:       staffinvite.RoleWarehouse,
+		RequestedNode:  warehouseID,
+		SeedSupplierID: s.seedSupplierID,
+		Admin:          admin,
+		Now:            s.now(),
+		NodeOwned:      staffinvite.SpannerNodeOwned(s.spannerClient),
+		Ctx:            r.Context(),
+	})
+	if err != nil {
+		staffinvite.WriteError(w, err)
+		return
+	}
+	warehouseID = scope.NodeID
+	supplierID := scope.SupplierID
+
+	passwordHash, err := staffinvite.HashPassword(password)
+	if err != nil {
+		staffinvite.WriteError(w, err)
+		return
+	}
+	if s.spannerClient == nil {
+		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
+		return
 	}
 
 	userID := "usr-" + uuid.NewString()[:8]
@@ -108,7 +113,7 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 
 	m := spanner.Insert("SupplierUsers",
 		[]string{"UserId", "SupplierId", "Name", "Phone", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
-		[]any{userID, s.resolveSupplierScope(r.Context()), name, phone, passwordHash, "WAREHOUSE", assignedWarehouse, true, now, now},
+		[]any{userID, supplierID, name, phone, passwordHash, "WAREHOUSE", assignedWarehouse, true, now, now},
 	)
 	muts := []*spanner.Mutation{m}
 	if warehouseID != "" && country != "" {
@@ -134,7 +139,7 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 	jwtClaims := auth.Claims{
 		Subject:      userID,
 		Role:         auth.RoleWarehouse,
-		SupplierID:   s.resolveSupplierScope(r.Context()),
+		SupplierID:   supplierID,
 		SupplierRole: auth.RoleWarehouse,
 		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   warehouseID,

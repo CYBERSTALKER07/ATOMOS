@@ -41,6 +41,8 @@ type CheckoutPreviewResponse struct {
 	OrderLineMaxQuantity       *int64            `json:"order_line_max_quantity,omitempty"`
 	DeliveryFeeMinor           int64             `json:"delivery_fee_minor,omitempty"`
 	DeliveryDistanceKm         float64           `json:"delivery_distance_km,omitempty"`
+	Currency                   string            `json:"currency,omitempty"`
+	MarketCode                 string            `json:"market_code,omitempty"`
 }
 
 // HandleCheckoutPreview serves POST /v1/checkout/preview.
@@ -90,6 +92,10 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
 		case errors.Is(err, ErrServiceabilityUnavailable):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
+		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch):
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
 		default:
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}
@@ -115,6 +121,10 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	}
 	if len(req.Items) == 0 {
 		return CheckoutPreviewResponse{}, errors.New("items must not be empty")
+	}
+	pack, err := s.applyCheckoutPack(ctx, &req)
+	if err != nil {
+		return CheckoutPreviewResponse{}, err
 	}
 
 	lat, lng, err := s.resolveRetailerCoordinates(ctx, retailerID, req.Latitude, req.Longitude)
@@ -142,7 +152,11 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: no_eligible_warehouse", ErrZoneMiss)
 	}
 
-	resp := basePreviewResponse(CheckoutPreviewResponse{OK: true})
+	resp := basePreviewResponse(CheckoutPreviewResponse{
+		OK:         true,
+		Currency:   pack.CurrencyCode,
+		MarketCode: pack.Code,
+	})
 	whPolicy, policyErr := LoadWarehouseOpsPolicy(ctx, s.spannerClient, warehouseID)
 	if policyErr == nil {
 		resp.ShowStockCounts = whPolicy.ShowStockCountsToRetailers
@@ -163,9 +177,9 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 				Blocked:                    true,
 				Code:                       ErrOrderAcceptanceClosed.Error(),
 				Message:                    closedMsg,
-				ShowStockCounts:              resp.ShowStockCounts,
-				DefaultOutOfStockPolicy:      resp.DefaultOutOfStockPolicy,
-				OrderAcceptanceOpen:          false,
+				ShowStockCounts:            resp.ShowStockCounts,
+				DefaultOutOfStockPolicy:    resp.DefaultOutOfStockPolicy,
+				OrderAcceptanceOpen:        false,
 				OrderAcceptanceWindowLabel: label,
 				NextOrderAcceptanceAt:      resp.NextOrderAcceptanceAt,
 				PreorderMinLeadDays:        resp.PreorderMinLeadDays,
@@ -183,20 +197,20 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		}
 		if len(lineErrs) > 0 {
 			return basePreviewResponse(CheckoutPreviewResponse{
-				OK:                    false,
-				Blocked:               true,
-				Code:                  ErrLineQuantityOutOfRange.Error(),
-				Message:               "line quantity policy violated",
-				LineErrors:            lineErrs,
-				ShowStockCounts:       resp.ShowStockCounts,
+				OK:                      false,
+				Blocked:                 true,
+				Code:                    ErrLineQuantityOutOfRange.Error(),
+				Message:                 "line quantity policy violated",
+				LineErrors:              lineErrs,
+				ShowStockCounts:         resp.ShowStockCounts,
 				DefaultOutOfStockPolicy: resp.DefaultOutOfStockPolicy,
-				OrderAcceptanceOpen:   true,
-				PreorderMinLeadDays:   resp.PreorderMinLeadDays,
-				PreorderMaxLeadDays:   resp.PreorderMaxLeadDays,
-				OrderLineMinQuantity:  resp.OrderLineMinQuantity,
-				OrderLineMaxQuantity:  resp.OrderLineMaxQuantity,
-				DeliveryFeeMinor:      resp.DeliveryFeeMinor,
-				DeliveryDistanceKm:    resp.DeliveryDistanceKm,
+				OrderAcceptanceOpen:     true,
+				PreorderMinLeadDays:     resp.PreorderMinLeadDays,
+				PreorderMaxLeadDays:     resp.PreorderMaxLeadDays,
+				OrderLineMinQuantity:    resp.OrderLineMinQuantity,
+				OrderLineMaxQuantity:    resp.OrderLineMaxQuantity,
+				DeliveryFeeMinor:        resp.DeliveryFeeMinor,
+				DeliveryDistanceKm:      resp.DeliveryDistanceKm,
 			}), nil
 		}
 

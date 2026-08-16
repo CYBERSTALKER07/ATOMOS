@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-client';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { getFirebaseIdToken, firebaseSignOut } from './firebase';
 import { runFactorySessionReconcile } from './session-reconcile';
 
-export const factoryApiBaseUrl = (
+const BOOTSTRAP = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_FACTORY_BACKEND_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   'http://localhost:8180'
 ).replace(/\/$/, '');
-const API = factoryApiBaseUrl;
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function factoryApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readTokenFromCookie()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 
 const FACTORY_JWT_COOKIE = 'pegasus_factory_jwt';
 const FACTORY_REFRESH_COOKIE = 'pegasus_factory_refresh';
@@ -79,7 +88,7 @@ export async function refreshFactorySession(): Promise<{ ok: boolean; isConfigur
   const refresh = readRefreshFromCookie();
   if (!refresh) return { ok: false };
   try {
-    const res = await fetch(`${API}/v1/auth/factory/refresh`, {
+    const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -114,7 +123,7 @@ async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/factory/refresh`, {
+    const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -141,7 +150,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...(init?.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${factoryApiBaseUrl()}${path}`, { ...init, headers });
 
   if (res.status === 401) {
     if (!refreshInFlight) {
@@ -153,7 +162,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         ...headers,
         Authorization: `Bearer ${newToken}`,
       };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      return fetch(`${factoryApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
     }
     document.cookie = `${FACTORY_JWT_COOKIE}=; Max-Age=0; path=/`;
     document.cookie = `${FACTORY_REFRESH_COOKIE}=; Max-Age=0; path=/`;
@@ -243,7 +252,7 @@ export function subscribeFactoryWS(options: {
       return;
     }
 
-    const wsBase = toWSBaseUrl(API);
+    const wsBase = toWSBaseUrl(factoryApiBaseUrl());
     socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
 
     socket.onopen = () => {

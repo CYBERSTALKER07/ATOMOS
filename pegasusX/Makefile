@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
 
 help:
 	@echo "pegasusX make targets"
@@ -67,9 +67,18 @@ help:
 	@echo "  backend-build         build all Go binaries"
 	@echo "  supplier-portal-dev   run supplier portal Next.js dev server"
 	@echo "  marketing-site-dev    run PegasusX marketing site (port 3004)"
-	@echo "  terraform-init        initialize terraform working dir"
+	@echo "  terraform-init        initialize terraform with backend-ssmr.hcl (live prefix)"
 	@echo "  terraform-plan        preview infra changes"
 	@echo "  terraform-apply       apply infra changes"
+	@echo "  cell-backend-guard    GS-C: prove EU backend prefix cannot open pegasusx/ssmr"
+	@echo "  cell-plan             GS-C2: terraform plan for CELL=uz|eu (no apply, no live state)"
+	@echo "  cell-project-plan     GS-C3: plan project pegasusx-cell-eu (no apply)"
+	@echo "  cell-migrate          GS-C3: EU Spanner DDL dry-run (no UZ restore)"
+	@echo "  cell-isolation-proof  GS-C4: write isolation evidence (no apply)"
+	@echo "  global-plan           GS-C5: plan global DNS/AR (no apply, no live state)"
+	@echo "  cell-api-proof        GS-C5: write home_cell API URL evidence (no apply)"
+	@echo "  pack-client-proof     GS-R: session pack bind + native pin evidence"
+	@echo "  partner-dialect-proof GS-P: pack-aware partner dialect gates"
 
 infra-up:
 	docker compose -f infra/docker-compose.yml up -d
@@ -303,10 +312,40 @@ marketing-site-dev:
 	cd apps/marketing-site && pnpm dev
 
 terraform-init:
-	cd infra/terraform && terraform init
+	cd infra/terraform && terraform init -backend-config=backend-ssmr.hcl
 
 terraform-plan:
 	cd infra/terraform && terraform plan
 
 terraform-apply:
 	cd infra/terraform && terraform apply
+
+cell-backend-guard:
+	bash scripts/assert_cell_backend.sh
+
+cell-plan:
+	@test -n "$(CELL)" || (echo "usage: make cell-plan CELL=uz|eu" >&2; exit 1)
+	bash scripts/cell_plan.sh "$(CELL)"
+
+cell-project-plan:
+	@test -n "$(CELL)" || (echo "usage: make cell-project-plan CELL=eu" >&2; exit 1)
+	bash scripts/cell_project_plan.sh "$(CELL)"
+
+cell-migrate:
+	@test -n "$(CELL)" || (echo "usage: make cell-migrate CELL=eu" >&2; exit 1)
+	bash scripts/cell_migrate.sh "$(CELL)"
+
+cell-isolation-proof:
+	bash scripts/cell_isolation_proof.sh
+
+global-plan:
+	bash scripts/global_plan.sh
+
+cell-api-proof:
+	bash scripts/cell_api_proof.sh
+
+pack-client-proof:
+	bash scripts/pack_client_proof.sh
+
+partner-dialect-proof:
+	bash scripts/partner_dialect_proof.sh

@@ -13,8 +13,8 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
@@ -114,6 +114,8 @@ type supplierProfileResponse struct {
 	PaymentAcceptor  string   `json:"payment_acceptor"`
 	Gln              string   `json:"gln,omitempty"`
 	Gs1CompanyPrefix string   `json:"gs1_company_prefix,omitempty"`
+	MarketCode       string   `json:"market_code"`
+	HomeCell         string   `json:"home_cell"`
 	UpdatedAt        string   `json:"updated_at"`
 }
 
@@ -125,6 +127,8 @@ type supplierProfileUpdateRequest struct {
 	Categories       []string `json:"categories,omitempty"`
 	Gln              *string  `json:"gln,omitempty"`
 	Gs1CompanyPrefix *string  `json:"gs1_company_prefix,omitempty"`
+	MarketCode       *string  `json:"market_code,omitempty"`
+	HomeCell         *string  `json:"home_cell,omitempty"`
 }
 
 type supplierDashboardResponse struct {
@@ -163,25 +167,25 @@ type supplierPricingRuleUpdateRequest struct {
 }
 
 type topologyWarehouseInput struct {
-	WarehouseID           string                    `json:"warehouse_id,omitempty"`
-	Name                  string                    `json:"name"`
-	Lat                   float64                   `json:"lat"`
-	Lng                   float64                   `json:"lng"`
-	Address               string                    `json:"address,omitempty"`
-	PlaceID               string                    `json:"place_id,omitempty"`
-	CoverageRadiusKm      *float64                  `json:"coverage_radius_km,omitempty"`
-	IsActive              *bool                     `json:"is_active,omitempty"`
-	IsOnShift             *bool                     `json:"is_on_shift,omitempty"`
-	TransferMode          string                    `json:"transfer_mode,omitempty"`
-	CoLocateWithFactoryID string                    `json:"co_locate_with_factory_id,omitempty"`
-	PrimaryFactoryID      string                    `json:"primary_factory_id,omitempty"`
-	SecondaryFactoryID    string                    `json:"secondary_factory_id,omitempty"`
-	AssignedFactoryIDs    []string                  `json:"assigned_factory_ids,omitempty"`
-	CountryCode           string                    `json:"country_code,omitempty"`
-	CoverageCities        []order.CoverageCity      `json:"coverage_cities,omitempty"`
+	WarehouseID             string                  `json:"warehouse_id,omitempty"`
+	Name                    string                  `json:"name"`
+	Lat                     float64                 `json:"lat"`
+	Lng                     float64                 `json:"lng"`
+	Address                 string                  `json:"address,omitempty"`
+	PlaceID                 string                  `json:"place_id,omitempty"`
+	CoverageRadiusKm        *float64                `json:"coverage_radius_km,omitempty"`
+	IsActive                *bool                   `json:"is_active,omitempty"`
+	IsOnShift               *bool                   `json:"is_on_shift,omitempty"`
+	TransferMode            string                  `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID   string                  `json:"co_locate_with_factory_id,omitempty"`
+	PrimaryFactoryID        string                  `json:"primary_factory_id,omitempty"`
+	SecondaryFactoryID      string                  `json:"secondary_factory_id,omitempty"`
+	AssignedFactoryIDs      []string                `json:"assigned_factory_ids,omitempty"`
+	CountryCode             string                  `json:"country_code,omitempty"`
+	CoverageCities          []order.CoverageCity    `json:"coverage_cities,omitempty"`
 	DefaultOutOfStockPolicy string                  `json:"default_out_of_stock_policy,omitempty"`
-	OperatingSchedule     json.RawMessage           `json:"operating_schedule,omitempty"`
-	InitialInventory      []topologyInventorySeed   `json:"initial_inventory,omitempty"`
+	OperatingSchedule       json.RawMessage         `json:"operating_schedule,omitempty"`
+	InitialInventory        []topologyInventorySeed `json:"initial_inventory,omitempty"`
 }
 
 type topologyInventorySeed struct {
@@ -357,6 +361,8 @@ func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileR
 		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
 		Gln:              current.Gln,
 		Gs1CompanyPrefix: current.Gs1CompanyPrefix,
+		MarketCode:       current.MarketCode,
+		HomeCell:         current.HomeCell,
 		UpdatedAt:        updated,
 	}
 }
@@ -427,6 +433,26 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		current.Gs1CompanyPrefix = prefix
+	}
+	if req.MarketCode != nil {
+		code := auth.NormalizeMarketCode(*req.MarketCode)
+		if code == "" {
+			current.MarketCode = ""
+			current.HomeCell = ""
+		} else if _, ok := auth.ResolveMarketPack(code); !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown_market", "code": code})
+			return
+		} else {
+			current.MarketCode = code
+			if req.HomeCell == nil && strings.TrimSpace(current.HomeCell) == "" {
+				if pack, ok := auth.ResolveMarketPack(code); ok {
+					current.HomeCell = pack.HomeCell
+				}
+			}
+		}
+	}
+	if req.HomeCell != nil {
+		current.HomeCell = strings.ToLower(strings.TrimSpace(*req.HomeCell))
 	}
 	now := s.now()
 	current.UpdatedAt = now

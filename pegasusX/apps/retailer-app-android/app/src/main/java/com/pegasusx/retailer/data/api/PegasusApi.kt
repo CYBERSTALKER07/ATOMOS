@@ -18,6 +18,8 @@ import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.CreditProfile
+import com.pegasusx.retailer.data.model.LoyaltyLedgerResponse
+import com.pegasusx.retailer.data.model.LoyaltyTierView
 import com.pegasusx.retailer.data.model.RetailerAIPredictionsResponse
 import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
@@ -195,6 +197,12 @@ interface PegasusApi {
 
     @GET("/v1/retailer/credit-profile")
     suspend fun getCreditProfile(): CreditProfile
+
+    @GET("/v1/retailer/loyalty/tier")
+    suspend fun getLoyaltyTier(): LoyaltyTierView
+
+    @GET("/v1/retailer/loyalty/ledger")
+    suspend fun getLoyaltyLedger(): LoyaltyLedgerResponse
 
     @GET("/v1/retailer/credit-relationships")
     suspend fun getCreditRelationships(): JsonElement

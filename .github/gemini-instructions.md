@@ -14,4 +14,5 @@ This file is the Gemini counterpart to `.github/copilot-instructions.md`.
 Engineering doctrine (handler shape, outbox, role rows): inherit `.github/copilot-instructions.md` **after** this override, but **never** treat its "Current runtime sync" / additive notes as proof the product is ready.
 
 Always-on Copilot instruction: `.github/instructions/honest-code-gate.instructions.md`.
+Retrieval: `.github/instructions/graph-retrieval-memory.instructions.md` + `.agents/memory/WORKSPACE.md`.
 Canonical docs map: `pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md` (re-verify in code).

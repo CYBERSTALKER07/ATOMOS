@@ -221,6 +221,20 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun postPlanningPullMatrix(idempotencyKey: String): Response<PullMatrixResponse> =
         api.postPlanningPullMatrix(idempotencyKey)
 
+    suspend fun postPlanningPredictivePush(idempotencyKey: String): Response<PredictivePushResponse> =
+        api.postPlanningPredictivePush(idempotencyKey)
+
+    suspend fun getLoyaltyProgram(): Response<LoyaltyProgram> = api.getLoyaltyProgram()
+
+    suspend fun patchLoyaltyProgram(body: LoyaltyProgram, idempotencyKey: String): Response<LoyaltyProgram> =
+        api.patchLoyaltyProgram(body, idempotencyKey)
+
+    suspend fun resolveEntity(body: EntityResolutionResolveRequest): Response<EntityResolutionResolveResponse> =
+        api.resolveEntity(body)
+
+    suspend fun explainEntity(body: EntityResolutionExplainRequest): Response<EntityResolutionExplainResponse> =
+        api.explainEntity(body)
+
     suspend fun postPlanningKillSwitch(body: KillSwitchRequest, idempotencyKey: String): Response<KillSwitchResponse> =
         api.postPlanningKillSwitch(body, idempotencyKey)
 

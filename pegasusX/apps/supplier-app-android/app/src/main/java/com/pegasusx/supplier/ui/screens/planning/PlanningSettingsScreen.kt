@@ -195,7 +195,7 @@ private fun FactoryPlanningOpsCard(ops: SupplierOperationsRepository) {
         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.padding(PegasusSpacing.lg)) {
             SupplierSectionTitle("Factory network ops")
             Text(
-                "Mode, pull-matrix, kill-switch. Pull-matrix 409 if FACTORY_PLANNING_ENABLED is off.",
+                "Mode, pull-matrix, predictive-push, kill-switch. Pull-matrix and predictive-push 409 if FACTORY_PLANNING_ENABLED is off.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -238,6 +238,23 @@ private fun FactoryPlanningOpsCard(ops: SupplierOperationsRepository) {
                 },
                 enabled = !busy,
             ) { Text("Run pull-matrix") }
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        val resp = ops.postPlanningPredictivePush(
+                            SupplierIdempotencyKeys.planningPredictivePush(SupplierIdempotencyKeys.supplierScopeId()),
+                        )
+                        status = when {
+                            resp.code() == 409 -> "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on"
+                            resp.isSuccessful -> "Predictive-push ${resp.body()?.source}: ${resp.body()?.transfers} transfers, ${resp.body()?.skus} SKUs (${resp.body()?.grain?.ifBlank { "baseline" }})"
+                            else -> "Predictive-push failed (${resp.code()})"
+                        }
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+            ) { Text("Predictive push") }
             OutlinedTextField(
                 value = reason,
                 onValueChange = { reason = it },

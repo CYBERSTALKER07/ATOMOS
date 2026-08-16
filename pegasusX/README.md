@@ -9,7 +9,10 @@ Start here — do **not** plan from frozen Reality Reports or empty SOP stubs:
 | Doc | Role |
 |-----|------|
 | [`docs/DOCS_SOURCE_OF_TRUTH.md`](docs/DOCS_SOURCE_OF_TRUTH.md) | Living vs frozen index |
-| [`docs/PROD_ECOSYSTEM_GOAL.md`](docs/PROD_ECOSYSTEM_GOAL.md) | North-star prod goal |
+| [`../.agents/memory/GOAL.md`](../.agents/memory/GOAL.md) | **Final goal** |
+| [`docs/GLOBAL_SCALE_PROGRAM.md`](docs/GLOBAL_SCALE_PROGRAM.md) | Destination: register + pack + cells |
+| [`docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | Destination: local-first matching + pack PSP |
+| [`docs/PROD_ECOSYSTEM_GOAL.md`](docs/PROD_ECOSYSTEM_GOAL.md) | Class A coverage / “prod ready” definition |
 | [`docs/PROD_READINESS_SEQUENCE.md`](docs/PROD_READINESS_SEQUENCE.md) | Ordered residuals R0–R6 after W0–W5 |
 | [`docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](docs/session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) | Evidence backlog |
 | [`context/current_status.md`](context/current_status.md) | SSMR / ops snapshot |

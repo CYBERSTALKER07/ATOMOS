@@ -2483,10 +2483,11 @@ struct SupplierCRMOrder: Decodable, Identifiable {
     let amount: Int64
     let itemCount: Int64
     let createdAt: String
+    let lines: [SupplierCRMOrderLine]
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
-        case state, amount
+        case state, amount, lines
         case itemCount = "item_count"
         case createdAt = "created_at"
     }
@@ -2498,6 +2499,29 @@ struct SupplierCRMOrder: Decodable, Identifiable {
         amount = try c.decodeIfPresent(Int64.self, forKey: .amount) ?? 0
         itemCount = try c.decodeIfPresent(Int64.self, forKey: .itemCount) ?? 0
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        lines = try c.decodeIfPresent([SupplierCRMOrderLine].self, forKey: .lines) ?? []
+    }
+}
+
+struct SupplierCRMOrderLine: Decodable, Identifiable {
+    var id: String { "\(sku)-\(productName)-\(qty)" }
+    let sku: String
+    let productName: String
+    let qty: Int64
+    let amountMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case sku, qty
+        case productName = "product_name"
+        case amountMinor = "amount_minor"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sku = try c.decodeIfPresent(String.self, forKey: .sku) ?? ""
+        productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
+        qty = try c.decodeIfPresent(Int64.self, forKey: .qty) ?? 0
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
     }
 }
 
@@ -2593,6 +2617,7 @@ struct PullMatrixResponse: Decodable {
     let transfers: Int
     let skus: Int
     let source: String
+    let grain: String
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -2600,9 +2625,152 @@ struct PullMatrixResponse: Decodable {
         transfers = try c.decodeIfPresent(Int.self, forKey: .transfers) ?? 0
         skus = try c.decodeIfPresent(Int.self, forKey: .skus) ?? 0
         source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+        grain = try c.decodeIfPresent(String.self, forKey: .grain) ?? ""
     }
 
-    enum CodingKeys: String, CodingKey { case status, transfers, skus, source }
+    enum CodingKeys: String, CodingKey { case status, transfers, skus, source, grain }
+}
+
+struct PredictivePushResponse: Decodable {
+    let transfers: Int
+    let skus: Int
+    let source: String
+    let grain: String
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        transfers = try c.decodeIfPresent(Int.self, forKey: .transfers) ?? 0
+        skus = try c.decodeIfPresent(Int.self, forKey: .skus) ?? 0
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+        grain = try c.decodeIfPresent(String.self, forKey: .grain) ?? ""
+    }
+
+    enum CodingKeys: String, CodingKey { case transfers, skus, source, grain }
+}
+
+struct LoyaltyProgram: Codable {
+    var supplierId: String
+    var earnBps: Int64
+    var tiers: [LoyaltyTier]
+    var reason: String?
+    var source: String?
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case earnBps = "earn_bps"
+        case tiers, reason, source
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        earnBps = try c.decodeIfPresent(Int64.self, forKey: .earnBps) ?? 100
+        tiers = try c.decodeIfPresent([LoyaltyTier].self, forKey: .tiers) ?? []
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(supplierId, forKey: .supplierId)
+        try c.encode(earnBps, forKey: .earnBps)
+        try c.encode(tiers, forKey: .tiers)
+        try c.encodeIfPresent(reason, forKey: .reason)
+        try c.encodeIfPresent(source, forKey: .source)
+    }
+}
+
+struct LoyaltyTier: Codable {
+    let name: String
+    let minPoints: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case minPoints = "min_points"
+    }
+}
+
+struct EntityResolutionResolveRequest: Encodable {
+    let entityType: String
+    let query: String?
+    let entityId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case entityType = "entity_type"
+        case query
+        case entityId = "entity_id"
+    }
+}
+
+struct EntityResolutionExplainRequest: Encodable {
+    let entityType: String
+    let entityId: String
+
+    enum CodingKeys: String, CodingKey {
+        case entityType = "entity_type"
+        case entityId = "entity_id"
+    }
+}
+
+struct EntityResolutionCandidate: Decodable, Identifiable {
+    var id: String { nodeId }
+    let nodeId: String
+    let entityType: String
+    let entityId: String
+    let label: String
+    let score: Double
+    let confidenceClass: String
+
+    enum CodingKeys: String, CodingKey {
+        case nodeId = "node_id"
+        case entityType = "entity_type"
+        case entityId = "entity_id"
+        case label, score
+        case confidenceClass = "confidence_class"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nodeId = try c.decodeIfPresent(String.self, forKey: .nodeId) ?? ""
+        entityType = try c.decodeIfPresent(String.self, forKey: .entityType) ?? ""
+        entityId = try c.decodeIfPresent(String.self, forKey: .entityId) ?? ""
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        score = try c.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        confidenceClass = try c.decodeIfPresent(String.self, forKey: .confidenceClass) ?? ""
+    }
+}
+
+struct EntityResolutionResolveResponse: Decodable {
+    let requestedType: String
+    let resolved: EntityResolutionCandidate?
+    let candidates: [EntityResolutionCandidate]
+
+    enum CodingKeys: String, CodingKey {
+        case requestedType = "requested_type"
+        case resolved, candidates
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestedType = try c.decodeIfPresent(String.self, forKey: .requestedType) ?? ""
+        resolved = try c.decodeIfPresent(EntityResolutionCandidate.self, forKey: .resolved)
+        candidates = try c.decodeIfPresent([EntityResolutionCandidate].self, forKey: .candidates) ?? []
+    }
+}
+
+struct EntityResolutionExplainResponse: Decodable {
+    let source: EntityResolutionCandidate
+    let projection: EntityResolutionProjection
+
+    struct EntityResolutionProjection: Decodable {
+        let edges: [EntityResolutionEdge]
+    }
+
+    struct EntityResolutionEdge: Decodable {
+        let from: String
+        let to: String
+        let relation: String
+    }
 }
 
 struct KillSwitchRequest: Encodable {

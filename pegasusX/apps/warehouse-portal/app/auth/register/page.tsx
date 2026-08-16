@@ -121,7 +121,7 @@ export default function WarehouseRegisterPage() {
         id_token: state.verification.idToken,
       };
 
-      const res = await fetch(`${warehouseApiBaseUrl}/v1/auth/warehouse/register`, {
+      const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

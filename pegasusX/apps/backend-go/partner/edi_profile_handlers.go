@@ -16,7 +16,22 @@ func (h *Handlers) HandleGetEdiProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prof := ResolveEdiProfile(r.Context(), h.ediProfiles(), tt, tid)
-	writeJSON(w, http.StatusOK, prof)
+	market := marketCodeForPartner(r, tt, tid)
+	writeJSON(w, http.StatusOK, ediProfileResponse{
+		EdiProfile:         prof,
+		MarketCode:         market,
+		AllowedDialects:    dialectCodesForPack(market),
+		DialectAllowed:     AllowPartnerDialect(market, prof.PackName) == nil,
+		RegisterNotBlocked: true,
+	})
+}
+
+type ediProfileResponse struct {
+	EdiProfile
+	MarketCode         string   `json:"market_code"`
+	AllowedDialects    []string `json:"allowed_dialects"`
+	DialectAllowed     bool     `json:"dialect_allowed"`
+	RegisterNotBlocked bool     `json:"register_not_blocked"`
 }
 
 // HandlePutEdiProfile PUT /partner/v1/edi/profile
@@ -35,6 +50,9 @@ func (h *Handlers) HandlePutEdiProfile(w http.ResponseWriter, r *http.Request) {
 	body.TenantID = tid
 	if body.PackName == "" {
 		body.PackName = EdiPackEdifactLiteV1
+	}
+	if !requireDialect(w, r, tt, tid, body.PackName) {
+		return
 	}
 	out := make([]string, 0, len(body.EnabledDocTypes))
 	for _, d := range body.EnabledDocTypes {

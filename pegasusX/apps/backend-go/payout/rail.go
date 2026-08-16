@@ -2,8 +2,10 @@ package payout
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // Rail is a live settlement transport. Implementations actually move money
@@ -51,18 +53,40 @@ func (BankFileRail) Submit(_ context.Context, b Batch, d SupplierBankDetails, li
 	return "", nil
 }
 
-// railByName resolves the configured rail. Unknown names fail closed to the
-// bank-file rail — a misconfigured payout rail must never silently attempt a
-// live dispatch.
-func railByName(name string) Rail {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "", "bank-file", "csv":
-		return BankFileRail{}
+// namedFileRail is a catalog file rail (SEPA/ACH file) that does not move money.
+type namedFileRail struct{ name string }
+
+func (r namedFileRail) Name() string { return r.name }
+func (namedFileRail) IsLive() bool   { return false }
+
+func (r namedFileRail) Submit(ctx context.Context, b Batch, d SupplierBankDetails, live bool) (string, error) {
+	return BankFileRail{}.Submit(ctx, b, d, live)
+}
+
+// railByName resolves a catalog file rail. Unknown names do not fall through
+// to bank-file (GS-M6) — live dispatch must not invent a PSP.
+func railByName(name string) (Rail, error) {
+	switch auth.CanonicalPayoutRail(name) {
+	case auth.PayoutRailBankFile:
+		return BankFileRail{}, nil
+	case auth.PayoutRailSEPAFile:
+		return namedFileRail{name: auth.PayoutRailSEPAFile}, nil
+	case auth.PayoutRailACHFile:
+		return namedFileRail{name: auth.PayoutRailACHFile}, nil
 	default:
-		// G1.D: no live rail implemented yet. Fail closed to bank-file so
-		// live=true is rejected by IsLive() rather than inventing a money rail.
-		return BankFileRail{}
+		return nil, auth.ErrPayoutRailUnknown
 	}
+}
+
+func (s *Service) resolveRail(ctx context.Context, supplierID string) (Rail, error) {
+	if s != nil && s.rail != nil && s.rail.IsLive() {
+		return s.rail, nil
+	}
+	name, err := auth.PayoutRailFromContext(ctx, supplierID)
+	if err != nil {
+		return nil, err
+	}
+	return railByName(name)
 }
 
 // RailInfo is the honesty surface for clients (G1.D): bank-file is prod-valid only as
@@ -75,23 +99,7 @@ type RailInfo struct {
 	Message  string   `json:"message,omitempty"`
 }
 
-// RailInfo returns the configured rail's honesty metadata.
-func (s *Service) RailInfo() RailInfo {
-	name := "bank-file"
-	live := false
-	if s != nil && s.rail != nil {
-		name = s.rail.Name()
-		live = s.rail.IsLive()
-	}
-	if live {
-		return RailInfo{
-			Name:     name,
-			IsLive:   true,
-			Workflow: "live_dispatch_then_webhook",
-			Steps:    []string{"generate", "dispatch_live", "settlement_webhook", "paid"},
-			Message:  "Live rail: dispatch moves money; ConfirmSettlement webhook marks PAID",
-		}
-	}
+func fileRailInfo(name string) RailInfo {
 	return RailInfo{
 		Name:     name,
 		IsLive:   false,
@@ -99,6 +107,37 @@ func (s *Service) RailInfo() RailInfo {
 		Steps:    []string{"generate", "export_csv", "bank_processes_file", "mark_paid"},
 		Message:  "Bank-file rail only: export CSV, process at bank, then mark-paid. live dispatch is rejected (no_live_rail).",
 	}
+}
+
+func liveRailInfo(name string) RailInfo {
+	return RailInfo{
+		Name:     name,
+		IsLive:   true,
+		Workflow: "live_dispatch_then_webhook",
+		Steps:    []string{"generate", "dispatch_live", "settlement_webhook", "paid"},
+		Message:  "Live rail: dispatch moves money; ConfirmSettlement webhook marks PAID",
+	}
+}
+
+// RailInfoContext returns pack payout_rail honesty (GS-M6). Planned pack fails closed.
+func (s *Service) RailInfoContext(ctx context.Context, supplierID string) (RailInfo, error) {
+	if s != nil && s.rail != nil && s.rail.IsLive() {
+		return liveRailInfo(s.rail.Name()), nil
+	}
+	name, err := auth.PayoutRailFromContext(ctx, supplierID)
+	if err != nil {
+		return RailInfo{}, err
+	}
+	return fileRailInfo(name), nil
+}
+
+// RailInfo returns pack rail metadata for the env shipped default.
+func (s *Service) RailInfo() RailInfo {
+	info, err := s.RailInfoContext(context.Background(), "")
+	if err != nil {
+		return RailInfo{IsLive: false, Message: err.Error()}
+	}
+	return info
 }
 
 // SubmitForDispatch validates beneficiary details and submits the batch via the
@@ -124,12 +163,25 @@ func (s *Service) SubmitForDispatch(ctx context.Context, batchID string, live bo
 	if err != nil {
 		return Batch{}, err
 	}
-	if live && !s.rail.IsLive() {
+	if _, packErr := auth.PayoutRailFromContext(ctx, b.SupplierID); packErr != nil {
+		if live && errors.Is(packErr, auth.ErrPayoutRailUnknown) {
+			return Batch{}, ErrNoLiveRail
+		}
+		return Batch{}, packErr
+	}
+	rail, err := s.resolveRail(ctx, b.SupplierID)
+	if err != nil {
+		if live && errors.Is(err, auth.ErrPayoutRailUnknown) {
+			return Batch{}, ErrNoLiveRail
+		}
+		return Batch{}, err
+	}
+	if live && !rail.IsLive() {
 		// Fail closed: never set SUBMITTED on a rail that cannot settle, else the
 		// batch strands with an empty RailReference and no webhook to flip it PAID.
 		return Batch{}, ErrNoLiveRail
 	}
-	ref, err := s.rail.Submit(ctx, b, details, live)
+	ref, err := rail.Submit(ctx, b, details, live)
 	if err != nil {
 		return Batch{}, err
 	}

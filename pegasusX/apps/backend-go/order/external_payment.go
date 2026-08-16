@@ -84,8 +84,11 @@ func (s *Service) beginFiscalFromAwaitingPayment(
 	method, reason string,
 	extraEmit func(outbox.TxnBuffer) error,
 ) error {
+	if err := s.requireFiscalPack(ctx, orderRecord.SupplierID); err != nil {
+		return err
+	}
 	previousStatus := orderRecord.Status
-	row := s.newFiscalPendingRow(orderRecord, method, "", orderRecord.TotalMinor)
+	row := s.newFiscalPendingRow(ctx, orderRecord, method, "", orderRecord.TotalMinor)
 	orderRecord.Status = StatusFiscalizing
 	// Version must stay at the value read from Spanner: UpdateOrder compares it
 	// against the stored row for optimistic concurrency and increments it itself.

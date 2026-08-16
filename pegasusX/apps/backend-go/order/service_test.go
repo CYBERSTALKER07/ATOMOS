@@ -1,8 +1,8 @@
 package order
 
 import (
-	"context"
 	"cloud.google.com/go/spanner"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -905,8 +905,8 @@ func TestServiceCollectCashEntersFiscalizingWithPaymentEvents(t *testing.T) {
 	if resp.Amount != 1500 || resp.Currency != "UZS" {
 		t.Fatalf("amount/currency = %d/%s, want 1500/UZS", resp.Amount, resp.Currency)
 	}
-	if resp.DistanceM > deliveryGeofenceMeters {
-		t.Fatalf("distance = %.2f, want within %.2f", resp.DistanceM, deliveryGeofenceMeters)
+	if resp.DistanceM > testPackBreachRadius(t) {
+		t.Fatalf("distance = %.2f, want within %.2f", resp.DistanceM, testPackBreachRadius(t))
 	}
 	if repo.captured.Status != StatusFiscalizing {
 		t.Fatalf("captured status = %s, want %s", repo.captured.Status, StatusFiscalizing)
@@ -925,8 +925,8 @@ func TestServiceCollectCashEntersFiscalizingWithPaymentEvents(t *testing.T) {
 	if proof.ProofType != DeliveryProofTypeCashCollectionGeo {
 		t.Fatalf("proof type = %s, want %s", proof.ProofType, DeliveryProofTypeCashCollectionGeo)
 	}
-	if proof.DistanceM == nil || *proof.DistanceM > deliveryGeofenceMeters {
-		t.Fatalf("proof distance = %+v want within %.2f", proof.DistanceM, deliveryGeofenceMeters)
+	if proof.DistanceM == nil || *proof.DistanceM > testPackBreachRadius(t) {
+		t.Fatalf("proof distance = %+v want within %.2f", proof.DistanceM, testPackBreachRadius(t))
 	}
 
 	// Worker success → COMPLETED + ORDER_FINALIZED
@@ -1032,6 +1032,56 @@ func TestServiceConfirmAIOrderMarksConfirmed(t *testing.T) {
 
 func driverClaims() auth.Claims {
 	return auth.Claims{Role: auth.RoleDriver, Subject: "drv-1", SupplierID: "sup-1"}
+}
+
+func testPackBreachRadius(t *testing.T) float64 {
+	t.Helper()
+	r, err := auth.BreachRadiusFromContext(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+func TestValidateRequiredGeofence_PackRadius150(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	o := deliveryTestOrder(StatusArrived)
+	ctx := context.Background()
+	// ~100 m north of the stop — inside UZ 150, would also pass old 500.
+	lat100 := o.Lat + 100.0/111320.0
+	if _, err := validateRequiredGeofence(ctx, lat100, o.Lng, o); err != nil {
+		t.Fatalf("100m should pass pack 150: %v", err)
+	}
+	// ~200 m — passed the deleted 500 m dual; must fail at pack 150.
+	lat200 := o.Lat + 200.0/111320.0
+	_, err := validateRequiredGeofence(ctx, lat200, o.Lng, o)
+	if !errors.Is(err, ErrGeofenceViolation) {
+		t.Fatalf("200m should violate pack 150, got %v", err)
+	}
+}
+
+func TestValidateRequiredGeofence_PlannedPackFailsClosed(t *testing.T) {
+	o := deliveryTestOrder(StatusArrived)
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	_, err := validateRequiredGeofence(ctx, o.Lat, o.Lng, o)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("planned pack err=%v", err)
+	}
+}
+
+func TestValidateRequiredGeofence_ProfilePlannedFailsClosed(t *testing.T) {
+	auth.SetMarketProfileLookup(func(id string) (auth.MarketProfile, bool) {
+		if id == "sup-1" {
+			return auth.MarketProfile{MarketCode: "EU", HomeCell: "cell-eu"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+	o := deliveryTestOrder(StatusArrived)
+	_, err := validateRequiredGeofence(context.Background(), o.Lat, o.Lng, o)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("profile planned pack err=%v", err)
+	}
 }
 
 func deliveryTestOrder(status Status) Order {

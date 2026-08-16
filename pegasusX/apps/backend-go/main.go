@@ -20,12 +20,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
-	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cashreconroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltowerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/countrycfg"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
@@ -35,36 +35,37 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
-	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
-	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
-	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	// B2: richer payload routes (ws-session, ship-units, labels).
-	payloadroutes "github.com/pegasusx/pegasusx/apps/backend-go/payloaderoutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
+	payloadroutes "github.com/pegasusx/pegasusx/apps/backend-go/payloaderoutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
-	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -135,11 +136,10 @@ func main() {
 	r.Use(auth.AttachTenantFromClaims)
 	r.Use(auth.RequireTenant(cfg.TenantContextEnforced))
 
-	// Phase 1/2 Integration: Auth0 Identity Middleware
+	// GS-I: process-global Auth0 wrap is forbidden (it 401s native HS256).
+	// Per-supplier OIDC is orgoidc (attach + /v1/auth/oidc/exchange).
 	if os.Getenv("AUTH0_DOMAIN") != "" {
-		auth0Middleware := enterprise.SetupAuth0Middleware()
-		r.Use(auth0Middleware)
-		slog.Info("Auth0 Enterprise Middleware attached to router")
+		slog.Warn("AUTH0_DOMAIN is set but ignored; GS-I does not wrap the router")
 	}
 
 	if app.Reliability != nil {
@@ -173,6 +173,7 @@ func main() {
 	platformroutes.RegisterRoutes(r, platformroutes.Deps{
 		Handler:        app.PlatformHandler,
 		GeocodeHandler: geolocation.NewHandler(geocodeSvc),
+		TenantRegister: app.TenantRegister,
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 	})
@@ -193,13 +194,13 @@ func main() {
 		mode := bootstrap.NormalizeRunMode(cfg.RunMode)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"run_mode":             mode,
-			"api":                  cfg.RunsAPI(),
-			"workers_on_process":   cfg.RunsWorkers(),
-			"outbox_relay":         cfg.RunsWorkers(),
-			"kafka_consumers":      cfg.RunsWorkers(),
-			"full_bus":             mode == bootstrap.RunModeAll,
-			"note":                 "api-only does not run outbox relay; deploy PEGASUSX_RUN_MODE=worker for full bus",
+			"run_mode":           mode,
+			"api":                cfg.RunsAPI(),
+			"workers_on_process": cfg.RunsWorkers(),
+			"outbox_relay":       cfg.RunsWorkers(),
+			"kafka_consumers":    cfg.RunsWorkers(),
+			"full_bus":           mode == bootstrap.RunModeAll,
+			"note":               "api-only does not run outbox relay; deploy PEGASUSX_RUN_MODE=worker for full bus",
 		})
 	})
 	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
@@ -244,9 +245,9 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 	})
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
-		Service:             app.WarehouseService,
-		OrderService:        app.OrderService,
-		PayloadService:      app.PayloadService,
+		Service:        app.WarehouseService,
+		OrderService:   app.OrderService,
+		PayloadService: app.PayloadService,
 		WMSHandler: &stocklots.Handler{
 			Spanner: app.Spanner,
 		},
@@ -265,7 +266,13 @@ func main() {
 	returnsroutes.RegisterDriverRoutes(r, returnsDeps)
 	returnsroutes.RegisterSupplierHistory(r, returnsDeps)
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
-		Service:           app.SupplierService,
+		Service:         app.SupplierService,
+		RetailerService: app.RetailerService,
+		StaffInvite: &staffinvite.Handler{
+			Secret:         cfg.JWTSecret,
+			SeedSupplierID: app.Supplier.SupplierID,
+			NodeOwned:      staffinvite.SpannerNodeOwned(app.Spanner),
+		},
 		OrderService:      app.OrderService,
 		PayloadService:    app.PayloadService,
 		NotificationInbox: app.NotificationInbox,
@@ -275,10 +282,11 @@ func main() {
 			CreditNote: app.CreditNoteService,
 			Credit:     app.CreditService,
 		},
-		JWTSecret:         cfg.JWTSecret,
-		Spanner:           app.Spanner,
-		SupplierHub:       app.SupplierHub,
-		WarehouseHub:      app.WarehouseHub,
+		JWTSecret:    cfg.JWTSecret,
+		Spanner:      app.Spanner,
+		SupplierHub:  app.SupplierHub,
+		WarehouseHub: app.WarehouseHub,
+		OrgOIDC:      app.OrgOIDC,
 	})
 	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{
 		Spanner:             app.Spanner,

@@ -26,3 +26,22 @@ func TestParseCommerceMLCatalog(t *testing.T) {
 		t.Fatalf("barcode=%s", batch.Products[0].Barcode)
 	}
 }
+
+func TestParseCommerceMLCatalog_EmptyCurrencyNotUZS(t *testing.T) {
+	raw := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<Каталог>
+  <Товары>
+    <Товар>
+      <Ид>SKU-2</Ид>
+      <Наименование>Coffee</Наименование>
+    </Товар>
+  </Товары>
+</Каталог>`)
+	batch, err := ParseCommerceMLCatalog(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if batch.Products[0].Currency != "" {
+		t.Fatalf("empty XML currency must stay empty, got %q", batch.Products[0].Currency)
+	}
+}

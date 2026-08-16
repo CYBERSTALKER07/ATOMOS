@@ -79,6 +79,11 @@ object SupplierIdempotencyKeys {
 
     fun planningPullMatrix(scopeId: String): String = "supplier-planning-pull-matrix:$scopeId"
 
+    fun planningPredictivePush(scopeId: String): String = "supplier-planning-predictive-push:$scopeId"
+
+    fun loyaltyProgramPatch(scopeId: String, reason: String): String =
+        "supplier-loyalty-program:$scopeId:${stableHash(reason)}"
+
     fun planningKillSwitch(scopeId: String, reason: String): String =
         "supplier-planning-kill-switch:$scopeId:${stableHash(reason)}"
 

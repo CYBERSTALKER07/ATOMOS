@@ -299,45 +299,42 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Service) resolveRetailerLogin(ctx context.Context, phone, secret string) (Retailer, bool, error) {
-	expectPhone := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PHONE"))
-	if expectPhone == "" {
-		expectPhone = "+998901000077"
-	}
-	expectSecret := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PASSWORD"))
-	if expectSecret == "" {
-		expectSecret = strings.TrimSpace(os.Getenv("RETAILER_DEMO_PIN"))
-	}
-	if expectSecret == "" {
-		expectSecret = "1234"
-	}
-
-	if phone == expectPhone && secret == expectSecret {
+	expectSecret := demoRetailerSecret()
+	if expectSecret != "" {
+		expectPhone := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000077"
+		}
+		if phone == expectPhone && secret == expectSecret {
+			if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
+				return Retailer{}, false, err
+			} else if found {
+				return ret, true, nil
+			}
+			reg, err := s.Register(ctx, RegisterRequest{
+				Phone:      phone,
+				Name:       demoRetailerStoreName(),
+				SupplierID: s.seedSupplierID,
+				Lat:        41.311081,
+				Lng:        69.240562,
+				H3Cell:     "8928308280fffff",
+			})
+			if err != nil {
+				return Retailer{}, false, err
+			}
+			return Retailer{
+				RetailerID: reg.RetailerID,
+				Phone:      reg.Phone,
+				Name:       demoRetailerStoreName(),
+				SupplierID: reg.SupplierID,
+			}, true, nil
+		}
 		if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
 			return Retailer{}, false, err
-		} else if found {
+		} else if found && secret == expectSecret {
 			return ret, true, nil
 		}
-		reg, err := s.Register(ctx, RegisterRequest{
-			Phone: phone,
-			Name:  demoRetailerStoreName(),
-			Lat:   41.311081,
-			Lng:   69.240562,
-		})
-		if err != nil {
-			return Retailer{}, false, err
-		}
-		return Retailer{
-			RetailerID: reg.RetailerID,
-			Phone:      reg.Phone,
-			Name:       demoRetailerStoreName(),
-			SupplierID: s.resolveSupplierScope(ctx),
-		}, true, nil
-	}
-
-	if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
-		return Retailer{}, false, err
-	} else if found && secret == expectSecret {
-		return ret, true, nil
+		return Retailer{}, false, nil
 	}
 	return Retailer{}, false, nil
 }

@@ -68,6 +68,12 @@ struct MoreHubView: View {
                 NavigationLink { CRMView() } label: {
                     Label("portal.nav.crm", systemImage: "person.2")
                 }
+                NavigationLink { LoyaltyProgramView() } label: {
+                    Label("portal.nav.loyalty", systemImage: "star")
+                }
+                NavigationLink { EntityResolutionView() } label: {
+                    Label("portal.nav.entity_resolution", systemImage: "point.3.connected.trianglepath.dotted")
+                }
                 NavigationLink { JSONFeedView(title: "Segmentation", path: "v1/supplier/segmentation/retailers") } label: {
                     Label("Segmentation", systemImage: "square.grid.3x3")
                 }

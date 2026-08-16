@@ -31,6 +31,22 @@ func TestEvaluateSLA_BreachedAtRiskOnTime(t *testing.T) {
 	}
 }
 
+func TestFactorySLADefaultHours_PackNotHardcodedUZ(t *testing.T) {
+	t.Setenv("FACTORY_SLA_DEFAULT_HOURS", "")
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	if FactorySLADefaultHours() != 48 {
+		t.Fatalf("UZ pack hours=%v", FactorySLADefaultHours())
+	}
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	if FactorySLADefaultHours() != 0 {
+		t.Fatalf("planned pack must not invent 48h, got %v", FactorySLADefaultHours())
+	}
+	e := EvaluateSLA("ACKNOWLEDGED", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Time{}, time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC))
+	if e.Status != SLAStatusNA {
+		t.Fatalf("planned pack empty delivery status=%s", e.Status)
+	}
+}
+
 func TestEvaluateSLA_DefaultHoursWhenNoDelivery(t *testing.T) {
 	t.Setenv("FACTORY_SLA_DEFAULT_HOURS", "24")
 	t.Setenv("FACTORY_SLA_AT_RISK_HOURS", "6")

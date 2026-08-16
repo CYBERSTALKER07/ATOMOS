@@ -480,7 +480,11 @@ func (h *Handlers) HandleGetAs2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !found {
-		writeJSON(w, http.StatusOK, map[string]any{"configured": false})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"configured":           false,
+			"van_live":             false,
+			"register_not_blocked": true,
+		})
 		return
 	}
 	writeJSON(w, http.StatusOK, as2ConfigDTO(cfg))
@@ -490,6 +494,9 @@ func (h *Handlers) HandleGetAs2(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) HandlePutAs2(w http.ResponseWriter, r *http.Request) {
 	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
 	if !ok {
+		return
+	}
+	if !requireDialect(w, r, tt, tid, DialectAS2) {
 		return
 	}
 	body, err := readBody(r)
@@ -551,6 +558,9 @@ func as2ConfigDTO(cfg As2Config) map[string]any {
 		"partner_cert_secret_ref": cfg.PartnerCertSecretRef,
 		"sign_required":           cfg.SignRequired,
 		"encrypt_required":        cfg.EncryptRequired,
+		"van_live":                false,
+		"register_not_blocked":    true,
+		"note":                    "AS2 is transport. No invented VAN.",
 	}
 }
 

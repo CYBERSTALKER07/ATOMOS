@@ -6,7 +6,7 @@
 > **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
 
 
-**Runtime status (2026-08-07):** Schema is multi-tenant-shaped; request plane is still single-supplier (seed injected at bootstrap). **Gate 5 Phase 1 program ADR:** [MULTI_TENANCY_GATE5_PHASE1.md](../../MULTI_TENANCY_GATE5_PHASE1.md) (Accepted plan; not yet coded). Isolation rules below are the **target** once Phase 1 lands.
+**Runtime status (2026-08-12+):** Request-scoped multi-tenancy is live (`TenantContext` / `PreferTenant`). Many `SupplierId`s is the isolation model for the **global multi-supplier** goal. Seed is bootstrap fallback only. See [MULTI_TENANCY_GATE5_PHASE1.md](../../MULTI_TENANCY_GATE5_PHASE1.md). The 2026-08-07 “single-supplier request plane / plan not coded” line is **historical — do not use**.
 
 ## Rules
 

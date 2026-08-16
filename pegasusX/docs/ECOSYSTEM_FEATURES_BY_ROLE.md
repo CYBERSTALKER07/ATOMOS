@@ -3,8 +3,8 @@
 > **Secondary overview — prefer living SoTs.**  
 > Route/nav inventory: [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md) · ordered residuals: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · gap register: [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md).  
 > Re-verify client parity claims (control-tower, cold-chain, labor) against shells/section enums before planning.  
-> **P0+P1 honesty (2026-08-13):** factory dispatch is not the warehouse VRP. Optimizer = OR-Tools **or** H3 `fallback_phase1`. Saved cards / `/v1/ai/predictions` alias / request-cancel are **GONE** — see FEATURES tags.  
-> **P6 (2026-08-13):** supplier CRM + factory QC APIs exist. **P7-C PARTIAL (2026-08-13):** portal+native CRM/QC/planning/payouts attached; **not store, not cloud**. **P8:** unused `payloaderoutes` package deleted (live `payloaderoutes`). **P9–P16:** staff login, QC accept-gate, broadcast outbox, S&OP `DailyOutputCapacity`, billing list APIs, seal-all clients, PrivacyInfo in-tree; **not cloud-ready, not store**. Payout-policy, entityresolution, countrycfg (UZ, `checkout_reads_this: false`), SplitManifest naming, loyalty 410, and P5-D `DemandForecastBaseline` grain landed 2026-08-14.
+> **P0+P1 honesty (2026-08-13):** Optimizer = OR-Tools **or** H3 `fallback_phase1`. Saved cards / `/v1/ai/predictions` alias / request-cancel are **GONE** — see FEATURES tags.  
+> **P6 (2026-08-13):** supplier CRM + factory QC APIs exist. **P7-C PARTIAL (2026-08-13):** portal+native CRM/QC/planning/payouts attached; **not store, not cloud**. **P8:** unused `payloaderoutes` package deleted (live `payloaderoutes`). **P9–P16:** staff login, QC accept-gate, broadcast outbox, S&OP `DailyOutputCapacity`, billing list APIs, seal-all clients, PrivacyInfo in-tree; **not cloud-ready, not store**. **Ecosystem flexibility 2026-08-14:** factory dispatch live Spanner path = warehouse solver class → `FactoryTruckManifests` only; topology hybrid country/H3; country catalog AUTH_COUNTRIES (not a CountryConfigs table; `checkout_reads_this: false`); loyalty earn/tier live `{enrolled:false}`; factory Payload/Load; entity-resolution + predictive-push UI. Payout live rail still `no_live_rail`. **P15 not cloud. P16 not store.**
 
 **Audience:** operators, product, engineering  
 **Grounding:** live monorepo (`apps/backend-go`, role apps, contracts); spatial/dispatch bullets re-aligned 2026-08-05  
@@ -429,7 +429,7 @@ Pulse of production/loading state.
 
 #### 7.2 Loading bay & manifests
 
-Start loading → load → seal **REAL** under Spanner. `POST /v1/factory/dispatch` default is first-N DRAFT **stub** (≤2 `CREATED` transfers, **no invent-if-empty** P7-B, `pick_n_created_v1`) — **not** the warehouse/supplier VRP engine. When `FACTORY_BATCHER_ENABLED`: FFD+NN+LIFO, `ffd_nn_lifo_v1`, no invent-if-empty (P5-F). Planning engines exist behind `FACTORY_PLANNING_ENABLED` (default off).
+Start loading → load → seal **REAL** under Spanner. Factory **Payload/Load** is factory-plane start-loading/seal (not last-mile `payloaderoutes`). `POST /v1/factory/dispatch` **live Spanner** is the warehouse solver class (`plan.OptimizeAndValidate` → `FactoryTruckManifests` only; AUTO/MANUAL/force/partial/fingerprint; empty queue `created_manifest_count: 0`, no invent). **Not** gated by `FACTORY_BATCHER_ENABLED`. Nil-Spanner / portal-seed tests still `pick_n_created_v1`. Planning engines exist behind `FACTORY_PLANNING_ENABLED` (Go default **false** — do not flip).
 
 #### 7.2b Staff / exceptions / transfer create (honesty)
 

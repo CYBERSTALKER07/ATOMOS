@@ -4,7 +4,7 @@ import "testing"
 
 func TestPointsFor(t *testing.T) {
 	if PointsFor(10000, 100) != 100 {
-		t.Fatalf("1% of 10000 minor should be 100 points")
+		t.Fatal("1 percent of 10000 minor should be 100 points")
 	}
 	if PointsFor(1, 100) != 0 {
 		t.Fatal("floor toward zero")

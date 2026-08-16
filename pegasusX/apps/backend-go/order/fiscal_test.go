@@ -508,3 +508,74 @@ func TestNormalizeForceReasonCode(t *testing.T) {
 func containsType(payload []byte, eventType string) bool {
 	return strings.Contains(string(payload), eventType)
 }
+
+func TestCollectCash_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusPendingCashCollection)
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	claims := driverClaims()
+	claims.MarketCode = "EU"
+	ctx := auth.WithClaims(context.Background(), claims)
+	_, err := svc.CollectCash(ctx, claims, CollectCashRequest{
+		OrderID:   o.OrderID,
+		Latitude:  41.311,
+		Longitude: 69.279,
+	})
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRetryFiscal_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalFailed)
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	claims := driverClaims()
+	claims.MarketCode = "EU"
+	ctx := auth.WithClaims(context.Background(), claims)
+	_, err := svc.RetryFiscal(ctx, claims, o.OrderID)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestApplyFiscalWorkerResult_SupplierPlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	auth.SetMarketProfileLookup(func(id string) (auth.MarketProfile, bool) {
+		if id == "sup-1" {
+			return auth.MarketProfile{MarketCode: "EU", HomeCell: "cell-eu"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalizing)
+	o.LatestFiscalAttemptID = "att-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	svc.SetFiscalProvider(FakeFiscalProvider{})
+	if err := svc.ApplyFiscalWorkerResult(context.Background(), o.OrderID, "att-1"); err != nil {
+		t.Fatalf("worker: %v", err)
+	}
+	if repo.captured.Status != StatusFiscalFailed {
+		t.Fatalf("status=%s want FISCAL_FAILED", repo.captured.Status)
+	}
+	if repo.captured.FiscalReceiptUpdate == nil || !strings.Contains(repo.captured.FiscalReceiptUpdate.ErrorMessage, auth.ErrMarketPackNotShipped.Error()) {
+		t.Fatalf("want pack fail on attempt, got %+v", repo.captured.FiscalReceiptUpdate)
+	}
+}
+
+func TestRequireFiscalPack_FakeForbiddenInProduction(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	t.Setenv("PEGASUSX_ENV", "production")
+	svc := newTestService(&testRepo{}, time.Now().UTC())
+	svc.SetFiscalProvider(FakeFiscalProvider{})
+	if err := svc.requireFiscalPack(context.Background(), "sup-1"); !errors.Is(err, auth.ErrFakeFiscalForbidden) {
+		t.Fatalf("err=%v", err)
+	}
+}

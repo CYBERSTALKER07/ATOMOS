@@ -24,7 +24,18 @@ resource "google_project_service" "maps_platform_apis" {
 resource "google_secret_manager_secret" "maps_android_api_key" {
   secret_id = local.secret_maps_android_api_key
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -38,7 +49,18 @@ resource "google_secret_manager_secret_version" "maps_android_api_key" {
 resource "google_secret_manager_secret" "maps_ios_api_key" {
   secret_id = local.secret_maps_ios_api_key
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }

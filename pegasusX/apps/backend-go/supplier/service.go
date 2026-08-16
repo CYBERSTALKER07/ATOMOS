@@ -1,9 +1,10 @@
 // Package supplier owns the supplier-portal handlers.
 //
-// Gate 5 Phase 1 (MULTI_TENANCY_GATE5_PHASE1.md) freezes multi-supplier mint
-// until request-scoped TenantContext is proven: Register mutates the seeded
-// supplier when unregistered; additional UUID minting requires
-// ALLOW_MULTI_SUPPLIER_REGISTER=true. Handlers issue the supplier-portal
+// GS-T2: POST /v1/auth/supplier/register may complete the unregistered seed
+// row only. Once the seed is registered it rejects with 409 and Location
+// /v1/platform/tenants/register. It never mints a UUID and never overwrites
+// a registered seed. ALLOW_MULTI_SUPPLIER_REGISTER is ignored on this path;
+// new tenants use tenantreg (GS-T1). Handlers issue the supplier-portal
 // session JWT cookie consumed by the Next.js middleware (`is_configured` claim).
 package supplier
 
@@ -28,9 +29,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
@@ -39,8 +40,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ErrSupplierCapReached is returned when MAX_SUPPLIERS registrations are exhausted.
+// ErrSupplierCapReached is retained for older callers; T2 maps it to the freeze.
 var ErrSupplierCapReached = errors.New("supplier_cap_reached")
+
+// ErrLegacyRegisterFrozen is GS-T2: seed is already registered; mint via T1.
+var ErrLegacyRegisterFrozen = errors.New("legacy_register_frozen")
+
+// TenantRegisterPath is the T1 mint clients must use after the seed is live.
+const TenantRegisterPath = "/v1/platform/tenants/register"
 
 // Repository is the persistence seam for the seeded supplier aggregate.
 // Production binds this to a Spanner-backed implementation that runs every
@@ -86,6 +93,8 @@ type Profile struct {
 	AuthPasswordHash  string
 	Country           string
 	Currency          string
+	MarketCode        string
+	HomeCell          string
 	WarehouseName     string
 	WarehouseAddress  string
 	WarehouseLat      float64
@@ -108,37 +117,37 @@ type Profile struct {
 	SwiftBic          string
 	IBAN              string
 	SelectedGateways  []string
-	PaymentAcceptor     string
-	Gln                 string
-	Gs1CompanyPrefix    string
-	RegisteredAt        time.Time
+	PaymentAcceptor   string
+	Gln               string
+	Gs1CompanyPrefix  string
+	RegisteredAt      time.Time
 	ConfiguredAt      time.Time
 	UpdatedAt         time.Time
 }
 
 // WarehouseNode is one supplier-owned warehouse topology node.
 type WarehouseNode struct {
-	WarehouseID           string    `json:"warehouse_id"`
-	Name                  string    `json:"name"`
-	Lat                   float64   `json:"lat"`
-	Lng                   float64   `json:"lng"`
-	Address               string    `json:"address,omitempty"`
-	PlaceID               string    `json:"place_id,omitempty"`
-	CoverageRadiusKm      float64   `json:"coverage_radius_km"`
-	TransferMode          string    `json:"transfer_mode,omitempty"`
-	CoLocateWithFactoryID string    `json:"co_locate_with_factory_id,omitempty"`
-	PrimaryFactoryID      string    `json:"primary_factory_id,omitempty"`
-	SecondaryFactoryID    string    `json:"secondary_factory_id,omitempty"`
-	AssignedFactoryIDs    []string  `json:"assigned_factory_ids,omitempty"`
-	CountryCode           string    `json:"country_code,omitempty"`
-	CoverageCities        []order.CoverageCity `json:"coverage_cities,omitempty"`
-	IsActive              bool      `json:"is_active"`
-	IsOnShift             bool      `json:"is_on_shift"`
-	DefaultOutOfStockPolicy string  `json:"default_out_of_stock_policy,omitempty"`
-	OperatingSchedule     string    `json:"operating_schedule,omitempty"`
-	InitialInventory      []InventorySeed `json:"initial_inventory,omitempty"`
-	CreatedAt             time.Time `json:"created_at"`
-	UpdatedAt             time.Time `json:"updated_at"`
+	WarehouseID             string               `json:"warehouse_id"`
+	Name                    string               `json:"name"`
+	Lat                     float64              `json:"lat"`
+	Lng                     float64              `json:"lng"`
+	Address                 string               `json:"address,omitempty"`
+	PlaceID                 string               `json:"place_id,omitempty"`
+	CoverageRadiusKm        float64              `json:"coverage_radius_km"`
+	TransferMode            string               `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID   string               `json:"co_locate_with_factory_id,omitempty"`
+	PrimaryFactoryID        string               `json:"primary_factory_id,omitempty"`
+	SecondaryFactoryID      string               `json:"secondary_factory_id,omitempty"`
+	AssignedFactoryIDs      []string             `json:"assigned_factory_ids,omitempty"`
+	CountryCode             string               `json:"country_code,omitempty"`
+	CoverageCities          []order.CoverageCity `json:"coverage_cities,omitempty"`
+	IsActive                bool                 `json:"is_active"`
+	IsOnShift               bool                 `json:"is_on_shift"`
+	DefaultOutOfStockPolicy string               `json:"default_out_of_stock_policy,omitempty"`
+	OperatingSchedule       string               `json:"operating_schedule,omitempty"`
+	InitialInventory        []InventorySeed      `json:"initial_inventory,omitempty"`
+	CreatedAt               time.Time            `json:"created_at"`
+	UpdatedAt               time.Time            `json:"updated_at"`
 }
 
 // InventorySeed is starter stock when a warehouse node is provisioned.
@@ -157,8 +166,8 @@ type FactoryNode struct {
 	PlaceID     string    `json:"place_id,omitempty"`
 	CountryCode string    `json:"country_code,omitempty"`
 	IsActive    bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // SupplierTopology is the warehouse/factory graph for one supplier.
@@ -231,43 +240,43 @@ type DashboardCountQuery func(ctx context.Context, supplierID string) (Dashboard
 
 // Service wires repository, cache, idempotency, and JWT issuance.
 type Service struct {
-	repo           Repository
-	cache          *cache.Cache
-	idem           idempotency.Store
-	earningsLookup EarningsLookup
-	dashboardQuery DashboardCountQuery
-	locations      telemetry.LastLocationReader
-	supplierID     string
-	seedSupplierID              string
-	maxSuppliers                int
-	allowMultiSupplierRegister  bool
-	country                     string
-	currency                    string
-	jwtSecret      string
-	jwtIssuer      string
-	jwtTTL         time.Duration
-	cookieSecure   bool
-	log            *slog.Logger
-	now            func() time.Time
+	repo                       Repository
+	cache                      *cache.Cache
+	idem                       idempotency.Store
+	earningsLookup             EarningsLookup
+	dashboardQuery             DashboardCountQuery
+	locations                  telemetry.LastLocationReader
+	supplierID                 string
+	seedSupplierID             string
+	maxSuppliers               int
+	allowMultiSupplierRegister bool
+	country                    string
+	currency                   string
+	jwtSecret                  string
+	jwtIssuer                  string
+	jwtTTL                     time.Duration
+	cookieSecure               bool
+	log                        *slog.Logger
+	now                        func() time.Time
 
 	inventorySvc InventoryServicer
 
-	portalSpanner          *spanner.Client
-	manifestStore          *manifest.Store
-	routeGeometryBuilder   *routing.GeometryBuilder
-	portalSupplierHub      *ws.Hub
-	portalWarehouseHub     *ws.Hub
-	portalDriverHub        *ws.Hub
-	portalRetailerHub      *ws.Hub
-	portalPayloadHub       *ws.Hub
-	portalFactoryHub       *ws.Hub
-	optimizerClient   *optimizerclient.Client
-	planCounters      *plan.SourceCounters
-	fallbackDepotLat      float64
-	fallbackDepotLng      float64
-	replenishmentEngine   *replenishment.Engine
-	factoryPlanning       FactoryPlanner
-	controlTower          *controltower.Service
+	portalSpanner        *spanner.Client
+	manifestStore        *manifest.Store
+	routeGeometryBuilder *routing.GeometryBuilder
+	portalSupplierHub    *ws.Hub
+	portalWarehouseHub   *ws.Hub
+	portalDriverHub      *ws.Hub
+	portalRetailerHub    *ws.Hub
+	portalPayloadHub     *ws.Hub
+	portalFactoryHub     *ws.Hub
+	optimizerClient      *optimizerclient.Client
+	planCounters         *plan.SourceCounters
+	fallbackDepotLat     float64
+	fallbackDepotLng     float64
+	replenishmentEngine  *replenishment.Engine
+	factoryPlanning      FactoryPlanner
+	controlTower         *controltower.Service
 	// OnRegistered is optional (platform admin tenant mint).
 	OnRegistered func(ctx context.Context, supplierID, legalName string) error
 }
@@ -276,25 +285,25 @@ const supplierWebSocketSessionTTL = 10 * time.Minute
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo             Repository
-	Cache            *cache.Cache
-	Idem             idempotency.Store
-	EarningsLookup   EarningsLookup
-	DashboardQuery   DashboardCountQuery
-	Locations        telemetry.LastLocationReader
-	InventoryService InventoryServicer
-	SupplierID                   string
-	SeedSupplierID               string
-	MaxSuppliers                 int
-	AllowMultiSupplierRegister   bool
-	Country                      string
-	Currency                     string
-	JWTSecret                    string
-	JWTIssuer                    string
-	JWTTTL                       time.Duration
-	CookieSecure                 bool
-	Log                          *slog.Logger
-	Now                          func() time.Time
+	Repo                       Repository
+	Cache                      *cache.Cache
+	Idem                       idempotency.Store
+	EarningsLookup             EarningsLookup
+	DashboardQuery             DashboardCountQuery
+	Locations                  telemetry.LastLocationReader
+	InventoryService           InventoryServicer
+	SupplierID                 string
+	SeedSupplierID             string
+	MaxSuppliers               int
+	AllowMultiSupplierRegister bool
+	Country                    string
+	Currency                   string
+	JWTSecret                  string
+	JWTIssuer                  string
+	JWTTTL                     time.Duration
+	CookieSecure               bool
+	Log                        *slog.Logger
+	Now                        func() time.Time
 }
 
 // NewService returns a configured Service.
@@ -329,13 +338,13 @@ func NewService(c ServiceConfig) *Service {
 		allowMultiSupplierRegister: c.AllowMultiSupplierRegister,
 		country:                    c.Country,
 		currency:                   c.Currency,
-		jwtSecret:      c.JWTSecret,
-		jwtIssuer:      c.JWTIssuer,
-		jwtTTL:         c.JWTTTL,
-		cookieSecure:   c.CookieSecure,
-		log:            c.Log,
-		now:            c.Now,
-		inventorySvc:   c.InventoryService,
+		jwtSecret:                  c.JWTSecret,
+		jwtIssuer:                  c.JWTIssuer,
+		jwtTTL:                     c.JWTTTL,
+		cookieSecure:               c.CookieSecure,
+		log:                        c.Log,
+		now:                        c.Now,
+		inventorySvc:               c.InventoryService,
 	}
 }
 
@@ -449,26 +458,26 @@ func (r LoginRequest) Validate() error {
 	return nil
 }
 
-// resolveRegistrationSupplierID returns the supplier row to mutate on Register.
-// When the seed is unregistered, always reuse it. Otherwise Gate 5 Phase 1
-// freezes minting unless AllowMultiSupplierRegister is set (and under MaxSuppliers).
+// resolveRegistrationSupplierID returns the seed row when it is still
+// unregistered. Once the seed is registered this path is frozen (GS-T2):
+// no UUID mint, no overwrite, AllowMultiSupplierRegister is ignored.
 func (s *Service) resolveRegistrationSupplierID(ctx context.Context) (string, error) {
-	count, err := s.repo.CountSuppliers(ctx)
+	seedID := strings.TrimSpace(s.seedSupplierID)
+	if seedID == "" {
+		return "", ErrLegacyRegisterFrozen
+	}
+	seedProfile, found, err := s.repo.GetProfile(ctx, seedID)
 	if err != nil {
-		return "", fmt.Errorf("count suppliers: %w", err)
-	}
-	if seedProfile, found, err := s.repo.GetProfile(ctx, s.seedSupplierID); err != nil {
 		return "", fmt.Errorf("load seed supplier: %w", err)
-	} else if found && !seedProfile.IsRegistered {
-		return s.seedSupplierID, nil
 	}
-	if !s.allowMultiSupplierRegister {
-		return "", ErrSupplierCapReached
+	if !found || !seedProfile.IsRegistered {
+		return seedID, nil
 	}
-	if int(count) >= s.maxSuppliers {
-		return "", ErrSupplierCapReached
+	if s.allowMultiSupplierRegister {
+		s.log.Info("legacy supplier register frozen; ALLOW_MULTI_SUPPLIER_REGISTER ignored",
+			"next", TenantRegisterPath)
 	}
-	return uuid.NewString(), nil
+	return "", ErrLegacyRegisterFrozen
 }
 
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterResponse, error) {
@@ -478,6 +487,9 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	targetSupplierID, err := s.resolveRegistrationSupplierID(ctx)
 	if err != nil {
 		return RegisterResponse{}, err
+	}
+	if seed := strings.TrimSpace(s.seedSupplierID); seed != "" && targetSupplierID != seed {
+		return RegisterResponse{}, ErrLegacyRegisterFrozen
 	}
 	pwd := req.Account.Password
 	if pwd == "" {
@@ -494,6 +506,9 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	}
 	if !found {
 		current = Profile{SupplierID: targetSupplierID, Country: s.country, Currency: s.currency}
+	}
+	if current.IsRegistered {
+		return RegisterResponse{}, ErrLegacyRegisterFrozen
 	}
 
 	now := s.now()
@@ -528,12 +543,12 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	current.FleetVehicleCount = req.Business.FleetVehicleCount
 	current.FleetMaxVU = req.Business.FleetMaxVU
 	current.FactoryCount = req.Business.FactoryCount
-	
+
 	current.Categories = append([]string(nil), req.Categories...)
 	if len(current.Categories) == 0 {
 		current.Categories = []string{"Diapers"}
 	}
-	
+
 	current.IsRegistered = req.registrationComplete()
 	current.RegisteredAt = now
 	current.UpdatedAt = now
@@ -809,8 +824,12 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.Register(r.Context(), req)
 	if err != nil {
 		s.log.Warn("supplier registration failed", "err", err)
-		if errors.Is(err, ErrSupplierCapReached) {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+		if errors.Is(err, ErrLegacyRegisterFrozen) || errors.Is(err, ErrSupplierCapReached) {
+			w.Header().Set("Location", TenantRegisterPath)
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": ErrLegacyRegisterFrozen.Error(),
+				"next":  TenantRegisterPath,
+			})
 			return
 		}
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})

@@ -4,6 +4,82 @@ enum TopologyMutation {
   static let defaultLat = 41.2995
   static let defaultLng = 69.2401
 
+  static func warehouseInput(
+    from node: SupplierTopologyWarehouse? = nil,
+    warehouseId: String?,
+    name: String,
+    location: AddressLocationValue,
+    coverageRadiusKm: Double,
+    isActive: Bool,
+    isOnShift: Bool,
+    transferMode: String
+  ) -> SupplierTopologyWarehouseInput {
+    var input = SupplierTopologyWarehouseInput(
+      warehouseId: warehouseId?.isEmpty == true ? nil : warehouseId,
+      name: name,
+      address: location.address.isEmpty ? nil : location.address,
+      placeId: location.placeId,
+      lat: location.lat,
+      lng: location.lng,
+      coverageRadiusKm: coverageRadiusKm,
+      isActive: isActive,
+      isOnShift: isOnShift,
+      transferMode: transferMode
+    )
+    if let node {
+      input.primaryFactoryId = node.primaryFactoryId.flatMap { $0.isEmpty ? nil : $0 }
+      input.countryCode = node.countryCode.isEmpty ? nil : node.countryCode
+      input.coverageCities = node.coverageCities.isEmpty ? nil : node.coverageCities
+      input.assignedFactoryIds = node.assignedFactoryIds.isEmpty ? nil : node.assignedFactoryIds
+    }
+    return input
+  }
+
+  static func warehouseInput(from node: SupplierTopologyWarehouse) -> SupplierTopologyWarehouseInput {
+    warehouseInput(
+      from: node,
+      warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
+      name: node.name,
+      location: AddressLocationValue(address: node.address, lat: node.lat, lng: node.lng, placeId: node.placeId),
+      coverageRadiusKm: node.coverageRadiusKm,
+      isActive: node.isActive,
+      isOnShift: node.isOnShift,
+      transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
+    )
+  }
+
+  static func factoryInput(
+    from node: SupplierTopologyFactory? = nil,
+    factoryId: String?,
+    name: String,
+    location: AddressLocationValue,
+    isActive: Bool
+  ) -> SupplierTopologyFactoryInput {
+    var input = SupplierTopologyFactoryInput(
+      factoryId: factoryId?.isEmpty == true ? nil : factoryId,
+      name: name,
+      address: location.address.isEmpty ? nil : location.address,
+      placeId: location.placeId,
+      lat: location.lat,
+      lng: location.lng,
+      isActive: isActive
+    )
+    if let node, !node.countryCode.isEmpty {
+      input.countryCode = node.countryCode
+    }
+    return input
+  }
+
+  static func factoryInput(from node: SupplierTopologyFactory) -> SupplierTopologyFactoryInput {
+    factoryInput(
+      from: node,
+      factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
+      name: node.name,
+      location: AddressLocationValue(address: node.address, lat: node.lat, lng: node.lng, placeId: node.placeId),
+      isActive: node.isActive
+    )
+  }
+
   @MainActor
   static func appendWarehouse(
     name: String,
@@ -11,45 +87,19 @@ enum TopologyMutation {
     coverageRadiusKm: Double = 50
   ) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
-    var warehouses = topology.warehouses.map { node in
-      SupplierTopologyWarehouseInput(
-        warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        coverageRadiusKm: node.coverageRadiusKm,
-        isActive: node.isActive,
-        isOnShift: node.isOnShift,
-        transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
-      )
-    }
+    var warehouses = topology.warehouses.map { warehouseInput(from: $0) }
     warehouses.append(
-      SupplierTopologyWarehouseInput(
+      warehouseInput(
         warehouseId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        address: location.address.isEmpty ? nil : location.address,
-        placeId: location.placeId,
-        lat: location.lat,
-        lng: location.lng,
+        location: location,
         coverageRadiusKm: coverageRadiusKm,
         isActive: true,
         isOnShift: true,
         transferMode: "TRUCK"
       )
     )
-    let factories = topology.factories.map { node in
-      SupplierTopologyFactoryInput(
-        factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        isActive: node.isActive
-      )
-    }
+    let factories = topology.factories.map { factoryInput(from: $0) }
     return try await SupplierOperationsService.updateTopology(
       SupplierTopologyUpdateRequest(warehouses: warehouses, factories: factories)
     )
@@ -58,39 +108,13 @@ enum TopologyMutation {
   @MainActor
   static func appendFactory(name: String, location: AddressLocationValue) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
-    let warehouses = topology.warehouses.map { node in
-      SupplierTopologyWarehouseInput(
-        warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        coverageRadiusKm: node.coverageRadiusKm,
-        isActive: node.isActive,
-        isOnShift: node.isOnShift,
-        transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
-      )
-    }
-    var factories = topology.factories.map { node in
-      SupplierTopologyFactoryInput(
-        factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        isActive: node.isActive
-      )
-    }
+    let warehouses = topology.warehouses.map { warehouseInput(from: $0) }
+    var factories = topology.factories.map { factoryInput(from: $0) }
     factories.append(
-      SupplierTopologyFactoryInput(
+      factoryInput(
         factoryId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        address: location.address.isEmpty ? nil : location.address,
-        placeId: location.placeId,
-        lat: location.lat,
-        lng: location.lng,
+        location: location,
         isActive: true
       )
     )

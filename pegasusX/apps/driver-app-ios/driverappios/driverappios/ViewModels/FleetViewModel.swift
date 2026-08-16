@@ -88,7 +88,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
     /// Shared location for FleetServiceLive GPS injection
     static var lastKnownLocation: CLLocationCoordinate2D?
-    let geofenceThreshold: Double = 500
+    let geofenceThreshold: Double = 150
 
     var pendingMissions: [Mission] {
         missions.filter { !completedIds.contains($0.id) }

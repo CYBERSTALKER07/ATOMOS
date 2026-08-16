@@ -7,6 +7,7 @@ import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { createSupplierApi } from "@/lib/api";
 import { persistSession } from "@/lib/auth";
+import { discoverOIDC } from "@/lib/oidc";
 
 type LoginStep = "phone" | "otp";
 
@@ -19,6 +20,8 @@ export default function SupplierLoginPage() {
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [companyId, setCompanyId] = useState("");
+  const [idpLoading, setIdpLoading] = useState(false);
 
   const dialCode = useMemo(() => dialCodeForCountry(countryCode), [countryCode]);
 
@@ -61,7 +64,30 @@ export default function SupplierLoginPage() {
     }
   }
 
+  async function handleIdP(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const sid = companyId.trim();
+    if (!sid) {
+      setError("Enter the company id to use SSO");
+      return;
+    }
+    setIdpLoading(true);
+    try {
+      const nonce = crypto.randomUUID();
+      sessionStorage.setItem("oidc_supplier_id", sid);
+      sessionStorage.setItem("oidc_nonce", nonce);
+      const disc = await discoverOIDC(sid, nonce);
+      window.location.href = disc.authorization_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "IdP is not attached");
+    } finally {
+      setIdpLoading(false);
+    }
+  }
+
   return (
+    <>
     <AuthLoginCard
       title={t("supplier_portal.auth.login.text.supplier_sign_in")}
       subtitle={
@@ -85,5 +111,18 @@ export default function SupplierLoginPage() {
       onVerifyOtp={handleVerifyOtp}
       onBack={() => setStep("phone")}
     />
+    <form className="mx-auto mt-6 max-w-md space-y-2 px-4" onSubmit={handleIdP}>
+      <p className="text-center text-sm text-[var(--desk-text-secondary)]">Or sign in with your company IdP</p>
+      <input
+        className="w-full rounded border px-3 py-2 text-sm"
+        placeholder="Company id"
+        value={companyId}
+        onChange={(e) => setCompanyId(e.target.value)}
+      />
+      <button type="submit" disabled={idpLoading} className="w-full rounded border px-3 py-2 text-sm">
+        {idpLoading ? "Opening IdP…" : "Login with IdP"}
+      </button>
+    </form>
+    </>
   );
 }

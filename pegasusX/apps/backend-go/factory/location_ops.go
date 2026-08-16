@@ -16,22 +16,23 @@ import (
 )
 
 type factoryLocationResponse struct {
-	FactoryID             string  `json:"factory_id"`
-	Name                  string  `json:"name"`
-	Address               string  `json:"address,omitempty"`
-	PlaceID               string  `json:"place_id,omitempty"`
-	Lat                   float64 `json:"lat"`
-	Lng                   float64 `json:"lng"`
-	DailyOutputCapacity   int64   `json:"daily_output_capacity"`
-	UpdatedAt             string  `json:"updated_at,omitempty"`
+	FactoryID           string  `json:"factory_id"`
+	Name                string  `json:"name"`
+	Address             string  `json:"address,omitempty"`
+	PlaceID             string  `json:"place_id,omitempty"`
+	Lat                 float64 `json:"lat"`
+	Lng                 float64 `json:"lng"`
+	DailyOutputCapacity int64   `json:"daily_output_capacity"`
+	Timezone            string  `json:"timezone,omitempty"`
+	UpdatedAt           string  `json:"updated_at,omitempty"`
 }
 
 type factoryLocationPatch struct {
-	Address               string `json:"address"`
-	PlaceID               string `json:"place_id,omitempty"`
-	Lat                   float64 `json:"lat"`
-	Lng                   float64 `json:"lng"`
-	DailyOutputCapacity   *int64 `json:"daily_output_capacity,omitempty"`
+	Address             string  `json:"address"`
+	PlaceID             string  `json:"place_id,omitempty"`
+	Lat                 float64 `json:"lat"`
+	Lng                 float64 `json:"lng"`
+	DailyOutputCapacity *int64  `json:"daily_output_capacity,omitempty"`
 }
 
 // HandleOpsLocation serves GET/PATCH /v1/factory/ops/location.
@@ -220,6 +221,9 @@ func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (fa
 		return factoryLocationResponse{}, err
 	}
 	resp.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
+	if tz, err := auth.TimezoneNameFromContext(ctx, supplierID); err == nil {
+		resp.Timezone = tz
+	}
 	return resp, nil
 }
 

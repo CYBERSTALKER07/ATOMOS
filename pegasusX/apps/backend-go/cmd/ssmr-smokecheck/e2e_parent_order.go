@@ -38,41 +38,26 @@ func runParentOrderE2E(ctx context.Context, client *http.Client, base string, cf
 }
 
 func runMultiSupplierRegisterE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, error) {
-	if !envTruthy("ALLOW_MULTI_SUPPLIER_REGISTER") {
-		fmt.Println("PX_E2E_MULTI_SUPPLIER_REGISTER_SKIPPED")
-		return "", nil
-	}
 	phone := "+99891" + strings.ReplaceAll(uuid.NewString()[:8], "-", "")
+	market := strings.TrimSpace(cfg.SeedSupplierCountry)
+	if market == "" {
+		market = "UZ"
+	}
 	body, _ := json.Marshal(map[string]any{
-		"phone": phone,
-		"account": map[string]any{
-			"legalName":   "SSMR Parent Phase2 Supplier",
-			"contactName": "Parent Admin",
-			"email":       "parent-" + phone[len(phone)-4:] + "@pegasusx.local",
-			"password":    "ParentTest!234",
-			"country":     cfg.SeedSupplierCountry,
-		},
-		"location": map[string]any{
-			"warehouse": map[string]any{
-				"name":    "Parent WH B",
-				"address": "Tashkent",
-				"lat":     cfg.DeliveryZoneCenterLat,
-				"lng":     cfg.DeliveryZoneCenterLng,
-			},
-			"sameAsWarehouse": true,
-		},
-		"business": map[string]any{
-			"taxId":             "PARENT-TAX",
-			"companyRegNumber":  "PARENT-REG",
-			"fleetVehicleCount": 1,
-			"fleetMaxVU":        10,
-			"factoryCount":      1,
-		},
-		"categories": []string{"GENERAL"},
+		"legal_name":   "SSMR Parent Phase2 Supplier",
+		"contact_name": "Parent Admin",
+		"email":        "parent-" + phone[len(phone)-4:] + "@pegasusx.local",
+		"phone":        phone,
+		"password":     "ParentTest!234",
+		"market_code":  market,
 	})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/auth/supplier/register", body, "", "ssmr-parent-reg-"+phone)
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/platform/tenants/register", body, "", "ssmr-parent-reg-"+phone)
 	if err != nil {
 		return "", fmt.Errorf("multi supplier register: %w", err)
+	}
+	if status == http.StatusNotFound || status == http.StatusServiceUnavailable {
+		fmt.Println("PX_E2E_MULTI_SUPPLIER_REGISTER_SKIPPED")
+		return "", nil
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
 		return "", fmt.Errorf("multi supplier register: status %d body=%s", status, string(respBody))

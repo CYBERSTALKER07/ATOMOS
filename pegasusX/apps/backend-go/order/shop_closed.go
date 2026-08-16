@@ -11,22 +11,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type shopClosedReportRequest struct {
-	OrderID  string          `json:"order_id,omitempty"`
-	Reason   string          `json:"reason"`
-	Note     string          `json:"note,omitempty"`
-	PhotoURL string          `json:"photo_url,omitempty"`
-	PhotoURLCamel string     `json:"photoUrl,omitempty"`
-	Location DriverTelemetry `json:"location"`
-	Latitude  *float64       `json:"latitude,omitempty"`
-	Longitude *float64       `json:"longitude,omitempty"`
+	OrderID       string          `json:"order_id,omitempty"`
+	Reason        string          `json:"reason"`
+	Note          string          `json:"note,omitempty"`
+	PhotoURL      string          `json:"photo_url,omitempty"`
+	PhotoURLCamel string          `json:"photoUrl,omitempty"`
+	Location      DriverTelemetry `json:"location"`
+	Latitude      *float64        `json:"latitude,omitempty"`
+	Longitude     *float64        `json:"longitude,omitempty"`
 }
 
 type driverEndpointResponse struct {
@@ -144,8 +144,17 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	now := s.now()
 	// Client timestamp was removed, just use now
 
-	graceEnds := now.Add(s.shopGrace)
 	ctx := r.Context()
+	grace, graceErr := auth.ShopClosedGraceFromContext(ctx, claims.SupplierID)
+	if graceErr != nil {
+		st, code := auth.TimezonePackHTTPStatus(graceErr)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
+	}
+	if grace <= 0 {
+		grace = s.shopGrace
+	}
+	graceEnds := now.Add(grace)
 
 	var retailerID, supplierID string
 	var gpsLat, gpsLng float64
@@ -189,7 +198,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			t := proxUnlockedAt.Time
 			proxUnlockedAtPtr = &t
 		}
-		
+
 		var h3 string
 		if h3Cell.Valid {
 			h3 = h3Cell.StringVal
@@ -209,7 +218,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			Actor:  driverID,
 			Reason: "report_shop_closed",
 		})
-		
+
 		// Ensure we capture if it was unlocked (maybe by this call)
 		if orderRecord.ProximityUnlockedAt != nil {
 			finalProxUnlocked = true
@@ -302,7 +311,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if errors.Is(err, ErrInvalidStatusTransition) {
 			s.log.ErrorContext(ctx, "shop closed report failed (invalid status)", "order_id", orderID, "err", err)
 			writeJSON(w, http.StatusConflict, map[string]string{
-				"error": "invalid_status_transition",
+				"error":   "invalid_status_transition",
 				"message": err.Error(),
 			})
 			return
@@ -544,7 +553,7 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 					"ResolvedAt":  now.UTC(),
 				}),
 			)
-		// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
+			// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
 		}
 
 		logPayload := map[string]any{
@@ -789,10 +798,6 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
-
-
-
-
 
 func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)

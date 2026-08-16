@@ -2,6 +2,9 @@
 .DS_Store
 Thumbs.db
 
+# === Agent memory (keep WORKSPACE.md; ignore session scratch) ===
+.agents/memory/sessions/
+
 # === IDE ===
 .idea/
 *.iml

@@ -18,7 +18,7 @@ import (
 )
 
 // Settlement proximity: payment modes unlock only when driver is physically
-// at the stop (design §4.1). Tighter than approach geofence (500 m).
+// at the stop (design §4.1). Tighter than pack breach_radius_meters.
 const (
 	SettlementProximityRadiusM = 100.0
 	// SettlementH3Resolution: res 9 ~174 m edge — cell match ≈ doorstep.
@@ -46,9 +46,9 @@ var (
 
 // ProximityUnlockRequest is POST /v1/delivery/proximity-unlock.
 type ProximityUnlockRequest struct {
-	OrderID         string  `json:"order_id"`
-	Latitude        float64 `json:"latitude"`
-	Longitude       float64 `json:"longitude"`
+	OrderID   string  `json:"order_id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 	// ClientTimestamp RFC3339 — when the location sample was taken (offline replay).
 	ClientTimestamp string `json:"client_timestamp,omitempty"`
 	// ForceBypassToken optional supervisor token (supervised MANUAL/FORCE_BYPASS).
@@ -221,13 +221,13 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
 		}
 		var (
-			status                               string
-			version                              int64
-			driverCol, retailerCol, supplierCol  spanner.NullString
-			orderLat, orderLng                   float64
-			h3Cell                               spanner.NullString
-			proxAt                               spanner.NullTime
-			proxMethod                           spanner.NullString
+			status                              string
+			version                             int64
+			driverCol, retailerCol, supplierCol spanner.NullString
+			orderLat, orderLng                  float64
+			h3Cell                              spanner.NullString
+			proxAt                              spanner.NullTime
+			proxMethod                          spanner.NullString
 		)
 		if err := row.Columns(&status, &version, &driverCol, &retailerCol, &supplierCol,
 			&orderLat, &orderLng, &h3Cell, &proxAt, &proxMethod); err != nil {
@@ -301,11 +301,11 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 		}
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":              req.OrderID,
-				"ProximityUnlockedAt":  unlockedAt,
-				"ProximityMethod":      method,
-				"Version":              version + 1,
-				"UpdatedAt":            unlockedAt,
+				"OrderId":             req.OrderID,
+				"ProximityUnlockedAt": unlockedAt,
+				"ProximityMethod":     method,
+				"Version":             version + 1,
+				"UpdatedAt":           unlockedAt,
 			}),
 		}
 		for _, e := range buf.events {

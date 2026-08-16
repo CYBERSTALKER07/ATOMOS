@@ -48,6 +48,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case factories = "Factories"
     case warehouses = "Warehouses"
         case crm = "CRM"
+        case loyalty = "Loyalty"
+        case entityResolution = "Entity resolution"
         case payouts = "Payouts"
         case catalogDetail = "Catalog detail"
         case controlTower = "Control tower"
@@ -110,6 +112,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .factories: "building.2"
         case .warehouses: "shippingbox.fill"
         case .crm: "person.2"
+        case .loyalty: "star"
+        case .entityResolution: "point.3.connected.trianglepath.dotted"
         case .payouts: "banknote"
         case .catalogDetail: "square.grid.2x2.fill"
         case .controlTower: "antenna.radiowaves.left.and.right"
@@ -148,7 +152,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var networkSections: [SupplierSection] {
-        [.topology, .factories, .warehouses, .crm, .segmentation, .deliveryZones, .supplyLanes]
+        [.topology, .factories, .warehouses, .crm, .loyalty, .entityResolution, .segmentation, .deliveryZones, .supplyLanes]
     }
 
     static var accountSections: [SupplierSection] {

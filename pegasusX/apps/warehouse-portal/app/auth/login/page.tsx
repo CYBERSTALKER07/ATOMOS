@@ -53,7 +53,7 @@ export default function WarehouseLoginPage() {
     try {
       const phone = `${dialCode}${phoneLocal}`;
       const idToken = await verifyPhoneOtp(otpCode);
-      const res = await fetch(`${warehouseApiBaseUrl}/v1/auth/warehouse/login`, {
+      const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken }),

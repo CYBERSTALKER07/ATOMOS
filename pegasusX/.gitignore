@@ -71,6 +71,15 @@ web-build/
 *.tfstate
 *.tfstate.*
 *.tfplan
+infra/terraform/cells/*/plan.txt
+infra/terraform/cells/*/workdir/
+infra/terraform/cells/*/catalog.tfstate
+infra/terraform/cells/*/jwt.secret
+infra/terraform/cells/*/project/plan.txt
+infra/terraform/cells/*/project/workdir/
+infra/terraform/global/plan.txt
+infra/terraform/global/init.txt
+infra/terraform/global-plan-workdir/
 artifacts/tfstate-archive/**
 !artifacts/tfstate-archive/README.md
 **/.build/

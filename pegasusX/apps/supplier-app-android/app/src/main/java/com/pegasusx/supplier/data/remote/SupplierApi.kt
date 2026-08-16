@@ -261,6 +261,26 @@ interface SupplierApi {
         @Header("X-Idempotency-Key") idempotencyKey: String,
     ): Response<PullMatrixResponse>
 
+    @POST("v1/supplier/planning/predictive-push")
+    suspend fun postPlanningPredictivePush(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PredictivePushResponse>
+
+    @GET("v1/supplier/loyalty/program")
+    suspend fun getLoyaltyProgram(): Response<LoyaltyProgram>
+
+    @PATCH("v1/supplier/loyalty/program")
+    suspend fun patchLoyaltyProgram(
+        @Body body: LoyaltyProgram,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<LoyaltyProgram>
+
+    @POST("v1/supplier/entity-resolution/resolve")
+    suspend fun resolveEntity(@Body body: EntityResolutionResolveRequest): Response<EntityResolutionResolveResponse>
+
+    @POST("v1/supplier/entity-resolution/explain")
+    suspend fun explainEntity(@Body body: EntityResolutionExplainRequest): Response<EntityResolutionExplainResponse>
+
     @POST("v1/supplier/planning/kill-switch")
     suspend fun postPlanningKillSwitch(
         @Body body: KillSwitchRequest,

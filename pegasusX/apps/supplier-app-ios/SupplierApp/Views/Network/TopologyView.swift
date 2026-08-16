@@ -201,13 +201,12 @@ struct TopologyView: View {
                           draft.location.lat != 0 || draft.location.lng != 0 else {
                         throw URLError(.badURL)
                     }
-                    return SupplierTopologyWarehouseInput(
+                    let existing = warehouses.first { $0.warehouseId == draft.warehouseId }
+                    return TopologyMutation.warehouseInput(
+                        from: existing,
                         warehouseId: draft.warehouseId,
                         name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                        address: draft.location.address,
-                        placeId: draft.location.placeId,
-                        lat: draft.location.lat,
-                        lng: draft.location.lng,
+                        location: draft.location,
                         coverageRadiusKm: Double(draft.coverageRadiusKm) ?? 50,
                         isActive: true,
                         isOnShift: true,
@@ -219,13 +218,12 @@ struct TopologyView: View {
                           draft.location.lat != 0 || draft.location.lng != 0 else {
                         throw URLError(.badURL)
                     }
-                    return SupplierTopologyFactoryInput(
+                    let existing = factories.first { $0.factoryId == draft.factoryId }
+                    return TopologyMutation.factoryInput(
+                        from: existing,
                         factoryId: draft.factoryId,
                         name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                        address: draft.location.address,
-                        placeId: draft.location.placeId,
-                        lat: draft.location.lat,
-                        lng: draft.location.lng,
+                        location: draft.location,
                         isActive: draft.isActive
                     )
                 }

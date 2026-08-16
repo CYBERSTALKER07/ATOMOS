@@ -25,6 +25,10 @@ func (r *SpannerRepository) UpsertTenant(ctx context.Context, t Tenant) error {
 		"Status":      t.Status,
 		"DisplayName": t.DisplayName,
 		"KybNotes":    t.KybNotes,
+		"MarketCode":  t.MarketCode,
+		"HomeCell":    t.HomeCell,
+		"RequestedBy": t.RequestedBy,
+		"ApprovedBy":  t.ApprovedBy,
 		"CreatedAt":   t.CreatedAt,
 		"UpdatedAt":   spanner.CommitTimestamp,
 	}
@@ -43,8 +47,9 @@ func (r *SpannerRepository) UpsertTenant(ctx context.Context, t Tenant) error {
 
 func (r *SpannerRepository) GetTenant(ctx context.Context, tenantType, tenantID string) (Tenant, bool, error) {
 	row, err := r.client.Single().ReadRow(ctx, "PlatformTenants", spanner.Key{tenantType, tenantID},
-		[]string{"TenantType", "TenantId", "Status", "DisplayName", "KybNotes", "CreatedAt", "UpdatedAt",
-			"ApprovedAt", "SuspendedAt", "OffboardedAt"})
+		[]string{"TenantType", "TenantId", "Status", "DisplayName", "KybNotes",
+			"MarketCode", "HomeCell", "RequestedBy", "ApprovedBy",
+			"CreatedAt", "UpdatedAt", "ApprovedAt", "SuspendedAt", "OffboardedAt"})
 	if err != nil {
 		if spanner.ErrCode(err) == codes.NotFound {
 			return Tenant{}, false, nil
@@ -59,8 +64,9 @@ func (r *SpannerRepository) ListTenants(ctx context.Context, status string, limi
 	if limit <= 0 {
 		limit = 100
 	}
-	sql := `SELECT TenantType, TenantId, Status, DisplayName, KybNotes, CreatedAt, UpdatedAt,
-		ApprovedAt, SuspendedAt, OffboardedAt
+	sql := `SELECT TenantType, TenantId, Status, DisplayName, KybNotes,
+		MarketCode, HomeCell, RequestedBy, ApprovedBy,
+		CreatedAt, UpdatedAt, ApprovedAt, SuspendedAt, OffboardedAt
 		FROM PlatformTenants`
 	params := map[string]any{"lim": int64(limit)}
 	if status != "" {
@@ -137,15 +143,20 @@ func (r *SpannerRepository) ListAudit(ctx context.Context, limit int) ([]AuditRo
 
 func scanTenant(row *spanner.Row) (Tenant, error) {
 	var t Tenant
-	var name, notes spanner.NullString
+	var name, notes, market, cell, requested, approvedBy spanner.NullString
 	var approved, suspended, offboarded spanner.NullTime
 	var created, updated time.Time
-	if err := row.Columns(&t.TenantType, &t.TenantID, &t.Status, &name, &notes, &created, &updated,
-		&approved, &suspended, &offboarded); err != nil {
+	if err := row.Columns(&t.TenantType, &t.TenantID, &t.Status, &name, &notes,
+		&market, &cell, &requested, &approvedBy,
+		&created, &updated, &approved, &suspended, &offboarded); err != nil {
 		return Tenant{}, err
 	}
 	t.DisplayName = name.StringVal
 	t.KybNotes = notes.StringVal
+	t.MarketCode = market.StringVal
+	t.HomeCell = cell.StringVal
+	t.RequestedBy = requested.StringVal
+	t.ApprovedBy = approvedBy.StringVal
 	t.CreatedAt = created.UTC()
 	t.UpdatedAt = updated.UTC()
 	if approved.Valid {

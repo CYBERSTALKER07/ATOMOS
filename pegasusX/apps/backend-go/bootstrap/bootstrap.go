@@ -30,7 +30,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
-	"github.com/pegasusx/pegasusx/apps/backend-go/countrycfg"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
@@ -54,6 +53,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
@@ -77,6 +77,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"github.com/pegasusx/pegasusx/apps/backend-go/tenantreg"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -153,7 +154,8 @@ type Config struct {
 	ReliabilityEnabled  bool
 	AllowAuthBypass     bool
 	MaxSuppliers        int
-	// AllowMultiSupplierRegister gates UUID mint on Register (Gate 5 Week 0 freeze).
+	// AllowMultiSupplierRegister is ignored on POST /v1/auth/supplier/register
+	// (GS-T2). New tenants mint via POST /v1/platform/tenants/register.
 	AllowMultiSupplierRegister bool
 	// TenantContextEnforced fail-closes authenticated routes missing TenantContext.
 	TenantContextEnforced bool
@@ -191,6 +193,8 @@ type App struct {
 	NotificationService   *notifications.Service
 	NotificationInbox     *notifications.InboxHandlers
 	SupplierService       *supplier.Service
+	OrgOIDC               *orgoidc.Service
+	TenantRegister        *tenantreg.Service
 	RetailerService       *retailer.Service
 	RetailerProximity     *retailer.RetailerProximityService
 	DriverService         *driver.Service
@@ -335,7 +339,7 @@ func LoadConfig() (*Config, error) {
 		AirwallexDirectExecutionEnabled: envBool("AIRWALLEX_DIRECT_EXECUTION_ENABLED", false),
 		SeedSupplierName:                envOr("SEED_SUPPLIER_NAME", "pegasusX Supplier"),
 		SeedSupplierCountry:             envOr("SEED_SUPPLIER_COUNTRY", "UZ"),
-		SeedSupplierCurrency:            envOr("SEED_SUPPLIER_CURRENCY", "UZS"),
+		SeedSupplierCurrency:            envOr("SEED_SUPPLIER_CURRENCY", seedCurrencyFromPack()),
 		FxSeedUSDToUZSScaled:            envInt64("FX_SEED_USD_UZS_SCALED", 0),
 		DeliveryZoneCenterLat:           envFloat("DELIVERY_ZONE_CENTER_LAT", defaultDeliveryZoneCenterLat),
 		DeliveryZoneCenterLng:           envFloat("DELIVERY_ZONE_CENTER_LNG", defaultDeliveryZoneCenterLng),
@@ -665,6 +669,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		// Required for sell-through, reorder suggestions, auto-order bucket/runs, locations Spanner path.
 		Spanner: spannerClient,
 	})
+	retailerSvc.SetTradingPartnerLookup(func(ctx context.Context, supplierID string) (bool, error) {
+		if supplierRepo == nil {
+			return false, nil
+		}
+		_, ok, err := supplierRepo.GetProfile(ctx, supplierID)
+		return ok, err
+	})
 
 	var supplierInventory supplier.InventoryServicer
 	if inventorySvc != nil {
@@ -692,6 +703,27 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTTTL:                     24 * time.Hour,
 		CookieSecure:               false,
 		Log:                        log,
+	})
+	supplier.WireMarketProfileLookup(supplierRepo)
+	var oidcStore orgoidc.Store = orgoidc.NewMemoryStore()
+	if spannerClient != nil {
+		oidcStore = orgoidc.NewSpannerStore(spannerClient)
+	}
+	orgOIDC := &orgoidc.Service{
+		Store:     oidcStore,
+		JWTSecret: cfg.JWTSecret,
+		JWTIssuer: cfg.JWTIssuer,
+		JWTTTL:    24 * time.Hour,
+	}
+	tenantRegSvc := tenantreg.NewService(tenantreg.Config{
+		Repo:           supplierRepo,
+		SeedSupplierID: supplierSeed.SupplierID,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		JWTTTL:         24 * time.Hour,
+		CookieSecure:   false,
+		Idem:           idemStore,
+		Log:            log,
 	})
 
 	// Role hubs share the cache backend for Pub/Sub fan-out. Production swaps
@@ -975,21 +1007,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	factorySvc := factory.NewService(factory.ServiceConfig{
-		Repo:           factoryRepo,
-		Cache:          cacheClient,
-		SupplierHub:    supplierHub,
-		FactoryHub:     factoryHub,
-		Log:            log,
-		Spanner:        spannerClient,
-		Locations:      driverLocations,
-		SupplierID:     supplierSeed.SupplierID,
-		SeedSupplierID: supplierSeed.SupplierID,
-		FactoryNodeID:  factoryNodeID,
-		Currency:       cfg.SeedSupplierCurrency,
-		JWTSecret:      cfg.JWTSecret,
-		JWTIssuer:      cfg.JWTIssuer,
-		Idem:           idemStore,
-		Planning:       factoryPlanning,
+		Repo:            factoryRepo,
+		Cache:           cacheClient,
+		SupplierHub:     supplierHub,
+		FactoryHub:      factoryHub,
+		Log:             log,
+		Spanner:         spannerClient,
+		Locations:       driverLocations,
+		SupplierID:      supplierSeed.SupplierID,
+		SeedSupplierID:  supplierSeed.SupplierID,
+		FactoryNodeID:   factoryNodeID,
+		Currency:        cfg.SeedSupplierCurrency,
+		JWTSecret:       cfg.JWTSecret,
+		JWTIssuer:       cfg.JWTIssuer,
+		Idem:            idemStore,
+		Planning:        factoryPlanning,
 		OptimizerClient: optimizerCli,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
@@ -1011,6 +1043,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.SetOrderExpectationReader(orderRepo)
+	if spannerClient != nil {
+		payloadSvc.SetStaffLookup(payloadStaffLoginLookup(spannerClient))
+	}
 	payloadSvc.WarmManifestCache(ctx)
 	factorySvc.WarmManifestCache(ctx)
 	returnsSvc := returns.NewService(returns.ServiceConfig{
@@ -1079,17 +1114,19 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			}, nil
 		}
 	}
-	// OFD adapter (FAKE default; MY_SOLIQ when env configured).
+	// OFD adapter: cell default from env. GS-M2 fail-closes planned/PEPPOL packs at fiscalize.
 	fiscalProvider := order.ProviderFromEnv()
 	orderSvc.SetFiscalProvider(fiscalProvider)
 	var buyerAcceptancePoller *order.BuyerAcceptancePoller
-	if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
-		buyerAcceptancePoller = order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
-		// Default is ON (reverse settlement on reject). Explicit override still honored.
-		if v := strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")); strings.EqualFold(v, "false") || v == "0" {
-			buyerAcceptancePoller.SetAutoCreditNoteOnBuyerReject(false)
+	if auth.BuyerAcceptancePollerAllowed() {
+		if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
+			buyerAcceptancePoller = order.NewBuyerAcceptancePoller(soliqClient, orderRepo, log, creditNoteSvc)
+			// Default is ON (reverse settlement on reject). Explicit override still honored.
+			if v := strings.TrimSpace(os.Getenv("CREDIT_NOTE_AUTO_FROM_BUYER_REJECT")); strings.EqualFold(v, "false") || v == "0" {
+				buyerAcceptancePoller.SetAutoCreditNoteOnBuyerReject(false)
+			}
+			log.Info("buyer acceptance poller constructed (started by worker tier)")
 		}
-		log.Info("buyer acceptance poller constructed (started by worker tier)")
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:                       driverRepo,
@@ -1157,6 +1194,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTIssuer:      cfg.JWTIssuer,
 		Idem:           idemStore,
 	})
+	if spannerClient != nil {
+		driverSvc.SetLoginLookup(driverLoginLookup(spannerClient))
+	}
 	paymentExec := payment.NewProviderExecutionRouter(payment.ProviderExecutionRouterConfig{
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
 		GlobalPayEnv:                    cfg.GlobalPayEnv,
@@ -1344,6 +1384,25 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		mfaRepo = mfa.NewSpannerRepository(spannerClient)
 	}
 	platformAdminSvc := platformadmin.NewService(platformAdminRepo)
+	platformAdminSvc.OnApproved = func(ctx context.Context, tenantType, tenantID, marketCode, homeCell string) error {
+		if tenantType != platformadmin.TenantSupplier || supplierRepo == nil {
+			return nil
+		}
+		p, found, err := supplierRepo.GetProfile(ctx, tenantID)
+		if err != nil || !found {
+			return err
+		}
+		p.MarketCode = marketCode
+		p.HomeCell = homeCell
+		if strings.TrimSpace(p.Country) == "" {
+			p.Country = marketCode
+		}
+		if pack, ok := auth.ResolveShippedMarketPack(marketCode); ok && strings.TrimSpace(p.Currency) == "" {
+			p.Currency = pack.CurrencyCode
+		}
+		p.UpdatedAt = time.Now().UTC()
+		return supplierRepo.UpdateProfile(ctx, p, nil)
+	}
 	platformAdminSvc.SetHub(platformAdminHub)
 	platformAdminHandlers := &platformadmin.Handlers{
 		Svc:       platformAdminSvc,
@@ -1367,17 +1426,32 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	retailerSvc.SetPlaceFlagEvaluator(featureFlagSvc)
 	stocklots.SetFlagEvaluator(featureFlagSvc) // G2.A seal-class tenant overrides
 	retailerSvc.SetSoakBypassAuditor(platformAdminSvc)
-	supplierSvc.OnRegistered = func(ctx context.Context, supplierID, legalName string) error {
+	onRegistered := func(ctx context.Context, supplierID, legalName string) error {
 		if err := platformAdminSvc.EnsurePending(ctx, platformadmin.TenantSupplier, supplierID, legalName); err != nil {
 			return err
 		}
 		// Seed / first tenant auto-approved so single-tenant SSMR keeps working.
+		// T1 never mints the seed id, so this branch does not apply to self-serve.
 		if supplierID == supplierSeed.SupplierID {
-			_, err := platformAdminSvc.Transition(ctx, "system:bootstrap", platformadmin.TenantSupplier, supplierID, platformadmin.StatusApproved, "seed_auto_approve")
+			pack, ok := auth.ResolveShippedMarketPack(cfg.SeedSupplierCountry)
+			if !ok {
+				pack, _ = auth.ResolveShippedMarketPack(auth.DefaultMarketCode)
+			}
+			_, err := platformAdminSvc.Transition(ctx, platformadmin.TransitionInput{
+				Actor:      "system:bootstrap",
+				TenantType: platformadmin.TenantSupplier,
+				TenantID:   supplierID,
+				Status:     platformadmin.StatusApproved,
+				KybNotes:   "seed_auto_approve",
+				MarketCode: pack.Code,
+				HomeCell:   pack.HomeCell,
+			})
 			return err
 		}
 		return nil
 	}
+	supplierSvc.OnRegistered = onRegistered
+	tenantRegSvc.OnRegistered = onRegistered
 
 	var fcmClient *notifications.FCMClient
 	// Prefer real FCM when project id or credentials path is configured.
@@ -1776,6 +1850,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotificationService:     notifSvc,
 		NotificationInbox:       notifInbox,
 		SupplierService:         supplierSvc,
+		OrgOIDC:                 orgOIDC,
+		TenantRegister:          tenantRegSvc,
 		RetailerService:         retailerSvc,
 		DriverService:           driverSvc,
 		FactoryService:          factorySvc,
@@ -2265,6 +2341,74 @@ func warehouseOpsOrdersQuery(client *spanner.Client) warehouse.WarehouseOpsOrder
 	}
 }
 
+func driverLoginLookup(client *spanner.Client) driver.DriverLoginLookup {
+	return func(ctx context.Context, phone string) (driver.DriverLoginRecord, bool, error) {
+		phone = strings.TrimSpace(phone)
+		if phone == "" || client == nil {
+			return driver.DriverLoginRecord{}, false, nil
+		}
+		stmt := spanner.Statement{
+			SQL: `SELECT DriverId, Name, Phone, COALESCE(PinHash, ''), SupplierId,
+			             HomeNodeType, HomeNodeId, COALESCE(VehicleId, '')
+			      FROM Drivers
+			      WHERE Phone = @phone AND IsActive = true
+			      LIMIT 1`,
+			Params: map[string]any{"phone": phone},
+		}
+		iter := client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return driver.DriverLoginRecord{}, false, nil
+		}
+		if err != nil {
+			return driver.DriverLoginRecord{}, false, fmt.Errorf("driver login lookup: %w", err)
+		}
+		var rec driver.DriverLoginRecord
+		if err := row.Columns(
+			&rec.DriverID, &rec.Name, &rec.Phone, &rec.PinHash, &rec.SupplierID,
+			&rec.HomeNodeType, &rec.HomeNodeID, &rec.VehicleID,
+		); err != nil {
+			return driver.DriverLoginRecord{}, false, fmt.Errorf("scan driver login: %w", err)
+		}
+		return rec, true, nil
+	}
+}
+
+func payloadStaffLoginLookup(client *spanner.Client) payload.PayloadStaffLookup {
+	return func(ctx context.Context, phone string) (payload.PayloadStaffRecord, bool, error) {
+		phone = strings.TrimSpace(phone)
+		if phone == "" || client == nil {
+			return payload.PayloadStaffRecord{}, false, nil
+		}
+		stmt := spanner.Statement{
+			SQL: `SELECT UserId, Name, Phone, PasswordHash, SupplierId, COALESCE(AssignedWarehouseId, '')
+			      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
+			      WHERE Phone = @phone
+			        AND IsActive = true
+			        AND SupplierRole IN ('PAYLOADER', 'WAREHOUSE', 'WAREHOUSE_ADMIN', 'WAREHOUSE_STAFF')
+			      LIMIT 1`,
+			Params: map[string]any{"phone": phone},
+		}
+		iter := client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return payload.PayloadStaffRecord{}, false, nil
+		}
+		if err != nil {
+			return payload.PayloadStaffRecord{}, false, fmt.Errorf("payload staff lookup: %w", err)
+		}
+		var rec payload.PayloadStaffRecord
+		if err := row.Columns(
+			&rec.UserID, &rec.Name, &rec.Phone, &rec.PasswordHash, &rec.SupplierID, &rec.WarehouseID,
+		); err != nil {
+			return payload.PayloadStaffRecord{}, false, fmt.Errorf("scan payload staff: %w", err)
+		}
+		return rec, true, nil
+	}
+}
+
 // warehouseOpsDriversQuery returns drivers home-noded to a warehouse.
 func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriversQuery {
 	return func(ctx context.Context, warehouseID string) ([]warehouse.PortalDriver, error) {
@@ -2628,6 +2772,14 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+func seedCurrencyFromPack() string {
+	c, err := auth.CurrencyFromContext(context.Background(), "")
+	if err != nil {
+		return ""
+	}
+	return c
+}
+
 // resolveSpannerEmulatorHost returns the emulator endpoint for local SSMR, or
 // empty string for real Cloud Spanner (ADC + public API).
 //
@@ -2702,7 +2854,11 @@ func shopClosedGraceDuration() time.Duration {
 		}
 		return time.Duration(minutes) * time.Minute
 	}
-	return time.Duration(countrycfg.UZDefault().ShopClosedGraceMinutes) * time.Minute
+	d, err := auth.ShopClosedGraceFromContext(context.Background(), "")
+	if err != nil {
+		return 0
+	}
+	return d
 }
 
 func splitAndTrimCSV(value string) []string {

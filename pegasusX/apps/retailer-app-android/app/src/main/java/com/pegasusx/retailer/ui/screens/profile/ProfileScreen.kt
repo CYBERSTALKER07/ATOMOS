@@ -177,6 +177,20 @@ fun ProfileScreen(
             }
         }
 
+        uiState.loyaltySummary?.let { summary ->
+            item {
+                Column(modifier = Modifier.padding(horizontal = PegasusSpacing.lg)) {
+                    RetailerSectionHeader(title = "Loyalty")
+                    Spacer(modifier = Modifier.height(PegasusSpacing.xs))
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         // ── Settings Sections ──
         item {
             SettingsSection(

@@ -56,37 +56,38 @@ type LineInput struct {
 
 // QuotedLine is a priced line after the best applicable promotion is chosen.
 type QuotedLine struct {
-	ProductID        string  `json:"product_id"`
-	Quantity         int64   `json:"quantity"`
-	ListUnitPrice    int64   `json:"list_unit_price_minor"`
-	UnitPrice        int64   `json:"unit_price_minor"`
-	LineTotal        int64   `json:"line_total_minor"`
-	Currency         string  `json:"currency"`
-	DiscountBps      int64   `json:"discount_bps,omitempty"`
-	PromotionID      string  `json:"promotion_id,omitempty"`
-	PromotionName    string  `json:"promotion_name,omitempty"`
-	PromotionLabel   string  `json:"promotion_label,omitempty"`
+	ProductID      string `json:"product_id"`
+	Quantity       int64  `json:"quantity"`
+	ListUnitPrice  int64  `json:"list_unit_price_minor"`
+	UnitPrice      int64  `json:"unit_price_minor"`
+	LineTotal      int64  `json:"line_total_minor"`
+	Currency       string `json:"currency"`
+	DiscountBps    int64  `json:"discount_bps,omitempty"`
+	PromotionID    string `json:"promotion_id,omitempty"`
+	PromotionName  string `json:"promotion_name,omitempty"`
+	PromotionLabel string `json:"promotion_label,omitempty"`
 }
 
 // QuoteResult is the checkout quote payload for retailer clients.
 type QuoteResult struct {
-	SupplierID       string       `json:"supplier_id"`
-	RetailerID       string       `json:"retailer_id"`
-	Lines            []QuotedLine `json:"lines"`
-	SubtotalMinor    int64        `json:"subtotal_minor"`
-	DiscountMinor    int64        `json:"discount_minor"`
-	TotalMinor       int64        `json:"total_minor"`
-	Currency         string       `json:"currency"`
+	SupplierID    string       `json:"supplier_id"`
+	RetailerID    string       `json:"retailer_id"`
+	Lines         []QuotedLine `json:"lines"`
+	SubtotalMinor int64        `json:"subtotal_minor"`
+	DiscountMinor int64        `json:"discount_minor"`
+	TotalMinor    int64        `json:"total_minor"`
+	Currency      string       `json:"currency"`
+	MarketCode    string       `json:"market_code,omitempty"`
 }
 
 // ProductOffer enriches catalog products with optional sale pricing for a retailer.
 type ProductOffer struct {
-	ProductID        string  `json:"product_id"`
-	ListPriceMinor   int64   `json:"list_price_minor"`
-	SalePriceMinor   *int64  `json:"sale_price_minor,omitempty"`
-	DiscountBps      *int64  `json:"discount_bps,omitempty"`
-	PromotionID      *string `json:"promotion_id,omitempty"`
-	PromotionName    *string `json:"promotion_name,omitempty"`
-	PromotionLabel   *string `json:"promotion_label,omitempty"`
-	PromotionEndsAt  *string `json:"promotion_ends_at,omitempty"`
+	ProductID       string  `json:"product_id"`
+	ListPriceMinor  int64   `json:"list_price_minor"`
+	SalePriceMinor  *int64  `json:"sale_price_minor,omitempty"`
+	DiscountBps     *int64  `json:"discount_bps,omitempty"`
+	PromotionID     *string `json:"promotion_id,omitempty"`
+	PromotionName   *string `json:"promotion_name,omitempty"`
+	PromotionLabel  *string `json:"promotion_label,omitempty"`
+	PromotionEndsAt *string `json:"promotion_ends_at,omitempty"`
 }

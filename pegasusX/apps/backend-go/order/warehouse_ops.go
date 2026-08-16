@@ -15,7 +15,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 type warehouseOrderMutationRequest struct {
@@ -185,11 +184,9 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
-	loc := proximity.TashkentLocation
-	if current.Timezone != "" {
-		if l, err := time.LoadLocation(current.Timezone); err == nil {
-			loc = l
-		}
+	loc, locErr := resolveCalendarLocation(ctx, current.SupplierID, current.Timezone)
+	if locErr != nil {
+		return RetailerOrderLifecycleResponse{}, locErr
 	}
 	if PreorderEditLocked(s.now(), loc, current) {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: warehouse preorder edit locked", ErrInvalidStatusTransition)

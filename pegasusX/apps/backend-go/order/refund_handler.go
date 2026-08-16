@@ -45,6 +45,10 @@ func (s *Service) HandleInitiateRefund(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrRefundExceedsCaptured), errors.Is(err, ErrRefundCreditPortion), errors.Is(err, ErrRefundOrderState):
 			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+			errors.Is(err, auth.ErrPackCurrencyMismatch):
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
 		case strings.Contains(err.Error(), "not found"):
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		default:

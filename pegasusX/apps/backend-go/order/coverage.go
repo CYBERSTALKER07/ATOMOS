@@ -1,14 +1,22 @@
 package order
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/uber/h3-go/v4"
 )
 
 const coverageCityDiskK = 4
+
+func coverageH3Cell(lat, lng float64) string {
+	cell, err := h3.LatLngToCell(h3.LatLng{Lat: lat, Lng: lng}, orderH3Resolution)
+	if err != nil {
+		return fmt.Sprintf("%.4f,%.4f", lat, lng)
+	}
+	return cell.String()
+}
 
 // CoverageCity is a supplier-selected city used to generate compacted H3 cells.
 type CoverageCity struct {
@@ -19,7 +27,7 @@ type CoverageCity struct {
 
 // CellsForCity returns compacted H3 cells (dispatch res 7 disk) covering a city point.
 func CellsForCity(lat, lng float64) []string {
-	cellStr := dispatch.H3CellLookup(lat, lng)
+	cellStr := coverageH3Cell(lat, lng)
 	cell := h3.Cell(h3.IndexFromString(cellStr))
 	if !cell.IsValid() {
 		if cellStr != "" {

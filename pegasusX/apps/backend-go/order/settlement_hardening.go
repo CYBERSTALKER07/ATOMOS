@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 

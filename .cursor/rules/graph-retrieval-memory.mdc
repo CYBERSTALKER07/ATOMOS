@@ -1,0 +1,23 @@
+---
+description: Graph retrieval loop + shared WORKSPACE.md memory for all Cursor agents. Not a vector DB.
+alwaysApply: true
+---
+
+# Graph retrieval + shared memory
+
+Every new session: read `.agents/memory/GOAL.md` (final goal). Then `.agents/memory/WORKSPACE.md` before status / “where does X live” / RAG questions.
+
+```
+enhance → retrieve (WORKSPACE.md ∥ graph_retrieve.py ∥ grep) → verify file:line → persist verified only
+```
+
+```bash
+python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>" --hops 2
+```
+
+Then open the returned paths. `architecture-graph.json` is not status (`generatedAt` is null). Code wins.
+
+Persist verified bullets to `.agents/memory/WORKSPACE.md` only.
+
+Skill: `.agents/skills/graph-retrieval-memory/`
+Always-on text: `.agents/skills/graph-retrieval-memory/references/always-on.md`

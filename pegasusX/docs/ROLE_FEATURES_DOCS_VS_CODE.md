@@ -23,9 +23,9 @@
 
 **P4 status (2026-08-13):** desktop/Android/iOS call `GET /v1/retailer/ai/predictions` `{items}` + confirm/reject-ai (alias still 410 for old builds). Capacity GET `410 capacity_unwired` (`payload/vehicle_capacity.go:19`). Seal-all **wired** on terminal+Android+iOS (P13-A). `POST /v1/payloader/reassign-order` persists `Orders.RouteId`/`DriverId` in the same txn as outbox (`payload/service.go:1598`). Factory SLA badges verified on portal board + Android card + iOS row/staff.
 
-**P5 status (2026-08-13):** factory planning OS ported, **flags default off**. `FACTORY_PLANNING_ENABLED` / `FACTORY_BATCHER_ENABLED` env (not money flags). Dedicated `SupplyLanes` + `NetworkOptimizationMode` tables — **do not** hijack `GET /v1/supplier/supply-lanes` (still topology warehouse utilization). P5-D **PARTIAL** — `SYSTEM_PREDICTED` from `DemandForecastBaseline` SUM vs `SupplierInventoryV2`+`ReorderThreshold` (`factory/predictive_push.go`); **not** ORDER-grain `AIPredictions`. Gated by `PlanningEnabled()` (Go default **false**). Dispatch honesty: `pick_n_created_v1` when batcher off; `ffd_nn_lifo_v1` + `HEURISTIC` when on — **not** `dispatch.BinPack`.
+**P5 status (2026-08-13):** factory planning OS ported, **flags default off**. `FACTORY_PLANNING_ENABLED` / `FACTORY_BATCHER_ENABLED` env (not money flags). Dedicated `SupplyLanes` + `NetworkOptimizationMode` tables — **do not** hijack `GET /v1/supplier/supply-lanes` (still topology warehouse utilization). P5-D **PARTIAL** — `SYSTEM_PREDICTED` from `DemandForecastBaseline` SUM vs `SupplierInventoryV2`+`ReorderThreshold` (`factory/predictive_push.go`); **not** ORDER-grain `AIPredictions`. Gated by `PlanningEnabled()` (Go default **false** — do not flip). **Factory dispatch live Spanner (2026-08-14):** warehouse solver class (`plan.OptimizeAndValidate`) → `FactoryTruckManifests` only; not pick-N; not `FACTORY_BATCHER_ENABLED` gate. Nil-Spanner tests still `pick_n_created_v1`. Never `dispatch.BinPack` as a lie.
 
-**P6 status (2026-08-14 leftover close):** A+F remain. **B/C/E now in X** (payout-policy, entityresolution, SplitManifest naming). **D** UZ-only countrycfg (`checkout_reads_this: false`). **G** loyalty `410 loyalty_not_product`. CRM `Retailers.Email` when set. **Not cloud.**
+**P6 status (2026-08-14 leftover close + flexibility):** A+F remain. **B/C/E in X** (payout-policy, entityresolution UI, SplitManifest naming). **D** country catalog AUTH_COUNTRIES in-memory (not CountryConfigs table; `checkout_reads_this: false`). **G** loyalty **live** `{enrolled:false}` / earn on paid orders (never fake Bronze; burn out of scope). CRM `Retailers.Email` + order `lines[]`. **Not cloud.**
 
 **P7 status (2026-08-13):** factory honesty **A + B**. Exception GET Spanner-first (`FactoryTruckManifests` scope, `OrderId`→`transfer_id`); resolve **Spanner-first** (P9-B; memory only seed). Default dispatch **does not invent** empty CREATED queues (`created_manifest_count: 0`, no outbox). **P7-C PARTIAL** — portal+native CRM/QC/planning/payouts attached; **not store, not cloud.**
 
@@ -172,7 +172,7 @@ Close holes on **existing** factory surfaces before porting Pegasus engines.
 | **P3-A** | Staff POST | **Done 2026-08-13** — `RunTx` + `SupplierUsers` + outbox `FACTORY_STAFF_CREATED` |
 | **P3-B** | Manifest exception resolve | **Done** — `RunTx` + `ManifestExceptions.ResolvedAt` + `MANIFEST_EXCEPTION_RESOLVED` |
 | **P3-C** | Transfer create | **Done** — `apply` emit `TRANSFER_CREATED` (not `nil`) |
-| **P3-D** | `POST /v1/factory/dispatch` honesty | **Done** — `optimizer_class: HEURISTIC` + `dispatch_algo: pick_n_created_v1` when `FACTORY_BATCHER_ENABLED` is off. P5-F adds `ffd_nn_lifo_v1` behind that flag; still **not** `dispatch.BinPack`. |
+| **P3-D** | `POST /v1/factory/dispatch` honesty | **Updated 2026-08-14** — live Spanner path = warehouse solver class (`plan.OptimizeAndValidate`) → `FactoryTruckManifests` only. Nil-Spanner tests still `pick_n_created_v1`. Empty queue no invent. |
 | **P3-E** | Transfer GET | **Done** — Spanner first; memory overlay only if `FACTORY_PORTAL_SEED`/`USE_DEMO_SEED` |
 
 **Non-goals:** FFD batcher (P5-F); network optimizer (P5-A).
@@ -284,7 +284,7 @@ G7 `sla_worker.go` kept; payload now includes `kind: supply_request`.
 
 **Port:** `factory/batcher.go` — FFD (volume DESC, trucks DESC) → NN from factory origin → LIFO load. Writes **`FactoryTruckManifests` only**, state **`DRAFT`** (X start-loading is DRAFT→LOADING). Transfers `ASSIGNED`. Empty queue → empty list (**no invent-if-empty**). `dispatch_algo: ffd_nn_lifo_v1`, `optimizer_class: HEURISTIC`.
 
-`POST /v1/factory/dispatch` when `FACTORY_BATCHER_ENABLED`: this engine (503 if no Spanner planning); else pick-n + **no invent** (P7-B) + `pick_n_created_v1`.
+`POST /v1/factory/dispatch` **live Spanner (2026-08-14):** warehouse solver class, not this batcher and not pick-n. `FACTORY_BATCHER_ENABLED` is unused on the live path (nil-Spanner tests still `pick_n_created_v1`).
 
 **Reuse X:** `dispatch.BinPack` is **retail delivery**. Factory package does **not** call it.
 
@@ -330,13 +330,13 @@ Each is **optional**. Do not start without a product yes.
 |----|--------|
 | **P6-A** | **API 2026-08-13; clients P7-C PARTIAL** — `GET /v1/supplier/crm/retailers` + `/{retailerId}`. X columns: `Orders.Status`, `Orders.TotalMinor`, `Retailers.Email` (omit empty). Line count from `LineItemsJson`. Empty `{"retailers":[]}`. **503** without Spanner. `ACTIVE` if last order within 30 days. Does **not** change warehouse `GET /v1/warehouse/ops/crm`. |
 | **P6-B** | **PARTIAL 2026-08-14** — `GET/PATCH /v1/supplier/payout-policy` (`payout/policy.go`). Modes `HQ_SUPPLIER` \| `WAREHOUSE_LOCAL`. Missing row → default HQ (`source: DEFAULT`). PATCH requires `reason`; Class A PreferTenant + RW txn + `AuditLog` + outbox `PAYOUT_POLICY_UPDATED`. Thin portal+Android+iOS. **Does not** enable a live PSP. Batches stay bank-file; live dispatch `no_live_rail`. |
-| **P6-C** | **API 2026-08-14** — `entityresolution/` + `POST /v1/supplier/entity-resolution/{resolve,explain}` (RoleAdmin). Result returned directly (no `{status:ok}`). No native UI. |
-| **P6-D** | **PARTIAL 2026-08-14** — `GET /v1/country-configs/{code}` UZ seed only; else 404 `country_not_supported`. `GET/PATCH /v1/supplier/country-overrides/{code}`. JSON includes `checkout_reads_this: false`. Checkout does **not** read this. |
+| **P6-C** | **API+UI 2026-08-14** — `entityresolution/` + `POST /v1/supplier/entity-resolution/{resolve,explain}` (RoleAdmin). Result returned directly (no `{status:ok}`). Portal `/entity-resolution` + Android/iOS. |
+| **P6-D** | **PARTIAL 2026-08-14** — `GET /v1/country-configs/{code}` **in-memory AUTH_COUNTRIES** (not a `CountryConfigs` Spanner table). Unknown → 404 `country_not_supported`. US is 200. `GET/PATCH /v1/supplier/country-overrides/{code}`. JSON includes `checkout_reads_this: false`. Checkout does **not** read this. Warehouse/factory `CountryCode` persisted. |
 | **P6-E** | **PARTIAL 2026-08-14** — `dispatch.ExpandOversizeRoutes` after capacity checks, before persist (`supplier/dispatch_execute.go`, `warehouse/dispatch_execute.go`). Chunks named `AUTO-{driver}-{ts}-A/B`. `MaxWaypointsPerManifest = 25`. |
 | **P6-F** | **API 2026-08-13; clients P7-C PARTIAL** — table `FactorySupplyRequestQC`. Factory `GET/POST /v1/factory/supply-requests/{id}/qc`. Parent = `WarehouseSupplyRequests` (factory-scoped). POST does **not** change request `State` (P9-C accept-gate requires PASS). Missing QC row → 200 `{result:""}`. Warehouse GET + POST (P9-C / P11-C). |
-| **P6-G** | **GONE 2026-08-14** — `GET /v1/retailer/loyalty/tier` → **410** `loyalty_not_product` (`retailer/mobile_compat.go:136`). Never a fake tier. `Orders.Rating` is queried in laborcapacity but **not in DDL** — do not “fix” that ghost. |
+| **P6-G** | **LIVE 2026-08-14** — `GET /v1/retailer/loyalty/tier` + `/ledger`; supplier `GET/PATCH /v1/supplier/loyalty/program` (`reason` required). Unconfigured → `{enrolled:false}` (never fake Bronze). Earn on CollectCash + card settle. Burn out of scope. `HandleLoyaltyNotProduct` unmounted. `Orders.Rating` is queried in laborcapacity but **not in DDL** — do not “fix” that ghost. |
 
-**Non-goals (P6 leftover):** live payout PSP; checkout reading countrycfg; fake loyalty tier; k-means return; Pegasus admin-portal as supplier UI. QC accept-gate + warehouse POST in P9/P11.
+**Non-goals (P6 leftover):** live payout PSP; checkout reading countrycfg; fake loyalty tier; k-means return; Pegasus admin-portal as supplier UI. QC accept-gate + warehouse POST in P9/P11. **Do not invent a CountryConfigs Spanner table or global tax/PSP.**
 
 ---
 
@@ -462,10 +462,10 @@ Role walk after each phase: FEATURES row + one client path. Same as G-program.
 
 | Role | Core loop | Docs vs code | Biggest lie / hole |
 |------|-----------|--------------|--------------------|
-| **Retailer** | Create → track → pay-at-delivery | Core REAL; OS packs coded | Saved-cards/AI-alias/correct **GONE** 410 (P1); loyalty **410** `loyalty_not_product`; B2B 410; CT tiles navigate (P13-E) |
+| **Retailer** | Create → track → pay-at-delivery | Core REAL; OS packs coded | Saved-cards/AI-alias/correct **GONE** 410 (P1); loyalty **live** `{enrolled:false}` (never fake Bronze); B2B 410; CT tiles navigate (P13-E) |
 | **Supplier** | Vet → dispatch → catalog/inventory | Core REAL | Inventory audit **GONE** 410 (P1); negotiations 410; S&OP column or env 700 (P10-B); CRM Email when set; payout-policy thin UI, rail `no_live_rail` |
 | **Warehouse** | Dispatch execute + WMS | Dispatch REAL; WMS REAL after B2 | Treasury invoices query-or-503 (P2); analytics/financials honest availability (P11 gateway/fee query-or-false); demand scaffold only with seed; QC GET+POST (P9-C) |
-| **Factory** | Loading-bay start/seal | Seal/start REAL under Spanner | Dispatch pick ≤2 **default** (`pick_n_created_v1`, **no invent** P7-B); FFD+NN+LIFO behind `FACTORY_BATCHER_ENABLED` (P5-F / P9-D overlay). Planning OS **flag-off default** (P5; env overlay may be on). QC **PARTIAL** portal+native + accept-gate (P7-C / P9-C) |
+| **Factory** | Loading-bay start/seal + Payload/Load | Seal/start REAL under Spanner | Dispatch **live Spanner** = warehouse solver class → `FactoryTruckManifests` only (empty no invent). Nil-Spanner tests still `pick_n_created_v1`. Planning OS **flag-off default** (P5; do not flip `PlanningEnabled()`). QC **PARTIAL** portal+native + accept-gate (P7-C / P9-C) |
 | **Payload** | Seal / inject / reassign | Seal REAL (`payloaderoutes` mounted) | Dual tables (Pegasus already had both); `seal-all` has terminal+Android+iOS clients (P13-A). Capacity 410. |
 | **Driver** | Arrive → QR → cash/credit → complete | Doorstep REAL | `PATCH …/state` 501; history Spanner 30d (P2) |
 | **Platform admin** | Tenants / flags / MFA | REAL | Ops empty if Spanner nil — honest |
@@ -506,7 +506,7 @@ Retailer `HandleCreateOrder` **unmounted**; hit → **503** `order_service_unwir
 ### Rest of FEATURES §1
 
 Auth, catalog, cart, suppliers add/remove (durable favorites, **no** operating-schedule model), cancel pre-dispatch, preorder, shop-closed, claims, pulse, Retail OS packs: **REAL** (POS sale not one txn). Auto-order draft REAL; **place** PARTIAL (flag).  
-`GET /v1/ai/predictions` **GONE** `410 use_retailer_ai_predictions` (P1; alias kept for old store builds). Real list is `/v1/retailer/ai/predictions` — desktop/Android/iOS bind `{items}` (P4). Correct PATCH **GONE**. Preorder POST **410**. Loyalty **GONE** `410 loyalty_not_product` (P6-G). Request-cancel **403**. Offline POS deferred.
+`GET /v1/ai/predictions` **GONE** `410 use_retailer_ai_predictions` (P1; alias kept for old store builds). Real list is `/v1/retailer/ai/predictions` — desktop/Android/iOS bind `{items}` (P4). Correct PATCH **GONE**. Preorder POST **410**. Loyalty **live** `{enrolled:false}` (P6-G; never fake Bronze). Request-cancel **403**. Offline POS deferred.
 
 ---
 
@@ -550,7 +550,7 @@ Dispatch execute = strongest mutator (idempotency + outbox + freeze). WMS REAL a
 
 Loading-bay start/seal/complete/rebalance: REAL under Spanner + payload JWT on bay routes.
 
-`POST /v1/factory/dispatch` **default (flag off):** pick ≤2 `CREATED` transfers, first driver/vehicle, DRAFT, **no invent-if-empty** (P7-B) — empty queue returns `created_manifest_count: 0` with no outbox. Labels `optimizer_class=HEURISTIC` + `dispatch_algo=pick_n_created_v1`. **When `FACTORY_BATCHER_ENABLED`:** FFD+NN+LIFO → `FactoryTruckManifests` `DRAFT`, **no invent-if-empty**, `dispatch_algo=ffd_nn_lifo_v1`. **Not** warehouse VRP / `dispatch.BinPack`.
+`POST /v1/factory/dispatch` **live Spanner:** warehouse solver class (`plan.OptimizeAndValidate`) → `FactoryTruckManifests` only; AUTO/MANUAL/`force_capacity`/`accept_partial`/fingerprint; empty queue `created_manifest_count: 0` with no outbox. **Not** gated by `FACTORY_BATCHER_ENABLED`. **Nil-Spanner / portal-seed tests:** pick ≤2 `CREATED` transfers, `dispatch_algo=pick_n_created_v1`, **no invent-if-empty**. Never last-mile `SupplierTruckManifests`. Never claim `dispatch.BinPack` as a lie.
 
 Supply-request accept REAL. G7 SLA board = **request due-date** (`kind: supply_request`). Transfer-transit 1×/1.5×/2× is a **second** worker (`kind: transfer_transit`) behind `FACTORY_PLANNING_ENABLED`.
 

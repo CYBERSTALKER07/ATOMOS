@@ -2,8 +2,11 @@ package order
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestUnifiedCheckout_CreatesSingleSupplierOrder(t *testing.T) {
@@ -49,6 +52,9 @@ func TestUnifiedCheckout_CreatesSingleSupplierOrder(t *testing.T) {
 	so := resp.SupplierOrders[0]
 	if so.OrderID == "" || so.SupplierID != "sup-1" || so.Total != 30000 || so.ItemCount != 1 {
 		t.Fatalf("unexpected supplier order: %+v", so)
+	}
+	if resp.Currency != "UZS" || resp.MarketCode != "UZ" {
+		t.Fatalf("pack stamp currency=%s market=%s", resp.Currency, resp.MarketCode)
 	}
 	if repo.createCalls != 1 {
 		t.Fatalf("createCalls = %d, want 1", repo.createCalls)
@@ -151,5 +157,44 @@ func TestCheckoutSnapshot_ForbidsForeignRetailer(t *testing.T) {
 	_, _, err := svc.CheckoutSnapshot(context.Background(), "ord-1", "ret-other")
 	if err == nil || err != ErrOrderForbidden {
 		t.Fatalf("CheckoutSnapshot() err = %v, want %v", err, ErrOrderForbidden)
+	}
+}
+
+func TestUnifiedCheckout_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "false")
+	svc := NewService(ServiceConfig{
+		Repo:       &testRepo{},
+		Warehouse:  &testWarehouseResolver{warehouseID: "wh-1"},
+		SupplierID: "sup-1",
+		Currency:   "UZS",
+		Log:        slog.Default(),
+	})
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU", Subject: "ret-1"})
+	_, err := svc.UnifiedCheckout(ctx, "ret-1", UnifiedCheckoutRequest{
+		Latitude: 41.31, Longitude: 69.24,
+		Items: []UnifiedCheckoutLineItem{{SkuID: "sku-1", Quantity: 1, UnitPrice: 1000}},
+	})
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestUnifiedCheckout_CurrencyMismatch(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "false")
+	svc := NewService(ServiceConfig{
+		Repo:       &testRepo{},
+		Warehouse:  &testWarehouseResolver{warehouseID: "wh-1"},
+		SupplierID: "sup-1",
+		Currency:   "UZS",
+		Log:        slog.Default(),
+	})
+	_, err := svc.UnifiedCheckout(context.Background(), "ret-1", UnifiedCheckoutRequest{
+		Latitude: 41.31, Longitude: 69.24, Currency: "EUR",
+		Items: []UnifiedCheckoutLineItem{{SkuID: "sku-1", Quantity: 1, UnitPrice: 1000}},
+	})
+	if !errors.Is(err, auth.ErrPackCurrencyMismatch) {
+		t.Fatalf("err=%v", err)
 	}
 }

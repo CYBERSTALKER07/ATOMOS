@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // PegasusReceiptProvider issues platform commercial receipts owned by PegasusX.
@@ -21,7 +23,7 @@ type PegasusReceiptProvider struct {
 }
 
 // CreateReceipt builds a durable platform receipt payload stored on OrderFiscalReceipts.
-func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
+func (p PegasusReceiptProvider) CreateReceipt(ctx context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
 	// Optional SSMR fail hooks (only when explicitly enabled) so fiscal smoke
 	// can still exercise FISCAL_FAILED without switching back to FAKE.
 	if pegasusSSMRHooksEnabled() {
@@ -56,9 +58,14 @@ func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreat
 
 	currency := strings.TrimSpace(req.Currency)
 	if currency == "" {
-		currency = "UZS"
+		if packCur, err := auth.CurrencyFromContext(ctx, req.SupplierID); err == nil {
+			currency = packCur
+		}
 	}
-	country := countryFromCurrency(currency)
+	country, err := auth.CountryFromContext(ctx, req.SupplierID)
+	if err != nil {
+		return FiscalCreateResult{}, err
+	}
 	layout := receiptLayoutForCountry(country)
 	company := pegasusCompanyName()
 	tin := pegasusIssuerTIN()

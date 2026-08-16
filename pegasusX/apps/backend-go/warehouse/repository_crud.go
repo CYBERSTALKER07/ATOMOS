@@ -13,38 +13,38 @@ import (
 
 // Warehouse represents the warehouse entity.
 type Warehouse struct {
-	WarehouseID                string    `json:"warehouse_id" spanner:"WarehouseId"`
-	SupplierID                 string    `json:"supplier_id" spanner:"SupplierId"`
-	Name                       string    `json:"name" spanner:"Name"`
-	Lat                        *float64  `json:"lat,omitempty" spanner:"Lat"`
-	Lng                        *float64  `json:"lng,omitempty" spanner:"Lng"`
-	Address                    *string   `json:"address,omitempty" spanner:"Address"`
-	PlaceID                    *string   `json:"place_id,omitempty" spanner:"PlaceId"`
-	CoverageRadiusKm           float64   `json:"coverage_radius_km" spanner:"CoverageRadiusKm"`
-	PrimaryFactoryID           *string   `json:"primary_factory_id,omitempty" spanner:"PrimaryFactoryId"`
-	SecondaryFactoryID         *string   `json:"secondary_factory_id,omitempty" spanner:"SecondaryFactoryId"`
-	TransferMode               string    `json:"transfer_mode" spanner:"TransferMode"`
-	CoLocateWithFactoryID      *string   `json:"co_locate_with_factory_id,omitempty" spanner:"CoLocateWithFactoryId"`
-	IsActive                   bool      `json:"is_active" spanner:"IsActive"`
-	IsOnShift                  bool      `json:"is_on_shift" spanner:"IsOnShift"`
-	RegionID                   *string   `json:"region_id,omitempty" spanner:"RegionId"`
-	PaymentConfigID            *string   `json:"payment_config_id,omitempty" spanner:"PaymentConfigId"`
-	AutoDispatchEnabled        bool      `json:"auto_dispatch_enabled" spanner:"AutoDispatchEnabled"`
-	DefaultOutOfStockPolicy    string    `json:"default_out_of_stock_policy" spanner:"DefaultOutOfStockPolicy"`
-	ShowStockCountsToRetailers bool      `json:"show_stock_counts_to_retailers" spanner:"ShowStockCountsToRetailers"`
-	PreorderMinLeadDays        int64     `json:"preorder_min_lead_days" spanner:"PreorderMinLeadDays"`
-	PreorderMaxLeadDays        int64     `json:"preorder_max_lead_days" spanner:"PreorderMaxLeadDays"`
-	OrderLineMinQuantity       *int64    `json:"order_line_min_quantity,omitempty" spanner:"OrderLineMinQuantity"`
-	OrderLineMaxQuantity       *int64    `json:"order_line_max_quantity,omitempty" spanner:"OrderLineMaxQuantity"`
-	DeliveryFeeRules           *string   `json:"delivery_fee_rules,omitempty" spanner:"DeliveryFeeRules"`
-	OperatingSchedule          *string   `json:"operating_schedule,omitempty" spanner:"OperatingSchedule"`
-	CreatedAt                  time.Time `json:"created_at" spanner:"CreatedAt"`
-	UpdatedAt                  time.Time `json:"updated_at" spanner:"UpdatedAt"`
-	H3Cell                     *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
-	Gln                        *string   `json:"gln,omitempty" spanner:"Gln"`
-	CountryCode                string    `json:"country_code,omitempty" spanner:"CountryCode"`
+	WarehouseID                string               `json:"warehouse_id" spanner:"WarehouseId"`
+	SupplierID                 string               `json:"supplier_id" spanner:"SupplierId"`
+	Name                       string               `json:"name" spanner:"Name"`
+	Lat                        *float64             `json:"lat,omitempty" spanner:"Lat"`
+	Lng                        *float64             `json:"lng,omitempty" spanner:"Lng"`
+	Address                    *string              `json:"address,omitempty" spanner:"Address"`
+	PlaceID                    *string              `json:"place_id,omitempty" spanner:"PlaceId"`
+	CoverageRadiusKm           float64              `json:"coverage_radius_km" spanner:"CoverageRadiusKm"`
+	PrimaryFactoryID           *string              `json:"primary_factory_id,omitempty" spanner:"PrimaryFactoryId"`
+	SecondaryFactoryID         *string              `json:"secondary_factory_id,omitempty" spanner:"SecondaryFactoryId"`
+	TransferMode               string               `json:"transfer_mode" spanner:"TransferMode"`
+	CoLocateWithFactoryID      *string              `json:"co_locate_with_factory_id,omitempty" spanner:"CoLocateWithFactoryId"`
+	IsActive                   bool                 `json:"is_active" spanner:"IsActive"`
+	IsOnShift                  bool                 `json:"is_on_shift" spanner:"IsOnShift"`
+	RegionID                   *string              `json:"region_id,omitempty" spanner:"RegionId"`
+	PaymentConfigID            *string              `json:"payment_config_id,omitempty" spanner:"PaymentConfigId"`
+	AutoDispatchEnabled        bool                 `json:"auto_dispatch_enabled" spanner:"AutoDispatchEnabled"`
+	DefaultOutOfStockPolicy    string               `json:"default_out_of_stock_policy" spanner:"DefaultOutOfStockPolicy"`
+	ShowStockCountsToRetailers bool                 `json:"show_stock_counts_to_retailers" spanner:"ShowStockCountsToRetailers"`
+	PreorderMinLeadDays        int64                `json:"preorder_min_lead_days" spanner:"PreorderMinLeadDays"`
+	PreorderMaxLeadDays        int64                `json:"preorder_max_lead_days" spanner:"PreorderMaxLeadDays"`
+	OrderLineMinQuantity       *int64               `json:"order_line_min_quantity,omitempty" spanner:"OrderLineMinQuantity"`
+	OrderLineMaxQuantity       *int64               `json:"order_line_max_quantity,omitempty" spanner:"OrderLineMaxQuantity"`
+	DeliveryFeeRules           *string              `json:"delivery_fee_rules,omitempty" spanner:"DeliveryFeeRules"`
+	OperatingSchedule          *string              `json:"operating_schedule,omitempty" spanner:"OperatingSchedule"`
+	CreatedAt                  time.Time            `json:"created_at" spanner:"CreatedAt"`
+	UpdatedAt                  time.Time            `json:"updated_at" spanner:"UpdatedAt"`
+	H3Cell                     *string              `json:"h3_cell,omitempty" spanner:"H3Cell"`
+	Gln                        *string              `json:"gln,omitempty" spanner:"Gln"`
+	CountryCode                string               `json:"country_code,omitempty" spanner:"CountryCode"`
 	CoverageCities             []order.CoverageCity `json:"coverage_cities,omitempty" spanner:"-"`
-	AssignedFactoryIDs         []string  `json:"assigned_factory_ids,omitempty" spanner:"-"`
+	AssignedFactoryIDs         []string             `json:"assigned_factory_ids,omitempty" spanner:"-"`
 }
 
 // CreateWarehouse inserts a new warehouse record and emits a WAREHOUSE_CREATED event atomically.

@@ -29,7 +29,21 @@ func TestTransitionBroadcastsPlatformAdminRoom(t *testing.T) {
 		t.Fatal("timeout waiting for pending broadcast")
 	}
 
-	if _, err := svc.Transition(context.Background(), "admin-a", TenantSupplier, "sup-ws-1", StatusApproved, "ok"); err != nil {
+	if _, err := svc.Transition(context.Background(), TransitionInput{
+		Actor: "admin-a", TenantType: TenantSupplier, TenantID: "sup-ws-1",
+		Status: StatusApproved, KybNotes: "ok", MarketCode: "UZ", HomeCell: "cell-uz",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-conn.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for approve-requested broadcast")
+	}
+	if _, err := svc.Transition(context.Background(), TransitionInput{
+		Actor: "admin-b", TenantType: TenantSupplier, TenantID: "sup-ws-1",
+		Status: StatusApproved, MarketCode: "UZ", HomeCell: "cell-uz",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	var got []byte

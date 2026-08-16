@@ -4,12 +4,25 @@ package platformadmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+)
+
+var (
+	ErrTenantNotFound     = errors.New("tenant_not_found")
+	ErrActorRequired      = errors.New("actor_required")
+	ErrMarketCodeRequired = errors.New("market_code_required")
+	ErrUnknownMarket      = errors.New("unknown_market")
+	ErrMarketNotShipped   = errors.New("market_not_shipped")
+	ErrHomeCellMismatch   = errors.New("home_cell_mismatch")
+	ErrApproverMustDiffer = errors.New("approver_must_differ")
+	ErrPackCellMismatch   = errors.New("pack_cell_mismatch")
 )
 
 const (
@@ -24,16 +37,31 @@ const (
 
 // Tenant is one platform-governed org.
 type Tenant struct {
-	TenantType  string
-	TenantID    string
-	Status      string
-	DisplayName string
-	KybNotes    string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ApprovedAt  *time.Time
-	SuspendedAt *time.Time
+	TenantType   string
+	TenantID     string
+	Status       string
+	DisplayName  string
+	KybNotes     string
+	MarketCode   string `json:"market_code,omitempty"`
+	HomeCell     string `json:"home_cell,omitempty"`
+	RequestedBy  string `json:"requested_by,omitempty"`
+	ApprovedBy   string `json:"approved_by,omitempty"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	ApprovedAt   *time.Time
+	SuspendedAt  *time.Time
 	OffboardedAt *time.Time
+}
+
+// TransitionInput is a PA lifecycle change. APPROVE is dual-control (GS-T3).
+type TransitionInput struct {
+	Actor      string
+	TenantType string
+	TenantID   string
+	Status     string
+	KybNotes   string
+	MarketCode string
+	HomeCell   string
 }
 
 // AuditRow is an immutable admin action record.
@@ -61,6 +89,8 @@ type Service struct {
 	repo Repository
 	hub  *ws.Hub
 	now  func() time.Time
+	// OnApproved copies pack+cell onto the supplier row after KYB APPROVED.
+	OnApproved func(ctx context.Context, tenantType, tenantID, marketCode, homeCell string) error
 }
 
 func NewService(repo Repository) *Service {
@@ -146,71 +176,169 @@ func (s *Service) IsActive(ctx context.Context, tenantType, tenantID string) (bo
 		return false, err
 	}
 	if !ok {
-		// Legacy tenants without a row remain active (single-tenant seed).
-		return true, nil
+		// GS-T3: missing KYB row is not active. Seed must be EnsurePending + approved.
+		return false, nil
 	}
 	return t.Status == StatusApproved, nil
 }
 
-func (s *Service) Transition(ctx context.Context, actor, tenantType, tenantID, toStatus, kybNotes string) (Tenant, error) {
+func (s *Service) Transition(ctx context.Context, in TransitionInput) (Tenant, error) {
 	if s == nil || s.repo == nil {
 		return Tenant{}, fmt.Errorf("platformadmin_unavailable")
 	}
-	toStatus = strings.ToUpper(strings.TrimSpace(toStatus))
+	toStatus := strings.ToUpper(strings.TrimSpace(in.Status))
 	switch toStatus {
 	case StatusApproved, StatusSuspended, StatusOffboarded, StatusPending:
 	default:
 		return Tenant{}, fmt.Errorf("invalid_status")
 	}
-	t, ok, err := s.repo.GetTenant(ctx, tenantType, tenantID)
+	t, ok, err := s.repo.GetTenant(ctx, in.TenantType, in.TenantID)
 	if err != nil {
 		return Tenant{}, err
 	}
-	now := s.now()
 	if !ok {
-		t = Tenant{
-			TenantType:  strings.ToUpper(strings.TrimSpace(tenantType)),
-			TenantID:    strings.TrimSpace(tenantID),
-			Status:      StatusPending,
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		}
+		return Tenant{}, ErrTenantNotFound
+	}
+	if toStatus == StatusApproved {
+		return s.approve(ctx, in, t)
 	}
 	prev := t.Status
 	if err := validateTransition(prev, toStatus); err != nil {
 		return Tenant{}, err
 	}
+	now := s.now()
 	t.Status = toStatus
 	t.UpdatedAt = now
-	if notes := strings.TrimSpace(kybNotes); notes != "" {
+	if notes := strings.TrimSpace(in.KybNotes); notes != "" {
 		t.KybNotes = notes
 	}
 	switch toStatus {
-	case StatusApproved:
-		t.ApprovedAt = &now
-		t.SuspendedAt = nil
 	case StatusSuspended:
 		t.SuspendedAt = &now
+		t.RequestedBy = ""
 	case StatusOffboarded:
 		t.OffboardedAt = &now
+		t.RequestedBy = ""
 	}
+	return s.persistTransition(ctx, t, strings.TrimSpace(in.Actor), "TENANT_"+toStatus, map[string]string{
+		"to": toStatus, "from": prev,
+	})
+}
+
+func (s *Service) approve(ctx context.Context, in TransitionInput, t Tenant) (Tenant, error) {
+	if t.Status == StatusApproved {
+		return t, nil
+	}
+	if err := validateTransition(t.Status, StatusApproved); err != nil {
+		return Tenant{}, err
+	}
+	pack, cell, err := resolveApprovePack(in.MarketCode, in.HomeCell)
+	if err != nil {
+		return Tenant{}, err
+	}
+	actor := strings.TrimSpace(in.Actor)
+	if isSystemActor(actor) {
+		return s.finishApprove(ctx, t, actor, pack, cell, in.KybNotes, t.Status)
+	}
+	if actor == "" {
+		return Tenant{}, ErrActorRequired
+	}
+	if strings.TrimSpace(t.RequestedBy) == "" {
+		t.RequestedBy = actor
+		t.MarketCode = pack
+		t.HomeCell = cell
+		if notes := strings.TrimSpace(in.KybNotes); notes != "" {
+			t.KybNotes = notes
+		}
+		t.UpdatedAt = s.now()
+		return s.persistTransition(ctx, t, actor, "TENANT_APPROVE_REQUESTED", map[string]string{
+			"to":          StatusPending,
+			"from":        t.Status,
+			"market_code": pack,
+			"home_cell":   cell,
+		})
+	}
+	if strings.EqualFold(t.RequestedBy, actor) {
+		return Tenant{}, ErrApproverMustDiffer
+	}
+	if auth.NormalizeMarketCode(t.MarketCode) != pack || strings.ToLower(strings.TrimSpace(t.HomeCell)) != cell {
+		return Tenant{}, ErrPackCellMismatch
+	}
+	return s.finishApprove(ctx, t, actor, pack, cell, in.KybNotes, t.Status)
+}
+
+func (s *Service) finishApprove(ctx context.Context, t Tenant, actor, pack, cell, notes, prev string) (Tenant, error) {
+	now := s.now()
+	t.Status = StatusApproved
+	t.MarketCode = pack
+	t.HomeCell = cell
+	t.ApprovedBy = actor
+	t.ApprovedAt = &now
+	t.SuspendedAt = nil
+	t.UpdatedAt = now
+	if n := strings.TrimSpace(notes); n != "" {
+		t.KybNotes = n
+	}
+	out, err := s.persistTransition(ctx, t, actor, "TENANT_APPROVED", map[string]string{
+		"to":          StatusApproved,
+		"from":        prev,
+		"market_code": pack,
+		"home_cell":   cell,
+	})
+	if err != nil {
+		return Tenant{}, err
+	}
+	if s.OnApproved != nil {
+		if hookErr := s.OnApproved(ctx, t.TenantType, t.TenantID, pack, cell); hookErr != nil {
+			// KYB row is the activity source; pack copy is best-effort.
+			_ = hookErr
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) persistTransition(ctx context.Context, t Tenant, actor, action string, detailMap map[string]string) (Tenant, error) {
 	if err := s.repo.UpsertTenant(ctx, t); err != nil {
 		return Tenant{}, err
 	}
-	detailMap := map[string]string{"to": toStatus, "from": prev}
 	detail, _ := json.Marshal(detailMap)
-	action := "TENANT_" + toStatus
 	_ = s.repo.InsertAudit(ctx, AuditRow{
 		AuditID:      uuid.NewString(),
-		ActorSubject: strings.TrimSpace(actor),
+		ActorSubject: actor,
 		Action:       action,
 		TenantType:   t.TenantType,
 		TenantID:     t.TenantID,
 		DetailJSON:   string(detail),
-		CreatedAt:    now,
+		CreatedAt:    s.now(),
 	})
 	s.publish(ctx, "PLATFORM_ADMIN_AUDIT", action, t.TenantType, t.TenantID, actor, detailMap)
 	return t, nil
+}
+
+func resolveApprovePack(marketCode, homeCell string) (string, string, error) {
+	code := auth.NormalizeMarketCode(marketCode)
+	if code == "" {
+		return "", "", ErrMarketCodeRequired
+	}
+	pack, ok := auth.ResolveMarketPack(code)
+	if !ok {
+		return "", "", fmt.Errorf("%w: %s", ErrUnknownMarket, code)
+	}
+	if pack.Status != auth.MarketPackShipped {
+		return "", "", fmt.Errorf("%w: %s", ErrMarketNotShipped, pack.Code)
+	}
+	cell := strings.ToLower(strings.TrimSpace(homeCell))
+	if cell == "" {
+		cell = pack.HomeCell
+	}
+	if cell != pack.HomeCell {
+		return "", "", ErrHomeCellMismatch
+	}
+	return pack.Code, pack.HomeCell, nil
+}
+
+func isSystemActor(actor string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(actor)), "system:")
 }
 
 func validateTransition(from, to string) error {

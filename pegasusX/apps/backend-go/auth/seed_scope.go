@@ -60,6 +60,35 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 		return fmt.Errorf("hash factory demo pin: %w", err)
 	}
 
+	driverPhone := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PHONE"))
+	if driverPhone == "" {
+		driverPhone = "+998901000066"
+	}
+	driverPIN := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PIN"))
+	if driverPIN == "" {
+		driverPIN = strings.TrimSpace(os.Getenv("DRIVER_DEMO_PASSWORD"))
+	}
+	if driverPIN == "" {
+		driverPIN = "1234"
+	}
+	driverPINHash, err := bcrypt.GenerateFromPassword([]byte(driverPIN), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash driver demo pin: %w", err)
+	}
+
+	payloadPhone := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PHONE"))
+	if payloadPhone == "" {
+		payloadPhone = "+998901110022"
+	}
+	payloadPIN := strings.TrimSpace(os.Getenv("PAYLOAD_DEMO_PIN"))
+	if payloadPIN == "" {
+		payloadPIN = "33333333"
+	}
+	payloadPINHash, err := bcrypt.GenerateFromPassword([]byte(payloadPIN), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash payload demo pin: %w", err)
+	}
+
 	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		ts := spanner.CommitTimestamp
 		effectiveFrom := time.Now().UTC().Add(-24 * time.Hour)
@@ -141,6 +170,18 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"CreatedAt":         ts,
 				"UpdatedAt":         ts,
 			}),
+			spanner.InsertOrUpdateMap("SupplierUsers", map[string]any{
+				"UserId":              "ssmr-smoke-payloader",
+				"SupplierId":          supplierID,
+				"Phone":               payloadPhone,
+				"Name":                "SSMR Demo Payloader",
+				"PasswordHash":        string(payloadPINHash),
+				"SupplierRole":        "PAYLOADER",
+				"AssignedWarehouseId": warehouseID,
+				"IsActive":            true,
+				"CreatedAt":           ts,
+				"UpdatedAt":           ts,
+			}),
 			spanner.InsertOrUpdateMap("SupplierInventoryV2", map[string]any{
 				"SupplierId":       supplierID,
 				"WarehouseId":      warehouseID,
@@ -187,10 +228,23 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"MinQty":         int64(1),
 			}),
 			spanner.InsertOrUpdateMap("Drivers", map[string]any{
+				"DriverId":     "drv_factory_1",
+				"SupplierId":   supplierID,
+				"Name":         "SSMR Demo Driver",
+				"Phone":        driverPhone,
+				"PinHash":      string(driverPINHash),
+				"HomeNodeType": "FACTORY",
+				"HomeNodeId":   factoryID,
+				"IsActive":     true,
+				"CreatedAt":    ts,
+				"UpdatedAt":    ts,
+			}),
+			spanner.InsertOrUpdateMap("Drivers", map[string]any{
 				"DriverId":     "drv_payload_1",
 				"SupplierId":   supplierID,
 				"Name":         "SSMR Payload Demo Driver",
 				"Phone":        "+998901110033",
+				"PinHash":      string(driverPINHash),
 				"HomeNodeType": "WAREHOUSE",
 				"HomeNodeId":   warehouseID,
 				"IsActive":     true,
@@ -320,7 +374,11 @@ func seedSupplierCurrency() string {
 	if c := strings.TrimSpace(os.Getenv("SEED_SUPPLIER_CURRENCY")); c != "" {
 		return c
 	}
-	return "UZS"
+	cur, err := CurrencyFromContext(context.Background(), "")
+	if err != nil {
+		return ""
+	}
+	return cur
 }
 
 func deliveryZoneCenter() (float64, float64) {

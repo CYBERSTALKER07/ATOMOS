@@ -352,7 +352,9 @@ func NewService(c ServiceConfig) *Service {
 		}
 	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), strings.TrimSpace(c.SupplierID)); err == nil {
+			c.Currency = cur
+		}
 	}
 	// Webhook secrets: never invent. Bootstrap may supply local/SSMR defaults via
 	// envOr; production must set real secrets (ValidateProductionProfile). Empty
@@ -744,7 +746,11 @@ func (s *Service) RefundCardPayment(ctx context.Context, orderID string, amountM
 		currency = s.currency
 	}
 	if currency == "" {
-		currency = "UZS"
+		cur, err := auth.CurrencyFromContext(ctx, "")
+		if err != nil {
+			return "", err
+		}
+		currency = cur
 	}
 	result, err := s.execution.Execute(ctx, ExecutionRequest{
 		Gateway:     gateway,
@@ -799,7 +805,11 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 		currency = s.currency
 	}
 	if currency == "" {
-		currency = "UZS"
+		cur, err := auth.CurrencyFromContext(ctx, strings.TrimSpace(in.SupplierID))
+		if err != nil {
+			return ClaimChargebackResult{}, err
+		}
+		currency = cur
 	}
 	supplierID := strings.TrimSpace(in.SupplierID)
 	if supplierID == "" {
@@ -1115,7 +1125,9 @@ func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Reque
 
 	operating := fxrates.NormalizeCurrency(s.currency)
 	if operating == "" {
-		operating = "UZS"
+		if cur, err := auth.CurrencyFromContext(r.Context(), supplierID); err == nil {
+			operating = cur
+		}
 	}
 	opTotal, opPartial := rollupOperatingCurrencyMinor(r.Context(), s.fx, operating, rows, s.now)
 

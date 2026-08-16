@@ -95,6 +95,8 @@ import com.pegasusx.supplier.ui.screens.network.SupplyLanesScreen
 import com.pegasusx.supplier.ui.screens.network.TopologyScreen
 import com.pegasusx.supplier.ui.screens.network.WarehousesScreen
 import com.pegasusx.supplier.ui.screens.crm.SupplierCRMScreen
+import com.pegasusx.supplier.ui.screens.crm.LoyaltyProgramScreen
+import com.pegasusx.supplier.ui.screens.crm.EntityResolutionScreen
 import com.pegasusx.supplier.ui.screens.ops.CreditAdminDisableScreen
 import com.pegasusx.supplier.ui.screens.ops.PlaybooksScreen
 import com.pegasusx.supplier.ui.screens.ops.ScoredExceptionsScreen
@@ -136,6 +138,8 @@ object SupplierRoutes {
     const val FACTORIES = "factories"
     const val WAREHOUSES = "warehouses"
     const val CRM = "crm"
+    const val LOYALTY = "loyalty"
+    const val ENTITY_RESOLUTION = "entity_resolution"
     const val PAYOUTS = "payouts"
     const val CONTROL_TOWER = "control_tower"
     const val PLAYBOOKS = "playbooks"
@@ -408,6 +412,8 @@ fun SupplierNavigation(
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
                     onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
                     onCrm = { navController.navigate(SupplierRoutes.CRM) },
+                    onLoyalty = { navController.navigate(SupplierRoutes.LOYALTY) },
+                    onEntityResolution = { navController.navigate(SupplierRoutes.ENTITY_RESOLUTION) },
                     onPayouts = { navController.navigate(SupplierRoutes.PAYOUTS) },
                     onControlTower = { navController.navigate(SupplierRoutes.CONTROL_TOWER) },
                     onPlaybooks = { navController.navigate(SupplierRoutes.PLAYBOOKS) },
@@ -652,6 +658,12 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.CRM) {
                 SupplierCRMScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.LOYALTY) {
+                LoyaltyProgramScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.ENTITY_RESOLUTION) {
+                EntityResolutionScreen(ops) { navController.popBackStack() }
             }
             composable(SupplierRoutes.PAYOUTS) {
                 PayoutsScreen(ops) { navController.popBackStack() }

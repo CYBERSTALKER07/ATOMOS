@@ -163,6 +163,9 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "request currency must match order currency", "/v1/order/card-checkout", false, "")
 			return
 		}
+		if writeCheckoutPackError(w, "/v1/order/card-checkout", err) {
+			return
+		}
 		s.writeExecutionError(w, "/v1/order/card-checkout", err)
 		return
 	}
@@ -246,6 +249,16 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 		actorID = claims.Subject
 	}
 
+	pack, packErr := auth.RequireCheckoutPack(claims)
+	if packErr != nil {
+		writeCheckoutPackError(w, "/v1/order/cash-checkout", packErr)
+		return
+	}
+	if err := auth.AssertPackPSP(pack, DefaultPaymentMethod); err != nil {
+		writeCheckoutPackError(w, "/v1/order/cash-checkout", err)
+		return
+	}
+
 	if s.orderCash == nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "cash_selector_unwired",
 			"Cash selection requires order service wiring; use POST /v1/delivery/confirm-cash",
@@ -291,12 +304,26 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 	}
 }
 
-func (s *Service) initCheckoutSession(ctx context.Context, mode string, req CheckoutRequest) (SessionRecord, PaymentAttemptRecord, ExecutionResult, error) {
-	resolvedCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
-	requestHadCurrency := resolvedCurrency != ""
-	if resolvedCurrency == "" {
-		resolvedCurrency = s.currency
+func writeCheckoutPackError(w http.ResponseWriter, endpoint string, err error) bool {
+	if errors.Is(err, auth.ErrMarketPackUnknown) || errors.Is(err, auth.ErrMarketPackNotShipped) ||
+		errors.Is(err, auth.ErrPackGatewayForbidden) || errors.Is(err, auth.ErrPackCurrencyMismatch) {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSONError(w, st, code, err.Error(), endpoint, false, "")
+		return true
 	}
+	return false
+}
+
+func (s *Service) initCheckoutSession(ctx context.Context, mode string, req CheckoutRequest) (SessionRecord, PaymentAttemptRecord, ExecutionResult, error) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
+	resolvedCurrency, err := auth.ResolveCheckoutCurrency(pack, req.Currency)
+	if err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
+	requestHadCurrency := strings.TrimSpace(req.Currency) != ""
 
 	warehouseID := ""
 	orderCurrency := ""
@@ -310,8 +337,8 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 		if requestHadCurrency && resolvedCurrency != orderCurrency {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrCurrencyMismatch
 		}
-		if !requestHadCurrency {
-			resolvedCurrency = orderCurrency
+		if !strings.EqualFold(orderCurrency, pack.CurrencyCode) {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, auth.ErrPackCurrencyMismatch
 		}
 	}
 
@@ -324,8 +351,17 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 		}
 		policy = resolved
 	}
+	policy = applyPackToGatewayPolicy(policy, pack)
 
-	req.Gateway = policy.ResolveCardGateway(req.Gateway)
+	req.Gateway = auth.CanonicalPSP(req.Gateway)
+	if mode == "CASH" {
+		req.Gateway = DefaultPaymentMethod
+	} else {
+		req.Gateway = policy.ResolveCardGateway(req.Gateway)
+	}
+	if err := auth.AssertPackPSP(pack, req.Gateway); err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
 	if mode != "CASH" {
 		if err := policy.ValidateCardGateway(req.Gateway); err != nil {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err

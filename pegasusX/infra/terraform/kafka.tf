@@ -14,7 +14,7 @@ variable "enable_managed_kafka" {
 }
 
 variable "managed_kafka_subnet_name" {
-  description = "Subnet (in the workload VPC, same region) Managed Kafka attaches to. Defaults to the VPC's auto-created subnet named after the VPC."
+  description = "Subnet (in the workload VPC, same region) Managed Kafka attaches to. Empty uses the cell subnet (custom-mode) or the auto-mode VPC name."
   type        = string
   default     = ""
 }
@@ -32,7 +32,7 @@ variable "managed_kafka_memory_gib" {
 }
 
 locals {
-  managed_kafka_subnet = trimspace(var.managed_kafka_subnet_name) != "" ? var.managed_kafka_subnet_name : local.vpc_name
+  managed_kafka_subnet = trimspace(var.managed_kafka_subnet_name) != "" ? var.managed_kafka_subnet_name : local.cell_subnet_name
 }
 
 resource "google_managed_kafka_cluster" "events" {
@@ -61,39 +61,39 @@ resource "google_managed_kafka_cluster" "events" {
 locals {
   managed_kafka_topics = var.enable_managed_kafka ? {
     main = {
-      topic_id         = var.kafka_topic_main
-      partition_count  = 12
-      retention_ms     = "604800000"
+      topic_id        = local.kafka_topic_main
+      partition_count = 12
+      retention_ms    = "604800000"
     }
     main_dlq = {
-      topic_id         = var.kafka_topic_main_dlq
-      partition_count  = 6
-      retention_ms     = "1209600000"
+      topic_id        = local.kafka_topic_main_dlq
+      partition_count = 6
+      retention_ms    = "1209600000"
     }
     spatial = {
-      topic_id         = var.kafka_topic_spatial
-      partition_count  = 6
-      retention_ms     = "604800000"
+      topic_id        = local.kafka_topic_spatial
+      partition_count = 6
+      retention_ms    = "604800000"
     }
     realtime = {
-      topic_id         = var.kafka_topic_realtime
-      partition_count  = 12
-      retention_ms     = "259200000"
+      topic_id        = local.kafka_topic_realtime
+      partition_count = 12
+      retention_ms    = "259200000"
     }
     webhooks = {
-      topic_id         = var.kafka_topic_webhooks
-      partition_count  = 6
-      retention_ms     = "604800000"
+      topic_id        = local.kafka_topic_webhooks
+      partition_count = 6
+      retention_ms    = "604800000"
     }
     freeze_locks = {
-      topic_id         = var.kafka_topic_freeze_locks
-      partition_count  = 6
-      retention_ms     = "604800000"
+      topic_id        = local.kafka_topic_freeze_locks
+      partition_count = 6
+      retention_ms    = "604800000"
     }
     inventory_import = {
-      topic_id         = var.kafka_topic_inventory_import
-      partition_count  = 6
-      retention_ms     = "604800000"
+      topic_id        = local.kafka_topic_inventory_import
+      partition_count = 6
+      retention_ms    = "604800000"
     }
   } : {}
 }

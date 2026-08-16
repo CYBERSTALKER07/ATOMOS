@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
@@ -242,10 +243,22 @@ func scanProgram(row *spanner.Row) (SupplierCreditProgram, error) {
 	p.DisabledByActor = disabledBy.StringVal
 	p.DisableReason = reason.StringVal
 	p.Timezone = tz.StringVal
-	if p.Timezone == "" {
-		p.Timezone = "Asia/Tashkent"
-	}
 	return p, nil
+}
+
+func packCreditTimezone(ctx context.Context, supplierID string) string {
+	name, err := auth.TimezoneNameFromContext(ctx, supplierID)
+	if err != nil {
+		return ""
+	}
+	return name
+}
+
+func withPackTimezone(ctx context.Context, p SupplierCreditProgram) SupplierCreditProgram {
+	if strings.TrimSpace(p.Timezone) == "" {
+		p.Timezone = packCreditTimezone(ctx, p.SupplierID)
+	}
+	return p
 }
 
 func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error {
@@ -527,10 +540,10 @@ func nullable(s string) any {
 
 // PolicyService owns irreversible enable / admin disable / terms resolution.
 type PolicyService struct {
-	repo    PolicyRepository
-	credit  *Service
-	now     func() time.Time
-	newID   func() string
+	repo   PolicyRepository
+	credit *Service
+	now    func() time.Time
+	newID  func() string
 }
 
 func NewPolicyService(repo PolicyRepository, credit *Service) *PolicyService {
@@ -651,7 +664,7 @@ func (s *PolicyService) ResolveDueAt(ctx context.Context, retailerID, supplierID
 func (s *PolicyService) resolveTerms(prog SupplierCreditProgram, terms RetailerPaymentTerms) ResolvedTerms {
 	tz := prog.Timezone
 	if tz == "" {
-		tz = "Asia/Tashkent"
+		tz = packCreditTimezone(context.Background(), prog.SupplierID)
 	}
 	if terms.UseGlobalDefaults || !terms.CreditEnabled {
 		days := prog.GlobalTermsDays
@@ -705,7 +718,7 @@ func (s *PolicyService) EnableProgram(ctx context.Context, supplierID, actorUser
 		GlobalTermsDays:         30,
 		GlobalGraceDays:         0,
 		GlobalDefaultLimitMinor: 0,
-		Timezone:                "Asia/Tashkent",
+		Timezone:                packCreditTimezone(ctx, supplierID),
 		Version:                 1,
 		UpdatedAt:               now,
 	}
@@ -1056,7 +1069,11 @@ func (s *PolicyService) UnholdRelationship(ctx context.Context, supplierID, reta
 }
 
 func (s *PolicyService) GetProgram(ctx context.Context, supplierID string) (SupplierCreditProgram, bool, error) {
-	return s.repo.GetProgram(ctx, supplierID)
+	p, ok, err := s.repo.GetProgram(ctx, supplierID)
+	if err != nil || !ok {
+		return p, ok, err
+	}
+	return withPackTimezone(ctx, p), true, nil
 }
 
 func (s *PolicyService) ListRelationships(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {

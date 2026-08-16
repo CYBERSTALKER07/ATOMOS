@@ -4,6 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
+import { OIDCAttachCard } from "@/components/settings/OIDCAttachCard";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type {
   PartnerApiKeyMeta,
@@ -298,6 +299,9 @@ export default function IntegrationsSettingsPage() {
       title={t("portal.nav.integrations")}
       description={t("supplier_portal.residual.text.partner_api_keys_outbound_webhooks_bulk_exports_and_optional_sft")}
     >
+      <div className="mx-auto max-w-3xl">
+        <OIDCAttachCard />
+      </div>
       {loading ? (
         <p className="text-sm text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.integrations.text.loading")}</p>
       ) : (

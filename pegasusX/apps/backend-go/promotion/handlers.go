@@ -2,6 +2,7 @@ package promotion
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -204,6 +205,12 @@ func (s *Service) HandleCheckoutQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	quote, err := s.QuoteCheckout(r.Context(), req.SupplierID, claims.Subject, req.Lines)
 	if err != nil {
+		if errors.Is(err, auth.ErrMarketPackUnknown) || errors.Is(err, auth.ErrMarketPackNotShipped) ||
+			errors.Is(err, auth.ErrPackGatewayForbidden) || errors.Is(err, auth.ErrPackCurrencyMismatch) {
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
+			return
+		}
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}

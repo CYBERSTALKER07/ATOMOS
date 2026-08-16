@@ -1,5 +1,7 @@
 # HONESTY OVERRIDE (absolute)
 
+**Final goal (every session):** read `.agents/memory/GOAL.md`. Destination program: `pegasusX/docs/GLOBAL_SCALE_PROGRAM.md` + `pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`. Global **local-first** multi-supplier: register (`SupplierId` + cell + pack), same-market closest warehouse/factory, pack-owned money/PSP, retailers attach many, Class A per supplier. Same code, cloned cells. Not a UZ fork. Status is not the goal — re-verify in code.
+
 Living product: **`pegasusX/`**. Do not plan or ship from `pegasus/` or frozen `.docx`.
 
 - Code opened this session is the only status SoT. Docs, matrices labeled **Wired**, Copilot runtime notes, and prior chat are hypotheses.
@@ -11,3 +13,7 @@ Living product: **`pegasusX/`**. Do not plan or ship from `pegasus/` or frozen `
 Full text: `.github/instructions/honest-code-gate.instructions.md`  
 pegasusX agent file: `pegasusX/.agents/AGENTS.md`  
 Do not treat `.AGENTS.MD` runtime notes as status.
+
+**Retrieval (all IDEs):** read `.agents/memory/WORKSPACE.md`, run `python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>"`, then open live paths. Persist verified facts only. See `.agents/skills/graph-retrieval-memory/references/always-on.md`.
+
+**Cursor CLI:** if cwd is not this repo, use `python3 "$HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py" -q "<topic>" --hops 2` and read `$HOME/Desktop/V.O.I.D/.agents/memory/{GOAL,WORKSPACE}.md`. Prefer `agent --workspace "$HOME/Desktop/V.O.I.D"`. Hits are paths, not status. `/graph-retrieve`.

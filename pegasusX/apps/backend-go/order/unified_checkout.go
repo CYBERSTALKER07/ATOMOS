@@ -27,16 +27,16 @@ type UnifiedCheckoutLineItem struct {
 
 // UnifiedCheckoutRequest is POST /v1/checkout/unified when the body carries cart items.
 type UnifiedCheckoutRequest struct {
-	RetailerID     string                    `json:"retailer_id"`
-	PaymentGateway string                    `json:"payment_gateway"`
-	Latitude       float64                   `json:"latitude"`
-	Longitude      float64                   `json:"longitude"`
-	Items          []UnifiedCheckoutLineItem `json:"items"`
-	DeliveryMode          string `json:"delivery_mode,omitempty"`
-	RequestedDeliveryDate string `json:"requested_delivery_date,omitempty"`
-	DeliverBefore         string `json:"deliver_before,omitempty"`
-	DeliveryPriority      string `json:"delivery_priority,omitempty"`
-	CheckoutPolicyToken   string `json:"checkout_policy_token,omitempty"`
+	RetailerID            string                    `json:"retailer_id"`
+	PaymentGateway        string                    `json:"payment_gateway"`
+	Latitude              float64                   `json:"latitude"`
+	Longitude             float64                   `json:"longitude"`
+	Items                 []UnifiedCheckoutLineItem `json:"items"`
+	DeliveryMode          string                    `json:"delivery_mode,omitempty"`
+	RequestedDeliveryDate string                    `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string                    `json:"deliver_before,omitempty"`
+	DeliveryPriority      string                    `json:"delivery_priority,omitempty"`
+	CheckoutPolicyToken   string                    `json:"checkout_policy_token,omitempty"`
 	// Currency optional; same rules as CreateRequest.Currency.
 	Currency string `json:"currency,omitempty"`
 }
@@ -53,15 +53,16 @@ type SupplierOrderResult struct {
 
 // UnifiedCheckoutResponse matches retailer desktop/Android/iOS contracts.
 type UnifiedCheckoutResponse struct {
-	Status               string                `json:"status"`
-	InvoiceID            string                `json:"invoice_id"`
-	Total                int64                 `json:"total"`
-	Currency             string                `json:"currency"`
-	ParentOrderID        string                `json:"parent_order_id,omitempty"`
-	SupplierOrders       []SupplierOrderResult `json:"supplier_orders"`
-	BackorderedItemCount int                   `json:"backordered_item_count,omitempty"`
-	StockWarnings        []StockWarning        `json:"stock_warnings,omitempty"`
-	BackorderOrderID     string                `json:"backorder_order_id,omitempty"`
+	Status               string                    `json:"status"`
+	InvoiceID            string                    `json:"invoice_id"`
+	Total                int64                     `json:"total"`
+	Currency             string                    `json:"currency"`
+	MarketCode           string                    `json:"market_code,omitempty"`
+	ParentOrderID        string                    `json:"parent_order_id,omitempty"`
+	SupplierOrders       []SupplierOrderResult     `json:"supplier_orders"`
+	BackorderedItemCount int                       `json:"backordered_item_count,omitempty"`
+	StockWarnings        []StockWarning            `json:"stock_warnings,omitempty"`
+	BackorderOrderID     string                    `json:"backorder_order_id,omitempty"`
 	SupplierErrors       []SupplierCheckoutFailure `json:"supplier_errors,omitempty"`
 }
 
@@ -183,6 +184,10 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrInventoryExhausted.Error()})
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
+		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch):
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
 		default:
 			if raw, ok := MarshalInventoryCheckoutError(err); ok {
 				writeJSONBytes(w, http.StatusConflict, raw)
@@ -200,12 +205,34 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 
 // UnifiedCheckout creates one or more supplier-scoped child orders from the retailer cart.
 // When MULTI_SUPPLIER_CHECKOUT_ENABLED, always creates a ParentOrders rollup (including N=1).
+func (s *Service) applyCheckoutPack(ctx context.Context, req *UnifiedCheckoutRequest) (auth.MarketPack, error) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return auth.MarketPack{}, err
+	}
+	ccy, err := auth.ResolveCheckoutCurrency(pack, req.Currency)
+	if err != nil {
+		return auth.MarketPack{}, err
+	}
+	req.Currency = ccy
+	if gw := strings.TrimSpace(req.PaymentGateway); gw != "" {
+		if err := auth.AssertPackPSP(pack, gw); err != nil {
+			return auth.MarketPack{}, err
+		}
+	}
+	return pack, nil
+}
+
 func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req UnifiedCheckoutRequest) (UnifiedCheckoutResponse, error) {
 	if retailerID == "" {
 		return UnifiedCheckoutResponse{}, errors.New("retailer_id required from session")
 	}
 	if len(req.Items) == 0 {
 		return UnifiedCheckoutResponse{}, errors.New("items must not be empty")
+	}
+	pack, err := s.applyCheckoutPack(ctx, &req)
+	if err != nil {
+		return UnifiedCheckoutResponse{}, err
 	}
 
 	lat, lng, err := s.resolveRetailerCoordinates(ctx, retailerID, req.Latitude, req.Longitude)
@@ -235,7 +262,7 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 				UnitPrice: item.UnitPrice,
 			})
 		}
-		return s.unifiedCheckoutMultiSupplier(ctx, retailerID, req, draft, h3Cell, lat, lng)
+		return s.unifiedCheckoutMultiSupplier(ctx, retailerID, req, draft, h3Cell, lat, lng, pack)
 	}
 
 	lineItems, err := s.authoritativeCheckoutLines(ctx, retailerID, req.Items)
@@ -267,10 +294,11 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 	invoiceID := strings.Replace(s.newID(), "ord_", "inv_", 1)
 
 	return UnifiedCheckoutResponse{
-		Status:    "ok",
-		InvoiceID: invoiceID,
-		Total:     created.TotalMinor,
-		Currency:  created.Currency,
+		Status:     "ok",
+		InvoiceID:  invoiceID,
+		Total:      created.TotalMinor,
+		Currency:   created.Currency,
+		MarketCode: pack.Code,
 		SupplierOrders: []SupplierOrderResult{{
 			OrderID:      created.OrderID,
 			SupplierID:   s.resolveSupplierScope(ctx),
@@ -292,6 +320,7 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	lineItems []LineItem,
 	h3Cell string,
 	lat, lng float64,
+	pack auth.MarketPack,
 ) (UnifiedCheckoutResponse, error) {
 	groups, err := s.groupCheckoutLinesBySupplier(ctx, req.Items, lineItems)
 	if err != nil {
@@ -304,10 +333,10 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	parentID := strings.Replace(s.newID(), "ord_", "par_", 1)
 	currency := strings.TrimSpace(req.Currency)
 	if currency == "" {
-		currency = s.currency
+		currency = pack.CurrencyCode
 	}
 	if currency == "" {
-		currency = "UZS"
+		currency = s.currency
 	}
 	if err := s.insertParentOrder(ctx, parentID, retailerID, currency, len(groups)); err != nil {
 		return UnifiedCheckoutResponse{}, err
@@ -393,6 +422,7 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 		InvoiceID:            invoiceID,
 		Total:                totalMinor,
 		Currency:             currency,
+		MarketCode:           pack.Code,
 		ParentOrderID:        parentID,
 		SupplierOrders:       supplierOrders,
 		BackorderedItemCount: backorderedItemCount,

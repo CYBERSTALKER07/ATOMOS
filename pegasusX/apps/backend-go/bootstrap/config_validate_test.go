@@ -162,6 +162,74 @@ func TestValidateProductionProfile_RequiresMySoliqCreds(t *testing.T) {
 	}
 }
 
+func TestValidateProductionProfile_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	setenvFiscalMySoliqProd(t)
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected planned DEFAULT_MARKET_CODE to fail production fiscal profile")
+	}
+}
+
+func TestValidateProductionProfile_EUCommercialEmptyAdaptersOK(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	t.Setenv("HOME_CELL", "cell-eu")
+	t.Setenv("FISCAL_PROVIDER", "PEGASUS")
+	t.Setenv("FISCAL_ALLOW_COMMERCIAL_RECEIPTS", "true")
+	t.Setenv("FCM_ALLOW_NOOP", "true")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "eu-cell-jwt-not-from-uz"
+	cfg.GlobalPayWebhookSecret = ""
+	cfg.AdyenWebhookSecret = ""
+	cfg.StripeWebhookSecret = ""
+	cfg.PaymeWebhookSecret = ""
+	cfg.ClickWebhookSecret = ""
+	cfg.GlobalPayEnv = "unused"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err != nil {
+		t.Fatalf("EU commercial empty adapters should boot: %v", err)
+	}
+}
+
+func TestValidateProductionProfile_EUCommercialStillForbidsFake(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	t.Setenv("HOME_CELL", "cell-eu")
+	t.Setenv("FISCAL_PROVIDER", "FAKE")
+	t.Setenv("FISCAL_ALLOW_COMMERCIAL_RECEIPTS", "true")
+	t.Setenv("FCM_ALLOW_NOOP", "true")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "eu-cell-jwt-not-from-uz"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected FAKE fiscal to fail on the EU cell")
+	}
+}
+
 func TestValidateProductionProfile_PegasusRequiresCommercialAllow(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
 	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")

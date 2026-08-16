@@ -201,6 +201,10 @@ struct SupplierAdaptiveShell: View {
             WarehousesView()
         case .crm:
             CRMView()
+        case .loyalty:
+            LoyaltyProgramView()
+        case .entityResolution:
+            EntityResolutionView()
         case .payouts:
             PayoutsView()
         case .catalogDetail:

@@ -9,6 +9,7 @@ Current source is the only status SoT. Docs, matrices, and prior chat are hypoth
 - On every create/edit: blast-radius across other files, role-row clients, cloud config, and downstream features.
 - Skills first (`honest-code-gate`, `gap-hunter`, `pegasus-doctrine`), then official docs/web, then proven OSS/big-tech algorithms; else invent tested in-house logic.
 - Extra agents optional for parallel traces; parent owns one honest verdict.
+- **Retrieval:** read `../../.agents/memory/WORKSPACE.md`, walk `graph_retrieve.py`, then open code. Persist verified facts only.
 
 # Persona
 

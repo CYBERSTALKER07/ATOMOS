@@ -31,6 +31,8 @@ type PublicReceiptView struct {
 	PartyCopy     string        `json:"party_copy,omitempty"`
 	CompanyName   string        `json:"company_name,omitempty"`
 	LineItems     []ReceiptLine `json:"line_items,omitempty"`
+	MarketCode    string        `json:"market_code,omitempty"`
+	FiscalAdapter string        `json:"fiscal_adapter,omitempty"`
 }
 
 func resolveReceiptFormat(r *http.Request) string {
@@ -121,6 +123,8 @@ func writeReceiptResponse(w http.ResponseWriter, r *http.Request, doc ReceiptDoc
 			PartyCopy:     string(doc.PartyCopy),
 			CompanyName:   doc.CompanyName,
 			LineItems:     doc.LineItems,
+			MarketCode:    doc.MarketCode,
+			FiscalAdapter: doc.FiscalAdapter,
 		}
 		writeJSON(w, http.StatusOK, view)
 	}

@@ -167,7 +167,7 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): Order
 
-    // Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
+    // Mark arrived — driver enters pack breach_radius_meters (UZ 150m; IN_TRANSIT → ARRIVED)
     @POST("v1/delivery/arrive")
     suspend fun markArrived(
         @Body body: Map<String, String>,

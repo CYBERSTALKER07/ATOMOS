@@ -17,12 +17,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
-	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -56,12 +56,13 @@ type Service struct {
 	log         *slog.Logger
 	idem        idempotency.Store
 
-	seedSupplierID       string
+	seedSupplierID   string
 	currency         string
 	jwtSecret        string
 	jwtIssuer        string
 	now              func() time.Time
 	firebaseVerifier auth.FirebaseVerifier
+	staffLookup      PayloadStaffLookup
 
 	mu             sync.RWMutex
 	spannerLoaded  bool
@@ -101,8 +102,8 @@ type ServiceConfig struct {
 	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
 	ManifestStore    *manifest.Store
-	Idem               idempotency.Store
-	Locations          telemetry.LastLocationReader
+	Idem             idempotency.Store
+	Locations        telemetry.LastLocationReader
 }
 
 type payloaderTruckWire struct {
@@ -154,13 +155,13 @@ type OrderRow struct {
 
 // ManifestRow represents one payloader-visible manifest.
 type ManifestRow struct {
-	ManifestID       string `json:"manifest_id"`
-	VehicleID        string `json:"vehicle_id,omitempty"`
-	DriverID         string `json:"driver_id,omitempty"`
-	State            string `json:"state"`
-	TotalVolumeVU    int64  `json:"total_volume_vu"`
-	MaxVolumeVU      int64  `json:"max_volume_vu"`
-	StopCount        int    `json:"stop_count"`
+	ManifestID    string `json:"manifest_id"`
+	VehicleID     string `json:"vehicle_id,omitempty"`
+	DriverID      string `json:"driver_id,omitempty"`
+	State         string `json:"state"`
+	TotalVolumeVU int64  `json:"total_volume_vu"`
+	MaxVolumeVU   int64  `json:"max_volume_vu"`
+	StopCount     int    `json:"stop_count"`
 	// WarehouseID is stamped when known (JWT home node / Spanner). B7 PL-P0-6 scope.
 	WarehouseID      string `json:"warehouse_id,omitempty"`
 	CreatedAt        string `json:"created_at"`
@@ -242,7 +243,7 @@ func NewService(c ServiceConfig) *Service {
 		notifSvc:         c.NotifSvc,
 		log:              c.Log,
 		idem:             c.Idem,
-		seedSupplierID: seedID,
+		seedSupplierID:   seedID,
 		currency:         c.Currency,
 		jwtSecret:        c.JWTSecret,
 		jwtIssuer:        c.JWTIssuer,
@@ -263,7 +264,6 @@ func (s *Service) AuthIssuer() string {
 	}
 	return s.jwtIssuer
 }
-
 
 // resolveWarehouseScope prefers JWT home-node warehouse for PAYLOAD role (B2 M-P1-9 / B7 PL-P0-6).
 func (s *Service) resolveWarehouseScope(ctx context.Context) string {
@@ -317,7 +317,6 @@ func (s *Service) resolveSupplierScope(ctx context.Context) string {
 	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
 
-
 type recommendReassignRequest struct {
 	OrderID string `json:"order_id"`
 }
@@ -335,9 +334,9 @@ type manifestExceptionRequest struct {
 }
 
 type applyReassignRequest struct {
-	OrderID      string `json:"order_id"`
-	ToRouteID    string `json:"to_route_id"`
-	ToManifestID string `json:"to_manifest_id"`
+	OrderID         string `json:"order_id"`
+	ToRouteID       string `json:"to_route_id"`
+	ToManifestID    string `json:"to_manifest_id"`
 	ToDriverID      string `json:"to_driver_id"`
 	Reason          string `json:"reason"`
 	IsPartial       bool   `json:"is_partial"`
@@ -861,10 +860,10 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 			ManifestDomain: events.ManifestDomainSupplier,
-			BaseEvent:  events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
-			ManifestID: manifestID,
-			SupplierID: s.resolveSupplierScope(r.Context()),
-			State:      payloadManifestStateLoading,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
+			ManifestID:     manifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			State:          payloadManifestStateLoading,
 		})
 	})
 	if err != nil {
@@ -991,12 +990,12 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 			ManifestDomain: events.ManifestDomainSupplier,
-			BaseEvent:     events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
-			ManifestID:    manifestID,
-			OrderID:       req.OrderID,
-			SupplierID:    s.resolveSupplierScope(r.Context()),
-			TotalVolumeVU: manifest.TotalVolumeVU,
-			StopCount:     int64(manifest.StopCount),
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
+			ManifestID:     manifestID,
+			OrderID:        req.OrderID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			TotalVolumeVU:  manifest.TotalVolumeVU,
+			StopCount:      int64(manifest.StopCount),
 		})
 	})
 	if err != nil {
@@ -1146,25 +1145,25 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 	}, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
 			ManifestDomain: events.ManifestDomainSupplier,
-			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
-			ManifestID:   req.ManifestID,
-			OrderID:      req.OrderID,
-			SupplierID:   s.resolveSupplierScope(r.Context()),
-			Reason:       req.Reason,
-			AttemptCount: exception.AttemptCount,
-			Escalated:    exception.Escalated,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
+			ManifestID:     req.ManifestID,
+			OrderID:        req.OrderID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			Reason:         req.Reason,
+			AttemptCount:   exception.AttemptCount,
+			Escalated:      exception.Escalated,
 		}); err != nil {
 			return err
 		}
 		if exception.Escalated {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
 				ManifestDomain: events.ManifestDomainSupplier,
-				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
-				ManifestID:   req.ManifestID,
-				OrderID:      req.OrderID,
-				SupplierID:   s.resolveSupplierScope(r.Context()),
-				Reason:       req.Reason,
-				AttemptCount: exception.AttemptCount,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
+				ManifestID:     req.ManifestID,
+				OrderID:        req.OrderID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				Reason:         req.Reason,
+				AttemptCount:   exception.AttemptCount,
 			})
 		}
 		return nil
@@ -1563,12 +1562,12 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			}
 			targetManifestOrders := s.manifestOrders[targetManifestID]
 			targetManifestOrders = append(targetManifestOrders, ManifestOrder{
-				ManifestID: targetManifestID,
-				OrderID:    order.OrderID,
-				State:      "ASSIGNED",
-				VolumeVU:   reassignedVolume,
+				ManifestID:   targetManifestID,
+				OrderID:      order.OrderID,
+				State:        "ASSIGNED",
+				VolumeVU:     reassignedVolume,
 				SplitGroupID: splitGroupID,
-				UpdatedAt:  now,
+				UpdatedAt:    now,
 			})
 			s.manifestOrders[targetManifestID] = targetManifestOrders
 			targetManifest.StopCount++
@@ -1745,15 +1744,15 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 				ManifestDomain: events.ManifestDomainSupplier,
-				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-				ManifestID: manifestID,
-				SupplierID: s.resolveSupplierScope(r.Context()),
-				WarehouseID: s.resolveWarehouseScope(r.Context()),
-				State:      payloadManifestStateSealed,
-				RouteID:    routeIDForManifest(manifest),
-				DriverID:   manifest.DriverID,
-				VehicleID:  manifest.VehicleID,
-				OrderCount: manifest.StopCount,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+				ManifestID:     manifestID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				WarehouseID:    s.resolveWarehouseScope(r.Context()),
+				State:          payloadManifestStateSealed,
+				RouteID:        routeIDForManifest(manifest),
+				DriverID:       manifest.DriverID,
+				VehicleID:      manifest.VehicleID,
+				OrderCount:     manifest.StopCount,
 			})
 		})
 		switch {
@@ -1853,14 +1852,14 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 			ManifestDomain: events.ManifestDomainSupplier,
-			BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-			ManifestID: manifestID,
-			SupplierID: s.resolveSupplierScope(r.Context()),
-			State:      payloadManifestStateSealed,
-			RouteID:    routeIDForManifest(manifest),
-			DriverID:   manifest.DriverID,
-			VehicleID:  manifest.VehicleID,
-			OrderCount: manifest.StopCount,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID:     manifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			State:          payloadManifestStateSealed,
+			RouteID:        routeIDForManifest(manifest),
+			DriverID:       manifest.DriverID,
+			VehicleID:      manifest.VehicleID,
+			OrderCount:     manifest.StopCount,
 		})
 	})
 	if err == http.ErrMissingFile {
@@ -1989,15 +1988,15 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
 			ManifestDomain: events.ManifestDomainSupplier,
-			BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-			ManifestID:  req.ManifestID,
-			SupplierID:  s.resolveSupplierScope(r.Context()),
-			WarehouseID: s.resolveWarehouseScope(r.Context()),
-			State:       payloadManifestStateSealed,
-			RouteID:     routeIDForManifest(manifest),
-			DriverID:    manifest.DriverID,
-			VehicleID:   manifest.VehicleID,
-			OrderCount:  manifest.StopCount,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID:     req.ManifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			WarehouseID:    s.resolveWarehouseScope(r.Context()),
+			State:          payloadManifestStateSealed,
+			RouteID:        routeIDForManifest(manifest),
+			DriverID:       manifest.DriverID,
+			VehicleID:      manifest.VehicleID,
+			OrderCount:     manifest.StopCount,
 		})
 	})
 	if err == http.ErrMissingFile {
@@ -2130,15 +2129,15 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
 				ManifestDomain: events.ManifestDomainSupplier,
-				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
-				ManifestID: manifestID,
-				SupplierID: s.resolveSupplierScope(r.Context()),
-				WarehouseID: s.resolveWarehouseScope(r.Context()),
-				State:      payloadManifestStateSealed,
-				RouteID:    routeIDForManifest(sealed),
-				DriverID:   sealed.DriverID,
-				VehicleID:  sealed.VehicleID,
-				OrderCount: sealed.StopCount,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
+				ManifestID:     manifestID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				WarehouseID:    s.resolveWarehouseScope(r.Context()),
+				State:          payloadManifestStateSealed,
+				RouteID:        routeIDForManifest(sealed),
+				DriverID:       sealed.DriverID,
+				VehicleID:      sealed.VehicleID,
+				OrderCount:     sealed.StopCount,
 			})
 		})
 		switch {

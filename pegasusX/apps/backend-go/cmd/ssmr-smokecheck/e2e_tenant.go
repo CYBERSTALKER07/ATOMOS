@@ -79,6 +79,7 @@ func runTenantRegisterFrozenE2E(ctx context.Context, client *http.Client, base s
 	}
 	bodyStr := string(respBody)
 	if status == http.StatusForbidden || status == http.StatusConflict ||
+		strings.Contains(bodyStr, "legacy_register_frozen") ||
 		strings.Contains(bodyStr, "supplier_cap_reached") || strings.Contains(bodyStr, "supplier cap") {
 		fmt.Println("PX_E2E_TENANT_REGISTER_FROZEN_OK")
 		return nil

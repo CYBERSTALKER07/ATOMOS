@@ -13,7 +13,8 @@
 ---
 
 > **PATH / SoT WARNING (2026-08-12):** Canonical product tree is **`pegasusX/`** (not legacy `pegasus/`).  
-> Planning docs: [`pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md`](pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md) · [`PROD_ECOSYSTEM_GOAL.md`](pegasusX/docs/PROD_ECOSYSTEM_GOAL.md) · gap register + master alignment under `pegasusX/docs/session-2026-08-07/`.  
+> Final goal: [`.agents/memory/GOAL.md`](.agents/memory/GOAL.md) — [`GLOBAL_SCALE_PROGRAM.md`](pegasusX/docs/GLOBAL_SCALE_PROGRAM.md) + [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md).  
+> Planning index: [`pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md`](pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md). Class A coverage: [`PROD_ECOSYSTEM_GOAL.md`](pegasusX/docs/PROD_ECOSYSTEM_GOAL.md).  
 > Frozen Reality Report `.docx` files are historical only.
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.

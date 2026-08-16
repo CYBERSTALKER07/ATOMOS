@@ -12,6 +12,7 @@ struct DashboardView: View {
     @State private var demandGeneratedAt: String?
     @State private var loading = true
     @State private var error: String?
+    @State private var pack: MarketPack?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
@@ -35,6 +36,7 @@ struct DashboardView: View {
                             if !tokenStore.isConfigured {
                                 billingBanner
                             }
+                            PackBanner(pack: pack)
 
                             SupplierSectionHeader(
                                 title: "Operations at a glance",
@@ -118,6 +120,9 @@ struct DashboardView: View {
             }
             .refreshable { await load(silent: true) }
             .task {
+                if let token = tokenStore.token {
+                    pack = await MarketPackBinder.fetch(baseUrl: APIClient.shared.cellBootstrap, token: token)?.pack
+                }
                 await load()
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 30_000_000_000)

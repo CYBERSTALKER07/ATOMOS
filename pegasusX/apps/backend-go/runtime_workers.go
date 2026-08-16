@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -117,21 +118,25 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		slog.Info("reorder suggestion batch worker started")
 	}
 	if app.Config.WeatherWorkerEnabled && app.DemandService != nil {
-		// Use globally configured center. For Phase 1, treating this as city-level default region.
-		weatherCfg := demand.WeatherConfig{
-			BaseURL:        app.Config.WeatherBaseURL,
-			UpdateInterval: 6 * time.Hour,
-			LookaheadDays:  14,
-			Locations: []demand.Location{
-				{
-					Scope: "city:Tashkent", // Default to Tashkent logic for all retailers
-					Lat:   app.Config.DeliveryZoneCenterLat,
-					Lng:   app.Config.DeliveryZoneCenterLng,
+		scope, err := auth.WeatherScopeFromContext(context.Background(), "")
+		if err != nil {
+			slog.Info("weather ingestion worker skipped", "err", err)
+		} else {
+			weatherCfg := demand.WeatherConfig{
+				BaseURL:        app.Config.WeatherBaseURL,
+				UpdateInterval: 6 * time.Hour,
+				LookaheadDays:  14,
+				Locations: []demand.Location{
+					{
+						Scope: scope,
+						Lat:   app.Config.DeliveryZoneCenterLat,
+						Lng:   app.Config.DeliveryZoneCenterLng,
+					},
 				},
-			},
+			}
+			go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
+			slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays, "scope", scope)
 		}
-		go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
-		slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays)
 	}
 	if app.DemandService != nil {
 		go app.DemandService.RunDensityWorker(ctx, 6*time.Hour)

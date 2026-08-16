@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.Product
@@ -37,6 +40,7 @@ data class DashboardUiState(
     val error: String? = null,
     val loadIssue: DashboardLoadIssue? = null,
     val orderActionPending: Boolean = false,
+    val pack: MarketPack? = null,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -86,6 +90,8 @@ class DashboardViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, pulseLoading = true, error = null) }
+            val pack = MarketPackBinder.fetch(BuildConfig.BASE_URL, tokenManager.getPreferredToken().orEmpty())?.pack
+            _uiState.update { it.copy(pack = pack) }
 
             var nextIssue: DashboardLoadIssue? = null
             var nextError: String? = null

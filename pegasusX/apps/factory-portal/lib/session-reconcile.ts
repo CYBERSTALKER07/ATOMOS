@@ -6,7 +6,7 @@ import { notifyFactorySessionReconciled } from './factory-reconnect';
 export async function reconcileFactorySession(): Promise<void> {
   await reconcileSession({
     role: 'factory',
-    baseUrl: factoryApiBaseUrl,
+    baseUrl: factoryApiBaseUrl(),
     getAuthToken: () => readTokenFromCookie() || null,
     fetchImpl: (input, init) => {
       const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;

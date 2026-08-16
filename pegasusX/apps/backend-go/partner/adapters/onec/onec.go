@@ -51,9 +51,6 @@ func ParseCommerceMLCatalog(raw []byte) (ImportBatch, error) {
 			continue
 		}
 		cur := strings.TrimSpace(p.Currency)
-		if cur == "" {
-			cur = "UZS"
-		}
 		batch.Products = append(batch.Products, ImportProduct{
 			ExternalID: id,
 			Name:       strings.TrimSpace(p.Name),

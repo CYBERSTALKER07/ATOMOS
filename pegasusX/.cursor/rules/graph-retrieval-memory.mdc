@@ -1,0 +1,14 @@
+---
+description: Graph retrieval + shared memory (workspace opened as pegasusX/)
+alwaysApply: true
+---
+
+# Graph retrieval + shared memory
+
+Read `../.agents/memory/WORKSPACE.md`.
+
+```bash
+python3 ../.agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>" --hops 2
+```
+
+Open hits. Persist verified only. Canonical: `../.agents/skills/graph-retrieval-memory/references/always-on.md`

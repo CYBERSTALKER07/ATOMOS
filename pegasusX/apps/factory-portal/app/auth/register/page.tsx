@@ -121,7 +121,7 @@ export default function FactoryRegisterPage() {
         id_token: state.verification.idToken,
       };
 
-      const res = await fetch(`${factoryApiBaseUrl}/v1/auth/factory/register`, {
+      const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

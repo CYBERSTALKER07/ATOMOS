@@ -40,6 +40,12 @@ import com.pegasusx.factory.ui.screens.dashboard.components.WorkflowLaunchCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.pegasusx.factory.R
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PackBanner
+import com.pegasusx.factory.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class KpiCard(
     val label: String,
@@ -71,6 +77,7 @@ fun DashboardScreen(
     var stats by remember { mutableStateOf(DashboardStats()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -134,6 +141,9 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(Unit) {
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
         load()
         loadClientPolicy()
         while (true) {
@@ -158,6 +168,7 @@ fun DashboardScreen(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Factory dashboard")
+                        PackBanner(pack)
                         Text(
                             text = stringResource(R.string.mobile_factory_ui_dispatch_loading_fleet_and_staffing_status),
                             style = MaterialTheme.typography.labelMedium,

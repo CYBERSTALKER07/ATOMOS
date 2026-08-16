@@ -55,6 +55,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"CountryCode",
 		"Currency",
 		"IsConfigured",
+		"MarketCode",
+		"HomeCell",
 		"CreatedAt",
 		"UpdatedAt",
 	})
@@ -66,17 +68,22 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	}
 
 	var p Profile
+	var marketCode, homeCell spanner.NullString
 	if err := row.Columns(
 		&p.SupplierID,
 		&p.LegalName,
 		&p.Country,
 		&p.Currency,
 		&p.IsConfigured,
+		&marketCode,
+		&homeCell,
 		&p.RegisteredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier %s: %w", supplierID, err)
 	}
+	p.MarketCode = nullString(marketCode)
+	p.HomeCell = nullString(homeCell)
 
 	profileRow, err := r.client.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{supplierID}, []string{
 		"SupplierId",
@@ -818,6 +825,8 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 				"CountryCode":  p.Country,
 				"Currency":     p.Currency,
 				"IsConfigured": p.IsConfigured,
+				"MarketCode":   nullableString(strings.ToUpper(strings.TrimSpace(p.MarketCode))),
+				"HomeCell":     nullableString(strings.ToLower(strings.TrimSpace(p.HomeCell))),
 				"CreatedAt":    registeredAt,
 				"UpdatedAt":    updatedAt,
 			}),
@@ -1032,21 +1041,21 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 
 			row := map[string]any{
-				"WarehouseId":      id,
-				"SupplierId":       supplierID,
-				"Name":             name,
-				"Lat":              nullableFloat(wh.Lat),
-				"Lng":              nullableFloat(wh.Lng),
-				"H3Cell":           topologyH3CellString(wh.Lat, wh.Lng),
-				"Address":          nullableString(strings.TrimSpace(wh.Address)),
-				"PlaceId":          nullableString(strings.TrimSpace(wh.PlaceID)),
-				"CoverageRadiusKm": coverage,
-				"TransferMode":     normalizeTransferMode(wh.TransferMode),
-				"IsActive":         wh.IsActive,
-				"IsOnShift":        wh.IsOnShift,
+				"WarehouseId":             id,
+				"SupplierId":              supplierID,
+				"Name":                    name,
+				"Lat":                     nullableFloat(wh.Lat),
+				"Lng":                     nullableFloat(wh.Lng),
+				"H3Cell":                  topologyH3CellString(wh.Lat, wh.Lng),
+				"Address":                 nullableString(strings.TrimSpace(wh.Address)),
+				"PlaceId":                 nullableString(strings.TrimSpace(wh.PlaceID)),
+				"CoverageRadiusKm":        coverage,
+				"TransferMode":            normalizeTransferMode(wh.TransferMode),
+				"IsActive":                wh.IsActive,
+				"IsOnShift":               wh.IsOnShift,
 				"DefaultOutOfStockPolicy": normalizeOutOfStockPolicy(wh.DefaultOutOfStockPolicy),
-				"CreatedAt":        createdAt,
-				"UpdatedAt":        now,
+				"CreatedAt":               createdAt,
+				"UpdatedAt":               now,
 			}
 			if coLocate := strings.TrimSpace(wh.CoLocateWithFactoryID); coLocate != "" {
 				row["CoLocateWithFactoryId"] = coLocate

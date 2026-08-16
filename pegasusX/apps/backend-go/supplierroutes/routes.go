@@ -7,12 +7,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
-	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -21,6 +24,8 @@ import (
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service           *supplier.Service
+	RetailerService   *retailer.Service
+	StaffInvite       *staffinvite.Handler
 	OrderService      *order.Service
 	PayloadService    *payload.Service
 	NotificationInbox *notifications.InboxHandlers
@@ -30,6 +35,7 @@ type Deps struct {
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
 	WarehouseHub      *ws.Hub
+	OrgOIDC           *orgoidc.Service
 }
 
 // RegisterRoutes mounts:
@@ -70,6 +76,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/supplier/register", d.Service.HandleRegister)
 	r.Post("/v1/auth/supplier/login", d.Service.HandleLogin)
 	r.Post("/v1/auth/supplier/refresh", d.Service.HandleSupplierRefresh)
+	if d.OrgOIDC != nil {
+		r.Get("/v1/auth/oidc/discovery", d.OrgOIDC.HandleDiscovery)
+		r.Post("/v1/auth/oidc/exchange", d.OrgOIDC.HandleExchange)
+	}
 
 	warehouseScope := auth.RequireWarehouseScope
 	if d.Spanner != nil {
@@ -100,6 +110,17 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Put("/v1/supplier/topology", d.Service.HandleTopology)
 		gr.Get("/v1/supplier/org/members", d.Service.HandleOrgMembers)
 		gr.Post("/v1/supplier/org/members", d.Service.HandleOrgMembers)
+		if d.RetailerService != nil {
+			gr.Post("/v1/supplier/retailer-invites", d.RetailerService.HandleCreateTradingPartnerInvite)
+		}
+		if d.StaffInvite != nil {
+			gr.Post("/v1/supplier/staff-invites", d.StaffInvite.HandleCreate)
+		}
+		if d.OrgOIDC != nil {
+			gr.Get("/v1/supplier/oidc", d.OrgOIDC.HandleGet)
+			gr.Put("/v1/supplier/oidc", d.OrgOIDC.HandlePut)
+			gr.Delete("/v1/supplier/oidc", d.OrgOIDC.HandleDelete)
+		}
 		gr.Patch("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		gr.Put("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		gr.Delete("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)

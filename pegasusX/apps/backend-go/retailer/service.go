@@ -310,6 +310,7 @@ type Service struct {
 	proximity      *RetailerProximityService
 	locations      telemetry.LastLocationReader
 	seedSupplierID string
+	partners       TradingPartnerLookup
 	countryCode    string
 	jwtSecret      string
 	jwtIssuer      string
@@ -582,6 +583,8 @@ func (s *Service) SetSoakBypassAuditor(a SoakBypassAuditor) {
 type RegisterRequest struct {
 	Phone                string  `json:"phone"`
 	Name                 string  `json:"name,omitempty"`
+	SupplierID           string  `json:"supplier_id,omitempty"`
+	InviteToken          string  `json:"invite_token,omitempty"`
 	Lat                  float64 `json:"lat"`
 	Lng                  float64 `json:"lng"`
 	DeliveryAddress      string  `json:"delivery_address,omitempty"`
@@ -594,6 +597,7 @@ type RegisterRequest struct {
 // RegisterResponse is what callers get back.
 type RegisterResponse struct {
 	RetailerID string `json:"retailer_id"`
+	SupplierID string `json:"supplier_id,omitempty"`
 	Phone      string `json:"phone"`
 	H3Cell     string `json:"h3_cell"`
 	CreatedAt  string `json:"created_at"`
@@ -621,6 +625,10 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	if err := req.Validate(); err != nil {
 		return RegisterResponse{}, err
 	}
+	partnerID, err := s.resolveTradingPartner(ctx, req.SupplierID, req.InviteToken)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
 
 	// Dedupe: phone is uniquely indexed. A retry MAY hit a row that already
 	// exists; treat that as idempotent success.
@@ -629,6 +637,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	} else if found {
 		return RegisterResponse{
 			RetailerID: existing.RetailerID,
+			SupplierID: existing.SupplierID,
 			Phone:      existing.Phone,
 			H3Cell:     existing.H3Cell,
 			CreatedAt:  existing.CreatedAt.Format(time.RFC3339Nano),
@@ -658,7 +667,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 
 	r := Retailer{
 		RetailerID:           s.newID(),
-		SupplierID:           s.resolveSupplierScope(ctx),
+		SupplierID:           partnerID,
 		Phone:                req.Phone,
 		Name:                 req.Name,
 		CountryCode:          s.countryCode,
@@ -706,6 +715,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	)
 	return RegisterResponse{
 		RetailerID: r.RetailerID,
+		SupplierID: r.SupplierID,
 		Phone:      r.Phone,
 		H3Cell:     r.H3Cell,
 		CreatedAt:  r.CreatedAt.Format(time.RFC3339Nano),
@@ -759,7 +769,7 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.Register(r.Context(), req)
 	if err != nil {
 		s.log.Warn("retailer registration failed", "err", err)
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		writeAttachError(w, err)
 		return
 	}
 

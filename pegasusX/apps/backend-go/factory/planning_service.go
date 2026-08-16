@@ -10,9 +10,9 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -671,7 +671,11 @@ func (p *PlanningService) warehouseInventory(ctx context.Context, supplierID, wa
 }
 
 func (p *PlanningService) futureDemandBySKU(ctx context.Context, supplierID, warehouseID string) (map[string]int64, map[string][]string, error) {
-	now := proximity.TashkentNow()
+	loc, locErr := auth.TimezoneFromContext(ctx, supplierID)
+	if locErr != nil {
+		return nil, nil, locErr
+	}
+	now := time.Now().In(loc)
 	horizon := now.Add(LookAheadWindowDays * 24 * time.Hour)
 	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId, ConfirmationStatus, Status, LineItemsJson
@@ -941,15 +945,15 @@ func (p *PlanningService) emitTransferSLA(ctx context.Context, transferID, suppl
 		muts := []*spanner.Mutation{spanner.InsertMap("FactorySLAEvents", row)}
 		buf := outbox.NewSpannerTxnBuffer(txn)
 		payload := map[string]any{
-			"type":              events.EventFactorySLABreach,
-			"kind":              "transfer_transit",
-			"transfer_id":       transferID,
-			"supplier_id":       supplierID,
-			"factory_id":        factoryID,
-			"warehouse_id":      warehouseID,
-			"escalation_level":  level,
+			"type":               events.EventFactorySLABreach,
+			"kind":               "transfer_transit",
+			"transfer_id":        transferID,
+			"supplier_id":        supplierID,
+			"factory_id":         factoryID,
+			"warehouse_id":       warehouseID,
+			"escalation_level":   level,
 			"sla_breach_minutes": minutes,
-			"timestamp":         p.now().UTC().Format(time.RFC3339Nano),
+			"timestamp":          p.now().UTC().Format(time.RFC3339Nano),
 		}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateFactory, transferID, events.TopicMain, payload); err != nil {
 			return err

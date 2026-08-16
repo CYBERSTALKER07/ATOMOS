@@ -1,6 +1,7 @@
 package payout
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -81,5 +82,66 @@ func TestHandleGetBatch_MissingID(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound && rr.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleRailInfo_ShippedPackBankFile(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	h := &Handlers{Svc: NewService(nil)}
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/payouts/rail", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup-1",
+		MarketCode: "UZ",
+	}))
+	rr := httptest.NewRecorder()
+	h.HandleRailInfo(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var info RailInfo
+	if err := json.Unmarshal(rr.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.Name != "bank-file" || info.IsLive {
+		t.Fatalf("info=%+v", info)
+	}
+}
+
+func TestHandleRailInfo_PlannedPack404(t *testing.T) {
+	h := &Handlers{Svc: NewService(nil)}
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/payouts/rail", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup-1",
+		MarketCode: "EU",
+	}))
+	rr := httptest.NewRecorder()
+	h.HandleRailInfo(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestRailInfoContext_PlannedFailsClosed(t *testing.T) {
+	svc := NewService(nil)
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU", SupplierID: "sup-1"})
+	if _, err := svc.RailInfoContext(ctx, "sup-1"); err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRailByName_UnknownDoesNotInventBankFile(t *testing.T) {
+	r, err := railByName("stripe-payout")
+	if err != auth.ErrPayoutRailUnknown || r != nil {
+		t.Fatalf("rail=%v err=%v", r, err)
+	}
+	r, err = railByName("bank-file")
+	if err != nil || r.Name() != "bank-file" || r.IsLive() {
+		t.Fatalf("bank-file rail=%v err=%v", r, err)
+	}
+	r, err = railByName("sepa-file")
+	if err != nil || r.Name() != "sepa-file" || r.IsLive() {
+		t.Fatalf("sepa-file must be file-only: %v %v", r, err)
 	}
 }

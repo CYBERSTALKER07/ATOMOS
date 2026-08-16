@@ -1,10 +1,13 @@
 package factory
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // Factory SLA honesty labels (G7.1) — handoff timing vs RequestedDeliveryDate / default window.
@@ -40,9 +43,17 @@ type SLAEval struct {
 	Open           bool
 }
 
-// FactorySLADefaultHours is the due window when RequestedDeliveryDate is empty (default 48).
+// FactorySLADefaultHours is the due window when RequestedDeliveryDate is empty.
+// Env override wins; otherwise the shipped pack (UZ 48). Planned pack → 0 (N/A).
 func FactorySLADefaultHours() float64 {
-	return envFloat("FACTORY_SLA_DEFAULT_HOURS", 48)
+	if strings.TrimSpace(os.Getenv("FACTORY_SLA_DEFAULT_HOURS")) != "" {
+		return envFloat("FACTORY_SLA_DEFAULT_HOURS", 0)
+	}
+	hours, err := auth.FactorySLADefaultHoursFromContext(context.Background(), "")
+	if err != nil {
+		return 0
+	}
+	return hours
 }
 
 // FactorySLAAtRiskHours is how long before due the request becomes AT_RISK (default 6).
@@ -73,7 +84,11 @@ func EvaluateSLA(state string, createdAt, requestedDelivery time.Time, now time.
 	if !requestedDelivery.IsZero() {
 		due = requestedDelivery.UTC()
 	} else if !createdAt.IsZero() {
-		due = createdAt.Add(time.Duration(FactorySLADefaultHours() * float64(time.Hour)))
+		h := FactorySLADefaultHours()
+		if h <= 0 {
+			return SLAEval{Status: SLAStatusNA}
+		}
+		due = createdAt.Add(time.Duration(h * float64(time.Hour)))
 	} else {
 		return SLAEval{Status: SLAStatusNA}
 	}
@@ -137,9 +152,9 @@ func EnrichSupplyRequestSLA(m map[string]any, state, createdAtStr, deliveryDateS
 
 // SLABoardSummary aggregates open requests by status.
 type SLABoardSummary struct {
-	OnTime   int `json:"on_time"`
-	AtRisk   int `json:"at_risk"`
-	Breached int `json:"breached"`
+	OnTime    int `json:"on_time"`
+	AtRisk    int `json:"at_risk"`
+	Breached  int `json:"breached"`
 	TotalOpen int `json:"total_open"`
 }
 

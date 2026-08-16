@@ -1,7 +1,7 @@
 # PegasusX — Features by App / Role
 
 **SOURCE OF TRUTH: CODE ONLY (not other markdown).**  
-Extracted 2026-08-04; client parity re-synced 2026-08-12; **G7 regen 2026-08-13** (admin ops/dead-letters, factory SLA board, planning accuracy MAPE, partner EDI/1C/ASN); **P0 honesty 2026-08-13**; **P5 factory planning 2026-08-13** (API+workers, flags default off, no new screens); **P6 supplier extras 2026-08-13** (A+F API; clients P7-C); **leftover close 2026-08-14** (payout-policy, entityresolution, countrycfg UZ, SplitManifest naming, loyalty 410, P5-D DemandForecastBaseline, CRM Email, typed CT lists, retailer CT tiles); **P7 factory honesty 2026-08-13** (exception GET Spanner-first; dispatch no invent; C portal+native); **P8–P16 enterprise close 2026-08-13** (dead `payloaderoutes` removed; live `payloaderoutes`; staff login; QC gate; broadcast outbox; S&OP column; billing list; seal-all clients; **not cloud, not store**). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
+Extracted 2026-08-04; client parity re-synced 2026-08-12; **G7 regen 2026-08-13** (admin ops/dead-letters, factory SLA board, planning accuracy MAPE, partner EDI/1C/ASN); **P0 honesty 2026-08-13**; **P5 factory planning 2026-08-13** (API+workers, flags default off, no new screens); **P6 supplier extras 2026-08-13** (A+F API; clients P7-C); **leftover close 2026-08-14** (payout-policy, entityresolution, SplitManifest naming, P5-D DemandForecastBaseline, CRM Email, typed CT lists, retailer CT tiles); **ecosystem flexibility 2026-08-14** (factory dispatch = warehouse solver class on Spanner; topology hybrid country/H3; country catalog AUTH_COUNTRIES not a CountryConfigs table; loyalty earn/tier live `{enrolled:false}`; factory Payload/Load; entity-resolution + predictive-push UI; **not cloud, not store**); **P7 factory honesty 2026-08-13** (exception GET Spanner-first; dispatch no invent; C portal+native); **P8–P16 enterprise close 2026-08-13** (dead `payloaderoutes` removed; live `payloaderoutes`; staff login; QC gate; broadcast outbox; S&OP column; billing list; seal-all clients; **not cloud, not store**). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
 
 **Honesty (P0):** this file is a **route + nav inventory**. A listed path is not a live product feature. Tags: **REAL** (durable + clients), **PARTIAL** (durable but incomplete), **THEATRE** (200 that does not persist the claim), **GONE** (410/403/501 by product), **STUB** (mounted but not the advertised engine). Re-verify in handlers — see [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md).
 
@@ -13,6 +13,14 @@ Extracted from:
 - Apps tree: `apps/*` (stubs noted from their `package.json`)
 
 Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) · [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md) · [PROD_READINESS_SEQUENCE.md](./PROD_READINESS_SEQUENCE.md)
+
+**GS-C1–C5:** named cell overlays are [`infra/k8s/overlays/cells/uz`](../infra/k8s/overlays/cells/uz) and [`infra/k8s/overlays/cells/eu`](../infra/k8s/overlays/cells/eu) (`HOME_CELL=cell-eu`, `CELL_JWT_ENFORCE=true`, commercial fiscal, empty adapters OK). Project factory: `infra/terraform/cells/eu/project/`. Isolation proof: `make cell-isolation-proof`. Global DNS/AR: `infra/terraform/global/` (`make global-plan`). Session `api_url` from `home_cell`; `GET /v1/platform/cells`. Portals pin via `pinApiBaseUrl`. Env overlays are not cells. Plan only — do not apply.
+
+**GS-I:** public `GET /v1/auth/oidc/discovery` + `POST /v1/auth/oidc/exchange`; ADMIN `GET/PUT/DELETE /v1/supplier/oidc`. Process-global Auth0 wrap is not mounted. SAML/SCIM not mounted.
+
+**GS-R:** clients bind `GET /v1/auth/session` pack (currency + receipts label). Native apps pin `home_cell` via `CellApi.pinApiBaseUrl` / `CellPinInterceptor` (localhost stays bootstrap). `checkout_reads_this` still false.
+
+**GS-P:** `GET /v1/platform/partner-dialects`. 1C CIS-only; PEPPOL planned/not live; X12/SAP sold_only; AS2 transport (no VAN). Empty 1C currency from pack. `POST /v1/platform/tenants/register` is not gated.
 
 ---
 
@@ -64,7 +72,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Feature | Methods |
 |---------|---------|
-| Login / refresh / register | `POST /v1/auth/retailer/{login,refresh,register}` |
+| Login / refresh / register | `POST /v1/auth/retailer/{login,refresh,register}` (**T4:** register requires `supplier_id` or `invite_token`; no PreferTenant(seed). Demo `"1234"` only in ssmr) |
 | Memberships / select-org / switch-org | `GET …/memberships`, `POST …/select-org`, `POST …/switch-org` |
 | Me + capabilities | `GET /v1/retailer/me`, `GET/POST /v1/retailer/capabilities*` |
 | Switch location | `POST /v1/auth/retailer/switch-location` |
@@ -77,15 +85,16 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Feature | Methods |
 |---------|---------|
-| Suppliers attach/detach | `/v1/retailer/suppliers*` |
+| Suppliers attach/detach | `/v1/retailer/suppliers*` (**T4:** `POST …/suppliers/{id}/add` rejects seed outside ssmr) |
 | Cart sync | `GET/POST /v1/retailer/cart/sync` |
-| Checkout quote / promo watch | `POST /v1/retailer/checkout/quote`, `POST /v1/retailer/promotions/watch` |
+| Checkout quote / promo watch | `POST /v1/retailer/checkout/quote` (**M1:** quote currency + `market_code` from shipped pack), `POST /v1/retailer/promotions/watch` |
 | Pricing rules (read) | `GET /v1/retailer/pricing/rules` |
-| Cash/card checkout | **REAL** — `POST /v1/order/cash-checkout` and `POST /v1/order/card-checkout` (B1 cash → `PENDING_CASH_COLLECTION` + outbox; card opens a GP session). Not saved-cards. |
-| Unified/preview/B2B checkout | `POST /v1/checkout/{unified,preview,b2b}` (`paymentroutes`). Unified `items[]` **REAL** create (no capture). Preview dry-run. **B2B GONE** — `410 payment_before_delivery_removed`. |
+| Cash/card checkout | **REAL** — `POST /v1/order/cash-checkout` and `POST /v1/order/card-checkout` (B1 cash → `PENDING_CASH_COLLECTION` + outbox; card opens a GP session). **M1:** PSP ∩ shipped pack; CASH must be on pack; PEGASUS → GLOBAL_PAY. Not saved-cards. |
+| Create / currencies | `POST /v1/order/create`, `GET /v1/order/currencies` (**M5:** empty currency from shipped pack, not hardcoded `UZS`; planned pack 404) |
+| Unified/preview/B2B checkout | `POST /v1/checkout/{unified,preview,b2b}` (`paymentroutes`). Unified `items[]` **REAL** create (no capture). Preview dry-run. **M1:** both read shipped-pack currency/PSP (planned pack 404). **B2B GONE** — `410 payment_before_delivery_removed`. |
 | Catalog browse | `GET /v1/catalog/*`, `GET /v1/products` (`catalogroutes`) |
 | Saved cards | **GONE** — `/v1/retailer/card*`, `GET /v1/retailer/cards` `410 saved_cards_not_product` (P1; no vault). |
-| Loyalty | **GONE** — `GET /v1/retailer/loyalty/tier` `410 loyalty_not_product` (`retailer/mobile_compat.go:136`). Never a fake tier. |
+| Loyalty | **REAL** — `GET /v1/retailer/loyalty/tier` + `/ledger` (`loyalty/handlers.go`). Unconfigured → `{enrolled:false}` (never a fake Bronze). Earn `floor(net * earn_bps / 10000)` on CollectCash + card settle. Burn out of scope. `HandleLoyaltyNotProduct` unmounted. Desktop settings + Android/iOS profile bind the GET. |
 
 **Orders / delivery / AI**
 
@@ -113,7 +122,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 | Store stock | `/v1/retailer/stock*` (receive/transfer/adjust/counts) |
 | Local SKUs | `/v1/retailer/local-skus*` |
 | POS | `/v1/retailer/registers`, `/v1/retailer/pos/*` |
-| Time / shifts | `/v1/retailer/time/*`, `/v1/retailer/shifts*` |
+| Time / shifts | `/v1/retailer/time/*`, `/v1/retailer/shifts*` (**M4:** max shift hours from shipped pack) |
 | Sections | `/v1/retailer/sections*` |
 | Assist tickets | `/v1/retailer/assist/tickets*` |
 | Reports | `/v1/retailer/reports/*` |
@@ -145,7 +154,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Domain | Route prefix / examples |
 |--------|-------------------------|
-| Auth / setup | `/v1/auth/supplier/*`, `/v1/supplier/{configure,business/setup,billing/setup,profile,settings}` |
+| Auth / setup | `/v1/auth/supplier/*` (**T2:** `POST /v1/auth/supplier/register` 409 + Location T1 once seed registered), **GS-I** `GET /v1/auth/oidc/discovery` `POST /v1/auth/oidc/exchange` `GET/PUT/DELETE /v1/supplier/oidc` (optional per tenant; staff JWT unchanged), `POST /v1/supplier/retailer-invites` (**T4:** ADMIN HMAC invite, 7d), `POST /v1/supplier/staff-invites` (**T5:** ADMIN HMAC factory/warehouse invite, 7d), `/v1/supplier/{configure,business/setup,billing/setup,profile,settings}` |
 | Dashboard / activity / pulse | `/v1/supplier/{dashboard,activity}`, `/v1/supplier/pulse` |
 | Orders | `/v1/supplier/orders`, `…/vet`, `…/payment-bypass`, receipts |
 | Shop-closed ops | `/v1/supplier/shop-closed/{active,resolve}` |
@@ -157,17 +166,18 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 | Catalog CRUD | `catalogroutes` POST/PUT products (RoleAdmin) |
 | Inventory + import + audit | `/v1/supplier/inventory*` adjust/import **REAL**. `GET /v1/supplier/inventory/audit` **GONE** `410 audit_unwired` (P1). |
 | Pricing / promotions | `/v1/supplier/pricing/*`, `/v1/supplier/promotions*` |
-| Topology | `/v1/supplier/topology`, `supply-lanes` (**topology utilization JSON unchanged** — not optimizer `SupplyLanes` rows), factories/warehouses via supplier APIs |
-| Factory planning (P5 / P7-C) | `GET/PUT /v1/supplier/network-mode`, `POST /v1/supplier/planning/pull-matrix`, `POST /v1/supplier/planning/kill-switch`, `POST /v1/supplier/planning/predictive-push` — ADMIN. Portal `/settings/planning` factory-ops panel + native PlanningSettings. Engines no-op unless `FACTORY_PLANNING_ENABLED` (Go default false). P5-D `SYSTEM_PREDICTED` from `DemandForecastBaseline` (not `AIPredictions`); `"grain":"demand_forecast_baseline"`. |
-| Supplier CRM (P6-A / P7-C) | `GET /v1/supplier/crm/retailers`, `GET …/crm/retailers/{retailerId}` — ADMIN, **PARTIAL** portal+native (`/crm`, Android, iOS). `Orders.Status` + `TotalMinor`; `Retailers.Email` when set. Empty `{"retailers":[]}`; **503** without Spanner. Does **not** change warehouse `/ops/crm`. **Not store.** |
-| Payout batches (P7-C) | `GET/POST /v1/supplier/payouts/batches`, GET by id, export, mark-paid, dispatch. Portal `/finance/payouts` + Android/iOS. Live `dispatch` with `live:true` → `no_live_rail`. |
+| Topology | `/v1/supplier/topology` **PARTIAL** — PUT round-trips `country_code`, `coverage_cities`, primary/secondary/assigned factories. Checkout cover: no cells → warehouse country; cells set → H3 membership; no cover → `zone_miss`; never another country. `supply-lanes` (**topology utilization JSON unchanged** — not optimizer `SupplyLanes` rows), factories/warehouses via supplier APIs |
+| Factory planning (P5 / P7-C) | `GET/PUT /v1/supplier/network-mode`, `POST /v1/supplier/planning/pull-matrix`, `POST /v1/supplier/planning/kill-switch`, `POST /v1/supplier/planning/predictive-push` — ADMIN. Portal `/settings/planning` factory-ops panel + native PlanningSettings (predictive-push 409 `factory_planning_disabled` when Go default off). Engines no-op unless `FACTORY_PLANNING_ENABLED` (Go default **false** — do not flip). P5-D `SYSTEM_PREDICTED` from `DemandForecastBaseline` (not `AIPredictions`); `"grain":"demand_forecast_baseline"`. |
+| Supplier CRM (P6-A / P7-C) | `GET /v1/supplier/crm/retailers`, `GET …/crm/retailers/{retailerId}` — ADMIN, **PARTIAL** portal+native (`/crm`, Android, iOS). `Orders.Status` + `TotalMinor`; `Retailers.Email` when set; order `lines[]` from `LineItemsJson`. Empty `{"retailers":[]}`; **503** without Spanner. Does **not** change warehouse `/ops/crm`. **Not store.** |
+| Loyalty program | `GET/PATCH /v1/supplier/loyalty/program` — PATCH requires `reason`. Portal `/loyalty` + Android/iOS. Unconfigured GET `source: unconfigured` (default 100 bps + DefaultTiers). |
+| Payout batches (P7-C) | `GET/POST /v1/supplier/payouts/batches`, GET by id, export, mark-paid, dispatch. Portal `/finance/payouts` + Android/iOS. **M6:** `GET /v1/supplier/payouts/rail` reads pack `payout_rail` (UZ `bank-file`). Planned pack 404. Live `dispatch` with `live:true` → `no_live_rail` (unknown name is not a PSP). |
 | Payout policy (P6-B) | `GET/PATCH /v1/supplier/payout-policy` — ADMIN. Modes `HQ_SUPPLIER` \| `WAREHOUSE_LOCAL`. PATCH requires `reason`. Thin portal+Android+iOS. **Not** a live PSP. |
-| Entity resolution (P6-C) | `POST /v1/supplier/entity-resolution/{resolve,explain}` — ADMIN. Result direct (no `{status:ok}`). API-only. |
-| Country cfg (P6-D) | `GET /v1/country-configs/{code}` UZ only; else 404 `country_not_supported`. `GET/PATCH /v1/supplier/country-overrides/{code}`. `checkout_reads_this: false`. |
-| Finance | `/v1/payment/{ledger,chargeback*,settlement/authority,reconciliation/mismatches}`, claim-chargebacks, cash-reconciliations, credit-notes |
+| Entity resolution (P6-C) | `POST /v1/supplier/entity-resolution/{resolve,explain}` — ADMIN. Result direct (no `{status:ok}`). Portal `/entity-resolution` + Android/iOS. |
+| Country catalog (P6-D) | `GET /v1/country-configs/{code}` **in-memory AUTH_COUNTRIES** (UZ,KZ,KG,TJ,TM,AE,TR,RU,US,GB) — **not** a `CountryConfigs` Spanner table. Unknown → 404 `country_not_supported`. US is 200. `checkout_reads_this: false` (SSMR fiscal still PEGASUS/FAKE). Warehouse/factory `CountryCode` persisted. **M1:** checkout currency/PSP from MarketPack. **M2:** fiscal fail-closes on MarketPack `fiscal_adapter`. **M3:** doorstep/approach one pack `breach_radius_meters` (UZ 150; countrycfg radius is ops knobs). **M4:** calendar TZ / shop-closed grace / weather / factory SLA / labor hours from MarketPack (`UZDefault()` is not the law). **M5:** empty order/payment currency from MarketPack (not hardcoded `UZS`). **M6:** pack `payout_rail` (UZ `bank-file`; unknown+live → `no_live_rail`). **M7:** tax stamp / receipts use pack country (`countryFromCurrency` deleted). |
+| Finance | `/v1/payment/{ledger,chargeback*,settlement/authority,reconciliation/mismatches}`, claim-chargebacks, cash-reconciliations, credit-notes. `POST /v1/order/{id}/refunds` (**M5:** empty currency from shipped pack) |
 | Credit program | `/v1/supplier/credit-{profiles,program*,relationships*}`, admin disable |
 | Claims adjudicate | `/v1/supplier/claims`, `/v1/claims/{id}/{approve,reject}` |
-| Compliance | `/v1/compliance/*`, tax-regimes |
+| Compliance | `/v1/compliance/*`, `/v1/admin/tax-regimes*` (**M7:** fiscal stamp + receipts use pack country, not currency→country) |
 | Planning / AI / MEIO / twin | `/v1/supplier/{ai,planning,meio,segmentation,knowledge-graph}*`, twin routes, replenishment*. S&OP **PARTIAL** — `Factories.DailyOutputCapacity` when column sum > 0 (`capacity_source: factories_column`); else `capacity_source: env_default` (`SOP_FACTORY_DAILY_UNITS` default 700) (P10-B). |
 | Control tower | `/v1/control-tower/*`, zone-overrides |
 | Returns / broadcast | `/v1/supplier/returns*`, `/v1/supplier/broadcast` (P10-A persist + outbox then WS) |
@@ -195,7 +205,7 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 
 | Domain | Routes |
 |--------|--------|
-| Auth / setup | `/v1/auth/warehouse/*`, `/v1/warehouse/setup` |
+| Auth / setup | `/v1/auth/warehouse/*` (**T5:** register requires `invite_token` or ADMIN Bearer + node; bcrypt only), `/v1/warehouse/setup` |
 | Dispatch | `/v1/warehouse/ops/dispatch/{preview,execute,settings,runs*}`, rescue preview/propose, tracking, dispatch-locks |
 | Reassign | `/v1/warehouse/{recommend-reassign,reassign-order}` |
 | Orders / preorders | delay/reject/overflow/propose-delivery; preorder edit/reject |
@@ -231,21 +241,21 @@ Roles: `FACTORY`, `FACTORY_ADMIN` (+ ADMIN). `FACTORY_DRIVER` uses driver routes
 
 | Client | Evidence |
 |--------|----------|
-| Portal | `FactoryShell.tsx`: `/`, loading-bay, manifests, manifest-exceptions, payload-override, transfers, supply-requests, fleet, staff, insights, analytics, settings/location |
-| Android | `FactorySection.kt`: `DASHBOARD`, `LOADING_BAY`, `TRANSFERS`, `FLEET`, `STAFF`, `LOCATION`, `SUPPLY_REQUESTS`, `PAYLOAD_OVERRIDE`, `MANIFESTS`, `MANIFEST_EXCEPTIONS`, `INSIGHTS`, `ANALYTICS`, `NOTIFICATIONS` |
+| Portal | `FactoryShell.tsx`: `/`, loading-bay, **payload**, manifests, manifest-exceptions, payload-override, transfers, supply-requests, fleet, staff, insights, analytics, settings/location |
+| Android | `FactorySection.kt`: `DASHBOARD`, `LOADING_BAY`, `PAYLOAD_LOAD`, `TRANSFERS`, `FLEET`, `STAFF`, `LOCATION`, `SUPPLY_REQUESTS`, `PAYLOAD_OVERRIDE`, `MANIFESTS`, `MANIFEST_EXCEPTIONS`, `INSIGHTS`, `ANALYTICS`, `NOTIFICATIONS` |
 
 ### Feature inventory
 
 | Domain | Routes |
 |--------|--------|
-| Auth / setup / profile / location | `/v1/auth/factory/*`, `/v1/factory/setup`, profile, ops/location |
+| Auth / setup / profile / location | `/v1/auth/factory/*` (**T5:** register requires `invite_token` or ADMIN Bearer + node; bcrypt on write), `/v1/factory/setup`, profile, ops/location |
 | Dashboard / analytics / pulse | `/v1/factory/{dashboard,analytics/overview}`, `/v1/factory/pulse` |
-| Manifest lifecycle | start-loading, seal, complete **REAL** under Spanner. `POST /v1/factory/dispatch` **STUB default** — pick ≤2 `CREATED` transfers, first driver/vehicle, DRAFT; **does not invent** if the queue is empty (`created_manifest_count: 0`, P7-B); `optimizer_class=HEURISTIC` + `dispatch_algo=pick_n_created_v1`. When `FACTORY_BATCHER_ENABLED`: FFD+NN+LIFO → `FactoryTruckManifests` `DRAFT`, **no invent-if-empty**, `dispatch_algo=ffd_nn_lifo_v1` (P5-F). **Not** warehouse VRP / `dispatch.BinPack`. |
+| Manifest lifecycle | start-loading, seal, complete **REAL** under Spanner. Factory **Payload/Load** screen (portal `/payload`, Android `PAYLOAD_LOAD`, iOS inlined) calls factory-plane start-loading/seal only — not last-mile `payloaderoutes`. `POST /v1/factory/dispatch` **live Spanner** = warehouse solver class (`plan.OptimizeAndValidate`, OR-Tools then one H3 `fallback_phase1`) → `FactoryTruckManifests` only; AUTO/MANUAL/`force_capacity`/`accept_partial`/fingerprint; empty queue `created_manifest_count: 0`, no invent, no outbox; **not** gated by `FACTORY_BATCHER_ENABLED`. Nil-Spanner / portal-seed tests still `pick_n_created_v1` memory path. Never writes `SupplierTruckManifests`. |
 | Rebalance / cancel | manifests rebalance, cancel-transfer, cancel |
 | Exceptions | GET **PARTIAL** — Spanner `ManifestExceptions` ⋈ `FactoryTruckManifests` (P7-A); JSON `transfer_id` ← `OrderId`; empty `[]` when query/seed empty. Resolve **PARTIAL** — Spanner-first (P9-B); memory only `FACTORY_PORTAL_SEED`; `RunTx` + `MANIFEST_EXCEPTION_RESOLVED` (P3). Supplier exception JSON (`order_id`) **unchanged**. |
 | Transfers / supply-requests | GET **PARTIAL** — Spanner `FactoryInternalTransfers` first; memory overlay only `FACTORY_PORTAL_SEED`/`USE_DEMO_SEED` (P3). Transition + supply accept **REAL**/PARTIAL. Transfer create **PARTIAL** — persist via `apply` + `TRANSFER_CREATED` outbox (P3). |
 | Supply-request QC (P6-F / P7-C / P9-C) | `GET/POST /v1/factory/supply-requests/{id}/qc` **PARTIAL** portal+native (board/list + Android/iOS cards). Table `FactorySupplyRequestQC` on `WarehouseSupplyRequests`. PASS/FAIL upsert; does **not** change request State; accept **409** unless QC `PASS`. Outbox `FACTORY_SUPPLY_REQUEST_UPDATE`. Missing QC row → 200 `result: ""`. **Not store.** |
-| **SLA board (G7.1)** | `GET /v1/factory/sla-board` + `sla_*` on supply-requests; portal badges — request due-date (`kind: supply_request`). Transfer-transit 1×/1.5×/2× is a **second** worker (`kind: transfer_transit`) behind `FACTORY_PLANNING_ENABLED` (P5-E) — not this board. |
+| **SLA board (G7.1)** | `GET /v1/factory/sla-board` + `sla_*` on supply-requests; portal badges — request due-date (`kind: supply_request`). **M4:** default hours from shipped pack (UZ 48; planned → N/A). Transfer-transit 1×/1.5×/2× is a **second** worker (`kind: transfer_transit`) behind `FACTORY_PLANNING_ENABLED` (P5-E) — not this board. |
 | Fleet / staff | fleet/drivers/vehicles reads. Staff POST **PARTIAL** — `SupplierUsers` via `RunTx` + `FACTORY_STAFF_CREATED` outbox (P3); password bcrypt/invite (P9-A), never `"unset"`. Set-password UI portal+native (P13-D). GET Spanner-first (`AssignedFactoryId`); memory overlay only with seed. |
 | Insights | clients call `/v1/warehouse/replenishment/insights` (warehouse route allows factory roles in handler gate) |
 
@@ -269,7 +279,7 @@ Role: `PAYLOAD` (+ ADMIN).
 
 | Feature | Routes |
 |---------|--------|
-| Auth | `/v1/auth/payloader/{login,refresh}` |
+| Auth | `/v1/auth/payloader/{login,refresh}` (**T5:** SupplierUsers PAYLOADER row; no `+998` default) |
 | Board | `/v1/payloader/{trucks,orders,manifests}` |
 | Load / seal | start-loading, seal, seal-completed, `/v1/payload/seal` |
 | Inject | `…/inject-order` |
@@ -299,10 +309,10 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 
 | Domain | Routes |
 |--------|--------|
-| Auth / profile / availability / pulse | `/v1/auth/driver/login`, `/v1/driver/{profile,availability,pulse,earnings}`. `GET /v1/driver/history` **PARTIAL** — Spanner Orders by DriverId (30d completed window, P2); `[]` when none / query unset. |
+| Auth / profile / availability / pulse | `/v1/auth/driver/login` (**T5:** `Drivers` row + bcrypt PinHash; no `+998` default), `/v1/driver/{profile,availability,pulse,earnings}`. `GET /v1/driver/history` **PARTIAL** — Spanner Orders by DriverId (30d completed window, P2); `[]` when none / query unset. |
 | Manifest / fleet | manifest, manifest-gate, `/v1/fleet/{manifest,orders}`, geometry, depart, return-complete, reorder, request-early-complete |
 | Telemetry | `POST /v1/telemetry/location` |
-| Doorstep (orderroutes) | arrive, proximity-unlock, shop-closed, partial-offload, scan-qr, deliver, confirm-offload, collect-cash, complete, fiscal/retry |
+| Doorstep (orderroutes) | arrive, proximity-unlock, shop-closed, partial-offload, scan-qr, deliver, confirm-offload, collect-cash, complete, fiscal/retry (**M2:** planned pack 404; PEPPOL 422. **M3:** one pack breach radius; planned pack 404. **M4:** shop-closed grace from pack) |
 | Doorstep (driverroutes aliases) | shop-closed, partial-offload, credit-leave, validate-qr, amend, credit-delivery, missing-items, exception-report, split-payment, confirm-payment-bypass, bypass-offload. `POST /v1/delivery/negotiate` **GONE** — default `410 feature_disabled`. |
 | Sync offline | `POST /v1/sync/batch` |
 | Supply transfers | `/v1/driver/supply-transfers*` |
@@ -320,12 +330,12 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 
 | Package | Routes |
 |---------|--------|
-| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh/logout, **GS-A** `GET /v1/auth/session` (JWT + market pack; `checkout_reads_this: false`), `GET /v1/platform/market-packs` (+ `/{code}`) |
+| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh/logout, **GS-A** `GET /v1/auth/session` (JWT + market pack + **GS-C5** `api_url`/`ws_url`; `checkout_reads_this: false`), `GET /v1/platform/cells` (home_cell → API URL), `GET /v1/platform/market-packs` (+ `/{code}`), **GS-P** `GET /v1/platform/partner-dialects`, **GS-T1** `POST /v1/platform/tenants/register` (public; shipped pack only; not dialect-gated). **GS-I** OIDC lives on `supplierroutes` (`/v1/auth/oidc/*`, `/v1/supplier/oidc`), not a process-global Auth0 wrap |
 | `webhookroutes` | global-pay, adyen, stripe, payme, click |
 | `updateroutes` | iOS plist + desktop updater.json |
 | `infraroutes` | healthz/ready (+ G4 `GET /v1/health/capabilities` optimizer honesty) |
 | `etaroutes` / `laborcapacityroutes` | ETA + labor capacity helpers |
-| `platformadmin` (G4–G7 / P12) | login, MFA, tenants, flags, audit, match queue, partner, `/ops/outbox/{summary,events,dead-letters}`, `/ops/runtime`, `GET /v1/admin/billing/{invoices,fee-schedules}`, `POST /v1/admin/billing/run-monthly` |
+| `platformadmin` (G4–G7 / P12) | login, MFA, tenants (**T3:** missing KYB ≠ active; `POST …/transition` APPROVE is dual-control pack+cell), flags, audit, match queue, partner, `/ops/outbox/{summary,events,dead-letters}`, `/ops/runtime`, `GET /v1/admin/billing/{invoices,fee-schedules}`, `POST /v1/admin/billing/run-monthly` |
 | Planning accuracy (G6) | `GET /v1/admin/planning/accuracy`, `POST …/run-once` (`mape28`, `demoted`) |
 | Partner enterprise I/O (G5) | EDI profile GET/PUT, 1C import, master-data, WMS ASN in/out |
 | Dispatch honesty | `optimizer_class` HEURISTIC\|OPTIMAL; `matrix_source` haversine\|osrm |

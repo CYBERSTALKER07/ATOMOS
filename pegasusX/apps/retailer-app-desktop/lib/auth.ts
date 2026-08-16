@@ -1,11 +1,21 @@
 // lib/auth.ts
 import { useState, useEffect } from 'react';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-client';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { createTranslator, detectBrowserLocale, translateProblemDetail } from '@pegasusx/i18n';
 import type { ProblemDetail } from '@pegasusx/types';
 import { isProblemDetail } from '@pegasusx/types';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8180';
+const BOOTSTRAP = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8180';
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function retailerApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readToken()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 const getTranslator = () => createTranslator(detectBrowserLocale());
 
 /**
@@ -65,7 +75,7 @@ async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/retailer/refresh`, {
+    const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -95,7 +105,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...(init?.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${retailerApiBaseUrl()}${path}`, { ...init, headers });
 
   // ── RFC 7807 Problem Detail detection ──
   const contentType = res.headers.get('Content-Type') || '';
@@ -124,7 +134,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         ...headers,
         Authorization: `Bearer ${newToken}`,
       };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      return fetch(`${retailerApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
     }
     // Refresh failed
     document.cookie = 'pegasus_retailer_jwt=; Max-Age=0; path=/';

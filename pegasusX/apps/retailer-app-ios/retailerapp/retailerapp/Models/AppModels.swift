@@ -732,3 +732,30 @@ struct CreditProfile: Decodable {
         case version
     }
 }
+
+struct LoyaltyTierView: Decodable {
+    let enrolled: Bool
+    let tier: String
+    let lifetimePoints: Int64
+    let availablePoints: Int64
+    let nextTier: String
+    let pointsToNext: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case enrolled, tier
+        case lifetimePoints = "lifetime_points"
+        case availablePoints = "available_points"
+        case nextTier = "next_tier"
+        case pointsToNext = "points_to_next"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enrolled = try c.decodeIfPresent(Bool.self, forKey: .enrolled) ?? false
+        tier = try c.decodeIfPresent(String.self, forKey: .tier) ?? ""
+        lifetimePoints = try c.decodeIfPresent(Int64.self, forKey: .lifetimePoints) ?? 0
+        availablePoints = try c.decodeIfPresent(Int64.self, forKey: .availablePoints) ?? 0
+        nextTier = try c.decodeIfPresent(String.self, forKey: .nextTier) ?? ""
+        pointsToNext = try c.decodeIfPresent(Int64.self, forKey: .pointsToNext) ?? 0
+    }
+}

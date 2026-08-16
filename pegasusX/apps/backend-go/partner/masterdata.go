@@ -115,7 +115,7 @@ func (s *Service) UpsertProducts(ctx context.Context, p Principal, items []Produ
 		}
 		currency := strings.TrimSpace(it.Currency)
 		if currency == "" {
-			currency = "UZS"
+			currency = currencyFromTenantOrEmpty(p.TenantType, p.TenantID)
 		}
 		unit := strings.TrimSpace(it.Unit)
 		if unit == "" {

@@ -2,6 +2,7 @@ package platformadmin
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,8 +66,10 @@ func (h *Handlers) HandleGetTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 type transitionRequest struct {
-	Status   string `json:"status"`
-	KybNotes string `json:"kyb_notes"`
+	Status     string `json:"status"`
+	KybNotes   string `json:"kyb_notes"`
+	MarketCode string `json:"market_code"`
+	HomeCell   string `json:"home_cell"`
 }
 
 // HandleTransitionTenant POST /v1/platform-admin/tenants/{tenantType}/{tenantID}/transition
@@ -78,17 +81,56 @@ func (h *Handlers) HandleTransitionTenant(w http.ResponseWriter, r *http.Request
 		writeErr(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
-	t, err := h.Svc.Transition(r.Context(), actorSubject(r), tt, id, req.Status, req.KybNotes)
+	t, err := h.Svc.Transition(r.Context(), TransitionInput{
+		Actor:      actorSubject(r),
+		TenantType: tt,
+		TenantID:   id,
+		Status:     req.Status,
+		KybNotes:   req.KybNotes,
+		MarketCode: req.MarketCode,
+		HomeCell:   req.HomeCell,
+	})
 	if err != nil {
+		writeTransitionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
+}
+
+func writeTransitionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrTenantNotFound):
+		writeErr(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrMarketCodeRequired), errors.Is(err, ErrActorRequired),
+		errors.Is(err, ErrHomeCellMismatch), errors.Is(err, ErrPackCellMismatch):
+		writeErr(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, ErrUnknownMarket), errors.Is(err, ErrMarketNotShipped):
+		code := ""
+		if parts := strings.Split(err.Error(), ": "); len(parts) == 2 {
+			code = parts[1]
+		}
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": errKeyword(err), "code": code})
+	case errors.Is(err, ErrApproverMustDiffer):
+		writeErr(w, http.StatusConflict, err.Error())
+	default:
 		msg := err.Error()
 		status := http.StatusUnprocessableEntity
 		if strings.HasPrefix(msg, "illegal_transition") || msg == "invalid_status" {
 			status = http.StatusConflict
 		}
 		writeErr(w, status, msg)
-		return
 	}
-	writeJSON(w, http.StatusOK, t)
+}
+
+func errKeyword(err error) string {
+	switch {
+	case errors.Is(err, ErrMarketNotShipped):
+		return ErrMarketNotShipped.Error()
+	case errors.Is(err, ErrUnknownMarket):
+		return ErrUnknownMarket.Error()
+	default:
+		return "transition_failed"
+	}
 }
 
 // HandleListAudit GET /v1/platform-admin/audit

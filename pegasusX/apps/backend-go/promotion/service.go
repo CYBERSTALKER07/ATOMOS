@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -56,7 +57,18 @@ func (s *Service) ActiveForSupplier(ctx context.Context, supplierID string) ([]P
 
 // QuoteCheckout prices cart lines with server-authoritative promotions.
 func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID string, lines []LineInput) (QuoteResult, error) {
-	lines, err := s.enrichLines(ctx, supplierID, retailerID, lines)
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return QuoteResult{}, err
+	}
+	for _, line := range lines {
+		if c := strings.TrimSpace(line.Currency); c != "" {
+			if _, err := auth.ResolveCheckoutCurrency(pack, c); err != nil {
+				return QuoteResult{}, err
+			}
+		}
+	}
+	lines, err = s.enrichLines(ctx, supplierID, retailerID, lines)
 	if err != nil {
 		return QuoteResult{}, err
 	}
@@ -64,7 +76,16 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 	if err != nil {
 		return QuoteResult{}, fmt.Errorf("load promotions: %w", err)
 	}
-	return ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
+	quote, err := ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
+	if err != nil {
+		return QuoteResult{}, err
+	}
+	quote.Currency = pack.CurrencyCode
+	quote.MarketCode = pack.Code
+	for i := range quote.Lines {
+		quote.Lines[i].Currency = pack.CurrencyCode
+	}
+	return quote, nil
 }
 
 // ResolveListPrice applies an active per-retailer override when present.

@@ -39,6 +39,13 @@ import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PackBanner
+import com.pegasusx.supplier.BuildConfig
+import com.pegasusx.supplier.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class DashboardKpi(
     val label: String,
@@ -70,7 +77,14 @@ fun DashboardScreen(
     var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
+    }
 
     fun load(silent: Boolean = false) {
         scope.launch {
@@ -122,7 +136,12 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text("Dashboard", fontWeight = FontWeight.Bold)
+                        PackBanner(pack)
+                    }
+                },
                 actions = {
                     IconButton(onClick = { load() }) {
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))

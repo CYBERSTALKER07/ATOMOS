@@ -49,6 +49,9 @@ object NetworkModule {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .pingInterval(30, TimeUnit.SECONDS) // WebSocket keepalive
+        .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) {
+            TokenHolder.firebaseIdToken ?: TokenHolder.token
+        })
         .addInterceptor { chain ->
             val token = TokenHolder.firebaseIdToken ?: TokenHolder.token
             val request = chain.request().newBuilder()

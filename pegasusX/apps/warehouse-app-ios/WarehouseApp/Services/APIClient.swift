@@ -19,7 +19,7 @@ final class APIClient: Sendable {
     // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
     // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
     // for backend reachability over Wi-Fi.
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -31,7 +31,7 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -41,6 +41,8 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #endif
+
+    private var baseURL: URL { pinnedAPIBaseURL(bootstrap: bootstrapURL) }
 
     private let session: URLSession
     private let decoder: JSONDecoder

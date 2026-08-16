@@ -35,6 +35,8 @@ enum class SupplierSection(
     FACTORIES(SupplierRoutes.FACTORIES, "Factories", Icons.Default.Business),
     WAREHOUSES(SupplierRoutes.WAREHOUSES, "Warehouses", Icons.Default.Inventory2),
     CRM(SupplierRoutes.CRM, "CRM", Icons.Default.People),
+    LOYALTY(SupplierRoutes.LOYALTY, "Loyalty", Icons.Default.Star),
+    ENTITY_RESOLUTION(SupplierRoutes.ENTITY_RESOLUTION, "Entity resolution", Icons.Default.Hub),
     CONTROL_TOWER(SupplierRoutes.CONTROL_TOWER, "Control tower", Icons.Default.Hub),
     PLAYBOOKS(SupplierRoutes.PLAYBOOKS, "Playbooks", Icons.Default.Description),
     SEGMENTATION(SupplierRoutes.SEGMENTATION, "Segmentation", Icons.Default.Category),
@@ -95,6 +97,8 @@ enum class SupplierSection(
         val networkSections = listOf(
             TOPOLOGY,
             CRM,
+            LOYALTY,
+            ENTITY_RESOLUTION,
             SEGMENTATION,
             FACTORIES,
             WAREHOUSES,

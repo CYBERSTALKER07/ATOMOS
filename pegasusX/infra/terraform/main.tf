@@ -1,7 +1,16 @@
 locals {
+  cell_id                            = lower(trimspace(var.cell_id)) != "" ? lower(trimspace(var.cell_id)) : "uz"
+  k8s_namespace                      = trimspace(var.k8s_namespace) != "" ? trimspace(var.k8s_namespace) : "pegasusx"
   tenant_slug                        = trimspace(var.tenant_slug) != "" ? lower(trimspace(var.tenant_slug)) : "ssmr"
   resource_prefix                    = trimspace(var.resource_prefix) != "" ? trimspace(var.resource_prefix) : "pegasusx-${local.tenant_slug}"
   vpc_name                           = trimspace(var.vpc_name) != "" ? trimspace(var.vpc_name) : "${local.resource_prefix}-vpc"
+  kafka_topic_main                   = trimspace(var.kafka_topic_main) != "" ? trimspace(var.kafka_topic_main) : "cell-${local.cell_id}.events.orders"
+  kafka_topic_spatial                = trimspace(var.kafka_topic_spatial) != "" ? trimspace(var.kafka_topic_spatial) : "cell-${local.cell_id}.events.spatial"
+  kafka_topic_realtime               = trimspace(var.kafka_topic_realtime) != "" ? trimspace(var.kafka_topic_realtime) : "cell-${local.cell_id}.events.realtime"
+  kafka_topic_webhooks               = trimspace(var.kafka_topic_webhooks) != "" ? trimspace(var.kafka_topic_webhooks) : "cell-${local.cell_id}.events.webhooks"
+  kafka_topic_main_dlq               = trimspace(var.kafka_topic_main_dlq) != "" ? trimspace(var.kafka_topic_main_dlq) : "cell-${local.cell_id}.events.orders-dlq"
+  kafka_topic_freeze_locks           = trimspace(var.kafka_topic_freeze_locks) != "" ? trimspace(var.kafka_topic_freeze_locks) : "cell-${local.cell_id}.events.freeze-locks"
+  kafka_topic_inventory_import       = trimspace(var.kafka_topic_inventory_import) != "" ? trimspace(var.kafka_topic_inventory_import) : "cell-${local.cell_id}.events.inventory-import"
   spanner_instance_name              = trimspace(var.spanner_instance_name) != "" ? trimspace(var.spanner_instance_name) : "${local.resource_prefix}-spanner"
   spanner_database_name              = trimspace(var.spanner_database_name) != "" ? trimspace(var.spanner_database_name) : "${local.resource_prefix}-db"
   spanner_display_name               = trimspace(var.spanner_display_name) != "" ? trimspace(var.spanner_display_name) : "${local.resource_prefix} ledger"
@@ -35,6 +44,7 @@ locals {
   labels = {
     app         = "pegasusx"
     tenant      = local.tenant_slug
+    cell        = local.cell_id
     environment = var.environment
     managed_by  = "terraform"
   }
@@ -55,8 +65,32 @@ resource "google_project_service" "required_apis" {
 
 resource "google_compute_network" "pegasusx_vpc" {
   name                    = local.vpc_name
-  auto_create_subnetworks = true
+  auto_create_subnetworks = !var.vpc_custom_mode
   depends_on              = [google_project_service.required_apis]
+}
+
+# One regional subnet when vpc_custom_mode=true (C1). Live ssmr keeps auto-mode
+# via staging.tfvars so an accidental apply does not ForceNew the VPC.
+resource "google_compute_subnetwork" "cell" {
+  count                    = var.vpc_custom_mode ? 1 : 0
+  name                     = "${local.vpc_name}-subnet"
+  ip_cidr_range            = var.vpc_subnet_cidr
+  region                   = var.region
+  network                  = google_compute_network.pegasusx_vpc.id
+  private_ip_google_access = true
+
+  secondary_ip_range {
+    range_name    = "pods"
+    ip_cidr_range = var.vpc_pods_cidr
+  }
+  secondary_ip_range {
+    range_name    = "services"
+    ip_cidr_range = var.vpc_services_cidr
+  }
+}
+
+locals {
+  cell_subnet_name = length(google_compute_subnetwork.cell) > 0 ? google_compute_subnetwork.cell[0].name : google_compute_network.pegasusx_vpc.name
 }
 
 resource "google_redis_instance" "cache" {
@@ -96,7 +130,18 @@ resource "google_spanner_database" "main" {
 resource "google_secret_manager_secret" "kafka_bootstrap_servers" {
   secret_id = local.secret_kafka_bootstrap_servers
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -110,59 +155,114 @@ resource "google_secret_manager_secret_version" "kafka_bootstrap_servers" {
 resource "google_secret_manager_secret" "kafka_topic_main" {
   secret_id = local.secret_kafka_topic_main
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
 
 resource "google_secret_manager_secret_version" "kafka_topic_main" {
   secret      = google_secret_manager_secret.kafka_topic_main.id
-  secret_data = var.kafka_topic_main
+  secret_data = local.kafka_topic_main
 }
 
 resource "google_secret_manager_secret" "kafka_topic_spatial" {
   secret_id = local.secret_kafka_topic_spatial
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
 
 resource "google_secret_manager_secret_version" "kafka_topic_spatial" {
   secret      = google_secret_manager_secret.kafka_topic_spatial.id
-  secret_data = var.kafka_topic_spatial
+  secret_data = local.kafka_topic_spatial
 }
 
 resource "google_secret_manager_secret" "kafka_topic_realtime" {
   secret_id = local.secret_kafka_topic_realtime
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
 
 resource "google_secret_manager_secret_version" "kafka_topic_realtime" {
   secret      = google_secret_manager_secret.kafka_topic_realtime.id
-  secret_data = var.kafka_topic_realtime
+  secret_data = local.kafka_topic_realtime
 }
 
 resource "google_secret_manager_secret" "kafka_topic_webhooks" {
   secret_id = local.secret_kafka_topic_webhooks
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
 
 resource "google_secret_manager_secret_version" "kafka_topic_webhooks" {
   secret      = google_secret_manager_secret.kafka_topic_webhooks.id
-  secret_data = var.kafka_topic_webhooks
+  secret_data = local.kafka_topic_webhooks
 }
 
 resource "google_secret_manager_secret" "firebase_project_id" {
   secret_id = local.secret_firebase_project_id
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -176,7 +276,18 @@ resource "google_secret_manager_secret_version" "firebase_project_id" {
 resource "google_secret_manager_secret" "firebase_auth_enabled" {
   secret_id = local.secret_firebase_auth_enabled
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -189,7 +300,18 @@ resource "google_secret_manager_secret_version" "firebase_auth_enabled" {
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = local.secret_jwt
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -203,7 +325,18 @@ resource "google_secret_manager_secret_version" "jwt_secret" {
 resource "google_secret_manager_secret" "global_pay_webhook_secret" {
   secret_id = local.secret_global_pay_webhook
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -217,7 +350,18 @@ resource "google_secret_manager_secret_version" "global_pay_webhook_secret" {
 resource "google_secret_manager_secret" "adyen_webhook_secret" {
   secret_id = local.secret_adyen_webhook
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -231,7 +375,18 @@ resource "google_secret_manager_secret_version" "adyen_webhook_secret" {
 resource "google_secret_manager_secret" "stripe_webhook_secret" {
   secret_id = local.secret_stripe_webhook
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -245,7 +400,18 @@ resource "google_secret_manager_secret_version" "stripe_webhook_secret" {
 resource "google_secret_manager_secret" "google_maps_api_key" {
   secret_id = local.secret_google_maps_api_key
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -262,7 +428,18 @@ resource "google_secret_manager_secret_version" "google_maps_api_key" {
 resource "google_secret_manager_secret" "internal_api_key" {
   secret_id = local.secret_internal_api_key
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -276,7 +453,18 @@ resource "google_secret_manager_secret_version" "internal_api_key" {
 resource "google_secret_manager_secret" "payme_webhook_secret" {
   secret_id = local.secret_payme_webhook
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -290,7 +478,18 @@ resource "google_secret_manager_secret_version" "payme_webhook_secret" {
 resource "google_secret_manager_secret" "click_webhook_secret" {
   secret_id = local.secret_click_webhook
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -304,7 +503,18 @@ resource "google_secret_manager_secret_version" "click_webhook_secret" {
 resource "google_secret_manager_secret" "global_pay_service_id" {
   secret_id = local.secret_global_pay_service_id
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -318,7 +528,18 @@ resource "google_secret_manager_secret_version" "global_pay_service_id" {
 resource "google_secret_manager_secret" "global_pay_username" {
   secret_id = local.secret_global_pay_username
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -332,7 +553,18 @@ resource "google_secret_manager_secret_version" "global_pay_username" {
 resource "google_secret_manager_secret" "global_pay_password" {
   secret_id = local.secret_global_pay_password
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -346,7 +578,18 @@ resource "google_secret_manager_secret_version" "global_pay_password" {
 resource "google_secret_manager_secret" "redis_auth" {
   secret_id = local.secret_redis_auth
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -360,7 +603,18 @@ resource "google_secret_manager_secret_version" "redis_auth" {
 resource "google_secret_manager_secret" "tauri_signing_private_key" {
   secret_id = local.secret_tauri_signing_private_key
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -374,7 +628,18 @@ resource "google_secret_manager_secret_version" "tauri_signing_private_key" {
 resource "google_secret_manager_secret" "tauri_updater_pubkey" {
   secret_id = local.secret_tauri_updater_pubkey
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -388,7 +653,18 @@ resource "google_secret_manager_secret_version" "tauri_updater_pubkey" {
 resource "google_secret_manager_secret" "windows_codesign_pfx" {
   secret_id = local.secret_windows_codesign_pfx
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -402,7 +678,18 @@ resource "google_secret_manager_secret_version" "windows_codesign_pfx" {
 resource "google_secret_manager_secret" "windows_codesign_password" {
   secret_id = local.secret_windows_codesign_password
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -416,7 +703,18 @@ resource "google_secret_manager_secret_version" "windows_codesign_password" {
 resource "google_secret_manager_secret" "apple_notarize_apple_id" {
   secret_id = local.secret_apple_notarize_apple_id
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -430,7 +728,18 @@ resource "google_secret_manager_secret_version" "apple_notarize_apple_id" {
 resource "google_secret_manager_secret" "apple_notarize_team_id" {
   secret_id = local.secret_apple_notarize_team_id
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }
@@ -444,7 +753,18 @@ resource "google_secret_manager_secret_version" "apple_notarize_team_id" {
 resource "google_secret_manager_secret" "apple_notarize_app_password" {
   secret_id = local.secret_apple_notarize_app_password
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
   labels = local.labels
 }

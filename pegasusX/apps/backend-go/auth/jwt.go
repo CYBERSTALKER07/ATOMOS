@@ -68,7 +68,9 @@ type jwtPayload struct {
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
+// GS-A1: every token carries market_code + home_cell (claim → profile → env).
 func Issue(c Claims, opts IssueOptions) (string, error) {
+	c = StampMarketClaims(c)
 	if opts.Secret == "" {
 		return "", errors.New("jwt: empty secret")
 	}
@@ -173,7 +175,7 @@ func Parse(token, secret string) (Claims, error) {
 	if p.Exp > 0 {
 		expAt = time.Unix(p.Exp, 0).UTC()
 	}
-	return Claims{
+	claims := Claims{
 		Subject:          p.Sub,
 		Role:             Role(p.Role),
 		SupplierID:       p.SupplierID,
@@ -195,7 +197,11 @@ func Parse(token, secret string) (Claims, error) {
 		MFAVerified:      p.MFAVerified,
 		MarketCode:       p.MarketCode,
 		HomeCell:         p.HomeCell,
-	}, nil
+	}
+	if err := rejectForeignCell(claims); err != nil {
+		return Claims{}, err
+	}
+	return claims, nil
 }
 
 // SetSessionCookie writes the supplier portal cookie. SameSite=Lax + HttpOnly.

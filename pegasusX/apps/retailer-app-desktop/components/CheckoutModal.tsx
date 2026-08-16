@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import { getRetailerProfile } from "@/lib/retailer-profile";
@@ -63,7 +64,7 @@ export default function CheckoutModal({
   const [deliveryDate, setDeliveryDate] = useState("");
   const [expressPriority, setExpressPriority] = useState(false);
   const [currencyOptions, setCurrencyOptions] = useState<OrderCurrencyOptions | null>(null);
-  const [orderCurrency, setOrderCurrency] = useState("UZS");
+  const [orderCurrency, setOrderCurrency] = useState(() => packCurrency(readCachedAuthSession()?.pack));
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -93,7 +94,7 @@ export default function CheckoutModal({
             return;
           }
           setCurrencyOptions(data);
-          const op = data.operating_currency || "UZS";
+          const op = data.operating_currency || packCurrency(readCachedAuthSession()?.pack);
           setOrderCurrency(
             data.enabled && data.allowlist?.length
               ? data.allowlist.includes(op)
@@ -472,11 +473,11 @@ export default function CheckoutModal({
                     Total Authorization
                   </span>
                   <div className="md-typescale-display-small font-light text-[var(--desk-text-primary)]">
-                    UZS {(total + deliveryFeeMinor).toLocaleString()}
+                    {orderCurrency || packCurrency(readCachedAuthSession()?.pack)} {(total + deliveryFeeMinor).toLocaleString()}
                   </div>
                   {deliveryFeeMinor > 0 && (
                     <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                      Includes {deliveryFeeMinor.toLocaleString()} UZS delivery fee
+                      Includes {deliveryFeeMinor.toLocaleString()} {orderCurrency || packCurrency(readCachedAuthSession()?.pack)} delivery fee
                     </p>
                   )}
                 </div>

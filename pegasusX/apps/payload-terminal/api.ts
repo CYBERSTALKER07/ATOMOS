@@ -1,8 +1,9 @@
 import { authFetch } from './authSession';
 import { readApiError } from './explainBanner';
 
-export const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
-  (__DEV__ ? 'http://localhost:8180' : (process.env.EXPO_PUBLIC_RELEASE_API_URL?.trim() || 'https://api.pegasusx.app'));
+import { payloadApiBaseUrl } from './marketPack';
+
+export const API_BASE = payloadApiBaseUrl();
 
 /**
  * Payload Terminal API

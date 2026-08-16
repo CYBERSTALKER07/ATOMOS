@@ -37,7 +37,7 @@ final class APIClient: @unchecked Sendable {
     /// Simulator: localhost. Physical iPad: set `PEGASUS_DEV_HOST`
     /// env var (Edit Scheme → Run → Environment Variables)
     /// to your Mac's LAN IP.
-    let baseURL: String = {
+    let bootstrapURL: String = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8180" }
@@ -45,13 +45,21 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let baseURL: String = {
+    let bootstrapURL: String = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "https://api.pegasusx.app" }
         return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
     }()
     #endif
+
+    var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: bootstrapURL,
+            homeCell: CellApi.homeCellFromJwt(CellTokenCache.token),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
     var wsBaseURL: String {

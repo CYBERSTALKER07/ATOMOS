@@ -45,6 +45,7 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
                 val request = chain.request().newBuilder()

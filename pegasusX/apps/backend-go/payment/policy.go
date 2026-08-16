@@ -3,6 +3,8 @@ package payment
 import (
 	"fmt"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 const (
@@ -125,4 +127,40 @@ func (p GatewayPolicy) ValidateCardGateway(requested string) error {
 		ResolvedGateway:  requested,
 		PolicySource:     p.PolicySource,
 	}
+}
+
+// applyPackToGatewayPolicy intersects supplier policy with the shipped pack PSP list (GS-M1).
+func applyPackToGatewayPolicy(policy GatewayPolicy, pack auth.MarketPack) GatewayPolicy {
+	filtered := make([]string, 0, len(policy.AllowedGateways))
+	seen := map[string]struct{}{}
+	for _, g := range policy.AllowedGateways {
+		canon := auth.CanonicalPSP(g)
+		if !auth.PackAllowsPSP(pack, canon) {
+			continue
+		}
+		if _, ok := seen[canon]; ok {
+			continue
+		}
+		seen[canon] = struct{}{}
+		filtered = append(filtered, canon)
+	}
+	if len(filtered) == 0 {
+		return GatewayPolicy{
+			Acceptor:             policy.Acceptor,
+			DefaultPaymentMethod: DefaultPaymentMethod,
+			PolicySource:         "MARKET_PACK",
+		}
+	}
+	out := NormalizeGatewayPolicy(policy.Acceptor, filtered, "MARKET_PACK")
+	if !auth.PackAllowsPSP(pack, DefaultPaymentMethod) {
+		kept := make([]string, 0, len(out.AllowedGateways))
+		for _, g := range out.AllowedGateways {
+			if g == DefaultPaymentMethod {
+				continue
+			}
+			kept = append(kept, g)
+		}
+		out.AllowedGateways = kept
+	}
+	return out
 }

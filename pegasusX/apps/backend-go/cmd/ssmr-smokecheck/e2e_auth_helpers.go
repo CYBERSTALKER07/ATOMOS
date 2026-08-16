@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 )
 
 func ensureSupplierSession(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, string, error) {
@@ -136,10 +137,11 @@ func registerRetailer(ctx context.Context, client *http.Client, base string, cfg
 
 func registerRetailerWithPhone(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, phone string) (string, string, error) {
 	body, _ := json.Marshal(map[string]any{
-		"phone": phone,
-		"name":  "SSMR Retailer",
-		"lat":   cfg.DeliveryZoneCenterLat,
-		"lng":   cfg.DeliveryZoneCenterLng,
+		"phone":       phone,
+		"name":        "SSMR Retailer",
+		"supplier_id": envOr("SSMR_SMOKE_SUPPLIER_ID", seed.DefaultSupplierID),
+		"lat":         cfg.DeliveryZoneCenterLat,
+		"lng":         cfg.DeliveryZoneCenterLng,
 	})
 	status, respBody, _, err := clientPostRetry(ctx, client, base+"/v1/auth/retailer/register", body, "", "")
 	if err != nil {

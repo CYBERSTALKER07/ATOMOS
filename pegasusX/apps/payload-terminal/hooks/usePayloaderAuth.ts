@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { API_BASE } from '../api';
+import { bindPayloadPack } from '../marketPack';
 import {
   clearPayloaderSession,
   savePayloaderSession,
@@ -47,6 +48,7 @@ export function usePayloaderAuth({
   const completeLogin = async (data: Record<string, unknown>) => {
     await savePayloaderSession(data as Parameters<typeof savePayloaderSession>[0]);
     setToken(String(data.token ?? ''));
+    if (data.token) void bindPayloadPack(String(data.token));
     setWorkerName(String(data.name ?? 'Payloader'));
     if (data.supplier_id) setSupplierId(String(data.supplier_id));
     void registerPayloadPushTokens();

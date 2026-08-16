@@ -24,6 +24,7 @@ type warehouseLocationResponse struct {
 	Lat         float64 `json:"lat"`
 	Lng         float64 `json:"lng"`
 	Gln         string  `json:"gln,omitempty"`
+	Timezone    string  `json:"timezone,omitempty"`
 	UpdatedAt   string  `json:"updated_at,omitempty"`
 }
 
@@ -220,6 +221,9 @@ func (s *Service) loadWarehouseLocation(ctx context.Context, warehouseID string)
 		return warehouseLocationResponse{}, err
 	}
 	resp.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
+	if tz, err := auth.TimezoneNameFromContext(ctx, ""); err == nil {
+		resp.Timezone = tz
+	}
 	return resp, nil
 }
 

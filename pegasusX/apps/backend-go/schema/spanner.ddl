@@ -15,8 +15,22 @@ CREATE TABLE Suppliers (
   Currency         STRING(3)     NOT NULL,
   IsConfigured     BOOL          NOT NULL DEFAULT (FALSE),
   RegionId         STRING(36),
+  MarketCode       STRING(8),
+  HomeCell         STRING(32),
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId);
+
+-- GS-I: per-supplier OIDC. Isolation key stays SupplierId. No client_secret.
+CREATE TABLE SupplierOIDC (
+  SupplierId              STRING(36)  NOT NULL,
+  Issuer                  STRING(512) NOT NULL,
+  ClientId                STRING(256) NOT NULL,
+  Audience                STRING(256),
+  AuthorizationEndpoint   STRING(512),
+  RedirectURI             STRING(512),
+  Enabled                 BOOL        NOT NULL DEFAULT (FALSE),
+  UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
 CREATE TABLE SupplierProfiles (
@@ -2877,6 +2891,10 @@ CREATE TABLE PlatformTenants (
   Status       STRING(32) NOT NULL,
   DisplayName  STRING(255),
   KybNotes     STRING(MAX),
+  MarketCode   STRING(8),
+  HomeCell     STRING(32),
+  RequestedBy  STRING(128),
+  ApprovedBy   STRING(128),
   CreatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   ApprovedAt   TIMESTAMP,

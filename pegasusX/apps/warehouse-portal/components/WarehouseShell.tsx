@@ -12,6 +12,7 @@ import ClientPolicyBanner from './ClientPolicyBanner';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
 import { clearSession, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
+import { SessionPackChip } from './SessionPackChip';
 import { usePortalT } from '@/lib/i18n';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
@@ -468,6 +469,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
           </div>
 
           <div className="desk-topbar-right">
+            <SessionPackChip />
             <button
               className="desk-topbar-search hidden md:flex"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}

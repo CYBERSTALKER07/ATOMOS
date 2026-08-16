@@ -29,7 +29,7 @@ struct PlanningSettingsView: View {
                 }
             } else {
                 Section("Factory network ops") {
-                    Text("Mode, pull-matrix, kill-switch. Pull-matrix 409 if FACTORY_PLANNING_ENABLED is off.")
+                    Text("Mode, pull-matrix, predictive-push, kill-switch. Pull-matrix and predictive-push 409 if FACTORY_PLANNING_ENABLED is off.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if !planningEnabled {
@@ -43,6 +43,8 @@ struct PlanningSettingsView: View {
                         .disabled(opsBusy)
                     }
                     Button("Run pull-matrix") { Task { await runPullMatrix() } }
+                        .disabled(opsBusy)
+                    Button("Predictive push") { Task { await runPredictivePush() } }
                         .disabled(opsBusy)
                     TextField("Kill-switch reason (ADMIN)", text: $killReason)
                     Button("Kill-switch") { Task { await runKillSwitch() } }
@@ -162,6 +164,26 @@ struct PlanningSettingsView: View {
                 idempotencyKey: SupplierIdempotencyKeys.planningPullMatrix(scopeId: scope)
             )
             opsStatus = "Pull-matrix \(resp.status): \(resp.transfers) transfers"
+        } catch {
+            let text = error.localizedDescription
+            if text.contains("factory_planning_disabled") || text.contains("HTTP 409") {
+                opsStatus = "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on"
+            } else {
+                opsStatus = text
+            }
+        }
+    }
+
+    @MainActor
+    private func runPredictivePush() async {
+        opsBusy = true
+        defer { opsBusy = false }
+        do {
+            let scope = await SupplierIdempotencyKeys.supplierScopeId()
+            let resp = try await SupplierOperationsService.planningPredictivePush(
+                idempotencyKey: SupplierIdempotencyKeys.planningPredictivePush(scopeId: scope)
+            )
+            opsStatus = "Predictive-push \(resp.source): \(resp.transfers) transfers, \(resp.skus) SKUs (\(resp.grain.isEmpty ? "baseline" : resp.grain))"
         } catch {
             let text = error.localizedDescription
             if text.contains("factory_planning_disabled") || text.contains("HTTP 409") {

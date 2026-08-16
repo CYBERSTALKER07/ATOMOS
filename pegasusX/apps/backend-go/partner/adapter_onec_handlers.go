@@ -22,6 +22,9 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if !requireDialect(w, r, p.TenantType, p.TenantID, DialectOneC) {
+		return
+	}
 	body, err := readMasterDataBody(r)
 	if err != nil {
 		writePartnerError(w, http.StatusBadRequest, "read_body_error")
@@ -57,18 +60,20 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 	onecSeen[key] = true
 	onecDocMu.Unlock()
 
+	market := marketCodeForPartner(r, p.TenantType, p.TenantID)
+	batch.Products = applyPackCurrency(batch.Products, market)
 	items := make([]ProductUpsertItem, 0, len(batch.Products))
 	for _, pr := range batch.Products {
 		active := true
 		items = append(items, ProductUpsertItem{
-			ExternalID:  pr.ExternalID,
-			Name:        pr.Name,
-			Barcode:     pr.Barcode,
-			PriceMinor:  pr.PriceMinor,
-			Currency:    pr.Currency,
-			IsActive:    &active,
-			Unit:        "EA",
-			CategoryID:  "imported",
+			ExternalID: pr.ExternalID,
+			Name:       pr.Name,
+			Barcode:    pr.Barcode,
+			PriceMinor: pr.PriceMinor,
+			Currency:   pr.Currency,
+			IsActive:   &active,
+			Unit:       "EA",
+			CategoryID: "imported",
 		})
 	}
 	results, err := h.Svc.UpsertProducts(r.Context(), p, items)
@@ -100,4 +105,16 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 		"journal_dialect": onec.JournalDialect,
 		"note":            "Journals export remains POST /partner/v1/exports resource=journals format=xml",
 	})
+}
+
+func applyPackCurrency(products []onec.ImportProduct, market string) []onec.ImportProduct {
+	packCcy := packCurrencyOrEmpty(market)
+	out := make([]onec.ImportProduct, 0, len(products))
+	for _, pr := range products {
+		if strings.TrimSpace(pr.Currency) == "" {
+			pr.Currency = packCcy
+		}
+		out = append(out, pr)
+	}
+	return out
 }

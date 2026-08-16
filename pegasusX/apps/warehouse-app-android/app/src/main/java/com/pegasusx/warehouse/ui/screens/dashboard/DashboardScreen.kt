@@ -32,6 +32,13 @@ import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.warehouse.R
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PackBanner
+import com.pegasusx.warehouse.BuildConfig
+import com.pegasusx.warehouse.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class KpiCard(
     val label: String,
@@ -68,6 +75,7 @@ fun DashboardScreen(
     var loading by remember { mutableStateOf(true) }
     var hasData by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load(silent: Boolean = false) {
@@ -92,6 +100,9 @@ fun DashboardScreen(
 
     LaunchedEffect(Unit) {
         load()
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -101,7 +112,12 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard") },
+                title = {
+                    Column {
+                        Text("Dashboard")
+                        PackBanner(pack)
+                    }
+                },
                 actions = {
                     IconButton(onClick = { onNavigate(WarehouseRoutes.MORE) }) {
                         Icon(Icons.Default.Apps, "More")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 )
 
@@ -19,7 +20,12 @@ func rollupOperatingCurrencyMinor(
 ) (total int64, partial bool) {
 	operating = fxrates.NormalizeCurrency(operating)
 	if operating == "" {
-		operating = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, ""); err == nil {
+			operating = cur
+		}
+	}
+	if operating == "" {
+		return 0, true
 	}
 	now := time.Now().UTC()
 	if nowFn != nil {

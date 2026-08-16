@@ -441,7 +441,7 @@ data class Order(
 fun formatRetailerAmount(amount: Long, currency: String): String {
     val formatter = NumberFormat.getIntegerInstance(Locale.US)
     val formatted = formatter.format(amount).replace(',', ' ')
-    val normalizedCurrency = currency.ifBlank { "UZS" }
+    val normalizedCurrency = currency.ifBlank { com.pegasus.design.packCurrency(com.pegasus.design.MarketPackStore.pack) }
     return "$formatted $normalizedCurrency"
 }
 
@@ -1243,4 +1243,28 @@ data class CreditProfile(
     @SerialName("delinquency_count") val delinquencyCount: Long = 0,
     val status: String = "",
     val version: Long = 0,
+)
+
+@Serializable
+data class LoyaltyTierView(
+    val enrolled: Boolean = false,
+    val tier: String = "",
+    @SerialName("lifetime_points") val lifetimePoints: Long = 0,
+    @SerialName("available_points") val availablePoints: Long = 0,
+    @SerialName("next_tier") val nextTier: String = "",
+    @SerialName("points_to_next") val pointsToNext: Long = 0,
+    @SerialName("earn_bps") val earnBps: Long = 0,
+)
+
+@Serializable
+data class LoyaltyLedgerEntry(
+    @SerialName("ledger_id") val ledgerId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    val points: Long = 0,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class LoyaltyLedgerResponse(
+    val entries: List<LoyaltyLedgerEntry> = emptyList(),
 )

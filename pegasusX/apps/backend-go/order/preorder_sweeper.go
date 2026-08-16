@@ -64,11 +64,9 @@ func (s *Service) sweepPreorderNotifications(ctx context.Context, now time.Time)
 		return err
 	}
 	for _, o := range orders {
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		today := proximity.TodayStart(now, loc)
 
@@ -145,11 +143,9 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 		if o.Status != StatusScheduled || o.RequestedDeliveryDate == nil {
 			continue
 		}
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		today := proximity.TodayStart(now, loc)
 		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
@@ -188,7 +184,10 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 }
 
 func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error {
-	today := proximity.TashkentTodayStart(now)
+	today := proximity.PackTodayStart(now)
+	if today.IsZero() {
+		return nil
+	}
 	// Prefetch pre-orders due within the next calendar day (T-1 promotion window).
 	cutoff := today.AddDate(0, 0, 1)
 	stmt := spanner.Statement{
@@ -216,11 +215,9 @@ func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error
 		if o.RequestedDeliveryDate == nil {
 			continue
 		}
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
 		// Promote at T-1 (day before delivery) or on delivery day if a tick was missed.
@@ -316,4 +313,3 @@ func (s *Service) listScheduledPreorders(ctx context.Context, limit int) ([]Orde
 	repo := &SpannerRepository{client: s.spannerClient}
 	return repo.queryOrders(ctx, stmt)
 }
-

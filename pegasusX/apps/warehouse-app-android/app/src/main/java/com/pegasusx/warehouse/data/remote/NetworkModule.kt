@@ -144,6 +144,7 @@ object NetworkModule {
     fun provideOkHttpClient(json: Json): OkHttpClient {
         val baseUrl = BuildConfig.API_BASE_URL.trimEnd('/') + "/"
         return OkHttpClient.Builder()
+            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
             .authenticator(TokenRefreshAuthenticator(json, baseUrl))
             .connectTimeout(30, TimeUnit.SECONDS)

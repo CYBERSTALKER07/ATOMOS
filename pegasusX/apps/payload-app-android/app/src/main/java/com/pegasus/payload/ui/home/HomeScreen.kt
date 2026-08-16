@@ -203,6 +203,7 @@ fun HomeScreen(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
+                        com.pegasus.design.PackBanner(state.pack)
                         PayloadConnectionStatus(online = state.online, queued = state.queuedActions)
                     }
                 },

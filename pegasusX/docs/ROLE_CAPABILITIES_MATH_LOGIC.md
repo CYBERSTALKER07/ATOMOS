@@ -82,18 +82,13 @@ Order volume: sum over lines `max(qty,1) * unitVU` where unitVU from line → pr
 
 **File:** `apps/backend-go/proximity/geofence.go`
 
-```
-DeliveryApproachRadiusM = 500.0
-```
-
-Wired as `deliveryGeofenceMeters` in `order/service.go`. Settlement proximity comments in service reference **100 m / H3** unlock path (`ProximityUnlockedAt` / `proximity-unlock` route).
+Shipped MarketPack `breach_radius_meters` (UZ **150**). Doorstep / approach / telemetry `DRIVER_APPROACHING` read that one radius (GS-M3). Planned pack or radius ≤ 0 fail closed — the 500 m dual is deleted. Settlement proximity stays **100 m / H3** (`ProximityUnlockedAt` / `proximity-unlock`). countrycfg `BreachRadiusMeters` is ops knobs, not product law.
 
 ### 0.7 Shop-closed grace
 
 **File:** `order/service.go` `NewService`
 
-If `ShopClosedGrace <= 0` → default **`5 * time.Minute`**.  
-Bootstrap sets via `shopClosedGraceDuration()` (`bootstrap/bootstrap.go`).
+If `ShopClosedGrace <= 0` → shipped pack `shop_closed_grace_minutes` (UZ **10**). Bootstrap `shopClosedGraceDuration()` reads the pack, not `countrycfg.UZDefault()`. Env `SHOP_CLOSED_GRACE_MINUTES` remains a cell override. Planned pack fail-closed.
 
 Worker `worker_shop_closed.go` polls `SHOP_CLOSED_PENDING` where `ShopClosedGraceEndsAt <= now` (limit batch), then `DecideShopClosedTimeout` with `MaxAutoCreditMinor: 50000000`.
 

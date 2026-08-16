@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -161,6 +162,11 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 		if err := row.Columns(&orderRow.OrderID, &orderRow.SupplierID, &orderRow.RetailerID, &status, &orderRow.TotalMinor, &orderRow.Currency); err != nil {
 			return err
 		}
+		cur, curErr := auth.CoalesceCurrency(ctx, orderRow.SupplierID, orderRow.Currency)
+		if curErr != nil {
+			return curErr
+		}
+		orderRow.Currency = cur
 		switch Status(status) {
 		case StatusFiscalizing, StatusDeliveredOnCredit, StatusPendingCashCollection, StatusFiscalFailed, StatusCompleted:
 		default:

@@ -23,7 +23,8 @@ func (c *Config) ValidateProductionProfile() error {
 	if c.AllowMemoryFallback {
 		return fmt.Errorf("ALLOW_MEMORY_FALLBACK must be false when PEGASUSX_ENV=production")
 	}
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.JWTSecret)), "dev-") ||
+	if strings.TrimSpace(c.JWTSecret) == "" ||
+		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.JWTSecret)), "dev-") ||
 		strings.EqualFold(strings.TrimSpace(c.JWTSecret), "dev-only-change-me") {
 		return fmt.Errorf("JWT_SECRET must be a non-dev value when PEGASUSX_ENV=production")
 	}
@@ -33,25 +34,30 @@ func (c *Config) ValidateProductionProfile() error {
 	if err := c.validateUpdatesBaseURL(true); err != nil {
 		return err
 	}
-	checks := map[string]string{
-		"GLOBAL_PAY_WEBHOOK_SECRET": c.GlobalPayWebhookSecret,
-		"ADYEN_WEBHOOK_SECRET":      c.AdyenWebhookSecret,
-		"STRIPE_WEBHOOK_SECRET":     c.StripeWebhookSecret,
-		"PAYME_WEBHOOK_SECRET":      c.PaymeWebhookSecret,
-		"CLICK_WEBHOOK_SECRET":      c.ClickWebhookSecret,
-	}
-	for name, value := range checks {
-		if isDevWebhookSecret(value) {
-			return fmt.Errorf("%s must be set to a non-dev value when PEGASUSX_ENV=production", name)
+	// GS-C3: a planned-pack commercial cell (EU) may boot with empty PSP/fiscal
+	// adapters. Checkout/fiscalize still fail-closed on planned packs (M1/M2).
+	// UZ production still requires every rail secret + Soliq when that is the path.
+	if !cellEmptyAdaptersOK() {
+		checks := map[string]string{
+			"GLOBAL_PAY_WEBHOOK_SECRET": c.GlobalPayWebhookSecret,
+			"ADYEN_WEBHOOK_SECRET":      c.AdyenWebhookSecret,
+			"STRIPE_WEBHOOK_SECRET":     c.StripeWebhookSecret,
+			"PAYME_WEBHOOK_SECRET":      c.PaymeWebhookSecret,
+			"CLICK_WEBHOOK_SECRET":      c.ClickWebhookSecret,
 		}
-	}
-	gpEnv := strings.ToLower(strings.TrimSpace(c.GlobalPayEnv))
-	if gpEnv == "production" || gpEnv == "staging" {
-		if strings.TrimSpace(c.GlobalPayUsername) == "" || strings.TrimSpace(c.GlobalPayPassword) == "" {
-			return fmt.Errorf("GLOBAL_PAY_USERNAME and GLOBAL_PAY_PASSWORD must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+		for name, value := range checks {
+			if isDevWebhookSecret(value) {
+				return fmt.Errorf("%s must be set to a non-dev value when PEGASUSX_ENV=production", name)
+			}
 		}
-		if strings.TrimSpace(c.GlobalPayServiceID) == "" {
-			return fmt.Errorf("GLOBAL_PAY_SERVICE_ID must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+		gpEnv := strings.ToLower(strings.TrimSpace(c.GlobalPayEnv))
+		if gpEnv == "production" || gpEnv == "staging" {
+			if strings.TrimSpace(c.GlobalPayUsername) == "" || strings.TrimSpace(c.GlobalPayPassword) == "" {
+				return fmt.Errorf("GLOBAL_PAY_USERNAME and GLOBAL_PAY_PASSWORD must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+			}
+			if strings.TrimSpace(c.GlobalPayServiceID) == "" {
+				return fmt.Errorf("GLOBAL_PAY_SERVICE_ID must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+			}
 		}
 	}
 	// G1.B: production tax path — MY_SOLIQ (default when unset) must have OFD + EDS; PEGASUS commercial needs explicit allow.
@@ -78,8 +84,28 @@ func validateProductionFCMProfile() error {
 	return nil
 }
 
-// validateProductionFiscalProfile enforces fiscal product truth at boot (G1.B).
+// validateProductionFiscalProfile enforces fiscal product truth at boot (G1.B + GS-M2).
 func validateProductionFiscalProfile() error {
+	pack, ok := auth.ResolveMarketPack(auth.DefaultMarketCodeFromEnv())
+	if !ok {
+		return fmt.Errorf("DEFAULT_MARKET_CODE=%s is not a known market pack", auth.DefaultMarketCodeFromEnv())
+	}
+	if pack.Status != auth.MarketPackShipped {
+		if cellEmptyAdaptersOK() && !strings.EqualFold(strings.TrimSpace(pack.FiscalAdapter), "MY_SOLIQ") {
+			name := resolveProductionFiscalProviderName()
+			if name == "FAKE" {
+				return fmt.Errorf("FISCAL_PROVIDER=FAKE is forbidden when PEGASUSX_ENV=production")
+			}
+			if name == "MY_SOLIQ" {
+				return fmt.Errorf("FISCAL_PROVIDER=MY_SOLIQ is forbidden on a planned-pack cell (EU is commercial/none)")
+			}
+			return nil
+		}
+		return fmt.Errorf("DEFAULT_MARKET_CODE=%s is not a shipped pack (fiscal cannot start on a planned market)", pack.Code)
+	}
+	if _, err := auth.PackFiscalAdapter(pack); err != nil {
+		return fmt.Errorf("shipped pack %s fiscal_adapter: %w", pack.Code, err)
+	}
 	name := resolveProductionFiscalProviderName()
 	switch name {
 	case "MY_SOLIQ", "MYSOLIQ", "SOLIQ", "OFD":
@@ -126,6 +152,30 @@ func resolveProductionFiscalProviderName() string {
 	default:
 		return "MY_SOLIQ"
 	}
+}
+
+// cellEmptyAdaptersOK is GS-C3: a non-UZ home cell with a planned pack may boot
+// when fiscal is commercial/none. UZ (cell-uz / DEFAULT_MARKET_CODE=UZ) never
+// uses this path. Checkout still 404s planned packs.
+func cellEmptyAdaptersOK() bool {
+	if !envTruthyFiscal(os.Getenv("FISCAL_ALLOW_COMMERCIAL_RECEIPTS")) {
+		return false
+	}
+	if resolveProductionFiscalProviderName() != "PEGASUS" {
+		return false
+	}
+	if auth.NormalizeMarketCode(auth.DefaultMarketCodeFromEnv()) == "UZ" {
+		return false
+	}
+	home := auth.DefaultHomeCellFromEnv()
+	if home == "" || home == auth.DefaultHomeCell || home == "cell-uz" {
+		return false
+	}
+	pack, ok := auth.ResolveMarketPack(auth.DefaultMarketCodeFromEnv())
+	if !ok || pack.Status == auth.MarketPackShipped {
+		return false
+	}
+	return !strings.EqualFold(strings.TrimSpace(pack.FiscalAdapter), "MY_SOLIQ")
 }
 
 func envTruthyFiscal(v string) bool {

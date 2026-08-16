@@ -167,7 +167,7 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 
 	if loc.NextStopRetailerID != "" && loc.NextStopLat != nil && loc.NextStopLng != nil && payload.Data.Lat != 0 && payload.Data.Lng != 0 {
 		dist := proximity.HaversineDistance(payload.Data.Lat, payload.Data.Lng, *loc.NextStopLat, *loc.NextStopLng)
-		if proximity.WithinDeliveryApproach(dist) {
+		if proximity.WithinDeliveryApproachForSupplier(r.Context(), identity.SupplierID, dist) {
 			arrivalPayload, _ := json.Marshal(map[string]any{
 				"type":        "DELIVERY_ARRIVING",
 				"driver_id":   identity.DriverID,

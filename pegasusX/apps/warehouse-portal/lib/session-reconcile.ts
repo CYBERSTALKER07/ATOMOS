@@ -8,7 +8,7 @@ export async function reconcileWarehouseSession(
 ): Promise<void> {
   await reconcileSession({
     role: 'warehouse',
-    baseUrl: warehouseApiBaseUrl,
+    baseUrl: warehouseApiBaseUrl(),
     getAuthToken: () => readTokenFromCookie() || null,
     fetchImpl: warehouseSessionFetch,
     query,

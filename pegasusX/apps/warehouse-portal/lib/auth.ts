@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
-import { reconcileSession } from '@pegasusx/api-client';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconcileSession } from '@pegasusx/api-client';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from '@/lib/bridge';
 import { notifyWarehouseSessionReconciled } from '@/lib/warehouse-reconnect';
 
-const API = (
+const BOOTSTRAP = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_WAREHOUSE_BACKEND_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   'http://localhost:8180'
 ).replace(/\/$/, '');
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function warehouseApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readTokenFromCookie()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 
 const WAREHOUSE_JWT_COOKIE = 'pegasus_warehouse_jwt';
 const WAREHOUSE_REFRESH_COOKIE = 'pegasus_warehouse_refresh';
@@ -87,7 +96,7 @@ async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/warehouse/refresh`, {
+    const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -106,7 +115,7 @@ export async function refreshWarehouseSession(): Promise<{ ok: boolean; isConfig
   const refresh = readRefreshFromCookie();
   if (!refresh) return { ok: false };
   try {
-    const res = await fetch(`${API}/v1/auth/warehouse/refresh`, {
+    const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -130,7 +139,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...(init?.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${warehouseApiBaseUrl()}${path}`, { ...init, headers });
 
   if (res.status === 401) {
     if (!refreshInFlight) {
@@ -144,7 +153,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         ...headers,
         Authorization: `Bearer ${newToken}`,
       };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      return fetch(`${warehouseApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
     }
     clearSession();
     if (typeof window !== 'undefined') {
@@ -158,11 +167,12 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 
 function toApiPath(input: RequestInfo | URL): string {
   const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-  if (raw.startsWith(API)) {
-    return raw.slice(API.length);
+  const base = warehouseApiBaseUrl();
+  if (raw.startsWith(base)) {
+    return raw.slice(base.length);
   }
   try {
-    const url = new URL(raw, API);
+    const url = new URL(raw, base);
     return `${url.pathname}${url.search}`;
   } catch {
     return raw.startsWith("/") ? raw : `/${raw}`;
@@ -180,7 +190,7 @@ export async function connectWarehouseWS(): Promise<WebSocket> {
   if (!session.ok || typeof payload?.token !== 'string' || !payload.token) {
     throw new Error('Failed to mint warehouse WebSocket session');
   }
-  const wsBase = API.replace(/^http/, 'ws');
+  const wsBase = warehouseApiBaseUrl().replace(/^http/, 'ws');
   return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(payload.token)}`);
 }
 
@@ -226,7 +236,7 @@ export function subscribeWarehouseWS(options: {
         if (wasReconnect) {
           void reconcileSession({
             role: 'warehouse',
-            baseUrl: API,
+            baseUrl: warehouseApiBaseUrl(),
             getAuthToken: () => readTokenFromCookie() || null,
             fetchImpl: warehouseSessionFetch,
           }).then(() => notifyWarehouseSessionReconciled());
@@ -287,4 +297,3 @@ export function subscribeWarehouseWS(options: {
   };
 }
 
-export { API as warehouseApiBaseUrl };

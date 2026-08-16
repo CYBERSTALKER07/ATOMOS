@@ -36,7 +36,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -67,8 +66,6 @@ const (
 	StatusBackordered            Status = "BACKORDERED"
 	StatusScheduled              Status = "SCHEDULED"
 	StatusAutoAccepted           Status = "AUTO_ACCEPTED"
-
-	deliveryGeofenceMeters = proximity.DeliveryApproachRadiusM
 )
 
 // OrderSource captures how an order entered the system.
@@ -79,7 +76,7 @@ const (
 	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
 	OrderSourceBackorder      OrderSource = "BACKORDER"
-	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER"  // L3.5 place mode
+	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER"      // L3.5 place mode
 	OrderSourcePartnerEDI     OrderSource = "PARTNER_EDI"     // Gate-3 Wave 2B EDI-lite ORDERS
 	OrderSourcePartnerSandbox OrderSource = "PARTNER_SANDBOX" // partner sandbox API key orders
 )
@@ -443,10 +440,14 @@ func NewService(c ServiceConfig) *Service {
 	}
 	grace := c.ShopClosedGrace
 	if grace <= 0 {
-		grace = 5 * time.Minute
+		if d, err := auth.ShopClosedGraceFromContext(context.Background(), ""); err == nil {
+			grace = d
+		}
 	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), strings.TrimSpace(c.SeedSupplierID)); err == nil {
+			c.Currency = cur
+		}
 	}
 	allow := c.CurrencyAllowlist
 	if len(allow) == 0 {
@@ -1222,12 +1223,12 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
-	orderCurrency, err := s.resolveOrderCurrency(req.Currency)
+	supplierID, err := s.resolveSupplierIDForCreate(ctx, req.SupplierID)
 	if err != nil {
 		return CreateResponse{}, err
 	}
 
-	supplierID, err := s.resolveSupplierIDForCreate(ctx, req.SupplierID)
+	orderCurrency, err := s.resolveOrderCurrency(ctx, supplierID, req.Currency)
 	if err != nil {
 		return CreateResponse{}, err
 	}
@@ -1280,7 +1281,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, req.Lat, req.Lng)
 	}
 
-	loc := proximity.TashkentLocation
+	loc, locErr := auth.TimezoneFromContext(ctx, supplierID)
+	if locErr != nil {
+		return CreateResponse{}, locErr
+	}
 	if whPolicy.OperatingSchedule.Timezone != "" {
 		if l, err := time.LoadLocation(whPolicy.OperatingSchedule.Timezone); err == nil {
 			loc = l
@@ -1826,7 +1830,7 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 			}
 
 			if !req.BypassGeofence && (req.Latitude != 0 || req.Longitude != 0) {
-				computedDistance, err := validateOptionalGeofence(req.Latitude, req.Longitude, orderRecord)
+				computedDistance, err := validateOptionalGeofence(ctx, req.Latitude, req.Longitude, orderRecord)
 				if err == nil {
 					distanceM = computedDistance
 				}
@@ -1918,14 +1922,17 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
 			}
-			computedDistance, err := validatePointerGeofence(req.Latitude, req.Longitude, orderRecord)
+			if err := s.requireFiscalPack(ctx, orderRecord.SupplierID); err != nil {
+				return err
+			}
+			computedDistance, err := validatePointerGeofence(ctx, req.Latitude, req.Longitude, orderRecord)
 			if err == nil {
 				distanceM = computedDistance
 			}
 			return err
 		},
 		PrepareOrder: func(o *Order, _ Status) {
-			row := s.newFiscalPendingRow(*o, "CARD", s.newID(), o.TotalMinor)
+			row := s.newFiscalPendingRow(ctx, *o, "CARD", s.newID(), o.TotalMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -2049,6 +2056,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
 			}
+			if err := s.requireFiscalPack(ctx, orderRecord.SupplierID); err != nil {
+				return err
+			}
 			// Proximity: prior unlock OR live settlement radius / H3 (anti-spoof + doorstep).
 			if err := s.requireProximityUnlocked(ctx, orderRecord.OrderID, ""); err != nil {
 				method, dist, ok := EvaluateSettlementProximity(req.Latitude, req.Longitude, orderRecord.Lat, orderRecord.Lng, orderRecord.H3Cell)
@@ -2072,9 +2082,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			} else if receivedMinor > orderRecord.TotalMinor {
 				overageMinor = receivedMinor - orderRecord.TotalMinor
 			}
-			// Keep approach geofence as outer bound (500 m) when settlement already satisfied.
+			// Keep approach geofence as outer bound (pack breach_radius_meters) when settlement already satisfied.
 			if distanceM == 0 {
-				computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
+				computedDistance, err := validateRequiredGeofence(ctx, req.Latitude, req.Longitude, orderRecord)
 				if err != nil {
 					return err
 				}
@@ -2086,7 +2096,7 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if receivedMinor == 0 && req.AmountReceivedMinor == nil {
 				receivedMinor = o.TotalMinor
 			}
-			row := s.newFiscalPendingRow(*o, "CASH", s.newID(), receivedMinor)
+			row := s.newFiscalPendingRow(ctx, *o, "CASH", s.newID(), receivedMinor)
 			attemptID = row.AttemptID
 			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
 			o.FiscalStatus = FiscalStatusPending
@@ -2504,6 +2514,10 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
+		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+			errors.Is(err, auth.ErrPackCurrencyMismatch):
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
 		default:
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}
@@ -3044,6 +3058,12 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "fiscal_already_succeeded"})
 	case errors.Is(err, ErrCashAmountNegative):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cash_amount_negative"})
+	case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+		errors.Is(err, auth.ErrFiscalAdapterUnimplemented), errors.Is(err, auth.ErrFakeFiscalForbidden),
+		errors.Is(err, auth.ErrBreachRadiusInvalid), errors.Is(err, auth.ErrTimezoneInvalid),
+		errors.Is(err, auth.ErrShopClosedGraceInvalid):
+		st, code := auth.TimezonePackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
@@ -3459,26 +3479,30 @@ func deliveryProofDistance(distanceM float64, latitude, longitude *float64) *flo
 	return &value
 }
 
-func validatePointerGeofence(latitude, longitude *float64, orderRecord Order) (float64, error) {
+func validatePointerGeofence(ctx context.Context, latitude, longitude *float64, orderRecord Order) (float64, error) {
 	if latitude == nil || longitude == nil {
 		return 0, errors.New("latitude and longitude required")
 	}
-	return validateRequiredGeofence(*latitude, *longitude, orderRecord)
+	return validateRequiredGeofence(ctx, *latitude, *longitude, orderRecord)
 }
 
-func validateOptionalGeofence(latitude, longitude float64, orderRecord Order) (float64, error) {
-	return validateRequiredGeofence(latitude, longitude, orderRecord)
+func validateOptionalGeofence(ctx context.Context, latitude, longitude float64, orderRecord Order) (float64, error) {
+	return validateRequiredGeofence(ctx, latitude, longitude, orderRecord)
 }
 
-func validateRequiredGeofence(latitude, longitude float64, orderRecord Order) (float64, error) {
+func validateRequiredGeofence(ctx context.Context, latitude, longitude float64, orderRecord Order) (float64, error) {
 	if latitude == 0 && longitude == 0 {
 		return 0, errors.New("latitude and longitude required")
 	}
 	if orderRecord.Lat == 0 && orderRecord.Lng == 0 {
 		return 0, fmt.Errorf("%w: order coordinates unavailable", ErrServiceabilityUnavailable)
 	}
+	radius, err := auth.BreachRadiusFromContext(ctx, orderRecord.SupplierID)
+	if err != nil {
+		return 0, err
+	}
 	distanceM := distanceMeters(latitude, longitude, orderRecord.Lat, orderRecord.Lng)
-	if distanceM > deliveryGeofenceMeters {
+	if distanceM > radius {
 		return distanceM, fmt.Errorf("%w: %.0fm from delivery point", ErrGeofenceViolation, distanceM)
 	}
 	return distanceM, nil

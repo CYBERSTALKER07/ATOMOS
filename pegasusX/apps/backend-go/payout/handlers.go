@@ -38,7 +38,12 @@ func RegisterRoutes(r chi.Router, h *Handlers) {
 
 // HandleRailInfo serves GET /v1/supplier/payouts/rail — G1.D honesty surface.
 func (h *Handlers) HandleRailInfo(w http.ResponseWriter, r *http.Request) {
-	info := h.Svc.RailInfo()
+	info, err := h.Svc.RailInfoContext(r.Context(), payoutSupplierID(r))
+	if err != nil {
+		st, code := auth.TimezonePackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
+	}
 	writeJSON(w, http.StatusOK, info)
 }
 
@@ -157,11 +162,11 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
-	// G1.D: always advertise rail workflow so UI never implies live bank rails.
-	writeJSON(w, http.StatusOK, map[string]any{
-		"batch": b,
-		"rail":  h.Svc.RailInfo(),
-	})
+	resp := map[string]any{"batch": b}
+	if info, railErr := h.Svc.RailInfoContext(r.Context(), supplierID); railErr == nil {
+		resp["rail"] = info
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handlers) HandleExport(w http.ResponseWriter, r *http.Request) {
@@ -197,13 +202,15 @@ func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// G1.D: MarkPaid is the bank-file settlement confirmation (human after bank).
-	info := h.Svc.RailInfo()
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":   StatusPaid,
 		"batch_id": batchID,
-		"rail":     info,
 		"message":  "Batch marked PAID after bank-file settlement (not a live rail webhook)",
-	})
+	}
+	if info, railErr := h.Svc.RailInfoContext(r.Context(), payoutSupplierID(r)); railErr == nil {
+		resp["rail"] = info
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleDispatch submits a batch to the configured rail. Default is the
@@ -222,15 +229,31 @@ func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusNotFound
 		case errors.Is(err, ErrBankDetailsMissing):
 			status = http.StatusConflict
-		case errors.Is(err, ErrNoLiveRail):
+		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
+			errors.Is(err, auth.ErrPayoutRailUnknown):
+			st, code := auth.TimezonePackHTTPStatus(err)
+			if body.Live && errors.Is(err, auth.ErrPayoutRailUnknown) {
+				writeJSON(w, http.StatusConflict, map[string]any{
+					"error":   "no_live_rail",
+					"code":    "no_live_rail",
+					"message": "No live payout rail: unknown pack rail is not a PSP",
+				})
+				return
+			}
+			writeJSON(w, st, map[string]string{"error": code})
+			return
+		case errors.Is(err, ErrNoLiveRail), errors.Is(err, auth.ErrPayoutRailNotLive):
 			// G1.D: never look like live money moved when only bank-file exists.
 			status = http.StatusConflict
-			writeJSON(w, status, map[string]any{
+			payload := map[string]any{
 				"error":   "no_live_rail",
 				"code":    "no_live_rail",
-				"rail":    h.Svc.RailInfo(),
 				"message": "No live payout rail: export CSV, process at bank, then POST .../mark-paid",
-			})
+			}
+			if info, railErr := h.Svc.RailInfoContext(r.Context(), payoutSupplierID(r)); railErr == nil {
+				payload["rail"] = info
+			}
+			writeJSON(w, status, payload)
 			return
 		case strings.Contains(err.Error(), "not dispatchable"):
 			status = http.StatusConflict
@@ -238,10 +261,11 @@ func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"batch": b,
-		"rail":  h.Svc.RailInfo(),
-	})
+	resp := map[string]any{"batch": b}
+	if info, railErr := h.Svc.RailInfoContext(r.Context(), payoutSupplierID(r)); railErr == nil {
+		resp["rail"] = info
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleSettlementWebhook receives a rail's settlement confirmation and flips

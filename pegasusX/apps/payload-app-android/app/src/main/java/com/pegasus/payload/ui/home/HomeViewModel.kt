@@ -106,6 +106,7 @@ data class HomeUiState(
     val pulseLoading: Boolean = false,
     val error: String? = null,
     val errorExplain: StatusExplain? = null,
+    val pack: com.pegasus.design.MarketPack? = null,
 )
 
 @HiltViewModel
@@ -135,6 +136,13 @@ class HomeViewModel @Inject constructor(
         refreshPulse()
         bootstrapPhase6()
         observeNotificationBus()
+        viewModelScope.launch {
+            val pack = com.pegasus.design.MarketPackBinder.fetch(
+                BuildConfig.API_BASE_URL,
+                secureStore.token.orEmpty(),
+            )?.pack
+            _state.update { it.copy(pack = pack) }
+        }
     }
 
     fun refreshPulse() {

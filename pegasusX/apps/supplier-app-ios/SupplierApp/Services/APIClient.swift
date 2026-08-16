@@ -4,7 +4,7 @@ final class APIClient: Sendable {
     static let shared = APIClient()
 
     #if DEBUG
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -16,7 +16,7 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -26,6 +26,9 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #endif
+
+    private var baseURL: URL { pinnedAPIBaseURL(bootstrap: bootstrapURL) }
+    var cellBootstrap: String { bootstrapURL.absoluteString }
 
     private var session: URLSession
     private let decoder: JSONDecoder

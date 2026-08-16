@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"google.golang.org/api/iterator"
 )
 
@@ -45,7 +44,7 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	if err != nil {
 		return "", err
 	}
-	retailerCell := dispatch.H3CellLookup(retailerLat, retailerLng)
+	retailerCell := coverageH3Cell(retailerLat, retailerLng)
 
 	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Lat, Lng, COALESCE(CountryCode, '')

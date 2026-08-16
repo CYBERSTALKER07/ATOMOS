@@ -286,6 +286,12 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_required"})
 		return
 	}
+	if action == "add" {
+		if _, err := s.guardTradingPartner(r.Context(), supplierID); err != nil {
+			writeAttachError(w, err)
+			return
+		}
+	}
 	body, ok := readLimitedBody(w, r, 8*1024)
 	if !ok {
 		return
@@ -1473,7 +1479,8 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 				if driverLng == 0 && lookup.location.Longitude != 0 {
 					driverLng = lookup.location.Longitude
 				}
-				if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
+				distKm := proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)
+				if proximity.WithinDeliveryApproachForSupplier(ctx, orders[i].SupplierID, distKm) {
 					orders[i].IsApproaching = true
 				}
 			}

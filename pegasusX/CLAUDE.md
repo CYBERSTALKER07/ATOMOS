@@ -10,3 +10,5 @@ Current source code is the only status SoT. Docs and prior chat are hypotheses.
 - Load `honest-code-gate`. Canonical tree: `pegasusX/`.
 
 See `.github/instructions/honest-code-gate.instructions.md` and `.agents/AGENTS.md`.
+
+**Retrieval:** `../.agents/memory/WORKSPACE.md` + `graph_retrieve.py`. Persist verified only.

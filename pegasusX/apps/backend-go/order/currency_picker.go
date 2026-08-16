@@ -1,11 +1,13 @@
 package order
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 )
 
@@ -28,7 +30,12 @@ func OrderCurrencyPickerEnabled() bool {
 func ParseCurrencyAllowlist(raw, operatingCurrency string) []string {
 	op := fxrates.NormalizeCurrency(operatingCurrency)
 	if op == "" {
-		op = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), ""); err == nil {
+			op = cur
+		}
+	}
+	if op == "" {
+		return nil
 	}
 	seen := map[string]struct{}{op: {}}
 	out := []string{op}
@@ -56,12 +63,23 @@ type CurrencyOptions struct {
 // resolveOrderCurrency picks the currency stamped on a new order.
 // When picker is disabled, always returns operating currency (ignores request).
 // When enabled: empty → operating; non-empty must be on allowlist.
-func (s *Service) resolveOrderCurrency(requested string) (string, error) {
+func (s *Service) operatingCurrency(ctx context.Context, supplierID string) (string, error) {
 	operating := fxrates.NormalizeCurrency(s.currency)
-	if operating == "" {
-		operating = "UZS"
+	if operating != "" {
+		return operating, nil
+	}
+	return auth.CurrencyFromContext(ctx, supplierID)
+}
+
+func (s *Service) resolveOrderCurrency(ctx context.Context, supplierID, requested string) (string, error) {
+	operating, err := s.operatingCurrency(ctx, supplierID)
+	if err != nil {
+		return "", err
 	}
 	req := fxrates.NormalizeCurrency(requested)
+	if req != "" && auth.IsShippedPackCurrency(req) {
+		return req, nil
+	}
 	if !s.currencyPickerEnabled {
 		return operating, nil
 	}
@@ -81,9 +99,17 @@ func (s *Service) resolveOrderCurrency(requested string) (string, error) {
 
 // CurrencyOptions returns picker config for retailer clients.
 func (s *Service) CurrencyOptions() CurrencyOptions {
-	operating := fxrates.NormalizeCurrency(s.currency)
-	if operating == "" {
-		operating = "UZS"
+	opts, err := s.currencyOptions(context.Background())
+	if err != nil {
+		return CurrencyOptions{Enabled: s.currencyPickerEnabled}
+	}
+	return opts
+}
+
+func (s *Service) currencyOptions(ctx context.Context) (CurrencyOptions, error) {
+	operating, err := s.operatingCurrency(ctx, "")
+	if err != nil {
+		return CurrencyOptions{}, err
 	}
 	allow := append([]string(nil), s.currencyAllowlist...)
 	if len(allow) == 0 {
@@ -93,7 +119,7 @@ func (s *Service) CurrencyOptions() CurrencyOptions {
 		Enabled:           s.currencyPickerEnabled,
 		OperatingCurrency: operating,
 		Allowlist:         allow,
-	}
+	}, nil
 }
 
 // HandleOrderCurrencies serves GET /v1/order/currencies.
@@ -102,5 +128,11 @@ func (s *Service) HandleOrderCurrencies(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, s.CurrencyOptions())
+	opts, err := s.currencyOptions(r.Context())
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
+	}
+	writeJSON(w, http.StatusOK, opts)
 }

@@ -436,6 +436,26 @@ export {
   payloadManifestExceptionKey,
 } from "./idempotency";
 export {
+  CELL_API_URLS,
+  homeCellFromJwt,
+  isDevApiBootstrap,
+  pinApiBaseUrl,
+  trimApiBase,
+  wsUrlFromApi,
+} from "./cell-api";
+export type { PinApiBaseUrlOptions } from "./cell-api";
+export {
+  cacheAuthSession,
+  fetchAuthSession,
+  fiscalReceiptLabel,
+  formatPackMoney,
+  packAllowsPsp,
+  packCurrency,
+  readCachedAuthSession,
+} from "./market-pack";
+export type { AuthSession, MarketPack } from "./market-pack";
+export { useMarketPack } from "./use-market-pack";
+export {
   SESSION_RECONCILE_ENDPOINTS,
   reconcileSession,
 } from "./session-reconcile";

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 
 import androidx.compose.foundation.lazy.grid.GridCells
+import com.pegasus.design.PackBanner
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -133,6 +134,9 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+                item {
+                    PackBanner(uiState.pack)
+                }
                 if (uiState.loadIssue != null || uiState.isLoading) {
                     item {
                         val loadIssue = uiState.loadIssue

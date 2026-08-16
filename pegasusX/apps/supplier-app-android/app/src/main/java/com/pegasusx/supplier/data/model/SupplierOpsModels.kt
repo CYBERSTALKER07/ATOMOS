@@ -178,7 +178,6 @@ data class CreateRetailerPriceOverrideResponse(
 )
 
 @Serializable
-@Serializable
 data class SupplierCoverageCity(
     val name: String = "",
     val lat: Double = 0.0,
@@ -1266,6 +1265,80 @@ data class PullMatrixResponse(
     val transfers: Int = 0,
     val skus: Int = 0,
     val source: String = "",
+    val grain: String = "",
+)
+
+@Serializable
+data class PredictivePushResponse(
+    val transfers: Int = 0,
+    val skus: Int = 0,
+    val source: String = "",
+    val grain: String = "",
+    @SerialName("not_from") val notFrom: String = "",
+    val error: String = "",
+)
+
+@Serializable
+data class LoyaltyTier(
+    val name: String = "",
+    @SerialName("min_points") val minPoints: Long = 0,
+)
+
+@Serializable
+data class LoyaltyProgram(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("earn_bps") val earnBps: Long = 100,
+    val tiers: List<LoyaltyTier> = emptyList(),
+    val reason: String? = null,
+    val source: String? = null,
+)
+
+@Serializable
+data class EntityResolutionResolveRequest(
+    @SerialName("entity_type") val entityType: String = "ANY",
+    val query: String? = null,
+    @SerialName("entity_id") val entityId: String? = null,
+)
+
+@Serializable
+data class EntityResolutionExplainRequest(
+    @SerialName("entity_type") val entityType: String,
+    @SerialName("entity_id") val entityId: String,
+)
+
+@Serializable
+data class EntityResolutionCandidate(
+    @SerialName("node_id") val nodeId: String = "",
+    @SerialName("entity_type") val entityType: String = "",
+    @SerialName("entity_id") val entityId: String = "",
+    val label: String = "",
+    val score: Double = 0.0,
+    @SerialName("confidence_class") val confidenceClass: String = "",
+)
+
+@Serializable
+data class EntityResolutionResolveResponse(
+    @SerialName("requested_type") val requestedType: String = "",
+    val resolved: EntityResolutionCandidate? = null,
+    val candidates: List<EntityResolutionCandidate> = emptyList(),
+)
+
+@Serializable
+data class EntityResolutionEdge(
+    val from: String = "",
+    val to: String = "",
+    val relation: String = "",
+)
+
+@Serializable
+data class EntityResolutionProjection(
+    val edges: List<EntityResolutionEdge> = emptyList(),
+)
+
+@Serializable
+data class EntityResolutionExplainResponse(
+    val source: EntityResolutionCandidate = EntityResolutionCandidate(),
+    val projection: EntityResolutionProjection = EntityResolutionProjection(),
 )
 
 @Serializable

@@ -15,6 +15,9 @@ Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are
 
 Full text: `.github/instructions/honest-code-gate.instructions.md`
 
+## Graph retrieval + shared memory
+Read `.agents/memory/WORKSPACE.md`. Run `python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>" --hops 2`, then open those paths. Persist verified facts only. Graph is not status. See `.agents/skills/graph-retrieval-memory/references/always-on.md`.
+
 ---
 
 # Project Guidelines & F.R.I.D.A.Y. Initialization Protocol

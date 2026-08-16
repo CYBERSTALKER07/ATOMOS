@@ -13,7 +13,8 @@ Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are
 6. **Blast radius** on every create/edit: other files, role-row clients, cloud config, downstream features.
 7. **Research:** skills (`honest-code-gate`, `gap-hunter`) → official docs/web → proven OSS/big-tech algorithms. Else invent tested in-house logic.
 
-Full text: `.github/instructions/honest-code-gate.instructions.md`
+Full text: `.github/instructions/honest-code-gate.instructions.md`  
+Retrieval: `.github/instructions/graph-retrieval-memory.instructions.md` + `.agents/memory/WORKSPACE.md`
 
 ---
 

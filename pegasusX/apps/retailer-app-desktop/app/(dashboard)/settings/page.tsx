@@ -31,6 +31,7 @@ import {
 import { Chip, Skeleton } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
 import { CreditProfileCard } from "@/components/CreditProfileCard";
+import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
@@ -629,6 +630,7 @@ export default function SettingsPage() {
                   Billing & Access
                 </h2>
                 <CreditProfileCard className="mb-1" />
+                <LoyaltyCard />
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-4 shadow-[var(--shadow-sm)] mb-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
                     Pricing rules (read-only)

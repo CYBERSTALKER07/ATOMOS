@@ -232,6 +232,8 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		PlaceID              string  `json:"place_id"`
 		ReceivingWindowOpen  string  `json:"receiving_window_open"`
 		ReceivingWindowClose string  `json:"receiving_window_close"`
+		SupplierID           string  `json:"supplier_id"`
+		InviteToken          string  `json:"invite_token"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -248,6 +250,8 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 	reg, err := s.Register(r.Context(), RegisterRequest{
 		Phone:                strings.TrimSpace(req.PhoneNumber),
 		Name:                 name,
+		SupplierID:           strings.TrimSpace(req.SupplierID),
+		InviteToken:          strings.TrimSpace(req.InviteToken),
 		Lat:                  req.Latitude,
 		Lng:                  req.Longitude,
 		DeliveryAddress:      deliveryAddr,
@@ -256,14 +260,14 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		ReceivingWindowClose: req.ReceivingWindowClose,
 	})
 	if err != nil {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		writeAttachError(w, err)
 		return
 	}
 	ret := Retailer{
 		RetailerID: reg.RetailerID,
 		Phone:      reg.Phone,
 		Name:       name,
-		SupplierID: s.resolveSupplierScope(r.Context()),
+		SupplierID: reg.SupplierID,
 		Lat:        req.Latitude,
 		Lng:        req.Longitude,
 	}
@@ -288,7 +292,7 @@ func (s *Service) writeCanonicalRegisterResponse(w http.ResponseWriter, r *http.
 	}
 	resp, err := s.Register(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		writeAttachError(w, err)
 		return true
 	}
 	writeJSON(w, http.StatusCreated, resp)

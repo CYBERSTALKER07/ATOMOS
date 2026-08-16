@@ -66,7 +66,13 @@ final class APIClient: @unchecked Sendable {
     }()
     #endif
 
-    private var baseURL: String { apiBaseURL }
+    private var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: apiBaseURL,
+            homeCell: CellApi.homeCellFromJwt(CellTokenCache.token),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     private let session: URLSession
     private let decoder: JSONDecoder
@@ -248,7 +254,7 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/update-order-during-delivery", body: body)
     }
 
-    /// Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
+    /// Mark arrived — driver enters pack breach_radius_meters (UZ 150m; IN_TRANSIT → ARRIVED)
     func markArrived(orderId: String) async throws {
         struct Resp: Decodable { let status: String; let orderId: String }
         let body = ["order_id": orderId]

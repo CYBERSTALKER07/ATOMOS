@@ -37,6 +37,7 @@ import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import Icon from "./Icon";
 import { apiFetch } from "@/lib/auth";
+import { SessionPackChip } from "./SessionPackChip";
 import { OrgSwitcher } from "./OrgSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { usePortalT } from "@/lib/i18n";
@@ -712,6 +713,7 @@ export default function RetailerShell({
           </div>
 
           <div className="desk-topbar-right px-6 gap-4">
+            <SessionPackChip />
             {/* Live indicator */}
             <div
               className={`desk-live-indicator hidden md:inline-flex ${!isConnected ? "opacity-50" : ""}`}

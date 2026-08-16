@@ -131,6 +131,7 @@ type Service struct {
 	pendingCollections map[string][]PendingCollection
 	now                func() time.Time
 	firebaseVerifier   auth.FirebaseVerifier
+	loginLookup        DriverLoginLookup
 }
 
 // ServiceConfig is the constructor input.

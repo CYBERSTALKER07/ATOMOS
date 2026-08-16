@@ -348,6 +348,35 @@ enum SupplierOperationsService {
         )
     }
 
+    static func planningPredictivePush(idempotencyKey: String) async throws -> PredictivePushResponse {
+        struct EmptyBody: Encodable {}
+        return try await APIClient.shared.post(
+            "v1/supplier/planning/predictive-push",
+            body: EmptyBody(),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func loyaltyProgram() async throws -> LoyaltyProgram {
+        try await APIClient.shared.get("v1/supplier/loyalty/program")
+    }
+
+    static func patchLoyaltyProgram(_ body: LoyaltyProgram, idempotencyKey: String) async throws -> LoyaltyProgram {
+        try await APIClient.shared.patch(
+            "v1/supplier/loyalty/program",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func resolveEntity(_ body: EntityResolutionResolveRequest) async throws -> EntityResolutionResolveResponse {
+        try await APIClient.shared.post("v1/supplier/entity-resolution/resolve", body: body)
+    }
+
+    static func explainEntity(_ body: EntityResolutionExplainRequest) async throws -> EntityResolutionExplainResponse {
+        try await APIClient.shared.post("v1/supplier/entity-resolution/explain", body: body)
+    }
+
     static func planningKillSwitch(_ body: KillSwitchRequest, idempotencyKey: String) async throws -> KillSwitchResponse {
         try await APIClient.shared.post(
             "v1/supplier/planning/kill-switch",

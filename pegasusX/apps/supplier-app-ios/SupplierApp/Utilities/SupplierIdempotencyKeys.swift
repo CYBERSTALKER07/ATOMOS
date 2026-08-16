@@ -104,6 +104,14 @@ enum SupplierIdempotencyKeys {
         "supplier-planning-pull-matrix:\(scopeId)"
     }
 
+    static func planningPredictivePush(scopeId: String) -> String {
+        "supplier-planning-predictive-push:\(scopeId)"
+    }
+
+    static func loyaltyProgramPatch(scopeId: String, reason: String) -> String {
+        "supplier-loyalty-program:\(scopeId):\(stableHash(reason.trimmingCharacters(in: .whitespacesAndNewlines)))"
+    }
+
     static func planningKillSwitch(scopeId: String, reason: String) -> String {
         "supplier-planning-kill-switch:\(scopeId):\(stableHash(reason.trimmingCharacters(in: .whitespacesAndNewlines)))"
     }
